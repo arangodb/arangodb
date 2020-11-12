@@ -328,7 +328,8 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   uint64_t vertexIdRange = vertexIdRangeStart;
   
   LOG_TOPIC("7c31f", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "' has "
-  << numVertices << " vertices";
+    << numVertices << " vertices. id range: [" 
+    << vertexIdRangeStart << ", " << (vertexIdRangeStart + numVertices) << ")";
   
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> vKeys;
@@ -595,6 +596,9 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
   };
   
   // loop over vertices
+  // This loop will fill a buffer of vertices until we run into a new
+  // collection
+  // or there are no more vertices for to store (or the buffer is full)
   for (; it.hasMore(); ++it) {
     if (it->shard() != currentShard || numDocs >= 1000) {
       commitTransaction();
@@ -615,10 +619,6 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
     VPackStringRef const key = it->key();
     V const& data = it->data();
     
-    //builder.clear();
-    // This loop will fill a buffer of vertices until we run into a new
-    // collection
-    // or there are no more vertices for to store (or the buffer is full)
     builder.openObject(true);
     builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(),
                                                          VPackValueType::String));
