@@ -801,8 +801,8 @@ void IResearchFeature::prepare() {
     TRI_ASSERT(_commitThreads && _commitThreadsIdle);
     TRI_ASSERT(_consolidationThreads && _consolidationThreadsIdle);
 
-    _async->get(ThreadGroup::_0).set_limits(_commitThreads, _commitThreadsIdle);
-    _async->get(ThreadGroup::_1).set_limits(_consolidationThreads, _consolidationThreadsIdle);
+    _async->get(ThreadGroup::_0).limits(_commitThreads, _commitThreadsIdle);
+    _async->get(ThreadGroup::_1).limits(_consolidationThreads, _consolidationThreadsIdle);
 
     LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
         << "ArangoSearch maintenance: "
@@ -853,8 +853,7 @@ void IResearchFeature::queue(
   _async->get(id).run(std::move(fn), delay);
 }
 
-std::tuple<size_t, size_t, size_t, size_t, size_t>
-IResearchFeature::stats(ThreadGroup id) const {
+std::tuple<size_t, size_t, size_t> IResearchFeature::stats(ThreadGroup id) const {
   return _async->get(id).stats();
 }
 

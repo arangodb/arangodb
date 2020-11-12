@@ -123,7 +123,6 @@ namespace iresearch {
     return factory ? factory() : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting a format instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;

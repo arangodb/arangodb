@@ -248,7 +248,6 @@ bool get_stopwords(
     return true;
   } catch (...) {
     IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.utf8().c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -360,7 +359,6 @@ irs::analysis::analyzer::ptr construct(
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s", 
                   cache_key.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -460,7 +458,6 @@ bool make_locale_from_name(const irs::string_ref& name,
         "Caught error while constructing locale from "
         "name: %s",
         name.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -670,7 +667,6 @@ bool parse_json_options(const irs::string_ref& args,
         "Caught error while constructing text_token_stream from jSON "
         "arguments: %s",
         args.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -854,7 +850,6 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", 
                   args.c_str());
-    IR_LOG_EXCEPTION();
   }
   return nullptr;
 }

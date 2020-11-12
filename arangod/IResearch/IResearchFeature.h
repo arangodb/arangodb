@@ -90,7 +90,11 @@ class IResearchFeature final : public application_features::ApplicationFeature {
              std::chrono::steady_clock::duration delay,
              std::function<void()>&& fn);
 
-  std::tuple<size_t, size_t, size_t, size_t, size_t> stats(ThreadGroup id) const;
+  size_t inc() noexcept { return ++_numIndices; }
+  size_t dec() noexcept { return --_numIndices; }
+  size_t numIndices() noexcept { return _numIndices; }
+
+  std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
 
   template <typename Engine, typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>, int> = 0>
   IndexTypeFactory& factory();

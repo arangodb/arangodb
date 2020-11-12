@@ -55,7 +55,6 @@ bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) noexcept {
 
     return locked;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;

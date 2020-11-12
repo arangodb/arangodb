@@ -215,7 +215,6 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
           << "failed to create links while creating arangosearch view '" << impl->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
       }
     } catch (arangodb::basics::Exception const& e) {
-      IR_LOG_EXCEPTION();
       std::string name;
       if (definition.isObject()) {
         name = arangodb::basics::VelocyPackHelper::getStringValue(
@@ -227,7 +226,6 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
              "arangosearch view '"
           << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
-      IR_LOG_EXCEPTION();
       std::string name;
       if (definition.isObject()) {
         name = arangodb::basics::VelocyPackHelper::getStringValue(
@@ -237,7 +235,6 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
       LOG_TOPIC("dc829", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while creating links while creating arangosearch view '" << impl->name() << "': " << e.what();
     } catch (...) {
-      IR_LOG_EXCEPTION();
       std::string name;
       if (definition.isObject()) {
         name = arangodb::basics::VelocyPackHelper::getStringValue(
@@ -524,24 +521,18 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
     res = trx.commit();
   } catch (arangodb::basics::Exception& e) {
-    IR_LOG_EXCEPTION();
-
     return arangodb::Result(
         e.code(),
         std::string(
             "caught exception while generating json for arangosearch view '") +
             name() + "': " + e.what());
   } catch (std::exception const& e) {
-    IR_LOG_EXCEPTION();
-
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string(
             "caught exception while generating json for arangosearch view '") +
             name() + "': " + e.what());
   } catch (...) {
-    IR_LOG_EXCEPTION();
-
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string(
@@ -912,7 +903,6 @@ IResearchView::Snapshot const* IResearchView::snapshot(
         << "caught exception while collecting readers for snapshot of "
            "arangosearch view '"
         << name() << "', tid '" << state.id() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
 
     return nullptr;
   } catch (std::exception const& e) {
@@ -920,7 +910,6 @@ IResearchView::Snapshot const* IResearchView::snapshot(
         << "caught exception while collecting readers for snapshot of "
            "arangosearch view '"
         << name() << "', tid '" << state.id() << "': " << e.what();
-    IR_LOG_EXCEPTION();
 
     return nullptr;
   } catch (...) {
@@ -928,7 +917,6 @@ IResearchView::Snapshot const* IResearchView::snapshot(
         << "caught exception while collecting readers for snapshot of "
            "arangosearch view '"
         << name() << "', tid '" << state.id() << "'";
-    IR_LOG_EXCEPTION();
 
     return nullptr;
   }
@@ -1088,7 +1076,6 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC("74705", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       e.code(),
@@ -1097,7 +1084,6 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
   } catch (std::exception const& e) {
     LOG_TOPIC("27f54", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
@@ -1106,7 +1092,6 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
   } catch (...) {
     LOG_TOPIC("99bbe", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "'";
-    IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,

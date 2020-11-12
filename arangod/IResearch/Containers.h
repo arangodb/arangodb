@@ -53,17 +53,17 @@ namespace iresearch {
 class ResourceMutex {
  public:
   typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-  explicit ResourceMutex(void* resource)
+  explicit ResourceMutex(void* resource) noexcept
       : _readMutex(_mutex), _resource(resource) {}
   ~ResourceMutex() { reset(); }
   operator bool() { return get() != nullptr; }
-  ReadMutex& mutex() const {
+  ReadMutex& mutex() const noexcept {
     return _readMutex;
   }              // prevent '_resource' reset()
   void reset();  // will block until a write lock can be acquired on the _mutex
 
  protected:
-  void* get() const { return _resource.load(); }
+  void* get() const noexcept { return _resource.load(); }
 
  private:
   irs::async_utils::read_write_mutex _mutex;  // read-lock to prevent '_resource' reset()

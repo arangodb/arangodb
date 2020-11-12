@@ -66,7 +66,6 @@ class single_instance_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -78,7 +77,6 @@ class single_instance_lock : public index_lock {
 
       return parent->locks_.erase(name) > 0;
     } catch (...) {
-      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -443,7 +441,6 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -471,7 +468,6 @@ index_lock::ptr memory_directory::make_lock(
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   assert(false);
@@ -512,7 +508,7 @@ index_input::ptr memory_directory::open(
 
     return nullptr;
   } catch(...) {
-    IR_LOG_EXCEPTION();
+    IR_FRMT_ERROR("Failed to open input file, path: %s", name.c_str());
   }
 
   return nullptr;
@@ -525,7 +521,6 @@ bool memory_directory::remove(const std::string& name) noexcept {
 
     return files_.erase(name) > 0;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -550,7 +545,6 @@ bool memory_directory::rename(
 
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;

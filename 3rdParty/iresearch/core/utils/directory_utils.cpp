@@ -268,7 +268,6 @@ index_output::ptr tracking_directory::create(
   try {
     files_.emplace(name);
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   auto result = impl_.create(name);
@@ -280,7 +279,6 @@ index_output::ptr tracking_directory::create(
   try {
     files_.erase(name); // revert change
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -294,7 +292,6 @@ index_input::ptr tracking_directory::open(
     try {
       files_.emplace(name);
     } catch (...) {
-      IR_LOG_EXCEPTION();
 
       return nullptr;
     }
@@ -312,7 +309,6 @@ bool tracking_directory::remove(const std::string& name) noexcept {
     files_.erase(name);
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
@@ -332,7 +328,6 @@ bool tracking_directory::rename(
 
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
     impl_.rename(dst, src); // revert
   }
 
@@ -389,7 +384,6 @@ index_output::ptr ref_tracking_directory::create(
 
     return result;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -413,7 +407,6 @@ index_input::ptr ref_tracking_directory::open(
 
       refs_.emplace(ref);
     } catch (...) {
-      IR_LOG_EXCEPTION();
 
       return nullptr;
     }
@@ -441,7 +434,6 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
     refs_.erase(ref);
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
@@ -474,7 +466,6 @@ bool ref_tracking_directory::rename(
     attribute_->remove(src);
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;

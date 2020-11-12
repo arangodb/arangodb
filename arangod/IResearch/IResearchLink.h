@@ -47,7 +47,26 @@ namespace iresearch {
 
 class IResearchFeature;
 class IResearchView;
+class IResearchLink;
 template<typename T> class TypedResourceMutex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResarchLink handle to use with asynchronous tasks
+////////////////////////////////////////////////////////////////////////////////
+class AsyncLinkHandle {
+ public:
+  explicit AsyncLinkHandle(IResearchLink* link) : _link(link) { }
+  IResearchLink* get() noexcept { return _link.get(); }
+  ResourceMutex::ReadMutex& mutex() noexcept { return _link.mutex(); }
+  bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
+
+ private:
+  friend class IResearchLink;
+  void reset();
+
+  TypedResourceMutex<IResearchLink> _link;
+  std::atomic<bool> _asyncTerminate{false}; // trigger termination of long-running async jobs
+}; // AsyncLinkHandle
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
@@ -55,7 +74,7 @@ template<typename T> class TypedResourceMutex;
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLink {
  public:
-  typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
+  using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store
@@ -367,7 +386,6 @@ class IResearchLink {
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   std::atomic<size_t> _numCommitTasks;
   std::atomic<size_t> _numConsolidationTasks;
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
 

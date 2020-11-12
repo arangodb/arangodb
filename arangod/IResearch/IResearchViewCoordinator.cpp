@@ -117,19 +117,16 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
             << impl->name() << "': " << res.errorNumber() << " " << res.errorMessage();
       }
     } catch (basics::Exception const& e) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("09bb9", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("6b99b", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.what();
     } catch (...) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("61ae6", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
@@ -471,7 +468,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
 
     return Result(
         e.code(),
@@ -481,7 +477,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("86a5c", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
 
     return Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -491,7 +486,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("17b66", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "'";
-    IR_LOG_EXCEPTION();
 
     return Result(
         TRI_ERROR_BAD_PARAMETER,
