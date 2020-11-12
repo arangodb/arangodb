@@ -197,14 +197,11 @@ RestStatus RestDocumentHandler::insertDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   bool const isMultiple = body.isArray();
 
   if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
-  if (!opOptions.isSynchronousReplicationFrom.empty()) {
-    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   Result res = _activeTrx->begin();
@@ -302,7 +299,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(collection, AccessMode::Type::READ);
+  _activeTrx = createTransaction(collection, AccessMode::Type::READ, options);
 
   _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -487,13 +484,10 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
 
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
-  if (!opOptions.isSynchronousReplicationFrom.empty()) {
-    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   // ...........................................................................
@@ -610,12 +604,9 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
-  if (!opOptions.isSynchronousReplicationFrom.empty()) {
-    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   Result res = _activeTrx->begin();
@@ -670,7 +661,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   OperationOptions opOptions;
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::READ);
+  _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
 
   // ...........................................................................
   // inside read transaction

@@ -1,6 +1,10 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed a deadlock between AQL write transactions and hotbackup, since in AQL
+  write transactions follower transactions did not know they are follower
+  transactions.
+
 * Make the DOCUMENT AQL function eligible for running on DB servers in OneShard
   deployment mode. This allows pushing more query parts to DB servers for
   execution.
