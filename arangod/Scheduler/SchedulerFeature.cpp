@@ -351,7 +351,7 @@ extern "C" void c_exit_handler(int signal) {
 
       application_features::ApplicationServer::CTRL_C.store(true);
     } else {
-      LOG_TOPIC("11ca3", FATAL, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("11ca3", FATAL, arangodb::Logger::FIXME)
           << "control-c received (again!), terminating";
       FATAL_ERROR_EXIT();
     }
