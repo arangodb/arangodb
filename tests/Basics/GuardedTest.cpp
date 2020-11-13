@@ -22,47 +22,116 @@
 
 #include "gtest/gtest.h"
 
-#include "Utilities/Guarded.h"
 #include "Basics/Mutex.h"
+#include "Utilities/Guarded.h"
 
 #include <mutex>
-
-using namespace arangodb;
+#include <thread>
 
 namespace arangodb::tests {
 
-template <typename Mutex>
+template <typename M>
 class GuardedTest : public ::testing::Test {
+ protected:
+  using Mutex = M;
+};
+
+struct UnderGuard {
+  int val{};
 };
 
 TYPED_TEST_CASE_P(GuardedTest);
 
-TYPED_TEST_P(GuardedTest, test_allows_access) {
-  struct UnderGuard {
-    int val{};
-  };
-  Guarded<UnderGuard, Mutex> guardedObj{UnderGuard{.val = 1}};
+TYPED_TEST_P(GuardedTest, test_guard_allows_access) {
+  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
   {
-    MutexGuard<UnderGuard, Mutex> guard = guardedObj.getLockedGuard();
+    auto guard = guardedObj.getLockedGuard();
     EXPECT_EQ(1, guard.get().val);
     guard.get().val = 2;
     EXPECT_EQ(2, guard.get().val);
   }
-  guardedObj.doUnderLock([](UnderGuard& obj) {
-    EXPECT_EQ(2, obj.val);
-    obj.val = 3;
-    EXPECT_EQ(3, obj.val);
-  });
-  // guardedObj.tryUnderLock([](UnderGuard& obj) { ... });
+}
+TYPED_TEST_P(GuardedTest, test_guard_waits_for_access) {
+  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  // TODO Get a lock first, then assert that trying to get a guard waits for the
+  //      lock to be released.
+}
+
+TYPED_TEST_P(GuardedTest, test_do_allows_access) {
+  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
   {
-    MutexGuard<UnderGuard, Mutex> guard = guardedObj.getLockedGuard();
-    EXPECT_EQ(3, guard.get().val);
+    bool didExecute = false;
+    guardedObj.doUnderLock([&didExecute](UnderGuard& obj) {
+      EXPECT_EQ(1, obj.val);
+      obj.val = 2;
+      didExecute = true;
+      EXPECT_EQ(2, obj.val);
+    });
+    EXPECT_TRUE(didExecute);
+    {
+      auto guard = guardedObj.getLockedGuard();
+      EXPECT_EQ(2, guard.get().val);
+    }
   }
 }
 
-TYPED_TEST_P(GuardedTest, test_2) {}
+TYPED_TEST_P(GuardedTest, test_do_waits_for_access) {
+  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  // TODO Get a lock first, then assert that doUnderLock waits for the lock
+  //      to be released.
+}
 
-REGISTER_TYPED_TEST_CASE_P(GuardedTest, test_allows_access, test_2);
+TYPED_TEST_P(GuardedTest, test_try_allows_access) {
+  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  {
+    bool didExecute = false;
+    auto const res = guardedObj.tryUnderLock([&didExecute](UnderGuard& obj) {
+      EXPECT_EQ(1, obj.val);
+      obj.val = 2;
+      didExecute = true;
+      EXPECT_EQ(2, obj.val);
+    });
+    static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
+    EXPECT_EQ(didExecute, res.has_value());
+    {
+      auto guard = guardedObj.getLockedGuard();
+      if (didExecute) {
+        EXPECT_EQ(guard->val, 2);
+      } else {
+        EXPECT_EQ(guard->val, 1);
+      }
+    }
+  }
+}
+
+TYPED_TEST_P(GuardedTest, test_try_fails_access) {
+  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  {
+    auto guard = guardedObj.getLockedGuard();
+    bool threadStarted = false;
+    bool threadFinished = false;
+    auto thr = std::thread([&] {
+      threadStarted = true;
+      bool didExecute = false;
+      auto const res = guardedObj.tryUnderLock([&didExecute](UnderGuard& obj) {
+        EXPECT_EQ(1, obj.val);
+        obj.val = 2;
+        didExecute = true;
+        EXPECT_EQ(2, obj.val);
+      });
+      static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
+      EXPECT_FALSE(res.has_value());
+      EXPECT_FALSE(didExecute);
+      threadFinished = true;
+    });
+    thr.join();
+    EXPECT_EQ(guard->val, 1);
+  }
+}
+
+REGISTER_TYPED_TEST_CASE_P(GuardedTest, test_guard_allows_access, test_guard_waits_for_access,
+                           test_do_allows_access, test_do_waits_for_access,
+                           test_try_allows_access, test_try_fails_access);
 
 using TestedMutexes = ::testing::Types<std::mutex, arangodb::Mutex>;
 

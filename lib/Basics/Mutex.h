@@ -65,6 +65,7 @@ class Mutex {
  public:
   void lock();
   bool tryLock();
+  bool try_lock();
   void unlock();
 
   // assert that the mutex is locked by the current thread. will do

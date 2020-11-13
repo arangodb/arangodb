@@ -111,6 +111,10 @@ bool Mutex::tryLock() {
   return true;
 }
 
+bool Mutex::try_lock() {
+  return tryLock();
+}
+
 void Mutex::unlock() {
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   TRI_ASSERT(_holder == Thread::currentThreadId());
