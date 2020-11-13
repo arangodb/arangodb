@@ -807,10 +807,11 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
       abortTombstone();
     }
   } else {
+    bool const isFollowerTrx = trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     res = trx.abort();
     if (intermediateCommits &&
         ServerState::instance()->isDBServer() &&
-        (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
+        (isFollowerTransactionId(tid) || isFollowerTrx)) {
       // we are trying to abort a follower transaction that had intermediate
       // commits already. in this case we return a special error code, which makes
       // the leader drop us as a follower for all shards in the transaction.
