@@ -291,9 +291,18 @@ struct Task {
 
   IResearchFeature* async;
   IResearchLink::AsyncLinkPtr link;
-  std::chrono::steady_clock::time_point last{ std::chrono::steady_clock::now() };
   IndexId id;
 }; // Task
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of loaded links
+////////////////////////////////////////////////////////////////////////////////
+std::atomic<size_t> LinksCount{0};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of active consolidations
+////////////////////////////////////////////////////////////////////////////////
+std::atomic<size_t> ConsolidationsCount{0};
 
 }  // namespace
 
@@ -306,6 +315,13 @@ namespace iresearch {
 /// @note thread group 0 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
 struct CommitTask : Task<CommitTask> {
+  struct CommitState {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of active commit tasks per link
+    ////////////////////////////////////////////////////////////////////////////
+    std::atomic<size_t> count{0};
+  };
+
   static constexpr ThreadGroup threadGroup() noexcept {
     return ThreadGroup::_0;
   }
@@ -314,8 +330,18 @@ struct CommitTask : Task<CommitTask> {
     return "commit";
   }
 
+  CommitTask()
+    : state(std::make_shared<CommitState>()) {
+  }
+
+  void schedule(std::chrono::milliseconds delay) const {
+    ++state->count;
+    Task<CommitTask>::schedule(delay);
+  }
+
   void operator()();
 
+  std::shared_ptr<CommitState> state;
   size_t cleanupIntervalCount{};
   std::chrono::milliseconds commitIntervalMsec{};
   size_t cleanupIntervalStep{};
@@ -339,7 +365,7 @@ void CommitTask::operator()() {
         << "', runId '" << size_t(&runId) << "'";
 
     // blindly reschedule commit task
-    schedule(commitIntervalMsec);
+    Task<CommitTask>::schedule(commitIntervalMsec);
     return;
   }
 
@@ -369,16 +395,7 @@ void CommitTask::operator()() {
     return;
   }
 
-  const auto usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::steady_clock::now() - last);
-
-  if (usedMsec < commitIntervalMsec) {
-    // still need to sleep, reschedule (with possibly updated '_commitIntervalMsec')
-    schedule(commitIntervalMsec - usedMsec);
-    return;
-  }
-
-  last = std::chrono::steady_clock::now(); // remember last task start time
+  --state->count;
 
   IResearchLink::CommitResult code;
   auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
@@ -411,11 +428,7 @@ void CommitTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  if (--link->_numCommitTasks <= 1) {
-    // having more than 1 commit per link is useless
-    ++link->_numCommitTasks;
-    schedule(commitIntervalMsec);
-  }
+  schedule(commitIntervalMsec);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,6 +437,13 @@ void CommitTask::operator()() {
 /// @note thread group 1 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
 struct ConsolidationTask : Task<ConsolidationTask> {
+  struct ConsolidationState {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of active consolidation tasks per link
+    ////////////////////////////////////////////////////////////////////////////
+    std::atomic<size_t> count{0};
+  };
+
   static constexpr ThreadGroup threadGroup() noexcept {
     return ThreadGroup::_1;
   }
@@ -432,16 +452,23 @@ struct ConsolidationTask : Task<ConsolidationTask> {
     return "consolidation";
   }
 
+  ConsolidationTask()
+    : state(std::make_shared<ConsolidationState>()) {
+  }
+
+  void schedule(std::chrono::milliseconds delay) const {
+    ++state->count;
+    ++::ConsolidationsCount;
+    Task<ConsolidationTask>::schedule(delay);
+  }
+
   void operator()();
 
-  static std::atomic<size_t> TotalCounter;
-
+  std::shared_ptr<ConsolidationState> state;
   irs::merge_writer::flush_progress_t progress;
   IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
   std::chrono::milliseconds consolidationIntervalMsec{};
 }; // ConsolidationTask
-
-/*static*/ std::atomic<size_t> ConsolidationTask::TotalCounter{0};
 
 void ConsolidationTask::operator()() {
   const char runId = 0;
@@ -461,7 +488,7 @@ void ConsolidationTask::operator()() {
         << "', run id '" << size_t(&runId) << "'";
 
     // blindly reschedule consolidation task
-    schedule(consolidationIntervalMsec);
+    Task<ConsolidationTask>::schedule(consolidationIntervalMsec);
     return;
   }
 
@@ -492,16 +519,21 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto const usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::steady_clock::now() - last);
+/*
+  size_t const numTasks = state->count;
+  size_t const numLinks = LinksCount;
+  size_t const totalTasks = ConsolidationsCount;
+  size_t const maxTasks = std::max(totalTasks/numLinks, size_t(1));
 
-  if (usedMsec < consolidationIntervalMsec) {
-    // reschedule (with possibly updated '_consolidationIntervalMsec')
-    schedule(consolidationIntervalMsec - usedMsec);
-    return;
-  }
+  LOG_TOPIC("bce4f", ERR, iresearch::TOPIC) << "LINK " << link->id()
+    << " TASKS " << numTasks
+    << " INDICES " << numLinks
+    << " TOTAL " << totalTasks
+    << " UPPER " << maxTasks
+    << " SHEDULE " << size_t(numTasks < maxTasks);
+*/
 
-  last = std::chrono::steady_clock::now(); // remember last task start time
+  schedule(consolidationIntervalMsec);
 
   // run consolidation ('_asyncSelf' locked by async task)
   auto const res = link->consolidateUnsafe(consolidationPolicy, progress);
@@ -517,29 +549,23 @@ void ConsolidationTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  --TotalCounter;
-  --link->_numConsolidationTasks;
-
-  size_t const numTasks = link->_numConsolidationTasks;
-  size_t const numLinks = link->_asyncFeature->numIndices();
-  size_t const maxTasks = std::max(TotalCounter/numLinks, size_t(1));
-
-  LOG_TOPIC("bce4f", ERR, iresearch::TOPIC) << "LINK " << link->id()
-    << " TASKS " << numTasks
-    << " INDICES " << numLinks
-    << " TOTAL " << TotalCounter
-    << " UPPER " << maxTasks;
-
-//  if (numTasks <= maxTasks) {
-    ++TotalCounter;
-    ++link->_numConsolidationTasks;
-    schedule(consolidationIntervalMsec);
-//  }
+  --ConsolidationsCount;
+  --state->count;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     IResearchLink
 // -----------------------------------------------------------------------------
+
+
+AsyncLinkHandle::AsyncLinkHandle(IResearchLink* link)
+  : _link(link) {
+  ++LinksCount;
+}
+
+AsyncLinkHandle::~AsyncLinkHandle() {
+ --LinksCount;
+}
 
 void AsyncLinkHandle::reset() {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
@@ -553,8 +579,6 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _collection(collection),
       _id(iid),
       _lastCommittedTick(0),
-      _numCommitTasks(0),
-      _numConsolidationTasks(0),
       _createdInRecovery(false) {
   auto* key = this;
 
@@ -590,8 +614,6 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
 }
 
 IResearchLink::~IResearchLink() {
-  _asyncFeature->dec();
-
   Result res;
   try {
     res = unload();  // disassociate from view if it has not been done yet
@@ -1474,7 +1496,7 @@ Result IResearchLink::initDataStore(
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
-      [asyncSelf = this->_asyncSelf, asyncFeature = this->_asyncFeature, &flushFeature]() -> Result {
+      [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
         auto lock = irs::make_lock_guard(asyncSelf->mutex());  // ensure link does not get deallocated before callback finishes
         auto* link = asyncSelf->get();
 
@@ -1516,7 +1538,6 @@ Result IResearchLink::initDataStore(
         flushFeature.registerFlushSubscription(link->_flushSubscription);
 
         // setup asynchronous tasks for commit, consolidation, cleanup
-        asyncFeature->inc();
         link->scheduleCommit(0ms);
         link->scheduleConsolidation(0ms);
 
@@ -1530,7 +1551,6 @@ void IResearchLink::scheduleCommit(std::chrono::milliseconds delay) {
   task.async = _asyncFeature;
   task.id = id();
 
-  ++_numCommitTasks;
   task.schedule(delay);
 }
 
@@ -1543,8 +1563,6 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
     return !link->terminationRequested();
   };
 
-  ++ConsolidationTask::TotalCounter;
-  ++_numConsolidationTasks;
   task.schedule(delay);
 }
 

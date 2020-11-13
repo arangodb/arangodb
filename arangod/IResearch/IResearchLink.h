@@ -55,12 +55,18 @@ template<typename T> class TypedResourceMutex;
 ////////////////////////////////////////////////////////////////////////////////
 class AsyncLinkHandle {
  public:
-  explicit AsyncLinkHandle(IResearchLink* link) : _link(link) { }
+  explicit AsyncLinkHandle(IResearchLink* link);
+  ~AsyncLinkHandle();
   IResearchLink* get() noexcept { return _link.get(); }
   ResourceMutex::ReadMutex& mutex() noexcept { return _link.mutex(); }
   bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
 
  private:
+  AsyncLinkHandle(AsyncLinkHandle const&) = delete;
+  AsyncLinkHandle(AsyncLinkHandle&&) = delete;
+  AsyncLinkHandle& operator=(AsyncLinkHandle const&) = delete;
+  AsyncLinkHandle& operator=(AsyncLinkHandle&&) = delete;
+
   friend class IResearchLink;
   void reset();
 
@@ -384,8 +390,6 @@ class IResearchLink {
   std::mutex _commitMutex; // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
-  std::atomic<size_t> _numCommitTasks;
-  std::atomic<size_t> _numConsolidationTasks;
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
 
