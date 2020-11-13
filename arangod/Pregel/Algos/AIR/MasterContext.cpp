@@ -179,7 +179,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     userSelectedNext = ContinuationResult::DONT_CARE;
     auto res = greenspun::Evaluate(_airMachine, phase.onPostStep.slice(), onPostStepResult);
     if (res.fail()) {
-      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
+      getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onPreStep program of phase `" << phase.name
           << "` returned and error: " << res.error().toString();
       LOG_DEVEL << res.error().toString();
@@ -203,14 +203,14 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     TRI_DEFER({ allowPhaseModifications = false; })
     auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
-      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
+      getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onHalt program of phase `" << phase.name
           << "` returned and error: " << res.error().toString();
       return ContinuationResult::ABORT;
     }
 
     if (userSelectedNext == ContinuationResult::DONT_CARE) {
-      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
+      getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onHalt program of phase `" + phase.name +
                  "` did not specify how to continue";
       return ContinuationResult::ABORT;
@@ -245,7 +245,7 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
         msg.add(VPackValue(acc.first));
 
         if (auto result = acc.second->getStateIntoBuilder(msg); result.fail()) {
-          getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
+          getReportManager().report(ReportLevel::ERR).with("accumulator", acc.first)
               << "error serializing global accumulator " << acc.first << " "
               << result.error().toString();
         }
@@ -286,7 +286,7 @@ bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
           iter != std::end(globalAccumulators())) {
         auto res = iter->second->aggregateStateBySlice(upd.value);
         if (!res) {
-          getReportManager().report(ReportLevel::ERROR).with("accumulator", accumName)
+          getReportManager().report(ReportLevel::ERR).with("accumulator", accumName)
               << "could not aggregate state of global accumulator " << accumName
               << ", " << res.error().toString();
           return false;
@@ -315,7 +315,7 @@ bool MasterContext::preGlobalSuperstepWithResult() {
     userSelectedNext = ContinuationResult::DONT_CARE;
     auto res = greenspun::Evaluate(_airMachine, phase.onPreStep.slice(), onPreStepResult);
     if (res.fail()) {
-      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
+      getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onPreStep program of phase `" << phase.name
           << "` returned and error: " << res.error().toString();
       LOG_DEVEL << "error in prestep: " << res.error().toString();

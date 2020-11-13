@@ -522,7 +522,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     {
       auto res = _graphFormat->buildVertexDocumentWithResult(builder, &data, sizeof(V));
       if (res.fail()) {
-        _reports->report(ReportLevel::ERROR)
+        _reports->report(ReportLevel::ERR)
             << "building vertex document failed: " << res.error().toString();
       }
     }

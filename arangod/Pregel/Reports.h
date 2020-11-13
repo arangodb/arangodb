@@ -31,7 +31,7 @@
 
 namespace arangodb::pregel {
 
-enum class ReportLevel { DEBUG, INFO, WARNING, ERROR };
+enum class ReportLevel { DEBUG, INFO, WARN, ERR };
 std::string to_string(ReportLevel);
 
 using ReportAnnotations = std::unordered_map<std::string, VPackBuilder>;
@@ -41,7 +41,7 @@ struct Report {
   ReportLevel level;
   ReportAnnotations annotations;
 
-  bool isError() const { return level == ReportLevel::ERROR; }
+  bool isError() const { return level == ReportLevel::ERR; }
 
   void intoBuilder(VPackBuilder& builder) const;
   static Report fromVelocyPack(VPackSlice slice);

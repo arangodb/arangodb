@@ -447,7 +447,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
       auto phase_index = *getAggregatedValue<uint32_t>("phase");
       auto phase = _algorithm.options().phases.at(phase_index);
       getReportManager()
-              .report(ReportLevel::ERROR)
+              .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
               .with("vertex", vertexData()._documentId)
               .with("phase", phase.name)
@@ -531,7 +531,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     if (auto res = clearAllVertexAccumulators(); res.fail()) {
       LOG_DEVEL << res.error().toString();
       getReportManager()
-              .report(ReportLevel::ERROR)
+              .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
               .with("vertex", vertexData()._documentId)
               .with("phase", phase.name)
@@ -547,7 +547,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     if (auto res = runProgram(_airMachine, phase.initProgram.slice()); res.fail()) {
       LOG_DEVEL << res.error().toString();
       getReportManager()
-              .report(ReportLevel::ERROR)
+              .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
               .with("vertex", vertexData()._documentId)
               .with("phase", phase.name)
@@ -571,7 +571,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     if (auto res = runProgram(_airMachine, phase.updateProgram.slice()); res.fail()) {
       LOG_DEVEL << res.error().toString();
       getReportManager()
-              .report(ReportLevel::ERROR)
+              .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
               .with("vertex", vertexData()._documentId)
               .with("phase", phase.name)

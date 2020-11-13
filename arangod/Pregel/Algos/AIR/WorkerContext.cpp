@@ -55,7 +55,7 @@ void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg) {
   for (auto&& acc : globalAccumulatorsUpdates()) {
     auto res = acc.second.accum->clear();
     if (!res) {
-      getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
+      getReportManager().report(ReportLevel::ERR).with("accumulator", acc.first)
           << "error while clearing global accumulator update " << acc.first
           << " " + res.error().toString();
     }
@@ -81,7 +81,7 @@ void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg) {
         iter != std::end(globalAccumulators())) {
       auto res = iter->second->setStateBySlice(upd.value);
       if (!res) {
-        getReportManager().report(ReportLevel::ERROR).with("accumulator", accumName)
+        getReportManager().report(ReportLevel::ERR).with("accumulator", accumName)
             << "worker could not set accumulator value for global accumulator "
             << accumName << " could not be set, " << res.error().toString();
       }
@@ -102,7 +102,7 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
         msg.add(VPackValue(acc.first));
         auto res = acc.second.accum->getStateUpdateIntoBuilder(msg);
         if (!res) {
-          getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
+          getReportManager().report(ReportLevel::ERR).with("accumulator", acc.first)
               << "worker composing update for `" << acc.first
               << "` failed: " + res.error().toString();
         }

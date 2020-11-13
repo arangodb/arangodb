@@ -37,9 +37,9 @@ std::string arangodb::pregel::to_string(ReportLevel lvl) {
       return "debug";
     case ReportLevel::INFO:
       return "info";
-    case ReportLevel::WARNING:
+    case ReportLevel::WARN:
       return "warn";
-    case ReportLevel::ERROR:
+    case ReportLevel::ERR:
     default:
       return "error";
   }
@@ -52,9 +52,9 @@ ReportLevel levelFromString(std::string_view str) {
   } else if (str == "info") {
     return ReportLevel::INFO;
   } else if (str == "warn") {
-    return ReportLevel::WARNING;
+    return ReportLevel::WARN;
   } else {
-    return ReportLevel::ERROR;
+    return ReportLevel::ERR;
   }
 }
 }
