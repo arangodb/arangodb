@@ -121,7 +121,7 @@ class Vertex {
     : _key(nullptr), 
       _edges(nullptr), 
       _edgeCount(0), 
-      _active(0),
+      _active(1),
       _keyLength(0),
       _shard(InvalidPregelShard) {
     TRI_ASSERT(keyLength() == 0);
