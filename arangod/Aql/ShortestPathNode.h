@@ -109,10 +109,10 @@ class ShortestPathNode : public virtual GraphNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
-    if (usesVertexOutVariable()) {
+    if (isVertexOutVariableUsedLater()) {
       vars.emplace_back(vertexOutVariable());
     }
-    if (usesEdgeOutVariable()) {
+    if (isEdgeOutVariableUsedLater()) {
       vars.emplace_back(edgeOutVariable());
     }
     return vars;
