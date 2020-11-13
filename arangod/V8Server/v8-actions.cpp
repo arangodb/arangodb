@@ -1757,8 +1757,8 @@ static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   VPackBuilder result;
 #if USE_ENTERPRISE
-  TRI_GET_GLOBALS();
-  HotBackup h(v8g->_server);
+  auto& server = application_features::ApplicationServer::server();
+  HotBackup h(server);
   auto r = h.execute("create", obj.slice(), result);
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
