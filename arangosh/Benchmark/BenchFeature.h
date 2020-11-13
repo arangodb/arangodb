@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,8 @@
 
 #ifndef ARANGODB_BENCHMARK_BENCH_FEATURE_H
 #define ARANGODB_BENCHMARK_BENCH_FEATURE_H 1
+
+#include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -71,8 +74,8 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
  private:
   void status(std::string const& value);
-  bool report(ClientFeature&, std::vector<BenchRunResult>);
-  void printResult(BenchRunResult const& result);
+  bool report(ClientFeature&, std::vector<BenchRunResult>, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder);
+  void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
 
   bool _async;
@@ -92,12 +95,17 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _quiet;
   uint64_t _runs;
   std::string _junitReportFile;
+  std::string _jsonReportFile;
   uint64_t _replicationFactor;
   uint64_t _numberOfShards;
   bool _waitForSync;
 
   int* _result;
 
+  uint64_t _histogramNumIntervals;
+  double _histogramIntervalSize;
+  std::vector<double> _percentiles;
+  
   static void updateStartCounter();
   static int getStartCounter();
 
