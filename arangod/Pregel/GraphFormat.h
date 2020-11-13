@@ -54,7 +54,10 @@ struct GraphFormat {
                               arangodb::velocypack::Slice document,
                               V& targetPtr, 
                               uint64_t& vertexIdRange) = 0;
-  virtual void copyEdgeData(arangodb::velocypack::Slice edgeDocument, E& targetPtr) = 0;
+
+  // the default implementation is to do nothing. only few algorithms actually override
+  // this with a more specific behavior
+  virtual void copyEdgeData(arangodb::velocypack::Slice edgeDocument, E& targetPtr) {}
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* targetPtr) const = 0;
  
@@ -166,8 +169,6 @@ class VertexGraphFormat : public GraphFormat<V, E> {
                       V& targetPtr, uint64_t& /*vertexIdRange*/) override {
     targetPtr = _vDefault;
   }
-
-  virtual void copyEdgeData(arangodb::velocypack::Slice document, E& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* ptr) const override {
     b.add(_resultField, arangodb::velocypack::Value(*ptr));

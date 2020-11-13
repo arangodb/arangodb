@@ -150,8 +150,6 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     value.nodeId = (uint32_t)vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice /*document*/, int8_t& /*targetPtr*/) override {}
-
   bool buildVertexDocument(arangodb::velocypack::Builder& b, SLPAValue const* ptr) const override {
     if (ptr->memory.empty()) {
       return false;

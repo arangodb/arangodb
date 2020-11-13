@@ -59,8 +59,6 @@ struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
   SeededPRGraphFormat(application_features::ApplicationServer& server,
                       std::string const& source, std::string const& result, float vertexNull)
       : NumberGraphFormat(server, source, result, vertexNull, 0.0f) {}
-
-  void copyEdgeData(arangodb::velocypack::Slice document, float&) override {}
 };
 
 GraphFormat<float, float>* PageRank::inputFormat() const {

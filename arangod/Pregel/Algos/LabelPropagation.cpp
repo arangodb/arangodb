@@ -124,8 +124,6 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
     value.currentCommunity = vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice /*document*/, int8_t& /*targetPtr*/) override {}
-
   bool buildVertexDocument(arangodb::velocypack::Builder& b, LPValue const* ptr) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
     // b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));

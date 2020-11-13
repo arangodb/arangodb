@@ -155,9 +155,9 @@ void Worker<V, E, M>::setupWorker() {
   if (_config.lazyLoading()) {
     // TODO maybe lazy loading needs to be performed on another thread too
     std::set<std::string> activeSet = _algorithm->initialActiveSet();
-    if (activeSet.size() == 0) {
+    if (activeSet.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "There needs to be one active vertice");
+                                     "There needs to be one active vertex");
     }
     for (std::string const& documentID : activeSet) {
       _graphStore->loadDocument(&_config, documentID);
@@ -165,10 +165,10 @@ void Worker<V, E, M>::setupWorker() {
     cb();
   } else {
     // initialization of the graphstore might take an undefined amount
-    // of time. Therefore this is performed asynchronous
+    // of time. Therefore this is performed asynchronously
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this, cb] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, cb = std::move(cb)] {
       try {
         _graphStore->loadShards(&_config, cb);
       } catch (std::exception const& ex) {

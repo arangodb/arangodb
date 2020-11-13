@@ -166,8 +166,6 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
     targetPtr.vertexID = vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice /*document*/, int8_t& /*targetPtr*/) override {}
-
   bool buildVertexDocument(arangodb::velocypack::Builder& b, SCCValue const* ptr) const override {
     b.add(_resultField, VPackValue(ptr->color));
     return true;
