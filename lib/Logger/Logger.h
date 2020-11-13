@@ -288,19 +288,22 @@ class Logger {
   static bool isEnabled(LogLevel level) {
     return true;
   }
-  static bool isRealyEnabled(LogLevel level) {
-    return (int)level <= (int)_level.load(std::memory_order_relaxed);
+  static bool isEnabled(LogLevel level, LogTopic const& topic) {
+    return true;
+  }
+  static bool _isEnabled(LogLevel level, LogLevel topicLevel) {
+    return (int)level <= (int)topicLevel;
   }
 #else
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);
   }
-#endif
   static bool isEnabled(LogLevel level, LogTopic const& topic) {
     return (int)level <= (int)((topic.level() == LogLevel::DEFAULT)
                                    ? _level.load(std::memory_order_relaxed)
                                    : topic.level());
   }
+#endif
 
  public:
   static void initialize(application_features::ApplicationServer&, bool);

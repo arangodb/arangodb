@@ -32,6 +32,8 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 
+#define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
+
 namespace arangodb {
 class LoggerStreamBase {
  public:
@@ -75,6 +77,9 @@ class LoggerStreamBase {
  protected:
   std::stringstream _out;
   size_t _topicId;
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+  LogLevel _topicLevel;
+#endif
   LogLevel _level;
   int _line;
   char const* _logid;

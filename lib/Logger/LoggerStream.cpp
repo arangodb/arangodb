@@ -34,6 +34,9 @@ namespace arangodb {
 
 LoggerStreamBase::LoggerStreamBase()
     : _topicId(LogTopic::MAX_LOG_TOPICS),
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+      _topicLevel(LogLevel::DEFAULT),
+#endif
       _level(LogLevel::DEFAULT),
       _line(0),
       _logid(nullptr),
@@ -47,6 +50,9 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
   _topicId = topic.id();
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+  _topicLevel = topic.level();
+#endif
   return *this;
   }
 
@@ -129,12 +135,11 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
   return *this;
 }
 
-#define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
 LoggerStream::~LoggerStream() {
   try {
 #if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
     // log maintainer mode disables this if in the macro, do it here:
-    if (!::arangodb::Logger::isRealyEnabled(_level)) {
+    if (!::arangodb::Logger::_isEnabled(_level, _topicLevel)) {
       return;
     }
 #endif
