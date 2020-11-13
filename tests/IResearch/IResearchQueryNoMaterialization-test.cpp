@@ -98,7 +98,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
           std::string("{") +
           "\"name\": \"" + viewName + "\", \
            \"type\": \"arangosearch\", \
-           \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}], \
+           \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}, {\"field\": \"boo\", \"direction\": \"desc\"}], \
            \"storedValues\": [{\"fields\":[\"str\"], \"compression\":\"none\"}, [\"value\"], [\"_id\"], [\"str\", \"value\"], [\"exist\"]] \
         }");
       view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -173,7 +173,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
   void executeAndCheck(std::string const& queryString,
                        std::vector<VPackValue> const& expectedValues,
                        arangodb::velocypack::ValueLength numOfColumns,
-                       std::set<std::pair<int, size_t>>&& fields) {
+                       std::set<std::pair<ptrdiff_t, size_t>>&& fields) {
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
       {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
@@ -633,4 +633,31 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
       EXPECT_EQ(columnsCount, counter);
     }
   }
+}
+
+TEST_F(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SEARCH d.value IN [1, 2, 11, 12] FILTER d.boo == '12312' SORT d.boo ASC "
+      " RETURN DISTINCT  {resource_type: d.foo, version: d.not_in_stored}";
+
+  std::vector<VPackValue> expectedValues{};
+  EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
+             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+                             arangodb::aql::QueryString(queryString), nullptr,
+                             arangodb::velocypack::Parser::fromJson("{}"));
+  auto const res = query.explain(); // this should not crash!
+  ASSERT_TRUE(res.data);
+  auto const explanation = res.data->slice();
+  arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
+  auto found = false;
+  for (auto const node : nodes) {
+    if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
+      EXPECT_FALSE(node.hasKey("noMaterialization"));
+      found = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found);
 }
