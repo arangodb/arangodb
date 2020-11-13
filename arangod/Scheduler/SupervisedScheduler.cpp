@@ -147,7 +147,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize,
                                          uint64_t fifo1Size, uint64_t fifo2Size,
-                                         double inFlightMultiplier)
+                                         double inFlightMultiplier,
+                                         uint64_t maxExpectedFanout)
     : Scheduler(server),
       _numWorkers(0),
       _stopping(false),
@@ -161,6 +162,11 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _minNumWorker(minThreads),
       _maxNumWorker(maxThreads),
       _maxInFlight(ServerState::instance()->isCoordinator() ? static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker) : std::numeric_limits<std::size_t>::max()),
+      _maxExpectedFanout(static_cast<size_t>(maxExpectedFanout)),
+      _ongoingLowPrioLimit(
+          ServerState::instance()->isCoordinator() 
+          ? static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker / _maxExpectedFanout) 
+          : std::numeric_limits<std::size_t>::max()),
       _nrWorking(0),
       _nrAwake(0),
       _maxFifoSize(maxQueueSize),
@@ -182,7 +188,12 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "arangodb_scheduler_threads_stopped", 0,
           "Number of scheduler threads stopped")),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
+          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")),
+      _ongoingLowPrioGauge(
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+            "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
+            "This is the total number of ongoing RestHandlers coming from "
+            "the low prio queue.")) {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -614,9 +625,9 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   }
 #endif
 
-  std::size_t const ongoing = this->onGoing();
-  if (ongoing > _maxInFlight) {
-    LOG_DEVEL << "REFUSED to dequeue because " << ongoing << " low prio things are ongoing.";
+  std::size_t const ongoing = _ongoingLowPrioGauge.load();
+  if (ongoing >= _ongoingLowPrioLimit) {
+    //LOG_DEVEL << "REFUSED to dequeue because " << ongoing << " low prio things are ongoing.";
     return false;
   }
 
@@ -632,7 +643,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < 3; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
-        LOG_DEVEL << "grabbed work from queue " << i << " ongoing: " << onGoing();
+        //LOG_DEVEL << "grabbed work from queue " << i << " ongoing: " << _ongoingLowPrioGauge.load();
         return res;
       }
     }
@@ -683,15 +694,15 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     }
 
     if (state->_sleepTimeout_ms == 0) {
-      LOG_DEVEL << "sleeping thread indefinitely";
+      //LOG_DEVEL << "sleeping thread indefinitely";
       state->_conditionWork.wait(guard);
     } else {
-      LOG_DEVEL << "sleeping thread for " << state->_sleepTimeout_ms << "ms";
+      //LOG_DEVEL << "sleeping thread for " << state->_sleepTimeout_ms << "ms";
       state->_conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
     state->_sleeping = false;
     _nrAwake.fetch_add(1, std::memory_order_relaxed);
-    LOG_DEVEL << "waking thread";
+    //LOG_DEVEL << "waking thread";
   }  // while
 
   return nullptr;
@@ -807,3 +818,12 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("in-progress", VPackValue(qs._working)); // number of working (non-idle) threads
   b.add("direct-exec", VPackValue(0)); // obsolete
 }
+
+void SupervisedScheduler::increaseOngoingLowPrio() {
+  _ongoingLowPrioGauge += 1;
+}
+
+void SupervisedScheduler::decreaseOngoingLowPrio() {
+  _ongoingLowPrioGauge -= 1;
+}
+

@@ -2307,6 +2307,8 @@ Future<Result> Methods::replicateOperations(
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
 
+  auto startTimeReplication = std::chrono::steady_clock::now();
+
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
     network::Headers headers;
@@ -2333,6 +2335,15 @@ Future<Result> Methods::replicateOperations(
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
   auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
+
+    auto duration = std::chrono::steady_clock::now() - startTimeReplication;
+    auto& replTimeout 
+      = vocbase().server().getFeature<ReplicationTimeoutFeature>();
+    replTimeout._metricsReplicationOpsTotal += 1;
+    replTimeout._metricsReplicationTimeTotal +=
+      std::chrono::nanoseconds(duration).count();
+    LOG_DEVEL << "Replication took " << 
+      std::chrono::nanoseconds(duration).count();
 
     bool didRefuse = false;
     // We drop all followers that were not successful:

@@ -105,9 +105,15 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
     // max / min number of threads
+
+  // Concurrency throttling:
   options->addOption("--server.in-flight-multiplier",
                      std::string("controls the number of requests that can be in flight at a given point in time, relative to the number of request handling threads"),
                      new DoubleParameter(&_inFlightMultiplier),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic, arangodb::options::Flags::Hidden));
+  options->addOption("--server.maximal-expected-fanout",
+                     std::string("only change this if you have collections with considerably more shards than you have DBServers, in this case, set it to roughly the maximal number of shards in any collection multiplied by the number of coordinators and divided by the number of DBServers, this value is used to limit the number of low priority requests being worked on concurrently in coordinators, thereby preventing cluster internal parallel overload"),
+                     new UInt64Parameter(&_maxExpectedFanout),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic, arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size",
@@ -159,6 +165,13 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
         << ") is less than 1.0, setting to default (4.0)";
     _inFlightMultiplier = 4.0;
   }
+  
+  if (_maxExpectedFanout < 1) {
+    LOG_TOPIC("0a93b", WARN, arangodb::Logger::THREADS)
+      << "--server.maximal-expected-fanout (" << _maxExpectedFanout
+      << ") is less than 1, setting to default (3)";
+    _maxExpectedFanout = 3;
+  }
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
@@ -190,7 +203,7 @@ void SchedulerFeature::prepare() {
 #endif
   auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
                                                      _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size, _inFlightMultiplier);
+                                                     _fifo1Size, _fifo2Size, _inFlightMultiplier, _maxExpectedFanout);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

@@ -473,6 +473,8 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+static std::atomic<uint64_t> counter = 0;
+
 // Execute a request by queueing it in the scheduler and having it executed via
 // a scheduler worker thread eventually.
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
@@ -488,14 +490,17 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
-  auto cb = [self = shared_from_this(), handler = std::move(handler), prio]() mutable {
+  uint64_t ticket = counter++;
+  auto cb = [self = shared_from_this(), handler = std::move(handler), prio, ticket]() mutable {
     if (prio == RequestPriority::LOW) {
-      SchedulerFeature::SCHEDULER->increaseOngoing();
+      SchedulerFeature::SCHEDULER->increaseOngoingLowPrio();
+      LOG_DEVEL << "Starting low prio rest handler... " << ticket;
     }
     handler->statistics().SET_QUEUE_END();
-    handler->runHandler([self = std::move(self), prio](rest::RestHandler* handler) {
+    handler->runHandler([self = std::move(self), prio, ticket](rest::RestHandler* handler) {
       if (prio == RequestPriority::LOW) {
-        SchedulerFeature::SCHEDULER->decreaseOngoing();
+        SchedulerFeature::SCHEDULER->decreaseOngoingLowPrio();
+        LOG_DEVEL << "Finishing low prio rest handler... " << ticket;
       }
       try {
         // Pass the response to the io context

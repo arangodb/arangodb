@@ -25,8 +25,10 @@
 #define ARANGOD_CLUSTER_REPLICATION_TIMEOUT_FEATURE_H 1
 
 #include "Basics/Common.h"
+#include "RestServer/Metrics.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
 
@@ -40,6 +42,8 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
   static double timeoutPer4k;
   static double lowerLimit;
   static double upperLimit;
+  Counter& _metricsReplicationTimeTotal;
+  Counter& _metricsReplicationOpsTotal;
 };
 
 }  // namespace arangodb

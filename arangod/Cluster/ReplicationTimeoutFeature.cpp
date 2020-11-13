@@ -24,6 +24,7 @@
 #include "ReplicationTimeoutFeature.h"
 
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -37,7 +38,13 @@ double ReplicationTimeoutFeature::lowerLimit = 30.0;  // longer than heartbeat t
 double ReplicationTimeoutFeature::upperLimit = 120.0;
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicationTimeout") {
+    : ApplicationFeature(server, "ReplicationTimeout"),
+      _metricsReplicationTimeTotal(server.getFeature<arangodb::MetricsFeature>().counter("arangodb_sync_replication_requests_total_time",
+                                                                                         0,
+                                                                                         "Total time needed for all synchronous replication requests accumulated.")),
+      _metricsReplicationOpsTotal(server.getFeature<arangodb::MetricsFeature>().counter("arangodb_sync_replication_requests_total_number",
+                                                                                        0,
+                                                                                        "Total number of all synchronous replication requests accumulated.")) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }
@@ -45,10 +52,10 @@ ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::Appli
 void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("cluster", "Configure the cluster");
 
-  options->addOption(
-      "--cluster.synchronous-replication-timeout-minimum",
-      "all synchronous replication timeouts will be at least this value (in seconds)",
-      new DoubleParameter(&lowerLimit));
+  options->addOption("--cluster.synchronous-replication-timeout-minimum",
+                     "all synchronous replication timeouts will be at least "
+                     "this value (in seconds)",
+                     new DoubleParameter(&lowerLimit));
 
   options->addOption("--cluster.synchronous-replication-timeout-maximum",
                      "all synchronous replication timeouts will be at most "

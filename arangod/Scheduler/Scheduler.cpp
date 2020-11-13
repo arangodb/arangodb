@@ -71,7 +71,7 @@ class SchedulerCronThread : public SchedulerThread {
 }  // namespace arangodb
 
 Scheduler::Scheduler(application_features::ApplicationServer& server)
-    : _server(server), _inFlight(0), _onGoing(0) /*: _stopping(false)*/
+    : _server(server), _inFlight(0) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where
 }
@@ -117,18 +117,6 @@ void Scheduler::increaseInFlight() {
 
 void Scheduler::decreaseInFlight() {
   _inFlight -= 1;
-}
-
-std::size_t Scheduler::onGoing() const {
-  return _onGoing.load(std::memory_order_relaxed);
-}
-
-void Scheduler::increaseOngoing() {
-  _onGoing.fetch_add(1, std::memory_order_relaxed);
-}
-
-void Scheduler::decreaseOngoing() {
-  _onGoing.fetch_sub(1, std::memory_order_relaxed);
 }
 
 void Scheduler::runCronThread() {

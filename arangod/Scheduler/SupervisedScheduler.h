@@ -41,7 +41,7 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size, double inFlightMultiplier);
+                      uint64_t fifo1Size, uint64_t fifo2Size, double inFlightMultiplier, uint64_t maxExpectedFanout);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
@@ -60,6 +60,9 @@ class SupervisedScheduler final : public Scheduler {
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
+
+  void increaseOngoingLowPrio();
+  void decreaseOngoingLowPrio();
 
  private:
   friend class SupervisedSchedulerManagerThread;
@@ -135,6 +138,8 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _minNumWorker;
   size_t const _maxNumWorker;
   size_t const _maxInFlight;
+  size_t const _maxExpectedFanout;
+  size_t const _ongoingLowPrioLimit;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
   std::atomic<uint64_t> _nrWorking;   // Number of threads actually working
@@ -180,6 +185,7 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
+  Gauge<uint64_t>& _ongoingLowPrioGauge;
 };
 
 }  // namespace arangodb
