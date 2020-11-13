@@ -100,6 +100,12 @@ void LocalTaskQueue::stopTask() {
   TRI_ASSERT(old > 0);
   old = _dispatched.fetch_sub(1, std::memory_order_release);
   TRI_ASSERT(old > 0);
+
+  // Notify the dispatching thread that new tasks can be scheduled.
+  // Note: we are deliberately not using a mutex here to avoid contention, but that means that
+  // the notification can potentially be missed. However, this should only happen very rarely
+  // and the dispatching thread is only waiting for a limited time.
+  _condition.notify_one();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -174,17 +180,17 @@ void LocalTaskQueue::dispatchAndWait() {
       }
     }
 
-    std::size_t dispatched = _dispatched.load(std::memory_order_acquire);
-
-    if (dispatched == 0) {
-      break;
-    }
-
     if (_server.isStopping() && _started.load() == 0) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    _condition.wait_for(guard, std::chrono::milliseconds(10));
+    if (_dispatched.load(std::memory_order_acquire) == 0) {
+      break;
+    }
+
+    // We must only wait for a limited time here, since the notify operation in stopTask
+    // does not use a mutex, so there is a (rare) chance that we might miss a notification.
+    _condition.wait_for(guard, std::chrono::milliseconds(50));
   }
 }
 
