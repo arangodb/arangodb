@@ -243,7 +243,8 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
 }
 
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
-                                 VPackSlice trxOpts) {
+                                 VPackSlice trxOpts,
+                                 bool isFollowerTransaction) {
   Result res;
   if (_disallowInserts) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -260,6 +261,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (options.lockTimeout < 0.0) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
+  }
+  if (isFollowerTransaction) {
+    options.isFollowerTransaction = true;
   }
 
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
@@ -316,7 +320,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
-      if (ServerState::instance()->isDBServer() && isFollowerTransactionId(tid)) {
+      if (ServerState::instance()->isDBServer() && 
+          (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
         // it is ok for two different leaders to try to create the same
         // follower transaction on a leader.
         // for example, if we have 3 database servers and 2 shards, so that
@@ -338,7 +343,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   }
 
   // enforce size limit per DBServer
-  if (ServerState::instance()->isDBServer() && isFollowerTransactionId(tid)) {
+  if (ServerState::instance()->isDBServer() && 
+      (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
     // if we are a follower, we reuse the leader's max transaction size and slightly
     // increase it. this is to ensure that the follower can process at least as many
     // data as the leader, even if the data representation is slightly varied for
@@ -461,10 +467,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (ServerState::instance()->isDBServer() && isFollowerTransactionId(tid)) {
+  if (ServerState::instance()->isDBServer() && 
+      (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
     // turn on intermediate commits on followers as well. otherwise huge leader
     // transactions could make the follower claim all memory and crash.
     hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
@@ -802,7 +810,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     res = trx.abort();
     if (intermediateCommits &&
         ServerState::instance()->isDBServer() &&
-        isFollowerTransactionId(tid)) {
+        (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
       // we are trying to abort a follower transaction that had intermediate
       // commits already. in this case we return a special error code, which makes
       // the leader drop us as a follower for all shards in the transaction.

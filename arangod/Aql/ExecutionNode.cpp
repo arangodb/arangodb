@@ -1793,10 +1793,17 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic",
                       VPackValue(func->hasFlag(Function::Flags::Deterministic)));
-            nodes.add("canRunOnDBServer",
-                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServer)));
+            nodes.add("canAccessDocuments", 
+                      VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
+            nodes.add("canRunOnDBServerCluster",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
+            nodes.add("canRunOnDBServerOneShard",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)));
             nodes.add("cacheable", VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-            nodes.add("usesV8", VPackValue(func->implementation == nullptr));
+            nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+            // deprecated
+            nodes.add("canRunOnDBServer",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {

@@ -123,7 +123,8 @@ class Manager final {
 
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
-                          velocypack::Slice trxOpts);
+                          velocypack::Slice trxOpts,
+                          bool isFollowerTransaction);
 
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
