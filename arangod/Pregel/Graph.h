@@ -92,8 +92,6 @@ class Edge {
 template <typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-//  friend class GraphStore<V, E>;
-  
   char const* _key; // uint64_t
   
   // these members are initialized by the GraphStore
@@ -103,27 +101,42 @@ class Vertex {
   // this should be more than enough
   uint32_t _edgeCount; // uint32_t
 
-  // combined attribute fusing the active bit (as its highest significant bit)
-  // and the length of the key in its lowest 15 significants bits. we do this
-  // to save RAM/space (we may have _lots_ of vertices)
-  uint16_t _keyLengthAndActive; // uint16_t
+  // combined uint16_t attribute fusing the active bit
+  // and the length of the key in its other 15 bits. we do this
+  // to save RAM/space (we may have _lots_ of vertices).
+  // according to cppreference.com it is implementation-defined
+  // if multiple variables in a bitfield are tightly packed or
+  // not. in order to protect us from compilers that don't tightly
+  // pack bitfield variables, we validate the size of the struct
+  // via static_assert in the constructor of Vertex<V, E>.
+  uint16_t _active : 1; // uint16_t (shared with _keyLength)
+  uint16_t _keyLength : 15; // uint16_t (shared with _active)
+
   PregelShard _shard; // uint16_t
 
   V _data; // variable byte size
-
-  // highest bit set. this is the active bit
-  static constexpr decltype(_keyLengthAndActive) activeBit = 1U << ((sizeof(decltype(_keyLengthAndActive)) * 8) - 1);
-
+  
  public:
-
   Vertex() noexcept 
     : _key(nullptr), 
       _edges(nullptr), 
       _edgeCount(0), 
-      _keyLengthAndActive(1U << ((sizeof(decltype(_keyLengthAndActive)) * 8) - 1)), // keyLength = 0, active = true 
+      _active(0),
+      _keyLength(0),
       _shard(InvalidPregelShard) {
     TRI_ASSERT(keyLength() == 0);
     TRI_ASSERT(active());
+  
+    // make sure that Vertex has the smallest possible size, especially
+    // that the bitfield for _acitve and _keyLength takes up only 16 bits in total.
+    static_assert(
+        sizeof(Vertex<V, E>) == sizeof(char const*) + 
+                                sizeof(Edge<E>*) + 
+                                sizeof(uint32_t) + 
+                                sizeof(uint16_t) + // combined size of the bitfield 
+                                sizeof(PregelShard) +
+                                std::max<size_t>(8U, sizeof(V)), 
+        "invalid size of Vertex");
   }
 
   // note: the destructor for this type is never called,
@@ -153,11 +166,11 @@ class Vertex {
   static constexpr size_t maxEdgeCount() { return static_cast<size_t>(std::numeric_limits<decltype(_edgeCount)>::max()); }
   
   void setActive(bool bb) noexcept { 
-    _keyLengthAndActive = (_keyLengthAndActive & ~activeBit) | (bb ? activeBit : 0U);
+    _active = bb ? 1 : 0;
     TRI_ASSERT((bb && active()) || (!bb && !active())); 
   }
 
-  bool active() const noexcept { return (_keyLengthAndActive & activeBit) != 0; }
+  bool active() const noexcept { return _active == 1; }
 
   void setShard(PregelShard shard) noexcept { _shard = shard; }
   PregelShard shard() const noexcept { return _shard; }
@@ -167,12 +180,12 @@ class Vertex {
     TRI_ASSERT(active());
     TRI_ASSERT(this->keyLength() == 0);
     _key = key;
-    _keyLengthAndActive = (_keyLengthAndActive & activeBit) | (keyLength & ~activeBit);
+    _keyLength = keyLength;
     TRI_ASSERT(active());
     TRI_ASSERT(this->keyLength() == keyLength);
   }
 
-  uint16_t keyLength() const noexcept { return (_keyLengthAndActive & ~activeBit); }
+  uint16_t keyLength() const noexcept { return _keyLength; }
 
   velocypack::StringRef key() const { return velocypack::StringRef(_key, keyLength()); }
   V const& data() const& { return _data; }
@@ -180,7 +193,7 @@ class Vertex {
   
   PregelID pregelId() const { return PregelID(_shard, std::string(_key, keyLength())); }
 };
-
+  
 // unused right now
 /*class LinkedListIterator {
  private:
