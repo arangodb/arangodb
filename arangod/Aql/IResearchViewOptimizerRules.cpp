@@ -291,6 +291,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
                      latematerialized::NodeWithAttrsColumn& node,
                      std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>>& usedColumnsCounter) {
   // check all node attributes to be in sort
+  std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>> tmpUsedColumnsCounter;
   for (auto& nodeAttr : node.attrs) {
     auto found = false;
     nodeAttr.afData.field = nullptr;
@@ -299,7 +300,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     for (auto const& field : primarySort.fields()) {
       std::vector<std::string> postfix;
       if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
-        usedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field, std::move(postfix)));
+        tmpUsedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field, std::move(postfix)));
         found = true;
         break;
       }
@@ -312,7 +313,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
       for (auto const& field : column.fields) {
         std::vector<std::string> postfix;
         if (latematerialized::isPrefix(field.second, nodeAttr.attr, false, postfix)) {
-          usedColumnsCounter[columnNum].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
+          tmpUsedColumnsCounter[columnNum].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
           found = true;
           break;
         }
@@ -324,6 +325,12 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     if (!found) {
       return false;
     }
+  }
+  static_assert(std::is_move_constructible_v<ColumnVariant>,
+                "To efficiently move from temp variable we need working move for ColumnVariant");
+  // store only on successful exit, otherwise pointers to afData will be invalidated as Node will be not stored! 
+  for (auto it = tmpUsedColumnsCounter.begin(); it != tmpUsedColumnsCounter.end(); ++it) {
+    std::move(it->second.begin(), it->second.end(),  irs::irstd::back_emplacer(usedColumnsCounter[it->first]));
   }
   return true;
 }
