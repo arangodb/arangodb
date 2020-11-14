@@ -1,6 +1,49 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Added new metric `arangodb_network_forwarded_requests` to track the number
+  of requests forwarded from one coordinator to another in a load-balancing
+  context.
+
+* Added new metric `arangodb_replication_cluster_inventory_requests` to track
+  the number of requests received for cluster inventories. The cluster
+  inventory API is called at the beginning of a dump process or by arangosync.
+
+* Added new mtric `arangodb_aql_all_query` to track the total number of AQL 
+  queries.
+
+* Added new mtric `arangodb_aql_total_query_time_msec` to track the combined
+  runtime of AQL queries (slow queries and non-slow queries).
+
+* Added more scheduler metrics:
+
+  - `arangodb_scheduler_threads_started`: Total number of scheduler threads started
+  - `arangodb_scheduler_threads_stopped`: Total number of scheduler threads stopped
+  - `arangodb_scheduler_jobs_done`: Total number of scheduler queue jobs done
+  - `arangodb_scheduler_jobs_submitted`: Total number of jobs submitted to the 
+    scheduler queue
+  - `arangodb_scheduler_jobs_dequeued`: Total number of jobs dequeued from the 
+    scheduler queue
+  - `arangodb_scheduler_num_working_threads`: Number of currently working 
+    scheduler threads
+
+* Added startup option `--server.unavailability-queue-fill-grade`. This option
+  has a consequence for the `/_admin/server/availability` API only, which is
+  often called by load-balancers and other availability probing systems. 
+  The `/_admin/server/availability` API will now return HTTP 200 if the fill 
+  grade of the scheduler's queue is below the configured value, or HTTP 503 if 
+  the fill grade is above it. This can be used to flag a server as unavailable 
+  in case it is already highly loaded.
+  The default value for this option is `0.5`, i.e. if the scheduler's queue
+  is already longer than 50% of its maximum capacity, the availability API will
+  return HTTP 503 instead of HTTP 200. The default value for the scheduler
+  queue length is 4096.
+  This change will lead to 3.6.10 reporting an instance as unavailable via the
+  availability API earlier than previous versions. However, we consider this 
+  to be a sensible change, because it can help avoid sending more traffic to
+  an already overloaded instance. To restore the pre-3.6.10-behavior, the value
+  of `--server.unavailability-queue-fill-grade` can be set to `1` at startup.
+
 * Added startup option `--foxx.force-update-on-startup` to toggle waiting for
   all Foxx services in all databases to be propagated to a coordinator before it
   completes the boot sequence.
