@@ -41,7 +41,8 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size);
+                      uint64_t fifo1Size, uint64_t fifo2Size,
+                      double unavailabilityQueueFillGrade);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
@@ -51,6 +52,13 @@ class SupervisedScheduler final : public Scheduler {
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
+
+  /// @brief approximate fill grade of the scheduler's queue (in %)
+  double approximateQueueFillGrade() const override;
+  
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  double unavailabilityQueueFillGrade() const override;
  
  protected:
   bool isStopping() override { return _stopping; }
@@ -142,6 +150,10 @@ class SupervisedScheduler final : public Scheduler {
   uint64_t const _maxFifoSize;
   uint64_t const _fifo1Size;
   uint64_t const _fifo2Size;
+
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  double const _unavailabilityQueueFillGrade;
 
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;

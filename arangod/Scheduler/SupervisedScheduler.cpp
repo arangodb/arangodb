@@ -146,7 +146,8 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize,
-                                         uint64_t fifo1Size, uint64_t fifo2Size)
+                                         uint64_t fifo1Size, uint64_t fifo2Size,
+                                         double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _numWorkers(0),
       _stopping(false),
@@ -159,6 +160,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _maxFifoSize(maxQueueSize),
       _fifo1Size(fifo1Size),
       _fifo2Size(fifo2Size),
+      _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
@@ -189,6 +191,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
+
+  TRI_ASSERT(_maxFifoSize > 0);
 }
 
 SupervisedScheduler::~SupervisedScheduler() = default;
@@ -805,4 +809,14 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("queued", VPackValue(qs._queued)); // scheduler queue length
   b.add("in-progress", VPackValue(qs._working)); // number of working (non-idle) threads
   b.add("direct-exec", VPackValue(0)); // obsolete
+}
+
+double SupervisedScheduler::approximateQueueFillGrade() const {
+  uint64_t const maxLength = _maxFifoSize;
+  uint64_t const qLength = std::min<uint64_t>(maxLength, _metricsQueueLength.load());
+  return static_cast<double>(qLength) / static_cast<double>(maxLength);
+}
+
+double SupervisedScheduler::unavailabilityQueueFillGrade() const {
+  return _unavailabilityQueueFillGrade;
 }
