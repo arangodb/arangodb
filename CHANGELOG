@@ -9,10 +9,10 @@ v3.6.10 (XXXX-XX-XX)
   the number of requests received for cluster inventories. The cluster
   inventory API is called at the beginning of a dump process or by arangosync.
 
-* Added new mtric `arangodb_aql_all_query` to track the total number of AQL 
+* Added new metric `arangodb_aql_all_query` to track the total number of AQL 
   queries.
 
-* Added new mtric `arangodb_aql_total_query_time_msec` to track the combined
+* Added new metric `arangodb_aql_total_query_time_msec` to track the combined
   runtime of AQL queries (slow queries and non-slow queries).
 
 * Added more scheduler metrics:
