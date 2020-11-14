@@ -107,7 +107,7 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
   
   options->addOption("--server.unavailability-queue-fill-grade",
-                     "queue fill grade from which onwards the server is considered unavailable because of overload (in %)", 
+                     "queue fill grade from which onwards the server is considered unavailable because of overload (ratio, use a value of 0 to disable it)", 
                      new DoubleParameter(&_unavailabilityQueueFillGrade))
                      .setIntroducedIn(30610);
 
@@ -157,7 +157,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
     _nrMaximalThreads = _nrMinimalThreads;
   }
 
-  if (_unavailabilityQueueFillGrade <= 0.0 ||
+  if (_unavailabilityQueueFillGrade < 0.0 ||
       _unavailabilityQueueFillGrade > 1.0) {
     LOG_TOPIC("055a1", FATAL, arangodb::Logger::THREADS)
         << "invalid value for --server.unavailability-queue-fill-grade";

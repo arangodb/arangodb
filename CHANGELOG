@@ -36,8 +36,16 @@ v3.6.10 (XXXX-XX-XX)
   grade of the scheduler's queue is below the configured value, or HTTP 503 if 
   the fill grade is above it. This can be used to flag a server as unavailable 
   in case it is already highly loaded.
-  The default value for this option is `1.0`, i.e. 100%. This is fully compatible
-  with previous versions of ArangoDB. 
+  The default value for this option is `1`, which will mean that the availability
+  API will start returning HTTP 503 responses in case the scheduler queue is
+  completely full. This is mostly compatible with previous versions of ArangoDB. 
+  Previously the availability API still returned HTTP 200 in this situation, but
+  this can be considered a bug, because the server was effectively totally
+  overloaded.
+  To restore 100% compatible behavior with previous version, it is possible to
+  set the option to a value of `0`, which is a special value indicating that 
+  the queue fill grade will not be honored. 
+  
   To prevent sending more traffic to an already overloaded server, it can be 
   sensible to reduce the default value to `0.75` or even `0.5`.
   This would mean that instances with a queue longer than 75% (or 50%, resp.) 

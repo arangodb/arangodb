@@ -134,10 +134,13 @@ void RestAdminServerHandler::handleAvailability() {
       if (available && scheduler) {
         // if the scheduler's queue is more than x% full, render
         // the server unavailable
-        double fillGrade = scheduler->approximateQueueFillGrade();
-        if (fillGrade > scheduler->unavailabilityQueueFillGrade()) {
-          // oops, queue is relatively full
-          available = false;
+        double unavailabilityFillGrade = scheduler->unavailabilityQueueFillGrade();
+        if (unavailabilityFillGrade > 0.0) {
+          double fillGrade = scheduler->approximateQueueFillGrade();
+          if (fillGrade > unavailabilityFillGrade) {
+            // oops, queue is relatively full
+            available = false;
+          }
         }
       }
       break;
