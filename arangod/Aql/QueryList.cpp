@@ -128,20 +128,23 @@ void QueryList::remove(Query* query) {
 
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
+  
+  double const started = query->startTime();
+  double const now = TRI_microtime();
+  double const elapsed = now - started;
+
+  _queryRegistryFeature.trackQuery(elapsed);
 
   if (!trackSlowQueries() || threshold < 0.0) {
     return;
   }
 
-  double const started = query->startTime();
-  double const now = TRI_microtime();
-
   try {
     // check if we need to push the query into the list of slow queries
-    if (now - started >= threshold && !query->killed()) {
+    if (elapsed >= threshold && !query->killed()) {
       // yes.
   
-      _queryRegistryFeature.trackSlowQuery();
+      _queryRegistryFeature.trackSlowQuery(elapsed);
 
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -200,13 +203,13 @@ void QueryList::remove(Query* query) {
         LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
             << bindParameters << dataSources << ", database: " << query->vocbase().name()
-            << ", user: " << query->user() << ", took: " << Logger::FIXED(now - started) << " s";
+            << ", user: " << query->user() << ", took: " << Logger::FIXED(elapsed) << " s";
       }
 
       _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
-                         started, now - started,
+                         started, elapsed,
                          query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
 
       if (++_slowCount > _maxSlowQueries) {
