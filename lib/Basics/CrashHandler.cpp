@@ -194,7 +194,8 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   appendNullTerminatedString(ARANGODB_VERSION_FULL, p);
   appendNullTerminatedString(", thread ", p);
 #ifdef __linux__
-  p += arangodb::basics::StringUtils::itoa(uint64_t(gettid()), p);
+  pid_t tid = syscall(SYS_gettid);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(tid), p);
   
   char const* name = arangodb::Thread::currentThreadName();
   if (name != nullptr && *name != '\0') {
@@ -313,7 +314,8 @@ void logBacktrace() try {
     appendNullTerminatedString("Backtrace of thread ", p);
     
 #ifdef __linux__
-    p += arangodb::basics::StringUtils::itoa(uint64_t(gettid()), p);
+    pid_t tid = syscall(SYS_gettid);
+    p += arangodb::basics::StringUtils::itoa(uint64_t(tid), p);
     char const* name = arangodb::Thread::currentThreadName();
     if (name != nullptr && *name != '\0') {
       appendNullTerminatedString(" [", p);
@@ -489,7 +491,7 @@ void crashHandlerLogAllHandler(int signal, siginfo_t* info, void* ucontext) {
     // thread log a backtrace
     // we intentionally ignore the return value, as we cannot do anything about
     // errors here anyway
-    (void) tgkill(static_cast<int>(arangodb::Thread::currentProcessId()), static_cast<int>(threads[i]), SIGUSR2);
+    (void) syscall(SYS_tgkill, static_cast<int>(arangodb::Thread::currentProcessId()), static_cast<int>(threads[i]), SIGUSR2);
   }
 }
 
