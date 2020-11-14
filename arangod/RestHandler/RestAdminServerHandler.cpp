@@ -132,7 +132,7 @@ void RestAdminServerHandler::handleAvailability() {
       available = !server.isStopping();
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
       if (available && scheduler) {
-        // if the scheduler's queue is more than 50% full, render
+        // if the scheduler's queue is more than x% full, render
         // the server unavailable
         double fillGrade = scheduler->approximateQueueFillGrade();
         if (fillGrade > scheduler->unavailabilityQueueFillGrade()) {

@@ -34,15 +34,15 @@ v3.6.10 (XXXX-XX-XX)
   grade of the scheduler's queue is below the configured value, or HTTP 503 if 
   the fill grade is above it. This can be used to flag a server as unavailable 
   in case it is already highly loaded.
-  The default value for this option is `0.5`, i.e. if the scheduler's queue
-  is already longer than 50% of its maximum capacity, the availability API will
-  return HTTP 503 instead of HTTP 200. The default value for the scheduler
-  queue length is 4096.
-  This change will lead to 3.6.10 reporting an instance as unavailable via the
-  availability API earlier than previous versions. However, we consider this 
-  to be a sensible change, because it can help avoid sending more traffic to
-  an already overloaded instance. To restore the pre-3.6.10-behavior, the value
-  of `--server.unavailability-queue-fill-grade` can be set to `1` at startup.
+  The default value for this option is `1.0`, i.e. 100%. This is fully compatible
+  with previous versions of ArangoDB. 
+  To prevent sending more traffic to an already overloaded server, it can be 
+  sensible to reduce the default value to `0.75` or even `0.5`.
+  This would mean that instances with a queue longer than 75% (or 50%, resp.) 
+  of their maximum queue capacity would return HTTP 503 instead of HTTP 200 
+  when their availability API is probed. 
+
+  nb: the default value for the scheduler queue length is 4096.
 
 * Added startup option `--foxx.force-update-on-startup` to toggle waiting for
   all Foxx services in all databases to be propagated to a coordinator before it
