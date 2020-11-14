@@ -23,8 +23,7 @@ devel
   in case it is already highly loaded.
   
   The default value for this option is `0.75`, i.e. 75%. This is a change
-  compared to previous versions of ArangoDB, where the default value was `1`
-  (i.e. 100%).
+  compared to previous versions of ArangoDB, where the default value was `1`.
   
   To prevent sending more traffic to an already overloaded server, it can be 
   sensible to reduce the default value to even `0.5`.
