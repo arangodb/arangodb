@@ -132,7 +132,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
-  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  NetworkFeature& nf = server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -200,6 +200,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   VPackStringRef resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
+  
+  nf.trackForwardedRequest();
  
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      _request->requestPath(),
