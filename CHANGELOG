@@ -24,6 +24,13 @@ v3.7.6 (XXXX-XX-XX)
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed bug with ArangoSearch views on SmartGraph edge collections which could
+  contain some documents twice.
+  This change removes `_to_*` local auxiliary link creation and existence within
+  a view linked with a SmartGraph edge collection.
+
+* Fixed an AQL bug that ignored PRUNE statements in OneShard setups.
+
 * Added arangobench options:
   `--create-database` to create the test database on start
 	`--duration` to run test for a duration rather than a defined count
