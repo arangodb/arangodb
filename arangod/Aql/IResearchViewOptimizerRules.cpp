@@ -300,7 +300,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     for (auto const& field : primarySort.fields()) {
       std::vector<std::string> postfix;
       if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
-        tmpUsedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field, std::move(postfix)));
+        tmpUsedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
         found = true;
         break;
       }
@@ -313,7 +313,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
       for (auto const& field : column.fields) {
         std::vector<std::string> postfix;
         if (latematerialized::isPrefix(field.second, nodeAttr.attr, false, postfix)) {
-          tmpUsedColumnsCounter[columnNum].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
+          tmpUsedColumnsCounter[columnNum].emplace_back(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix));
           found = true;
           break;
         }
