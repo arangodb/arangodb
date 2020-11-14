@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global arango, assertTrue, assertFalse, assertEqual */
+/* global arango, assertTrue, assertFalse, assertEqual, VPACK_TO_V8 */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for fuerte responses
@@ -51,8 +51,7 @@ function fuerteResponseTestSuite () {
       assertEqual("application/x-velocypack", response.headers['content-type']);
       assertTrue(response.headers.hasOwnProperty('content-length'));
 
-      print(arango.protocol());
-      if (arango.protocol() == "http") {
+      if (arango.protocol() === "http") {
         // http/1 provides the full status text in a seperate header
         // http/2 does not provide such header, neither does VST
         assertEqual("200 OK", response.headers['http/1.1']);
