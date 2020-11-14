@@ -192,7 +192,8 @@ void SchedulerFeature::prepare() {
 #endif
   auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
                                                      _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size);
+                                                     _fifo1Size, _fifo2Size,
+                                                     _unavailabilityQueueFillGrade);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
