@@ -74,6 +74,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef TRI_HAVE_LINUX_PROC
+#include <dirent.h>
+#endif
+
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
@@ -790,11 +794,17 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   return {};
 }
 
+size_t TRI_ProcessThreads(TRI_pid_t /*pid*/, uint64_t* /*outBuffer*/, size_t /*outBufferSize*/) {
+  // not implemented
+  return 0;
+}
+
 #endif
 
 /// @brief returns information about the process
 #ifdef TRI_HAVE_LINUX_PROC
 
+// reads process statistics from /proc/<pid>/stat without allocating memory
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   ProcessInfo result;
 
@@ -810,12 +820,12 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
     static constexpr char const* stat = "/stat";
     
     // append /proc/
-    memcpy(p, proc, strlen(proc));
-    p += strlen(proc);
+    memcpy(p, proc, std::char_traits<char>::length(proc));
+    p += std::char_traits<char>::length(proc);
     // append pid
     p += arangodb::basics::StringUtils::itoa(uint64_t(pid), p);
-    memcpy(p, stat, strlen(stat));
-    p += strlen(stat);
+    memcpy(p, stat, std::char_traits<char>::length(stat));
+    p += std::char_traits<char>::length(stat);
     *p = '\0';
   }
 
@@ -868,6 +878,64 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   return result;
 }
 
+// reads process thread ids from /proc/<pid>/task into pre-allocated
+// outBuffer, without allocating memory
+size_t TRI_ProcessThreads(TRI_pid_t pid, uint64_t* outBuffer, size_t outBufferSize) {
+  char str[1024];
+  memset(&str, 0, sizeof(str));
+
+  // build filename /proc/<pid>/task
+  {
+    char* p = &str[0];
+
+    // a malloc-free sprintf...
+    static constexpr char const* proc = "/proc/";
+    static constexpr char const* task = "/task";
+    
+    // append /proc/
+    memcpy(p, proc, std::char_traits<char>::length(proc));
+    p += std::char_traits<char>::length(proc);
+    // append pid
+    p += arangodb::basics::StringUtils::itoa(uint64_t(pid), p);
+    memcpy(p, task, std::char_traits<char>::length(task));
+    p += std::char_traits<char>::length(task);
+    *p = '\0';
+  }
+  
+  uint64_t* outBufferNow = outBuffer;
+  uint64_t* outBufferEnd = outBufferNow + outBufferSize; 
+  
+  DIR* d = opendir(&str[0]);
+
+  if (d != nullptr) {
+    struct dirent* de = readdir(d);
+
+    while (de != nullptr && outBufferNow != outBufferEnd) {
+      char const* name = de->d_name;
+      char const* p = name;
+      char const* e = p + strlen(name);
+
+      // check if the filenames are all-numeric
+      while (p < e && *p >= '0' && *p <= '9') {
+        ++p;
+      }
+
+      if (p == e) {
+        // all numeric filename. this is what we want
+        *outBufferNow = arangodb::NumberUtils::atoi_unchecked<uint64_t>(name, e);
+        ++outBufferNow;
+      }
+    
+      // move on
+      de = readdir(d);
+    }
+
+    closedir(d);
+  }
+
+  return static_cast<size_t>(outBufferNow - outBuffer);
+}
+
 #else
 #ifndef _WIN32
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
@@ -876,6 +944,11 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   result._scClkTck = 1;
 
   return result;
+}
+
+size_t TRI_ProcessThreads(TRI_pid_t /*pid*/, uint64_t* /*outBuffer*/, size_t /*outBufferSize*/) {
+  // not implemented
+  return 0;
 }
 #endif
 #endif

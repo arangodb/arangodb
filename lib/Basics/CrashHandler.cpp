@@ -46,6 +46,7 @@
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Logger/LoggerFeature.h"
@@ -61,6 +62,7 @@
 
 #ifdef __linux__
 #include <sys/auxv.h>
+#include <sys/syscall.h>
 #include <elf.h>
 #endif
 
@@ -79,6 +81,9 @@ std::unique_ptr<char[]> alternativeStackMemory;
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
+
+/// @brief whether or not the crash handler is currently logging
+std::atomic<bool> crashHandlerIsLogging(false);
 #endif
 
 /// @brief an atomic that controls whether we will log backtraces 
@@ -188,18 +193,18 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   appendNullTerminatedString("ArangoDB ", p);
   appendNullTerminatedString(ARANGODB_VERSION_FULL, p);
   appendNullTerminatedString(", thread ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
-  
 #ifdef __linux__
+  p += arangodb::basics::StringUtils::itoa(uint64_t(gettid()), p);
+  
   char const* name = arangodb::Thread::currentThreadName();
-#else
-  char const* name = nullptr;
-#endif
   if (name != nullptr && *name != '\0') {
     appendNullTerminatedString(" [", p);
     appendNullTerminatedString(name, p);
     appendNullTerminatedString("]", p);
   }
+#else
+  p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
+#endif
 
   appendNullTerminatedString(" caught unexpected signal ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
@@ -265,7 +270,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   return p - s;
 }
 
-void logBacktrace(char const* context, int signal, siginfo_t* info, void* ucontext) try {
+void logCrashInfo(char const* context, int signal, siginfo_t* info, void* ucontext) try {
   // buffer for constructing temporary log messages (to avoid malloc)
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -274,12 +279,54 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
   size_t length = buildLogMessage(p, context, signal, info, ucontext);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+} catch (...) {
+  // we better not throw an exception from inside a signal handler
+}
 
+void logBacktrace() try {
   if (!enableStacktraces.load(std::memory_order_relaxed)) {
     return;
   }
-   
+    
+  char const* currentThreadName = arangodb::Thread::currentThreadName();
+  if (currentThreadName != nullptr && strcmp("logging", currentThreadName) == 0) {
+    // we must not log a backtrace from the logging thread itself. if we would
+    // do, we may cause a deadlock
+    return;
+  }
+    
 #ifdef ARANGODB_HAVE_LIBUNWIND
+  // buffer for constructing temporary log messages (to avoid malloc)
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
+  while (true) {
+    bool expected = false;
+    if (::crashHandlerIsLogging.compare_exchange_strong(expected, true)) {
+      break;
+    }
+    arangodb::basics::cpu_relax();
+  }
+
+  {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Backtrace of thread ", p);
+    
+#ifdef __linux__
+    p += arangodb::basics::StringUtils::itoa(uint64_t(gettid()), p);
+    char const* name = arangodb::Thread::currentThreadName();
+    if (name != nullptr && *name != '\0') {
+      appendNullTerminatedString(" [", p);
+      appendNullTerminatedString(name, p);
+      appendNullTerminatedString("]", p);
+    }
+#else
+    p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
+#endif
+     
+    LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  }
+
   // log backtrace, of up to maxFrames depth 
   { 
 #ifdef __linux__
@@ -288,7 +335,7 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
 #else
     long base = 0;
 #endif
-
+  
     unw_cursor_t cursor;
     // unw_word_t ip, sp;
     unw_context_t uc;
@@ -318,7 +365,7 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
         if (frame >= skipFrames) {
           // this is a stack frame we want to display
           memset(&buffer[0], 0, sizeof(buffer));
-          p = &buffer[0];
+          char* p = &buffer[0];
           appendNullTerminatedString("frame ", p);
           if (frame < 10) {
             // pad frame id to 2 digits length
@@ -356,7 +403,7 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
             appendNullTerminatedString("*no symbol name available for this frame", p); 
           }
 
-          length = p - &buffer[0];
+          size_t length = p - &buffer[0];
           LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
         }
       } while (++frame < (maxFrames + skipFrames) && unw_step(&cursor) > 0);
@@ -364,26 +411,31 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
       arangodb::Logger::flush();
     }
   }
+  
+  ::crashHandlerIsLogging.store(false);
 #endif
-
-  // log info about the current process
-  {
-    auto processInfo = TRI_ProcessInfoSelf();
-    memset(&buffer[0], 0, sizeof(buffer));
-    p = &buffer[0];
-    appendNullTerminatedString("available physical memory: ", p);
-    p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
-    appendNullTerminatedString(", rss usage: ", p);
-    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
-    appendNullTerminatedString(", vsz usage: ", p);
-    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
-    appendNullTerminatedString(", threads: ", p);
-    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
-
-    LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
-  }
 } catch (...) {
   // we better not throw an exception from inside a signal handler
+}
+
+// log info about the current process
+void logProcessInfo() {
+  // buffer for constructing temporary log messages (to avoid malloc)
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
+  auto processInfo = TRI_ProcessInfoSelf();
+  char* p = &buffer[0];
+  appendNullTerminatedString("available physical memory: ", p);
+  p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
+  appendNullTerminatedString(", rss usage: ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
+  appendNullTerminatedString(", vsz usage: ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
+  appendNullTerminatedString(", threads: ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
+
+  LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
 }
 
 /// @brief Logs the reception of a signal to the logfile.
@@ -406,7 +458,9 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
 #ifndef _WIN32
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    ::logBacktrace("signal handler invoked", signal, info, ucontext);
+    logCrashInfo("signal handler invoked", signal, info, ucontext);
+    logBacktrace();
+    logProcessInfo();
     arangodb::Logger::flush();
     arangodb::Logger::shutdown();
   } else {
@@ -420,6 +474,25 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
   killProcess(signal);
 }
+
+void crashHandlerLogBacktraceHandler(int signal, siginfo_t* info, void* ucontext) {
+  logBacktrace();
+}
+
+void crashHandlerLogAllHandler(int signal, siginfo_t* info, void* ucontext) {
+  uint64_t threads[256];
+  memset(&threads[0], 0, sizeof(threads));
+  size_t const n = TRI_ProcessThreads(arangodb::Thread::currentProcessId(), &threads[0], sizeof(threads) / sizeof(threads[0]));
+
+  for (size_t i = 0; i < n; ++i) {
+    // call each individual thread with signal SIGUSR2, which will make the
+    // thread log a backtrace
+    // we intentionally ignore the return value, as we cannot do anything about
+    // errors here anyway
+    (void) tgkill(static_cast<int>(arangodb::Thread::currentProcessId()), static_cast<int>(threads[i]), SIGUSR2);
+  }
+}
+
 #endif
 
 } // namespace
@@ -428,7 +501,9 @@ namespace arangodb {
 
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(char const* context) {
-  ::logBacktrace(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
+  ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
+  ::logBacktrace();
+  ::logProcessInfo();
   Logger::flush();
   Logger::shutdown();
 
@@ -510,18 +585,38 @@ void CrashHandler::installCrashHandler() {
     // as we have no way of signaling failure here.
     ::alternativeStackMemory.release();
   }
-
-  // install signal handlers for the following signals
-  struct sigaction act;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO | (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
-  act.sa_sigaction = crashHandlerSignalHandler;
-  sigaction(SIGSEGV, &act,nullptr);
-  sigaction(SIGBUS, &act, nullptr);
-  sigaction(SIGILL, &act, nullptr);
-  sigaction(SIGFPE, &act, nullptr);
-  sigaction(SIGABRT, &act,nullptr);
+  
+  {
+    // install crash handler for the following signals
+    struct sigaction act;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO | (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
+    act.sa_sigaction = crashHandlerSignalHandler;
+    sigaction(SIGSEGV, &act,nullptr);
+    sigaction(SIGBUS, &act, nullptr);
+    sigaction(SIGILL, &act, nullptr);
+    sigaction(SIGFPE, &act, nullptr);
+    sigaction(SIGABRT, &act,nullptr);
+  }
+  
+  {
+    // install log handler for the following signals
+    struct sigaction act;
+    sigfillset(&act.sa_mask);
+    act.sa_flags = SA_SIGINFO | (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
+    act.sa_sigaction = crashHandlerLogBacktraceHandler;
+    sigaction(SIGUSR2, &act,nullptr);
+  }
 #endif
+  
+  {
+    // install log handler for the following signals
+    struct sigaction act;
+    sigfillset(&act.sa_mask);
+    act.sa_flags = SA_SIGINFO | (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
+    act.sa_sigaction = crashHandlerLogAllHandler;
+    sigaction(SIGUSR1, &act,nullptr);
+  }
 
   // install handler for std::terminate()
   std::set_terminate([]() {
