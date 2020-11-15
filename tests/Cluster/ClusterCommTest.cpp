@@ -45,7 +45,7 @@ class ClusterCommTester : public ClusterComm {
   ClusterCommTester(application_features::ApplicationServer& server)
       : ClusterComm(server, false),
         _oldSched(nullptr),
-        _testerSched(server, 1, 2, 3, 4, 5) {
+        _testerSched(server, 1, 2, 3, 4, 5, 0.0) {
     // fake a scheduler object
     _oldSched = SchedulerFeature::SCHEDULER;
     SchedulerFeature::SCHEDULER = &_testerSched;

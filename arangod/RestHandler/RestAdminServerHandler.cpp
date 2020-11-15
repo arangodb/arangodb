@@ -29,6 +29,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -126,9 +128,23 @@ void RestAdminServerHandler::handleAvailability() {
   auto& server = application_features::ApplicationServer::server();
   bool available = false;
   switch (ServerState::mode()) {
-    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::DEFAULT: {
       available = !server.isStopping();
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      if (available && scheduler) {
+        // if the scheduler's queue is more than x% full, render
+        // the server unavailable
+        double unavailabilityFillGrade = scheduler->unavailabilityQueueFillGrade();
+        if (unavailabilityFillGrade > 0.0) {
+          double fillGrade = scheduler->approximateQueueFillGrade();
+          if (fillGrade >= unavailabilityFillGrade) {
+            // oops, queue is relatively full
+            available = false;
+          }
+        }
+      }
       break;
+    }
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN:
