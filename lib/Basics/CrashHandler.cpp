@@ -290,7 +290,7 @@ void logBacktrace() try {
   }
     
   char const* currentThreadName = arangodb::Thread::currentThreadName();
-  if (currentThreadName != nullptr && strcmp("logging", currentThreadName) == 0) {
+  if (currentThreadName != nullptr && strcmp("Logging", currentThreadName) == 0) {
     // we must not log a backtrace from the logging thread itself. if we would
     // do, we may cause a deadlock
     return;
