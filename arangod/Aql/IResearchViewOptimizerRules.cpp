@@ -289,10 +289,12 @@ struct ColumnVariant {
 
 bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValues const& storedValues,
                      latematerialized::NodeWithAttrsColumn& node,
-                     std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>>& usedColumnsCounter) {
+                     std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>>& usedColumnsCounter,
+                     size_t columnsCount) {
+  TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   // check all node attributes to be in sort
   std::vector<std::vector<ColumnVariant>> tmpUsedColumnsCounter;
-  tmpUsedColumnsCounter.resize(usedColumnsCounter.size());
+  tmpUsedColumnsCounter.resize(columnsCount);
   for (auto& nodeAttr : node.attrs) {
     auto found = false;
     nodeAttr.afData.field = nullptr;
@@ -342,9 +344,12 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
   return true;
 }
 
-void setAttributesMaxMatchedColumns(std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>>& usedColumnsCounter) {
+void setAttributesMaxMatchedColumns(std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>>& usedColumnsCounter,
+                                    size_t columnsCount) {
+  TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
+  auto const columnsEnd = usedColumnsCounter.begin() + columnsCount;
   // first is max size one
-  std::sort(usedColumnsCounter.begin(), usedColumnsCounter.end(), [](auto const& lhs, auto const& rhs) {
+  std::sort(usedColumnsCounter.begin(), columnsEnd, [](auto const& lhs, auto const& rhs) {
     auto const lSize = lhs.second.size();
     auto const rSize = rhs.second.size();
     // column contains more fields or
@@ -357,12 +362,13 @@ void setAttributesMaxMatchedColumns(std::vector<std::pair<ptrdiff_t, std::vector
         lhs.first < rhs.first));
   });
   // get values from columns which contain max number of appropriate values
-  for (auto& cv : usedColumnsCounter) {
-    for (auto& f : cv.second) {
+  for (auto it = usedColumnsCounter.begin(); it != columnsEnd; ++it) {
+    for (auto& f : it->second) {
+      TRI_ASSERT(f.afData);
       if (f.afData->field == nullptr) {
         f.afData->fieldNumber = f.fieldNum;
         f.afData->field = f.field;
-        f.afData->columnNumber = cv.first;
+        f.afData->columnNumber = it->first;
         f.afData->postfix = std::move(f.postfix);
       }
     }
@@ -384,11 +390,15 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
     }
     auto const& var = viewNode.outVariable();
     auto& viewNodeState = viewNode.state();
-    usedColumnsCounter.resize(storedValues.columns().size() + 1);
-    // restoring initial state for column accumulator
+    auto const columnsCount = storedValues.columns().size() + 1;
+    if (columnsCount > usedColumnsCounter.size()) {
+      usedColumnsCounter.resize(columnsCount);
+    }
+    // restoring initial state for column accumulator (only potentially usable part)
     ptrdiff_t column = 0;
-    auto beginColumns = usedColumnsCounter.begin();
-    for (auto it = beginColumns; it != usedColumnsCounter.end(); ++it)  {
+    auto const beginColumns = usedColumnsCounter.begin();
+    auto const endColumns = usedColumnsCounter.begin() + columnsCount;
+    for (auto it = beginColumns; it != endColumns; ++it)  {
       it->first = it == beginColumns ? IResearchViewNode::SortColumnNumber : column++;
       it->second.clear();
     }
@@ -402,7 +412,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node)) {
         if (!node.attrs.empty()) {
-          if (attributesMatch(primarySort, storedValues, node, usedColumnsCounter)) {
+          if (attributesMatch(primarySort, storedValues, node, usedColumnsCounter, columnsCount)) {
             nodesToChange.emplace_back(std::move(node));
           } else {
             viewNodeState.disableNoDocumentMaterialization();
@@ -413,9 +423,16 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       }
     }
     if (!nodesToChange.empty()) {
-      setAttributesMaxMatchedColumns(usedColumnsCounter);
+      setAttributesMaxMatchedColumns(usedColumnsCounter, columnsCount);
       viewNodeState.saveCalcNodesForViewVariables(nodesToChange);
       nodesToChange.clear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE // force nullptr`s to trigger assertion on non-used-nodes access
+      for (auto& a : usedColumnsCounter) {
+        for (auto& b : a.second) {
+          b.afData = nullptr;
+        }
+      }
+#endif
     }
   }
 }

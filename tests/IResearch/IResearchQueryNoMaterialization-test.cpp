@@ -109,6 +109,23 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
       addLinkToCollection(view);
     }
 
+    std::shared_ptr<arangodb::iresearch::IResearchView> view2;
+    {
+      auto createJson = VPackParser::fromJson(
+          std::string("{") +
+          "\"name\": \"" + viewName + "2\", \
+           \"type\": \"arangosearch\", \
+           \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}], \
+           \"storedValues\": [] \
+        }");
+      view2 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+          vocbase().createView(createJson->slice()));
+      ASSERT_FALSE(!view2);
+
+      // add links to collections
+      addLinkToCollection(view2);
+    }
+
     // populate view with the data
     {
       arangodb::OperationOptions opt;
@@ -166,6 +183,12 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
                   ->commit().ok());
 
       EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view)
+                  ->commit().ok());
+
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view2)
+                  ->commit().ok());
+
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view2)
                   ->commit().ok());
     }
   }
@@ -266,6 +289,46 @@ TEST_F(IResearchQueryNoMaterializationTest, sortColumnPriority) {
   };
 
   executeAndCheck(queryString, expectedValues, 1, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}});
+}
+
+TEST_F(IResearchQueryNoMaterializationTest, sortColumnPriorityViewsSubquery) {
+  // this checks proper stored variables buffer resizing uring optimization
+  auto const queryString = std::string("FOR c IN ") + viewName + "2 SEARCH c.value IN [1, 2, 11, 12] SORT c.value FOR d IN " + viewName +
+      " SEARCH d.value == c.value SORT d.value RETURN d.value";
+
+  std::vector<VPackValue> expectedValues{
+    VPackValue(1),
+    VPackValue(2),
+    VPackValue(11),
+    VPackValue(12)
+  };
+
+  auto queryResult = arangodb::tests::executeQuery(vocbase(), queryString);
+  ASSERT_TRUE(queryResult.result.ok());
+
+  auto result = queryResult.data->slice();
+  EXPECT_TRUE(result.isArray());
+
+  arangodb::velocypack::ArrayIterator resultIt(result);
+
+  ASSERT_EQ(expectedValues.size(), resultIt.size());
+  // Check values
+  auto expectedValue = expectedValues.begin();
+  for (; resultIt.valid(); resultIt.next(), ++expectedValue) {
+    auto const actualDoc = resultIt.value();
+    auto const resolved = actualDoc.resolveExternals();
+
+    if (resolved.isString()) {
+      ASSERT_TRUE(expectedValue->isString());
+      arangodb::velocypack::ValueLength length = 0;
+      auto resStr = resolved.getString(length);
+      EXPECT_TRUE(memcmp(expectedValue->getCharPtr(), resStr, length) == 0);
+    } else {
+      ASSERT_TRUE(resolved.isNumber());
+      EXPECT_EQ(expectedValue->getInt64(), resolved.getInt());
+    }
+  }
+  EXPECT_EQ(expectedValue, expectedValues.end());
 }
 
 TEST_F(IResearchQueryNoMaterializationTest, maxMatchColumnPriority) {
