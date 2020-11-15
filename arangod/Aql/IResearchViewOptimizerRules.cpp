@@ -293,8 +293,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
                      size_t columnsCount) {
   TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   // check all node attributes to be in sort
-  std::vector<std::vector<ColumnVariant>> tmpUsedColumnsCounter;
-  tmpUsedColumnsCounter.resize(columnsCount);
+  std::vector<std::vector<ColumnVariant>> tmpUsedColumnsCounter(columnsCount);
   for (auto& nodeAttr : node.attrs) {
     auto found = false;
     nodeAttr.afData.field = nullptr;
