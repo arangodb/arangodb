@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.12.
+
 * Fixed bug with ArangoSearch views on SmartGraph edge collections which could
   contain some documents twice.
   This change removes `_to_*` local auxiliary link creation and existence within
