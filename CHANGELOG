@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 0.7.12.
+
 * Fix log topic of general shutdown message from "cluster" to general.
 
 * Make the DOCUMENT AQL function eligible for running on DB servers in
