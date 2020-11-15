@@ -127,6 +127,7 @@ load_debug_frame (const char *file, char **buf, size_t *bufsize, int is_local)
       return 1;
     }
 
+#if defined(SHF_COMPRESSED)
   if (shdr->sh_flags & SHF_COMPRESSED)
     {
       unsigned long destSize;
@@ -161,6 +162,7 @@ load_debug_frame (const char *file, char **buf, size_t *bufsize, int is_local)
     }
   else
     {
+#endif
       *bufsize = shdr->sh_size;
       GET_MEMORY(*buf, *bufsize);
 
@@ -168,7 +170,9 @@ load_debug_frame (const char *file, char **buf, size_t *bufsize, int is_local)
 
       Debug (4, "read %zd bytes of .debug_frame from offset %zd\n",
 	     *bufsize, shdr->sh_offset);
+#if defined(SHF_COMPRESSED)
     }
+#endif
   munmap(ei.image, ei.size);
   return 0;
 }

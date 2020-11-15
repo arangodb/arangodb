@@ -4,7 +4,7 @@ project(libunwind C)
 include(ExternalProject)
 
 # set version and paths
-set(LIBUNWIND_VERSION "1.4")
+set(LIBUNWIND_VERSION "1.5")
 set(LIBUNWIND_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${LIBUNWIND_VERSION}")
 set(LIBUNWIND_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}")
 
