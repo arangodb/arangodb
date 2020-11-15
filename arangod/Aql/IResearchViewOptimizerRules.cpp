@@ -107,7 +107,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
   if (!viewNode.filterConditionIsEmpty()) {
     searchCondition.andCombine(&viewNode.filterCondition());
     searchCondition.normalize(
-        &plan, true, viewNode.options().conditionOptimization);  
+        &plan, true, viewNode.options().conditionOptimization);
 
     if (searchCondition.isEmpty()) {
       // condition is always false
@@ -289,9 +289,10 @@ struct ColumnVariant {
 
 bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValues const& storedValues,
                      latematerialized::NodeWithAttrsColumn& node,
-                     std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>>& usedColumnsCounter) {
+                     std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>>& usedColumnsCounter) {
   // check all node attributes to be in sort
-  std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>> tmpUsedColumnsCounter;
+  std::vector<std::vector<ColumnVariant>> tmpUsedColumnsCounter;
+  tmpUsedColumnsCounter.resize(usedColumnsCounter.size());
   for (auto& nodeAttr : node.attrs) {
     auto found = false;
     nodeAttr.afData.field = nullptr;
@@ -300,7 +301,8 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     for (auto const& field : primarySort.fields()) {
       std::vector<std::string> postfix;
       if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
-        tmpUsedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
+        TRI_ASSERT(!tmpUsedColumnsCounter.empty());
+        tmpUsedColumnsCounter[0].emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
         found = true;
         break;
       }
@@ -313,7 +315,8 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
       for (auto const& field : column.fields) {
         std::vector<std::string> postfix;
         if (latematerialized::isPrefix(field.second, nodeAttr.attr, false, postfix)) {
-          tmpUsedColumnsCounter[columnNum].emplace_back(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix));
+          TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) > columnNum);
+          tmpUsedColumnsCounter[columnNum+1].emplace_back(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix));
           found = true;
           break;
         }
@@ -328,19 +331,20 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
   }
   static_assert(std::is_move_constructible_v<ColumnVariant>,
                 "To efficiently move from temp variable we need working move for ColumnVariant");
-  // store only on successful exit, otherwise pointers to afData will be invalidated as Node will be not stored! 
+  // store only on successful exit, otherwise pointers to afData will be invalidated as Node will be not stored!
+  size_t current = 0;
   for (auto it = tmpUsedColumnsCounter.begin(); it != tmpUsedColumnsCounter.end(); ++it) {
-    std::move(it->second.begin(), it->second.end(),  irs::irstd::back_emplacer(usedColumnsCounter[it->first]));
+    // check storage rules
+    TRI_ASSERT((current == 0 && usedColumnsCounter[current].first == IResearchViewNode::SortColumnNumber)
+               || (current > 0 &&  usedColumnsCounter[current].first == current - 1));
+    std::move(it->begin(), it->end(),  irs::irstd::back_emplacer(usedColumnsCounter[current++].second));
   }
   return true;
 }
 
-void setAttributesMaxMatchedColumns(std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>>& usedColumnsCounter) {
-  std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>> columnVariants;
-  columnVariants.reserve(usedColumnsCounter.size());
-  columnVariants.assign(std::make_move_iterator(usedColumnsCounter.begin()), std::make_move_iterator(usedColumnsCounter.end()));
+void setAttributesMaxMatchedColumns(std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>>& usedColumnsCounter) {
   // first is max size one
-  std::sort(columnVariants.begin(), columnVariants.end(), [](auto const& lhs, auto const& rhs) {
+  std::sort(usedColumnsCounter.begin(), usedColumnsCounter.end(), [](auto const& lhs, auto const& rhs) {
     auto const lSize = lhs.second.size();
     auto const rSize = rhs.second.size();
     // column contains more fields or
@@ -353,7 +357,7 @@ void setAttributesMaxMatchedColumns(std::unordered_map<ptrdiff_t, std::vector<Co
         lhs.first < rhs.first));
   });
   // get values from columns which contain max number of appropriate values
-  for (auto& cv : columnVariants) {
+  for (auto& cv : usedColumnsCounter) {
     for (auto& f : cv.second) {
       if (f.afData->field == nullptr) {
         f.afData->fieldNumber = f.fieldNum;
@@ -368,7 +372,7 @@ void setAttributesMaxMatchedColumns(std::unordered_map<ptrdiff_t, std::vector<Co
 void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
                                   arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
   std::vector<latematerialized::NodeWithAttrsColumn> nodesToChange;
-  std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>> usedColumnsCounter;
+  std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>> usedColumnsCounter;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
@@ -380,7 +384,14 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
     }
     auto const& var = viewNode.outVariable();
     auto& viewNodeState = viewNode.state();
-    usedColumnsCounter.clear();
+    usedColumnsCounter.resize(storedValues.columns().size() + 1);
+    // restoring initial state for column accumulator
+    ptrdiff_t column = 0;
+    auto beginColumns = usedColumnsCounter.begin();
+    for (auto it = beginColumns; it != usedColumnsCounter.end(); ++it)  {
+      it->first = it == beginColumns ? IResearchViewNode::SortColumnNumber : column++;
+      it->second.clear();
+    }
     for (auto* cNode : calcNodes) {
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
