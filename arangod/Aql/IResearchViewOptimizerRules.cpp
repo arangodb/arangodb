@@ -337,7 +337,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
   for (auto it = tmpUsedColumnsCounter.begin(); it != tmpUsedColumnsCounter.end(); ++it) {
     // check storage rules
     TRI_ASSERT((current == 0 && usedColumnsCounter[current].first == IResearchViewNode::SortColumnNumber)
-               || (current > 0 &&  usedColumnsCounter[current].first == current - 1));
+               || (current > 0 &&  usedColumnsCounter[current].first == static_cast<ptrdiff_t>(current - 1)));
     std::move(it->begin(), it->end(),  irs::irstd::back_emplacer(usedColumnsCounter[current++].second));
   }
   return true;
