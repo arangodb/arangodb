@@ -1,6 +1,8 @@
 v3.5.7 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.12.
+
 * Fixed potential deadlock in cluster transactions if a transaction is returned
   that was soft-aborted by transaction garbage collection before.
   This deadlock should rarely ever occur in practice, as it can only be
