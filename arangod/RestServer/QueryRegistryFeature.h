@@ -61,8 +61,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
 
-  // tracks a slow query by increasing the counter
-  void trackSlowQuery() { ++_slowQueriesCounter; }
+  // tracks a query, using execution time
+  void trackQuery(double time);
+  // tracks a slow query, using execution time
+  void trackSlowQuery(double time);
 
  private:
   bool _trackingEnabled;
@@ -84,6 +86,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   double _queryRegistryTTL;
   std::string _queryCacheMode;
   
+  Counter& _totalQueryExecutionTime;
+  Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
 
  private:

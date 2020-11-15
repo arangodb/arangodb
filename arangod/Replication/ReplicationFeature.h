@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "Replication/GlobalReplicationApplier.h"
+#include "RestServer/Metrics.h"
 
 struct TRI_vocbase_t;
 
@@ -90,6 +91,8 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// must only be called after a successful call to trackTailingstart
   void trackTailingEnd() noexcept;
 
+  void trackInventoryRequest() { ++_inventoryRequests; }
+
   /// @brief set the x-arango-endpoint header
   static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
 
@@ -125,6 +128,8 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   uint64_t _maxParallelTailingInvocations;
 
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
+  
+  Counter& _inventoryRequests;
 };
 
 }  // namespace arangodb

@@ -94,7 +94,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   using namespace fuerte;
   if (ec) {
     if (ec != asio_ns::error::misc_errors::eof) {
-      LOG_TOPIC("495fe", INFO, Logger::REQUESTS)
+      LOG_TOPIC("495fe", DEBUG, Logger::REQUESTS)
       << "Error while reading from socket: '" << ec.message() << "'";
     }
     this->close();
