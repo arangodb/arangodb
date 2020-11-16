@@ -1830,3 +1830,10 @@ TEST_F(GreenspunTest, rand_range) {
   ASSERT_TRUE(result.slice().getDouble() <= 9.0);
   ASSERT_TRUE(result.slice().getDouble() >= 5.0);
 }
+
+#ifdef AIR_PRIMITIVE_TESTS_MAIN
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+#endif
