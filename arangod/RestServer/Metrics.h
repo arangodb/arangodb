@@ -100,11 +100,19 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
   Gauge<T>& operator+=(T const& t) {
-    _g.fetch_add(t, std::memory_order_relaxed);
+    T tmp;
+    do {
+      tmp = _g.load(std::memory_order_relaxed);
+    } while (!_g.compare_exchange_weak(tmp, tmp + t, std::memory_order_relaxed,
+        std::memory_order_relaxed));
     return *this;
   }
   Gauge<T>& operator-=(T const& t) {
-    _g.fetch_sub(t, std::memory_order_relaxed);
+    T tmp;
+    do {
+      tmp = _g.load(std::memory_order_relaxed);
+    } while (!_g.compare_exchange_weak(tmp, tmp - t, std::memory_order_relaxed,
+        std::memory_order_relaxed));
     return *this;
   }
   Gauge<T>& operator*=(T const& t) {
