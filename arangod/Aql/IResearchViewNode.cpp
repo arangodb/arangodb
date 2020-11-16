@@ -1497,6 +1497,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       if (emitOnlyCount()) {
         TRI_ASSERT(options().emitOnlyCount);
         materializeType |= MaterializeType::EmitCount;
+        numDocumentRegs += 1;
       }
     } else {
       materializeType = MaterializeType::Materialize;

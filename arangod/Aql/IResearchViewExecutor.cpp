@@ -696,12 +696,18 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
       }
     }
   } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize &&
-                       !Traits::Ordered) {
+                       !Traits::Ordered) { // TODO Ordered could interfere here!
     if (_infos.emitCount()) {
-      auto index = bufferEntry.getKeyIdx();
-      AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&index)));
+      auto index = this->_indexReadBuffer.getValue(bufferEntry);
+      uint64_t collectedCount {0};
+      if constexpr (Traits::Merge) {
+        collectedCount = index.first.id();
+      } else {   
+        collectedCount = index.id();
+      }
+      AqlValue a{AqlValueHintUInt(collectedCount)};
       AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getCountReg(), ctx.inputRow, guard);
     } else {
       ctx.outputRow.copyRow(ctx.inputRow);
     }
@@ -863,6 +869,9 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
   size_t const count = this->_reader->size();
 
   if (_infos.emitCount()) {
+    if (_readerOffset >= count) {
+      return;
+    }
     size_t total = 0;
     TRI_ASSERT(_readerOffset == 0);
     for (; _readerOffset < count;) {
@@ -1112,7 +1121,7 @@ template <bool ordered, MaterializeType materializeType>
 bool IResearchViewExecutor<ordered, materializeType>::writeRow(
     IResearchViewExecutor::ReadContext& ctx,
     IResearchViewExecutor::IndexReadBufferEntry bufferEntry) {
-  TRI_ASSERT(_collection);
+  TRI_ASSERT(_collection || _infos.emitCount()); // we don`t need collection for emitting count
 
   return Base::writeRow(ctx, bufferEntry,
                         this->_indexReadBuffer.getValue(bufferEntry), *_collection);

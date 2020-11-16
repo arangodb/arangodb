@@ -239,6 +239,14 @@ class IResearchViewExecutorBase {
     auto getDocumentReg() const noexcept -> aql::RegisterId {
       return documentOutReg;
     }
+
+    // TODO remove kludge - should be EmitCount!
+    template <iresearch::MaterializeType t = iresearch::MaterializeType::NotMaterialize,
+              typename E = enabled_for_materialize_type_t<t>>
+    auto getCountReg() const noexcept -> aql::RegisterId {
+      return documentOutReg;
+    }
+
     template <iresearch::MaterializeType t = iresearch::MaterializeType::Materialize,
               typename E = enabled_for_materialize_type_t<t>>
     auto getDocumentCallback() const noexcept -> IndexIterator::DocumentCallback const& {
@@ -452,6 +460,7 @@ struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materializeTyp
   using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool Merge {false};
 };
 
 template <bool ordered, iresearch::MaterializeType materializeType>
@@ -537,6 +546,7 @@ struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materiali
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool Merge {true}; // TODO klidge
 };
 
 }  // namespace aql
