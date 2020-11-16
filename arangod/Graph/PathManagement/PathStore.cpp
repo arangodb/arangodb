@@ -32,7 +32,7 @@ using namespace arangodb;
 namespace arangodb {
 
 namespace aql {
-class AqlValue;
+struct AqlValue;
 }
 
 namespace graph {

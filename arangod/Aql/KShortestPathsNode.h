@@ -38,6 +38,7 @@ class Builder;
 namespace graph {
 struct BaseOptions;
 struct ShortestPathOptions;
+struct IndexAccessor;
 }  // namespace graph
 namespace aql {
 
@@ -153,6 +154,8 @@ class KShortestPathsNode : public virtual GraphNode {
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
+
+  std::vector<arangodb::graph::IndexAccessor>&& buildUsedIndexes() const;
 
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)

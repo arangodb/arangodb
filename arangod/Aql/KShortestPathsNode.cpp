@@ -34,8 +34,12 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KPathFinder.h"
 #include "Graph/KShortestPathsFinder.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Queues/FifoQueue.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
@@ -44,6 +48,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Graph/PathManagement/PathResult.h>
 #include <memory>
 
 using namespace arangodb;
@@ -77,8 +82,7 @@ static void parseNodeInput(AstNode const* node, std::string& id,
   }
 }
 
-static GraphNode::InputVertex prepareVertexInput(
-    KShortestPathsNode const* node, bool isTarget) {
+static GraphNode::InputVertex prepareVertexInput(KShortestPathsNode const* node, bool isTarget) {
   using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
@@ -100,7 +104,8 @@ static GraphNode::InputVertex prepareVertexInput(
 }
 }  // namespace
 
-KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                       TRI_vocbase_t* vocbase,
                                        arangodb::graph::ShortestPathType::Type shortestPathType,
                                        AstNode const* direction, AstNode const* start,
                                        AstNode const* target, AstNode const* graph,
@@ -151,8 +156,8 @@ KShortestPathsNode::KShortestPathsNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     arangodb::graph::ShortestPathType::Type shortestPathType,
     std::vector<Collection*> const& edgeColls,
-    std::vector<Collection*> const& vertexColls,
-    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    std::vector<Collection*> const& vertexColls, TRI_edge_direction_e defaultDirection,
+    std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
     std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
@@ -178,7 +183,6 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
-
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _shortestPathType = arangodb::graph::ShortestPathType::fromString(
         base.get(StaticStrings::GraphQueryShortestPathType).copyString().c_str());
@@ -316,7 +320,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   auto outputRegister = variableToRegisterId(&pathOutVariable());
   auto outputRegisters = RegIdSet{outputRegister};
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
+  auto registerInfos =
+      createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -328,12 +333,32 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 #endif
 
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
-    auto finder = std::make_unique<graph::KPathFinder>(*opts);
-    auto executorInfos =
-        KShortestPathsExecutorInfos(outputRegister, std::move(finder),
-                                    std::move(sourceInput), std::move(targetInput));
-    return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+    if (opts->refactor) {
+      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to be changed in the future)
+      std::vector<IndexAccessor> usedIndexes = buildUsedIndexes();
+
+      // create BaseProviderOptions
+      BaseProviderOptions bpo(opts->tmpVar(), std::move(usedIndexes));
+
+      arangodb::graph::TwoSidedEnumeratorOptions lolOptions{opts->minDepth, opts->maxDepth};
+
+      TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>
+          KPathFinder{SingleServerProvider(opts->query(), bpo),
+                      SingleServerProvider(opts->query(), bpo), std::move(lolOptions)};
+
+      auto executorInfos =
+          KShortestPathsExecutorInfos(outputRegister, std::move(KPathFinder),
+                                      std::move(sourceInput), std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    } else {
+      auto finder = std::make_unique<graph::KPathFinder>(*opts);
+      auto executorInfos =
+          KShortestPathsExecutorInfos(outputRegister, std::move(finder),
+                                      std::move(sourceInput), std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    }
   } else {
     auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
     auto executorInfos =
@@ -349,8 +374,9 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependenc
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = std::make_unique<KShortestPathsNode>(plan, _id, _vocbase, _shortestPathType, _edgeColls,
-                                                _vertexColls, _defaultDirection, _directions,
+  auto c = std::make_unique<KShortestPathsNode>(plan, _id, _vocbase, _shortestPathType,
+                                                _edgeColls, _vertexColls,
+                                                _defaultDirection, _directions,
                                                 _inStartVariable, _startVertexId,
                                                 _inTargetVariable, _targetVertexId,
                                                 std::move(tmp), _graphObj);
@@ -380,6 +406,48 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
+}
+
+std::vector<arangodb::graph::IndexAccessor>&& KShortestPathsNode::buildUsedIndexes() const {
+  // std::vector<IndexAccessor> usedIndexes{
+  // IndexAccessor{edgeIndexHandle, indexCondition, 0}};
+  std::vector<IndexAccessor> indexAccessors{};
+
+  if (_optionsBuilt) {
+    return std::move(indexAccessors);
+  }
+  TRI_ASSERT(!_optionsBuilt);
+
+  if (_options->refactor()) {
+    // TODO: remove / cleanup later
+    // Compute Indexes for KPathFinder Refactored Version
+    size_t numEdgeColls = _edgeColls.size();
+
+    for (size_t i = 0; i < numEdgeColls; ++i) {
+      auto dir = _directions[i];
+      aql::AstNode* condition;
+      switch (dir) {
+        case TRI_EDGE_IN:
+          condition = _toCondition->clone(options()->query().ast());
+          for (auto const idx : _edgeColls[i]->getCollection()->getIndexes()) {
+            auto piotr = IndexAccessor{idx, condition, 0};
+            indexAccessors.push_back(piotr);
+          }
+          break;
+        case TRI_EDGE_OUT:
+          condition = _fromCondition->clone(options()->query().ast());
+          for (auto const idx : _edgeColls[i]->getCollection()->getIndexes()) {
+            auto piotr = IndexAccessor{idx, condition, 0};
+            indexAccessors.push_back(piotr);
+          }
+          break;
+        case TRI_EDGE_ANY:
+          TRI_ASSERT(false);
+          break;
+      }
+    }
+  }
+  return std::move(indexAccessors);
 }
 
 void KShortestPathsNode::prepareOptions() {

@@ -166,10 +166,8 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
     arangodb::aql::QueryContext& query, VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
   if (type.isString() && type.isEqualString("shortestPath")) {
-    LOG_DEVEL << "shortest yes";
     return std::make_unique<ShortestPathOptions>(query, definition);
   }
-  LOG_DEVEL << "other yes";
   return std::make_unique<TraverserOptions>(query, definition);
 }
 
@@ -458,4 +456,8 @@ void BaseOptions::activateCache(bool enableDocumentCache,
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
   TRI_ASSERT(_cache == nullptr);
   _cache = std::move(testCache);
+}
+
+aql::Variable const* BaseOptions::tmpVar() {
+  return _tmpVar;
 }

@@ -26,6 +26,7 @@
 
 #include "Containers/HashSet.h"
 
+#include "Graph/PathManagement/PathResult.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/ShortestPathFinder.h"  // TODO: Change / remove / minimize
 

@@ -177,6 +177,8 @@ struct BaseOptions {
     return _refactor;
   }
 
+  aql::Variable const* tmpVar(); // TODO check public
+
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
 
