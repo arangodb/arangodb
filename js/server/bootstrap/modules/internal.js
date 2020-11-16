@@ -581,4 +581,9 @@
     return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
   };
 
+  if (global.SYS_CREATE_HOTBACKUP) {
+    exports.createHotbackup = global.SYS_CREATE_HOTBACKUP;
+    delete global.SYS_CREATE_HOTBACKUP;
+  };
+
 }());
