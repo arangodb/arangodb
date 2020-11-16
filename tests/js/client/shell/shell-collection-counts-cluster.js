@@ -37,8 +37,8 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
   
 const cn = "UnitTestsCollection";
 
-let getDBServers = function() {
-  const isDBServer = (d) => (_.toLower(d.role) === 'dbserver');
+let getServers = function(role) {
+  const isRole = (d) => (_.toLower(d.role) === role);
   const endpointToURL = (server) => {
     let endpoint = server.endpoint;
     if (endpoint.substr(0, 6) === 'ssl://') {
@@ -51,10 +51,17 @@ let getDBServers = function() {
     return 'http' + endpoint.substr(pos);
   };
 
-  return global.instanceInfo.arangods.filter(isDBServer)
+  return global.instanceInfo.arangods.filter(isRole)
                               .map((server) => { 
                                 return { url: endpointToURL(server), id: server.id };
                               });
+};
+
+let getDBServers = function() {
+  return getServers('dbserver');
+};
+let getCoordinators = function() {
+  return getServers('coordinator');
 };
 
 let clearFailurePoints = function () {
@@ -959,6 +966,9 @@ function collectionCountsSuiteNewFormat () {
   return suite;
 }
 
-jsunity.run(collectionCountsSuiteOldFormat);
-jsunity.run(collectionCountsSuiteNewFormat);
+let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
+if (res.body === "true") {
+  jsunity.run(collectionCountsSuiteOldFormat);
+  jsunity.run(collectionCountsSuiteNewFormat);
+}
 return jsunity.done();
