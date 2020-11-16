@@ -306,6 +306,8 @@ bool FollowerInfo::updateFailoverCandidates() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_failoverCandidates->size() == _followers->size());
     std::vector<std::string> diff;
+    std::sort(_failoverCandidates->begin(), _failoverCandidates->end(), std::greater<std::string>());
+    std::sort(_followers->begin(), _followers->end(), std::greater<std::string>());
     std::set_symmetric_difference(_failoverCandidates->begin(),
                                   _failoverCandidates->end(), _followers->begin(),
                                   _followers->end(), std::back_inserter(diff));
@@ -315,12 +317,14 @@ bool FollowerInfo::updateFailoverCandidates() {
   }
   TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
-  _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
+  _failoverCandidates = std::make_shared<std::vector<ServerID>>(*_followers);
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<std::string> diff;
+  std::sort(_failoverCandidates->begin(), _failoverCandidates->end(), std::greater<std::string>());
+  std::sort(_followers->begin(), _followers->end(), std::greater<std::string>());
   std::set_symmetric_difference(_failoverCandidates->begin(),
                                 _failoverCandidates->end(), _followers->begin(),
                                 _followers->end(), std::back_inserter(diff));
