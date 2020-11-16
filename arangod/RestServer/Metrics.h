@@ -100,20 +100,45 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
   Gauge<T>& operator+=(T const& t) {
-    _g.store(_g + t);
+    if constexpr(std::is_integral_v<T>) {
+      _g.fetch_add(t, std::memory_order_relaxed);
+    } else {
+      T tmp;
+      do {
+        tmp = _g.load(std::memory_order_relaxed);
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp + t, std::memory_order_relaxed, std::memory_order_relaxed));
+
+    }
     return *this;
   }
   Gauge<T>& operator-=(T const& t) {
-    _g.store(_g - t);
+    if constexpr(std::is_integral_v<T>) {
+      _g.fetch_sub(t, std::memory_order_relaxed);
+    } else {
+      T tmp;
+      do {
+        tmp = _g.load(std::memory_order_relaxed);
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp - t, std::memory_order_relaxed, std::memory_order_relaxed));
+    }
     return *this;
   }
   Gauge<T>& operator*=(T const& t) {
-    _g.store(_g * t);
+    T tmp;
+    do {
+      tmp = _g.load(std::memory_order_relaxed);
+    } while (!_g.compare_exchange_weak(tmp, tmp * t, std::memory_order_relaxed,
+        std::memory_order_relaxed));
     return *this;
   }
   Gauge<T>& operator/=(T const& t) {
     TRI_ASSERT(t != T(0));
-    _g.store(_g / t);
+    T tmp;
+    do {
+      tmp = _g.load(std::memory_order_relaxed);
+    } while (!_g.compare_exchange_weak(tmp, tmp / t, std::memory_order_relaxed,
+        std::memory_order_relaxed));
     return *this;
   }
   Gauge<T>& operator=(T const& t) {
