@@ -153,7 +153,7 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
   if (iter == std::end(phases)) {
     return false;
   }
-  aggregate<uint32_t>("phase", iter - phases.begin());
+  aggregate<uint32_t>("phase", static_cast<uint32_t>(iter - phases.begin()));
   aggregate<uint64_t>("phase-first-step", globalSuperstep() + 1);
   userSelectedNext = ContinuationResult::ACTIVATE_ALL;
   return true;
