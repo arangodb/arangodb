@@ -918,7 +918,7 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   std::vector<ShardID> result;
   try {
     std::shared_ptr<LogicalCollection> lc = ci.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs = ci.getShardList(std::to_string(lc->id()));
+    std::shared_ptr<std::vector<ShardID>> shardIDs = ci.getShardList(std::to_string(lc->id().id()));
     result.reserve(shardIDs->size());
     for (auto const& it : *shardIDs) {
       result.emplace_back(it);

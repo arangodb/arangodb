@@ -1015,7 +1015,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
-      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      l->insert(trx, pair.first, pair.second);
     }
   } else {
     TRI_ASSERT(false);

@@ -2069,16 +2069,16 @@ TEST_F(IResearchViewTest, test_insert) {
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       StorageEngineMock::recoveryTickResult = 42;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -2267,10 +2267,10 @@ TEST_F(IResearchViewTest, test_insert) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -2321,10 +2321,10 @@ TEST_F(IResearchViewTest, test_insert) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -2468,16 +2468,16 @@ TEST_F(IResearchViewTest, test_remove) {
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       StorageEngineMock::recoveryTickResult = 42;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -2666,10 +2666,10 @@ TEST_F(IResearchViewTest, test_remove) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -2720,10 +2720,10 @@ TEST_F(IResearchViewTest, test_remove) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+        link->insert(trx, pair.first, pair.second);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
