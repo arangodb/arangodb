@@ -300,10 +300,11 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     nodeAttr.afData.field = nullptr;
     // try to find in the sort column
     size_t fieldNum = 0;
+    TRI_ASSERT(!tmpUsedColumnsCounter.empty());
+    auto& tmpSlot = tmpUsedColumnsCounter.front();
     for (auto const& field : primarySort.fields()) {
       if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
-        TRI_ASSERT(!tmpUsedColumnsCounter.empty());
-        tmpUsedColumnsCounter[0].emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
+        tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
         found = true;
         break;
       }
@@ -313,10 +314,11 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     ptrdiff_t columnNum = 1;
     for (auto const& column : storedValues.columns()) {
       fieldNum = 0;
+      TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >= columnNum);
+      auto& tmpSlot = tmpUsedColumnsCounter[columnNum];
       for (auto const& field : column.fields) {
         if (latematerialized::isPrefix(field.second, nodeAttr.attr, false, postfix)) {
-          TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >= columnNum);
-          tmpUsedColumnsCounter[columnNum].emplace_back(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix));
+          tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix));
           found = true;
           break;
         }
@@ -344,7 +346,6 @@ void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& use
   TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   std::vector<ptrdiff_t> idx(columnsCount);
   std::iota(idx.begin(), idx.end(), 0);
-  auto const columnsEnd = usedColumnsCounter.begin() + columnsCount;
   // first is max size one
   std::sort(idx.begin(), idx.end(), [&usedColumnsCounter](auto const lhs, auto const rhs) {
     auto const& lhs_val = usedColumnsCounter[lhs];
