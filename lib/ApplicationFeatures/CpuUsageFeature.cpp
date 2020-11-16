@@ -38,29 +38,123 @@ constexpr size_t bufferSize = 4096;
 
 namespace arangodb {
 
-CpuUsageFeature::CpuUsageFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CpuUsage"),
-      _statFile(nullptr),
-      _updateInProgress(false) {
-  setOptional(true);
-  startsAfter<application_features::GreetingsFeaturePhase>();
+#if defined(__linux__)
+struct CpuUsageFeature::SnapshotProvider {
+  SnapshotProvider();
+  ~SnapshotProvider();
+
+  bool canTakeSnapshot() const noexcept { return _statFile != nullptr; }
+
+  bool tryTakeSnapshot(CpuUsageSnapshot& result) noexcept;
+
+ private:
+  size_t readStatFile(char* buffer, size_t bufferSize) noexcept;
+
+  /// @brief handle for /proc/stat
+  FILE* _statFile;
+};
+
+CpuUsageFeature::SnapshotProvider::SnapshotProvider(): _statFile(nullptr) {
+  // we are opening the /proc/stat file only once during the lifetime of the process,
+  // in order to avoid frequent open/close calls
+  _statFile = fopen("/proc/stat", "r");
 }
 
-CpuUsageFeature::~CpuUsageFeature() {
+CpuUsageFeature::SnapshotProvider::~SnapshotProvider() {
   if (_statFile != nullptr) {
     fclose(_statFile);
   }
 }
 
-void CpuUsageFeature::prepare() {
-  TRI_ASSERT(_statFile == nullptr);
-#ifdef __linux__
-  // we are opening the /proc/stat file only once during the lifetime of the process,
-  // in order to avoid frequent open/close calls
-  _statFile = fopen("/proc/stat", "r");
+bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result) noexcept {
+  // none of the following methods will throw an exception
+  rewind(_statFile);    
+  fflush(_statFile); 
+
+  char buffer[::bufferSize];
+  buffer[0] = '\0';
+ 
+  size_t nread = readStatFile(&buffer[0], ::bufferSize);
+  // expect a minimum size
+  if (nread < 32 || memcmp(&buffer[0], "cpu ", 4) != 0) {
+    // invalid data read.
+    return false
+  }
+
+  // 4 bytes because we skip the initial "cpu " intro
+  result = CpuUsageSnapshot::fromString(&buffer[4], bufferSize - 4);
+  return true;
+}
+
+size_t CpuUsageFeature::SnapshotProvider::readStatFile(char* buffer, size_t bufferSize) noexcept {
+  size_t offset = 0;
+  size_t remain = bufferSize - 1;
+  while (remain > 0) {
+    TRI_ASSERT(offset < bufferSize);
+
+    size_t nread = fread(buffer + offset, 1, remain, _statFile);
+    if (nread == 0) {
+      break;
+    }
+    remain -= nread;
+    offset += nread;
+  }
+  TRI_ASSERT(offset < bufferSize);
+  buffer[offset] = '\0';
+  return offset;
+}
+#elif defined(_WIN32)
+struct CpuUsageFeature::SnapshotProvider {
+  bool canTakeSnapshot() const noexcept { return true; }
+
+  bool tryTakeSnapshot(CpuUsageSnapshot& result) noexcept;
+};
+
+bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result) noexcept {
+  FILETIME idleTime, kernelTime, userTime;
+  if (GetSystemTimes(&idleTime, &kernelTime, &userTime) == FALSE) {
+    return false;
+  }
+
+  auto toUInt64 = [](FILETIME const& value) {
+    ULARGE_INTEGER result;
+    result.LowPart  = value.dwLowDateTime;
+    result.HighPart = value.dwHighDateTime;
+    return result.QuadPart ;
+  };
+
+  result.idle = toUInt64(idleTime);
+  result.user = toUInt64(userTime);
+  // the kernel time returned by GetSystemTimes includes the amount of time the system has been idle
+  result.system = toUInt64(kernelTime) - result.idle;
+  return true;
+}
+
+#else
+struct CpuUsageFeature::SnapshotProvider {
+  bool canTakeSnapshot() const noexcept { return false; }
+
+  bool tryTakeSnapshot(CpuUsageSnapshot&) noexcept {
+    TRI_ASSERT(false); // should never be called!
+    return false;
+  }
+};
 #endif
 
-  if (_statFile == nullptr) {
+CpuUsageFeature::CpuUsageFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "CpuUsage"),
+      _snapshotProvider(),
+      _updateInProgress(false) {
+  setOptional(true);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
+
+CpuUsageFeature::~CpuUsageFeature() = default;
+
+void CpuUsageFeature::prepare() {
+  _snapshotProvider = std::make_unique<SnapshotProvider>();
+
+  if (!_snapshotProvider->canTakeSnapshot()) {
     // we will not be able to provide any stats, so let's disable ourselves
     disable();
   }
@@ -69,8 +163,7 @@ void CpuUsageFeature::prepare() {
 CpuUsageSnapshot CpuUsageFeature::snapshot() {
   CpuUsageSnapshot last;
   
-  if (_statFile == nullptr) {
-    // /proc/stat not there. will happen on non-Linux platforms
+  if (!isEnabled()) {
     return last;
   }
   
@@ -100,27 +193,16 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
     return last;
   }
 
-  // none of the following methods will throw an exception
-  rewind(_statFile);    
-  fflush(_statFile); 
-
-  char buffer[::bufferSize];
-  buffer[0] = '\0';
- 
-  size_t nread = readStatFile(&buffer[0], ::bufferSize);
-  // expect a minimum size
-  if (nread < 32 || memcmp(&buffer[0], "cpu ", 4) != 0) {
-    // invalid data read. return whatever we had before
+  CpuUsageSnapshot next;
+  if (!_snapshotProvider->tryTakeSnapshot(next)) {
+    // failed to obtain new snapshot - return whatever we had before
     {
       MUTEX_LOCKER(guard, _snapshotMutex);
       _updateInProgress = false;
     }
     return last;
   }
-
-  // 4 bytes because we skip the initial "cpu " intro
-  CpuUsageSnapshot next = CpuUsageSnapshot::fromString(&buffer[4], bufferSize - 4);
- 
+  
   // snapshot must be updated and returned under mutex
   MUTEX_LOCKER(guard, _snapshotMutex);
   _snapshot = next;
@@ -131,24 +213,6 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
   }
 
   return next;
-}
-
-size_t CpuUsageFeature::readStatFile(char* buffer, size_t bufferSize) noexcept {
-  size_t offset = 0;
-  size_t remain = bufferSize - 1;
-  while (remain > 0) {
-    TRI_ASSERT(offset < bufferSize);
-
-    size_t nread = fread(buffer + offset, 1, remain, _statFile);
-    if (nread == 0) {
-      break;
-    }
-    remain -= nread;
-    offset += nread;
-  }
-  TRI_ASSERT(offset < bufferSize);
-  buffer[offset] = '\0';
-  return offset;
 }
 
 }

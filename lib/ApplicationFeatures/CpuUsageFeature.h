@@ -45,12 +45,10 @@ class CpuUsageFeature final : public application_features::ApplicationFeature {
   CpuUsageSnapshot snapshot();
 
  private:
-  size_t readStatFile(char* buffer, size_t bufferSize) noexcept;
+  struct SnapshotProvider;
 
- private:
-  /// @brief handle for /proc/stat
-  FILE* _statFile;
-  
+  std::unique_ptr<SnapshotProvider> _snapshotProvider;
+
   /// @brief a mutex protecting concurrent reads and writes of the snapshot
   Mutex _snapshotMutex;
 
