@@ -397,7 +397,6 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       usedColumnsCounter.resize(columnsCount);
     }
     // restoring initial state for column accumulator (only potentially usable part)
-    ptrdiff_t column = 0;
     auto const beginColumns = usedColumnsCounter.begin();
     auto const endColumns = usedColumnsCounter.begin() + columnsCount;
     for (auto it = beginColumns; it != endColumns; ++it)  {
