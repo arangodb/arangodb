@@ -141,6 +141,3 @@ IAggregator* VertexAccumulators::aggregator(const std::string& name) const {
 }
 
 };  // namespace arangodb::pregel::algos::accumulators
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::Worker<vertex_type, edge_type, message_type>;
