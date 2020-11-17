@@ -34,6 +34,9 @@ devel
 
 * Fix log topic of general shutdown message from "cluster" to general.
 
+* Automatically add "www-authenticate" headers to server HTTP 401 responses,
+  as required by the HTTP specification.
+
 * Make the DOCUMENT AQL function eligible for running on DB servers in
   OneShard deployment mode. This allows pushing more query parts to DB servers
   for execution.
