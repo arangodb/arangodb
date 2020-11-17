@@ -28,6 +28,10 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
 
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
+
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
