@@ -296,12 +296,14 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     handleError(err);
   }
 }
-
+  
 void RestHandler::runHandlerStateMachine() {
   TRI_ASSERT(_callback);
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
 
   while (true) {
+    // logState("state loop");
+
     switch (_state) {
       case HandlerState::PREPARE:
         prepareEngine();
@@ -309,7 +311,9 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::EXECUTE: {
         executeEngine(/*isContinue*/false);
+
         if (_state == HandlerState::PAUSED) {
+          // logState("execute -> paused");
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
@@ -320,7 +324,9 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::CONTINUED: {
         executeEngine(/*isContinue*/true);
+
         if (_state == HandlerState::PAUSED) {
+          // logState("continued -> paused");
           shutdownExecute(/*isFinalized*/false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
@@ -562,11 +568,38 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
 void RestHandler::resetResponse(rest::ResponseCode code) {
   TRI_ASSERT(_response != nullptr);
   _response->reset(code);
 }
+
+void RestHandler::logState(char const* context) const {
+#if 0
+  // this code should almost never run. it can be used for
+  // debug purposes
+  LOG_TOPIC("c78f7", TRACE, Logger::DEVEL) 
+      << "state machine for handler"
+      << " " << (void*) this
+      << " [" << stateString(_state) << "]" 
+      << " " << context
+      << ", type: " << name() 
+      << ", url: " << (_request.get() ? _request->fullUrl() : "-")
+      << ", req: " << _request.get() 
+      << ", res: " << _response.get()
+      << ", canceled: " << _canceled.load(std::memory_order_relaxed);
+#endif
+}
+
+/*static*/ char const* RestHandler::stateString(HandlerState state) {
+  switch (state) {
+    case HandlerState::PREPARE: return "prepare";
+    case HandlerState::EXECUTE: return "execute";
+    case HandlerState::PAUSED: return "paused";
+    case HandlerState::CONTINUED: return "continued";
+    case HandlerState::FINALIZE: return "finalize";
+    case HandlerState::DONE: return "done";
+    case HandlerState::FAILED: return "failed";
+  }
+  return "unknown";
+}
+
