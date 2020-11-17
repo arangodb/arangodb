@@ -127,7 +127,6 @@ void NetworkFeature::prepare() {
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
 
-  LOG_DEVEL << "NUM: " << _numIOThreads;
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
   
