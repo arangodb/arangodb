@@ -104,7 +104,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  _numIOThreads = std::min<unsigned>(1, std::max<unsigned>(_numIOThreads, 8));
+  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
