@@ -61,7 +61,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _statistics(nullptr),
       _handlerId(0),
       _state(HandlerState::PREPARE),
-      _enableHandlerLogging(false)
+      _enableHandlerLogging(false),
       _canceled(false) {
 
   _enableHandlerLogging = Logger::isEnabled(LogLevel::TRACE, Logger::HANDLER); 
