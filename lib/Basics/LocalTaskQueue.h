@@ -63,7 +63,7 @@ class LambdaTask : public LocalTask {
  public:
   LambdaTask(std::shared_ptr<LocalTaskQueue> const&, std::function<Result()>&&);
 
-  virtual void run();
+  void run() override;
 
  private:
   std::function<Result()> _fn;
