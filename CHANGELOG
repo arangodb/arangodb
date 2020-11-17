@@ -1,6 +1,62 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Added new metric `arangodb_network_forwarded_requests` to track the number
+  of requests forwarded from one coordinator to another in a load-balancing
+  context.
+
+* Added new metric `arangodb_replication_cluster_inventory_requests` to track
+  the number of requests received for cluster inventories. The cluster
+  inventory API is called at the beginning of a dump process or by arangosync.
+
+* Added new AQL metrics:
+  - `arangodb_aql_total_query_time_msec": Total execution time of all AQL
+    queries (ms)
+  - `arangodb_aql_all_query`: total number of all AQL queries
+
+* Added new metric `arangodb_aql_total_query_time_msec` to track the combined
+  runtime of AQL queries (slow queries and non-slow queries).
+
+* Added more scheduler metrics:
+
+  - `arangodb_scheduler_threads_started`: Total number of scheduler threads
+    started
+  - `arangodb_scheduler_threads_stopped`: Total number of scheduler threads
+    stopped
+  - `arangodb_scheduler_jobs_done`: Total number of scheduler queue jobs done
+  - `arangodb_scheduler_jobs_submitted`: Total number of jobs submitted to the
+    scheduler queue
+  - `arangodb_scheduler_jobs_dequeued`: Total number of jobs dequeued from the
+    scheduler queue
+  - `arangodb_scheduler_num_working_threads`: Number of currently working
+    scheduler threads
+
+* Added startup option `--server.unavailability-queue-fill-grade`. This option
+  has a consequence for the `/_admin/server/availability` API only, which is
+  often called by load-balancers and other availability probing systems.
+  The `/_admin/server/availability` API will now return HTTP 200 if the fill
+  grade of the scheduler's queue is below the configured value, or HTTP 503 if
+  the fill grade is above it. This can be used to flag a server as unavailable
+  in case it is already highly loaded.
+  The default value for this option is `1`, which will mean that the
+  availability API will start returning HTTP 503 responses in case the scheduler
+  queue is completely full. This is mostly compatible with previous versions of
+  ArangoDB.
+  Previously the availability API still returned HTTP 200 in this situation, but
+  this can be considered a bug, because the server was effectively totally
+  overloaded.
+  To restore 100% compatible behavior with previous version, it is possible to
+  set the option to a value of `0`, which is a special value indicating that the
+  queue fill grade will not be honored.
+
+  To prevent sending more traffic to an already overloaded server, it can be
+  sensible to reduce the default value to `0.75` or even `0.5`.
+  This would mean that instances with a queue longer than 75% (or 50%, resp.) of
+  their maximum queue capacity would return HTTP 503 instead of HTTP 200 when
+  their availability API is probed.
+
+  nb: the default value for the scheduler queue length is 4096.
+
 * Updated arangosync to 0.7.12.
 
 * Fixed bug with ArangoSearch views on SmartGraph edge collections which could

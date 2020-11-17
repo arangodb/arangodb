@@ -157,8 +157,7 @@ void QueryList::remove(Query* query) {
   // elapsed time since query start
   double const elapsed = elapsedSince(query->startTime());
 
-  query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
-      StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * elapsed);
+  _queryRegistryFeature.trackQuery(elapsed);
 
   if (!trackSlowQueries() || query->killed()) {
     return;
@@ -175,7 +174,7 @@ void QueryList::remove(Query* query) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
   
-      _queryRegistryFeature.trackSlowQuery();
+      _queryRegistryFeature.trackSlowQuery(elapsed);
       
       // we calculate the query start timestamp as the current time minus
       // the elapsed time since query start. this is not 100% accurrate, but
