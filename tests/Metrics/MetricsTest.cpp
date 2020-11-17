@@ -283,8 +283,8 @@ template<typename T> void gauge_test() {
       async(launch::async,
             [&] {
               for (size_t j = 0; j < part; ++j) {
-                g += vr[j];
-                g -= vr[j];
+                g += vr.at(j);
+                g -= vr.at(j);
               }}));
   }
   for (auto& i : f) {
@@ -303,8 +303,8 @@ template<typename T> void gauge_test() {
       async(launch::async,
             [&] {
               for (size_t j = 0; j < part; ++j) {
-                g *= vr[j];
-                g /= vr[j];
+                g *= vr.at(j);
+                g /= vr.at(j);
               }}));
   }
   for (auto& i : f) {
