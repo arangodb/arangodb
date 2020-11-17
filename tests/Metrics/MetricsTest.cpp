@@ -290,11 +290,10 @@ template<typename T> void gauge_test() {
   for (auto& i : f) {
     i.wait();
   }
-
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_FLOAT_EQ(g.load(), one);
+    ASSERT_TRUE(1.f - g.load() < 1.e-6f);
   } else {
-    ASSERT_DOUBLE_EQ(g.load(), one);
+    ASSERT_TRUE(1. - g.load() < 1.e-15);
   }
 
   g = one;
@@ -310,12 +309,12 @@ template<typename T> void gauge_test() {
   for (auto& i : f) {
     i.wait();
   }
-
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_FLOAT_EQ(g.load(), one);
+    ASSERT_TRUE(1.f - g.load() < 1.e-6f);
   } else {
-    ASSERT_DOUBLE_EQ(g.load(), one);
+    ASSERT_TRUE(1. - g.load() < 1.e-15);
   }
+
 
   g = zero;
   ASSERT_DOUBLE_EQ(g.load(),  zero);
