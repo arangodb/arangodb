@@ -67,7 +67,7 @@ namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
     : NetworkFeature(server, network::ConnectionPool::Config{}) {
-  this->_numIOThreads = 2; // override default
+  this->_numIOThreads = 1; // override default
 }
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
@@ -143,7 +143,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  _numIOThreads = std::min<unsigned>(1, std::max<unsigned>(_numIOThreads, 8));
+  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
@@ -165,7 +165,7 @@ void NetworkFeature::prepare() {
   if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
-
+  
   network::ConnectionPool::Config config;
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
