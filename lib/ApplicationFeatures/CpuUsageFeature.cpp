@@ -165,10 +165,10 @@ void CpuUsageFeature::prepare() {
 }
 
 CpuUsageSnapshot CpuUsageFeature::snapshot() {
-  CpuUsageSnapshot last;
+  CpuUsageSnapshot lastSnapshot, lastDelta;
   
   if (!isEnabled()) {
-    return last;
+    return lastDelta;
   }
   
   // whether or not a concurrent thread is currently updating our
@@ -178,7 +178,8 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
   {
     // read last snapshot under the mutex
     MUTEX_LOCKER(guard, _snapshotMutex);
-    last = _snapshot;
+    lastSnapshot = _snapshot;
+    lastDelta = _snapshotDelta;
     updateInProgress = _updateInProgress;
 
     if (!updateInProgress) {
@@ -194,29 +195,25 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
     // to /proc/stat by multiple concurrent threads. this also helps
     // reducing the load if multiple threads concurrently request the
     // CPU statistics
-    return last;
+    return lastDelta;
   }
 
   CpuUsageSnapshot next;
-  if (!_snapshotProvider->tryTakeSnapshot(next)) {
-    // failed to obtain new snapshot - return whatever we had before
-    {
-      MUTEX_LOCKER(guard, _snapshotMutex);
-      _updateInProgress = false;
+  auto success = _snapshotProvider->tryTakeSnapshot(next);
+  {
+    // snapshot must be updated and returned under mutex
+    MUTEX_LOCKER(guard, _snapshotMutex);
+    if (success) {
+      // if we failed to obtain new snapshot, we simply return whatever we had before
+      _snapshot = next;
+      if (lastSnapshot.valid()) {
+        next.subtract(lastSnapshot);
+      }
+      _snapshotDelta = next;
     }
-    return last;
+    _updateInProgress = false;
+    return _snapshotDelta;
   }
-  
-  // snapshot must be updated and returned under mutex
-  MUTEX_LOCKER(guard, _snapshotMutex);
-  _snapshot = next;
-  _updateInProgress = false;
-
-  if (last.valid()) {
-    next.subtract(last);
-  }
-
-  return next;
 }
 
 }

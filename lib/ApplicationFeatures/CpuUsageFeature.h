@@ -42,11 +42,14 @@ class CpuUsageFeature final : public application_features::ApplicationFeature {
 
   void prepare() override final;
 
+  /// @brief returns a snapshot containing CPU usage statistics.
   CpuUsageSnapshot snapshot();
 
  private:
   struct SnapshotProvider;
 
+  /// @brief the provider that is used to obtain a CpuUsageSnapshot.
+  /// The actual provider implementation is OS dependent.
   std::unique_ptr<SnapshotProvider> _snapshotProvider;
 
   /// @brief a mutex protecting concurrent reads and writes of the snapshot
@@ -55,6 +58,10 @@ class CpuUsageFeature final : public application_features::ApplicationFeature {
   /// @brief last snapshot taken
   /// protected by _snapshotMutex
   CpuUsageSnapshot _snapshot;
+
+  /// @brief the delta of the last snapshot taken to its predecessor
+  /// protected by _snapshotMutex
+  CpuUsageSnapshot _snapshotDelta;
 
   /// @brief whether or not a stats update in currently in progress.
   /// protected by _snapshotMutex
