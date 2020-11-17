@@ -30,7 +30,13 @@
 
 #include "RestServer/Metrics.h"
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
+#include <functional>
+#include <future>
+#include <iterator>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -56,7 +62,7 @@ TEST_F(MetricsTest, test_counter_concurrency) {
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
-        // wait until all threads are created, so they can 
+        // wait until all threads are created, so they can
         // start at the approximate same time
       }
       for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
@@ -66,11 +72,11 @@ TEST_F(MetricsTest, test_counter_concurrency) {
   }
 
   go.store(true);
-  
+
   for (auto& thread : threads) {
     thread.join();
   }
-  
+
   ASSERT_EQ(c.load(), ::numThreads * ::numOpsPerThread);
 }
 
@@ -81,7 +87,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_same) {
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   std::atomic<bool> go = false;
 
   std::vector<std::thread> threads;
@@ -89,7 +95,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_same) {
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
-        // wait until all threads are created, so they can 
+        // wait until all threads are created, so they can
         // start at the approximate same time
       }
       for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
@@ -97,13 +103,13 @@ TEST_F(MetricsTest, test_histogram_concurrency_same) {
       }
     });
   }
-  
+
   go.store(true);
-  
+
   for (auto& thread : threads) {
     thread.join();
   }
-  
+
   ASSERT_EQ(h.load(0), ::numThreads * ::numOpsPerThread);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
@@ -117,7 +123,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   std::atomic<bool> go = false;
 
   std::vector<std::thread> threads;
@@ -125,7 +131,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&](uint64_t value) {
       while (!go.load()) {
-        // wait until all threads are created, so they can 
+        // wait until all threads are created, so they can
         // start at the approximate same time
       }
       for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
@@ -133,13 +139,13 @@ TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
       }
     }, i * 30);
   }
-  
+
   go.store(true);
-  
+
   for (auto& thread : threads) {
     thread.join();
   }
-  
+
   ASSERT_EQ(h.load(0), ::numOpsPerThread);
   ASSERT_EQ(h.load(1), (::numThreads > 1 ? 1 : 0) * ::numOpsPerThread);
   ASSERT_EQ(h.load(2), (::numThreads > 2 ? 1 : 0) * ::numOpsPerThread);
@@ -159,67 +165,67 @@ TEST_F(MetricsTest, test_histogram_simple) {
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(0);
   ASSERT_EQ(h.load(0), 2);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(1);
   ASSERT_EQ(h.load(0), 3);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(1);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(30);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 1);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(30);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(60);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 1);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(60);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(90);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 1);
-  
+
   h.count(90);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 2);
-  
+
   h.count(10000);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 3);
-  
+
   h.count(10000000);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
@@ -258,6 +264,60 @@ template<typename T> void gauge_test() {
   T zdo = .1, zero = 0., one = 1.;
   Gauge g(zero, "gauge_1", "Gauge 1");
 
+  using namespace std;
+  using namespace std::chrono;
+
+  random_device rnd_device;
+  mt19937 mersenne_engine {rnd_device()};  // Generates random integers
+  uniform_real_distribution<T> dist {T(1), T(100)};
+  vector<T> vr(100);
+  auto gen = [&dist, &mersenne_engine](){
+               return dist(mersenne_engine);
+             };
+  generate(vr.begin(), vr.end(), gen);
+
+  size_t const p = 10;
+  size_t const part = vr.size()/p;
+  std::vector<std::future<void>> f;
+
+  g = one;
+  for (size_t i = 0; i < p; ++i) {
+    f.push_back(
+      async(launch::async,
+            [&] {
+              for (size_t j = 0; j < part; ++j) {
+                g += vr.at(j);
+                g -= vr.at(j);
+              }}));
+  }
+  for (auto& i : f) {
+    i.wait();
+  }
+  if constexpr (std::is_same<T,float>::value) {
+    ASSERT_TRUE(1.f - g.load() < 1.e-6f);
+  } else {
+    ASSERT_TRUE(1. - g.load() < 1.e-15);
+  }
+
+  g = one;
+  for (size_t i = 0; i < p; ++i) {
+    f.push_back(
+      async(launch::async,
+            [&] {
+              for (size_t j = 0; j < part; ++j) {
+                g *= vr.at(j);
+                g /= vr.at(j);
+              }}));
+  }
+  for (auto& i : f) {
+    i.wait();
+  }
+  if constexpr (std::is_same<T,float>::value) {
+    ASSERT_TRUE(1.f - g.load() < 1.e-6f);
+  } else {
+    ASSERT_TRUE(1. - g.load() < 1.e-15);
+  }
+  g = zero;
   ASSERT_DOUBLE_EQ(g.load(),  zero);
   g += zdo;
   ASSERT_DOUBLE_EQ(g.load(),  zdo);
@@ -274,6 +334,7 @@ template<typename T> void gauge_test() {
   std::string s;
   g.toPrometheus(s);
   LOG_DEVEL << s;
+
 
 }
 
