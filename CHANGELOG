@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fix Gauge class' assignment operators.
+
 * Fix internal issue #777: Fixed memory access while substituting stored values
   for ArangoSearch view optimization.
 
