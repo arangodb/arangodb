@@ -28,8 +28,6 @@
 #include "Basics/CpuUsageSnapshot.h"
 #include "Basics/Mutex.h"
 
-#include <cstdio>
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
