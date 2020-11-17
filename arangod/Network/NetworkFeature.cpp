@@ -65,10 +65,12 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
     : NetworkFeature(server, network::ConnectionPool::Config{}) {
-  this->_numIOThreads = 2; // override default
+  this->_numIOThreads = 1; // override default
 }
+#endif
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
@@ -165,7 +167,7 @@ void NetworkFeature::prepare() {
   if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
-
+  
   network::ConnectionPool::Config config;
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
