@@ -102,12 +102,10 @@ template<typename T> class Gauge : public Metric {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_add(t, std::memory_order_relaxed);
     } else {
-      T tmp;
+      T tmp(_g.load(std::memory_order_relaxed));
       do {
-        tmp = _g.load(std::memory_order_relaxed);
       } while (!_g.compare_exchange_weak(
                  tmp, tmp + t, std::memory_order_relaxed, std::memory_order_relaxed));
-
     }
     return *this;
   }
@@ -115,29 +113,26 @@ template<typename T> class Gauge : public Metric {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_sub(t, std::memory_order_relaxed);
     } else {
-      T tmp;
+      T tmp(_g.load(std::memory_order_relaxed));
       do {
-        tmp = _g.load(std::memory_order_relaxed);
       } while (!_g.compare_exchange_weak(
                  tmp, tmp - t, std::memory_order_relaxed, std::memory_order_relaxed));
     }
     return *this;
   }
   Gauge<T>& operator*=(T const& t) {
-    T tmp;
-    do {
-      tmp = _g.load(std::memory_order_relaxed);
-    } while (!_g.compare_exchange_weak(tmp, tmp * t, std::memory_order_relaxed,
-        std::memory_order_relaxed));
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp * t, std::memory_order_relaxed, std::memory_order_relaxed));
     return *this;
   }
   Gauge<T>& operator/=(T const& t) {
     TRI_ASSERT(t != T(0));
-    T tmp;
-    do {
-      tmp = _g.load(std::memory_order_relaxed);
-    } while (!_g.compare_exchange_weak(tmp, tmp / t, std::memory_order_relaxed,
-        std::memory_order_relaxed));
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp / t, std::memory_order_relaxed, std::memory_order_relaxed));
     return *this;
   }
   Gauge<T>& operator=(T const& t) {
