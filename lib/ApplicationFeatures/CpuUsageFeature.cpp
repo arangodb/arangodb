@@ -82,7 +82,7 @@ bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result
   // expect a minimum size
   if (nread < 32 || memcmp(&buffer[0], "cpu ", 4) != 0) {
     // invalid data read.
-    return false
+    return false;
   }
 
   // 4 bytes because we skip the initial "cpu " intro
