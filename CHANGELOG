@@ -1,7 +1,6 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
-
 * Fix Gauge class' assignment operators.
 
 * Make the number of network I/O threads properly configurable via the startup
