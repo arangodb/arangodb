@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
-#include <Cluster/CallbackGuard.h>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -30,12 +29,17 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
+#include "Cluster/CallbackGuard.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"
+
+#include <algorithm>
+#include <chrono>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -444,26 +448,68 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
 void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  while(true) {
-    WRITE_LOCKER(guard, _lock);
-    size_t remain = snippets.size();
-    for (auto& pair : snippets) {
-      auto it = _engines.find(pair.first);
-      if (it == _engines.end()) {
-        remain--;
-        continue;
+  // copy snippet ids into a (likely on-stack) vector
+  arangodb::containers::SmallVector<EngineId>::allocator_type::arena_type arena;
+  arangodb::containers::SmallVector<EngineId> snippetIds{arena};
+
+  snippetIds.reserve(snippets.size());
+  std::for_each(snippets.begin(), snippets.end(), [&](auto& pair) {
+    snippetIds.push_back(pair.first);
+  });
+
+  std::chrono::time_point<std::chrono::steady_clock> lastWarning;
+
+  while (true) {
+    {
+      WRITE_LOCKER(guard, _lock);
+      // make a single forward pass over all snippets in our vector, 
+      // compacting the vector as we go.
+      for (size_t i = 0; i < snippetIds.size(); /* intentionally no increase */) {
+        TRI_ASSERT(i < snippetIds.size());
+        // can we remove the current id from snippetIds?
+        auto it = _engines.find(snippetIds[i]);
+        if (it == _engines.end() || !it->second._isOpen) { 
+          // either snippet not found anymore, so we can remove the id
+          // from the vector, or the snippet still exists, but it is still
+          // in use.
+          
+          if (it != _engines.end()) {
+            // remove from _engines
+            TRI_ASSERT(!it->second._isOpen);
+            _engines.erase(it);
+          }
+
+          if (i + 1 != snippetIds.size()) {
+            // we are not on the last element.
+            // we can pop the last element and overwrite ourselves
+            snippetIds[i] = snippetIds.back();
+          }
+          // always pop back last element, in order to remove
+          // one element from the vector. 
+          // note: we are not using erase() on the vector here because
+          // it on average will need to move (n / 2) members. 
+          TRI_ASSERT(!snippetIds.empty());
+          snippetIds.pop_back();
+          // intentionally don't increase i!
+        } else {
+          ++i;
+        }
       }
-      if (it->second._isOpen) { // engine still in use
-        LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
-          << "engine snippet '" << pair.first << "' is still in use";
-        continue;
-      }
-      _engines.erase(it);
-      remain--;
     }
-    guard.unlock();
-    if (remain == 0) {
+
+    if (snippetIds.empty()) {
+      // done!
       break;
+    }
+
+    // reduce log spam to one message per second here - otherwise this would massively
+    // spam the logfile
+    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
+    if (now - lastWarning > std::chrono::seconds(1)) {
+      lastWarning = now;
+
+      LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
+            << "engine snippet(s) " << snippetIds << " are still in use";
     }
     std::this_thread::yield();
   }
