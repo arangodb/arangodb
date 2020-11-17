@@ -1,5 +1,32 @@
 devel
 -----
+* Fix internal issue #777: Fixed memory access while substituting
+  stored values for ArangoSearch view optimization
+
+* Fix HTTP/1.1 status response header in fuerte responses
+
+  This change makes fuerte return the full status header, including the
+  numeric status code and the status string in the `http/1.1` header of
+  fuerte responses.
+
+  Previously, the return header lacked the numeric status code, so it
+  looked like
+  ```
+  "http/1.1" : "Ok"
+  ```
+  Now, with the numeric status code, the response header will look like
+  ```
+  "http/1.1" : "200 Ok"
+  ```
+  This PR also adds a protocol() method for arango client connections in
+  order to check the protocol in use. The possible return values are
+  - "http" for HTTP/1.1 connections
+  - "http2" for HTTP/2 connections
+  - "vst" for VST connections
+  - "unknown" for everyhting else
+  This is needed during testing, but can also be used for other purposes.
+
+* Updated arangosync to 0.7.12.
 
 * Fix log topic of general shutdown message from "cluster" to general.
 

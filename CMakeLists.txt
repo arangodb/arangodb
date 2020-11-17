@@ -969,7 +969,7 @@ else () # NOT MSVC
   # flags for builds with debug symbols
   if (USE_MINIMAL_DEBUGINFO)
     # minimal debug symbols
-    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz -feliminate-unused-debug-symbols")
+    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
   else ()
     # full debug symbols
     set(DEBUGINFO_FLAGS "-g")

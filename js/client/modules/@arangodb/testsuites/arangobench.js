@@ -35,6 +35,7 @@ const optionsDocumentation = [
   '   - `benchargs`: additional commandline arguments to arangobench'
 ];
 
+const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const internal = require('internal');
@@ -199,12 +200,14 @@ function arangobench (options) {
   for (let i = 0; i < benchTodos.length; i++) {
     const benchTodo = benchTodos[i];
     const name = 'case' + i;
+    const reportfn = fs.join(instanceInfo.rootDir, 'report_' + name + '.json');
 
     if ((options.skipArangoBenchNonConnKeepAlive) &&
         benchTodo.hasOwnProperty('keep-alive') &&
         (benchTodo['keep-alive'] === 'false')) {
       benchTodo['keep-alive'] = true;
     }
+    benchTodo['json-report-file'] = reportfn;
 
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster || !benchTodo.transaction) {
@@ -250,7 +253,24 @@ function arangobench (options) {
           internal.db._dropDatabase(benchTodo['server.database']);
         }
       }
-
+      let content;
+      try {
+        content = fs.read(reportfn);
+        const jsonResult = JSON.parse(content);
+        const haveResultFields = jsonResult.hasOwnProperty('histogram') &&
+          jsonResult.hasOwnProperty('results') &&
+              jsonResult.hasOwnProperty('avg');
+        if (!haveResultFields) {
+          oneResult.status = false;
+          oneResult.message += "critical fields have been missing in the json result: '" +
+            content + "'";
+        }
+      } catch (x) {
+        oneResult.message += "failed to parse json report for '" +
+          reportfn + "' - '" + x.message + "' - content: '" + content;
+        oneResult.status = false;
+      }
+      
       results[name] = oneResult;
       results[name].total++;
       results[name].failed = 0;
