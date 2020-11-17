@@ -32,7 +32,6 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 
-
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -102,7 +101,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::startNext
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::fetchResults(ResultList& results) -> void {
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::fetchResults(ResultList& results)
+    -> void {
   std::vector<Step*> looseEnds{};
   if (_direction == Direction::FORWARD) {
     for (auto& [step, unused] : results) {
@@ -198,7 +198,16 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
     : _options(std::move(options)),
       _left{Direction::FORWARD, std::move(forwardProvider), _options},
       _right{Direction::BACKWARD, std::move(backwardProvider), _options},
-      _resultPath{} {}
+      _resultPath{},
+      _trx(forwardProvider.trx()) {}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(const TwoSidedEnumerator& other)
+    : _options(other->_options),
+      _left(other._left),
+      _right(other._right),
+      _resultPath{},
+      _trx(other.trx()) {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
@@ -278,7 +287,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(
         }
       }
     }
-    
+
     fetchResults();
 
     while (!_results.empty()) {

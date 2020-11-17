@@ -342,14 +342,18 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       arangodb::graph::TwoSidedEnumeratorOptions lolOptions{opts->minDepth, opts->maxDepth};
 
-      TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>
-          KPathFinder{SingleServerProvider(opts->query(), bpo),
-                      SingleServerProvider(opts->query(), bpo), std::move(lolOptions)};
+      using KPathRefactored =
+          TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
+
+      KPathRefactored KPathFinder = {SingleServerProvider(opts->query(), bpo),
+                                     SingleServerProvider(opts->query(), bpo),
+                                     std::move(lolOptions)};
+      auto kPathUnique = std::make_unique<KPathRefactored>(KPathFinder);
 
       auto executorInfos =
-          KShortestPathsExecutorInfos(outputRegister, std::move(KPathFinder),
+          KShortestPathsExecutorInfos(outputRegister, std::move(kPathUnique),
                                       std::move(sourceInput), std::move(targetInput));
-      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
+      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
       auto finder = std::make_unique<graph::KPathFinder>(*opts);

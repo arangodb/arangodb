@@ -26,9 +26,10 @@
 
 #include "Containers/HashSet.h"
 
-#include "Graph/PathManagement/PathResult.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
+#include "Graph/PathManagement/PathResult.h"
 #include "Graph/ShortestPathFinder.h"  // TODO: Change / remove / minimize
+#include "Transaction/Methods.h"
 
 #include <set>
 
@@ -74,13 +75,12 @@ class TwoSidedEnumerator {
 
     auto matchResultsInShell(Step const& match, ResultList& results) const -> void;
     auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
-    
+
     // Ensure that we have fetched all vertices
     // in the _results list.
     // Otherwise we will not be able to
     // generate the resulting path
     auto fetchResults(ResultList& results) -> void;
-
 
    private:
     // Fast path, to test if we find a connecting vertex between left and right.
@@ -102,6 +102,7 @@ class TwoSidedEnumerator {
  public:
   TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
                      TwoSidedEnumeratorOptions&& options);
+  TwoSidedEnumerator(const TwoSidedEnumerator& other);
 
   ~TwoSidedEnumerator();
 
@@ -150,11 +151,17 @@ class TwoSidedEnumerator {
    */
 
   bool skipPath();
+  auto destroyEngines() -> void;  // TODO: remove me
+  arangodb::transaction::Methods* trx() {
+    return &_trx;
+  }  // TODO: check responsibility
+
+  TwoSidedEnumerator(void);
 
  private:
   auto searchDone() const -> bool;
   auto startNextDepth() -> void;
-  
+
   // Ensure that we have fetched all vertices
   // in the _results list.
   // Otherwise we will not be able to
@@ -170,6 +177,7 @@ class TwoSidedEnumerator {
   bool _resultsFetched{false};
 
   PathResult<Step> _resultPath;
+  arangodb::transaction::Methods _trx;  // TODO: Check!
 };
 }  // namespace graph
 }  // namespace arangodb
