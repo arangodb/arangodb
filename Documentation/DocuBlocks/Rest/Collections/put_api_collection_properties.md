@@ -22,12 +22,6 @@ attribute(s)
 - *waitForSync*: If *true* then creating or changing a
   document will wait until the data has been synchronized to disk.
 
-- *journalSize*: The maximal size of a journal or datafile in bytes.
-  The value must be at least `1048576` (1 MB). Note that when
-  changing the journalSize value, it will only have an effect for
-  additional journals or datafiles that are created. Already
-  existing journals or datafiles will not be affected.
-
 - *schema*: Object that specifies the collection level schema 
   for documents. The attribute keys `rule`, `level` and `message` must follow
   the rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
@@ -40,8 +34,6 @@ On success an object with the following attributes is returned:
 
 - *waitForSync*: The new value.
 
-- *journalSize*: The new value.
-
 - *status*: The status of the collection as number.
 
 - *type*: The collection type. Valid types are:
@@ -49,12 +41,6 @@ On success an object with the following attributes is returned:
   - 3: edges collection
 
 - *isSystem*: If *true* then the collection is a system collection.
-
-- *isVolatile*: If *true* then the collection data will be
-  kept in memory only and ArangoDB will not write or sync the data
-  to disk.
-
-- *doCompact*: Whether or not the collection will be compacted.
 
 - *keyOptions*: JSON object which contains key generation options:
   - *type*: specifies the type of the key generator. The currently
@@ -71,7 +57,7 @@ On success an object with the following attributes is returned:
   The attribute keys `rule`, `level` and `message` must follow the rules
   documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
-**Note**: except for *waitForSync*, *journalSize* and *name*, collection
+**Note**: except for *waitForSync* and *name*, collection
 properties **cannot be changed** once a collection is created. To rename
 a collection, the rename endpoint must be used.
 
