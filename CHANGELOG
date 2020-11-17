@@ -1,6 +1,9 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fix internal issue #777: Fixed memory access while substituting
+  stored values for ArangoSearch view optimization
+
 * Updated arangosync to 0.7.12.
 
 * Fixed bug with ArangoSearch views on SmartGraph edge collections which could
