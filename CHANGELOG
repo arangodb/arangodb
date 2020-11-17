@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make the number of network I/O threads properly configurable via the
+  startup option `--network.io-threads`. This option existed before, but its
+  configured value was effectively clamped to a value of `1`.
+
 * Fix HTTP/1.1 status response header in fuerte responses
 
   This change makes fuerte return the full status header, including the
