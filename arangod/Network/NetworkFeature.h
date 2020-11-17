@@ -35,10 +35,7 @@ namespace arangodb {
 
 class NetworkFeature final : public application_features::ApplicationFeature {
  public:
-#ifdef ARANGODB_USE_GOOGLE_TESTS
   explicit NetworkFeature(application_features::ApplicationServer& server);
-#endif
-
   explicit NetworkFeature(application_features::ApplicationServer& server,
                           network::ConnectionPool::Config);
 
