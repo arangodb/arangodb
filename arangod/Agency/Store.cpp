@@ -369,12 +369,12 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                       << url << "(no response, " << fuerte::to_string(r.error)
                       << "): " << r.slice().toJson();
                 } else {
-                  if (r.response->statusCode() >= 400) {
+                  if (r.statusCode() >= 400) {
                     LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-                        << url << "(" << r.response->statusCode() << ", "
+                        << url << "(" << r.statusCode() << ", "
                         << fuerte::to_string(r.error) << "): " << r.slice().toJson();
 
-                    if (r.response->statusCode() == 404 && _agent != nullptr) {
+                    if (r.statusCode() == 404 && _agent != nullptr) {
                       LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
                           << "dropping dead callback at " << url;
                       agent->trashStoreCallback(url, VPackSlice(buffer->data()));
