@@ -223,6 +223,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   HandlerState _state;
 
+  bool _enableHandlerLogging;
+
  protected:
   std::atomic<bool> _canceled;
 };

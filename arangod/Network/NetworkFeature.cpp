@@ -65,7 +65,7 @@ namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
     : NetworkFeature(server, network::ConnectionPool::Config{}) {
-      this->_numIOThreads = 2; // override default
+  this->_numIOThreads = 1; // override default
 }
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
@@ -127,6 +127,7 @@ void NetworkFeature::prepare() {
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
 
+  LOG_DEVEL << "NUM: " << _numIOThreads;
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
   

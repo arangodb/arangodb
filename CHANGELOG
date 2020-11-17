@@ -1,9 +1,11 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
-* Make the number of network I/O threads properly configurable via the
-  startup option `--network.io-threads`. This option existed before, but its
-  configured value was effectively clamped to a value of `1`. 
+* Make the number of network I/O threads properly configurable via the startup
+  option `--network.io-threads`. This option existed before, but its configured
+  value was effectively clamped to a value of `1`. ArangoDB 3.6.10 thus also 
+  uses a default value of `1` for this option to remain compatible in terms of
+  default option values.
 
 * Disable cluster maintenance background threads on coordinators.
 

@@ -61,7 +61,11 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _statistics(nullptr),
       _handlerId(0),
       _state(HandlerState::PREPARE),
-      _canceled(false) {}
+      _enableHandlerLogging(false)
+      _canceled(false) {
+
+  _enableHandlerLogging = Logger::isEnabled(LogLevel::TRACE, Logger::HANDLER); 
+}
 
 RestHandler::~RestHandler() {
   if (_statistics != nullptr) {
@@ -302,7 +306,7 @@ void RestHandler::runHandlerStateMachine() {
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
 
   while (true) {
-    // logState("state loop");
+    logState("state loop");
 
     switch (_state) {
       case HandlerState::PREPARE:
@@ -313,7 +317,7 @@ void RestHandler::runHandlerStateMachine() {
         executeEngine(/*isContinue*/false);
 
         if (_state == HandlerState::PAUSED) {
-          // logState("execute -> paused");
+          logState("execute -> paused");
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
@@ -326,7 +330,7 @@ void RestHandler::runHandlerStateMachine() {
         executeEngine(/*isContinue*/true);
 
         if (_state == HandlerState::PAUSED) {
-          // logState("continued -> paused");
+          logState("continued -> paused");
           shutdownExecute(/*isFinalized*/false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
@@ -574,10 +578,12 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
 }
 
 void RestHandler::logState(char const* context) const {
-#if 0
+  if (!_enableHandlerLogging) {
+    return;
+  }
   // this code should almost never run. it can be used for
   // debug purposes
-  LOG_TOPIC("c78f7", TRACE, Logger::DEVEL) 
+  LOG_TOPIC("c78f7", TRACE, Logger::HANDLER) 
       << "state machine for handler"
       << " " << (void*) this
       << " [" << stateString(_state) << "]" 
@@ -587,7 +593,6 @@ void RestHandler::logState(char const* context) const {
       << ", req: " << _request.get() 
       << ", res: " << _response.get()
       << ", canceled: " << _canceled.load(std::memory_order_relaxed);
-#endif
 }
 
 /*static*/ char const* RestHandler::stateString(HandlerState state) {
