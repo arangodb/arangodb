@@ -28,12 +28,13 @@
 #include <vector>
 
 #include "./MockGraph.h"
-#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
 #include "Graph/Providers/BaseStep.h"
 
+#include <Transaction/Methods.h>
 #include <velocypack/HashedStringRef.h>
 
 namespace arangodb {
@@ -56,13 +57,10 @@ class MockGraphProvider {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  enum class LooseEndBehaviour {
-    NEVER,
-    ALLWAYS
-  };
+  enum class LooseEndBehaviour { NEVER, ALLWAYS };
 
   class Step : public arangodb::graph::BaseStep<Step> {
-    public:
+   public:
     class Vertex {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
@@ -128,7 +126,7 @@ class MockGraphProvider {
       }
       return _vertex;
     }
-    
+
     Edge getEdge() const {
       if (_edge.has_value()) {
         if (!isProcessable()) {
@@ -143,20 +141,26 @@ class MockGraphProvider {
     }
 
     bool isProcessable() const { return _isProcessable; }
-    
+
     void resolve() {
       TRI_ASSERT(!isProcessable());
       _isProcessable = true;
     }
 
-    private:
-     Vertex _vertex;
-     std::optional<Edge> _edge;
-     bool _isProcessable;
+   private:
+    Vertex _vertex;
+    std::optional<Edge> _edge;
+    bool _isProcessable;
   };
 
+  MockGraphProvider() = delete;
   MockGraphProvider(MockGraph const& data, LooseEndBehaviour looseEnds, bool reverse = false);
+  MockGraphProvider(MockGraphProvider const&) = delete;  // TODO: check "Rule of 5"
+  MockGraphProvider(MockGraphProvider&&) = default;
   ~MockGraphProvider();
+
+  MockGraphProvider& operator=(MockGraphProvider const&) = delete;
+  MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
@@ -164,10 +168,12 @@ class MockGraphProvider {
 
  private:
   auto decideProcessable() const -> bool;
+  [[nodiscard]] transaction::Methods* trx();
 
  private:
   std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _fromIndex;
   std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _toIndex;
+  arangodb::transaction::Methods _trx;
   bool _reverse;
   LooseEndBehaviour _looseEnds;
 };

@@ -285,6 +285,7 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
       if (in.isObject()) {
         try {
           std::string idString;
+          // TODO:  calculate expression once e.g. header constexpr bool and check then here
           if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
             idString = _finder.trx()->extractIdString(in.slice());
           } else {
@@ -356,6 +357,9 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
 
 template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;
 template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KPathFinder>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<
+    TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>;
+
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>;
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KPathFinder>;
 template class ::arangodb::aql::KShortestPathsExecutor<
