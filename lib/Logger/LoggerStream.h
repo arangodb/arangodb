@@ -32,8 +32,6 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 
-#define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
-
 namespace arangodb {
 class LoggerStreamBase {
  public:

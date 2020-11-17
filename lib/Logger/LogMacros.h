@@ -68,7 +68,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic
 ////////////////////////////////////////////////////////////////////////////////
-#define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
 #if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
 #define LOG_TOPIC(id, level, topic)                                     \
   ::arangodb::LoggerStream() << (::arangodb::LogLevel::level)           \

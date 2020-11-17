@@ -282,8 +282,6 @@ class Logger {
                      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
                          [](std::unique_ptr<LogMessage>&) -> void {});
 
-  
-#define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
 #if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
   static bool isEnabled(LogLevel level) {
     return true;
