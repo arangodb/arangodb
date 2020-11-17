@@ -1,7 +1,14 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+
 * Fix Gauge class' assignment operators.
+
+* Make the number of network I/O threads properly configurable via the startup
+  option `--network.io-threads`. This option existed before, but its configured
+  value was effectively clamped to a value of `1`. ArangoDB 3.7.5 thus also uses
+  a default value of `1` for this option to remain compatible in terms of
+  default option values.
 
 * Fix internal issue #777: Fixed memory access while substituting stored values
   for ArangoSearch view optimization.
