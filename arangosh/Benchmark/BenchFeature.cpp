@@ -562,7 +562,7 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
   builder.add("requestResponseDurationPerThread", VPackValue(result.requestTime / (double)_concurrency));
 
   std::cout << "Time needed per operation: " << std::fixed
-            << (result.time / _operations) << " s" << std::endl;
+            << (result.time / _realOperations) << " s" << std::endl;
   builder.add("timeNeededPerOperation", VPackValue(result.time / _realOperations));
   
   std::cout << "Time needed per operation per thread: " << std::fixed
