@@ -37,6 +37,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -58,7 +59,10 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _enableActiveFailover(false),
       _syncByRevision(true),
       _parallelTailingInvocations(0),
-      _maxParallelTailingInvocations(0) {
+      _maxParallelTailingInvocations(0),
+      _inventoryRequests(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_cluster_inventory_requests", 0, "Number of cluster replication inventory requests received")) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
