@@ -6,6 +6,20 @@ v3.6.10 (XXXX-XX-XX)
 
 * Added compile option USE_JEMALLOC_PROF to enable memory profiling
 
+* Make the number of network I/O threads properly configurable via the startup
+  option `--network.io-threads`. This option existed before, but its configured
+  value was effectively clamped to a value of `1`. ArangoDB 3.6.10 thus also
+  uses a default value of `1` for this option to remain compatible in terms of
+  default option values.
+
+* Disable cluster maintenance background threads on coordinators.
+
+  The maintenance threads don't have any purpose on coordinators, so there is no
+  need to start them there. This saves 2 or more background threads on
+  coordinators. These threads should have mostly been idle before, so saving
+  them will not have a huge impact except saving a few MB of thread stack
+  memory.
+
 * Updated arangosync to 0.7.12.
 
 * Added new metric `arangodb_network_forwarded_requests` to track the number

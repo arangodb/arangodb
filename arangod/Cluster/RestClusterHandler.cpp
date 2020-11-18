@@ -40,10 +40,7 @@ using namespace arangodb::rest;
 
 RestClusterHandler::RestClusterHandler(application_features::ApplicationServer& server,
                                        GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-  _allowDirectExecution = !suffixes.empty() && suffixes[0] == "endpoints";
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestClusterHandler::execute() {
   if (_request->requestType() != RequestType::GET) {
