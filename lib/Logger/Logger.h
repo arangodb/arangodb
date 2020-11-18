@@ -153,6 +153,7 @@ class Logger {
   static LogTopic FIXME;
   static LogTopic FLUSH;
   static LogTopic GRAPHS;
+  static LogTopic HANDLER;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
   static LogTopic MAINTENANCE;
