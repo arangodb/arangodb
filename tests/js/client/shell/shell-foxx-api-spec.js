@@ -97,7 +97,8 @@ describe('FoxxApi commit', function () {
       { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
       { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "third"},
       // work around clever arangosh client, specify random content-type first:
-      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "second"}
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "second"},
+      { accept: 'application/json; charset=utf-8', test: "second", "content-type": "image/jpg"}
       
     ].forEach(headers => {
       result = arango.GET_RAW('/test/header-echo', headers);
