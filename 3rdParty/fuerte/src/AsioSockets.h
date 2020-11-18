@@ -27,7 +27,7 @@
 #include <fuerte/loop.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-  
+
 namespace {
 template <typename SocketT, typename F>
 void resolveConnect(detail::ConnectionConfiguration const& config,
@@ -39,7 +39,7 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
       done(ec);
       return;
     }
-    
+
     // A successful resolve operation is guaranteed to pass a
     // non-empty range to the handler.
     asio_ns::async_connect(socket, it,
@@ -47,7 +47,7 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
       std::forward<F>(done)(ec);
     });
   };
-  
+
   // windows does not like async_resolve
 #ifdef _WIN32
   asio_ns::error_code ec;
@@ -59,8 +59,8 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
 #endif
 }
 }
-  
-  
+
+
 template<SocketType T>
 struct Socket {};
 
@@ -69,20 +69,20 @@ struct Socket<SocketType::Tcp>  {
   Socket(EventLoopService&,
          asio_ns::io_context& ctx)
     : resolver(ctx), socket(ctx) {}
-  
+
   ~Socket() {
     try {
       resolver.cancel();
       shutdown();
     } catch(...) {}
   }
-  
+
   template<typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
     resolveConnect(config, resolver, socket, std::forward<F>(done));
   }
-  
-  void shutdown() {
+
+  void shutdown(std::shared_ptr<fuerte::Connection> const& connection = nullptr) {
     if (socket.is_open()) {
       asio_ns::error_code ec; // prevents exceptions
       socket.cancel(ec);
@@ -92,7 +92,7 @@ struct Socket<SocketType::Tcp>  {
       socket.close(ec);
     }
   }
-  
+
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ip::tcp::socket socket;
 };
@@ -100,25 +100,32 @@ struct Socket<SocketType::Tcp>  {
 template<>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
-  : resolver(ctx), socket(ctx, loop.sslContext()) {}
-  
+  : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), cleanupDone(false) {}
+
   ~Socket() {
     try {
       resolver.cancel();
-      shutdown();
+      // The shutdown method uses asynchronous calls. Therefore, its
+      // completion handlers have a copy of a shared_ptr to the connection
+      // object, thereby keeping ourselves alive, too. This means that this
+      // destructor is only called after the asynchronous completion
+      // handlers have all been called. Therefore, it is safe to directly
+      // close the lowest_layer socket here and call it a day!
+      // It is not allowed, however, to call shutdown from here!
+      shutdownTcp();
     } catch(...) {}
   }
-  
+
   template<typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
-    bool verify = config._verifyHost;    
+    bool verify = config._verifyHost;
     resolveConnect(config, resolver, socket.next_layer(),
                    [=, done(std::forward<F>(done))](auto const& ec) mutable {
       if (ec) {
         done(ec);
         return;
       }
-      
+ 
       try {
         // Perform SSL handshake and verify the remote host's certificate.
         socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
@@ -137,12 +144,45 @@ struct Socket<fuerte::SocketType::Ssl> {
     });
   }
   
-  void shutdown() {
+  void shutdown(std::shared_ptr<fuerte::Connection> const& connection) {
+    // The connection object is needed to hand it to the completion handlers
+    // to ensure that the connection object is still alive as long as
+    // asynchronous operations are ongoing. It needs to be a connection
+    // object using this socket for communications! This will in turn
+    // keep ourselves alive for long enough! Note that both completion
+    // handlers below intentionally copy the connection shared_ptr!
     if (socket.lowest_layer().is_open()) {
       asio_ns::error_code ec; // ignored
       socket.lowest_layer().cancel(ec);
-      ec.clear();
-      socket.shutdown(ec);
+      // Set a timeout, since the shutdown could block forever, if we
+      // reach the timeout, we simply give up on TLS and close the TCP
+      // layer. Note the cleanupDone is necessary, since it is possible
+      // that both the completion handler of the timeout and the one
+      // of the async_shutdown are called without error!
+      timer.expires_from_now(std::chrono::seconds(3));
+      timer.async_wait([connection, this](asio_ns::error_code ec) {
+        if (!cleanupDone && !ec) {
+          this->shutdownTcp();
+          cleanupDone = true;
+        }
+      });
+      socket.async_shutdown([connection, this](auto const& ec) {
+        timer.cancel();
+        // I do not actually know why we do not do this on Windows (Max)
+#ifndef _WIN32
+        if (!cleanupDone && (!ec || ec == asio_ns::error::basic_errors::not_connected)) {
+          this->shutdownTcp();
+          cleanupDone = true;
+        }
+#endif
+      });
+    }
+  }
+
+  void shutdownTcp() {
+    if (socket.lowest_layer().is_open()) {
+      asio_ns::error_code ec; // ignored
+      socket.lowest_layer().cancel(ec);
       ec.clear();
       socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       ec.clear();
@@ -152,6 +192,8 @@ struct Socket<fuerte::SocketType::Ssl> {
   
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
+  asio_ns::steady_timer timer;
+  std::atomic<bool> cleanupDone;
 };
 
 #ifdef ASIO_HAS_LOCAL_SOCKETS
@@ -170,7 +212,7 @@ struct Socket<fuerte::SocketType::Unix> {
       done(ec);
     });
   }
-  void shutdown() {
+  void shutdown(std::shared_ptr<fuerte::Connection> const& connection = nullptr) {
     if (socket.is_open()) {
       asio_ns::error_code error; // prevents exceptions
       socket.cancel(error);

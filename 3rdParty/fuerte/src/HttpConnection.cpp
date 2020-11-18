@@ -595,7 +595,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutTyp
     if ((type == TimeoutType::WRITE && thisPtr->_writing) ||
         (type == TimeoutType::READ && thisPtr->_reading)) {
       FUERTE_LOG_DEBUG << "HTTP-Request timeout" << " this=" << thisPtr << "\n";
-      thisPtr->_proto.shutdown();
+      thisPtr->_proto.shutdown(s);
       thisPtr->_timeoutOnReadWrite = true;
       // We simply cancel all ongoing asynchronous operations, the completion
       // handlers will do the rest.
