@@ -149,10 +149,12 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  std::weak_ptr<aql::ExecutionEngine> _engine;
+  std::shared_ptr<aql::ExecutionEngine> _engine;
 
   // id of current query
   QueryId _qId;
+
+  int _shutdownErrorCode = -1;
 };
 }  // namespace aql
 }  // namespace arangodb

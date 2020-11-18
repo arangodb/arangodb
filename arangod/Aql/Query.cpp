@@ -163,6 +163,10 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const
 
 /// @brief destroys a query
 Query::~Query() {
+  // note: unregisterSnippets will only do any work on coordinators.
+  // it will remove all snippets of this query from the query registry.
+  unregisterSnippets();
+
   if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES) << elapsedSince(_startTime)
                                               << " Query::~Query queryString: "
@@ -182,7 +186,7 @@ Query::~Query() {
  
   // note: unregisterSnippets will only do any work on coordinators.
   // it will remove all snippets of this query from the query registry.
-  unregisterSnippets();
+  //unregisterSnippets();
 
   exitV8Context();
 

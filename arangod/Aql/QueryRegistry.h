@@ -64,8 +64,9 @@ class QueryRegistry {
   /// conditions. please check the docs for openEngine, which is also called
   /// by this method.
   std::shared_ptr<ExecutionEngine> openExecutionEngine(EngineId eid);
-  
-  std::shared_ptr<ExecutionEngine> lockSnippet(std::weak_ptr<ExecutionEngine>& weak);
+ 
+  [[nodiscard]] bool validateEngine(EngineId eid);
+  void returnEngine(EngineId eid);
 
   /// @brief requests a traverser engine from the query registry. if no engine
   /// with such id exists, will return a nullptr. may also throw exceptions under
@@ -151,20 +152,48 @@ class QueryRegistry {
   };
 
   struct EngineInfo final {
+    enum class State {
+      UNUSED,
+      LEASED_ACTIVE,
+      LEASED_INACTIVE,
+    };
+
     EngineInfo(EngineInfo const&) = delete;
     EngineInfo& operator=(EngineInfo const&) = delete;
     
-    EngineInfo(EngineInfo&& other)
+    EngineInfo(EngineInfo&& other) noexcept
       : _engine(std::move(other._engine)),
         _queryInfo(std::move(other._queryInfo)),
-        _isOpen(other._isOpen) {}
+        _state(other._state) {}
+    
     EngineInfo& operator=(EngineInfo&& other) = delete;
     
     EngineInfo(std::shared_ptr<ExecutionEngine> en, QueryInfo* qi)
-      : _engine(std::move(en)), _queryInfo(qi), _isOpen(false) {}
+      : _engine(std::move(en)), _queryInfo(qi), _state(State::UNUSED) {}
     
     EngineInfo(std::shared_ptr<traverser::BaseEngine> en, QueryInfo* qi)
-      : _engine(en), _queryInfo(qi), _isOpen(false) {}
+      : _engine(en), _queryInfo(qi), _state(State::UNUSED) {}
+
+    bool leased() const noexcept {
+      return (_state == State::LEASED_ACTIVE || _state == State::LEASED_INACTIVE);
+    }
+
+    [[nodiscard]] bool open() noexcept {
+      if (_state != State::UNUSED) {
+        return false;
+      }
+      _state = State::LEASED_ACTIVE;
+      return true;
+    }
+    
+    [[nodiscard]] bool close() noexcept {
+      if (_state != State::LEASED_ACTIVE && 
+          _state != State::LEASED_INACTIVE) {
+        return false;
+      }
+      _state = State::UNUSED;
+      return true;
+    }
   
     /// @brief we store either a shared_ptr to an ExecutionEngine or a 
     /// shared_ptr to a traverser::BaseEngine. we don't need to mess with
@@ -176,7 +205,7 @@ class QueryRegistry {
   
     EngineType _engine;
     QueryInfo* _queryInfo;
-    bool _isOpen;
+    State _state;
   };
   
   /// @brief _queries, the actual map of maps for the registry

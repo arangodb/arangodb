@@ -139,14 +139,13 @@ std::shared_ptr<T> QueryRegistry::openEngine(EngineId id) {
     return nullptr;
   }
   
-  if (ei._isOpen) {
+  if (!ei.open()) {
     LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
         << "Engine with id " << id << " is already open";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
   }
   
-  ei._isOpen = true;
   if (ei._queryInfo) {
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     ei._queryInfo->_numOpen++;
@@ -172,18 +171,33 @@ std::shared_ptr<traverser::BaseEngine> QueryRegistry::openGraphEngine(EngineId e
   return openEngine<traverser::BaseEngine>(eid);
 }
 
-std::shared_ptr<ExecutionEngine> QueryRegistry::lockSnippet(std::weak_ptr<ExecutionEngine>& weak) {
-  // create a new shared-ptr from the handed-in weak_ptr. 
-  // we need to do this under the lock to prevent races between populating
-  // the shared_ptr and the check for use_count() and the snippet deletion 
-  // in unregisterSnippets.
-  // the convention here is that whenever we return a new ExecutionEngine 
-  // shared_ptr from the query registry, we do this under the lock (read
-  // is enough), so that we can rely on the use_count() not changing if we
-  // have acquired that lock.
-  READ_LOCKER(guard, _lock);
-  // note: this can return nullptr
-  return weak.lock();
+[[nodiscard]] bool QueryRegistry::validateEngine(EngineId eid) {
+  WRITE_LOCKER(guard, _lock);
+
+  auto it = _engines.find(eid);
+  if (it == _engines.end()) {
+    return false;
+  }
+
+  TRI_ASSERT(it->second._state == EngineInfo::State::LEASED_INACTIVE);
+  if (it->second._state == EngineInfo::State::LEASED_INACTIVE) {
+    it->second._state = EngineInfo::State::LEASED_ACTIVE;
+    return true;
+  }
+  return false;
+}
+
+void QueryRegistry::returnEngine(EngineId eid) {
+  WRITE_LOCKER(guard, _lock);
+
+  auto it = _engines.find(eid);
+  if (it == _engines.end()) {
+    return;
+  }
+  TRI_ASSERT(it->second._state == EngineInfo::State::LEASED_ACTIVE);
+  if (it->second._state == EngineInfo::State::LEASED_ACTIVE) {
+    it->second._state = EngineInfo::State::LEASED_INACTIVE;
+  }
 }
 
 /// @brief close
@@ -198,13 +212,11 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   }
   
   EngineInfo& ei = it->second;
-  if (!ei._isOpen) {
+  if (!ei.close()) {
     LOG_TOPIC("45b8e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " was not open.";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "engine with given vocbase and id is not open");
   }
-  
-  ei._isOpen = false;
   
   if (ei._queryInfo) {
     TRI_ASSERT(ei._queryInfo->_numOpen > 0);
@@ -267,7 +279,7 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
       auto it = _engines.find(pair.first);
       if (it != _engines.end()) {
         TRI_ASSERT(it->second._queryInfo != nullptr);
-        TRI_ASSERT(!it->second._isOpen);
+        TRI_ASSERT(!it->second.leased());
         _engines.erase(it);
       }
 #endif
@@ -307,7 +319,7 @@ bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
     }
 
     EngineInfo& ei = it->second;
-    if (ei._isOpen) {
+    if (ei.leased()) {
       if (ei._queryInfo && errorCode == TRI_ERROR_QUERY_KILLED) {
         ei._queryInfo->_query->kill();
         ei._queryInfo->_expires = 0.0;
@@ -492,24 +504,23 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
       // compacting the vector as we go.
       for (size_t i = 0; i < snippetIds.size(); /* intentionally no increase */) {
         TRI_ASSERT(i < snippetIds.size());
-        // can we remove the current id from snippetIds?
+        
+        bool canRemove = false;
+
+        // look up snippet in query registry
         auto it = _engines.find(snippetIds[i]);
-        if (it == _engines.end() || !it->second._isOpen || 
-            (std::holds_alternative<std::shared_ptr<ExecutionEngine>>(it->second._engine) &&
-             std::get<std::shared_ptr<ExecutionEngine>>(it->second._engine).use_count() <= 2)) { 
-          // either snippet not found anymore, so we can remove the id
-          // from the vector, or the snippet still exists, but it is currently not used 
-          // actively.
-
-          // note: looking for use_count 2 above is intentional, as the query registry
-          // will count as one user, and the Query itself will as another. The REST AQL
-          // handler would be user #3.
+        if (it == _engines.end()) {
+          // not there. so we can simply remove the id from our vector
+          canRemove = true;
+        } else if (it->second._state != EngineInfo::State::LEASED_ACTIVE) {
+          // query exists in registry, and is not blocking us.
           
-          if (it != _engines.end()) {
-            // remove from _engines
-            _engines.erase(it);
-          }
+          // query is currently not used. so we can simply remove it
+          _engines.erase(it);
+          canRemove = true;
+        }
 
+        if (canRemove) {
           if (i + 1 != snippetIds.size()) {
             // we are not on the last element.
             // we can pop the last element and overwrite ourselves
@@ -539,34 +550,11 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
     if (now - lastWarning > std::chrono::seconds(1)) {
       lastWarning = now;
 
-      LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
+      LOG_TOPIC("33cfb", INFO, arangodb::Logger::AQL)
             << "engine snippet(s) " << snippetIds << " are still in use";
     }
     std::this_thread::yield();
   }
-
-  /*
-  WRITE_LOCKER(guard, _lock);
-  
-  // make a single forward pass over all snippets and remove them
-  // from the query registry
-  for (auto& it : snippets) {
-    // look up snippet in query registry, except query id 0, which
-    // will never be inserted into the registry
-    if (it.first != 0) {
-      // we can _unconditionally_ remove the snippets from the
-      // query registry and do not need to look at _numOpen here, 
-      // as the query registry now stores shared_ptrs to ExecutionEngines. 
-      // if the engines we delete here are in use while we are deleting
-      // (i.e. _numOpen > 0), this erase here only removes the shared_ptr 
-      // from the registry. but the actual execution engine object is only
-      // deleted later when the final shared_ptr to it goes out of
-      // scope. so all RestAqlHandlers can still finish their work on the
-      // query.
-      _engines.erase(it.first);
-    }
-  }
-  */
 }
 
 QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
