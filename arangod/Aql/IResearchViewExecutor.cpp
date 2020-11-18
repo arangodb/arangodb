@@ -696,21 +696,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
       }
     }
   } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize &&
-                       !Traits::Ordered) { // TODO Ordered could interfere here!
-    if (_infos.emitCount()) {
-      auto index = this->_indexReadBuffer.getValue(bufferEntry);
-      uint64_t collectedCount {0};
-      if constexpr (Traits::Merge) {
-        collectedCount = index.first.id();
-      } else {   
-        collectedCount = index.id();
-      }
-      AqlValue a{AqlValueHintUInt(collectedCount)};
-      AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getCountReg(), ctx.inputRow, guard);
-    } else {
-      ctx.outputRow.copyRow(ctx.inputRow);
-    }
+                       !Traits::Ordered) {
+    ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document
   if constexpr (Traits::Ordered) {
@@ -867,21 +854,6 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
   size_t const atMost = ctx.outputRow.numRowsLeft();
 
   size_t const count = this->_reader->size();
-
-  if (_infos.emitCount()) {
-    if (_readerOffset >= count) {
-      return;
-    }
-    size_t total = 0;
-    TRI_ASSERT(_readerOffset == 0);
-    for (; _readerOffset < count;) {
-      auto& segmentReader = (*this->_reader)[_readerOffset];
-      total += segmentReader.live_docs_count();
-      ++_readerOffset;
-    }
-    this->_indexReadBuffer.pushValue(total);
-    return;
-  }
 
   for (; _readerOffset < count;) {
     if (!_itr) {
@@ -1492,3 +1464,6 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewCountExecutor,
+                                                          ::arangodb::aql::IResearchViewCountExecutorTraits>;

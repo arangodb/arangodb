@@ -1392,7 +1392,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
     aql::VarSet vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
-    if (noMaterialization()) {
+    if (noMaterialization() && !emitOnlyCount()) {
       vars.erase(_outVariable);
     }
 
@@ -1494,11 +1494,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     } else if (noMaterialization()) {
       TRI_ASSERT(options().noMaterialization);
       materializeType = MaterializeType::NotMaterialize;
-      if (emitOnlyCount()) {
-        TRI_ASSERT(options().emitOnlyCount);
-        materializeType |= MaterializeType::EmitCount;
-        numDocumentRegs += 1;
-      }
+    } else if (emitOnlyCount()) {
+      TRI_ASSERT(options().emitOnlyCount);
+      materializeType = MaterializeType::EmitCount;
+      numDocumentRegs += 1;
     } else {
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
@@ -1539,7 +1538,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
       } else {
         auto outReg = variableToRegisterId(_outVariable);
-
         writableOutputRegisters.emplace(outReg);
         return aql::IResearchViewExecutorInfos::MaterializeRegisters{outReg};
       }
@@ -1611,8 +1609,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   bool const ordered = !_scorers.empty();
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
-    case MaterializeType::NotMaterialize | MaterializeType::EmitCount:
       return ::executors<MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    case MaterializeType::EmitCount:
+       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewCountExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:
       return ::executors<MaterializeType::LateMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](

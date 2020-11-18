@@ -240,10 +240,10 @@ class IResearchViewExecutorBase {
       return documentOutReg;
     }
 
-    // TODO remove kludge - should be EmitCount!
-    template <iresearch::MaterializeType t = iresearch::MaterializeType::NotMaterialize,
+    template <iresearch::MaterializeType t = iresearch::MaterializeType::EmitCount,
               typename E = enabled_for_materialize_type_t<t>>
-    auto getCountReg() const noexcept -> aql::RegisterId {
+    [[nodiscard]] auto getCountReg() const noexcept 
+        -> aql::RegisterId {
       return documentOutReg;
     }
 
@@ -546,7 +546,30 @@ struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materiali
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
-  static constexpr bool Merge {true}; // TODO klidge
+};
+
+struct IResearchViewCountExecutorTraits {
+  using IndexBufferValueType = uint64_t;
+  static constexpr bool Ordered {false};
+  static constexpr iresearch::MaterializeType MaterializeType {iresearch::MaterializeType::EmitCount};
+};
+
+class IResearchViewCountExecutor 
+  : public IResearchViewExecutorBase<IResearchViewCountExecutor, IResearchViewCountExecutorTraits> {
+ public:
+  using Base = IResearchViewExecutorBase<IResearchViewCountExecutor, IResearchViewCountExecutorTraits>;
+  using Fetcher = typename Base::Fetcher;
+  using Infos = typename Base::Infos;
+
+  IResearchViewCountExecutor(IResearchViewCountExecutor&&) = default;
+  IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos) : Base(fetcher, infos) {}
+
+
+  size_t skip(size_t toSkip) {return 0;}
+  size_t skipAll() {return 0;}
+  void fillBuffer(ReadContext& ctx) {}
+  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) { return false; }
+  void reset() {}
 };
 
 }  // namespace aql
