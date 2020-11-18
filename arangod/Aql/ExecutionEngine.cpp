@@ -792,7 +792,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
 #endif
    
     // instantiate the engine on a local server
-    auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format, query.sharedState());
+    auto retEngine = std::make_shared<ExecutionEngine>(query, mgr, format, query.sharedState());
     
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {

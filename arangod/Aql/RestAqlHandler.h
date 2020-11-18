@@ -29,6 +29,8 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 
+#include <memory>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -131,14 +133,15 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   void setupClusterQuery();
 
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
+  RestStatus handleUseQuery(aql::ExecutionEngine& engine,
+                            std::string const&, arangodb::velocypack::Slice const);
   
   // handle query finalization for all engines
   void handleFinishQuery(std::string const& idString);
 
  private:
   // dig out vocbase from context and query from ID, handle errors
-  ExecutionEngine* findEngine(std::string const& idString);
+  std::shared_ptr<ExecutionEngine> findEngine(std::string const& idString);
 
   // generate patched options with TTL extracted from request
   std::pair<double, std::shared_ptr<VPackBuilder>> getPatchedOptionsWithTTL(VPackSlice const& optionsSlice) const;
@@ -146,7 +149,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  aql::ExecutionEngine* _engine;
+  std::weak_ptr<aql::ExecutionEngine> _engine;
 
   // id of current query
   QueryId _qId;

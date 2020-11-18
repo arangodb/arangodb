@@ -86,16 +86,14 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl,
   try {
     for (auto& pair : p->_query->snippets()) {
       if (pair.first != 0) { // skip the root snippet
-        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
+        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second, p.get()));
         TRI_ASSERT(result.second);
-        TRI_ASSERT(result.first->second._type == EngineType::Execution);
         p->_numEngines++;
       }
     }
     for (auto& pair : p->_query->traversers()) {
-      auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
+      auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second, p.get()));
       TRI_ASSERT(result.second);
-      TRI_ASSERT(result.first->second._type == EngineType::Graph);
       p->_numEngines++;
     }
 
@@ -118,8 +116,10 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl,
   }
 }
 
-/// @brief open
-void* QueryRegistry::openEngine(EngineId id, EngineType type) {
+/// @brief request a shared_ptr of the specified type from the registry.
+/// note: this can return a nullptr!
+template <typename T>
+std::shared_ptr<T> QueryRegistry::openEngine(EngineId id) {
   LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Opening engine with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
@@ -133,9 +133,9 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   
   EngineInfo& ei = it->second;
   
-  if (ei._type != type) {
-    LOG_TOPIC("c3af5", DEBUG, arangodb::Logger::AQL)
-    << "Engine with id " << id << " has other type";
+  if (!std::holds_alternative<std::shared_ptr<T>>(ei._engine)) {
+    // we found sometype, but of the wrong type 😱
+    LOG_TOPIC("c3af5", DEBUG, arangodb::Logger::AQL) << "Engine with id " << id << " has other type";
     return nullptr;
   }
   
@@ -151,17 +151,25 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     ei._queryInfo->_numOpen++;
 
-    // #warning the "isModificationQuery()" is probably too coarse-grained here.
-    // previously the "isModificationQuery()" always returned false on a DB server.
-    // now that we made it return the true value, the assertion is triggered.
-    // TODO: need to sort this out.
-    // TRI_ASSERT(ei._queryInfo->_numOpen == 1 || !ei._queryInfo->_query->isModificationQuery());
     LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
   } else {
     LOG_TOPIC("50eff", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", no query";
   }
 
-  return ei._engine;
+  TRI_ASSERT(std::holds_alternative<std::shared_ptr<T>>(ei._engine));
+  return std::get<std::shared_ptr<T>>(ei._engine);
+}
+
+/// @brief extract an execution engine from the registry.
+/// this will cause a template instanciation for openEngine
+std::shared_ptr<ExecutionEngine> QueryRegistry::openExecutionEngine(EngineId eid) {
+  return openEngine<ExecutionEngine>(eid);
+}
+
+/// @brief extract a traverser engine from the registry.
+/// this will cause a template instanciation for openEngine
+std::shared_ptr<traverser::BaseEngine> QueryRegistry::openGraphEngine(EngineId eid) {
+  return openEngine<traverser::BaseEngine>(eid);
 }
 
 /// @brief close
@@ -171,8 +179,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   
   auto it = _engines.find(engineId);
   if (it == _engines.end()) {
-    LOG_TOPIC("97351", DEBUG, arangodb::Logger::AQL)
-    << "Found no engine with id " << engineId;
+    LOG_TOPIC("97351", DEBUG, arangodb::Logger::AQL) << "Found no engine with id " << engineId;
     return;
   }
   
@@ -348,7 +355,9 @@ void QueryRegistry::expireQueries() {
 #endif
 
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    // we are not modifying any data in the registry
+    // here, so we can get away with a read-lock only.
+    READ_LOCKER(writeLocker, _lock);
     for (auto& x : _queries) {
       // x.first is a TRI_vocbase_t* and
       // x.second is a std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>
@@ -435,11 +444,12 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   WRITE_LOCKER(guard, _lock);
   if (_disallowInserts) {
+    // 💥: shutdown in progress
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  for (auto& pair : snippets) {
+  for (auto const& pair : snippets) {
     if (pair.first != 0) { // skip the root snippet
-      auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+      auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second, nullptr));
       TRI_ASSERT(result.second);
     }
   }
@@ -448,70 +458,25 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
 void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  // copy snippet ids into a (likely on-stack) vector
-  arangodb::containers::SmallVector<EngineId>::allocator_type::arena_type arena;
-  arangodb::containers::SmallVector<EngineId> snippetIds{arena};
-
-  snippetIds.reserve(snippets.size());
-  std::for_each(snippets.begin(), snippets.end(), [&](auto& pair) {
-    snippetIds.push_back(pair.first);
-  });
-
-  std::chrono::time_point<std::chrono::steady_clock> lastWarning;
-
-  while (true) {
-    {
-      WRITE_LOCKER(guard, _lock);
-      // make a single forward pass over all snippets in our vector, 
-      // compacting the vector as we go.
-      for (size_t i = 0; i < snippetIds.size(); /* intentionally no increase */) {
-        TRI_ASSERT(i < snippetIds.size());
-        // can we remove the current id from snippetIds?
-        auto it = _engines.find(snippetIds[i]);
-        if (it == _engines.end() || !it->second._isOpen) { 
-          // either snippet not found anymore, so we can remove the id
-          // from the vector, or the snippet still exists, but it is still
-          // in use.
-          
-          if (it != _engines.end()) {
-            // remove from _engines
-            TRI_ASSERT(!it->second._isOpen);
-            _engines.erase(it);
-          }
-
-          if (i + 1 != snippetIds.size()) {
-            // we are not on the last element.
-            // we can pop the last element and overwrite ourselves
-            snippetIds[i] = snippetIds.back();
-          }
-          // always pop back last element, in order to remove
-          // one element from the vector. 
-          // note: we are not using erase() on the vector here because
-          // it on average will need to move (n / 2) members. 
-          TRI_ASSERT(!snippetIds.empty());
-          snippetIds.pop_back();
-          // intentionally don't increase i!
-        } else {
-          ++i;
-        }
-      }
+  WRITE_LOCKER(guard, _lock);
+  
+  // make a single forward pass over all snippets and remove them
+  // from the query registry
+  for (auto& it : snippets) {
+    // look up snippet in query registry, except query id 0, which
+    // will never be inserted into the registry
+    if (it.first != 0) {
+      // we can _unconditionally_ remove the snippets from the
+      // query registry and do not need to look at _numOpen here, 
+      // as the query registry now stores shared_ptrs to ExecutionEngines. 
+      // if the engines we delete here are in use while we are deleting
+      // (i.e. _numOpen > 0), this erase here only removes the shared_ptr 
+      // from the registry. but the actual execution engine object is only
+      // deleted later when the final shared_ptr to it goes out of
+      // scope. so all RestAqlHandlers can still finish their work on the
+      // query.
+      _engines.erase(it.first);
     }
-
-    if (snippetIds.empty()) {
-      // done!
-      break;
-    }
-
-    // reduce log spam to one message per second here - otherwise this would massively
-    // spam the logfile
-    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
-    if (now - lastWarning > std::chrono::seconds(1)) {
-      lastWarning = now;
-
-      LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
-            << "engine snippet(s) " << snippetIds << " are still in use";
-    }
-    std::this_thread::yield();
   }
 }
 
@@ -522,7 +487,6 @@ QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double 
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
       _numOpen(0),
-      _rebootTrackerCallbackGuard(std::move(guard))
-{}
+      _rebootTrackerCallbackGuard(std::move(guard)) {}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;

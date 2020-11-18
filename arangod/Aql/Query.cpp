@@ -179,7 +179,10 @@ Query::~Query() {
     // unfortunately we cannot do anything here, as we are in 
     // a destructor
   }
-  
+ 
+  // note: unregisterSnippets will only do any work on coordinators.
+  // it will remove all snippets of this query from the query registry,
+  // without blocking substantially.
   unregisterSnippets();
 
   exitV8Context();

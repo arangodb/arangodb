@@ -61,7 +61,7 @@ class EngineInfoContainerCoordinator {
     void addNode(ExecutionNode* en);
 
     Result buildEngine(Query& query, MapRemoteToSnippet const& dbServerQueryIds,
-                       bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const;
+                       bool isfirst, std::shared_ptr<ExecutionEngine>& engine) const;
 
     EngineId engineId() const;
 

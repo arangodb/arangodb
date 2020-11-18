@@ -30,6 +30,8 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ResultT.h"
 
+#include <variant>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -44,13 +46,6 @@ class QueryRegistry {
 
   TEST_VIRTUAL ~QueryRegistry();
 
- public:
-  
-  enum class EngineType : uint8_t {
-    Execution = 1,
-    Graph = 2
-  };
-  
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
   /// a query for this <vocbase> and <id> combination and an exception will
@@ -64,23 +59,17 @@ class QueryRegistry {
   /// the coordinator which created it restarts or fails.
   TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
 
-  /// @brief open, find a engine in the registry, if none is found, a nullptr
-  /// is returned, otherwise, ownership of the query is transferred to the
-  /// caller, however, the registry retains the entry and will open will
-  /// succeed only once. If an already open query with the given id is
-  /// found, an exception is thrown.
-  /// An open query can directly be destroyed by the destroy method.
-  /// Note that an open query will not expire, so users should please
-  /// protect against leaks. If an already open query is found, an exception
-  /// is thrown.
-  void* openEngine(EngineId eid, EngineType type);
-  ExecutionEngine* openExecutionEngine(EngineId eid) {
-    return static_cast<ExecutionEngine*>(openEngine(eid, EngineType::Execution));
-  }
+  /// @brief requests a snippet from the query registry. if no snippet with
+  /// such id exists, will return a nullptr. may also throw exceptions under
+  /// conditions. please check the docs for openEngine, which is also called
+  /// by this method.
+  std::shared_ptr<ExecutionEngine> openExecutionEngine(EngineId eid);
 
-  traverser::BaseEngine* openGraphEngine(EngineId eid) {
-    return static_cast<traverser::BaseEngine*>(openEngine(eid, EngineType::Graph));
-  }
+  /// @brief requests a traverser engine from the query registry. if no engine
+  /// with such id exists, will return a nullptr. may also throw exceptions under
+  /// conditions. please check the docs for openEngine, which is also called
+  /// by this method.
+  std::shared_ptr<traverser::BaseEngine> openGraphEngine(EngineId eid);
 
   /// @brief close, return a query to the registry, if the query is not found,
   /// an exception is thrown. If the ttl is negative (the default is), the
@@ -119,14 +108,29 @@ class QueryRegistry {
   /// @brief from here on, disallow entering new queries into the registry
   void disallowInserts();
   
-  /// use on coordinator to register snippets
+  /// @brief registers query snippets in the registry. only use on coordinator
   void registerSnippets(SnippetList const&);
+  
+  /// @brief unregister query snippets from the registry.
   void unregisterSnippets(SnippetList const&) noexcept;
 
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
  private:
+  /// @brief open, find a engine in the registry, if none is found, a nullptr
+  /// is returned, otherwise a shared_ptr is returned to the caller.
+  /// the query registry retains the entry, and open will succeed only once. 
+  /// If an already open query with the given id is found, an exception is thrown.
+  /// An open query can be destroyed by the destroy method.
+  /// Note that an open query will not expire, so users should please
+  /// protect against leaks. If an already open query is found, an exception
+  /// is thrown.
+  /// note: supported return types here are:
+  /// - std::shared_ptr<ExecutionEngine> for query snippets 
+  /// - std::shared_ptr<traverser::BaseEngine> for traverser engines
+  template<typename T>
+  std::shared_ptr<T> openEngine(EngineId id);
   
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
@@ -136,7 +140,7 @@ class QueryRegistry {
     TRI_vocbase_t* _vocbase;  // the vocbase
     std::unique_ptr<ClusterQuery> _query;  // the actual query pointer
     
-    const double _timeToLive;  // in seconds
+    double const _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration
     size_t _numEngines; // used for legacy shutdown
     size_t _numOpen;
@@ -151,25 +155,30 @@ class QueryRegistry {
     EngineInfo(EngineInfo&& other)
       : _engine(std::move(other._engine)),
         _queryInfo(std::move(other._queryInfo)),
-        _type(other._type),
         _isOpen(other._isOpen) {}
     EngineInfo& operator=(EngineInfo&& other) = delete;
     
-    EngineInfo(ExecutionEngine* en, QueryInfo* qi)
-      : _engine(en), _queryInfo(qi),
-        _type(EngineType::Execution), _isOpen(false) {}
-    EngineInfo(traverser::BaseEngine* en, QueryInfo* qi)
-      : _engine(en), _queryInfo(qi),
-        _type(EngineType::Graph), _isOpen(false) {}
-
-    void* _engine;
+    EngineInfo(std::shared_ptr<ExecutionEngine> en, QueryInfo* qi)
+      : _engine(std::move(en)), _queryInfo(qi), _isOpen(false) {}
+    
+    EngineInfo(std::shared_ptr<traverser::BaseEngine> en, QueryInfo* qi)
+      : _engine(en), _queryInfo(qi), _isOpen(false) {}
+  
+    /// @brief we store either a shared_ptr to an ExecutionEngine or a 
+    /// shared_ptr to a traverser::BaseEngine. we don't need to mess with
+    /// unions and a type info here, as std::variant will do all the hard
+    /// work for us
+    using EngineType = std::variant<
+        std::shared_ptr<ExecutionEngine>, 
+        std::shared_ptr<traverser::BaseEngine>>;
+  
+    EngineType _engine;
     QueryInfo* _queryInfo;
-    const EngineType _type;
     bool _isOpen;
   };
   
   /// @brief _queries, the actual map of maps for the registry
-  /// maps from vocbase name to list queries
+  /// maps from vocbase name to list of queries
   std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>> _queries;
   
   std::unordered_map<EngineId, EngineInfo> _engines;

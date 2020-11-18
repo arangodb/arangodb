@@ -1,3 +1,25 @@
+v3.7.6 (XXXX-XX-XX)
+-------------------
+
+* Change cluster AQL query shutdown on coordinators to be less blocking.
+  Previously, query shutdown executed a busy wait loop in the destructor of
+  a aql::Query, and then delete all ExecutionEngine snippets from the query 
+  registry that were currently not in use by any concurrent operation. 
+  However, if one of the snippets was busy, the shutdown code couldn't make
+  progress and effectively blocked a thread. 
+  This is now changed so that query shutdown can now always make progress by 
+  only removing all its query snippets from the query registry and be finished.
+  The query registry now uses reference-counting shared_ptrs for the snippets,
+  so removing a snippet from the registry will only physically delete it if 
+  there are no other concurrent users of the snippet.
+  If there are concurrent users, the actual destruction of the used query 
+  snippets will happen when the last user (which is always an AQL REST 
+  handler) gives up. To break cyclic dependency, the AQL REST handler will
+  share ownership for a snippet only as long as it is doing actual work. If
+  it goes to sleep waiting for new data/network responses, it gives up 
+  ownership by only keeping a weak_ptr to the snippet.
+
+
 v3.7.5 (XXXX-XX-XX)
 -------------------
 

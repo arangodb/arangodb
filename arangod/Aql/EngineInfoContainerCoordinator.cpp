@@ -58,7 +58,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query& query, MapRemoteToSnippet const& dbServerQueryIds,
-    bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const {
+    bool isfirst, std::shared_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
   
   std::shared_ptr<SharedQueryState> sqs;
@@ -66,7 +66,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     sqs = query.sharedState();
   }
   
-  engine = std::make_unique<ExecutionEngine>(query, query.itemBlockManager(),
+  engine = std::make_shared<ExecutionEngine>(query, query.itemBlockManager(),
                                              SerializationFormat::SHADOWROWS, sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
@@ -77,7 +77,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 EngineId EngineInfoContainerCoordinator::EngineInfo::engineId() const { return _id; }
@@ -127,7 +127,7 @@ Result EngineInfoContainerCoordinator::buildEngines(
   try {
     bool first = true;
     for (EngineInfo const& info : _engines) {
-      std::unique_ptr<ExecutionEngine> engine;
+      std::shared_ptr<ExecutionEngine> engine;
       auto res = info.buildEngine(query, dbServerQueryIds, first, engine);
       if (res.fail()) {
         return res;

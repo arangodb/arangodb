@@ -119,11 +119,11 @@ void InternalRestTraverserHandler::queryEngine() {
 
   std::chrono::time_point<std::chrono::steady_clock> start =  std::chrono::steady_clock::now();
 
-  traverser::BaseEngine* engine = nullptr;
+  std::shared_ptr<traverser::BaseEngine> baseEngine;
   while (true) {
     try {
-      engine = _registry->openGraphEngine(engineId);
-      if (engine != nullptr) {
+      baseEngine = _registry->openGraphEngine(engineId);
+      if (baseEngine != nullptr) {
         break;
       }
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -149,6 +149,11 @@ void InternalRestTraverserHandler::queryEngine() {
     }
   } 
 
+  // we now have a shared_ptr to the the traverserEngine.
+  TRI_ASSERT(baseEngine != nullptr);
+
+  // for easier access, we will just use the raw ptr
+  traverser::BaseEngine* engine = baseEngine.get();
   TRI_ASSERT(engine != nullptr);
 
   auto& registry = _registry;  // For the guard
