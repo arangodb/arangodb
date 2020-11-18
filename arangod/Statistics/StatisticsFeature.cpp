@@ -24,6 +24,7 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -503,7 +504,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
 
-  CpuUsageFeature& cpuUsage = _vocbase.server().getFeature<CpuUsageFeature>();
+  CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
     auto snapshot = cpuUsage.snapshot();
     appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent");
