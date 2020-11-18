@@ -1,3 +1,12 @@
+v3.6.9.2 (2020-11-18)
+---------------------
+
+* Fixed a hanger in the socket shutdown for the TLS case in fuerte (cluster
+  internal communications).
+
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling
+
+
 v3.6.9.1 (2020-11-15)
 ---------------------
 
