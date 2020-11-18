@@ -92,17 +92,38 @@ describe('FoxxApi commit', function () {
 
     result = arango.POST('/_api/foxx/commit', '');
     expect(result.code).to.equal(204);
-
-    result = arango.GET_RAW('/test/header-echo', { origin: origin });
-    expect(result.code).to.equal(200);
-    if (arango.getEndpoint().match(/^vst:/)) {
-      // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
-      let body = VPACK_TO_V8(result.body);
-      expect(body['origin']).to.equal(origin);
+    [
+      // explicitely say we want utf8-json, since the server will add it:
+      { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
+      { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "third"},
+      // work around clever arangosh client, specify random content-type first:
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "second"}
       
-    } else {
-      expect(result.headers['access-control-allow-origin']).to.equal(origin);
-    }
+    ].forEach(headers => {
+      result = arango.GET_RAW('/test/header-echo', headers);
+      expect(result.code).to.equal(200);
+      let body;
+      if (arango.getEndpoint().match(/^vst:/)) {
+        // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
+        body = VPACK_TO_V8(result.body);
+      } else {
+        body = JSON.parse(result.body);
+      }
+      
+      Object.keys(headers).forEach(function(key) {
+        let value = headers[key];
+        if (key === 'origin') {
+          if (arango.getEndpoint().match(/^vst:/)) {
+            // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
+            expect(body['origin']).to.equal(origin);
+          } else {
+            expect(result.headers['access-control-allow-origin']).to.equal(origin);
+          }
+        }
+        expect(body[key]).to.equal(headers[key]);
+        
+      });
+    });
   });
 
   it('should fix missing checksum', function () {
