@@ -24,6 +24,8 @@
 #include "./PathResult.h"
 #include "Basics/StaticStrings.h"
 
+#include "Graph/Providers/SingleServerProvider.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -91,3 +93,5 @@ template <class Step>
 auto PathResult<Step>::isValid() const -> bool {
   return _uniqueVertices.size() == _vertices.size();
 }
+
+template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider::Step>;

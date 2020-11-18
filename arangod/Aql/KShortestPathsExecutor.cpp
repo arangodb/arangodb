@@ -133,7 +133,12 @@ auto KShortestPathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 
 template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::cache() const -> graph::TraverserCache* {
-  return _finder->options().cache();
+  if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+    TRI_ASSERT(false);
+    return nullptr;
+  } else {
+    return _finder->options().cache();
+  }
 }
 
 template <class FinderType>
@@ -245,7 +250,10 @@ auto KShortestPathsExecutor<FinderType>::fetchPaths(AqlItemBlockInputRange& inpu
 
 template <class FinderType>
 auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) -> void {
-  auto helper([this](transaction::BuilderLeaser tmp, OutputAqlItemRow& output) {
+  //
+
+  if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+    transaction::BuilderLeaser tmp{_finder.trx()};
     tmp->clear();
 
     if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
@@ -263,14 +271,25 @@ auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) 
         output.advanceRow();
       }
     }
-  });
-
-  if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
-    transaction::BuilderLeaser tmp{_finder.trx()};
-    helper(tmp, output);
   } else {
     transaction::BuilderLeaser tmp{_finder.options().trx()};
-    helper(tmp, output);
+    tmp->clear();
+
+    if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
+      if (_finder.getNextPathAql(*tmp.builder())) {
+        AqlValue path{tmp->slice()};
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+        output.advanceRow();
+      }
+    } else {
+      if (_finder.getNextPath(*tmp.builder())) {
+        AqlValue path{tmp->slice()};
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+        output.advanceRow();
+      }
+    }
   }
 }
 

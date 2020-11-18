@@ -153,7 +153,7 @@ class TwoSidedEnumerator {
   bool skipPath();
   auto destroyEngines() -> void;  // TODO: remove me
   arangodb::transaction::Methods* trx() {
-    return &_trx;
+    return _trx;
   }  // TODO: check responsibility
 
   TwoSidedEnumerator(void);
@@ -170,14 +170,14 @@ class TwoSidedEnumerator {
 
  private:
   GraphOptions _options;
-  Ball _left;
-  Ball _right;
+  std::unique_ptr<Ball> _left; // TODO: check
+  std::unique_ptr<Ball> _right; // TODO: check
   bool _searchLeft{true};
   ResultList _results{};
   bool _resultsFetched{false};
 
   PathResult<Step> _resultPath;
-  arangodb::transaction::Methods _trx;  // TODO: Check!
+  arangodb::transaction::Methods* _trx;  // TODO: Check!
 };
 }  // namespace graph
 }  // namespace arangodb

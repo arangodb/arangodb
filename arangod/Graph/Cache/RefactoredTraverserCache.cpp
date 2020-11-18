@@ -148,7 +148,7 @@ VPackSlice RefactoredTraverserCache::lookupVertexInCollection(arangodb::velocypa
 
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
-  _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str()); // TODO CHECK: Query only needed for warnings?!
+  _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());  // TODO CHECK: Query only needed for warnings?!
   // This is expected, we may have dangling edges. Interpret as NULL
   return arangodb::velocypack::Slice::nullSlice();
 }

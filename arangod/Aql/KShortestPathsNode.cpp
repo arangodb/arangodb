@@ -345,8 +345,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       using KPathRefactored =
           TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
 
-      KPathRefactored KPathFinder = {SingleServerProvider(opts->query(), bpo),
-                                     SingleServerProvider(opts->query(), bpo),
+      KPathRefactored KPathFinder = {{opts->query(), bpo},
+                                     {opts->query(), bpo},
                                      std::move(lolOptions)};
       auto kPathUnique = std::make_unique<KPathRefactored>(KPathFinder);
 

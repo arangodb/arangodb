@@ -120,6 +120,8 @@ struct SingleServerProvider {
      public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
 
+      void addToBuilder(arangodb::velocypack::Builder& builder) const;
+
      private:
       EdgeDocumentToken _token;
     };
@@ -134,6 +136,10 @@ struct SingleServerProvider {
 
     Vertex getVertex() const { return _vertex; }
 
+    std::string toString() const {
+      return "<Step><Vertex>: " + _vertex.data().toString();
+    }
+    bool isProcessable() const { return !isLooseEnd(); }
     bool isLooseEnd() const { return false; }
 
    private:
@@ -143,26 +149,33 @@ struct SingleServerProvider {
 
  public:
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts);
+  SingleServerProvider(SingleServerProvider const&) = delete;
+  SingleServerProvider(SingleServerProvider&&) = default;
   ~SingleServerProvider();
+
+  SingleServerProvider& operator=(SingleServerProvider const&) = delete;
+  SingleServerProvider& operator=(SingleServerProvider&&) = default;
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
 
+  [[nodiscard]] transaction::Methods* trx();
+
  private:
   void activateCache(bool enableDocumentCache);
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
-  [[nodiscard]] transaction::Methods* trx();
+
   [[nodiscard]] arangodb::aql::QueryContext* query() const;
 
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
   // We DO take responsibility for the Cache (TODO?)
-  arangodb::transaction::Methods _trx;
-  arangodb::aql::QueryContext& _query;
-  RefactoredTraverserCache _cache;
+  std::unique_ptr<arangodb::transaction::Methods> _trx;
+  std::unique_ptr<arangodb::aql::QueryContext*> _query;
+  std::unique_ptr<RefactoredTraverserCache> _cache;
 
   BaseProviderOptions _opts;
 };

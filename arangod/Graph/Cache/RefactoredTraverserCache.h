@@ -63,7 +63,6 @@ class RefactoredTraverserCache {
  public:
   explicit RefactoredTraverserCache(arangodb::transaction::Methods* trx,
                                     aql::QueryContext* query);
-
   virtual ~RefactoredTraverserCache();
 
   /// @brief clears all allocated memory in the underlying StringHeap

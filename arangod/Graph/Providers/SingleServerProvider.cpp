@@ -75,9 +75,9 @@ VertexType SingleServerProvider::Step::Vertex::data() const { return _vertex; }
 
 SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
                                            BaseProviderOptions opts)
-    : _trx{queryContext.newTrxContext()},
-      _query(queryContext),
-      _cache(RefactoredTraverserCache{&_trx, &queryContext}),
+    : _trx{std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())},
+      _query(std::make_unique<arangodb::aql::QueryContext*>(&queryContext)),
+      _cache(std::make_unique<RefactoredTraverserCache>(_trx.get(), &queryContext)),  // TODO: optimize
       _opts(std::move(opts)) {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache
   _cursor = buildCursor();
@@ -113,7 +113,7 @@ auto SingleServerProvider::startVertex(VertexType vertex) -> Step {
 
   // TODO Implement minimal variant of _cache in the Provider
   // This should only handle the HashedStringRef storage (string heap, and Lookup List)
-  return Step(_cache.persistString(vertex));
+  return Step(_cache->persistString(vertex));
 }
 
 auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
@@ -134,7 +134,7 @@ auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vec
   TRI_ASSERT(_cursor != nullptr);
   _cursor->rearm(vertex.data(), 0);
   _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
-    VertexType id = _cache.persistString(([&]() -> auto {
+    VertexType id = _cache->persistString(([&]() -> auto {
       if (edge.isString()) {
         return VertexType(edge);
       } else {
@@ -157,8 +157,10 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCur
                                                             _opts.indexInformations());
 }
 
-arangodb::transaction::Methods* SingleServerProvider::trx() { return &_trx; }
+arangodb::transaction::Methods* SingleServerProvider::trx() {
+  return _trx.get();
+}
 
 arangodb::aql::QueryContext* SingleServerProvider::query() const {
-  return &_query;
+  return *_query;
 }
