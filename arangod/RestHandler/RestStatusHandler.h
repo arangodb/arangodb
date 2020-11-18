@@ -36,6 +36,7 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestStatusHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
+  RestStatus executeMemoryProfile();
 };
 }  // namespace arangodb
 

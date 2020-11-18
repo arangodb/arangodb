@@ -31,6 +31,10 @@ if (LINUX OR DARWIN)
     set(JEMALLOC_CONFIG "background_thread:true")
   endif ()
 
+  if (USE_JEMALLOC_PROF)
+    SET(JEMALLOC_PROF "--enable-prof")
+  endif ()
+
   ExternalProject_Add(
     jemalloc
     SOURCE_DIR
@@ -49,6 +53,7 @@ if (LINUX OR DARWIN)
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --with-malloc-conf=${JEMALLOC_CONFIG}
                   --with-version=${JEMALLOC_VERSION}-0-g0
+                  ${JEMALLOC_PROF}
     BUILD_COMMAND
       $(MAKE) build_lib_static
     BUILD_IN_SOURCE
