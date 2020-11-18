@@ -2,23 +2,49 @@ v3.7.6 (XXXX-XX-XX)
 -------------------
 
 * Change cluster AQL query shutdown on coordinators to be less blocking.
-  Previously, query shutdown executed a busy wait loop in the destructor of
-  a aql::Query, and then delete all ExecutionEngine snippets from the query 
-  registry that were currently not in use by any concurrent operation. 
-  However, if one of the snippets was busy, the shutdown code couldn't make
-  progress and effectively blocked a thread. 
-  This is now changed so that query shutdown can now always make progress by 
-  only removing all its query snippets from the query registry and be finished.
+  Coordinator query shutdown executes a busy wait loop in the destructor of
+  a aql::Query, trying to delete all ExecutionEngine snippets from the query 
+  registry that were currently not in use by any concurrent operation on the
+  same query. 
+  If one of the snippets was busy, the shutdown code couldn't make progress 
+  and continued trying to shut down that snippet. This effectively blocked 
+  the thread. If now the to-be-shut-down snippet in another thread posts some
+  follow-up action to the scheduler, it will need an idle thread for getting
+  its action fulfilled. If by chance enough threads are busy in query shutdown
+  waiting for all their snippets to get ready to be destroyed, and enough
+  snippets waiting for threads to execute their follow-up actions, then there
+  is a chance of deadlock.
+  
+  This is now changed as follows:
   The query registry now uses reference-counting shared_ptrs for the snippets,
-  so removing a snippet from the registry will only physically delete it if 
-  there are no other concurrent users of the snippet.
-  If there are concurrent users, the actual destruction of the used query 
-  snippets will happen when the last user (which is always an AQL REST 
-  handler) gives up. To break cyclic dependency, the AQL REST handler will
-  share ownership for a snippet only as long as it is doing actual work. If
-  it goes to sleep waiting for new data/network responses, it gives up 
-  ownership by only keeping a weak_ptr to the snippet.
+  so there is a shared ownership of snippets by both the query registry and
+  AQL REST handlers that lease the snippets temporarily.
 
+  The query registry can hand out snippets safely via the shared_ptr, and will
+  also set the snippets _isOpen flag while another handler is using the snippet.
+  When the AQL REST handler goes to sleep (waiting for network responses) 
+  after having leased a query, it will keep the snippets _isOpen flag set to
+  true, but it will not claim ownership for the snippet anymore. Instead, it
+  will reference the snippet via a weak_ptr.
+  If execution resumes, the AQL REST handler first checks if the original
+  snippet is still valid, and acquires temporary co-ownership of it using a
+  shared_ptr. This makes access to the snippet safe, even if in parallel the
+  Query destructor is running. In addition, because _isOpen is still set for
+  a leased snippet, the query registry will not hand out the same snippet to
+  a different caller.
+
+  The query destructor still needs to make sure that all users of a snippet
+  have finalized their work, but this will now be as soon as an AQL REST
+  handler for the snippet goes to sleep. Once the use_count of the query
+  registry's shared_ptr for the snippet goes down to one, the query registry
+  can now delete the snippet on behalf of the query destructor. 
+  
+  To break cyclic dependencies, an AQL REST handler will share ownership for
+  a snippet only as long as it is doing actual work with it, but not while
+  it is waiting for responses. If aqn AQL REST handler goes to sleep with
+  a leased snippet while waiting for responses, it gives up ownership for 
+  the snippet by only keeping a weak_ptr to it.
+  
 
 v3.7.5 (XXXX-XX-XX)
 -------------------

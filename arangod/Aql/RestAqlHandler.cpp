@@ -376,10 +376,11 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
         [self = shared_from_this()] { return self->wakeupHandler(); });
   } else {
     // we got an engine already. now check if it is still valid
-    if (!(engine = _engine.lock())) {
+//    if (!(engine = _engine.lock())) {
+    if (!(engine = _queryRegistry->lockSnippet(_engine))) {
       // oops, execution engine already gone!
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
-                    "query ID " + idString + " not found - nono lock");
+                    "query ID " + idString + " not found");
       return RestStatus::DONE;
     }
   }
@@ -508,7 +509,8 @@ RestStatus RestAqlHandler::continueExecute() {
 void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
   try {
     if (isFinalized) {
-      std::shared_ptr<ExecutionEngine> engine = _engine.lock();
+//      std::shared_ptr<ExecutionEngine> engine = _engine.lock();
+      std::shared_ptr<ExecutionEngine> engine = _queryRegistry->lockSnippet(_engine);
       if (engine) {
         engine->sharedState()->resetWakeupHandler();
       }

@@ -64,6 +64,8 @@ class QueryRegistry {
   /// conditions. please check the docs for openEngine, which is also called
   /// by this method.
   std::shared_ptr<ExecutionEngine> openExecutionEngine(EngineId eid);
+  
+  std::shared_ptr<ExecutionEngine> lockSnippet(std::weak_ptr<ExecutionEngine>& weak);
 
   /// @brief requests a traverser engine from the query registry. if no engine
   /// with such id exists, will return a nullptr. may also throw exceptions under

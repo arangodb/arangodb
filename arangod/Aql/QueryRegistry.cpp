@@ -172,6 +172,20 @@ std::shared_ptr<traverser::BaseEngine> QueryRegistry::openGraphEngine(EngineId e
   return openEngine<traverser::BaseEngine>(eid);
 }
 
+std::shared_ptr<ExecutionEngine> QueryRegistry::lockSnippet(std::weak_ptr<ExecutionEngine>& weak) {
+  // create a new shared-ptr from the handed-in weak_ptr. 
+  // we need to do this under the lock to prevent races between populating
+  // the shared_ptr and the check for use_count() and the snippet deletion 
+  // in unregisterSnippets.
+  // the convention here is that whenever we return a new ExecutionEngine 
+  // shared_ptr from the query registry, we do this under the lock (read
+  // is enough), so that we can rely on the use_count() not changing if we
+  // have acquired that lock.
+  READ_LOCKER(guard, _lock);
+  // note: this can return nullptr
+  return weak.lock();
+}
+
 /// @brief close
 void QueryRegistry::closeEngine(EngineId engineId) {
   LOG_TOPIC("3f0c9", DEBUG, arangodb::Logger::AQL) << "returning engine with id " << engineId;
@@ -458,6 +472,80 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
 void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
+  // copy snippet ids into a (likely on-stack) vector
+  arangodb::containers::SmallVector<EngineId>::allocator_type::arena_type arena;
+  arangodb::containers::SmallVector<EngineId> snippetIds{arena};
+
+  snippetIds.reserve(snippets.size());
+  std::for_each(snippets.begin(), snippets.end(), [&](auto& pair) {
+    if (pair.first != 0) {
+      snippetIds.push_back(pair.first);
+    }
+  });
+
+  std::chrono::time_point<std::chrono::steady_clock> lastWarning;
+
+  while (true) {
+    {
+      WRITE_LOCKER(guard, _lock);
+      // make a single forward pass over all snippets in our vector, 
+      // compacting the vector as we go.
+      for (size_t i = 0; i < snippetIds.size(); /* intentionally no increase */) {
+        TRI_ASSERT(i < snippetIds.size());
+        // can we remove the current id from snippetIds?
+        auto it = _engines.find(snippetIds[i]);
+        if (it == _engines.end() || !it->second._isOpen || 
+            (std::holds_alternative<std::shared_ptr<ExecutionEngine>>(it->second._engine) &&
+             std::get<std::shared_ptr<ExecutionEngine>>(it->second._engine).use_count() <= 2)) { 
+          // either snippet not found anymore, so we can remove the id
+          // from the vector, or the snippet still exists, but it is currently not used 
+          // actively.
+
+          // note: looking for use_count 2 above is intentional, as the query registry
+          // will count as one user, and the Query itself will as another. The REST AQL
+          // handler would be user #3.
+          
+          if (it != _engines.end()) {
+            // remove from _engines
+            _engines.erase(it);
+          }
+
+          if (i + 1 != snippetIds.size()) {
+            // we are not on the last element.
+            // we can pop the last element and overwrite ourselves
+            snippetIds[i] = snippetIds.back();
+          }
+          // always pop back last element, in order to remove
+          // one element from the vector. 
+          // note: we are not using erase() on the vector here because
+          // it on average will need to move (n / 2) members. 
+          TRI_ASSERT(!snippetIds.empty());
+          snippetIds.pop_back();
+          // intentionally don't increase i!
+        } else {
+          ++i;
+        }
+      }
+    }
+
+    if (snippetIds.empty()) {
+      // done!
+      break;
+    }
+
+    // reduce log spam to one message per second here - otherwise this would massively
+    // spam the logfile
+    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
+    if (now - lastWarning > std::chrono::seconds(1)) {
+      lastWarning = now;
+
+      LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
+            << "engine snippet(s) " << snippetIds << " are still in use";
+    }
+    std::this_thread::yield();
+  }
+
+  /*
   WRITE_LOCKER(guard, _lock);
   
   // make a single forward pass over all snippets and remove them
@@ -478,6 +566,7 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
       _engines.erase(it.first);
     }
   }
+  */
 }
 
 QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)

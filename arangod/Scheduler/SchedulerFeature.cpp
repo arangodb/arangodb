@@ -65,6 +65,7 @@ size_t defaultNumberOfThreads() {
   if (result < 64) {
     result = 64;
   }
+  return 8;
   return result;
 }
 
