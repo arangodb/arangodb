@@ -142,7 +142,7 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void()> cb = [this] {
+  std::function<void()> cb = [self = shared_from_this(), this] {
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -154,13 +154,20 @@ void Worker<V, E, M>::setupWorker() {
   };
 
   // initialization of the graphstore might take an undefined amount
-  // of time. Therefore this is performed asynchronous
+  // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto self = shared_from_this();
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, cb] {
-                                                              _graphStore->loadShards(&_config, cb);
-                                                            });
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, cb = std::move(cb)] {
+    try {
+      _graphStore->loadShards(&_config, cb);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("a47c4", WARN, Logger::PREGEL) << "caught exception in loadShards: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("e932d", WARN, Logger::PREGEL) << "caught unknown exception in loadShards"; 
+      throw;
+    }
+  });
   if (!queued) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
                                    "No available thread to load shards");
@@ -329,10 +336,12 @@ void Worker<V, E, M>::_startProcessing() {
         LOG_TOPIC("f0e3d", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
-      size_t startI = i * (numSegments / numT);
-      size_t endI = (i+1) * (numSegments / numT);
+      size_t dividend = numSegments / numT;
+      size_t remainder = numSegments % numT;
+      size_t startI = (i * dividend) + std::min(i, remainder);
+      size_t endI = ((i + 1) * dividend) + std::min(i + 1, remainder);
       TRI_ASSERT(endI <= numSegments);
-      
+
       auto vertices = _graphStore->vertexIterator(startI, endI);
       // should work like a join operation
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
@@ -567,8 +576,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
   
-  auto self = shared_from_this();
-  auto cleanup = [self, this, cb] {
+  auto cleanup = [self = shared_from_this(), this, cb] {
     VPackBuilder body;
     body.openObject();
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -625,7 +633,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
     
     V const& data = vertexEntry->data();
     // bool store =
-    _graphStore->graphFormat()->buildVertexDocument(b, &data, sizeof(V));
+    _graphStore->graphFormat()->buildVertexDocument(b, &data);
     b.close();
   }
   b.close();
@@ -672,8 +680,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto self = shared_from_this();
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC("554e2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -732,7 +739,12 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
-  if (ServerState::instance()->isRunningInCluster() == false) {
+  application_features::ApplicationServer& server = _config.vocbase()->server();
+  if (server.isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     auto self = shared_from_this();
@@ -746,13 +758,11 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
                                      "No thread available to call conductor");
     }
   } else {
-
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
     
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
     
-    application_features::ApplicationServer& server = _config.vocbase()->server();
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
     

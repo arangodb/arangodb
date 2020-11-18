@@ -1645,9 +1645,26 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
   }
 
+  std::unordered_map<std::string, std::vector<std::string>> paramEdgeCollectionRestrictions;
+  if (paramBuilder.slice().isObject()) {
+    VPackSlice s = paramBuilder.slice().get("edgeCollectionRestrictions");
+    if (s.isObject()) {
+      for (auto const& it : VPackObjectIterator(s)) {
+        if (!it.value.isArray()) {
+          continue;
+        }
+        auto& restrictions = paramEdgeCollectionRestrictions[it.key.copyString()];
+        for (auto const& it2 : VPackArrayIterator(it.value)) {
+          restrictions.emplace_back(it2.copyString());
+        }
+      }
+    }
+  }
+
   auto& vocbase = GetContextVocBase(isolate);
   auto res = pregel::PregelFeature::startExecution(vocbase, algorithm, paramVertices,
-                                                   paramEdges, paramBuilder.slice());
+                                                   paramEdges, paramEdgeCollectionRestrictions,
+                                                   paramBuilder.slice());
   if (res.first.fail()) {
     TRI_V8_THROW_EXCEPTION(res.first);
   }

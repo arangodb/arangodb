@@ -284,7 +284,7 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
-        it.get().response->statusCode() == fuerte::StatusNotAcceptable) {
+        it.get().statusCode() == fuerte::StatusNotAcceptable) {
       auto r = it.get().combinedResult();
       bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       if (followerRefused) {
@@ -1834,8 +1834,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
             responses[i].hasValue() && responses[i].get().ok() &&
-            (responses[i].get().response->statusCode() == fuerte::StatusAccepted ||
-             responses[i].get().response->statusCode() == fuerte::StatusOK);
+            (responses[i].get().statusCode() == fuerte::StatusAccepted ||
+             responses[i].get().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
           res = followerInfo->remove((*followers)[i]);
@@ -2353,9 +2353,9 @@ Future<Result> Methods::replicateOperations(
 
       bool replicationWorked = false;
       if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = resp.response->statusCode() == fuerte::StatusAccepted ||
-                            resp.response->statusCode() == fuerte::StatusCreated ||
-                            resp.response->statusCode() == fuerte::StatusOK;
+        replicationWorked = resp.statusCode() == fuerte::StatusAccepted ||
+                            resp.statusCode() == fuerte::StatusCreated ||
+                            resp.statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
