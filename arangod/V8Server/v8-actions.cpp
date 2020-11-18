@@ -471,6 +471,27 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
   }
 
+  switch(request->contentType()) {
+    case ContentType::UNSET:
+    case ContentType::CUSTOM:  // use Content-Type from _headers
+      break;
+    case ContentType::JSON:    // application/json
+      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson));
+      break;
+    case ContentType::VPACK:   // application/x-velocypack
+      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack));
+      break;
+    case ContentType::TEXT:    // text/plain
+      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeText));
+      break;
+    case ContentType::HTML:    // text/html
+      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeHtml));
+      break;
+    case ContentType::DUMP:    // application/x-arango-dump
+      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeDump));
+      break;
+  }
+
   TRI_GET_GLOBAL_STRING(HeadersKey);
   req->Set(context, HeadersKey, headerFields).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(RequestTypeKey);

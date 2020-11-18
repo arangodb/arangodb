@@ -87,6 +87,7 @@ describe('FoxxApi commit', function () {
         REMOVE service IN _apps
     `).getExtra().stats.writesExecuted).to.equal(1);
 
+    let body;
     let result = arango.GET('/test/header-echo');
     expect(result.code).to.equal(404);
 
@@ -95,18 +96,15 @@ describe('FoxxApi commit', function () {
     [
       // explicitely say we want utf8-json, since the server will add it:
       { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
-      { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "third"},
+      { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "second"},
       // work around clever arangosh client, specify random content-type first:
-      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "second"},
-      { accept: 'application/json; charset=utf-8', test: "second", "content-type": "image/jpg"}
-      
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third"},
+      { accept: 'application/json; charset=utf-8', test: "fourth", "content-type": "image/jpg"}
     ].forEach(headers => {
       result = arango.GET_RAW('/test/header-echo', headers);
       expect(result.code).to.equal(200);
-      let body;
-      if (arango.getEndpoint().match(/^vst:/)) {
-        // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
-        body = VPACK_TO_V8(result.body);
+      if (result.headers['content-type'] === 'application/x-velocypack') {
+        body = result.parsedBody;
       } else {
         body = JSON.parse(result.body);
       }
@@ -124,6 +122,23 @@ describe('FoxxApi commit', function () {
         expect(body[key]).to.equal(headers[key]);
         
       });
+
+    });
+
+    // sending content-type json actually requries to post something:
+    let headers = { accept: 'application/json; charset=utf-8', test: "first", "content-type": "application/json; charset=utf-8"};
+    result = arango.POST_RAW('/test/header-echo', '{}', headers);
+    expect(result.code).to.equal(200);
+    if (result.headers['content-type'] === 'application/x-velocypack') {
+      body = result.parsedBody;
+    } else {
+      body = JSON.parse(result.body);
+    }
+    
+    Object.keys(headers).forEach(function(key) {
+      let value = headers[key];
+      
+      expect(body[key]).to.equal(headers[key]);
     });
   });
 
