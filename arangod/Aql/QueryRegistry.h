@@ -64,9 +64,17 @@ class QueryRegistry {
   /// conditions. please check the docs for openEngine, which is also called
   /// by this method.
   std::shared_ptr<ExecutionEngine> openExecutionEngine(EngineId eid);
- 
-  [[nodiscard]] bool validateEngine(EngineId eid);
-  void returnEngine(EngineId eid);
+
+  /// @brief check if the engine is still valid to be used. if this returns
+  /// false, it means the engine's query is currently in destruction, so it
+  /// must not be used
+  [[nodiscard]] bool validateExecutionEngine(EngineId eid);
+
+  /// @brief return an engine for following-up on it later. if a caller 
+  /// cannot make progress with an engine, it is expected to return the
+  /// engine to the registry temporarily. this can unblock queries that are
+  /// in shutdown and need to wait out all other users of the query.
+  void returnExecutionEngine(EngineId eid);
 
   /// @brief requests a traverser engine from the query registry. if no engine
   /// with such id exists, will return a nullptr. may also throw exceptions under
@@ -153,9 +161,9 @@ class QueryRegistry {
 
   struct EngineInfo final {
     enum class State {
-      UNUSED,
-      LEASED_ACTIVE,
-      LEASED_INACTIVE,
+      OPENED_ACTIVE,
+      OPENED_INACTIVE,
+      CLOSED,
     };
 
     EngineInfo(EngineInfo const&) = delete;
@@ -169,29 +177,31 @@ class QueryRegistry {
     EngineInfo& operator=(EngineInfo&& other) = delete;
     
     EngineInfo(std::shared_ptr<ExecutionEngine> en, QueryInfo* qi)
-      : _engine(std::move(en)), _queryInfo(qi), _state(State::UNUSED) {}
+      : _engine(std::move(en)), _queryInfo(qi), _state(State::CLOSED) {}
     
     EngineInfo(std::shared_ptr<traverser::BaseEngine> en, QueryInfo* qi)
-      : _engine(en), _queryInfo(qi), _state(State::UNUSED) {}
+      : _engine(en), _queryInfo(qi), _state(State::CLOSED) {}
 
-    bool leased() const noexcept {
-      return (_state == State::LEASED_ACTIVE || _state == State::LEASED_INACTIVE);
+    /// @brief whether or not the item is already opened
+    bool opened() const noexcept {
+      return (_state == State::OPENED_ACTIVE || _state == State::OPENED_INACTIVE);
     }
 
+    /// @brief open the item. will return false if the item is already opened
     [[nodiscard]] bool open() noexcept {
-      if (_state != State::UNUSED) {
+      if (_state != State::CLOSED) {
         return false;
       }
-      _state = State::LEASED_ACTIVE;
+      _state = State::OPENED_ACTIVE;
       return true;
     }
     
     [[nodiscard]] bool close() noexcept {
-      if (_state != State::LEASED_ACTIVE && 
-          _state != State::LEASED_INACTIVE) {
+      if (_state != State::OPENED_ACTIVE && 
+          _state != State::OPENED_INACTIVE) {
         return false;
       }
-      _state = State::UNUSED;
+      _state = State::CLOSED;
       return true;
     }
   

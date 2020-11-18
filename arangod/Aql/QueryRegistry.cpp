@@ -171,32 +171,29 @@ std::shared_ptr<traverser::BaseEngine> QueryRegistry::openGraphEngine(EngineId e
   return openEngine<traverser::BaseEngine>(eid);
 }
 
-[[nodiscard]] bool QueryRegistry::validateEngine(EngineId eid) {
+[[nodiscard]] bool QueryRegistry::validateExecutionEngine(EngineId eid) {
   WRITE_LOCKER(guard, _lock);
 
   auto it = _engines.find(eid);
-  if (it == _engines.end()) {
-    return false;
-  }
-
-  TRI_ASSERT(it->second._state == EngineInfo::State::LEASED_INACTIVE);
-  if (it->second._state == EngineInfo::State::LEASED_INACTIVE) {
-    it->second._state = EngineInfo::State::LEASED_ACTIVE;
-    return true;
+  if (it != _engines.end()) {
+    TRI_ASSERT(it->second._state == EngineInfo::State::OPENED_INACTIVE);
+    if (it->second._state == EngineInfo::State::OPENED_INACTIVE) {
+      it->second._state = EngineInfo::State::OPENED_ACTIVE;
+      return true;
+    }
   }
   return false;
 }
 
-void QueryRegistry::returnEngine(EngineId eid) {
+void QueryRegistry::returnExecutionEngine(EngineId eid) {
   WRITE_LOCKER(guard, _lock);
 
   auto it = _engines.find(eid);
-  if (it == _engines.end()) {
-    return;
-  }
-  TRI_ASSERT(it->second._state == EngineInfo::State::LEASED_ACTIVE);
-  if (it->second._state == EngineInfo::State::LEASED_ACTIVE) {
-    it->second._state = EngineInfo::State::LEASED_INACTIVE;
+  if (it != _engines.end()) {
+    TRI_ASSERT(it->second._state == EngineInfo::State::OPENED_ACTIVE);
+    if (it->second._state == EngineInfo::State::OPENED_ACTIVE) {
+      it->second._state = EngineInfo::State::OPENED_INACTIVE;
+    }
   }
 }
 
@@ -279,7 +276,7 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
       auto it = _engines.find(pair.first);
       if (it != _engines.end()) {
         TRI_ASSERT(it->second._queryInfo != nullptr);
-        TRI_ASSERT(!it->second.leased());
+        TRI_ASSERT(!it->second.opened());
         _engines.erase(it);
       }
 #endif
@@ -319,7 +316,7 @@ bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
     }
 
     EngineInfo& ei = it->second;
-    if (ei.leased()) {
+    if (ei.opened()) {
       if (ei._queryInfo && errorCode == TRI_ERROR_QUERY_KILLED) {
         ei._queryInfo->_query->kill();
         ei._queryInfo->_expires = 0.0;
@@ -512,7 +509,7 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
         if (it == _engines.end()) {
           // not there. so we can simply remove the id from our vector
           canRemove = true;
-        } else if (it->second._state != EngineInfo::State::LEASED_ACTIVE) {
+        } else if (it->second._state != EngineInfo::State::OPENED_ACTIVE) {
           // query exists in registry, and is not blocking us.
           
           // query is currently not used. so we can simply remove it
