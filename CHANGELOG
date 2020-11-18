@@ -1,5 +1,19 @@
 devel
 -----
+
+* Added metrics for the system CPU usage:
+  - `arangodb_server_statistics_user_percent`: Percentage of time that the
+    system CPUs have spent in user mode
+  - `arangodb_server_statistics_system_percent`: Percentage of time that 
+    the system CPUs have spent in kernel mode
+  - `arangodb_server_statistics_idle_percent`: Percentage of time that the 
+    system CPUs have been idle
+  - `arangodb_server_statistics_iowait_percent`: Percentage of time that 
+    the system CPUs have been waiting for I/O
+
+  These metrics resemble the overall CPU usage metrics in `top`.
+  They are available on Linux only.
+
 * Fix internal issue #777: Fixed memory access while substituting
   stored values for ArangoSearch view optimization
 
