@@ -180,7 +180,8 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     std::unordered_map<VPackStringRef, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
-      _combiner->combine(vertexMap[key], data);
+      auto& ref = (*it).second; // will be modified by combine(...)
+      _combiner->combine(ref, data);
     } else {  // first message for this vertex
       vertexMap.try_emplace(key, data);
 
@@ -259,7 +260,6 @@ void CombiningOutCache<M>::flushMessages() {
 }
 
 // template types to create
-
 template class arangodb::pregel::OutCache<int64_t>;
 template class arangodb::pregel::OutCache<uint64_t>;
 template class arangodb::pregel::OutCache<float>;

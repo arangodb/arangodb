@@ -119,7 +119,7 @@ void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice
 // Extract vertex data from vertex document into target
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
-                                 vertex_type& targetPtr) {
+                                 vertex_type& targetPtr, uint64_t& vertexIdRange) {
   // TODO: change GraphFormat interface here. Work with builder instead of Slice
   if (_dataAccess.readVertex && _dataAccess.readVertex->slice().isArray()) {
     // copy only specified keys/key-paths to document
@@ -148,7 +148,7 @@ void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_ty
 }
 
 greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
-    arangodb::velocypack::Builder& b, const vertex_type* ptr, size_t size) const {
+    arangodb::velocypack::Builder& b, const vertex_type* ptr) const {
   if (_dataAccess.writeVertex && _dataAccess.writeVertex->slice().isArray()) {
     greenspun::Machine m;
     InitMachine(m);
@@ -201,13 +201,6 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
   }
 
   return {};
-}
-
-bool GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b,
-                                    const edge_type* ptr, size_t size) const {
-  // FIXME
-  // std::abort();
-  return false;
 }
 
 }  // namespace accumulators

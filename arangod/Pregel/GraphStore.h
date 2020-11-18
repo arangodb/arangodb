@@ -47,6 +47,10 @@ namespace transaction {
 class Methods;
 }
 
+namespace traverser {
+class EdgeCollectionInfo;
+}
+
 namespace pregel {
 
 template <typename T>
@@ -62,7 +66,6 @@ template <typename V, typename E>
 class GraphStore final {
  public:
   GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
-  ~GraphStore();
 
   uint64_t numberVertexSegments() const {
     return _vertices.size();
@@ -89,30 +92,34 @@ class GraphStore final {
 
   ReportManager *_reports;
  private:
+  void loadVertices(ShardID const& vertexShard,
+                    std::vector<ShardID> const& edgeShards);
+  void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
+                 ShardID const& edgeShard,
+                 std::string const& documentID,
+                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
+                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
+                 uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
-  void _loadVertices(ShardID const& vertexShard,
-                     std::vector<ShardID> const& edgeShards);
-  void _loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
-                  ShardID const& edgeShard,
-                  std::string const& documentID,
-                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
-                  std::vector<std::unique_ptr<TypedBuffer<char>>>&);
+  void storeVertices(std::vector<ShardID> const& globalShards,
+                     RangeIterator<Vertex<V,E>>& it);
 
-  void _storeVertices(std::vector<ShardID> const& globalShards,
-                      RangeIterator<Vertex<V,E>>& it);
+  uint64_t determineVertexIdRangeStart(uint64_t numVertices);
 
   constexpr size_t vertexSegmentSize () const {
     return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
   }
+
   constexpr size_t edgeSegmentSize() const {
     return 64 * 1024 * 1024 / sizeof(Edge<E>);
   }
 
  private:
-
   DatabaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
+
+  std::atomic<uint64_t> _vertexIdRangeStart;
 
   /// Holds vertex keys, data and pointers to edges
   std::mutex _bufferMutex;
@@ -129,7 +136,6 @@ class GraphStore final {
   std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;
   std::atomic<uint32_t> _runningThreads;
-  bool _destroyed = false;
 };
 
 }  // namespace pregel

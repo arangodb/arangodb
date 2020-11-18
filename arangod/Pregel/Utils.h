@@ -66,12 +66,13 @@ class Utils {
   static std::string const algorithmKey;
   static std::string const coordinatorIdKey;
   static std::string const collectionPlanIdMapKey;
+  static std::string const edgeCollectionRestrictionsKey;
   static std::string const vertexShardsKey;
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
   static std::string const userParametersKey;
   static std::string const asyncModeKey;
-  static std::string const useMemoryMaps;
+  static std::string const useMemoryMapsKey;
   static std::string const parallelismKey;
   static std::string const activateAllKey;
 

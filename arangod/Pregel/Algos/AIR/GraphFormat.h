@@ -57,16 +57,20 @@ struct GraphFormat final : public graph_format {
   size_t estimatedEdgeSize() const override;
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      VertexAccumulators::vertex_type& targetPtr) override;
+                      VertexAccumulators::vertex_type& targetPtr,
+                      uint64_t& vertexIdRange) override;
 
   void copyEdgeData(arangodb::velocypack::Slice document,
                     VertexAccumulators::edge_type& targetPtr) override;
 
-  greenspun::EvalResult buildVertexDocumentWithResult(arangodb::velocypack::Builder& b,
-                                                      const VertexAccumulators::vertex_type* ptr,
-                                                      size_t size) const override;
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b,
-                         const VertexAccumulators::edge_type* ptr, size_t size) const override;
+  greenspun::EvalResult buildVertexDocumentWithResult(
+      arangodb::velocypack::Builder& b, const VertexAccumulators::vertex_type* ptr) const override;
+
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           const VertexData* targetPtr) const override {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
  protected:
   std::atomic<uint64_t> _vertexIdRange = 0;
