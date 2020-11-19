@@ -45,6 +45,7 @@ struct FlushSubscription;
 
 namespace iresearch {
 
+struct MaintenanceState;
 class IResearchFeature;
 class IResearchView;
 class IResearchLink;
@@ -302,9 +303,14 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   enum class CommitResult {
     ////////////////////////////////////////////////////////////////////////////
+    /// @brief undefined state
+    ////////////////////////////////////////////////////////////////////////////
+    UNDEFINED = 0,
+
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief no changes were made
     ////////////////////////////////////////////////////////////////////////////
-    NO_CHANGES = 0,
+    NO_CHANGES,
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief another commit is in progress
@@ -357,7 +363,8 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   Result consolidateUnsafe(
     IResearchViewMeta::ConsolidationPolicy const& policy,
-    irs::merge_writer::flush_progress_t const& progress);
+    irs::merge_writer::flush_progress_t const& progress,
+    bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
@@ -384,6 +391,7 @@ class IResearchLink {
   LogicalCollection& _collection; // the linked collection
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
+  std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                 // the index identifier
   TRI_voc_tick_t _lastCommittedTick; // protected by _commitMutex
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())

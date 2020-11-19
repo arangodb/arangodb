@@ -1405,7 +1405,7 @@ uint64_t index_writer::buffered_docs() const {
   return docs_in_ram;
 }
 
-bool index_writer::consolidate(
+std::pair<bool, size_t> index_writer::consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec /*= nullptr*/,
     const merge_writer::flush_progress_t& progress /*= {}*/) {
@@ -1435,18 +1435,18 @@ bool index_writer::consolidate(
     switch (candidates.size()) {
       case 0:
         // nothing to consolidate
-        return true;
+        return { true, 0 };
       case 1: {
         const auto* segment = *candidates.begin();
 
         if (!segment) {
           // invalid candidate
-          return false;
+          return { false, 0 };
         }
 
         if (segment->live_docs_count == segment->docs_count) {
           // no deletes, nothing to consolidate
-          return true;
+          return { true, 0 };
         }
       }
     }
@@ -1455,7 +1455,7 @@ bool index_writer::consolidate(
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
       if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
-        return false;
+        return { false, 0 };
       }
     }
     try {
@@ -1502,7 +1502,7 @@ bool index_writer::consolidate(
         found,
         candidates.size()
       );
-      return false;
+      return { false, 0 };
     }
   }
 
@@ -1536,9 +1536,11 @@ bool index_writer::consolidate(
     }
   }
 
+  const size_t candidates_count = candidates.size();
+
   // we do not persist segment meta since some removals may come later
   if (!merger.flush(consolidation_segment, progress)) {
-    return false; // nothing to consolidate or consolidation failure
+    return { false, 0 }; // nothing to consolidate or consolidation failure
   }
 
   // commit merge
@@ -1589,7 +1591,7 @@ bool index_writer::consolidate(
               committed_meta->generation(),
               candidate->name.c_str()
             );
-            return false;
+            return { false, 0 };
           }
         }
       }
@@ -1678,7 +1680,7 @@ bool index_writer::consolidate(
           candidates.size()
         );
 
-        return false;
+        return { false, 0 };
       }
 
       // handle deletes if something changed
@@ -1693,7 +1695,7 @@ bool index_writer::consolidate(
             consolidation_segment.meta.name.c_str()
           );
 
-          return false;
+          return { false, 0 };
         }
 
         if (!docs_mask.empty()) {
@@ -1742,7 +1744,7 @@ bool index_writer::consolidate(
     }
   }
 
-  return true;
+  return { true, candidates_count };
 }
 
 bool index_writer::import(

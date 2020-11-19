@@ -240,7 +240,8 @@ thread_pool::thread_pool(
     size_t max_threads /*= 0*/,
     size_t max_idle /*= 0*/,
     basic_string_ref<native_char_t> worker_name /*= ""*/)
-  : max_idle_(max_idle),
+  : shared_state_(std::make_shared<shared_state>()),
+    max_idle_(max_idle),
     max_threads_(max_threads),
     worker_name_(worker_name) {
 }
@@ -252,23 +253,28 @@ thread_pool::~thread_pool() {
 }
 
 size_t thread_pool::max_idle() const {
-  auto lock = make_lock_guard(lock_);
+  auto lock = make_lock_guard(shared_state_->lock);
 
   return max_idle_;
 }
 
 void thread_pool::max_idle(size_t value) {
+  auto& state = *shared_state_;
+
   {
-    auto lock = make_lock_guard(lock_);
+    auto lock = make_lock_guard(state.lock);
 
     max_idle_ = value;
   }
-  cond_.notify_all(); // wake any idle threads if they need termination
+
+  state.cond.notify_all(); // wake any idle threads if they need termination
 }
 
 void thread_pool::max_idle_delta(int delta) {
+  auto& state = *shared_state_;
+
   {
-    auto lock = make_lock_guard(lock_);
+    auto lock = make_lock_guard(state.lock);
     auto max_idle = max_idle_ + delta;
 
     if (delta > 0 && max_idle < max_idle_) {
@@ -279,34 +285,37 @@ void thread_pool::max_idle_delta(int delta) {
       max_idle_ = max_idle;
     }
   }
-  cond_.notify_all(); // wake any idle threads if they need termination
+
+  state.cond.notify_all(); // wake any idle threads if they need termination
 }
 
 size_t thread_pool::max_threads() const {
-  auto lock = make_lock_guard(lock_);
+  auto lock = make_lock_guard(shared_state_->lock);
 
   return max_threads_;
 }
 
 void thread_pool::max_threads(size_t value) {
+  auto& state = *shared_state_;
+
   {
-    auto lock = make_lock_guard(lock_);
+    auto lock = make_lock_guard(state.lock);
 
     max_threads_ = value;
 
-    // create extra thread if all threads are busy and can grow pool
-    if (State::ABORT != state_ && !queue_.empty() &&
-        active_ == pool_.size() && pool_.size() < max_threads_) {
-      pool_.emplace_back(&thread_pool::worker, this);
+    if (State::ABORT != state_) {
+      maybe_spawn_worker();
     }
   }
 
-  cond_.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all(); // wake any idle threads if they need termination
 }
 
 void thread_pool::max_threads_delta(int delta) {
+  auto& state = *shared_state_;
+
   {
-    auto lock = make_lock_guard(lock_);
+    auto lock = make_lock_guard(state.lock);
     auto max_threads = max_threads_ + delta;
 
     if (delta > 0 && max_threads < max_threads_) {
@@ -317,19 +326,23 @@ void thread_pool::max_threads_delta(int delta) {
       max_threads_ = max_threads;
     }
 
-    // create extra thread if all threads are busy and can grow pool
-    if (State::ABORT != state_ && !queue_.empty() &&
-        active_ == pool_.size() && pool_.size() < max_threads_) {
-      pool_.emplace_back(&thread_pool::worker, this);
+    if (State::ABORT != state_) {
+      maybe_spawn_worker();
     }
   }
 
-  cond_.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all(); // wake any idle threads if they need termination
 }
 
 bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/) {
+  if (!fn) {
+    return false;
+  }
+
+  auto& state = *shared_state_;
+
   {
-    auto lock = make_lock_guard(lock_);
+    auto lock = make_lock_guard(state.lock);
 
     if (State::RUN != state_) {
       return false; // pool not active
@@ -337,18 +350,18 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
 
     queue_.emplace(std::move(fn), clock_t::now() + delay);
 
-    // create extra thread if all threads are busy and can grow pool
-    if (active_ == pool_.size() && pool_.size() < max_threads_) {
-      try {
-        pool_.emplace_back(&thread_pool::worker, this);
-      } catch (...) {
+    try {
+      maybe_spawn_worker();
+    } catch (...) {
+      if (pool_.empty()) {
+        // failed to spawn a thread to execute a task
         queue_.pop();
         return false;
       }
     }
   }
 
-  cond_.notify_one();
+  state.cond.notify_one();
 
   return true;
 }
@@ -356,58 +369,79 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
 void thread_pool::stop(bool skip_pending /*= false*/) {
   state_ = skip_pending ? State::ABORT : State::FINISH;
 
-  auto lock = make_unique_lock(lock_);
+  decltype(queue_) empty;
+  {
+    auto& state = *shared_state_;
+    auto lock = make_unique_lock(state.lock);
 
-  // wait for all threads to terminate
-  while (!pool_.empty()) {
-    cond_.notify_all(); // wake all threads
-    cond_.wait_for(lock, 100ms);
+    // wait for all threads to terminate
+    while (!pool_.empty()) {
+      state.cond.notify_all(); // wake all threads
+      state.cond.wait_for(lock, 100ms);
+    }
+
+    queue_.swap(empty);
   }
 }
 
 void thread_pool::limits(size_t max_threads, size_t max_idle) {
+  auto& state = *shared_state_;
+
   {
-    auto lock = make_lock_guard(lock_);
+    auto lock = make_lock_guard(state.lock);
 
     max_threads_ = max_threads;
     max_idle_ = max_idle;
 
-    // create extra thread if all threads are busy and can grow pool
-    if (State::ABORT != state_ && !queue_.empty() &&
-        active_ == pool_.size() && pool_.size() < max_threads_) {
-      pool_.emplace_back(&thread_pool::worker, this);
+    if (State::ABORT != state_) {
+      maybe_spawn_worker();
     }
   }
 
-  cond_.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all(); // wake any idle threads if they need termination
+}
+
+bool thread_pool::maybe_spawn_worker() {
+  assert(!shared_state_->lock.try_lock()); // lock must be held
+  assert(state_ != State::ABORT);
+
+  // create extra thread if all threads are busy and can grow pool
+  const size_t pool_size = pool_.size();
+
+  if (!queue_.empty() &&
+      active_ == pool_size && pool_size < max_threads_) {
+    pool_.emplace_back(&thread_pool::worker, this);
+    return true;
+  }
+  return false;
 }
 
 std::pair<size_t, size_t> thread_pool::limits() const {
-  auto lock = make_lock_guard(lock_);
+  auto lock = make_lock_guard(shared_state_->lock);
 
   return { max_threads_, max_idle_ };
 }
 
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
-  auto lock = make_lock_guard(lock_);
+  auto lock = make_lock_guard(shared_state_->lock);
 
   return { active_, queue_.size(), pool_.size()};
 }
 
 size_t thread_pool::tasks_active() const {
-  auto lock = make_lock_guard(lock_);
+  auto lock = make_lock_guard(shared_state_->lock);
 
   return active_;
 }
 
 size_t thread_pool::tasks_pending() const {
-  auto lock = make_lock_guard(lock_);
+  auto lock = make_lock_guard(shared_state_->lock);
 
   return queue_.size();
 }
 
 size_t thread_pool::threads() const {
-  auto lock = make_lock_guard(lock_);
+  auto lock = make_lock_guard(shared_state_->lock);
 
   return pool_.size();
 }
@@ -417,23 +451,25 @@ void thread_pool::worker() {
     set_thread_name(worker_name_.c_str());
   }
 
-  auto lock = make_unique_lock(lock_);
+  // hold a reference to ensure state is still alive
+  auto shared_state = shared_state_;
 
-  for (;;) {
-    const auto now = clock_t::now();
+  auto lock = make_unique_lock(shared_state->lock);
 
-    // if are allowed to have running threads and have task to process
-    if (State::ABORT != state_ && !queue_.empty() && pool_.size() <= max_threads_) {
+  while (State::ABORT != state_ && pool_.size() <= max_threads_) {
+    if (!queue_.empty()) {
       auto& top = queue_.top();
 
-      if (top.at <= now) {
+      if (top.at <= clock_t::now()) {
         func_t fn;
 
         try {
           // std::function<...> move ctor isn't marked "noexcept" until c++20
           fn = std::move(top.fn);
+        } catch (const std::bad_alloc&) {
+          fprintf(stderr, "Failed to pop task from queue, skipping it");
         } catch (...) {
-          IR_FRMT_WARN("Failed to move task, skipping it");
+          IR_FRMT_WARN("Failed to pop task from queue, skipping it");
           queue_.pop();
           continue;
         }
@@ -442,21 +478,22 @@ void thread_pool::worker() {
         ++active_;
 
         // if have more tasks but no idle thread and can grow pool
-        if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
-          try {
-            pool_.emplace_back(&thread_pool::worker, this); // add one thread
-          } catch (const std::exception& e) {
-            IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
-          } catch (...) {
-            IR_FRMT_ERROR("Failed to grow pool");
-          }
+        try {
+          maybe_spawn_worker();
+        } catch (const std::bad_alloc&) {
+          fprintf(stderr, "Failed to allocate memory while spawning a worker");
+        } catch (const std::exception& e) {
+          IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
+        } catch (...) {
+          IR_FRMT_ERROR("Failed to grow pool");
         }
 
         lock.unlock();
-        cond_.notify_one();
 
         try {
           fn();
+        } catch (const std::bad_alloc&) {
+          fprintf(stderr, "Failed to allocate memory while executing task");
         } catch (const std::exception& e) {
           IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
         } catch (...) {
@@ -474,25 +511,29 @@ void thread_pool::worker() {
         } while (State::RUN != state_);
 
         --active_;
-      } else {
-        // we have some tasks pending tasks, let's wait
-        cond_.wait_until(lock, queue_.top().at);
+        continue;
       }
-      continue;
     }
 
     assert(lock.owns_lock());
     assert(active_ <= pool_.size());
 
-    if (State::RUN == state_ &&                // thread pool is still running
-        pool_.size() <= max_threads_ &&        // pool does not exceed requested limit
-        pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-      cond_.wait(lock);
-      continue;
-    }
+    if (const auto idle = pool_.size() - active_; idle <= max_idle_) {
+      if (const auto run_state = state_.load();
+          !queue_.empty() && State::ABORT != run_state) {
+        shared_state->cond.wait_until(lock, queue_.top().at);
+      } else if (State::RUN == run_state) {
+        assert(queue_.empty());
+        shared_state->cond.wait(lock);
+      } else {
+        assert(State::RUN != run_state);
+        break; // termination requested
+      }
 
-    // too many idle threads
-    break;
+      assert(lock.owns_lock());
+    } else {
+      break; // too many idle threads
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -513,7 +554,7 @@ void thread_pool::worker() {
 
   if (State::RUN != state_) {
     lock.unlock();
-    cond_.notify_all(); // wake up thread_pool::stop(...)
+    shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
   }
 }
 

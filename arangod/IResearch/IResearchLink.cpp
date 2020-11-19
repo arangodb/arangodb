@@ -283,12 +283,13 @@ struct Task {
         << "', delay '" << delay.count() << "'";
 
     LOG_TOPIC("eb0d2", DEBUG, arangodb::iresearch::TOPIC)
-        << "'" << T::typeName() << "' stats: "
+        << T::typeName() << " pool: "
         << ThreadGroupStats(async->stats(T::threadGroup()));
 
     async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
   }
 
+  std::shared_ptr<MaintenanceState> state;
   IResearchFeature* async;
   IResearchLink::AsyncLinkPtr link;
   IndexId id;
@@ -310,18 +311,22 @@ namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @struct MaintenanceState
+////////////////////////////////////////////////////////////////////////////////
+struct MaintenanceState {
+  std::atomic<size_t> pendingCommits{0};
+  std::atomic<size_t> nonEmptyCommits{0};
+  std::atomic<size_t> pendingConsolidations{0};
+  std::atomic<size_t> noopConsolidationCount{0};
+  std::atomic<size_t> noopCommitCount{0};
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @struct CommitTask
 /// @brief represents a commit task
 /// @note thread group 0 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
 struct CommitTask : Task<CommitTask> {
-  struct CommitState {
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of active commit tasks per link
-    ////////////////////////////////////////////////////////////////////////////
-    std::atomic<size_t> count{0};
-  };
-
   static constexpr ThreadGroup threadGroup() noexcept {
     return ThreadGroup::_0;
   }
@@ -330,20 +335,11 @@ struct CommitTask : Task<CommitTask> {
     return "commit";
   }
 
-  CommitTask()
-    : state(std::make_shared<CommitState>()) {
-  }
-
-  void schedule(std::chrono::milliseconds delay) const {
-    ++state->count;
-    Task<CommitTask>::schedule(delay);
-  }
-
   void operator()();
 
-  std::shared_ptr<CommitState> state;
   size_t cleanupIntervalCount{};
   std::chrono::milliseconds commitIntervalMsec{};
+  std::chrono::milliseconds consolidationIntervalMsec{};
   size_t cleanupIntervalStep{};
 }; // CommitTask
 
@@ -365,7 +361,7 @@ void CommitTask::operator()() {
         << "', runId '" << size_t(&runId) << "'";
 
     // blindly reschedule commit task
-    Task<CommitTask>::schedule(commitIntervalMsec);
+    schedule(commitIntervalMsec);
     return;
   }
 
@@ -385,8 +381,11 @@ void CommitTask::operator()() {
     auto& meta = link->_dataStore._meta;
 
     commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
+    consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
     cleanupIntervalStep = meta._cleanupIntervalStep;
   }
+
+  --state->pendingCommits;
 
   if (std::chrono::milliseconds::zero() == commitIntervalMsec) {
     LOG_TOPIC("eba4a", DEBUG, iresearch::TOPIC)
@@ -395,9 +394,34 @@ void CommitTask::operator()() {
     return;
   }
 
-  --state->count;
+  IResearchLink::CommitResult code = IResearchLink::CommitResult::UNDEFINED;
 
-  IResearchLink::CommitResult code;
+  auto reschedule = scopeGuard([&code, link, this](){
+    constexpr size_t MAX_NON_EMPTY_COMMITS = 10;
+    constexpr size_t MAX_PENDING_CONSOLIDATIONS = 3;
+
+    if (code != IResearchLink::CommitResult::NO_CHANGES) {
+      ++state->pendingCommits;
+      schedule(commitIntervalMsec);
+
+      if (code == IResearchLink::CommitResult::DONE &&
+          state->pendingConsolidations < MAX_PENDING_CONSOLIDATIONS &&
+          ++state->nonEmptyCommits > MAX_NON_EMPTY_COMMITS) {
+        link->scheduleConsolidation(consolidationIntervalMsec);
+        state->nonEmptyCommits = 0;
+      }
+    } else {
+      state->nonEmptyCommits = 0;
+
+      for (auto count = state->pendingCommits.load(); count < 1; ) {
+        if (state->pendingCommits.compare_exchange_strong(count, count + 1)) {
+          schedule(commitIntervalMsec);
+          break;
+        }
+      }
+    }
+  });
+
   auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
@@ -405,21 +429,27 @@ void CommitTask::operator()() {
         << "successful sync of arangosearch link '" << id
         << "', run id '" << size_t(&runId) << "'";
 
-    if (code == IResearchLink::CommitResult::DONE &&
-        cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
-      cleanupIntervalCount = 0;
-      res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
+    if (code == IResearchLink::CommitResult::DONE) {
+      state->noopCommitCount = 0;
+      state->noopConsolidationCount = 0;
 
-      if (res.ok()) {
-        LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
-            << "successful cleanup of arangosearch link '" << id
-            << "', run id '" << size_t(&runId) << "'";
-      } else {
-        LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-            << "error while cleaning up arangosearch link '" << id
-            << "', run id '" << size_t(&runId)
-            << "': " << res.errorNumber() << " " << res.errorMessage();
+      if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
+        cleanupIntervalCount = 0;
+        res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
+
+        if (res.ok()) {
+          LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
+              << "successful cleanup of arangosearch link '" << id
+              << "', run id '" << size_t(&runId) << "'";
+        } else {
+          LOG_TOPIC("130de", WARN, iresearch::TOPIC)
+              << "error while cleaning up arangosearch link '" << id
+              << "', run id '" << size_t(&runId)
+              << "': " << res.errorNumber() << " " << res.errorMessage();
+        }
       }
+    } else if (code == IResearchLink::CommitResult::NO_CHANGES) {
+      ++state->noopCommitCount;
     }
   } else {
     LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
@@ -427,8 +457,6 @@ void CommitTask::operator()() {
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
-
-  schedule(commitIntervalMsec);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,13 +465,6 @@ void CommitTask::operator()() {
 /// @note thread group 1 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
 struct ConsolidationTask : Task<ConsolidationTask> {
-  struct ConsolidationState {
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of active consolidation tasks per link
-    ////////////////////////////////////////////////////////////////////////////
-    std::atomic<size_t> count{0};
-  };
-
   static constexpr ThreadGroup threadGroup() noexcept {
     return ThreadGroup::_1;
   }
@@ -452,19 +473,8 @@ struct ConsolidationTask : Task<ConsolidationTask> {
     return "consolidation";
   }
 
-  ConsolidationTask()
-    : state(std::make_shared<ConsolidationState>()) {
-  }
-
-  void schedule(std::chrono::milliseconds delay) const {
-    ++state->count;
-    ++::ConsolidationsCount;
-    Task<ConsolidationTask>::schedule(delay);
-  }
-
   void operator()();
 
-  std::shared_ptr<ConsolidationState> state;
   irs::merge_writer::flush_progress_t progress;
   IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
   std::chrono::milliseconds consolidationIntervalMsec{};
@@ -488,7 +498,7 @@ void ConsolidationTask::operator()() {
         << "', run id '" << size_t(&runId) << "'";
 
     // blindly reschedule consolidation task
-    Task<ConsolidationTask>::schedule(consolidationIntervalMsec);
+    schedule(consolidationIntervalMsec);
     return;
   }
 
@@ -516,29 +526,44 @@ void ConsolidationTask::operator()() {
     LOG_TOPIC("eba3a", DEBUG, iresearch::TOPIC)
         << "consolidation is disabled for the link '" << id
         << "', runId '" << size_t(&runId) << "'";
+
+    --state->pendingConsolidations;
+    --ConsolidationsCount;
     return;
   }
 
-/*
-  size_t const numTasks = state->count;
-  size_t const numLinks = LinksCount;
-  size_t const totalTasks = ConsolidationsCount;
-  size_t const maxTasks = std::max(totalTasks/numLinks, size_t(1));
+  auto reschedule = scopeGuard([this](){
+    for (auto count = state->pendingConsolidations.load(); count < 1; ) {
+      if (state->pendingConsolidations.compare_exchange_strong(count, count + 1)) {
+        ++ConsolidationsCount;
+        schedule(consolidationIntervalMsec);
+        break;
+      }
+    }
+  });
 
-  LOG_TOPIC("bce4f", ERR, iresearch::TOPIC) << "LINK " << link->id()
-    << " TASKS " << numTasks
-    << " INDICES " << numLinks
-    << " TOTAL " << totalTasks
-    << " UPPER " << maxTasks
-    << " SHEDULE " << size_t(numTasks < maxTasks);
-*/
+  constexpr size_t MAX_NOOP_COMMITS = 10;
+  constexpr size_t MAX_NOOP_CONSOLIDATIONS = 10;
 
-  schedule(consolidationIntervalMsec);
+  if (state->noopCommitCount < MAX_NOOP_COMMITS &&
+      state->noopConsolidationCount < MAX_NOOP_CONSOLIDATIONS) {
+    schedule(consolidationIntervalMsec);
+  } else {
+    --state->pendingConsolidations;
+    --ConsolidationsCount;
+  }
 
   // run consolidation ('_asyncSelf' locked by async task)
-  auto const res = link->consolidateUnsafe(consolidationPolicy, progress);
+  bool emptyConsolidation = false;
+  auto const res = link->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
 
   if (res.ok()) {
+    if (emptyConsolidation) {
+      ++state->noopConsolidationCount;
+    } else {
+       state->noopConsolidationCount = 0;
+    }
+
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
         << "successful consolidation of arangosearch link '" << link->id()
         << "', run id '" << size_t(&runId) << "'";
@@ -548,9 +573,6 @@ void ConsolidationTask::operator()() {
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
-
-  --ConsolidationsCount;
-  --state->count;
 }
 
 // -----------------------------------------------------------------------------
@@ -575,8 +597,9 @@ void AsyncLinkHandle::reset() {
 IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
     : _engine(nullptr),
       _asyncFeature(&collection.vocbase().server().getFeature<IResearchFeature>()),
-      _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)),  // mark as data store not initialized
+      _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),  // mark as data store not initialized
       _collection(collection),
+      _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
       _createdInRecovery(false) {
@@ -989,7 +1012,10 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchLink::consolidateUnsafe(
     IResearchViewMeta::ConsolidationPolicy const& policy,
-    irs::merge_writer::flush_progress_t const& progress) {
+    irs::merge_writer::flush_progress_t const& progress,
+    bool& emptyConsolidation) {
+  emptyConsolidation = false;
+
   if (!policy.policy()) {
     return {
         TRI_ERROR_BAD_PARAMETER,
@@ -1002,12 +1028,15 @@ Result IResearchLink::consolidateUnsafe(
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
-    if (!_dataStore._writer->consolidate(policy.policy(), nullptr, progress)) {
+    auto const [res, count] = _dataStore._writer->consolidate(policy.policy(), nullptr, progress);
+    if (!res) {
       return {TRI_ERROR_INTERNAL,
               "failure while executing consolidation policy '" +
                   policy.properties().toString() + "' on arangosearch link '" +
                   std::to_string(id().id()) + "'"};
     }
+
+    emptyConsolidation = (count == 0);
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
@@ -1550,7 +1579,9 @@ void IResearchLink::scheduleCommit(std::chrono::milliseconds delay) {
   task.link = _asyncSelf;
   task.async = _asyncFeature;
   task.id = id();
+  task.state = _maintenanceState;
 
+  ++_maintenanceState->pendingCommits;
   task.schedule(delay);
 }
 
@@ -1559,10 +1590,12 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
   task.link = _asyncSelf;
   task.async = _asyncFeature;
   task.id = id();
+  task.state = _maintenanceState;
   task.progress = [link = _asyncSelf.get()](){
     return !link->terminationRequested();
   };
 
+  ++_maintenanceState->pendingConsolidations;
   task.schedule(delay);
 }
 
@@ -1752,7 +1785,8 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
     _dataStore._meta = meta;
   }
 
-  if (!_dataStore._inRecovery) {
+
+  if (_engine->recoveryState() == RecoveryState::DONE) {
     if (meta._commitIntervalMsec) {
       scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
     }

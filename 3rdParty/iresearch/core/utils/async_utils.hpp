@@ -158,6 +158,11 @@ class IRESEARCH_API thread_pool {
  private:
   enum class State { ABORT, FINISH, RUN };
 
+  struct shared_state {
+    std::mutex lock;
+    std::condition_variable cond;
+  };
+
   struct task {
     explicit task(
         std::function<void()>&& fn,
@@ -174,10 +179,10 @@ class IRESEARCH_API thread_pool {
   };
 
   void worker();
+  bool maybe_spawn_worker();
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::condition_variable cond_;
-  mutable std::mutex lock_;
+  std::shared_ptr<shared_state> shared_state_;
   size_t active_{ 0 };
   size_t max_idle_;
   size_t max_threads_;
