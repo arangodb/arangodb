@@ -269,6 +269,7 @@ class Logger {
   static void setLogRequestParameters(bool);
   static bool logRequestParameters() { return _logRequestParameters; }
   static void setUseJson(bool);
+  static LogTimeFormats::TimeFormat timeFormat() { return _timeFormat; }
 
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
