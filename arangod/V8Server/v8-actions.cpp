@@ -438,35 +438,35 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   switch (request->acceptEncoding()) {
   case EncodingType::UNSET:
-    headers.insert(std::pair<std::string, std::string>(StaticStrings::AcceptEncoding, StaticStrings::EncodingIdentity));
+    headers.emplace(StaticStrings::AcceptEncoding, StaticStrings::EncodingIdentity);
     break;
   case EncodingType::DEFLATE:
-    headers.insert(std::pair<std::string, std::string>(StaticStrings::AcceptEncoding, StaticStrings::EncodingDeflate));
+    headers.emplace(StaticStrings::AcceptEncoding, StaticStrings::EncodingDeflate);
     break;
   }
   std::string const& acceptPlain = request->contentTypeResponsePlain();
 
   if (!acceptPlain.empty()) {
-    headers.insert(std::pair<std::string, std::string>(StaticStrings::Accept, acceptPlain));
+    headers.emplace(StaticStrings::Accept, acceptPlain);
   } else {
     switch(request->contentTypeResponse()) {
     case ContentType::UNSET:
     case ContentType::CUSTOM:  // use Content-Type from _headers
       break;
     case ContentType::JSON:    // application/json
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::Accept, StaticStrings::MimeTypeJson));
+      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJson);
       break;
     case ContentType::VPACK:   // application/x-velocypack
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::Accept, StaticStrings::MimeTypeVPack));
+      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeVPack);
       break;
     case ContentType::TEXT:    // text/plain
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::Accept, StaticStrings::MimeTypeText));
+      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeText);
       break;
     case ContentType::HTML:    // text/html
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::Accept, StaticStrings::MimeTypeHtml));
+      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeHtml);
       break;
     case ContentType::DUMP:    // application/x-arango-dump
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::Accept, StaticStrings::MimeTypeDump));
+      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeDump);
       break;
     }
   }
@@ -476,19 +476,19 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     case ContentType::CUSTOM:  // use Content-Type from _headers
       break;
     case ContentType::JSON:    // application/json
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson));
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson);
       break;
     case ContentType::VPACK:   // application/x-velocypack
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack));
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack);
       break;
     case ContentType::TEXT:    // text/plain
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeText));
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeText);
       break;
     case ContentType::HTML:    // text/html
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeHtml));
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeHtml);
       break;
     case ContentType::DUMP:    // application/x-arango-dump
-      headers.insert(std::pair<std::string, std::string>(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeDump));
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeDump);
       break;
   }
 
