@@ -5447,7 +5447,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         return false;
       })));
     }
-#endif
 
     // subsequent update (overwrite) authorised (RO collection)
     {
@@ -5464,6 +5463,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         return false;
       })));
     }
+#endif
   }
   // drop authorised link (existing collection not authorized)
   {
