@@ -35,8 +35,10 @@ const optionsDocumentation = [
   '   - `benchargs`: additional commandline arguments to arangobench'
 ];
 
+const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
+const internal = require('internal');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -154,6 +156,18 @@ const benchTodos = [{
   'concurrency': '3',
   'test-case': 'multitrx',
   'transaction': true
+}, {
+  'duration': 15,
+  'concurrency': '2',
+  'test-case': 'skiplist',
+  'complexity': '1'
+},{
+  'requests': '1',
+  'concurrency': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  'server.database': 'arangobench_testdb',
+  'create-database': true
 }];
 
 function arangobench (options) {
@@ -186,12 +200,14 @@ function arangobench (options) {
   for (let i = 0; i < benchTodos.length; i++) {
     const benchTodo = benchTodos[i];
     const name = 'case' + i;
+    const reportfn = fs.join(instanceInfo.rootDir, 'report_' + name + '.json');
 
     if ((options.skipArangoBenchNonConnKeepAlive) &&
         benchTodo.hasOwnProperty('keep-alive') &&
         (benchTodo['keep-alive'] === 'false')) {
       benchTodo['keep-alive'] = true;
     }
+    benchTodo['json-report-file'] = reportfn;
 
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster || !benchTodo.transaction) {
@@ -218,6 +234,43 @@ function arangobench (options) {
       let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args, instanceInfo.rootDir, options.coreCheck);
       print();
 
+      if (benchTodo.hasOwnProperty('duration')) {
+        oneResult.status = oneResult.status && oneResult.duration >= benchTodo['duration'];
+        if (!oneResult.status) {
+          oneResult.message += ` didn't run for the expected time ${benchTodo.duration} but only ${oneResult.duration}`;
+        }
+        if (!oneResult.status && options.extremeVerbosity){
+          print("Duration test failed: " + JSON.stringify(oneResult));
+        }
+      }
+
+      if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
+        if (internal.db._databases().find(
+          dbName => dbName === benchTodo['server.database']) === undefined) {
+          oneResult.message += " no database was created!";
+          oneResult.status = false;
+        } else {
+          internal.db._dropDatabase(benchTodo['server.database']);
+        }
+      }
+      let content;
+      try {
+        content = fs.read(reportfn);
+        const jsonResult = JSON.parse(content);
+        const haveResultFields = jsonResult.hasOwnProperty('histogram') &&
+          jsonResult.hasOwnProperty('results') &&
+              jsonResult.hasOwnProperty('avg');
+        if (!haveResultFields) {
+          oneResult.status = false;
+          oneResult.message += "critical fields have been missing in the json result: '" +
+            content + "'";
+        }
+      } catch (x) {
+        oneResult.message += "failed to parse json report for '" +
+          reportfn + "' - '" + x.message + "' - content: '" + content;
+        oneResult.status = false;
+      }
+      
       results[name] = oneResult;
       results[name].total++;
       results[name].failed = 0;

@@ -203,7 +203,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       return Result(res);
     }
 
-    resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
+    resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
     _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
     
     if (!useVst) {

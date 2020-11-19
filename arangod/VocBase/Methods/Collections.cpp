@@ -362,7 +362,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-            vocbase.isShardingSingle()) {
+            vocbase.isOneShard()) {
           auto const isSatellite =
               Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
                                    velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -930,7 +930,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
 
   queue->dispatchAndWait();
 
-  if (queue->status() == TRI_ERROR_NO_ERROR) {
+  if (queue->status().ok()) {
     res = trx.commit();
   } else {
     return futures::makeFuture(Result(queue->status()));

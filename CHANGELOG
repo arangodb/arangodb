@@ -1,6 +1,86 @@
 devel
 -----
 
+* Added metrics for the system CPU usage:
+  - `arangodb_server_statistics_user_percent`: Percentage of time that the
+    system CPUs have spent in user mode
+  - `arangodb_server_statistics_system_percent`: Percentage of time that 
+    the system CPUs have spent in kernel mode
+  - `arangodb_server_statistics_idle_percent`: Percentage of time that the 
+    system CPUs have been idle
+  - `arangodb_server_statistics_iowait_percent`: Percentage of time that 
+    the system CPUs have been waiting for I/O
+
+  These metrics resemble the overall CPU usage metrics in `top`.
+  They are available on Linux only.
+
+* Fix internal issue #777: Fixed memory access while substituting
+  stored values for ArangoSearch view optimization
+
+* Make the number of network I/O threads properly configurable via the
+  startup option `--network.io-threads`. This option existed before, but its
+  configured value was effectively clamped to a value of `1`.
+
+* Improvements for the Pregel distributed graph processing feature:
+  - during the loading/startup phase, the in-memory edge cache is now 
+    intentionally bypassed. The reason for this is that any edges are 
+    looked up exactly once, so caching them is not beneficial, but would
+    only lead to cache pollution.
+  - the loading/startup phase can now load multiple collections in parallel,
+    whereas previously it was only loading multiple shards of the same
+    collection in parallel. This change helps to reduce load times in case
+    there are many collections with few shards, and on single server.
+  - the loading and result storage phases code has been overhauled so that 
+    it runs slightly faster.
+  - for Pregel runs that are based on named graphs (in contrast to explicit
+    naming of the to-be-used vertex and edge collections), only those edge
+    collections are considered that, according to the graph definition, can 
+    have connections with the vertex. This change can reduce the loading
+    time substantially in case the graph contains many edge definitions.
+  - the number of executed rounds for the underlying Pregel algorithm now
+    does not vary for different `parallelism` values.
+
+* Fix HTTP/1.1 status response header in fuerte responses
+
+  This change makes fuerte return the full status header, including the
+  numeric status code and the status string in the `http/1.1` header of
+  fuerte responses.
+
+  Previously, the return header lacked the numeric status code, so it
+  looked like
+  ```
+  "http/1.1" : "Ok"
+  ```
+  Now, with the numeric status code, the response header will look like
+  ```
+  "http/1.1" : "200 Ok"
+  ```
+  This PR also adds a protocol() method for arango client connections in
+  order to check the protocol in use. The possible return values are
+  - "http" for HTTP/1.1 connections
+  - "http2" for HTTP/2 connections
+  - "vst" for VST connections
+  - "unknown" for everyhting else
+  This is needed during testing, but can also be used for other purposes.
+
+* Updated arangosync to 0.7.12.
+
+* Fix log topic of general shutdown message from "cluster" to general.
+
+* Automatically add "www-authenticate" headers to server HTTP 401 responses,
+  as required by the HTTP specification.
+
+* Make the DOCUMENT AQL function eligible for running on DB servers in
+  OneShard deployment mode. This allows pushing more query parts to DB servers
+  for execution.
+
+* Enable HTTP request statistics and provide metrics even in case 
+  `--server.statistics-history` is set to `false` (this option will set
+  itself to off automatically on agency instances on startup if not
+  explicitly set).
+  This change provides more metrics on all server instances, without the
+  need to persist them in the instance's RocksDB storage engine. 
+
 * Fixed a deadlock between AQL write transactions and hotbackup, since
   in AQL write transactions follower transactions did not know they are
   follower transactions.
