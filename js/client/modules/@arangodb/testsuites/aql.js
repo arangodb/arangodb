@@ -67,7 +67,7 @@ function shellClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(ensureServers(options, 3), testCases, 'shell_client', tu.runInArangosh);
+  return tu.performTests(ensureServers(options, 3), testCases, 'shell_client', tu.runInLocalArangosh);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
