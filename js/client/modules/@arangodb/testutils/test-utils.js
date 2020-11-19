@@ -555,7 +555,7 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && global.ARANGODB_CLIENT_VERSION(true).details.asan) {
+  if ((testname.indexOf('-noasan') !== -1) && global.ARANGODB_CLIENT_VERSION(true).asan) {
     whichFilter.filter = 'skip when built with asan';
     return false;
   }
