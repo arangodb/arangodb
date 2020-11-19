@@ -275,7 +275,6 @@ template<typename T> void gauge_test() {
              };
   generate(vr.begin(), vr.end(), gen);
 
-  auto start = high_resolution_clock::now();
   size_t const p = 10;
   size_t const part = vr.size()/p;
   std::vector<std::future<void>> f;
@@ -293,12 +292,10 @@ template<typename T> void gauge_test() {
   for (auto& i : f) {
     i.wait();
   }
-  std::cout << duration<double>(high_resolution_clock::now()-start).count() << std::endl;
-  
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(1.f - g.load() < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
   } else {
-    ASSERT_TRUE(1. - g.load() < 1.e-15);
+    ASSERT_DOUBLE_EQ(1.,  g.load());
   }
 
   g = one;
@@ -314,11 +311,10 @@ template<typename T> void gauge_test() {
   for (auto& i : f) {
     i.wait();
   }
-
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(1.f - g.load() < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
   } else {
-    ASSERT_TRUE(1. - g.load() < 1.e-15);
+    ASSERT_DOUBLE_EQ(1.,  g.load());
   }
 
   g = zero;
