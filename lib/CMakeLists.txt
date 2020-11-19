@@ -126,6 +126,7 @@ add_library(arango STATIC
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
+  Basics/Guarded.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
@@ -226,7 +227,6 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/Guarded.cpp
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp

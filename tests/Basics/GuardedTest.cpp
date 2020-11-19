@@ -22,8 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/Guarded.h"
 #include "Basics/Mutex.h"
-#include "Utilities/Guarded.h"
 
 #include <mutex>
 #include <thread>
