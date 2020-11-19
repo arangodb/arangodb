@@ -106,7 +106,7 @@ void getQueries(TRI_vocbase_t& vocbase, std::vector<aql::QueryEntryCopy> const& 
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
         }
         auto& resp = it.get();
-        if (resp.response && resp.response->statusCode() == fuerte::StatusOK) {
+        if (resp.response && resp.statusCode() == fuerte::StatusOK) {
           auto slice = resp.response->slice();
           // copy results from other coordinators
           if (slice.isArray()) {
@@ -176,7 +176,7 @@ void Queries::clearSlow(TRI_vocbase_t& vocbase, bool fanout) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
         }
         auto& resp = it.get();
-        if (resp.response && resp.response->statusCode() != fuerte::StatusOK) {
+        if (resp.response && resp.statusCode() != fuerte::StatusOK) {
           THROW_ARANGO_EXCEPTION(network::resultFromBody(resp.response->slice(), TRI_ERROR_FAILED));
         }
       }

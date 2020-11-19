@@ -69,6 +69,11 @@ class Conductor {
   std::vector<CollectionID> _edgeCollections;
   std::vector<ServerID> _dbServers;
   std::vector<ShardID> _allShards;  // persistent shard list
+  
+  // maps from vertex collection name to a list of edge collections that this
+  // vertex collection is restricted to. only use for a collection if there is at least
+  // one entry for the collection!
+  std::unordered_map<CollectionID, std::vector<CollectionID>> _edgeCollectionRestrictions;
 
   // initialized on startup
   std::unique_ptr<AggregatorHandler> _aggregators;
@@ -112,10 +117,13 @@ class Conductor {
   void finishedWorkerFinalize(VPackSlice data);
   void finishedRecoveryStep(VPackSlice const& data);
 
+  std::vector<ShardID> getShardIds(ShardID const& collection) const;
+
  public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
             std::vector<CollectionID> const& vertexCollections,
             std::vector<CollectionID> const& edgeCollections,
+            std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
             std::string const& algoName, VPackSlice const& userConfig);
 
   ~Conductor();

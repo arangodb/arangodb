@@ -24,6 +24,7 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -198,6 +199,18 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
     "Physical memory in bytes"}},
+  {"userPercent",
+   {"arangodb_server_statistics_user_percent", "gauge",
+    "Percentage of time that the system CPUs have spent in user mode"}},
+  {"systemPercent",
+   {"arangodb_server_statistics_system_percent", "gauge",
+    "Percentage of time that the system CPUs have spent in kernel mode"}},
+  {"idlePercent",
+   {"arangodb_server_statistics_idle_percent", "gauge",
+    "Percentage of time that the system CPUs have been idle"}},
+  {"iowaitPercent",
+   {"arangodb_server_statistics_iowait_percent", "gauge",
+    "Percentage of time that the system CPUs have been waiting for I/O"}},
   {"v8ContextAvailable",
    {"arangodb_v8_context_alive", "gauge",
     "Number of V8 contexts currently alive"}},
@@ -491,13 +504,22 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
 
+  CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
+  if (cpuUsage.isEnabled()) {
+    auto snapshot = cpuUsage.snapshot();
+    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent");
+    appendMetric(result, std::to_string(snapshot.systemPercent()), "systemPercent");
+    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent");
+    appendMetric(result, std::to_string(snapshot.iowaitPercent()), "iowaitPercent");
+  }
+
   if (isEnabled()) {
     ConnectionStatistics::Snapshot connectionStats;
     ConnectionStatistics::getSnapshot(connectionStats);
 
     RequestStatistics::Snapshot requestStats;
     RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
-
+    
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
     appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});

@@ -162,6 +162,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
+  Basics/CpuUsageSnapshotTest.cpp
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/InifileParserTest.cpp
