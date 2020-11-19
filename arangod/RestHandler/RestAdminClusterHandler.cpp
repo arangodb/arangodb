@@ -168,7 +168,7 @@ void buildHealthResult(VPackBuilder& builder,
     // check if the agent responded. If not, ignore. This is just for building up agent information.
     if (agent.response.hasValue()) {
       auto& response = agent.response.get();
-      if (response.ok() && response.response->statusCode() == fuerte::StatusOK) {
+      if (response.ok() && response.statusCode() == fuerte::StatusOK) {
         VPackSlice lastAcked = response.slice().get("lastAcked");
         if (lastAcked.isNone()) {
           continue;
@@ -228,7 +228,7 @@ void buildHealthResult(VPackBuilder& builder,
 
         if (member.response.hasValue()) {
           if (auto& response = member.response.get();
-              response.ok() && response.response->statusCode() == fuerte::StatusOK) {
+              response.ok() && response.statusCode() == fuerte::StatusOK) {
             VPackSlice localConfig = response.slice();
             builder.add("Engine", localConfig.get("engine"));
             builder.add("Version", localConfig.get("version"));

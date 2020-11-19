@@ -587,18 +587,14 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         _resultField(result),
         _maxCommunities(mc) {}
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        DMIDValue& value) override {
-    // SCCValue* senders = (SCCValue*)targetPtr;
-    // senders->vertexID = _vertexIdRange++;
-  }
+  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice document,
+                        DMIDValue& /*value*/, uint64_t& /*vertexIdRange*/) override {}
 
-  void copyEdgeData(arangodb::velocypack::Slice document, float& targetPtr) override {
+  void copyEdgeData(arangodb::velocypack::Slice /*document*/, float& targetPtr) override {
     targetPtr = 1.0f;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const DMIDValue* ptr, size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, DMIDValue const* ptr) const override {
     if (ptr->membershipDegree.size() > 0) {
       std::vector<std::pair<PregelID, float>> communities;
       for (std::pair<PregelID, float> pair : ptr->membershipDegree) {
@@ -639,11 +635,6 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
       }
     }
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const float* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 
