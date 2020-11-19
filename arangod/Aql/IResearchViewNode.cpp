@@ -165,6 +165,10 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
   if (!options.noMaterialization) {
     builder.add("noMaterialization", VPackValue(options.noMaterialization));
   }
+
+  if (!options.emitOnlyCount) {
+    builder.add("emitOnlyCount", VPackValue(options.emitOnlyCount));
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& options) {
@@ -248,6 +252,19 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
       }
 
       options.noMaterialization = optionSlice.getBool();
+    }
+  }
+
+  // emitOnlyCount
+  {
+    auto const optionSlice = optionsSlice.get("emitOnlyCount");
+    if (!optionSlice.isNone()) {
+      // 'emitOnlyCount' is optional
+      if (!optionSlice.isBool()) {
+        return false;
+      }
+
+      options.emitOnlyCount = optionSlice.getBool();
     }
   }
 
@@ -370,8 +387,20 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          options.noMaterialization = value.getBoolValue();
          return true;
        }},
-     // cppcheck-suppress constStatement
-     {"conditionOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+       // cppcheck-suppress constStatement
+       {"emitOnlyCount", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                               aql::AstNode const& value,
+                               IResearchViewNode::Options& options, std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
+           error = "boolean value expected for option 'emitOnlyCount'";
+           return false;
+         }
+
+         options.emitOnlyCount = value.getBoolValue();
+         return true;
+       }},
+       // cppcheck-suppress constStatement
+       {"conditionOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
                                   aql::AstNode const& value,
                                   IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
@@ -765,6 +794,7 @@ const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
 const char* NODE_VIEW_NO_MATERIALIZATION = "noMaterialization";
+const char* NODE_VIEW_EMIT_ONLY_COUNT = "emitOnlyCount";
 
 void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
@@ -1053,7 +1083,20 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     _noMaterialization = false;
   }
 
-  if (isLateMaterialized() || noMaterialization()) {
+  if (base.hasKey(NODE_VIEW_EMIT_ONLY_COUNT)) {
+    auto const emitOnlyCountSlice = base.get(NODE_VIEW_EMIT_ONLY_COUNT);
+    if (!emitOnlyCountSlice.isBool()) {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_BAD_PARAMETER,
+          "\"%s\" %s should be a bool value",
+          NODE_VIEW_EMIT_ONLY_COUNT, emitOnlyCountSlice.toString().c_str());
+    }
+    _emitOnlyCount = emitOnlyCountSlice.getBool();
+  } else {
+    _emitOnlyCount = false;
+  }
+
+  if (isLateMaterialized() || (noMaterialization() && !emitOnlyCount())) {
     auto const* vars = plan.getAst()->variables();
     TRI_ASSERT(vars);
 
@@ -1133,6 +1176,10 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
   if (_noMaterialization) {
     nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
+  }
+
+  if (_emitOnlyCount) {
+    nodes.add(NODE_VIEW_EMIT_ONLY_COUNT, VPackValue(_emitOnlyCount));
   }
 
   // stored values
@@ -1491,7 +1538,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       TRI_ASSERT(!noMaterialization());
       materializeType = MaterializeType::LateMaterialize;
       numDocumentRegs += 2;
-    } else if (noMaterialization()) {
+    } else if (noMaterialization() && !emitOnlyCount()) {
       TRI_ASSERT(options().noMaterialization);
       materializeType = MaterializeType::NotMaterialize;
     } else if (emitOnlyCount()) {

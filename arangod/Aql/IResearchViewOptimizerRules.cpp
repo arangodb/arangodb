@@ -756,7 +756,7 @@ void handleViewsRule(Optimizer* opt,
   for (auto* node : viewNodes) {
     TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
-    if (viewNode.noMaterialization() &&
+    if (viewNode.noMaterialization() && viewNode.options().emitOnlyCount &&
         !viewNode.hasNonMaterializedVariables() &&
         viewNode.scorers().empty() &&
         viewNode.filterConditionIsEmpty()) {

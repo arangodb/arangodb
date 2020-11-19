@@ -564,11 +564,17 @@ class IResearchViewCountExecutor
   IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos) : Base(fetcher, infos) {}
 
 
-  size_t skip(size_t toSkip) {return 0;}
-  size_t skipAll() {return 0;}
-  void fillBuffer(ReadContext& ctx) {}
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) { return false; }
-  void reset() {}
+  size_t skip(size_t toSkip);
+  size_t skipAll();
+  void fillBuffer(ReadContext& ctx);
+
+  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+
+  void reset() noexcept {
+    _readerOffset = 0;
+  }
+ private:
+   size_t _readerOffset {0};
 };
 
 }  // namespace aql

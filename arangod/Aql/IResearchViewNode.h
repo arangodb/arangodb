@@ -82,7 +82,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     bool noMaterialization{true};
 
     /// @brief node should try emit just total count of documents if possible
-    /// TODO: implement serialization/desiarelization and restricting onlyCount optimization
     bool emitOnlyCount{true};
 
     /// @brief condition optimization Auto - condition will be transformed to DNF.

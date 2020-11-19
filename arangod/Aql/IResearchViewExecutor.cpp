@@ -1093,7 +1093,7 @@ template <bool ordered, MaterializeType materializeType>
 bool IResearchViewExecutor<ordered, materializeType>::writeRow(
     IResearchViewExecutor::ReadContext& ctx,
     IResearchViewExecutor::IndexReadBufferEntry bufferEntry) {
-  TRI_ASSERT(_collection || _infos.emitCount()); // we don`t need collection for emitting count
+  TRI_ASSERT(_collection);
 
   return Base::writeRow(ctx, bufferEntry,
                         this->_indexReadBuffer.getValue(bufferEntry), *_collection);
@@ -1397,6 +1397,40 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
   TRI_ASSERT(collection);
 
   return Base::writeRow(ctx, bufferEntry, documentId, *collection);
+}
+
+size_t arangodb::aql::IResearchViewCountExecutor::skip(size_t toSkip) { 
+  return 0;
+}
+
+size_t arangodb::aql::IResearchViewCountExecutor::skipAll() { 
+  return 0;
+}
+
+void arangodb::aql::IResearchViewCountExecutor::fillBuffer(ReadContext& ctx) {
+  size_t const count = this->_reader->size();
+  if (_readerOffset >= count) {
+    return;
+  }
+  //size_t total = 0;
+  //TRI_ASSERT(_readerOffset == 0);
+  //for (; _readerOffset < count;) {
+  //  auto& segmentReader = (*this->_reader)[_readerOffset];
+  //  total += segmentReader.live_docs_count();
+  //  ++_readerOffset;
+  //}
+  this->_indexReadBuffer.pushValue(this->_reader->live_docs_count());
+  _readerOffset = count; // simulate that all readers are iterated
+  return;
+}
+
+bool arangodb::aql::IResearchViewCountExecutor::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
+  TRI_ASSERT(_infos.emitCount());
+  auto index = this->_indexReadBuffer.getValue(bufferEntry);
+  AqlValue a{ AqlValueHintUInt(index) };
+  AqlValueGuard guard{ a, true };
+  ctx.outputRow.moveValueInto(ctx.getCountReg(), ctx.inputRow, guard);
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
