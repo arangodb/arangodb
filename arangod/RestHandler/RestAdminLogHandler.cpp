@@ -40,9 +40,7 @@ using namespace arangodb::rest;
 
 RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
   auto& server = application_features::ApplicationServer::server();
