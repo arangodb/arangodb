@@ -436,14 +436,6 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   // intentional copy, as we will modify the headers later
   auto headers = request->headers();
 
-  switch (request->acceptEncoding()) {
-  case EncodingType::UNSET:
-    headers.emplace(StaticStrings::AcceptEncoding, StaticStrings::EncodingIdentity);
-    break;
-  case EncodingType::DEFLATE:
-    headers.emplace(StaticStrings::AcceptEncoding, StaticStrings::EncodingDeflate);
-    break;
-  }
   std::string const& acceptPlain = request->contentTypeResponsePlain();
 
   if (!acceptPlain.empty()) {

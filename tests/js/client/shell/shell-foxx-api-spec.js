@@ -98,6 +98,9 @@ describe('FoxxApi commit', function () {
       { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
       { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "second"},
       // work around clever arangosh client, specify random content-type first:
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'identity'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'deflate'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'gzip'},
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third"},
       { accept: 'application/json; charset=utf-8', test: "fourth", "content-type": "image/jpg"}
     ].forEach(headers => {
@@ -122,7 +125,9 @@ describe('FoxxApi commit', function () {
         expect(body[key]).to.equal(headers[key]);
         
       });
-
+      if (!headers.hasOwnProperty('accept-encoding')) {
+        expect(body['accept-encoding']).to.equal(undefined);
+      }
     });
 
     // sending content-type json actually requires to post something:
