@@ -497,11 +497,10 @@ arangodb::Result modifyLinks(                              // modify links
           && collectionsToRemove.find(state._collection->id()) ==
                  collectionsToRemove.end()  // not a reindex request
           && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second) {  // link meta not modified
-        itr = linkModifications.erase(itr);
         LOG_TOPIC("4c196", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, no change, for link '"
             << state._link->id() << "'";
-
+        itr = linkModifications.erase(itr);
         continue;
       }
 
