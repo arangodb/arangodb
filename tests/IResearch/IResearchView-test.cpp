@@ -5390,6 +5390,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     }
   }
 
+#if not ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+    // TODO: fix BTS-242 and remove define again.
   // add authorised link (existing collection not authorized)
   {
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"id\": 100 }");
@@ -5430,8 +5432,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto* userManager = authFeature->userManager();
     
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
-#if not ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-    // TODO: fix BTS-242 and remove define again.
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -5463,8 +5463,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         return false;
       })));
     }
-#endif
   }
+#endif
   // drop authorised link (existing collection not authorized)
   {
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"id\": 100 }");
