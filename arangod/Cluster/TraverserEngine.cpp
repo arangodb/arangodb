@@ -60,7 +60,7 @@ static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
 #ifndef USE_ENTERPRISE
-/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
+/*static*/ std::shared_ptr<BaseEngine> BaseEngine::buildEngine(
     TRI_vocbase_t& vocbase, aql::QueryContext& query,
     VPackSlice info) {
   VPackSlice type = info.get(std::vector<std::string>({OPTIONS, TYPE}));

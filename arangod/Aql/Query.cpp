@@ -1415,7 +1415,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     for (auto const& te : VPackArrayIterator(traverserSlice)) {
       
       aql::EngineId eId = TRI_NewTickServer();
-      auto engine = traverser::BaseEngine::BuildEngine(_vocbase, *this, te);
+      auto engine = traverser::BaseEngine::buildEngine(_vocbase, *this, te);
       
       _traversers.emplace_back(eId, std::move(engine));
 
