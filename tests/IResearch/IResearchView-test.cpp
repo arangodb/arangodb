@@ -278,8 +278,6 @@ TEST_F(IResearchViewTest, test_type) {
 TEST_F(IResearchViewTest, test_defaults) {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
 
-#if not ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-    // TODO: fix BTS-242 and remove define again.
   // view definition with LogicalView (for persistence)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
@@ -7669,7 +7667,6 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
               arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
               meta._storedValues.columns()[4].name);
   }
-#endif
 }
 
 TEST_F(IResearchViewTest, create_view_with_stored_value_with_compression) {
