@@ -24,6 +24,8 @@
 #include "PathStore.h"
 #include "Graph/PathManagement/PathResult.h"
 
+#include "Graph/Providers/SingleServerProvider.h"
+
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 
@@ -67,7 +69,11 @@ void PathStore<Step>::buildPath(Step const& vertex, PathResult<Step>& path) cons
 
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
-    path.prependEdge(myStep->getEdge());
+
+    if (myStep->getEdge().has_value()) {
+      path.prependEdge(myStep->getEdge().value());
+    }
+
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }
@@ -76,32 +82,38 @@ void PathStore<Step>::buildPath(Step const& vertex, PathResult<Step>& path) cons
 
 template <class Step>
 void PathStore<Step>::reverseBuildPath(Step const& vertex, PathResult<Step>& path) const {
-    // For backward we just need to attach ourself
-    // So everything until here should be done.
-    // We never start with an empty path here, the other side should at least have
-    // added the vertex
-    TRI_ASSERT(!path.isEmpty());
-    if (vertex.isFirst()) {
-      // already started at the center.
-      // Can stop here
-      // The buildPath of the other side has included the vertex already
-      return;
-    }
-    Step const* myStep = &vertex;
-    TRI_ASSERT(size() > myStep->getPrevious());
-    // We have added the vertex, but we still need the edge on the other side of the path
-    path.appendEdge(myStep->getEdge());
-    myStep = &_schreier[myStep->getPrevious()];
+  // For backward we just need to attach ourself
+  // So everything until here should be done.
+  // We never start with an empty path here, the other side should at least have
+  // added the vertex
+  TRI_ASSERT(!path.isEmpty());
+  if (vertex.isFirst()) {
+    // already started at the center.
+    // Can stop here
+    // The buildPath of the other side has included the vertex already
+    return;
+  }
+  Step const* myStep = &vertex;
+  TRI_ASSERT(size() > myStep->getPrevious());
+  // We have added the vertex, but we still need the edge on the other side of the path
 
-    while (!myStep->isFirst()) {
-      path.appendVertex(myStep->getVertex());
-      path.appendEdge(myStep->getEdge());
-      TRI_ASSERT(size() > myStep->getPrevious());
-      myStep = &_schreier[myStep->getPrevious()];
-    }
+  if (myStep->getEdge().has_value()) {
+    path.appendEdge(myStep->getEdge().value());
+  }
+  myStep = &_schreier[myStep->getPrevious()];
+
+  while (!myStep->isFirst()) {
     path.appendVertex(myStep->getVertex());
-}
 
+    if (myStep->getEdge().has_value()) {
+      path.appendEdge(myStep->getEdge().value());
+    }
+
+    TRI_ASSERT(size() > myStep->getPrevious());
+    myStep = &_schreier[myStep->getPrevious()];
+  }
+  path.appendVertex(myStep->getVertex());
+}
 
 template <class Step>
 bool PathStore<Step>::testPath(Step step) {
@@ -112,3 +124,5 @@ bool PathStore<Step>::testPath(Step step) {
 
 }  // namespace graph
 }  // namespace arangodb
+
+template class ::arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>;

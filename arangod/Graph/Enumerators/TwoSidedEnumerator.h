@@ -151,7 +151,9 @@ class TwoSidedEnumerator {
    */
 
   bool skipPath();
-  auto destroyEngines() -> void;  // TODO: remove me
+  void destroyEngines(){};  // TODO: remove me after refactor
+
+
   arangodb::transaction::Methods* trx() {
     return _trx;
   }  // TODO: check responsibility
@@ -170,8 +172,8 @@ class TwoSidedEnumerator {
 
  private:
   GraphOptions _options;
-  std::unique_ptr<Ball> _left; // TODO: check
-  std::unique_ptr<Ball> _right; // TODO: check
+  std::unique_ptr<Ball> _left;   // TODO: check
+  std::unique_ptr<Ball> _right;  // TODO: check
   bool _searchLeft{true};
   ResultList _results{};
   bool _resultsFetched{false};

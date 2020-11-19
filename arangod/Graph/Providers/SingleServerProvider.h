@@ -135,6 +135,7 @@ struct SingleServerProvider {
     }
 
     Vertex getVertex() const { return _vertex; }
+    std::optional<Edge> getEdge() const { return _edge; }
 
     std::string toString() const {
       return "<Step><Vertex>: " + _vertex.data().toString();
@@ -160,6 +161,8 @@ struct SingleServerProvider {
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
+
+  void destroyEngines() {}; // TODO: remove after refactor
 
   [[nodiscard]] transaction::Methods* trx();
 
