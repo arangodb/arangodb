@@ -5447,6 +5447,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         return false;
       })));
     }
+#endif
 
     // subsequent update (overwrite) authorised (RO collection)
     {
@@ -5464,7 +5465,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       })));
     }
   }
-#endif
   // drop authorised link (existing collection not authorized)
   {
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"id\": 100 }");
