@@ -127,7 +127,7 @@ class MutexLocker {
 
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_mutex->tryLock()) {
+    if (_mutex->try_lock()) {
       _isLocked = true;
     }
     return _isLocked;
