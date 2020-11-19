@@ -471,7 +471,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
   }
 
-  switch(request->contentType()) {
+  switch (request->contentType()) {
     case ContentType::UNSET:
     case ContentType::CUSTOM:  // use Content-Type from _headers
       break;
