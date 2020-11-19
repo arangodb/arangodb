@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1h.
+
 * Added metrics for the system CPU usage:
   - `arangodb_server_statistics_user_percent`: Percentage of time that the
     system CPUs have spent in user mode
