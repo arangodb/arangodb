@@ -863,6 +863,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       _outNonMaterializedDocId(nullptr),
       _outNonMaterializedColPtr(nullptr),
       _noMaterialization(false),
+      _emitOnlyCount(false),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
@@ -1559,7 +1560,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
         auto const it = varInfos.find(fieldsVars.var->id);
         TRI_ASSERT(it != varInfos.cend());
-
         auto const regId = it->second.registerId;
         writableOutputRegisters.emplace(regId);
         fields.emplace(fieldsVars.fieldNum, regId);

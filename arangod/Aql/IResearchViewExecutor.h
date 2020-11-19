@@ -242,7 +242,7 @@ class IResearchViewExecutorBase {
 
     template <iresearch::MaterializeType t = iresearch::MaterializeType::EmitCount,
               typename E = enabled_for_materialize_type_t<t>>
-    [[nodiscard]] auto getCountReg() const noexcept 
+    [[nodiscard]] auto getCountReg() const noexcept
         -> aql::RegisterId {
       return documentOutReg;
     }
@@ -460,7 +460,6 @@ struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materializeTyp
   using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
-  static constexpr bool Merge {false};
 };
 
 template <bool ordered, iresearch::MaterializeType materializeType>
