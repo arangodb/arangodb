@@ -317,6 +317,7 @@ template<typename T> void gauge_test() {
   } else {
     ASSERT_TRUE(1. - g.load() < 1.e-15);
   }
+  
   g = zero;
   ASSERT_DOUBLE_EQ(g.load(),  zero);
   g += zdo;
