@@ -102,7 +102,8 @@ class TwoSidedEnumerator {
  public:
   TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
                      TwoSidedEnumeratorOptions&& options);
-  TwoSidedEnumerator(const TwoSidedEnumerator& other);
+  TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
+  TwoSidedEnumerator(TwoSidedEnumerator&& other) = default;
 
   ~TwoSidedEnumerator();
 
@@ -151,8 +152,7 @@ class TwoSidedEnumerator {
    */
 
   bool skipPath();
-  void destroyEngines(){};  // TODO: remove me after refactor
-
+  auto destroyEngines() -> void {};  // TODO: remove me
 
   arangodb::transaction::Methods* trx() {
     return _trx;

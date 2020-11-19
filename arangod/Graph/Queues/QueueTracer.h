@@ -27,6 +27,7 @@
 #include <numeric>
 #include <unordered_map>
 #include <ostream>
+#include <vector>
 
 namespace arangodb {
 namespace graph {
@@ -36,11 +37,11 @@ class TraceEntry {
 public:
   TraceEntry();
   ~TraceEntry();
-  
+
   void addTiming(double timeTaken);
-  
+
   friend auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream&;
-  
+
 private:
   double _min{std::numeric_limits<double>::max()};
   double _max{0};
@@ -50,26 +51,26 @@ private:
 
 template<class QueueImpl>
 class QueueTracer {
-  
+
 
   using Step = typename QueueImpl::Step;
-  
+
 public:
   QueueTracer();
   ~QueueTracer();
-  
+
   void clear();
   void append(Step step);
   bool hasProcessableElement() const;
   size_t size() const;
   bool isEmpty() const;
   std::vector<Step*> getLooseEnds();
-  
+
   Step pop();
-  
+
 private:
   QueueImpl _impl;
-  
+
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
   mutable std::unordered_map<std::string, TraceEntry> _stats;

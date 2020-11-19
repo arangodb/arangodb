@@ -144,7 +144,7 @@ class KShortestPathsNode : public virtual GraphNode {
       vars.emplace(_inTargetVariable);
     }
   }
-  
+
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
   arangodb::graph::ShortestPathType::Type shortestPathType() const {
     return _shortestPathType;
@@ -155,7 +155,7 @@ class KShortestPathsNode : public virtual GraphNode {
   ///        of blocks.
   void prepareOptions() override;
 
-  std::vector<arangodb::graph::IndexAccessor>&& buildUsedIndexes() const;
+  std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
 
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)

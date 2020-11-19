@@ -345,10 +345,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       using KPathRefactored =
           TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
 
-      KPathRefactored KPathFinder = {{opts->query(), bpo},
-                                     {opts->query(), bpo},
-                                     std::move(lolOptions)};
-      auto kPathUnique = std::make_unique<KPathRefactored>(KPathFinder);
+      auto kPathUnique =
+          std::make_unique<KPathRefactored>(SingleServerProvider{opts->query(), bpo},
+                                            SingleServerProvider{opts->query(), bpo},
+                                            std::move(lolOptions));
 
       auto executorInfos =
           KShortestPathsExecutorInfos(outputRegister, std::move(kPathUnique),
@@ -412,13 +412,13 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
 
-std::vector<arangodb::graph::IndexAccessor>&& KShortestPathsNode::buildUsedIndexes() const {
+std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes() const {
   // std::vector<IndexAccessor> usedIndexes{
   // IndexAccessor{edgeIndexHandle, indexCondition, 0}};
   std::vector<IndexAccessor> indexAccessors{};
 
   if (_optionsBuilt) {
-    return std::move(indexAccessors);
+    return indexAccessors;
   }
   TRI_ASSERT(!_optionsBuilt);
 
@@ -451,7 +451,7 @@ std::vector<arangodb::graph::IndexAccessor>&& KShortestPathsNode::buildUsedIndex
       }
     }
   }
-  return std::move(indexAccessors);
+  return indexAccessors;
 }
 
 void KShortestPathsNode::prepareOptions() {

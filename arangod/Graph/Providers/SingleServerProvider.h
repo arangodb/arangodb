@@ -100,7 +100,7 @@ struct SingleServerProvider {
       // NUr implementiert wenn baseOptions>produceVertices()
       // Sonst add `null`.
 
-      void addToBuilder(arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(arangodb::velocypack::Builder& builder) const {};
 
       VertexType data() const;
 
@@ -120,7 +120,7 @@ struct SingleServerProvider {
      public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
 
-      void addToBuilder(arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(arangodb::velocypack::Builder& builder) const {};
 
      private:
       EdgeDocumentToken _token;

@@ -122,7 +122,7 @@ bool PathStore<Step>::testPath(Step step) {
   return true;
 }
 
+template class PathStore<SingleServerProvider::Step>;
+
 }  // namespace graph
 }  // namespace arangodb
-
-template class ::arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>;

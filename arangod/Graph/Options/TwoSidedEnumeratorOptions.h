@@ -25,6 +25,7 @@
 #define ARANGODB_GRAPH_OPTIONS_GRAPH_OPTIONS_H 1
 
 #include <numeric>
+#include <cstddef>
 
 namespace arangodb {
 

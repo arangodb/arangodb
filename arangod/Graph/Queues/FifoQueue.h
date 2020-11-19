@@ -73,7 +73,7 @@ class FifoQueue {
       }
     }
 
-    return std::move(steps);
+    return steps;
   };
 
   Step pop() {
@@ -81,7 +81,7 @@ class FifoQueue {
     Step first = std::move(_queue.front());
     LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS) << "<FifoQueue> Pop: " << first.toString();
     _queue.pop_front();
-    return std::move(first);
+    return first;
   };
 };
 

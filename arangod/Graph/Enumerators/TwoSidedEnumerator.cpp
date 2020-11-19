@@ -206,13 +206,6 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
       _resultPath{},
       _trx(forwardProvider.trx()) {}
 
-/*template <class QueueType, class PathStoreType, class ProviderType>
-TwoSidedEnumerator<QueueType, PathStoreType,
-ProviderType>::TwoSidedEnumerator(const TwoSidedEnumerator& other) :
-_options(other._options), _left(other._left), _right(other._right),
-      _resultPath{},
-      _trx(other.trx()) {}*/
-
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
 
