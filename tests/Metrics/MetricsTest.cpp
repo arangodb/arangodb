@@ -278,6 +278,7 @@ template<typename T> void gauge_test() {
   size_t const p = 10;
   size_t const part = vr.size()/p;
   std::vector<std::future<void>> f;
+  f.reserve(p);
 
   g = one;
   for (size_t i = 0; i < p; ++i) {
