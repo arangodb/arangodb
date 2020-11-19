@@ -184,10 +184,6 @@ Query::~Query() {
     // a destructor
   }
  
-  // note: unregisterSnippets will only do any work on coordinators.
-  // it will remove all snippets of this query from the query registry.
-  //unregisterSnippets();
-
   exitV8Context();
 
   _snippets.clear(); // simon: must be before plan
