@@ -30,6 +30,37 @@
 #include <stdexcept>
 #include <variant>
 
+/**
+ * SYNOPSIS
+ *
+ * The class Guarded contains a value and an associated mutex. It does allow
+ * access to the value only while owning a lock to the mutex.
+ *
+ * For example, given a
+ *
+ *     struct UnderGuard { int value; }
+ *
+ * , define a guarded object as follows:
+ *
+ *     Guarded<UnderGuard> guarded(7);
+ *
+ * The constructor's arguments will be forwarded.
+ *
+ * It can either be accessed by passing a lambda:
+ *
+ *     guarded.doUnderLock([](UnderGuard& obj) { obj.value = 12; });
+ *
+ * This will lock the mutex before the lambda's execution, and release it after.
+ *
+ * Or it can be accessed by creating a MutexGuard:
+ *
+ *     auto mutexGuard = guarded.getLockedGuard();
+ *     mutexGuard->value = 13;
+ *
+ * getLockedGuard() will lock the mutex, and mutexGuard will release it upon
+ * destruction.
+ */
+
 namespace arangodb {
 
 class Mutex;
