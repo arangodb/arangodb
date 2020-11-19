@@ -23,8 +23,6 @@
 #ifndef LIB_UTILITIES_GUARDED_H
 #define LIB_UTILITIES_GUARDED_H
 
-// #include "Basics/MutexLocker.h"
-
 #include <algorithm>
 #include <functional>
 #include <mutex>
@@ -130,7 +128,6 @@ template <class T, class M>
 template <class F, class R>
 auto Guarded<T, M>::doUnderLock(F&& callback) -> R {
   auto guard = std::unique_lock<M>(_mutex);
-  //MUTEX_LOCKER(guard, _mutex);
 
   if constexpr (!std::is_void_v<R>) {
     return std::forward<F>(callback)(_value);
@@ -144,7 +141,6 @@ template <class T, class M>
 template <class F, class R>
 auto Guarded<T, M>::doUnderLock(F&& callback) const -> R {
   auto guard = std::unique_lock<M>(_mutex);
-  // MUTEX_LOCKER(guard, _mutex);
 
   if constexpr (!std::is_void_v<R>) {
     return std::forward<F>(callback)(_value);
@@ -158,7 +154,6 @@ template <class T, class M>
 template <class F, class R, class Q>
 auto Guarded<T, M>::tryUnderLock(F&& callback) -> std::optional<Q> {
   auto guard = std::unique_lock<M>(_mutex, std::try_to_lock);
-  // TRY_MUTEX_LOCKER(guard, _mutex);
 
   if (guard.owns_lock()) {
     if constexpr (!std::is_void_v<R>) {
@@ -175,7 +170,6 @@ auto Guarded<T, M>::tryUnderLock(F&& callback) -> std::optional<Q> {
 template <class T, class M>
 template <class F, class R, class Q>
 auto Guarded<T, M>::tryUnderLock(F&& callback) const -> std::optional<Q> {
-  // TRY_MUTEX_LOCKER(guard, _mutex);
   auto guard = std::unique_lock<M>(_mutex, std::try_to_lock);
 
   if (guard.owns_lock()) {
