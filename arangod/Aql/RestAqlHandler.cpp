@@ -839,7 +839,9 @@ RestStatus RestAqlHandler::handleUseQuery(ExecutionEngine& engine,
     answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
     answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
   } else if (operation == "shutdown") { // simon: only used in 3.6,
-    // 3.7 uses DELETE /_api/aql/finish
+    // 3.7 uses DELETE /_api/aql/finish for normal shutdowns.
+    // in addition, this route can be called if there is an error
+    // during query setup, and the setup is rolled back.
     int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code,
                                                            TRI_ERROR_INTERNAL);
   
