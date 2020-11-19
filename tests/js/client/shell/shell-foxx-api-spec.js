@@ -94,7 +94,7 @@ describe('FoxxApi commit', function () {
     result = arango.POST('/_api/foxx/commit', '');
     expect(result.code).to.equal(204);
     [
-      // explicitely say we want utf8-json, since the server will add it:
+      // explicitly say we want utf8-json, since the server will add it:
       { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
       { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "second"},
       // work around clever arangosh client, specify random content-type first:
