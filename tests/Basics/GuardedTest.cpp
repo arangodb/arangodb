@@ -24,26 +24,33 @@
 
 #include "Basics/Guarded.h"
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 #include <mutex>
 #include <thread>
 
 namespace arangodb::tests {
 
-template <typename M>
-class GuardedTest : public ::testing::Test {
- protected:
-  using Mutex = M;
-};
 
 struct UnderGuard {
   int val{};
 };
 
+template <typename T>
+class GuardedTest : public ::testing::Test {
+ protected:
+
+  using Mutex = typename T::first_type;
+  template<typename M>
+  using Lock = typename T::second_type::template instantiate<M>;
+  template<typename V>
+  using Guarded = Guarded<V, Mutex, Lock>;
+};
+
 TYPED_TEST_CASE_P(GuardedTest);
 
 TYPED_TEST_P(GuardedTest, test_guard_allows_access) {
-  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   {
     auto guard = guardedObj.getLockedGuard();
     EXPECT_EQ(1, guard.get().val);
@@ -52,13 +59,13 @@ TYPED_TEST_P(GuardedTest, test_guard_allows_access) {
   }
 }
 TYPED_TEST_P(GuardedTest, test_guard_waits_for_access) {
-  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   // TODO Get a lock first, then assert that trying to get a guard waits for the
   //      lock to be released.
 }
 
 TYPED_TEST_P(GuardedTest, test_do_allows_access) {
-  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   {
     bool didExecute = false;
     guardedObj.doUnderLock([&didExecute](UnderGuard& obj) {
@@ -76,13 +83,13 @@ TYPED_TEST_P(GuardedTest, test_do_allows_access) {
 }
 
 TYPED_TEST_P(GuardedTest, test_do_waits_for_access) {
-  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   // TODO Get a lock first, then assert that doUnderLock waits for the lock
   //      to be released.
 }
 
 TYPED_TEST_P(GuardedTest, test_try_allows_access) {
-  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   {
     bool didExecute = false;
     auto const res = guardedObj.tryUnderLock([&didExecute](UnderGuard& obj) {
@@ -105,7 +112,7 @@ TYPED_TEST_P(GuardedTest, test_try_allows_access) {
 }
 
 TYPED_TEST_P(GuardedTest, test_try_fails_access) {
-  auto guardedObj = Guarded<UnderGuard, typename TestFixture::Mutex>{UnderGuard{1}};
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   {
     auto guard = guardedObj.getLockedGuard();
     bool threadStarted = false;
@@ -133,8 +140,17 @@ REGISTER_TYPED_TEST_CASE_P(GuardedTest, test_guard_allows_access, test_guard_wai
                            test_do_allows_access, test_do_waits_for_access,
                            test_try_allows_access, test_try_fails_access);
 
-using TestedMutexes = ::testing::Types<std::mutex, arangodb::Mutex>;
+template<template <typename> typename T>
+struct ParamT {
+  template <typename U>
+  using instantiate = T<U>;
+};
 
-INSTANTIATE_TYPED_TEST_CASE_P(GuardedTestInstantiation, GuardedTest, TestedMutexes);
+using TestedTypes = ::testing::Types<
+    std::pair<std::mutex, ParamT<std::unique_lock>>,
+    std::pair<arangodb::Mutex, ParamT<std::unique_lock>>
+>;
+
+INSTANTIATE_TYPED_TEST_CASE_P(GuardedTestInstantiation, GuardedTest, TestedTypes);
 
 }  // namespace arangodb::tests

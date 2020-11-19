@@ -23,6 +23,8 @@
 #ifndef LIB_UTILITIES_GUARDED_H
 #define LIB_UTILITIES_GUARDED_H
 
+#include "Basics/system-compiler.h"
+
 #include <algorithm>
 #include <functional>
 #include <mutex>
@@ -110,9 +112,13 @@ auto MutexGuard<T, L>::operator->() const noexcept -> T const* {
   return std::addressof(get());
 }
 
-template <class T, class M = Mutex>
+template <class T, class M = std::mutex, template<class> class L = std::unique_lock>
 class Guarded {
  public:
+  using value_type = T;
+  using mutex_type = M;
+  using lock_type = L<M>;
+
   explicit Guarded(T&& value = T());
   template <typename... Args>
   explicit Guarded(Args...);
@@ -123,42 +129,41 @@ class Guarded {
   auto operator=(Guarded const&) -> Guarded& = delete;
   auto operator=(Guarded&&) -> Guarded& = delete;
 
-  template <class F, class R = std::invoke_result_t<F, T&>>
+  template <class F, class R = std::invoke_result_t<F, value_type&>>
   auto doUnderLock(F&& callback) -> R;
-  template <class F, class R = std::invoke_result_t<F, T&>>
+  template <class F, class R = std::invoke_result_t<F, value_type&>>
   auto doUnderLock(F&& callback) const -> R;
 
-  template <class F, class R = std::invoke_result_t<F, T&>,
+  template <class F, class R = std::invoke_result_t<F, value_type&>,
             class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
   [[nodiscard]] auto tryUnderLock(F&& callback) -> std::optional<Q>;
-  template <class F, class R = std::invoke_result_t<F, T&>,
+  template <class F, class R = std::invoke_result_t<F, value_type&>,
             class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
   [[nodiscard]] auto tryUnderLock(F&& callback) const -> std::optional<Q>;
 
-  using L = std::unique_lock<M>;
-  auto getLockedGuard() -> MutexGuard<T, L>;
-  auto getLockedGuard() const -> MutexGuard<T const, L>;
+  auto getLockedGuard() -> MutexGuard<value_type, lock_type>;
+  auto getLockedGuard() const -> MutexGuard<value_type const, lock_type>;
 
-  auto tryLockedGuard() -> std::optional<MutexGuard<T, L>>;
-  auto tryLockedGuard() const -> std::optional<MutexGuard<T const, L>>;
+  auto tryLockedGuard() -> std::optional<MutexGuard<value_type, lock_type>>;
+  auto tryLockedGuard() const -> std::optional<MutexGuard<value_type const, lock_type>>;
   // TODO add more types of "get guard" (like try or eventual)
 
  private:
-  T _value;
-  M _mutex;
+  value_type _value;
+  mutex_type _mutex;
 };
 
-template <class T, class M>
-Guarded<T, M>::Guarded(T&& value) : _value{std::move(value)}, _mutex{} {}
+template <class T, class M, template<class> class L>
+Guarded<T, M, L>::Guarded(T&& value) : _value{std::move(value)}, _mutex{} {}
 
-template <class T, class M>
+template <class T, class M, template<class> class L>
 template <typename... Args>
-Guarded<T, M>::Guarded(Args... args) : _value{args...}, _mutex{} {}
+Guarded<T, M, L>::Guarded(Args... args) : _value{args...}, _mutex{} {}
 
-template <class T, class M>
+template <class T, class M, template<class> class L>
 template <class F, class R>
-auto Guarded<T, M>::doUnderLock(F&& callback) -> R {
-  auto guard = std::unique_lock<M>(_mutex);
+auto Guarded<T, M, L>::doUnderLock(F&& callback) -> R {
+  auto guard = L<M>(_mutex);
 
   if constexpr (!std::is_void_v<R>) {
     return std::forward<F>(callback)(_value);
@@ -168,10 +173,10 @@ auto Guarded<T, M>::doUnderLock(F&& callback) -> R {
   }
 }
 
-template <class T, class M>
+template <class T, class M, template<class> class L>
 template <class F, class R>
-auto Guarded<T, M>::doUnderLock(F&& callback) const -> R {
-  auto guard = std::unique_lock<M>(_mutex);
+auto Guarded<T, M, L>::doUnderLock(F&& callback) const -> R {
+  auto guard = L<M>(_mutex);
 
   if constexpr (!std::is_void_v<R>) {
     return std::forward<F>(callback)(_value);
@@ -181,10 +186,10 @@ auto Guarded<T, M>::doUnderLock(F&& callback) const -> R {
   }
 }
 
-template <class T, class M>
+template <class T, class M, template<class> class L>
 template <class F, class R, class Q>
-auto Guarded<T, M>::tryUnderLock(F&& callback) -> std::optional<Q> {
-  auto guard = std::unique_lock<M>(_mutex, std::try_to_lock);
+auto Guarded<T, M, L>::tryUnderLock(F&& callback) -> std::optional<Q> {
+  auto guard = L<M>(_mutex, std::try_to_lock);
 
   if (guard.owns_lock()) {
     if constexpr (!std::is_void_v<R>) {
@@ -198,10 +203,10 @@ auto Guarded<T, M>::tryUnderLock(F&& callback) -> std::optional<Q> {
   }
 }
 
-template <class T, class M>
+template <class T, class M, template<class> class L>
 template <class F, class R, class Q>
-auto Guarded<T, M>::tryUnderLock(F&& callback) const -> std::optional<Q> {
-  auto guard = std::unique_lock<M>(_mutex, std::try_to_lock);
+auto Guarded<T, M, L>::tryUnderLock(F&& callback) const -> std::optional<Q> {
+  auto guard = lock_type(_mutex, std::try_to_lock);
 
   if (guard.owns_lock()) {
     if constexpr (!std::is_void_v<R>) {
@@ -215,19 +220,19 @@ auto Guarded<T, M>::tryUnderLock(F&& callback) const -> std::optional<Q> {
   }
 }
 
-template <class T, class M>
-auto Guarded<T, M>::getLockedGuard() -> MutexGuard<T, L> {
-  return MutexGuard(_value, L(_mutex));
+template <class T, class M, template<class> class L>
+auto Guarded<T, M, L>::getLockedGuard() -> MutexGuard<T, L<M>> {
+  return MutexGuard(_value, lock_type{_mutex});
 }
 
-template <class T, class M>
-auto Guarded<T, M>::getLockedGuard() const -> MutexGuard<T const, L> {
-  return MutexGuard(_value, L(_mutex));
+template <class T, class M, template<class> class L>
+auto Guarded<T, M, L>::getLockedGuard() const -> MutexGuard<T const, L<M>> {
+  return MutexGuard(_value, lock_type(_mutex));
 }
 
-template <class T, class M>
-auto Guarded<T, M>::tryLockedGuard() -> std::optional<MutexGuard<T, L>> {
-  auto lock = L(_mutex, std::try_lock);
+template <class T, class M, template<class> class L>
+auto Guarded<T, M, L>::tryLockedGuard() -> std::optional<MutexGuard<T, L<M>>> {
+  auto lock = lock_type(_mutex, std::try_lock);
 
   if (lock.owns_lock()) {
     return MutexGuard(_value, std::move(lock));
@@ -236,9 +241,9 @@ auto Guarded<T, M>::tryLockedGuard() -> std::optional<MutexGuard<T, L>> {
   }
 }
 
-template <class T, class M>
-auto Guarded<T, M>::tryLockedGuard() const -> std::optional<MutexGuard<const T, L>> {
-  auto lock = L(_mutex, std::try_lock);
+template <class T, class M, template<class> class L>
+auto Guarded<T, M, L>::tryLockedGuard() const -> std::optional<MutexGuard<T const, L<M>>> {
+  auto lock = lock_type(_mutex, std::try_lock);
 
   if (lock.owns_lock()) {
     return MutexGuard(_value, std::move(lock));
