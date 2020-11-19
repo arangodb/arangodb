@@ -125,7 +125,7 @@ describe('FoxxApi commit', function () {
 
     });
 
-    // sending content-type json actually requries to post something:
+    // sending content-type json actually requires to post something:
     let headers = { accept: 'application/json; charset=utf-8', test: "first", "content-type": "application/json; charset=utf-8"};
     result = arango.POST_RAW('/test/header-echo', '{}', headers);
     expect(result.code).to.equal(200);
