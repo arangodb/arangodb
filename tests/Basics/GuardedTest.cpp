@@ -31,7 +31,6 @@
 
 namespace arangodb::tests {
 
-
 struct UnderGuard {
   int val{};
 };
@@ -132,6 +131,8 @@ TYPED_TEST_P(GuardedTest, test_try_fails_access) {
       threadFinished = true;
     });
     thr.join();
+    EXPECT_TRUE(threadStarted);
+    EXPECT_TRUE(threadFinished);
     EXPECT_EQ(guard->val, 1);
   }
 }
