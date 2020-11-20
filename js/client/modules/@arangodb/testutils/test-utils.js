@@ -887,11 +887,36 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
 
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
-  eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
-  
+  try {
+    eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
+  } catch (ex) {
+    print(RED + 'test failed to parse:');
+    print(ex);
+    print(RESET);
+    return {
+      status: false,
+      message: "test doesn't parse! '" + file + "' - " + ex.message || String(ex),
+      stack: ex.stack
+    };
+  }
+
   try {
     SetGlobalExecutionDeadlineTo(options.oneTestTimeout * 1000);
-    let result = testFunc();
+    let result;
+    try {
+      result = testFunc();
+    } catch (ex) {
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      print(RED + 'test has thrown:');
+      print(ex);
+      print(RESET);
+      return {
+        timeout: 0,
+        status: false,
+        message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
+        stack: ex.stack
+      };
+    }
     let timeout = SetGlobalExecutionDeadlineTo(0.0);
     if (timeout) {
       return {
