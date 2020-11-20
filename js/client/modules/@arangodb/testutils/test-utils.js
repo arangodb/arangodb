@@ -208,14 +208,17 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
           if (!results.hasOwnProperty('SKIPPED')) {
             print('oops! Skipping remaining tests, server is unavailable for testing.');
-
+            let originalMessage;
+            if (results.hasOwnProperty(te) && results[te].hasOwnProperty('message')) {
+              originalMessage = results[te].message;
+            }
             results['SKIPPED'] = {
               status: false,
               message: ""
             };
             results[te] = {
               status: false,
-              message: 'server unavailable for testing.'
+              message: 'server unavailable for testing. ' + originalMessage
             };
           } else {
             if (results['SKIPPED'].message !== '') {
@@ -902,21 +905,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
 
   try {
     SetGlobalExecutionDeadlineTo(options.oneTestTimeout * 1000);
-    let result;
-    try {
-      result = testFunc();
-    } catch (ex) {
-      let timeout = SetGlobalExecutionDeadlineTo(0.0);
-      print(RED + 'test has thrown:');
-      print(ex);
-      print(RESET);
-      return {
-        timeout: 0,
-        status: false,
-        message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-        stack: ex.stack
-      };
-    }
+    let result = testFunc();
     let timeout = SetGlobalExecutionDeadlineTo(0.0);
     if (timeout) {
       return {
@@ -929,6 +918,9 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     return result;
   } catch (ex) {
     let timeout = SetGlobalExecutionDeadlineTo(0.0);
+    print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
+    print(ex);
+    print(RESET);
     return {
       timeout: timeout,
       forceTerminate: true,
