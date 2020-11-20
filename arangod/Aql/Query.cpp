@@ -296,7 +296,7 @@ void Query::kill() {
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
     LOG_TOPIC("781fe", DEBUG, Logger::QUERIES)
-      << TRI_microtime() - _startTime << " " << _queryString.string() << " peak memory usage:"
+      << TRI_microtime() - _startTime << " Query::setExecutionTime: \"" << _queryString.string() << "\" peak memory usage:"
       << _resourceMonitor.currentResources.peakMemoryUsage;
     _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
