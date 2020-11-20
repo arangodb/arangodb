@@ -362,7 +362,7 @@ void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& use
   });
   // get values from columns which contain max number of appropriate values
   for (auto i : idx) {
-    auto const& it = usedColumnsCounter[i];
+    auto& it = usedColumnsCounter[i];
     for (auto& f : it) {
       TRI_ASSERT(f.afData);
       if (f.afData->field == nullptr) {
