@@ -34,6 +34,9 @@ namespace arangodb::tests {
 struct UnderGuard {
   int val{};
 };
+struct UnderGuardAtomic {
+  std::atomic<int> val{};
+};
 
 template <typename T>
 class GuardedTest : public ::testing::Test {
@@ -82,29 +85,73 @@ TYPED_TEST_P(GuardedTest, test_do_allows_access) {
 }
 
 TYPED_TEST_P(GuardedTest, test_do_waits_for_access) {
-  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
-  // TODO Get a lock first, then assert that doUnderLock waits for the lock
-  //      to be released.
+  // Get a lock first, then make sure that doUnderLock() waits
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuardAtomic>{1};
+  {
+    auto thr = std::thread{};
+    auto threadStarted = std::atomic<bool>{false};
+    auto threadFinished = std::atomic<bool>{false};
+    {
+      auto guard = guardedObj.getLockedGuard();
+      thr = std::thread([&] {
+        threadStarted.store(true, std::memory_order_release);
+        bool didExecute = false;
+        auto const res = guardedObj.doUnderLock([&didExecute](UnderGuardAtomic& obj) -> std::optional<std::monostate> {
+          EXPECT_EQ(1, obj.val.load(std::memory_order_relaxed));
+          obj.val.store(2, std::memory_order_release);
+          didExecute = true;
+          EXPECT_EQ(2, obj.val.load(std::memory_order_relaxed));
+          return std::monostate{};
+        });
+        static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
+        EXPECT_TRUE(res.has_value());
+        EXPECT_TRUE(didExecute);
+        threadFinished.store(true, std::memory_order_release);
+      });
+
+      while (!threadStarted.load(std::memory_order_acquire)) {
+        // busy wait
+      }
+      // wait generously for the thread to try to get the lock and do something
+      std::this_thread::sleep_for(std::chrono::milliseconds{1});
+      EXPECT_EQ(1, guard->val.load(std::memory_order_relaxed));
+      EXPECT_FALSE(threadFinished.load(std::memory_order_acquire));
+      // guard is destroyed at the end of the scope, so the lock is freed and
+      // the thread should now be able to finish
+    }
+
+    thr.join();
+    EXPECT_TRUE(threadStarted.load());
+    EXPECT_TRUE(threadFinished.load());
+    auto const val =
+        guardedObj.doUnderLock([](auto const& obj) { return obj.val.load(); });
+    EXPECT_EQ(val, 2);
+  }
 }
 
 TYPED_TEST_P(GuardedTest, test_try_allows_access) {
   auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   {
+    // try is allowed to spuriously fail for no reason. But we expect it to
+    // succeed at some point when noone holds the lock.
     bool didExecute = false;
-    auto const res = guardedObj.tryUnderLock([&didExecute](UnderGuard& obj) {
-      EXPECT_EQ(1, obj.val);
-      obj.val = 2;
-      didExecute = true;
-      EXPECT_EQ(2, obj.val);
-    });
-    static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
-    EXPECT_EQ(didExecute, res.has_value());
-    {
-      auto guard = guardedObj.getLockedGuard();
-      if (didExecute) {
-        EXPECT_EQ(guard->val, 2);
-      } else {
-        EXPECT_EQ(guard->val, 1);
+    while (!didExecute) {
+      auto const res = guardedObj.tryUnderLock([&didExecute](UnderGuard& obj) {
+        EXPECT_EQ(1, obj.val);
+        obj.val = 2;
+        didExecute = true;
+        EXPECT_EQ(2, obj.val);
+        return;
+      });
+      static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
+      EXPECT_EQ(didExecute, res.has_value());
+      {
+        auto guard = guardedObj.getLockedGuard();
+        if (didExecute) {
+          EXPECT_EQ(guard->val, 2);
+        } else {
+          EXPECT_EQ(guard->val, 1);
+        }
       }
     }
   }
