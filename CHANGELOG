@@ -1,3 +1,9 @@
+v3.6.9.3 (XXXX-XX-XX)
+---------------------
+
+* Queries log peak mem usage when in topic is at level DEBUG.
+
+
 v3.6.9.2 (2020-11-18)
 ---------------------
 
