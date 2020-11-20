@@ -403,14 +403,19 @@ void CommitTask::operator()() {
       ++state->pendingCommits;
       schedule(commitIntervalMsec);
 
-      if (code == IResearchLink::CommitResult::DONE &&
-          state->pendingConsolidations < MAX_PENDING_CONSOLIDATIONS &&
-          ++state->nonEmptyCommits > MAX_NON_EMPTY_COMMITS) {
-        link->scheduleConsolidation(consolidationIntervalMsec);
-        state->nonEmptyCommits = 0;
+      if (code == IResearchLink::CommitResult::DONE) {
+        state->noopCommitCount = 0;
+        state->noopConsolidationCount = 0;
+
+        if (state->pendingConsolidations < MAX_PENDING_CONSOLIDATIONS &&
+            ++state->nonEmptyCommits > MAX_NON_EMPTY_COMMITS) {
+          link->scheduleConsolidation(consolidationIntervalMsec);
+          state->nonEmptyCommits = 0;
+        }
       }
     } else {
       state->nonEmptyCommits = 0;
+      ++state->noopCommitCount;
 
       for (auto count = state->pendingCommits.load(); count < 1; ) {
         if (state->pendingCommits.compare_exchange_strong(count, count + 1)) {
@@ -429,9 +434,6 @@ void CommitTask::operator()() {
         << "', run id '" << size_t(&runId) << "'";
 
     if (code == IResearchLink::CommitResult::DONE) {
-      state->noopCommitCount = 0;
-      state->noopConsolidationCount = 0;
-
       if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
         cleanupIntervalCount = 0;
         res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
@@ -447,8 +449,6 @@ void CommitTask::operator()() {
               << "': " << res.errorNumber() << " " << res.errorMessage();
         }
       }
-    } else if (code == IResearchLink::CommitResult::NO_CHANGES) {
-      ++state->noopCommitCount;
     }
   } else {
     LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
