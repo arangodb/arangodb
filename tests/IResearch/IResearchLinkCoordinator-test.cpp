@@ -59,6 +59,7 @@
 #include "IResearch/IResearchViewCoordinator.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
@@ -122,8 +123,10 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   }
 
   // no view specified
-  auto& factory =
-      server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
+  feature.validateOptions(server.server().options());
+  feature.collectOptions(server.server().options());
+  auto& factory = feature.factory<arangodb::ClusterEngine>();
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     try {

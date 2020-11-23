@@ -751,7 +751,9 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   bool const threadsSet = args.touched(THREADS_PARAM);
   bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
   bool const commitThreadsSet = args.touched(COMMIT_THREADS_PARAM);
+  bool const commitThreadsIdleSet = args.touched(COMMIT_THREADS_IDLE_PARAM);
   bool const consolidationThreadsSet = args.touched(CONSOLIDATION_THREADS_PARAM);
+  bool const consolidationThreadsIdleSet = args.touched(CONSOLIDATION_THREADS_IDLE_PARAM);
 
   if ((threadsLimitSet || threadsSet) &&
       !commitThreadsSet && !consolidationThreadsSet) {
@@ -765,8 +767,13 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
     _consolidationThreads   = computeThreadsCount(_consolidationThreads, threadsLimit, 6);
   }
 
-  _commitThreadsIdle        = computeIdleThreadsCount(_commitThreadsIdle, _commitThreads);
-  _consolidationThreadsIdle = computeIdleThreadsCount(_consolidationThreadsIdle, _consolidationThreads);
+  _commitThreadsIdle        = commitThreadsIdleSet
+    ? computeIdleThreadsCount(_commitThreadsIdle, _commitThreads)
+    : _commitThreads;
+
+  _consolidationThreadsIdle = consolidationThreadsIdleSet
+    ? computeIdleThreadsCount(_consolidationThreadsIdle, _consolidationThreads)
+    : _consolidationThreads;
 
   _running.store(false);
 }

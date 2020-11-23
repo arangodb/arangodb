@@ -199,6 +199,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
@@ -281,6 +283,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
@@ -359,6 +363,8 @@ TEST_F(IResearchFeatureTest, IResearch_version_test) {
 TEST_F(IResearchFeatureTest, test_async_schedule) {
   bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
   feature.prepare();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
@@ -382,6 +388,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule) {
 TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
   feature.prepare();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
@@ -409,6 +417,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 TEST_F(IResearchFeatureTest, test_async_single_run_task) {
   bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
   feature.prepare();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
@@ -432,6 +442,8 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
 TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
   feature.prepare();  // start thread pool
   std::mutex mutex;
   std::condition_variable cond;
@@ -490,6 +502,8 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
 
   {
     arangodb::iresearch::IResearchFeature feature(server.server());
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
     feature.prepare();  // start thread pool
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
@@ -525,12 +539,10 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
 TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
-  arangodb::options::ProgramOptions options("", "", "", nullptr);
-  auto optionsPtr = std::shared_ptr<arangodb::options::ProgramOptions>(
-      &options, [](arangodb::options::ProgramOptions*) -> void {});
-  feature.collectOptions(optionsPtr);
-  options.get<arangodb::options::UInt64Parameter>("arangosearch.threads")
+  feature.collectOptions(server.server().options());
+  server.server().options()->get<arangodb::options::UInt64Parameter>("arangosearch.threads")
       ->set("8");
+  feature.validateOptions(server.server().options());
   std::condition_variable cond;
   std::mutex mutex;
   size_t count = 0;
@@ -717,6 +729,8 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.validateOptions(server.server().options());
+  feature.collectOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
@@ -924,6 +938,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.validateOptions(server.server().options());
+  feature.collectOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
@@ -1002,6 +1018,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.validateOptions(server.server().options());
+  feature.collectOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 

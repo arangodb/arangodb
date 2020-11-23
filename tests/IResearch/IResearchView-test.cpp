@@ -1716,7 +1716,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
       struct Link: public arangodb::iresearch::IResearchLink {
         Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
+            : IResearchLink(id, col) {
+          auto json = VPackParser::fromJson(R"({ "view" : "42" })");
+          EXPECT_TRUE(this->init(json->slice()).ok());
+        }
       } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
@@ -1782,7 +1785,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
       struct Link: public arangodb::iresearch::IResearchLink {
         Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
+            : IResearchLink(id, col) {
+          auto json = VPackParser::fromJson(R"({ "view" : "42" })");
+          EXPECT_TRUE(this->init(json->slice()).ok());
+        }
       } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
@@ -1844,7 +1850,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = []()->void { throw std::exception(); };
       struct Link: public arangodb::iresearch::IResearchLink {
         Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
+            : IResearchLink(id, col) {
+          auto json = VPackParser::fromJson(R"({ "view" : "42" })");
+          EXPECT_TRUE(this->init(json->slice()).ok());
+        }
       } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
@@ -1909,7 +1918,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
       struct Link: public arangodb::iresearch::IResearchLink {
         Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
+            : IResearchLink(id, col) {
+          auto json = VPackParser::fromJson(R"({ "view" : "42" })");
+          EXPECT_TRUE(this->init(json->slice()).ok());
+        }
       } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
