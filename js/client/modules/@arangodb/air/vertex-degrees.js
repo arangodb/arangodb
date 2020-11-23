@@ -27,6 +27,7 @@ const graphModule = require("@arangodb/smart-graph");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 
+const _ = require("lodash");
 const internal = require("internal");
 const db = internal.db;
 
@@ -102,21 +103,24 @@ function exec_test_vertex_degrees_on_graph(graphSpec) {
 }
 
 function cleanup () {
-  graphModule._drop("LineGraph100", true);
-  graphModule._drop("LineGraph1000", true);
-  graphModule._drop("LineGraph10000", true);
-  graphModule._drop("WikiVote", true);
+  let graphsToRemove = ["LineGraph100", "LineGraph1000", "LineGraph10000", "WikiVote"];
+  _.each(graphsToRemove, function (graph) {
+    try {
+    } catch (ignore) {
+      graphModule._drop(graph, true);
+    }
+  });
 }
 
 function exec_test_vertex_degrees() {
   let results = [];
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1)));
-  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9)));
-  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18)));
+  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9)));
+  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18)));
 
-  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1)));
-  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
-  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
+  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1)));
+  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
+  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
 
   // TODO: random graph
   // TODO: structurally generated graph

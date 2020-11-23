@@ -26,6 +26,7 @@ const internal = require("internal");
 const db = internal.db;
 const graphModule = require("@arangodb/smart-graph");
 const pregel = require("@arangodb/pregel");
+const _ = require("lodash");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const accumulators = require("@arangodb/air/accumulators");
@@ -179,16 +180,19 @@ function exec_test_shortest_path_impl(graphSpec) {
 }
 
 function cleanup () {
-  graphModule._drop("LineGraph10", true);
-  graphModule._drop("LineGraph100", true);
-  graphModule._drop("LineGraph1000", true);
-  graphModule._drop("Circle10", true);
-  graphModule._drop("Circle100", true);
-  graphModule._drop("Circle1000", true);
-  graphModule._drop("Complete4", true);
-  graphModule._drop("Complete10", true);
-  graphModule._drop("Complete100", true);
-  graphModule._drop("WikiVote", true);
+  let graphsToRemove = [
+    "LineGraph10", "LineGraph100", "LineGraph100",
+    "Circle10", "Circle100", "Circle1000",
+    "Complete4", "Complete10", "Complete100",
+    "WikiVote"
+  ];
+
+  _.each(graphsToRemove, function (graph) {
+    try {
+    } catch (ignore) {
+      graphModule._drop(graph, true);
+    }
+  });
 }
 
 function exec_test_shortest_path() {

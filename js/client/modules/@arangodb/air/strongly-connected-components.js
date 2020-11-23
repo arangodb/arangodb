@@ -221,10 +221,13 @@ function exec_test_scc_on_graph(graphSpec, components = []) {
 }
 
 function cleanup () {
-  graphModule._drop("testComplete_5shard", true);
-  graphModule._drop("Circle10", true);
-  graphModule._drop("Tadpole", true);
-  graphModule._drop("LineGraph10", true);
+  let graphsToRemove = ["testComplete_5shard", "Circle10", "Tadpole", "LineGraph10"];
+  _.each(graphsToRemove, function (graph) {
+    try {
+    } catch (ignore) {
+      graphModule._drop(graph, true);
+    }
+  });
 }
 
 function exec_test_scc() {
