@@ -93,9 +93,9 @@ function exec_test_vertex_degrees_on_graph(graphSpec) {
     FOR d IN @@V
       LET outDegree = LENGTH(FOR x IN @@E FILTER x._from == d._id RETURN x)
       LET inDegree = LENGTH(FOR x IN @@E FILTER x._to == d._id RETURN x)
-      FILTER d.vertexDegrees.inDegree != inDegree || d.vertexDegrees.outDegree != outDegree
+      FILTER d.inDegree != inDegree || d.outDegree != outDegree
       RETURN { aql: { inDegree: inDegree, outDegree: outDegree },
-               air: { inDegree: d.vertexDegrees.inDegree, outDegree: d.vertexDegrees.outDegree } }`,
+               air: { inDegree: d.inDegree, outDegree: d.outDegree } }`,
     {
       "@V": graphSpec.vname,
       "@E": graphSpec.ename
@@ -106,8 +106,8 @@ function cleanup () {
   let graphsToRemove = ["LineGraph100", "LineGraph1000", "LineGraph10000", "WikiVote"];
   _.each(graphsToRemove, function (graph) {
     try {
-    } catch (ignore) {
       graphModule._drop(graph, true);
+    } catch (ignore) {
     }
   });
 }
@@ -115,12 +115,12 @@ function cleanup () {
 function exec_test_vertex_degrees() {
   let results = [];
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1)));
-  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9)));
-  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18)));
+  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9)));
+  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18)));
 
-  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1)));
-  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
-  //results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
+  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1)));
+  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
+  results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
 
   // TODO: random graph
   // TODO: structurally generated graph
