@@ -24,6 +24,7 @@
 
 const internal = require("internal");
 const pregel = require("@arangodb/pregel");
+const graphModule = require("@arangodb/smart-graph");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const {listAccumulator, orAccumulator, storeAccumulator, minAccumulator} = require("@arangodb/air/accumulators");
@@ -219,6 +220,13 @@ function exec_test_scc_on_graph(graphSpec, components = []) {
   }
 }
 
+function cleanup () {
+  graphModule._drop("testComplete_5shard", true);
+  graphModule._drop("Circle10", true);
+  graphModule._drop("Tadpole", true);
+  graphModule._drop("LineGraph10", true);
+}
+
 function exec_test_scc() {
   let results = [];
   results.push(exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5), [100]));
@@ -226,6 +234,7 @@ function exec_test_scc() {
   results.push(exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("Tadpole", 10, 3), [1, 1, 1, 1, 6]));
   results.push(exec_test_scc_on_graph(examplegraphs.create_line_graph("LineGraph10", 10, 3), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
 
+  cleanup();
   return !results.includes(false);
 }
 

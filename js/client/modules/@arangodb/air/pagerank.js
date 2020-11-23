@@ -24,6 +24,7 @@
 
 const arangodb = require("@arangodb");
 const db = arangodb.db;
+const graphModule = require("@arangodb/smart-graph");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
@@ -162,6 +163,15 @@ function exec_test_pagerank_on_graph(graphSpec, vertex) {
   );
 }
 
+function cleanup () {
+  graphModule._drop("PageRankGraph1", true);
+  graphModule._drop("PageRankGraph9", true);
+  graphModule._drop("PageRankGraph18", true);
+  graphModule._drop("WikiVoteGraph1", true);
+  graphModule._drop("WikiVoteGraph9", true);
+  graphModule._drop("WikiVoteGraph18", true);
+}
+
 function exec_test_pagerank(vertex) {
   let results = [];
 
@@ -173,6 +183,7 @@ function exec_test_pagerank(vertex) {
   results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph9", 9)));
   results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph18", 18)));
 
+  cleanup();
   if (results.includes(false)) {
     return false;
   }

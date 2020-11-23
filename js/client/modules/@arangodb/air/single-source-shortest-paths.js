@@ -24,6 +24,7 @@
 
 const internal = require("internal");
 const db = internal.db;
+const graphModule = require("@arangodb/smart-graph");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
@@ -177,6 +178,19 @@ function exec_test_shortest_path_impl(graphSpec) {
   return true;
 }
 
+function cleanup () {
+  graphModule._drop("LineGraph10", true);
+  graphModule._drop("LineGraph100", true);
+  graphModule._drop("LineGraph1000", true);
+  graphModule._drop("Circle10", true);
+  graphModule._drop("Circle100", true);
+  graphModule._drop("Circle1000", true);
+  graphModule._drop("Complete4", true);
+  graphModule._drop("Complete10", true);
+  graphModule._drop("Complete100", true);
+  graphModule._drop("WikiVote", true);
+}
+
 function exec_test_shortest_path() {
   let results = [];
 
@@ -196,8 +210,8 @@ function exec_test_shortest_path() {
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
 
+  cleanup();
   return !results.includes(false);
-
 }
 
 function test() {
