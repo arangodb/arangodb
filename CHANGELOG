@@ -1,6 +1,10 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Make the cancel operation safe for asynchronoulsly started JavaScript 
+  transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
+  header set).
+
 * Updated OpenSSL to 1.1.1h.
 
 * Fixed a hanger in the socket shutdown for the TLS case in fuerte (cluster
