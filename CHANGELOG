@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1h.
+
 * Added new scheduler metrics:
   - `arangodb_scheduler_jobs_done`: Total number of scheduler queue jobs done
   - `arangodb_scheduler_jobs_submitted`: Total number of jobs submitted to the 
