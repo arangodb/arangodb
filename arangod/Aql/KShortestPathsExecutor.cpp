@@ -64,9 +64,12 @@ static bool isValidId(VPackSlice id) {
 
 template <class FinderType>
 KShortestPathsExecutorInfos<FinderType>::KShortestPathsExecutorInfos(
-    RegisterId outputRegister, std::unique_ptr<FinderType>&& finder,
+    RegisterId outputRegister,
+    QueryContext& query,
+    std::unique_ptr<FinderType>&& finder,
     InputVertex&& source, InputVertex&& target)
-    : _finder(std::move(finder)),
+    : _query(query),
+      _finder(std::move(finder)),
       _source(std::move(source)),
       _target(std::move(target)),
       _outputRegister(outputRegister) {}
@@ -75,6 +78,11 @@ template <class FinderType>
 FinderType& KShortestPathsExecutorInfos<FinderType>::finder() const {
   TRI_ASSERT(_finder);
   return *_finder.get();
+}
+
+template <class FinderType>
+QueryContext& KShortestPathsExecutorInfos<FinderType>::query() noexcept {
+  return _query;
 }
 
 template <class FinderType>
@@ -144,6 +152,7 @@ auto KShortestPathsExecutorInfos<FinderType>::cache() const -> graph::TraverserC
 template <class FinderType>
 KShortestPathsExecutor<FinderType>::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
+      _trx(infos.query().newTrxContext()),
       _inputRow{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _finder{infos.finder()},
@@ -253,7 +262,7 @@ auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) 
   //
 
   if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
-    transaction::BuilderLeaser tmp{_finder.trx()};
+    transaction::BuilderLeaser tmp{&_trx};
     tmp->clear();
 
     if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
@@ -272,7 +281,7 @@ auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) 
       }
     }
   } else {
-    transaction::BuilderLeaser tmp{_finder.options().trx()};
+    transaction::BuilderLeaser tmp{&_trx};
     tmp->clear();
 
     if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {

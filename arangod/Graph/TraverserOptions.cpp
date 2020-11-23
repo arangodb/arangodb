@@ -440,7 +440,8 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("parallelism", VPackValue(_parallelism));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
+  
   builder.add("neighbors", VPackValue(useNeighbors));
 
   switch (uniqueVertices) {

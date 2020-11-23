@@ -28,6 +28,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/Query.h"
@@ -333,7 +334,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 #endif
 
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
-    if (opts->refactor) {
+    if (opts->refactor()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to be changed in the future)
       std::vector<IndexAccessor> usedIndexes = buildUsedIndexes();
 
@@ -351,14 +352,14 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                             std::move(lolOptions));
 
       auto executorInfos =
-          KShortestPathsExecutorInfos(outputRegister, std::move(kPathUnique),
+          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(), std::move(kPathUnique),
                                       std::move(sourceInput), std::move(targetInput));
       return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
       auto finder = std::make_unique<graph::KPathFinder>(*opts);
       auto executorInfos =
-          KShortestPathsExecutorInfos(outputRegister, std::move(finder),
+          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(), std::move(finder),
                                       std::move(sourceInput), std::move(targetInput));
       return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -366,7 +367,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   } else {
     auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
     auto executorInfos =
-        KShortestPathsExecutorInfos(outputRegister, std::move(finder),
+        KShortestPathsExecutorInfos(outputRegister, engine.getQuery(), std::move(finder),
                                     std::move(sourceInput), std::move(targetInput));
     return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KShortestPathsFinder>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -417,11 +418,6 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
   // IndexAccessor{edgeIndexHandle, indexCondition, 0}};
   std::vector<IndexAccessor> indexAccessors{};
 
-  if (_optionsBuilt) {
-    return indexAccessors;
-  }
-  TRI_ASSERT(!_optionsBuilt);
-
   if (_options->refactor()) {
     // TODO: remove / cleanup later
     // Compute Indexes for KPathFinder Refactored Version
@@ -434,15 +430,13 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         case TRI_EDGE_IN:
           condition = _toCondition->clone(options()->query().ast());
           for (auto const idx : _edgeColls[i]->getCollection()->getIndexes()) {
-            auto piotr = IndexAccessor{idx, condition, 0};
-            indexAccessors.push_back(piotr);
+            indexAccessors.emplace_back(idx, condition, 0);
           }
           break;
         case TRI_EDGE_OUT:
           condition = _fromCondition->clone(options()->query().ast());
           for (auto const idx : _edgeColls[i]->getCollection()->getIndexes()) {
-            auto piotr = IndexAccessor{idx, condition, 0};
-            indexAccessors.push_back(piotr);
+            indexAccessors.emplace_back(idx, condition, 0);
           }
           break;
         case TRI_EDGE_ANY:

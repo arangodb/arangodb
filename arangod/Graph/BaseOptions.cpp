@@ -230,11 +230,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VP
   if (read.isInteger()) {
     _parallelism = read.getNumber<size_t>();
   }
-
-  read = info.get(StaticStrings::GraphRefactorFlag);
-  if (read.isBool()) {
-    _refactor = read.getBool();
-  }
+  _refactor = basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag, false);
 
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
@@ -383,6 +379,8 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("tmpVar"));
   TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
+  
+  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
 }
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,

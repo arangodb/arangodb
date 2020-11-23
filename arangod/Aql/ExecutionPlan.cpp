@@ -313,7 +313,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast,
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->defaultWeight = value->getDoubleValue();
         } else if (name == StaticStrings::GraphRefactorFlag) {
-          options->refactor = value->getBoolValue();
+          options->setRefactor(value->getBoolValue());
         }
       }
     }

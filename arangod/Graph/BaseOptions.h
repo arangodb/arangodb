@@ -173,7 +173,7 @@ struct BaseOptions {
     _refactor = r;
   }
 
-  bool refactor() {
+  bool refactor() const {
     return _refactor;
   }
 

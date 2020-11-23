@@ -58,12 +58,14 @@ template <BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
+class QueryContext;
 
 template<class FinderType>
 class KShortestPathsExecutorInfos {
   using InputVertex = GraphNode::InputVertex;
  public:
   KShortestPathsExecutorInfos(RegisterId outputRegister,
+                              QueryContext& query,
                               std::unique_ptr<FinderType>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
@@ -75,6 +77,8 @@ class KShortestPathsExecutorInfos {
 
   [[nodiscard]] auto finder() const -> FinderType&;
 
+  aql::QueryContext& query() noexcept;
+  
   /**
    * @brief test if we use a register or a constant input
    *
@@ -110,6 +114,9 @@ class KShortestPathsExecutorInfos {
   [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 
  private:
+  
+  QueryContext& _query;
+  
   /// @brief the shortest path finder.
   std::unique_ptr<FinderType> _finder;
 
@@ -180,6 +187,7 @@ class KShortestPathsExecutor {
 
  private:
   Infos& _infos;
+  transaction::Methods _trx;
   InputAqlItemRow _inputRow;
   ExecutionState _rowState;
   /// @brief the shortest path finder.
