@@ -75,9 +75,9 @@ VertexType SingleServerProvider::Step::Vertex::data() const { return _vertex; }
 
 SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
                                            BaseProviderOptions opts)
-    : _trx{std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())},
-      _query(std::make_unique<arangodb::aql::QueryContext*>(&queryContext)),
-      _cache(_trx.get(), &queryContext),
+    : _trx{queryContext.newTrxContext()},
+      _query(&queryContext),
+      _cache(&_trx, &queryContext),
       _opts(std::move(opts)) {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache
   _cursor = buildCursor();
@@ -158,9 +158,9 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCur
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {
-  return _trx.get();
+  return &_trx;
 }
 
 arangodb::aql::QueryContext* SingleServerProvider::query() const {
-  return *_query;
+  return _query;
 }
