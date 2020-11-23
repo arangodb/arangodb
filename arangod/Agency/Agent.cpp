@@ -89,7 +89,8 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
           "agency_agent_read_no_leader", 0, "Agency write no leader")),
       _write_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "agency_agent_write_hist", 10, 0., 20., "Agency write histogram [ms]")) {
+          "agency_agent_write_hist", log_scale_t(2.f, 0.f, 200.f, 10),
+          "Agency write histogram [ms]")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
