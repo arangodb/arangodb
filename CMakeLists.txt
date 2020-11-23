@@ -750,6 +750,14 @@ endif (ASM_OPTIMIZATIONS)
 ## MAINTAINER MODE
 ################################################################################
 
+option(UNCONDITIONALLY_BUILD_LOG_MESSAGES
+  "whether log strings should be generated regardless of active loglevel"
+  OFF
+  )
+if (UNCONDITIONALLY_BUILD_LOG_MESSAGES)
+  add_definitions("-DARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES=1")
+endif()
+
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
   OFF
@@ -961,7 +969,7 @@ else () # NOT MSVC
   # flags for builds with debug symbols
   if (USE_MINIMAL_DEBUGINFO)
     # minimal debug symbols
-    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz -feliminate-unused-debug-symbols")
+    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
   else ()
     # full debug symbols
     set(DEBUGINFO_FLAGS "-g")

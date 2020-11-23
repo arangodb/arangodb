@@ -357,7 +357,7 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
                  .get();
 
   if (response.ok() && response.response &&
-      response.response->statusCode() == fuerte::StatusNotFound) {
+      response.statusCode() == fuerte::StatusNotFound) {
     auto const slice = response.response->slice();
     if (slice.isObject()) {
       VPackSlice s = slice.get(StaticStrings::ErrorNum);
