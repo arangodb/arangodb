@@ -36,10 +36,6 @@
 #include <cstdio>
 #include <cstring>
 
-namespace {
-constexpr size_t bufferSize = 4096;
-}
-
 namespace arangodb {
 
 #if defined(__linux__)
@@ -71,14 +67,16 @@ CpuUsageFeature::SnapshotProvider::~SnapshotProvider() {
 }
 
 bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result) noexcept {
+  constexpr size_t bufferSize = 4096;
+
   // none of the following methods will throw an exception
   rewind(_statFile);    
   fflush(_statFile); 
 
-  char buffer[::bufferSize];
+  char buffer[bufferSize];
   buffer[0] = '\0';
  
-  size_t nread = readStatFile(&buffer[0], ::bufferSize);
+  size_t nread = readStatFile(&buffer[0], bufferSize);
   // expect a minimum size
   if (nread < 32 || memcmp(&buffer[0], "cpu ", 4) != 0) {
     // invalid data read.
