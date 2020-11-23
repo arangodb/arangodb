@@ -1,6 +1,8 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Updated OpenSSL to 1.1.1h.
+
 * Fixed a hanger in the socket shutdown for the TLS case in fuerte (cluster
   internal communications).
 
