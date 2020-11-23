@@ -252,8 +252,6 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
-  size_t const maxLength = _maxQueryStringLength;
-
   READ_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
@@ -264,7 +262,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 
   Query* query = (*it).second;
   LOG_TOPIC("25cc4", WARN, arangodb::Logger::FIXME)
-      << "killing AQL query " << id << " '" << extractQueryString(query, maxLength) << "'";
+      << "killing AQL query " << id << " '" << extractQueryString(query, _maxQueryStringLength) << "'";
 
   query->kill();
   return Result();
