@@ -6,6 +6,8 @@ v3.6.10 (XXXX-XX-XX)
   * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
     distribution.
 
+* Updated OpenSSL to 1.1.1h.
+
 * Fixed a hanger in the socket shutdown for the TLS case in fuerte (cluster
   internal communications).
 
