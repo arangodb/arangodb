@@ -29,6 +29,7 @@ const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const {sumAccumulator, storeAccumulator, maxAccumulator} = require("./accumulators");
+const _ = require("lodash");
 
 exports.pagerank_program = pagerank_program;
 exports.pagerank = pagerank;
@@ -75,11 +76,11 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
         onPreStep: ["global-accum-set!", "delta", 0],
         onPostStep: ["if",
           [
-              ["and",
-                  ["lt?", ["global-accum-ref", "delta"], 0.001],
-                  ["ne?", ["global-superstep"], 0]
-              ],
-              ["finish"]
+            ["and",
+              ["lt?", ["global-accum-ref", "delta"], 0.001],
+              ["ne?", ["global-superstep"], 0]
+            ],
+            ["finish"]
           ]
         ],
         updateProgram: [
@@ -136,11 +137,11 @@ function pagerank(graphName, resultField, dampingFactor, vertex) {
 function exec_test_pagerank_on_graph(graphSpec, vertex) {
   testhelpers.wait_for_pregel(
     "Air Pagerank",
-      pagerank(
-          graphSpec.name,
-          "pageRankResult",
-          0.85,
-          vertex,
+    pagerank(
+      graphSpec.name,
+      "pageRankResult",
+      0.85,
+      vertex,
     ));
 
   testhelpers.wait_for_pregel(
@@ -163,27 +164,45 @@ function exec_test_pagerank_on_graph(graphSpec, vertex) {
   );
 }
 
-function cleanup () {
-  graphModule._drop("PageRankGraph1", true);
-  graphModule._drop("PageRankGraph9", true);
-  graphModule._drop("PageRankGraph18", true);
-  graphModule._drop("WikiVoteGraph1", true);
-  graphModule._drop("WikiVoteGraph9", true);
-  graphModule._drop("WikiVoteGraph18", true);
-}
-
 function exec_test_pagerank(vertex) {
   let results = [];
 
   results.push(exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph1", 1), vertex));
+  try {
+    graphModule._drop("PageRankGraph1", true);
+  } catch (ignore) {
+  }
+
   results.push(exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph9", 9), vertex));
+  try {
+    graphModule._drop("PageRankGraph9", true);
+  } catch (ignore) {
+  }
+
   results.push(exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph18", 18), vertex));
+  try {
+    graphModule._drop("PageRankGraph18", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph1", 1)));
-  results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph9", 9)));
-  results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph18", 18)));
+  try {
+    graphModule._drop("WikiVoteGraph1", true);
+  } catch (ignore) {
+  }
 
-  cleanup();
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph9", 9)));
+  try {
+    graphModule._drop("WikiVoteGraph9", true);
+  } catch (ignore) {
+  }
+
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph18", 18)));
+  try {
+    graphModule._drop("WikiVoteGraph18", true);
+  } catch (ignore) {
+  }
+
   if (results.includes(false)) {
     return false;
   }

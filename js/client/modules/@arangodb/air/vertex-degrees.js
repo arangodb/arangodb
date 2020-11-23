@@ -102,29 +102,46 @@ function exec_test_vertex_degrees_on_graph(graphSpec) {
     }));
 }
 
-function cleanup () {
-  let graphsToRemove = ["LineGraph100", "LineGraph1000", "LineGraph10000", "WikiVote"];
-  _.each(graphsToRemove, function (graph) {
-    try {
-      graphModule._drop(graph, true);
-    } catch (ignore) {
-    }
-  });
-}
-
 function exec_test_vertex_degrees() {
   let results = [];
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1)));
+  try {
+    graphModule._drop("LineGraph100", true);
+  } catch (ignore) {
+  }
+
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9)));
+  try {
+    graphModule._drop("LineGraph1000", true);
+  } catch (ignore) {
+  }
+
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18)));
+  try {
+    graphModule._drop("LineGraph10000", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1)));
+  try {
+    graphModule._drop("WikiVote", true);
+  } catch (ignore) {
+  }
+
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
+  try {
+    graphModule._drop("WikiVote", true);
+  } catch (ignore) {
+  }
+
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
+  try {
+    graphModule._drop("WikiVote", true);
+  } catch (ignore) {
+  }
 
   // TODO: random graph
   // TODO: structurally generated graph
-  cleanup();
   return !results.includes(false);
 }
 

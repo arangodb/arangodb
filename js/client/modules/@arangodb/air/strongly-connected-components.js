@@ -101,8 +101,8 @@ function strongly_connected_components_program(resultField) {
           ["accum-set!", "activeInbound", ["quote", []]],
           ["if",
             [
-                ["not", ["accum-ref", "isDisabled"]],
-                ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]
+              ["not", ["accum-ref", "isDisabled"]],
+              ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]
             ],
           ], // else
           "vote-halt",
@@ -208,7 +208,7 @@ function exec_test_scc_on_graph(graphSpec, components = []) {
         collect scc = doc.SCC.mySCC WITH COUNT INTO size
         sort size
         return size`,
-        {"@graph": graphSpec.vname}).toArray();
+      {"@graph": graphSpec.vname}).toArray();
 
     if (_.isEqual(components, found_components)) {
       internal.print("\u001b[32mOK  : found ", components.length, " components", "\u001b[0m");
@@ -220,24 +220,33 @@ function exec_test_scc_on_graph(graphSpec, components = []) {
   }
 }
 
-function cleanup () {
-  let graphsToRemove = ["testComplete_5shard", "Circle10", "Tadpole", "LineGraph10"];
-  _.each(graphsToRemove, function (graph) {
-    try {
-      graphModule._drop(graph, true);
-    } catch (ignore) {
-    }
-  });
-}
-
 function exec_test_scc() {
   let results = [];
   results.push(exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5), [100]));
-  results.push(exec_test_scc_on_graph(examplegraphs.create_circle_graph("Circle10", 10, 3), [10]));
-  results.push(exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("Tadpole", 10, 3), [1, 1, 1, 1, 6]));
-  results.push(exec_test_scc_on_graph(examplegraphs.create_line_graph("LineGraph10", 10, 3), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
+  try {
+    graphModule._drop("testComplete_5shard", true);
+  } catch (ignore) {
+  }
 
-  cleanup();
+  results.push(exec_test_scc_on_graph(examplegraphs.create_circle_graph("Circle10", 10, 3), [10]));
+  try {
+    graphModule._drop("Circle10", true);
+  } catch (ignore) {
+  }
+
+  results.push(exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("Tadpole", 10, 3), [1, 1, 1, 1, 6]));
+  try {
+    graphModule._drop("Tadpole", true);
+  } catch (ignore) {
+  }
+
+  results.push(exec_test_scc_on_graph(examplegraphs.create_line_graph("LineGraph10", 10, 3), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
+  try {
+    graphModule._drop("LineGraph10", true);
+  } catch (ignore) {
+  }
+
+
   return !results.includes(false);
 }
 

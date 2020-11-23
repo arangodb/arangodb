@@ -28,6 +28,7 @@ const _ = require("lodash");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
+const graphModule = require("@arangodb/smart-graph");
 
 exports.write_vertex_program = data_access_write_vertex_program;
 exports.write_vertex = write_vertex;
@@ -265,7 +266,7 @@ function exec_test_data_access() {
       input, true
     ));
     results.push(exec_test_read_vertex_on_graph(
-      examplegraphs.create_line_graph("LineGraph100", 1000, 9,
+      examplegraphs.create_line_graph("LineGraph1000", 1000, 9,
         input),
       input, true
     ));
@@ -275,6 +276,21 @@ function exec_test_data_access() {
       input, true
     ));
   });
+
+  try {
+    graphModule._drop("LineGraph100", true);
+  } catch (ignore) {
+  }
+
+  try {
+    graphModule._drop("LineGraph1000", true);
+  } catch (ignore) {
+  }
+
+  try {
+    graphModule._drop("LineGraph10000", true);
+  } catch (ignore) {
+  }
 
   if (results.includes(false)) {
     return false;
