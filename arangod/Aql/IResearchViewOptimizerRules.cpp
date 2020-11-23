@@ -768,9 +768,24 @@ void handleViewsRule(Optimizer* opt,
           if (collectNode.count()) {
             auto collectOutVars = collectNode.getVariablesSetHere();
             if (collectOutVars.size() == 1) {
-              // only count. So we could optimize it out and get collect directly
-              viewNode.setEmitOnlyCount(collectOutVars[0]);
-              plan->unlinkNode(current);
+              // only count. So we could optimize.
+              // For the single server we could completely remove it out and get collect directly from view
+              // For the cluster we still need to make the COLLECT SUM node and count on DB servers in to
+              // temp variable.
+              if (arangodb::ServerState::instance()->isCoordinator()) {
+                auto tempOutVariable = plan->getAst()->variables()->createTemporaryVariable();
+                viewNode.setEmitOnlyCount(tempOutVariable);
+
+                std::vector<AggregateVarInfo> aggregateVariables;
+                aggregateVariables.emplace_back(AggregateVarInfo{collectOutVars[0], tempOutVariable, "SUM"});
+                collectNode.aggregationMethod(CollectOptions::CollectMethod::SORTED);
+                collectNode.count(false);
+                collectNode.setAggregateVariables(std::move(aggregateVariables));
+                collectNode.clearOutVariable();
+              } else {
+                viewNode.setEmitOnlyCount(collectOutVars[0]);
+                plan->unlinkNode(current);
+              }
             }
           }
           break;
