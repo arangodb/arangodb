@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Updated OpenSSL to 1.1.1h.
+
 * Make the number of network I/O threads properly configurable via the startup
   option `--network.io-threads`. This option existed before, but its configured
   value was effectively clamped to a value of `1`. ArangoDB 3.7.5 thus also uses
