@@ -224,8 +224,8 @@ function cleanup () {
   let graphsToRemove = ["testComplete_5shard", "Circle10", "Tadpole", "LineGraph10"];
   _.each(graphsToRemove, function (graph) {
     try {
-    } catch (ignore) {
       graphModule._drop(graph, true);
+    } catch (ignore) {
     }
   });
 }
