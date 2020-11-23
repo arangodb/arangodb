@@ -997,52 +997,15 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
 
   auto* queryList = vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
-
-  try {
-    auto queries = queryList->listCurrent();
-
-    uint32_t i = 0;
-    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
-
-    for (auto const& q : queries) {
-      auto timeString = TRI_StringTimeStamp(q.started, false);
-
-      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "id"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "database"),
-               TRI_V8_STD_STRING(isolate, q.database));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "user"),
-               TRI_V8_STD_STRING(isolate, q.user));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "query"),
-               TRI_V8_STD_STRING(isolate, q.queryString));
-      if (q.bindParameters != nullptr) {
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"),
-                 TRI_VPackToV8(isolate, q.bindParameters->slice()));
-      } else {
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate));
-      }
-      if (!q.dataSources.empty()) {
-        auto d = v8::Array::New(isolate);
-        uint32_t i = 0;
-        for (auto const& dn : q.dataSources) {
-          d->Set(i++, TRI_V8_STD_STRING(isolate, dn));
-        }
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "dataSources"), d);
-      }
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
-               TRI_V8_STD_STRING(isolate, timeString));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"), v8::Number::New(isolate, q.runTime));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "state"),
-               TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
-      result->Set(i++, obj);
-    }
-
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  
+  VPackBuilder b;
+  b.openArray();
+  for (auto const& q : queryList->listCurrent()) {
+    q.toVelocyPack(b);
   }
+  b.close();
+              
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1065,52 +1028,15 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW()");
   }
-
-  try {
-    auto queries = queryList->listSlow();
-
-    uint32_t i = 0;
-    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
-
-    for (auto const& q : queries) {
-      auto timeString = TRI_StringTimeStamp(q.started, false);
-
-      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "id"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "database"),
-               TRI_V8_STD_STRING(isolate, q.database));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "user"),
-               TRI_V8_STD_STRING(isolate, q.user));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "query"),
-               TRI_V8_STD_STRING(isolate, q.queryString));
-      if (q.bindParameters != nullptr) {
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"),
-                 TRI_VPackToV8(isolate, q.bindParameters->slice()));
-      } else {
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate));
-      }
-      if (!q.dataSources.empty()) {
-        auto d = v8::Array::New(isolate);
-        uint32_t i = 0;
-        for (auto const& dn : q.dataSources) {
-          d->Set(i++, TRI_V8_STD_STRING(isolate, dn));
-        }
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "dataSources"), d);
-      }
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
-               TRI_V8_STD_STRING(isolate, timeString));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"), v8::Number::New(isolate, q.runTime));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "state"),
-               TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
-      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
-      result->Set(i++, obj);
-    }
-
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  
+  VPackBuilder b;
+  b.openArray();
+  for (auto const& q : queryList->listSlow()) {
+    q.toVelocyPack(b);
   }
+  b.close();
+              
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
   TRI_V8_TRY_CATCH_END
 }
 

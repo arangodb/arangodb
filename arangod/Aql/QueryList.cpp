@@ -30,6 +30,7 @@
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -62,6 +63,33 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
       runTime(runTime),
       state(state),
       stream(stream) {}
+
+void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
+  auto timeString = TRI_StringTimeStamp(started, Logger::getUseLocalTime());
+
+  out.add(VPackValue(VPackValueType::Object));
+  out.add("id", VPackValue(basics::StringUtils::itoa(id)));
+  out.add("database", VPackValue(database));
+  out.add("user", VPackValue(user));
+  out.add("query", VPackValue(queryString));
+  if (bindParameters != nullptr) {
+    out.add("bindVars", bindParameters->slice());
+  } else {
+    out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
+  }
+  if (!dataSources.empty()) {
+    out.add("dataSources", VPackValue(VPackValueType::Array));
+    for (auto const& dn : dataSources) {
+      out.add(VPackValue(dn));
+    }
+    out.close();
+  }
+  out.add("started", VPackValue(timeString));
+  out.add("runTime", VPackValue(runTime));
+  out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
+  out.add("stream", VPackValue(stream));
+  out.close();
+}
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)

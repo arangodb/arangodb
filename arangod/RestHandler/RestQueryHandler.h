@@ -73,12 +73,6 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   void deleteQuerySlow();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief interrupts a named query
-  //////////////////////////////////////////////////////////////////////////////
-
-  void deleteQuery(std::string const& name);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief interrupts a query
   //////////////////////////////////////////////////////////////////////////////
 
@@ -94,9 +88,13 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   /// @brief parses a query
   //////////////////////////////////////////////////////////////////////////////
 
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override;
+  
+ private:
+  /// @brief interrupts a named query
+  void killQuery(std::string const& id);
+  
   bool parseQuery();
-
-  virtual ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 };
 }  // namespace arangodb
 
