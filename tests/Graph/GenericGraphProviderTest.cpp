@@ -59,7 +59,15 @@ class GraphProviderTest : public ::testing::Test {
   auto makeProvider(MockGraph const& graph) -> ProviderType {
     // Setup code for each provider type
     if constexpr (std::is_same_v<ProviderType, MockGraphProvider>) {
-      return MockGraphProvider(graph, MockGraphProvider::LooseEndBehaviour::NEVER);
+      s = std::make_unique<GraphTestSetup>();
+      singleServer =
+          std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
+      singleServer->addGraph(graph);
+
+      // We now have collections "v" and "e"
+      query = singleServer->getQuery("RETURN 1", {"v", "e"});
+      
+      return MockGraphProvider(graph, *query.get(), MockGraphProvider::LooseEndBehaviour::NEVER);
     }
     if constexpr (std::is_same_v<ProviderType, SingleServerProvider>) {
       s = std::make_unique<GraphTestSetup>();

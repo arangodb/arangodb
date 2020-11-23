@@ -44,6 +44,10 @@ template <typename T>
 class Future;
 }
 
+namespace aql {
+class QueryContext;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -127,17 +131,13 @@ class MockGraphProvider {
       return _vertex;
     }
 
-    Edge getEdge() const {
-      if (_edge.has_value()) {
-        if (!isProcessable()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "Accessing edge (" + _edge.value().toString() +
-                                             "), before fetching it");
-        }
-        return _edge.value();
-      } else {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    std::optional<Edge> getEdge() const {
+      if (!isProcessable()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Accessing edge (" + _edge.value().toString() +
+                                           "), before fetching it");
       }
+      return _edge;
     }
 
     bool isProcessable() const { return _isProcessable; }
@@ -154,7 +154,7 @@ class MockGraphProvider {
   };
 
   MockGraphProvider() = delete;
-  MockGraphProvider(MockGraph const& data, LooseEndBehaviour looseEnds, bool reverse = false);
+  MockGraphProvider(MockGraph const& data, arangodb::aql::QueryContext& queryContext, LooseEndBehaviour looseEnds, bool reverse = false);
   MockGraphProvider(MockGraphProvider const&) = delete;  // TODO: check "Rule of 5"
   MockGraphProvider(MockGraphProvider&&) = default;
   ~MockGraphProvider();
@@ -166,9 +166,11 @@ class MockGraphProvider {
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 
+  [[nodiscard]] transaction::Methods* trx();
+  
  private:
   auto decideProcessable() const -> bool;
-  [[nodiscard]] transaction::Methods* trx();
+
 
  private:
   std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _fromIndex;

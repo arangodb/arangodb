@@ -28,6 +28,7 @@
 
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Aql/QueryContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -70,8 +71,9 @@ arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() c
 }
 
 MockGraphProvider::MockGraphProvider(MockGraph const& data,
+                                     arangodb::aql::QueryContext& queryContext,
                                      LooseEndBehaviour looseEnds, bool reverse)
-    : _reverse(reverse), _looseEnds(looseEnds) {
+: _trx(queryContext.newTrxContext()), _reverse(reverse), _looseEnds(looseEnds) {
   for (auto const& it : data.edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
@@ -150,4 +152,8 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   LOG_TOPIC("78160", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Expansion length: " << result.size();
   return result;
+}
+
+[[nodiscard]] transaction::Methods* MockGraphProvider::trx() {
+  return &_trx;
 }

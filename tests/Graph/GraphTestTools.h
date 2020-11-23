@@ -258,6 +258,9 @@ struct MockGraphDatabase {
         b.clear();
         edge.addToBuilder(b);
         auto res = trx.insert(edges->name(), b.slice(), options);
+        if (res.fail()) {
+          LOG_DEVEL << res.errorMessage() << " " << b.toJson();
+        }
         EXPECT_TRUE((res.ok()));
         added++;
       }
@@ -303,6 +306,7 @@ struct MockGraphDatabase {
       }
     }
     TRI_ASSERT(false);  // Index not found
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   std::unique_ptr<arangodb::aql::Query> getQuery(std::string qry,

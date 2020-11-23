@@ -29,6 +29,8 @@
 #include "Basics/operating-system.h"
 
 #include "../Mocks/Servers.h"
+
+#include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
@@ -65,6 +67,7 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
   bool activateLogging{false};
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
+  std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
 
   KPathFinderTest_Refactored() {
     if (activateLogging) {
@@ -113,8 +116,8 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
   
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
-    return KPathFinder{MockGraphProvider(mockGraph, looseEndBehaviour(), false),
-      MockGraphProvider(mockGraph, looseEndBehaviour(), true),
+    return KPathFinder{MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), false),
+      MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), true),
       std::move(options)};
   }
 
