@@ -3,6 +3,11 @@ v3.6.10 (XXXX-XX-XX)
 
 * Updated OpenSSL to 1.1.1h.
 
+* Fixed a hanger in the socket shutdown for the TLS case in fuerte (cluster
+  internal communications).
+
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling.
+
 * Make the number of network I/O threads properly configurable via the startup
   option `--network.io-threads`. This option existed before, but its configured
   value was effectively clamped to a value of `1`. ArangoDB 3.6.10 thus also
