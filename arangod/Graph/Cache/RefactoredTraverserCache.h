@@ -63,7 +63,13 @@ class RefactoredTraverserCache {
  public:
   explicit RefactoredTraverserCache(arangodb::transaction::Methods* trx,
                                     aql::QueryContext* query);
-  virtual ~RefactoredTraverserCache();
+  ~RefactoredTraverserCache() = default;
+
+  RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
+  RefactoredTraverserCache(RefactoredTraverserCache&&) = default;
+
+  RefactoredTraverserCache& operator=(RefactoredTraverserCache const&) = delete;
+  RefactoredTraverserCache& operator=(RefactoredTraverserCache&&) = default;
 
   /// @brief clears all allocated memory in the underlying StringHeap
   void clear();
@@ -72,26 +78,26 @@ class RefactoredTraverserCache {
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
+  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
                                     velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  virtual void insertVertexIntoResult(arangodb::velocypack::StringRef idString,
+  void insertVertexIntoResult(arangodb::velocypack::StringRef idString,
                                       velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
+  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  virtual aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString);
+  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString);
 
   size_t getAndResetInsertedDocuments() {
     size_t tmp = _insertedDocuments;
@@ -118,7 +124,7 @@ class RefactoredTraverserCache {
   void increaseCounter() { _insertedDocuments++; }
 
   /// Only valid until the next call to this class
-  virtual velocypack::Slice lookupToken(EdgeDocumentToken const& token);
+  velocypack::Slice lookupToken(EdgeDocumentToken const& token);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

@@ -55,8 +55,6 @@ RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Method
       _stringHeap(4096) /* arbitrary block-size may be adjusted for performance */
 {}
 
-RefactoredTraverserCache::~RefactoredTraverserCache() = default;
-
 void RefactoredTraverserCache::clear() {
   _stringHeap.clear();
   _persistedStrings.clear();
