@@ -97,6 +97,7 @@ class Methods {
  private:
   Methods() = delete;
   Methods(Methods const&) = delete;
+
   Methods& operator=(Methods const&) = delete;
 
  public:
@@ -114,6 +115,9 @@ class Methods {
 
   /// @brief destroy the transaction
   virtual ~Methods();
+
+  Methods(Methods&&) = default;
+  Methods& operator=(Methods&&) = default;
 
   typedef Result (*DataSourceRegistrationCallback)(LogicalDataSource& dataSource,
                                                    Methods& trx);
