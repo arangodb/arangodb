@@ -26,6 +26,7 @@ const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const accumulators = require("@arangodb/air/accumulators");
+const graphModule = require("@arangodb/smart-graph");
 
 const internal = require("internal");
 
@@ -237,6 +238,11 @@ function exec_test_vertex_degrees() {
     spec,
     checkVertexCount
   ));
+  try {
+    graphModule._drop("LineGraph100", true);
+  } catch (ignore) {
+  }
+
 
   spec = examplegraphs.create_line_graph("LineGraph1000", 1000, 5);
   // YOLO, graph sometimes arrives too late.
@@ -246,6 +252,10 @@ function exec_test_vertex_degrees() {
     spec,
     checkVertexCount
   ));
+  try {
+    graphModule._drop("LineGraph1000", true);
+  } catch (ignore) {
+  }
 
   spec = examplegraphs.create_wiki_vote_graph("WikiVote", 1);
   // YOLO, graph sometimes arrives too late.
@@ -255,6 +265,10 @@ function exec_test_vertex_degrees() {
     spec,
     checkVertexCount
   ));
+  try {
+    graphModule._drop("WikiVote", true);
+  } catch (ignore) {
+  }
 
   if (results.includes(false)) {
     return false;

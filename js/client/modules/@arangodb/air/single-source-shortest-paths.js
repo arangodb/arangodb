@@ -183,40 +183,76 @@ function exec_test_shortest_path() {
   let results = [];
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph10", 10, 1)));
-  try {graphModule._drop("LineGraph10", true);} catch (ignore) {}
+  try {
+    graphModule._drop("LineGraph10", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph100", 100, 9)));
-  try {graphModule._drop("LineGraph100", true);} catch (ignore) {}
+  try {
+    graphModule._drop("LineGraph100", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph1000", 1000, 18)));
-  try {graphModule._drop("LineGraph1000", true);} catch (ignore) {}
+  try {
+    graphModule._drop("LineGraph1000", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle10", 2, 1)));
-  try {graphModule._drop("Circle10", true);} catch (ignore) {}
+  try {
+    graphModule._drop("Circle10", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle100", 4, 6)));
-  try {graphModule._drop("Circle100", true);} catch (ignore) {}
+  try {
+    graphModule._drop("Circle100", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle1000", 8, 18)));
-  try {graphModule._drop("Circle1000", true);} catch (ignore) {}
+  try {
+    graphModule._drop("Circle1000", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete4", 10, 4)));
-  try {graphModule._drop("Complete4", true);} catch (ignore) {}
+  try {
+    graphModule._drop("Complete4", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete10", 10, 10)));
-  try {graphModule._drop("Complete10", true);} catch (ignore) {}
+  try {
+    graphModule._drop("Complete10", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete100", 10, 100)));
-  try {graphModule._drop("Complete100", true);} catch (ignore) {}
+  try {
+    graphModule._drop("Complete100", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 1)));
-  try {graphModule._drop("WikiVote", true);} catch (ignore) {}
+  try {
+    graphModule._drop("WikiVote", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
-  try {graphModule._drop("WikiVote", true);} catch (ignore) {}
+  try {
+    graphModule._drop("WikiVote", true);
+  } catch (ignore) {
+  }
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
-  try {graphModule._drop("WikiVote", true);} catch (ignore) {}
+  try {
+    graphModule._drop("WikiVote", true);
+  } catch (ignore) {
+  }
 
   return !results.includes(false);
 }
