@@ -178,7 +178,7 @@ struct SingleServerProvider {
   // We DO take responsibility for the Cache (TODO?)
   std::unique_ptr<arangodb::transaction::Methods> _trx;
   std::unique_ptr<arangodb::aql::QueryContext*> _query;
-  std::unique_ptr<RefactoredTraverserCache> _cache;
+  RefactoredTraverserCache _cache;
 
   BaseProviderOptions _opts;
 };
