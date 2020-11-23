@@ -208,14 +208,17 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
           if (!results.hasOwnProperty('SKIPPED')) {
             print('oops! Skipping remaining tests, server is unavailable for testing.');
-
+            let originalMessage;
+            if (results.hasOwnProperty(te) && results[te].hasOwnProperty('message')) {
+              originalMessage = results[te].message;
+            }
             results['SKIPPED'] = {
               status: false,
               message: ""
             };
             results[te] = {
               status: false,
-              message: 'server unavailable for testing.'
+              message: 'server unavailable for testing. ' + originalMessage
             };
           } else {
             if (results['SKIPPED'].message !== '') {
@@ -887,8 +890,19 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
 
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
-  eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
-  
+  try {
+    eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
+  } catch (ex) {
+    print(RED + 'test failed to parse:');
+    print(ex);
+    print(RESET);
+    return {
+      status: false,
+      message: "test doesn't parse! '" + file + "' - " + ex.message || String(ex),
+      stack: ex.stack
+    };
+  }
+
   try {
     SetGlobalExecutionDeadlineTo(options.oneTestTimeout * 1000);
     let result = testFunc();
@@ -904,6 +918,9 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     return result;
   } catch (ex) {
     let timeout = SetGlobalExecutionDeadlineTo(0.0);
+    print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
+    print(ex);
+    print(RESET);
     return {
       timeout: timeout,
       forceTerminate: true,
