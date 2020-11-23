@@ -101,6 +101,10 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
+  auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
+  feature.validateOptions(server.server().options());
+  feature.collectOptions(server.server().options());
+
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); // Hack.
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -123,9 +127,6 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   }
 
   // no view specified
-  auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-  feature.validateOptions(server.server().options());
-  feature.collectOptions(server.server().options());
   auto& factory = feature.factory<arangodb::ClusterEngine>();
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");

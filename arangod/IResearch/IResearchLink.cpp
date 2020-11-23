@@ -1658,7 +1658,6 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
     _dataStore._meta = meta;
   }
 
-
   if (_engine->recoveryState() == RecoveryState::DONE) {
     if (meta._commitIntervalMsec) {
       scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
@@ -1673,19 +1672,8 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   properties.segment_count_max = meta._writebufferActive;
   properties.segment_memory_max = meta._writebufferSizeMax;
 
-  try {
-    _dataStore._writer->options(properties);
-  } catch (std::exception const& e) {
-    LOG_TOPIC("c50c8", ERR, iresearch::TOPIC)
-        << "caught exception while modifying properties of arangosearch link '"
-        << id() << "': " << e.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("ad1eb", WARN, iresearch::TOPIC)
-        << "caught exception while modifying properties of arangosearch link '"
-        << id() << "'";
-    throw;
-  }
+  static_assert(noexcept(_dataStore._writer->options(properties)));
+  _dataStore._writer->options(properties);
 
   return {};
 }
