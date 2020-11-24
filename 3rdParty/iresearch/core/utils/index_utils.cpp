@@ -26,7 +26,7 @@
 
 #include <cmath>
 
-NS_LOCAL
+namespace {
 
 /// @returns percentage of live documents
 inline double_t fill_factor(const irs::segment_meta& segment) noexcept {
@@ -38,7 +38,7 @@ inline size_t size_without_removals(const irs::segment_meta& segment) noexcept{
   return size_t(segment.size * fill_factor(segment));
 }
 
-NS_BEGIN(tier)
+namespace tier {
 
 struct segment_stat {
   segment_stat(const irs::segment_meta& meta) noexcept
@@ -174,11 +174,11 @@ double_t consolidation_score(
   return score;
 }
 
-NS_END // tier
-NS_END
+} // tier
+}
 
-NS_ROOT
-NS_BEGIN(index_utils)
+namespace iresearch {
+namespace index_utils {
 
 index_writer::consolidation_policy_t consolidation_policy(
     const consolidate_bytes& options) {
@@ -498,5 +498,5 @@ void flush_index_segment(directory& dir, index_meta::index_segment_t& segment) {
   writer->write(dir, segment.filename, segment.meta);
 }
 
-NS_END // index_utils
-NS_END // NS_ROOT
+} // index_utils
+} // namespace iresearch {

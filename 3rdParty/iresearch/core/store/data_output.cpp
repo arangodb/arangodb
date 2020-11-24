@@ -29,7 +29,7 @@
 
 #include <memory>
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         output_buf implementation
@@ -164,4 +164,4 @@ void buffered_index_output::close() {
   pos_ = buf_.get();
 }
 
-NS_END
+}

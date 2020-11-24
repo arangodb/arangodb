@@ -26,7 +26,7 @@
 #include "type_id.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct attribute;
 
@@ -72,6 +72,6 @@ inline T* get_mutable(Provider* attrs) {
   return static_cast<T*>(attrs->get_mutable(type<T>::id()));
 }
 
-NS_END
+}
 
 #endif

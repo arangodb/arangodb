@@ -136,7 +136,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     }
     std::vector<AqlCall> res;
     res.reserve(slice.length());
-    for (auto const& c : VPackArrayIterator(slice)) {
+    for (VPackSlice const c : VPackArrayIterator(slice)) {
       auto maybeAqlCall = AqlCall::fromVelocyPack(c);
       if (ADB_UNLIKELY(maybeAqlCall.fail())) {
         auto message = std::string{"When deserializing AqlCallList: entry "};

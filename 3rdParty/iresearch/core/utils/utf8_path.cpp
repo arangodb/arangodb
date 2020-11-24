@@ -27,7 +27,7 @@
 #include "error/error.hpp"
 #include "utf8_path.hpp"
 
-NS_LOCAL
+namespace {
 
 typedef irs::basic_string_ref<wchar_t> wstring_ref;
 
@@ -133,9 +133,9 @@ inline bool append_path(std::wstring& buf, const wstring_ref& value) {
   #pragma GCC diagnostic pop
 #endif
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 utf8_path::utf8_path(bool current_working_path /*= false*/) {
   if (current_working_path) {
@@ -405,4 +405,4 @@ std::string utf8_path::utf8_absolute() const {
   return path.utf8();
 }
 
-NS_END
+}

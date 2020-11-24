@@ -29,7 +29,7 @@
 #include "utils/ebo.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fst_states_map
@@ -139,6 +139,6 @@ class fst_states_map : private compact<0, Hash>,
   size_t count_{};
 }; // fst_states_map
 
-NS_END
+}
 
 #endif

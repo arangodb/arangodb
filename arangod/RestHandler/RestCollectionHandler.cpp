@@ -234,7 +234,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   } else if (sub == "shards") {
     // /_api/collection/<identifier>/shards
     if (!ServerState::instance()->isRunningInCluster()) {
-      this->generateError(Result(TRI_ERROR_INTERNAL));
+      this->generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "shards API is only available in a cluster"));
       return RestStatus::DONE;
     }
 
@@ -484,7 +484,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         _request->value(StaticStrings::IsSynchronousReplicationString);
     opts.truncateCompact = _request->parsedValue(StaticStrings::Compact, true);
 
-    _activeTrx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
+    _activeTrx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE, opts);
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     res = _activeTrx->begin();
@@ -772,7 +772,7 @@ RestStatus RestCollectionHandler::standardResponse() {
 
 void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
   try {
-    _activeTrx = createTransaction(coll.name(), AccessMode::Type::READ);
+    _activeTrx = createTransaction(coll.name(), AccessMode::Type::READ, OperationOptions());
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,

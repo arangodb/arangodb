@@ -301,7 +301,8 @@ struct IResearchExpressionFilterTest
         "_REFERENCE_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
@@ -335,7 +336,7 @@ struct FilterCtx : irs::attribute_provider {
     : _execCtx(&ctx) {
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<arangodb::iresearch::ExpressionExecutionContext>::id() == type
       ? _execCtx
       : nullptr;

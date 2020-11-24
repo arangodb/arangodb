@@ -28,7 +28,7 @@
 #include "utils/index_utils.hpp"
 #include "iql/query_builder.hpp"
 
-NS_LOCAL
+namespace {
 
 class failing_directory : public tests::directory_mock {
  public:
@@ -236,7 +236,7 @@ class failing_directory : public tests::directory_mock {
   mutable std::set<fail_t, fail_less> failures_;
 }; // failing_directory
 
-NS_END
+}
 
 TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
   tests::json_doc_generator gen(

@@ -98,16 +98,6 @@ class IResearchLink {
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx); // arangodb::Index override
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert a set of ArangoDB documents into an iResearch View using
-  ///        '_meta' params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& batch,
-      std::shared_ptr<basics::LocalTaskQueue> queue);
-
   bool canBeDropped() const {
     // valid for a link to be dropped from an ArangoSearch view
     return true;

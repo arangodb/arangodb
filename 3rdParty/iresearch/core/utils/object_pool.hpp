@@ -36,7 +36,7 @@
 #include "noncopyable.hpp"
 
 
-NS_ROOT
+namespace iresearch {
 
 template<typename T>
 class atomic_shared_ptr_helper {
@@ -627,7 +627,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
 
 }; // unbounded_object_pool
 
-NS_BEGIN(detail)
+namespace detail {
 
 template<typename Pool>
 struct pool_generation {
@@ -639,7 +639,7 @@ struct pool_generation {
   Pool* owner; // current owner
 }; // pool_generation
 
-NS_END // detail
+} // detail
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class unbounded_object_pool_volatile
@@ -839,6 +839,6 @@ class unbounded_object_pool_volatile
   generation_ptr_t gen_; // current generation
 }; // unbounded_object_pool_volatile
 
-NS_END
+}
 
 #endif

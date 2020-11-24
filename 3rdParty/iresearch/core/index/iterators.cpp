@@ -28,7 +28,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
 
-NS_LOCAL
+namespace {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_doc_iterator
@@ -196,9 +196,9 @@ struct empty_column_iterator final : irs::column_iterator {
 
 empty_column_iterator EMPTY_COLUMN_ITERATOR;
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                    term_iterator
@@ -240,4 +240,4 @@ column_iterator::ptr column_iterator::empty() {
   return memory::to_managed<irs::column_iterator, false>(&EMPTY_COLUMN_ITERATOR);
 }
 
-NS_END // ROOT 
+} // ROOT 

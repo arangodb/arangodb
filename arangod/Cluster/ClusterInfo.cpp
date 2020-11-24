@@ -4312,7 +4312,7 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }
@@ -4363,7 +4363,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }
@@ -4814,6 +4814,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
   int tries = 0;
+  TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
+    // Simulate 3 failed tries below.
+    return std::make_shared<std::vector<ShardID>>();
+  }
   while (true) {
     {
       // Get the sharding keys and the number of shards:

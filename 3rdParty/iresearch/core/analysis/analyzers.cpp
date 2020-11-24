@@ -37,7 +37,7 @@
 #include "analysis/analyzers.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -82,9 +82,9 @@ struct value{
   const analysis::normalizer_f normalizer;
 };
  
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::key> {
@@ -95,9 +95,9 @@ struct hash<::key> {
   }
 }; // hash
 
-NS_END // std
+} // std
 
-NS_LOCAL
+namespace {
 
 const std::string FILENAME_PREFIX("libanalyzer-");
 
@@ -122,10 +122,10 @@ class analyzer_register
   }
 };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 /*static*/ bool analyzers::exists(
     const string_ref& name,
@@ -281,5 +281,5 @@ analyzer_registrar::analyzer_registrar(
   }
 }
 
-NS_END // analysis
-NS_END
+} // analysis
+}

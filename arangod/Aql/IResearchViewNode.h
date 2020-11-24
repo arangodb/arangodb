@@ -201,7 +201,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
 
-  static const ptrdiff_t SortColumnNumber;
+  static constexpr ptrdiff_t SortColumnNumber {-1};
 
   // A variable with a field number in a column
   struct ViewVariable {

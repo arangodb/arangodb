@@ -39,8 +39,8 @@ const optionsDocumentation = [
   '   - `skipEncrypted` : if set to true the encryption tests are skipped'
 ];
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const _ = require('lodash');
 const hb = require("@arangodb/hotbackup");

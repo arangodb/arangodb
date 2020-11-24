@@ -193,15 +193,6 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief throw-collection-not-loaded
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.THROW_COLLECTION_NOT_LOADED) {
-    exports.throwOnCollectionNotLoaded = global.THROW_COLLECTION_NOT_LOADED;
-    delete global.THROW_COLLECTION_NOT_LOADED;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief autoload modules from database
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -588,6 +579,11 @@
   exports.isCluster = function () {
     let role = global.ArangoServerState.role();
     return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
+  };
+
+  if (global.SYS_CREATE_HOTBACKUP) {
+    exports.createHotbackup = global.SYS_CREATE_HOTBACKUP;
+    delete global.SYS_CREATE_HOTBACKUP;
   };
 
 }());

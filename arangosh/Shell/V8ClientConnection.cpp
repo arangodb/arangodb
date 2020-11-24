@@ -262,6 +262,19 @@ void V8ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
 }
 
+std::string V8ClientConnection::protocol() const {
+  switch (_builder.protocolType()) {
+    case fuerte::ProtocolType::Http:
+      return "http";
+    case fuerte::ProtocolType::Http2:
+      return "http2";
+    case fuerte::ProtocolType::Vst:
+      return "vst";
+    default:
+      return "unknown";
+  }
+}
+
 void V8ClientConnection::connect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   _forceJson = _client.forceJson();
@@ -449,6 +462,29 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
   }
 
   TRI_V8_RETURN(WrapV8ClientConnection(isolate, v8connection.release()));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "protocol"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_protocol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  V8ClientConnection* v8connection =
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (v8connection == nullptr || client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("protocol() must be invoked on an arango connection object instance.");
+  }
+  
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, v8connection->protocol()));
+
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1748,6 +1784,9 @@ again:
       req->header.acceptType(fu::ContentType::VPack);
     }
   }
+  else if (_forceJson && (req->header.acceptType() == fu::ContentType::VPack)) {
+    req->header.acceptType(fu::ContentType::Json);
+  }
   req->timeout(
       correctTimeoutToExecutionDeadline(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
@@ -1827,6 +1866,10 @@ again:
   if (req->header.acceptType() == fu::ContentType::Unset) {
     req->header.acceptType(fu::ContentType::VPack);
   }
+  if (_forceJson && (req->header.acceptType() == fu::ContentType::VPack)) {
+    req->header.acceptType(fu::ContentType::Json);
+  }
+
   req->timeout(
       correctTimeoutToExecutionDeadline(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
@@ -2145,6 +2188,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser,
                                                   v8client));
+  
+  connection_proto->Set(isolate, "protocol",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_protocol, v8client));
 
   connection_proto->Set(isolate, "timeout",
                         v8::FunctionTemplate::New(isolate, ClientConnection_timeout, v8client));

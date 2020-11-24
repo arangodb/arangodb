@@ -13,9 +13,4 @@ for *waitForSync* is *false*.
 
 * *waitForSync* (optional, default *false*): If *true* creating
   a document will only return after the data was synced to disk.
-* *journalSize* (optional, default is 
-  "configuration parameter"):  The maximal size of
-  a journal or datafile.  Note that this also limits the maximal
-  size of a single object and must be at least 1MB.
-
 

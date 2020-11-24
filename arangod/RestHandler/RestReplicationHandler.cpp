@@ -824,6 +824,9 @@ void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
+  auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+  replicationFeature.trackInventoryRequest();
+
   std::string const& dbName = _request->databaseName();
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
@@ -1125,7 +1128,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     toMerge.add("id", VPackValue(newId));
 
     if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-        _vocbase.isShardingSingle()) {
+        _vocbase.isOneShard()) {
       auto const isSatellite =
           VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
                                          velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -3488,28 +3491,36 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   std::string vn = _vocbase.name();
   try {
-    std::function<void(void)> f = [=]() {
-      try {
-        // Code does not matter, read only access, so we can roll back.
-        transaction::Manager* mgr = transaction::ManagerFeature::manager();
-        if (mgr) {
-          mgr->abortManagedTrx(id, vn);
-        }
-      } catch (...) {
-        // All errors that show up here can only be
-        // triggered if the query is destroyed in between.
-      }
-    };
-
-    std::string comment = std::string("SynchronizeShard from ") + serverId +
-                          " for " + col.name() + " access mode " +
-                          AccessMode::typeString(access);
-    
     if (!serverId.empty()) {
+      std::string comment = std::string("SynchronizeShard from ") + serverId +
+                            " for " + col.name() + " access mode " +
+                            AccessMode::typeString(access);
+    
+      std::function<void(void)> f = [=]() {
+        try {
+          // Code does not matter, read only access, so we can roll back.
+          transaction::Manager* mgr = transaction::ManagerFeature::manager();
+          if (mgr) {
+            mgr->abortManagedTrx(id, vn);
+          }
+        } catch (...) {
+          // All errors that show up here can only be
+          // triggered if the query is destroyed in between.
+        }
+      };
+    
       auto rGuard = std::make_unique<RebootCookie>(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
-                                          f, comment));
-      transaction::Methods trx{mgr->leaseManagedTrx(id, AccessMode::Type::WRITE)};
+                                          std::move(f), std::move(comment)));
+      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE);
+    
+      if (!ctx) {
+        // Trx does not exist. So we assume it got cancelled.
+        return {TRI_ERROR_TRANSACTION_INTERNAL, "read transaction was cancelled"};
+      }
+
+      transaction::Methods trx{ctx};
+
       void* key = this; // simon: not important to get it again
       trx.state()->cookie(key, std::move(rGuard));
     }

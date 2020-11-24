@@ -32,7 +32,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 typedef block_pool<byte_type, 32768> byte_block_pool;
 
@@ -81,6 +81,6 @@ class IRESEARCH_API postings: util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-NS_END
+}
 
 #endif

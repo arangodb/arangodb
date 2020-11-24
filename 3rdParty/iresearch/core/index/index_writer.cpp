@@ -40,7 +40,7 @@
 #include <list>
 #include <sstream>
 
-NS_LOCAL
+namespace {
 
 typedef range<irs::index_writer::modification_context> modification_contexts_ref;
 typedef range<irs::segment_writer::update_context> update_contexts_ref;
@@ -528,9 +528,9 @@ std::string to_string(std::set<const irs::segment_meta*>& consolidation) {
   return ss.str();
 }
 
-NS_END // NS_LOCAL
+} // NS_LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 readers_cache::key_t::key_t(const segment_meta& meta)
   : name(meta.name), version(meta.version) {
@@ -2512,4 +2512,4 @@ void index_writer::abort() {
   meta_.reset(*(committed_state_->first));
 }
 
-NS_END
+}

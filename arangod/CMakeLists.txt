@@ -57,6 +57,7 @@ add_library(arango_iresearch
   IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
   IResearch/GeoFilter.cpp IResearch/GeoFilter.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
@@ -390,6 +391,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WindowNode.cpp
+  Aql/WindowExecutor.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
 )
@@ -599,7 +602,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterUpgradeFeature.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
-  Cluster/CriticalThread.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp

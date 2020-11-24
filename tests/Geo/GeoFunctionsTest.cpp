@@ -643,6 +643,650 @@ TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
 
 }  // geo_equals_mixings
 
+TEST(GeoInRangeTest, test) {
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  fakeit::Mock<transaction::Methods> trxMock;
+  fakeit::Mock<transaction::Context> contextMock;
+  fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&contextMock.get());
+  fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+  fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(velocypack::Options::Defaults);
+  fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
+  fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
+  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return trxMock.get(); });
+
+  arangodb::aql::Function f("GEO_IN_RANGE", &Functions::GeoInRange);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&f));
+
+  auto lhs = VPackParser::fromJson(R"({
+    "type": "Point",
+    "coordinates": [37.610235, 55.709754] })");
+  auto rhs = VPackParser::fromJson(R"({
+    "type": "Point",
+    "coordinates": [37.605, 55.707917] })");
+
+  SmallVector<AqlValue>::allocator_type::arena_type arena;
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    });
+
+    SmallVector<AqlValue> params {{
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{lhs->slice()},
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{lhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{lhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{0}},
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_TRUE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{lhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{lhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintBool{true}},
+      AqlValue{AqlValueHintBool{false}}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{lhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{true}}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{100}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{100}},
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{100}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{rhs->slice()},
+      AqlValue{lhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{100}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{100}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"foo"} // fallback to 'sphere'
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{0}},
+      AqlValue{AqlValueHintDouble{100}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}} // fallback to 'sphere'
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_FALSE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_TRUE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_TRUE(res.slice().getBool());
+  }
+
+  {
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_TRUE(res.slice().getBool());
+  }
+
+  {
+    auto shapeJson = VPackParser::fromJson(R"({
+      "type": "Polygon",
+      "coordinates": [
+          [
+              [37.602682, 55.706853],
+              [37.613025, 55.706853],
+              [37.613025, 55.711906],
+              [37.602682, 55.711906],
+              [37.602682, 55.706853]
+          ]
+      ]
+    })");
+
+    SmallVector<AqlValue> params {{
+      AqlValue{shapeJson->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{240}},
+      AqlValue{AqlValueHintDouble{242}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isBoolean());
+    ASSERT_TRUE(res.slice().getBool());
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    auto invalidJson = VPackParser::fromJson(R"({
+      "type": "PPint",
+      "coordinates": [37.610235, 55.709754] })");
+
+    SmallVector<AqlValue> params {{
+      AqlValue{invalidJson->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    auto invalidJson = VPackParser::fromJson(R"({
+      "type": "PPint",
+      "coordinates": [37.610235, 55.709754] })");
+
+    SmallVector<AqlValue> params {{
+      AqlValue{rhs->slice()},
+      AqlValue{invalidJson->slice()},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintDouble{1}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{100}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* ) -> void {
+      ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+    });
+
+    SmallVector<AqlValue> params {{
+      AqlValue{lhs->slice()},
+      AqlValue{rhs->slice()},
+      AqlValue{AqlValueHintDouble{100}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{AqlValueHintBool{false}},
+      AqlValue{AqlValueHintDouble{400}},
+      AqlValue{"wg84"}
+    }, arena};
+
+    auto guard = arangodb::scopeGuard([&params]() {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res = f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+}
+
 }  // geo_functions_aql
 }  // tests
 }  // arangodb

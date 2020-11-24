@@ -45,9 +45,9 @@ class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniquenes
 
   ~ConditionFinder() = default;
 
-  bool before(ExecutionNode*);
+  bool before(ExecutionNode*) override;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*);
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override;
 
   bool producesEmptyResult() const { return _producesEmptyResult; }
 

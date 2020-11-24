@@ -73,6 +73,18 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_features::ApplicationServer& server) {
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
+  auto rv = info.load("Z", std::numeric_limits<uint64_t>::max()); // name does not matter. We just need validity check to pass.
+  TRI_ASSERT(rv.ok());
+  return info;
+}
+
+/// @brief sandbox vocbase for executing calculation queries
+std::unique_ptr<TRI_vocbase_t> calculationVocbase;
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // i am here for debugging only.
 TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
@@ -158,8 +170,10 @@ void DatabaseManagerThread::run() {
             // remove apps directory for database
             std::string const& appPath = dealer.appPath();
             if (database->isOwnAppsDirectory() && !appPath.empty()) {
+              MUTEX_LOCKER(mutexLocker1, databaseFeature._databaseCreateLock);
+
               // but only if nobody re-created a database with the same name!
-              MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+              MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
               
               TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
               TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
@@ -168,7 +182,7 @@ void DatabaseManagerThread::run() {
                 std::string path = arangodb::basics::FileUtils::buildFilename(
                     arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
                     database->name());
-
+  
                 if (TRI_IsDirectory(path.c_str())) {
                   LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
                     << "removing app directory '" << path << "' of database '"
@@ -263,7 +277,6 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _throwCollectionNotLoadedError(false),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -311,13 +324,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
-      "--database.throw-collection-not-loaded-error",
-      "throw an error when accessing a collection that is still loading",
-      new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setDeprecatedIn(30700);
-  
-  options->addOption(
       "--database.old-system-collections",
       "create and use deprecated system collection (_modules, _fishbowl)",
       new BooleanParameter(&_useOldSystemCollections),
@@ -325,6 +331,11 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30609)
       .setIntroducedIn(30705)
       .setDeprecatedIn(30800);
+  
+  // the following option was obsoleted in 3.8
+  options->addObsoleteOption(
+      "--database.throw-collection-not-loaded-error",
+      "throw an error when accessing a collection that is still loading", false);
   
   // the following option was removed in 3.7
   options->addObsoleteOption("--database.maximal-journal-size",
@@ -359,6 +370,12 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
            "'--database.auto-upgrade'";
     FATAL_ERROR_EXIT();
   }
+}
+
+void DatabaseFeature::initCalculationVocbase(application_features::ApplicationServer& server) {
+  calculationVocbase =
+      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL,
+                                      createExpressionVocbaseInfo(server));
 }
 
 void DatabaseFeature::start() {
@@ -531,9 +548,14 @@ void DatabaseFeature::unprepare() {
     closeOpenDatabases();
   } catch (...) {
   }
-
+  calculationVocbase.reset();
   // clear singleton
   DATABASE = nullptr;
+}
+
+void DatabaseFeature::prepare() {
+  // need this to make calculation analyzer available in database links
+  initCalculationVocbase(server());
 }
 
 /// @brief will be called when the recovery phase has run
@@ -1071,6 +1093,11 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
   }
 }
 
+TRI_vocbase_t& arangodb::DatabaseFeature::getCalculationVocbase() {
+  TRI_ASSERT(calculationVocbase);
+  return *calculationVocbase;
+}
+
 void DatabaseFeature::stopAppliers() {
   // stop the replication appliers so all replication transactions can end
   if (!server().hasFeature<ReplicationFeature>()) {
@@ -1175,12 +1202,14 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
       return TRI_ERROR_NO_ERROR;
     }
 
-    LOG_TOPIC("56fc7", WARN, arangodb::Logger::FIXME)
-        << "forcefully removing existing application directory '" << path
-        << "' for database '" << name << "'";
-    // removing is best effort. if it does not succeed, we can still
-    // go on creating the it
-    TRI_RemoveDirectory(path.c_str());
+    if (!basics::FileUtils::listFiles(path).empty()) {
+      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
+          << "forcefully removing existing application directory '" << path
+          << "' for database '" << name << "'";
+      // removing is best effort. if it does not succeed, we can still
+      // go on creating the it
+      TRI_RemoveDirectory(path.c_str());
+    }
   }
 
   // directory does not yet exist - this should be the standard case

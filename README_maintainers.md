@@ -526,15 +526,26 @@ and use the commands above to obtain stacktraces.
 
 There are several major places where unittests live:
 
-| Path                         | Description
-|:-----------------------------|:-----------------------------
-| `tests/js/server/`           | JavaScript tests, runnable on the server
-| `tests/js/common/`           | JavaScript tests, runnable on the server & via arangosh
-| `tests/js/common/test-data/` | Mock data used for the JavaScript tests
-| `tests/js/client/`           | JavaScript tests, runnable via arangosh
-| `tests/rb/`                  | rspec tests (Ruby)
-| `tests/rb/HttpInterface/`    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server.
-| `tests/` (remaining)         | Google Test unittests
+| Path / File                                                  | Description
+|:-------------------------------------------------------------|:-----------------------------
+| `tests/js/server/`                                           | JavaScript tests, runnable on the server
+| `tests/js/common/`                                           | JavaScript tests, runnable on the server & via arangosh
+| `tests/js/common/test-data/`                                 | Mock data used for the JavaScript tests
+| `tests/js/client/`                                           | JavaScript tests, runnable via arangosh
+| `tests/rb/`                                                  | rspec tests (Ruby)
+| `tests/rb/HttpInterface/`                                    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server.
+| `tests/` (remaining)                                         | Google Test unittests
+| implementation specific files                                |
+| `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`
+| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.
+| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating
+| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes 
+| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.
+| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
+| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
+| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
+| `js/common/modules/jsunity[.js|/jsunity.js`                  | jsunity testing framework; invoked via jsunity.js next to the module
+| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
 
 ### Filename conventions
 
@@ -751,7 +762,11 @@ the tests expect to have at least 3 DB-Servers.
 
 Pre-requisites:
  - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
- - have a maven binary in the path (mvn)
+ - have a maven binary in the path (mvn) configured to use JDK 11
+ 
+You can check if maven is correctly configured to use JDK 11 executing: `mvn -version`.
+In case you have multiple JVMs in your machine and JDK 11 is not the default one, you can set
+the environment variable `JAVA_HOME` to the root path of JDK 11.
 
 Once this is completed, you may run it like this:
 

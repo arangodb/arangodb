@@ -42,6 +42,7 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
  private:
   RestStatus executeStandard(ServerSecurityFeature&);
   RestStatus executeOverview();
+  RestStatus executeMemoryProfile();
 };
 }  // namespace arangodb
 

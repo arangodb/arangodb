@@ -30,7 +30,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/std.hpp"
 
-NS_LOCAL
+namespace {
 
 // returns maximum number of skip levels needed to store specified
 // count of objects for skip list with
@@ -45,9 +45,9 @@ inline size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
 
 const size_t UNDEFINED = iresearch::integer_traits<size_t>::const_max;
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                       skip_writer implementation
@@ -380,4 +380,4 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
   read_ = read;
 }
 
-NS_END
+}
