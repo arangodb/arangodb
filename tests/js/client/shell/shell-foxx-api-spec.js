@@ -147,6 +147,26 @@ describe('FoxxApi commit', function () {
     });
   });
 
+  it('should deliver compressed files according to accept-encoding', function() {
+    let result;
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'identity'});
+    print(result)
+    print(typeof result.body)
+    expect(result.body).to.contain('doctype');
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'deflate'});
+    print(typeof result.body)
+    print(result)
+    expect(result.body).to.contain('doctype');
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'gzip'});
+    print(typeof result.body)
+    print(result)
+    expect(result.body).to.be.instanceof(Buffer);
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {});
+    print(typeof result.body)
+    print(result)
+    expect(result.body).to.contain('doctype');
+
+  });
   it('should fix missing checksum', function () {
     db._query(aql`
       FOR service IN _apps
