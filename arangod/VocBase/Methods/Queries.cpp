@@ -213,9 +213,14 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
       return res.reset(TRI_ERROR_FORBIDDEN,
                        "only superusers may retrieve the list of queries for all databases");
     }
+      
+    arangodb::DatabaseFeature& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
+    databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
+      vocbase->queryList()->clearSlow();
+    });
+  } else {
+    vocbase.queryList()->clearSlow();
   }
-
-  vocbase.queryList()->clearSlow();
 
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
