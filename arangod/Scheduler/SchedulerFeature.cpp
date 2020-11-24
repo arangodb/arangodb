@@ -107,6 +107,11 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
 
+  options->addOption("--server.unavailability-queue-fill-grade",
+                     "queue fill grade from which onwards the server is considered unavailable because of overload (ratio, use a value of 0 to disable it)", 
+                     new DoubleParameter(&_unavailabilityQueueFillGrade))
+                     .setIntroducedIn(30610).setIntroducedIn(30706);
+
   options->addOption(
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
@@ -154,8 +159,17 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _nrMaximalThreads = _nrMinimalThreads;
   }
 
+  if (_unavailabilityQueueFillGrade < 0.0 ||
+      _unavailabilityQueueFillGrade > 1.0) {
+    LOG_TOPIC("055a1", FATAL, arangodb::Logger::THREADS)
+        << "invalid value for --server.unavailability-queue-fill-grade";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_queueSize == 0) {
+    TRI_ASSERT(_nrMaximalThreads > 0);
     _queueSize = _nrMaximalThreads * 8;
+    TRI_ASSERT(_queueSize > 0);
   }
 
   if (_fifo1Size < 1) {
@@ -165,11 +179,14 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
   if (_fifo2Size < 1) {
     _fifo2Size = 1;
   }
+
+  TRI_ASSERT(_queueSize > 0);
 }
 
 void SchedulerFeature::prepare() {
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
+  TRI_ASSERT(_queueSize > 0);
 // wait for windows fix or implement operator new
 #if (_MSC_VER >= 1)
 #pragma warning(push)
@@ -177,7 +194,8 @@ void SchedulerFeature::prepare() {
 #endif
   auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
                                                      _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size);
+                                                     _fifo1Size, _fifo2Size,
+                                                     _unavailabilityQueueFillGrade);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

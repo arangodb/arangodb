@@ -54,7 +54,9 @@ class PregelFeature final : public application_features::ApplicationFeature {
   static std::pair<Result, uint64_t> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections, VPackSlice const& params);
+      std::vector<std::string> const& edgeCollections, 
+      std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+      VPackSlice const& params);
 
   void start() override final;
   void beginShutdown() override final;
