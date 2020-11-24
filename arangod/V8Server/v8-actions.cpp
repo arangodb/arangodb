@@ -441,25 +441,25 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   if (!acceptPlain.empty()) {
     headers.emplace(StaticStrings::Accept, acceptPlain);
   } else {
-    switch(request->contentTypeResponse()) {
-    case ContentType::UNSET:
-    case ContentType::CUSTOM:  // use Content-Type from _headers
-      break;
-    case ContentType::JSON:    // application/json
-      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJson);
-      break;
-    case ContentType::VPACK:   // application/x-velocypack
-      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeVPack);
-      break;
-    case ContentType::TEXT:    // text/plain
-      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeText);
-      break;
-    case ContentType::HTML:    // text/html
-      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeHtml);
-      break;
-    case ContentType::DUMP:    // application/x-arango-dump
-      headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeDump);
-      break;
+    switch (request->contentTypeResponse()) {
+      case ContentType::UNSET:
+      case ContentType::CUSTOM:  // use Content-Type from _headers
+        break;
+      case ContentType::JSON:    // application/json
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJson);
+        break;
+      case ContentType::VPACK:   // application/x-velocypack
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeVPack);
+        break;
+      case ContentType::TEXT:    // text/plain
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeText);
+        break;
+      case ContentType::HTML:    // text/html
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeHtml);
+        break;
+      case ContentType::DUMP:    // application/x-arango-dump
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeDump);
+        break;
     }
   }
 
