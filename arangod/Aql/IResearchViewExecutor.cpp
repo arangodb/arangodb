@@ -434,7 +434,11 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
       documentWritten = next(ctx);
 
       if (documentWritten) {
-        stats.incrScanned();// TODO: adjust stats properly
+        if constexpr (Traits::CustomStats) {
+          static_cast<Impl&>(*this).incrScanned(stats);
+        } else  {
+          stats.incrScanned();
+        }
         output.advanceRow();
       } else {
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -1399,28 +1403,43 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
   return Base::writeRow(ctx, bufferEntry, documentId, *collection);
 }
 
-size_t arangodb::aql::IResearchViewCountExecutor::skip(size_t toSkip) { 
-  return 0;
+size_t arangodb::aql::IResearchViewCountExecutor::skip(size_t toSkip) {
+  // we do not expect skip to be used for this executor
+  // but anyway we happily could skip our only row
+  TRI_ASSERT(FALSE);
+  size_t const count = this->_reader->size();
+  if (_readerOffset >= count || 0 == toSkip) {
+    return 0;
+  }
+  _readerOffset = count; // simulate that all readers are iterated
+  return 1;
 }
 
-size_t arangodb::aql::IResearchViewCountExecutor::skipAll() { 
-  return 0;
+size_t arangodb::aql::IResearchViewCountExecutor::skipAll() {
+  return skip(1);
 }
 
 void arangodb::aql::IResearchViewCountExecutor::fillBuffer(ReadContext& ctx) {
-  size_t const count = this->_reader->size();
-  if (_readerOffset >= count) {
+  size_t const subReadersCount = this->_reader->size();
+  if (_readerOffset >= subReadersCount) {
     return;
   }
-  //size_t total = 0;
-  //TRI_ASSERT(_readerOffset == 0);
-  //for (; _readerOffset < count;) {
-  //  auto& segmentReader = (*this->_reader)[_readerOffset];
-  //  total += segmentReader.live_docs_count();
-  //  ++_readerOffset;
-  //}
-  this->_indexReadBuffer.pushValue(this->_reader->live_docs_count());
-  _readerOffset = count; // simulate that all readers are iterated
+  if (!filterConditionIsEmpty(&infos().filterCondition())) {
+    _count = 0;
+    for (; _readerOffset < subReadersCount; ++_readerOffset) {
+      auto& segmentReader = (*this->_reader)[_readerOffset];
+      auto itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
+      TRI_ASSERT(itr);
+      itr = segmentReader.mask(std::move(itr));
+      while (itr->next()) {
+        ++_count;
+      }
+    }
+  } else {
+    _count = this->_reader->live_docs_count();
+    _readerOffset = subReadersCount; // simulate that all readers are iterated
+  }
+  this->_indexReadBuffer.pushValue(_count);
   return;
 }
 
@@ -1431,6 +1450,10 @@ bool arangodb::aql::IResearchViewCountExecutor::writeRow(ReadContext& ctx, Index
   AqlValueGuard guard{ a, true };
   ctx.outputRow.moveValueInto(ctx.getCountReg(), ctx.inputRow, guard);
   return true;
+}
+
+void arangodb::aql::IResearchViewCountExecutor::incrScanned(IResearchViewStats& stats) {
+  stats.incrScanned(_count);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

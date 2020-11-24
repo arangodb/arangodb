@@ -460,6 +460,7 @@ struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materializeTyp
   using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool CustomStats {false};
 };
 
 template <bool ordered, iresearch::MaterializeType materializeType>
@@ -545,12 +546,14 @@ struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materiali
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool CustomStats {false};
 };
 
 struct IResearchViewCountExecutorTraits {
   using IndexBufferValueType = uint64_t;
   static constexpr bool Ordered {false};
   static constexpr iresearch::MaterializeType MaterializeType {iresearch::MaterializeType::EmitCount};
+  static constexpr bool CustomStats {true};
 };
 
 class IResearchViewCountExecutor 
@@ -561,7 +564,7 @@ class IResearchViewCountExecutor
   using Infos = typename Base::Infos;
 
   IResearchViewCountExecutor(IResearchViewCountExecutor&&) = default;
-  IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos) : Base(fetcher, infos) {}
+  IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos): Base(fetcher, infos) {}
 
 
   size_t skip(size_t toSkip);
@@ -573,8 +576,11 @@ class IResearchViewCountExecutor
   void reset() noexcept {
     _readerOffset = 0;
   }
+
+  void incrScanned(IResearchViewStats& stats);
  private:
    size_t _readerOffset {0};
+   size_t _count{0};
 };
 
 }  // namespace aql

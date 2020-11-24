@@ -66,9 +66,7 @@ using namespace arangodb::iresearch;
 ////////////////////////////////////////////////////////////////////////////////
 aql::AstNode const ALL(aql::AstNodeValue(true));
 
-inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
-  return filterCondition == &ALL;
-}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
@@ -875,6 +873,9 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
 namespace arangodb {
 namespace iresearch {
 
+bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
+  return filterCondition == &ALL;
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
@@ -1435,7 +1436,6 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
   auto inputRegs = aql::RegIdSet{};
 
   if (!::filterConditionIsEmpty(_filterCondition)) {
-    TRI_ASSERT(!emitOnlyCount());
     aql::VarSet vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 

@@ -760,22 +760,22 @@ void handleViewsRule(Optimizer* opt,
         !viewNode.hasNonMaterializedVariables() &&
         viewNode.scorers().empty() &&
         viewNode.filterConditionIsEmpty()) {
-      // check if we have query like FOR d IN view COLLECT_WITH_COUNT_INTO c RETURN c 
+      // check if we have query like FOR d IN view [SEARCH smth] COLLECT_WITH_COUNT_INTO c RETURN c 
       auto current = viewNode.getFirstParent();
       while (current != nullptr) {
         if (current->getType() == ExecutionNode::COLLECT) {
+          // TODO: check there is no FILTER node!!!
           auto& collectNode = *ExecutionNode::castTo<CollectNode*>(current);
           if (collectNode.count()) {
             auto collectOutVars = collectNode.getVariablesSetHere();
             if (collectOutVars.size() == 1) {
               // only count. So we could optimize.
-              // For the single server we could completely remove it out and get collect directly from view
-              // For the cluster we still need to make the COLLECT SUM node and count on DB servers in to
-              // temp variable.
+              // For the single server we could completely remove it out and get collect directly from view.
+              // For the cluster we still need to make the COLLECT SUM node to sum counts on DB servers (just like with collection),
+              // The distribution iself will happen during regular view scattering in cluster.
               if (arangodb::ServerState::instance()->isCoordinator()) {
                 auto tempOutVariable = plan->getAst()->variables()->createTemporaryVariable();
                 viewNode.setEmitOnlyCount(tempOutVariable);
-
                 std::vector<AggregateVarInfo> aggregateVariables;
                 aggregateVariables.emplace_back(AggregateVarInfo{collectOutVars[0], tempOutVariable, "SUM"});
                 collectNode.aggregationMethod(CollectOptions::CollectMethod::SORTED);

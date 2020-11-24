@@ -51,6 +51,8 @@ struct VarInfo;
 
 namespace iresearch {
 
+bool filterConditionIsEmpty(aql::AstNode const* filterCondition);
+
 enum class MaterializeType {
   Undefined = 0,        // an undefined initial value
   NotMaterialize = 1,   // do not materialize a document
