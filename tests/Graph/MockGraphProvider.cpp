@@ -64,7 +64,7 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProc
 
 MockGraphProvider::Step::~Step() {}
 
-void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder& builder) const {
+void MockGraphProvider::Step::Vertex::addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const {
   // TODO: works only if collection name stays "v/"
   std::string id = _vertex.toString();
   builder.openObject();

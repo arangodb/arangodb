@@ -69,7 +69,7 @@ class MockGraphProvider {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
-      void addToBuilder(arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const;
       VertexRef getId() const;
 
       // This is only internal for the mock.

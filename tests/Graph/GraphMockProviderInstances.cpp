@@ -34,7 +34,7 @@
 
 
 template class
-::arangodb::graph::PathResult<::arangodb::tests::graph::MockGraphProvider::Step>;
+::arangodb::graph::PathResult<::arangodb::tests::graph::MockGraphProvider, ::arangodb::tests::graph::MockGraphProvider::Step>;
 
 template class
 ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>;
