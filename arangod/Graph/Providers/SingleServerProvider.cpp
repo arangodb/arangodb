@@ -81,14 +81,14 @@ SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t pr
 SingleServerProvider::Step::~Step() = default;
 
 VertexType SingleServerProvider::Step::Vertex::data() const { return _vertex; }
-
+EdgeDocumentToken SingleServerProvider::Step::Edge::data() const { return _token; }
 
 void SingleServerProvider::Step::Vertex::addToBuilder(SingleServerProvider& provider, arangodb::velocypack::Builder& builder) const {
   provider.insertVertexIntoResult(data(), builder);
 };
 
-void SingleServerProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) const {
-  builder.add(VPackValue("edge"));
+void SingleServerProvider::Step::Edge::addToBuilder(SingleServerProvider& provider, arangodb::velocypack::Builder& builder) const {
+  provider.insertEdgeIntoResult(data(), builder);
 }
 
 SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
@@ -169,6 +169,10 @@ auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vec
 
 void SingleServerProvider::insertVertexIntoResult(VertexType vertex, arangodb::velocypack::Builder& builder) {
   _cache.insertVertexIntoResult(velocypack::StringRef(vertex), builder);
+}
+
+void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder) {
+    builder.add(_cache.lookupToken(edge));
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {

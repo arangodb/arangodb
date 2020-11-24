@@ -67,6 +67,7 @@ class PathResult {
   // We need to load this amount of vertices from source, all others from target
   // For edges we need to load one edge less from here.
   size_t _numVerticesFromSourceProvider;
+  size_t _numEdgesFromSourceProvider;
   
   // Provider for the beginning of the path (source)
   ProviderType& _sourceProvider;

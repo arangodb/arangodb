@@ -73,7 +73,7 @@ void MockGraphProvider::Step::Vertex::addToBuilder(MockGraphProvider& provider, 
   builder.close();
 }
 
-void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) const {
+void MockGraphProvider::Step::Edge::addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const {
   _edge.addToBuilder(builder);
 }
 

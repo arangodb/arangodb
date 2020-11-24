@@ -33,11 +33,16 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class ProviderType, class Step>
-PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider, ProviderType& targetProvider) : _numVerticesFromSourceProvider(0), _sourceProvider(sourceProvider), _targetProvider(targetProvider) {}
+PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider, ProviderType& targetProvider)
+    : _numVerticesFromSourceProvider(0),
+      _numEdgesFromSourceProvider(0),
+      _sourceProvider(sourceProvider),
+      _targetProvider(targetProvider) {}
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::clear() -> void {
   _numVerticesFromSourceProvider = 0;
+  _numEdgesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
   _uniqueVertices.clear();
@@ -63,11 +68,13 @@ auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e) -> void {
+  _numEdgesFromSourceProvider++;
   _edges.insert(_edges.begin(), e);
 }
 
 template <class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder& builder)
+    -> void {
   TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
@@ -86,8 +93,13 @@ auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder&
   {
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
-    for (auto const& e : _edges) {
-      e.addToBuilder(builder);
+    // Write first part of the Path
+    for (size_t i = 0; i < _numEdgesFromSourceProvider; i++) {
+      _edges.at(i).addToBuilder(_sourceProvider, builder);
+    }
+    // Write second part of the Path
+    for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
+      _edges.at(i).addToBuilder(_targetProvider, builder);
     }
   }
 }
@@ -102,4 +114,5 @@ auto PathResult<ProviderType, Step>::isValid() const -> bool {
   return _uniqueVertices.size() == _vertices.size();
 }
 
-template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider, ::arangodb::graph::SingleServerProvider::Step>;
+template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider,
+                                             ::arangodb::graph::SingleServerProvider::Step>;

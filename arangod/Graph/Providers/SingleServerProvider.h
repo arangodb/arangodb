@@ -120,7 +120,10 @@ struct SingleServerProvider {
      public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
 
-      void addToBuilder(arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(SingleServerProvider& provider, arangodb::velocypack::Builder& builder) const;
+
+     private:
+      EdgeDocumentToken data() const;
 
      private:
       EdgeDocumentToken _token;
@@ -165,6 +168,7 @@ struct SingleServerProvider {
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
 
   void insertVertexIntoResult(VertexType vertex, arangodb::velocypack::Builder& builder);
+  void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
   
   void destroyEngines() {}; // TODO: remove after refactor
 
