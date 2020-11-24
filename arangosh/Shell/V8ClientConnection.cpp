@@ -1950,11 +1950,23 @@ again:
                     TRI_VPackToV8(isolate, slices[0])).FromMaybe(false);
       }
     }
+    
     if (responseBody.size() > 0) {
-      const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
-      v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false);
+      if (response->contentEncoding() == fuerte::ContentEncoding::Identity) {
+        const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
+        v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+        result->Set(context,
+                    TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false);
+      } else {
+        V8Buffer* buffer = V8Buffer::New
+          (isolate,
+           static_cast<char const*>(responseBody.data()),
+           responseBody.size());
+        auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        result->Set(context,
+                    TRI_V8_ASCII_STRING(isolate, "body"),
+                    bufObj).FromMaybe(false);
+      }
     }
 
     auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
