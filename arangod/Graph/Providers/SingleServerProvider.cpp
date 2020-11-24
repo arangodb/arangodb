@@ -39,6 +39,15 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace arangodb {
+namespace graph {
+auto operator<<(std::ostream& out, SingleServerProvider::Step const& step) -> std::ostream& {
+  out << step._vertex.data();
+  return out;
+}
+}
+}
+
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
                              aql::AstNode* condition, std::optional<size_t> memberToUpdate)
     : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
@@ -75,15 +84,13 @@ VertexType SingleServerProvider::Step::Vertex::data() const { return _vertex; }
 
 SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
                                            BaseProviderOptions opts)
-    : _trx{queryContext.newTrxContext()},
+    : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
       _query(&queryContext),
-      _cache(&_trx, &queryContext),
+      _cache(_trx.get(), &queryContext),
       _opts(std::move(opts)) {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache
   _cursor = buildCursor();
 }
-
-SingleServerProvider::~SingleServerProvider() = default;
 
 void SingleServerProvider::activateCache(bool enableDocumentCache) {
   // Do not call this twice.
@@ -158,7 +165,7 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCur
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {
-  return &_trx;
+  return _trx.get();
 }
 
 arangodb::aql::QueryContext* SingleServerProvider::query() const {

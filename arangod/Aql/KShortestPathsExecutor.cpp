@@ -315,7 +315,7 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
           std::string idString;
           // TODO:  calculate expression once e.g. header constexpr bool and check then here
           if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
-            idString = _finder.trx()->extractIdString(in.slice());
+            idString = _trx.extractIdString(in.slice());
           } else {
             idString = _finder.options().trx()->extractIdString(in.slice());
           }

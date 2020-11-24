@@ -157,6 +157,8 @@ class KShortestPathsNode : public virtual GraphNode {
 
   std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
 
+  std::vector<arangodb::graph::IndexAccessor> buildReverseUsedIndexes() const;
+  
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;

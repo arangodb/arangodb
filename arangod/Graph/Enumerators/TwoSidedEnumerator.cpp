@@ -149,6 +149,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   auto neighbors = _provider.expand(step, previous);
+  
+  LOG_TOPIC("a092f", DEBUG, Logger::GRAPHS) << (_direction == Direction::FORWARD ? "Forward" : "Backward") << " expanding step " << step << " with " << neighbors.size() << " neighbors.";
 
   for (auto& n : neighbors) {
     // Check if other Ball knows this Vertex.
@@ -156,6 +158,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     if (getDepth() + other.getDepth() >= _minDepth) {
       other.matchResultsInShell(n, results);
     }
+    LOG_TOPIC("9620c", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
     // Add the step to our shell
     _shell.emplace(std::move(n));
   }
@@ -175,11 +178,13 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResu
   auto [first, last] = _shell.equal_range(match);
   if (_direction == FORWARD) {
     while (first != last) {
+      LOG_TOPIC("6a01b", DEBUG, Logger::GRAPHS) << "Found path " << *first << " and " << match;
       results.push_back(std::make_pair(*first, match));
       first++;
     }
   } else {
     while (first != last) {
+      LOG_TOPIC("d1830", DEBUG, Logger::GRAPHS) << "Found path " << match << " and " << *first;
       results.push_back(std::make_pair(match, *first));
       first++;
     }
@@ -203,8 +208,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
     : _options(std::move(options)),
       _left{std::make_unique<Ball>(Direction::FORWARD, std::move(forwardProvider), _options)},
       _right{std::make_unique<Ball>(Direction::BACKWARD, std::move(backwardProvider), _options)},
-      _resultPath{},
-      _trx(forwardProvider.trx()) {}
+      _resultPath{} {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}

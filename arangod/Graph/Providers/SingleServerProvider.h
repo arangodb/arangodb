@@ -143,6 +143,8 @@ struct SingleServerProvider {
     bool isProcessable() const { return !isLooseEnd(); }
     bool isLooseEnd() const { return false; }
 
+    friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
+    
    private:
     Vertex _vertex;
     std::optional<Edge> _edge;
@@ -152,7 +154,7 @@ struct SingleServerProvider {
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;
-  ~SingleServerProvider();
+  ~SingleServerProvider() = default;
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
   SingleServerProvider& operator=(SingleServerProvider&&) = default;
@@ -175,9 +177,11 @@ struct SingleServerProvider {
 
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
-  // We DO take responsibility for the Cache (TODO?)
-  arangodb::transaction::Methods _trx;
+  // Unique_ptr to have this class movable, and to keep reference of trx()
+  // alive
+  std::unique_ptr<arangodb::transaction::Methods> _trx;
   arangodb::aql::QueryContext* _query;
+  // We DO take responsibility for the Cache (TODO?)
   RefactoredTraverserCache _cache;
 
   BaseProviderOptions _opts;

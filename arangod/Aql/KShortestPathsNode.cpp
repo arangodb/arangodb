@@ -336,10 +336,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
     if (opts->refactor()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to be changed in the future)
-      std::vector<IndexAccessor> usedIndexes = buildUsedIndexes();
-
       // create BaseProviderOptions
-      BaseProviderOptions bpo(opts->tmpVar(), std::move(usedIndexes));
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes());
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), buildReverseUsedIndexes());
 
       arangodb::graph::TwoSidedEnumeratorOptions lolOptions{opts->minDepth, opts->maxDepth};
 
@@ -347,8 +346,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
 
       auto kPathUnique =
-          std::make_unique<KPathRefactored>(SingleServerProvider{opts->query(), bpo},
-                                            SingleServerProvider{opts->query(), bpo},
+          std::make_unique<KPathRefactored>(SingleServerProvider{opts->query(), forwardProviderOptions},
+                                            SingleServerProvider{opts->query(), backwardProviderOptions},
                                             std::move(lolOptions));
 
       auto executorInfos =
@@ -421,24 +420,62 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
   if (_options->refactor()) {
     // TODO: remove / cleanup later
     // Compute Indexes for KPathFinder Refactored Version
+    // NOTE this is hardcoded for edge indexes for now.
+    // We need to use bestIndexHandle here!
     size_t numEdgeColls = _edgeColls.size();
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
       auto dir = _directions[i];
-      aql::AstNode* condition;
       switch (dir) {
-        case TRI_EDGE_IN:
-          condition = _toCondition->clone(options()->query().ast());
-          for (auto const idx : _edgeColls[i]->getCollection()->getIndexes()) {
-            indexAccessors.emplace_back(idx, condition, 0);
-          }
+        case TRI_EDGE_IN: {
+          // Index 2 is _to edge index
+          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(2);
+          indexAccessors.emplace_back(idx, _toCondition->clone(options()->query().ast()), 0);
           break;
-        case TRI_EDGE_OUT:
-          condition = _fromCondition->clone(options()->query().ast());
-          for (auto const idx : _edgeColls[i]->getCollection()->getIndexes()) {
-            indexAccessors.emplace_back(idx, condition, 0);
-          }
+        }
+        case TRI_EDGE_OUT: {
+          // Index 2 is _from edge index
+          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(1);
+          indexAccessors.emplace_back(idx, _fromCondition->clone(options()->query().ast()), 0);
           break;
+        }
+        case TRI_EDGE_ANY:
+          TRI_ASSERT(false);
+          break;
+      }
+    }
+  }
+  return indexAccessors;
+}
+
+std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsedIndexes() const {
+  // std::vector<IndexAccessor> usedIndexes{
+  // IndexAccessor{edgeIndexHandle, indexCondition, 0}};
+  std::vector<IndexAccessor> indexAccessors{};
+
+  if (_options->refactor()) {
+    // TODO: remove / cleanup later
+    // Compute Indexes for KPathFinder Refactored Version
+    // NOTE this is hardcoded for edge indexes for now.
+    // We need to use bestIndexHandle here!
+    size_t numEdgeColls = _edgeColls.size();
+
+    for (size_t i = 0; i < numEdgeColls; ++i) {
+      auto dir = _directions[i];
+      switch (dir) {
+        case TRI_EDGE_IN: {
+          // Index 2 is _from edge index
+          
+          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(1);
+          indexAccessors.emplace_back(idx, _fromCondition->clone(options()->query().ast()), 0);
+          break;
+        }
+        case TRI_EDGE_OUT: {
+          // Index 2 is _to edge index
+          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(2);
+          indexAccessors.emplace_back(idx, _toCondition->clone(options()->query().ast()), 0);
+          break;
+        }
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);
           break;
