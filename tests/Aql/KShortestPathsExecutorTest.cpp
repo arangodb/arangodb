@@ -209,7 +209,7 @@ class KShortestPathsExecutorTest
         options(*fakedQuery.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 3, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(0,
+        executorInfos(0, *fakedQuery.get(),
                       std::make_unique<FakeKShortestPathsFinder>(options,
                                                                  parameters._paths),
                       std::move(parameters._source), std::move(parameters._target)),

@@ -39,6 +39,17 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 
+namespace arangodb {
+namespace tests {
+namespace graph {
+auto operator<<(std::ostream& out, MockGraphProvider::Step const& step) -> std::ostream& {
+  out << step._vertex.data();
+  return out;
+}
+}
+}
+}
+
 MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
     : arangodb::graph::BaseStep<Step>{},
       _vertex(v),

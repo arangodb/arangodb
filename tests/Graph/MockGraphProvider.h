@@ -146,6 +146,8 @@ class MockGraphProvider {
       TRI_ASSERT(!isProcessable());
       _isProcessable = true;
     }
+    
+    friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:
     Vertex _vertex;
