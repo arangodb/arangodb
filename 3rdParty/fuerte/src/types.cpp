@@ -302,14 +302,14 @@ ContentEncoding to_ContentEncoding(std::string const& val) {
 }
 
 std::string to_string(ContentEncoding type) {
-  switch(type) {
-  default:
-  case ContentEncoding::Identity:
-    return fu_content_encoding_identity;
-  case ContentEncoding::Deflate:
-    return fu_content_encoding_deflate;
-  case ContentEncoding::Gzip:
-    return fu_content_encoding_gzip;
+  switch (type) {
+    case ContentEncoding::Deflate:
+      return fu_content_encoding_deflate;
+    case ContentEncoding::Gzip:
+      return fu_content_encoding_gzip;
+    case ContentEncoding::Identity:
+    default:
+      return fu_content_encoding_identity;
   }
 }
 
