@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make the cancel operation safe for asynchronoulsly started JavaScript 
+  transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
+  header set).
+
 * Updated OpenSSL to 1.1.1h.
 
 * Added new scheduler metrics:
