@@ -143,14 +143,7 @@ void RestQueryHandler::deleteQuerySlow() {
   Result res = methods::Queries::clearSlow(_vocbase, allDatabases, fanout);
 
   if (res.ok()) {
-    VPackBuilder result;
-
-    result.add(VPackValue(VPackValueType::Object));
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
-    result.close();
-
-    generateResult(rest::ResponseCode::OK, result.slice());
+    generateOk(rest::ResponseCode::OK, velocypack::Slice::noneSlice());
   } else {
     generateError(res);
   }
@@ -161,13 +154,7 @@ void RestQueryHandler::killQuery(std::string const& id) {
   Result res = methods::Queries::kill(_vocbase, StringUtils::uint64(id), allDatabases);
 
   if (res.ok()) {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
-    result.close();
-
-    generateResult(rest::ResponseCode::OK, result.slice());
+    generateOk(rest::ResponseCode::OK, velocypack::Slice::noneSlice());
   } else {
     generateError(res);
   }
