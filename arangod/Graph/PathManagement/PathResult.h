@@ -37,18 +37,19 @@ class Builder;
 
 namespace graph {
 
-template <class Step>
+template <class ProviderType, class Step>
 class PathResult {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  explicit PathResult();
+  PathResult(ProviderType& sourceProvider, ProviderType& targetProvider);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  
   auto isEmpty() const -> bool;
 
   // Check uniqueness
@@ -58,6 +59,20 @@ class PathResult {
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
 
+  // Anfang 0 -> n kommt aus "left" (in _vertices)
+  // n + 1 -> End kommt aus "right" (in _vertices)
+  // Anfang 0 -> n - 1 kommt aus "left" (in _edges)
+  // n - 1 + 1 -> End kommt aus "right" (in _edges)
+  // The number of vertices delivered by the source provider in the vector.
+  // We need to load this amount of vertices from source, all others from target
+  // For edges we need to load one edge less from here.
+  size_t _numVerticesFromSourceProvider;
+  
+  // Provider for the beginning of the path (source)
+  ProviderType& _sourceProvider;
+  // Provider for the end of the path (target)
+  ProviderType& _targetProvider;
+  
   // TODO: UniqueCheck will not be handled here in the future
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 };

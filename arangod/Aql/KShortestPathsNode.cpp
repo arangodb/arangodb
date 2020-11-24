@@ -465,7 +465,6 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
       switch (dir) {
         case TRI_EDGE_IN: {
           // Index 2 is _from edge index
-          
           auto idx = _edgeColls[i]->getCollection()->getIndexes().at(1);
           indexAccessors.emplace_back(idx, _fromCondition->clone(options()->query().ast()), 0);
           break;

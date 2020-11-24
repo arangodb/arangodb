@@ -193,12 +193,17 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResu
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath(
-    Step const& vertexInShell, PathResult<Step>& path) -> void {
+    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
     _interior.buildPath(vertexInShell, path);
   } else {
     _interior.reverseBuildPath(vertexInShell, path);
   }
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::provider() -> ProviderType& {
+  return _provider;
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -208,7 +213,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
     : _options(std::move(options)),
       _left{std::make_unique<Ball>(Direction::FORWARD, std::move(forwardProvider), _options)},
       _right{std::make_unique<Ball>(Direction::BACKWARD, std::move(backwardProvider), _options)},
-      _resultPath{} {}
+      _resultPath{_left->provider(), _right->provider()} {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}

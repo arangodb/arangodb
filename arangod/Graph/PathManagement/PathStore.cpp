@@ -64,7 +64,8 @@ size_t PathStore<Step>::append(Step step) {
 }
 
 template <class Step>
-void PathStore<Step>::buildPath(Step const& vertex, PathResult<Step>& path) const {
+template <class ProviderType>
+void PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
   Step const* myStep = &vertex;
 
   while (!myStep->isFirst()) {
@@ -81,7 +82,8 @@ void PathStore<Step>::buildPath(Step const& vertex, PathResult<Step>& path) cons
 }
 
 template <class Step>
-void PathStore<Step>::reverseBuildPath(Step const& vertex, PathResult<Step>& path) const {
+template <class ProviderType>
+void PathStore<Step>::reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
   // For backward we just need to attach ourself
   // So everything until here should be done.
   // We never start with an empty path here, the other side should at least have
@@ -123,6 +125,8 @@ bool PathStore<Step>::testPath(Step step) {
 }
 
 template class PathStore<SingleServerProvider::Step>;
+template void PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(SingleServerProvider::Step const& vertex, PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
+template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(SingleServerProvider::Step const& vertex, PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
 
 }  // namespace graph
 }  // namespace arangodb

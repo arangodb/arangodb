@@ -41,7 +41,7 @@ struct AqlValue;
 
 namespace graph {
 
-template <class Step>
+template <class ProviderType, class Step>
 class PathResult;
 
 /*
@@ -78,8 +78,11 @@ class PathStore {
   // @brief returns the current vector size
   size_t size() const { return _schreier.size(); }
 
-  void buildPath(Step const& vertex, PathResult<Step>& path) const;
-  void reverseBuildPath(Step const& vertex, PathResult<Step>& path) const;
+  template<class ProviderType>
+  void buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
+  
+  template<class ProviderType>
+  void reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
 
   // TODO: to be defined - section idea: methods to convenient build paths for AQL
   arangodb::aql::AqlValue lastVertexToAqlValue();

@@ -44,7 +44,7 @@ namespace graph {
 
 struct TwoSidedEnumeratorOptions;
 
-template <class Step>
+template <class ProviderType, class Step>
 class PathResult;
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -71,7 +71,7 @@ class TwoSidedEnumerator {
     auto doneWithDepth() const -> bool;
     auto testDepthZero(Ball const& other, ResultList& results) const -> void;
 
-    auto buildPath(Step const& vertexInShell, PathResult<Step>& path) -> void;
+    auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void;
 
     auto matchResultsInShell(Step const& match, ResultList& results) const -> void;
     auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
@@ -81,6 +81,8 @@ class TwoSidedEnumerator {
     // Otherwise we will not be able to
     // generate the resulting path
     auto fetchResults(ResultList& results) -> void;
+    
+    auto provider() -> ProviderType&;
 
    private:
     // Fast path, to test if we find a connecting vertex between left and right.
@@ -174,7 +176,7 @@ class TwoSidedEnumerator {
   ResultList _results{};
   bool _resultsFetched{false};
 
-  PathResult<Step> _resultPath;
+  PathResult<ProviderType, Step> _resultPath;
 };
 }  // namespace graph
 }  // namespace arangodb

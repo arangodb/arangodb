@@ -32,46 +32,54 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class Step>
-PathResult<Step>::PathResult() {}
+template <class ProviderType, class Step>
+PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider, ProviderType& targetProvider) : _numVerticesFromSourceProvider(0), _sourceProvider(sourceProvider), _targetProvider(targetProvider) {}
 
-template <class Step>
-auto PathResult<Step>::clear() -> void {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::clear() -> void {
+  _numVerticesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
   _uniqueVertices.clear();
 }
 
-template <class Step>
-auto PathResult<Step>::appendVertex(typename Step::Vertex v) -> void {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> void {
   _vertices.push_back(v);
   _uniqueVertices.emplace(v.data());
 }
 
-template <class Step>
-auto PathResult<Step>::prependVertex(typename Step::Vertex v) -> void {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v) -> void {
+  _numVerticesFromSourceProvider++;
   _vertices.insert(_vertices.begin(), v);
   _uniqueVertices.emplace(v.data());
 }
 
-template <class Step>
-auto PathResult<Step>::appendEdge(typename Step::Edge e) -> void {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
   _edges.push_back(e);
 }
 
-template <class Step>
-auto PathResult<Step>::prependEdge(typename Step::Edge e) -> void {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e) -> void {
   _edges.insert(_edges.begin(), e);
 }
 
-template <class Step>
-auto PathResult<Step>::toVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+  TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
-    for (auto const& v : _vertices) {
-      v.addToBuilder(builder);
+    // Write first part of the Path
+    for (size_t i = 0; i < _numVerticesFromSourceProvider; i++) {
+      _vertices.at(i).addToBuilder(_sourceProvider, builder);
+    }
+    // Write second part of the Path
+    for (size_t i = _numVerticesFromSourceProvider; i < _vertices.size(); i++) {
+      _vertices.at(i).addToBuilder(_targetProvider, builder);
     }
   }
 
@@ -84,14 +92,14 @@ auto PathResult<Step>::toVelocyPack(arangodb::velocypack::Builder& builder) -> v
   }
 }
 
-template <class Step>
-auto PathResult<Step>::isEmpty() const -> bool {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
 
-template <class Step>
-auto PathResult<Step>::isValid() const -> bool {
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::isValid() const -> bool {
   return _uniqueVertices.size() == _vertices.size();
 }
 
-template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider::Step>;
+template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider, ::arangodb::graph::SingleServerProvider::Step>;
