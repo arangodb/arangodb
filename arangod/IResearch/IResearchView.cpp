@@ -665,36 +665,37 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
     );
   }
 
-  auto cid = link->get()->collection().id();
+  auto* linkPtr = link->get();
+
+  auto const cid = linkPtr->collection().id();
   WriteMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
   auto lock = irs::make_lock_guard(mutex);
-  auto itr = _links.find(cid);
+  auto const itr = _links.find(cid);
 
   if (itr == _links.end()) {
     _links.try_emplace(cid, link);
-  } else if (arangodb::ServerState::instance()->isSingleServer() // single server
-             && !itr->second) {
+  } else if (ServerState::instance()->isSingleServer() && !itr->second) {
     _links[cid] = link;
-    link->get()->properties(_meta);
+    linkPtr->properties(_meta);
 
-    return arangodb::Result(); // single-server persisted cid placeholder substituted with actual link
+    return {}; // single-server persisted cid placeholder substituted with actual link
   } else if (itr->second && !itr->second->get()) {
     _links[cid] = link;
-    link->get()->properties(_meta);
+    linkPtr->properties(_meta);
 
-    return arangodb::Result(); // a previous link instance was unload()ed and a new instance is linking
+    return {}; // a previous link instance was unload()ed and a new instance is linking
   } else {
-    return arangodb::Result(                    // result
-        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,  // code
+    return {
+        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
         std::string("duplicate entry while emplacing collection '") +
             std::to_string(cid.id()) + "' into arangosearch View '" + name() +
-            "'");
+            "'" };
   }
 
-  auto res = arangodb::ServerState::instance()->isSingleServer()
-    ? arangodb::LogicalViewHelperStorageEngine::properties(*this)
-    : arangodb::Result()
-    ;
+  Result res;
+  if (ServerState::instance()->isSingleServer()) {
+    res = LogicalViewHelperStorageEngine::properties(*this);
+  }
 
   if (!res.ok()) {
     _links.erase(cid); // undo meta modification
@@ -702,9 +703,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
     return res;
   }
 
-  link->get()->properties(_meta);
-
-  return arangodb::Result();
+  return linkPtr->properties(_meta);
 }
 
 arangodb::Result IResearchView::commit() {

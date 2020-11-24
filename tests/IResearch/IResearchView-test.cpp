@@ -1665,8 +1665,8 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
-      EXPECT_TRUE((false == view->link(link->self()).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() does not modify view meta if cid existed previously
+      EXPECT_FALSE(view->link(link->self()).ok());
+      EXPECT_FALSE(persisted); // emplace() does not modify view meta if cid existed previously
     }
 
     // collection in view after
@@ -1680,10 +1680,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1718,15 +1718,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      Link link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((persisted)); // emplace() modifies view meta if cid did not exist previously
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_TRUE(persisted); // emplace() modifies view meta if cid did not exist previously
     }
 
     // collection in view after
@@ -1740,10 +1741,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1770,14 +1771,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1785,11 +1788,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      Link link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
@@ -1803,10 +1805,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1833,10 +1835,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
@@ -1861,10 +1863,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1891,14 +1893,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1906,11 +1910,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      Link link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
@@ -1918,16 +1921,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{42}};
       std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
+      EXPECT_TRUE(view->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
-      })));
+      }));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // persistence fails during execution of callback
@@ -1937,7 +1940,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = []()->void { throw std::exception(); };
       auto& feature = server.getFeature<arangodb::DatabaseFeature>();
 
-      EXPECT_NO_THROW((feature.recoveryDone()));
+      EXPECT_NO_THROW(feature.recoveryDone());
     }
   }
 }
