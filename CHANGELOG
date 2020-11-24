@@ -1,4 +1,4 @@
-v3.7.5 (XXXX-XX-XX)
+v3.7.6 (XXXX-XX-XX)
 -------------------
 
 * Added support for fetching the list of currently running and slow AQL queries
@@ -20,6 +20,10 @@ v3.7.5 (XXXX-XX-XX)
 
   Using the `all` parameter is only allowed when making the call inside the
   `_system` database and with superuser privileges.
+
+
+v3.7.5 (XXXX-XX-XX)
+-------------------
 
 * Updated OpenSSL to 1.1.1h.
 
