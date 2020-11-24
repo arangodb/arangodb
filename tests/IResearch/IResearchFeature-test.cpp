@@ -386,27 +386,47 @@ TEST_F(IResearchFeatureTest, test_async_schedule) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
+  struct Task {
+    Task(bool& deallocated, std::mutex& mutex,
+         std::condition_variable& cond, std::atomic<size_t>& count,
+         arangodb::iresearch::IResearchFeature& feature)
+      : flag(&deallocated, [](bool* ptr) -> void { *ptr = true; }),
+        mutex(&mutex), cond(&cond),
+        count(&count), feature(&feature) {
+    }
+
+    void operator()() {
+      ++*count;
+
+      {
+        auto scopedLock = irs::make_lock_guard(*mutex);
+        cond->notify_all();
+        feature->queue(arangodb::iresearch::ThreadGroup::_1, 1000ms, *this);
+      }
+    }
+
+    std::shared_ptr<bool> flag;
+    std::mutex* mutex;
+    std::condition_variable* cond;
+    std::atomic<size_t>* count;
+    arangodb::iresearch::IResearchFeature* feature;
+  };
+
   bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
+  server.server().options()
+    ->get<arangodb::options::UInt64Parameter>("arangosearch.consolidation-threads")->set("1");
   feature.validateOptions(server.server().options());
   feature.prepare();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
-  size_t count = 0;
-  auto lock = irs::make_unique_lock(mutex);
+  std::atomic<size_t> count = 0;
 
-  {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
-    feature.queue(
-      arangodb::iresearch::ThreadGroup::_1, 0ms,
-      [&cond, &mutex, flag, &count]() {
-        ++count;
-        auto scopedLock = irs::make_lock_guard(mutex);
-        cond.notify_all();
-    });
-  }
+  auto lock = irs::make_unique_lock(mutex);
+  feature.queue(arangodb::iresearch::ThreadGroup::_1, 0ms,
+                Task(deallocated, mutex, cond, count, feature));
+
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));  // first run invoked immediately
   EXPECT_FALSE(deallocated);
   EXPECT_EQ(std::cv_status::timeout, cond.wait_for(lock, 100ms));
