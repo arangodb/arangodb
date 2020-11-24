@@ -1,3 +1,11 @@
+v3.7.6 (XXXX-XX-XX)
+-------------------
+
+* Fix the activation of the agency supervision maintenance via the REST API
+  `/_admin/cluster/maintenance`. This API stored a boolean value instead of
+  an (expected) maintenance period end date/time string.
+
+
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
