@@ -27,6 +27,8 @@
 
 #include <array>
 
+using namespace std::chrono_literals;
+
 namespace tests {
 
 struct test_slow_sobject {
@@ -37,7 +39,7 @@ struct test_slow_sobject {
   }
   static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
   static ptr make(int i) {
-    std::this_thread::sleep_for(std::chrono::seconds(2)); // wait 1 sec to ensure index file timestamps differ
+    std::this_thread::sleep_for(2s); // wait 1 sec to ensure index file timestamps differ
     return ptr(new test_slow_sobject(i));
   }
 };
@@ -156,10 +158,10 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
         cond.notify_all();
       });
 
-      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+      auto result = cond.wait_for(lock, 1000ms); // assume thread blocks in 1000ms
 
       // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -191,7 +193,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
         cond.notify_all();
       });
 
-    ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(lock, std::chrono::milliseconds(100)) || emplace);
+    ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(lock, 100ms) || emplace);
     obj.reset();
     lock.unlock();
     thread.join();
@@ -229,10 +231,10 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
       auto lock = irs::make_unique_lock(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
+    auto result = cond.wait_for(lock, 1000ms); // assume thread finishes in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
     obj.reset();
     ASSERT_FALSE(obj);
@@ -265,10 +267,10 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
         cond.notify_all();
       });
 
-      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+      auto result = cond.wait_for(lock, 1000ms); // assume thread blocks in 1000ms
 
       // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -299,7 +301,7 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
         cond.notify_all();
       });
 
-    ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(100)));
+    ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 100ms));
     obj.reset();
     lock.unlock();
     thread.join();
@@ -337,10 +339,10 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
       auto lock = irs::make_unique_lock(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
+    auto result = cond.wait_for(lock, 1000ms); // assume thread finishes in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
     obj.reset();
 
@@ -374,7 +376,7 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -507,7 +509,7 @@ TEST(unbounded_object_pool_tests, test_uobject_pool) {
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -749,7 +751,7 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -937,7 +939,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool) {
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
+      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }

@@ -36,6 +36,8 @@
 #include "utils/locale_utils.hpp"
 #include "utils/timer_utils.hpp"
 
+using namespace std::chrono_literals;
+
 namespace iresearch {
 
 struct term_attribute;
@@ -142,7 +144,7 @@ struct blocking_directory : directory_mock {
       exists(has, blocker);
 
       auto policy_guard = irs::make_unique_lock(policy_lock);
-      policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      policy_applied.wait_for(policy_guard, 1000ms);
     }
   }
 

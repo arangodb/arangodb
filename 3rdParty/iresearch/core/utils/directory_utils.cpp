@@ -426,8 +426,7 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
     // aliasing ctor
     const index_file_refs::ref_t ref(
       index_file_refs::ref_t(),
-      &name
-    );
+      &name);
 
     auto lock = make_lock_guard(mutex_);
 
@@ -441,8 +440,7 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
 }
 
 bool ref_tracking_directory::rename(
-  const std::string& src, const std::string& dst
-) noexcept {
+    const std::string& src, const std::string& dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }

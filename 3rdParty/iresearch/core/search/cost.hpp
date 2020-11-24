@@ -64,7 +64,7 @@ class IRESEARCH_API cost final : public attribute {
   template<typename Provider>
   static cost_t extract(const Provider& src, cost_t def = MAX) noexcept {
     cost::cost_t est = def;
-    auto* attr = irs::get<iresearch::cost>(src);
+    auto* attr = irs::get<irs::cost>(src);
     if (attr) {
       est = attr->estimate();
     }

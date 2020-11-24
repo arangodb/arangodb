@@ -527,20 +527,23 @@ bool memory_directory::remove(const std::string& name) noexcept {
 }
 
 bool memory_directory::rename(
-    const std::string& src, const std::string& dst
-) noexcept {
+    const std::string& src,
+    const std::string& dst) noexcept {
+  async_utils::read_write_mutex::write_mutex mutex(flock_);
+
   try {
-    async_utils::read_write_mutex::write_mutex mutex(flock_);
     auto lock = make_lock_guard(mutex);
 
-    auto it = files_.find(src);
+    // prevent rehashing so we can re-use 'it' to erase an element
+    files_.reserve(files_.size() + 1);
+
+    const auto it = files_.find(src);
 
     if (it == files_.end()) {
       return false;
     }
 
-    files_.erase(dst); // emplace() will not overwrite as per spec
-    files_.emplace(dst, std::move(it->second));
+    files_[dst] = std::move(it->second);
     files_.erase(it);
 
     return true;

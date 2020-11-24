@@ -2714,10 +2714,10 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
       lock.unlock();
       std::mutex cond_mutex;
       auto cond_lock = irs::make_unique_lock(cond_mutex);
-      auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)); // assume thread commits within 100 msec
+      auto result = cond.wait_for(cond_lock, 100ms); // assume thread commits within 100 msec
 
       // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-      while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
+      while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, 100ms);
      
 
       // FIXME TODO add once segment_context will not block flush_all()
@@ -2829,7 +2829,7 @@ TEST_P(index_test_case, document_context) {
       writer->documents().insert().insert<irs::Action::STORE>(field);
     });
 
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
 
     std::atomic<bool> stop(false);
     std::thread thread1([&writer, &field, &stop]()->void {
@@ -2839,10 +2839,10 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+    auto result = field.cond.wait_for(field_cond_lock, 100ms);
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+    while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
     field_lock.unlock();
@@ -2870,7 +2870,7 @@ TEST_P(index_test_case, document_context) {
       writer->documents().replace(*query_doc1.filter).insert<irs::Action::STORE>(field);
     });
 
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
 
     std::atomic<bool> commit(false);
     std::thread thread1([&writer, &field, &commit]()->void {
@@ -2880,10 +2880,10 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
+    auto result = field.cond.wait_for(field_cond_lock, 100ms); // verify commit() blocks
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -2916,7 +2916,7 @@ TEST_P(index_test_case, document_context) {
       );
     });
 
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000))); // wait for insertion to start
+    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
 
     std::atomic<bool> commit(false);
     std::thread thread1([&writer, &field, &commit]()->void {
@@ -2926,10 +2926,10 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
+    auto result = field.cond.wait_for(field_cond_lock, 100ms); // verify commit() blocks
 
     // override spurious wakeup
-    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -3005,7 +3005,7 @@ TEST_P(index_test_case, document_context) {
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -3062,7 +3062,7 @@ TEST_P(index_test_case, document_context) {
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
     // override spurious wakeup
-    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -3118,10 +3118,10 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
+    auto result = field.cond.wait_for(field_cond_lock, 1000ms); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
+    while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     // ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -6674,7 +6674,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
 
     while (!shutdown.load()) {
       writer->commit();
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(100ms);
     }
   });
 
@@ -6817,7 +6817,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
       writer->begin();
       std::this_thread::sleep_for(std::chrono::milliseconds(300));
       writer->commit();
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(100ms);
     }
 
   });
@@ -7263,7 +7263,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       auto policy_guard = irs::make_unique_lock(dir.policy_lock);
-      dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      dir.policy_applied.wait_for(policy_guard, 1000ms);
     }
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -7419,7 +7419,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       auto policy_guard = irs::make_unique_lock(dir.policy_lock);
-      dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      dir.policy_applied.wait_for(policy_guard, 1000ms);
     }
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -7581,7 +7581,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       auto policy_guard = irs::make_unique_lock(dir.policy_lock);
-      dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      dir.policy_applied.wait_for(policy_guard, 1000ms);
     }
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -7718,7 +7718,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
       auto policy_guard = irs::make_unique_lock(dir.policy_lock);
-      dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      dir.policy_applied.wait_for(policy_guard, 1000ms);
     }
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -13240,16 +13240,16 @@ TEST_P(index_test_case, segment_options) {
       cond.notify_all();
     });
 
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+    auto result = cond.wait_for(lock, 1000ms); // assume thread blocks in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while (!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+    while (!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely
 
     { irs::index_writer::documents_context(std::move(ctx)); } // force flush of documents(), i.e. ulock segment
-    //ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    //ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms));
     lock.unlock();
     thread.join();
     ASSERT_TRUE(stop);

@@ -25,7 +25,7 @@
 
 namespace {
 
-const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
+const irs::attribute_store EMPTY_ATTRIBUTE_STORE(0);
 
 }
 

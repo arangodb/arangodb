@@ -178,15 +178,18 @@ class IRESEARCH_API thread_pool {
     }
   };
 
-  void worker();
+  void worker(std::shared_ptr<shared_state> shared_state) noexcept;
+  void worker_impl(
+    std::unique_lock<std::mutex>& lock,
+    std::shared_ptr<shared_state> shared_state);
   bool maybe_spawn_worker();
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::shared_ptr<shared_state> shared_state_;
   size_t active_{ 0 };
+  std::atomic<size_t> threads_{ 0 };
   size_t max_idle_;
   size_t max_threads_;
-  std::vector<std::thread> pool_;
   std::priority_queue<task> queue_;
   std::basic_string<native_char_t> worker_name_;
   std::atomic<State> state_{ State::RUN };

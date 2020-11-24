@@ -36,22 +36,22 @@
 namespace iresearch {
 
 template<typename Mutex>
-inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx) {
+[[nodiscard]] inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx) {
   return std::unique_lock<Mutex>(mtx);
 }
 
 template<typename Mutex, typename Mode>
-inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx, Mode mode) {
+[[nodiscard]] inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx, Mode mode) {
   return std::unique_lock<Mutex>(mtx, mode);
 }
 
 template<typename Mutex>
-inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx) {
+[[nodiscard]] inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx) {
   return std::lock_guard<Mutex>(mtx);
 }
 
 template<typename Mutex, typename Mode>
-inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx, Mode mode) {
+[[nodiscard]] inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx, Mode mode) {
   return std::lock_guard<Mutex>(mtx, mode);
 }
 

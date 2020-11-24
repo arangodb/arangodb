@@ -70,7 +70,7 @@ class format_register :
   }
 }; // format_register
 
-iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
+irs::columnstore_reader::values_reader_f INVALID_COLUMN =
   [] (irs::doc_id_t, irs::bytes_ref&) { return false; };
 
 }
