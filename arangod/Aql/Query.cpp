@@ -296,8 +296,9 @@ void Query::kill() {
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
     LOG_TOPIC("781fe", DEBUG, Logger::QUERIES)
-      << TRI_microtime() - _startTime << " peak memory usage:"
-      << _resourceMonitor.currentResources.peakMemoryUsage;
+      << TRI_microtime() - _startTime << " Query::setExecutionTime: database \"" << _vocbase.name()
+      << "\" query \"" << _queryString.string() << "\" peak memory usage: " <<
+      _resourceMonitor.currentResources.peakMemoryUsage;
     _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
