@@ -828,7 +828,7 @@ void HttpRequest::parseCookies(char const* buffer, size_t length) {
 
     // check for missing value phase
     if (valueBegin == nullptr) {
-      valueBegin = value = key;
+      valueBegin = key;
     } else {
       *value = '\0';
     }
