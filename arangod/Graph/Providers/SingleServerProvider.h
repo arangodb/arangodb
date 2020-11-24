@@ -182,10 +182,12 @@ struct SingleServerProvider {
   [[nodiscard]] arangodb::aql::QueryContext* query() const;
 
  private:
-  std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
   // Unique_ptr to have this class movable, and to keep reference of trx()
-  // alive
+  // alive - Note: _trx must be first here because it is used in _cursor
   std::unique_ptr<arangodb::transaction::Methods> _trx;
+
+  std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
+
   arangodb::aql::QueryContext* _query;
   // We DO take responsibility for the Cache (TODO?)
   RefactoredTraverserCache _cache;
