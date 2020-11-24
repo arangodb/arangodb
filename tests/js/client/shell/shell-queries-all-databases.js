@@ -45,7 +45,7 @@ function queriesAllDatabasesSuite () {
     },
 
     setUp: function () {
-      queries.clearSlow();
+      queries.clearSlow({ all: true });
     },
 
     tearDownAll: function () {
@@ -55,7 +55,7 @@ function queriesAllDatabasesSuite () {
     },
 
     tearDown: function () {
-      queries.clearSlow();
+      queries.clearSlow({ all: true });
     },
 
     testCurrentQueriesAllDatabases: function () {
@@ -76,13 +76,13 @@ function queriesAllDatabasesSuite () {
         while (++tries < 60) {
           // we are in the system database here, so we don't expect
           // any results to come out here
-          assertEqual(0, queries.current().filter((q) => {
+          assertEqual(0, queries.current({ all: false }).filter((q) => {
             q.query.match(/^RETURN SLEEP/);
           }).length);
           
           // now retrieve the global list of queries
           found = {};
-          queries.current(true).filter((q) => q.query.match(/^RETURN SLEEP/) ).forEach((q) => {
+          queries.current({ all: true }).filter((q) => q.query.match(/^RETURN SLEEP/) ).forEach((q) => {
             found[q.database] = true;
           });
 
@@ -104,7 +104,7 @@ function queriesAllDatabasesSuite () {
       let tries = 0;
       let found;
       while (++tries < 60) {
-        found = queries.current(true).filter((q) => q.query.match(/^RETURN SLEEP/) ).length;
+        found = queries.current({ all: true }).filter((q) => q.query.match(/^RETURN SLEEP/) ).length;
         if (found === 0) {
           break;
         }
@@ -138,7 +138,7 @@ function queriesAllDatabasesSuite () {
       while (++tries < 60) {
         // we are in the system database here, so we don't expect
         // any results to come out here
-        assertEqual(0, queries.slow().filter((q) => {
+        assertEqual(0, queries.slow({ all: false }).filter((q) => {
           q.query.match(/^RETURN SLEEP/);
         }).length);
         
@@ -181,13 +181,13 @@ function queriesAllDatabasesSuite () {
       while (++tries < 60) {
         // we are in the system database here, so we don't expect
         // any results to come out here
-        assertEqual(0, queries.slow().filter((q) => {
+        assertEqual(0, queries.slow({ all: false }).filter((q) => {
           q.query.match(/^RETURN SLEEP/);
         }).length);
         
         // now retrieve the global list of queries
         found = {};
-        queries.slow(true).filter((q) => q.query.match(/^RETURN SLEEP/) ).forEach((q) => {
+        queries.slow({ all: true }).filter((q) => q.query.match(/^RETURN SLEEP/) ).forEach((q) => {
           found[q.database] = true;
         });
 
@@ -207,15 +207,15 @@ function queriesAllDatabasesSuite () {
       }
 
       // call clearSlow in the system database. this should have no effect
-      let res = queries.clearSlow();
+      let res = queries.clearSlow({ all: false });
       assertFalse(res.error);
       assertEqual(200, res.code);
           
-      assertEqual(5, queries.slow(true).filter((q) => q.query.match(/^RETURN SLEEP/) ).length);
+      assertEqual(5, queries.slow({ all: true }).filter((q) => q.query.match(/^RETURN SLEEP/) ).length);
      
       // call it globally. this should work
-      res = queries.clearSlow(true);
-      assertEqual(0, queries.slow(true).filter((q) => q.query.match(/^RETURN SLEEP/) ).length);
+      res = queries.clearSlow({ all: true });
+      assertEqual(0, queries.slow({ all: true }).filter((q) => q.query.match(/^RETURN SLEEP/) ).length);
     },
     
     testKillQueriesAllDatabases: function () {
@@ -232,7 +232,7 @@ function queriesAllDatabasesSuite () {
       let tries = 0;
       while (++tries < 60) {
         // now retrieve the global list of queries
-        found = queries.current(true).filter((q) => q.query.match(/^RETURN SLEEP/) );
+        found = queries.current({ all: true }).filter((q) => q.query.match(/^RETURN SLEEP/) );
         if (found.length === 5) {
           break;
         }
@@ -249,7 +249,7 @@ function queriesAllDatabasesSuite () {
       // wait for killing to have finished
       found = 0;
       while (++tries < 60) {
-        found = queries.current(true).filter((q) => q.query.match(/^RETURN SLEEP/) ).length;
+        found = queries.current({ all: true }).filter((q) => q.query.match(/^RETURN SLEEP/) ).length;
         if (found === 0) {
           break;
         }
