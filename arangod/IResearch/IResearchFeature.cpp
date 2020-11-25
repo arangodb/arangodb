@@ -856,16 +856,16 @@ void IResearchFeature::start() {
     };
 
     if (!startThread(ThreadGroup::_0) || !startThread(ThreadGroup::_1)) {
-      LOG_TOPIC("eba43", FATAL, arangodb::iresearch::TOPIC)
-        << "failed to start ArangoSearch maintenance threads";
-      FATAL_ERROR_EXIT();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_SYS_ERROR,
+        "failed to start ArangoSearch maintenance threads");
     }
 
     auto lock = irs::make_unique_lock(mtx);
-    if (!cv.wait_for(lock, 30s, [&counter](){ return counter < 2; })) {
-      LOG_TOPIC("eba42", FATAL, arangodb::iresearch::TOPIC)
-        << "failed to start ArangoSearch maintenance threads";
-      FATAL_ERROR_EXIT();
+    if (!cv.wait_for(lock, 30s, [&counter](){ return counter == 2; })) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_SYS_ERROR,
+        "failed to start ArangoSearch maintenance threads");
     }
   }
 
@@ -874,6 +874,7 @@ void IResearchFeature::start() {
 
 void IResearchFeature::stop() {
   TRI_ASSERT(isEnabled());
+  _async->stop();
   _running.store(false);
   ApplicationFeature::stop();
 }
