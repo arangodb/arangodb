@@ -285,12 +285,10 @@ size_t computeThreadsCount(size_t threads, size_t threadsLimit, size_t div) noex
   TRI_ASSERT(div);
   constexpr size_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
   constexpr size_t MIN_THREADS = 1;  // at least one thread is required
-  size_t const maxThreads = threadsLimit ? threadsLimit : MAX_THREADS;
 
-  return threads ? threads
-                 : std::max(MIN_THREADS,
-                            std::min(maxThreads,
-                                     arangodb::NumberOfCores::getValue() / div));
+  return std::max(MIN_THREADS,
+                  std::min(threadsLimit ? threadsLimit : MAX_THREADS,
+                           threads ? threads : arangodb::NumberOfCores::getValue() / div));
 }
 
 bool upgradeSingleServerArangoSearchView0_1(
@@ -758,20 +756,21 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   if ((threadsLimitSet || threadsSet) &&
       !commitThreadsSet && !consolidationThreadsSet) {
     // backwards compatibility
-    size_t const threads    = computeThreadsCount(_threads, _threadsLimit, 4);
-    _commitThreads          = std::max(threads/2, size_t(1));
-    _consolidationThreads   = _commitThreads;
+    size_t const threadsLimit = std::min(4*arangodb::NumberOfCores::getValue(), _threadsLimit);
+    size_t const threads      = computeThreadsCount(_threads, threadsLimit, 4);
+    _commitThreads            = std::max(threads/2, size_t(1));
+    _consolidationThreads     = _commitThreads;
   } else {
     size_t const threadsLimit = 4*arangodb::NumberOfCores::getValue();
-    _commitThreads          = computeThreadsCount(_commitThreads, threadsLimit, 6);
-    _consolidationThreads   = computeThreadsCount(_consolidationThreads, threadsLimit, 6);
+    _commitThreads            = computeThreadsCount(_commitThreads, threadsLimit, 6);
+    _consolidationThreads     = computeThreadsCount(_consolidationThreads, threadsLimit, 6);
   }
 
-  _commitThreadsIdle        = commitThreadsIdleSet
+  _commitThreadsIdle          = commitThreadsIdleSet
     ? computeIdleThreadsCount(_commitThreadsIdle, _commitThreads)
     : _commitThreads;
 
-  _consolidationThreadsIdle = consolidationThreadsIdleSet
+  _consolidationThreadsIdle   = consolidationThreadsIdleSet
     ? computeIdleThreadsCount(_consolidationThreadsIdle, _consolidationThreads)
     : _consolidationThreads;
 
@@ -863,6 +862,10 @@ void IResearchFeature::queue(
 
 std::tuple<size_t, size_t, size_t> IResearchFeature::stats(ThreadGroup id) const {
   return _async->get(id).stats();
+}
+
+std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
+  return _async->get(id).limits();
 }
 
 template <typename Engine, typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>, int>>
