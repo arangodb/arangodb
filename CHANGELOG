@@ -1,19 +1,21 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
-* Added load-balancing support for listing currently running and slow AQL queries,
-  killing running AQL queries and clearing the list of slow AQL queries.
+* Added load-balancing support for listing currently running and slow AQL
+  queries, killing running AQL queries and clearing the list of slow AQL
+  queries.
 
-  This change also will also modify the values returned in the "id" attribute of AQL
-  query objects. While the values of the "id" attribute remain strings with numeric
-  content, the ids will now start at arbitrary offsets after server start and are
-  supposed to have much higher numeric values than in previous ArangoDB versions. 
-  In previous ArangoDB versions, query ids always started at value 1 after a server
-  start/restart and were increased in increments of 1.
+  This change also will also modify the values returned in the "id" attribute of
+  AQL query objects. While the values of the "id" attribute remain strings with
+  numeric content, the ids will now start at arbitrary offsets after server
+  start and are supposed to have much higher numeric values than in previous
+  ArangoDB versions.
+  In previous ArangoDB versions, query ids always started at value 1 after a
+  server start/restart and were increased in increments of 1.
   This change may lead to query ids being greater than what a 4 byte integer can
-  hold, which may affect client applications that treat the ids as numeric values
-  and do not have proper support for integer numbers requiring more than 4 byte/
-  32 bits of storage.
+  hold, which may affect client applications that treat the ids as numeric
+  values and do not have proper support for integer numbers requiring more than
+  4 byte/32 bits of storage.
 
 * Added support for fetching the list of currently running and slow AQL queries
   from all databases at once, by adding an `all` parameter to the following
@@ -23,12 +25,11 @@ v3.6.10 (XXXX-XX-XX)
     currently running queries from all databases, not just the currently
     selected database.
   * HTTP GET `/_api/query/current?all=true`: same, but for the HTTP REST API.
-  * `require("@arangodb/aql/queries").slow({ all: true })`: will return the
-    slow query history from all databases, not just the currently selected
-    database.
+  * `require("@arangodb/aql/queries").slow({ all: true })`: will return the slow
+    query history from all databases, not just the currently selected database.
   * HTTP GET `/_api/query/slow?all=true`: same, but for the HTTP REST API.
-  * `require("@arangodb/aql/queries").clearSlow({ all: true })`: will clear
-    the slow query history for all databases, not just the currently selected
+  * `require("@arangodb/aql/queries").clearSlow({ all: true })`: will clear the
+    slow query history for all databases, not just the currently selected
     database.
   * HTTP DELETE `/_api/query/slow?all=true`: same, but for the HTTP REST API.
 
