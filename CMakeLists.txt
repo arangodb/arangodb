@@ -943,7 +943,7 @@ else () # NOT MSVC
   elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-    set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+    set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
 
     if (DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
       # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
