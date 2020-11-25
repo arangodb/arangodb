@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortStringStorage.h"
-#include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 
@@ -32,7 +32,7 @@
 using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
-ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
+ShortStringStorage::ShortStringStorage(arangodb::ResourceMonitor* resourceMonitor, size_t blockSize)
     : _resourceMonitor(resourceMonitor),
       _blockSize(blockSize),
       _current(nullptr),

@@ -23,8 +23,8 @@
 
 #include "QueryResources.h"
 #include "Aql/AstNode.h"
-#include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ScopeGuard.h"
 
@@ -36,7 +36,7 @@ namespace {
 static char const* EmptyString = "";
 }  // namespace
 
-QueryResources::QueryResources(ResourceMonitor* resourceMonitor)
+QueryResources::QueryResources(arangodb::ResourceMonitor* resourceMonitor)
     : _resourceMonitor(resourceMonitor),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _stringsLength(0),

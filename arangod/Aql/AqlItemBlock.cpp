@@ -752,7 +752,7 @@ void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
   }
 }
 
-ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
+arangodb::ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
   return *_manager.resourceMonitor();
 }
 

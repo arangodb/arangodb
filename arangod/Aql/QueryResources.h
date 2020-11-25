@@ -31,10 +31,10 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace aql {
-
-struct AstNode;
 struct ResourceMonitor;
+
+namespace aql {
+struct AstNode;
 
 class QueryResources {
  public:
@@ -42,7 +42,7 @@ class QueryResources {
   QueryResources(QueryResources const&) = delete;
   QueryResources& operator=(QueryResources const&) = delete;
 
-  explicit QueryResources(ResourceMonitor*);
+  explicit QueryResources(arangodb::ResourceMonitor*);
   ~QueryResources();
 
   /// @brief add a node to the list of nodes
@@ -67,7 +67,7 @@ class QueryResources {
   char* registerLongString(char* copy, size_t length);
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  arangodb::ResourceMonitor* _resourceMonitor;
 
   /// @brief all nodes created in the AST - will be used for freeing them later
   std::vector<AstNode*> _nodes;

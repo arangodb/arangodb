@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_RESOURCE_USAGE_H
-#define ARANGOD_AQL_RESOURCE_USAGE_H 1
+#ifndef ARANGOD_BASICS_RESOURCE_USAGE_H
+#define ARANGOD_BASICS_RESOURCE_USAGE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -32,7 +32,6 @@
 #include <algorithm>
 
 namespace arangodb {
-namespace aql {
 
 struct ResourceUsage {
   constexpr ResourceUsage() 
@@ -51,7 +50,8 @@ struct ResourceUsage {
 };
 
 struct ResourceMonitor {
-  ResourceMonitor() : currentResources(), maxResources() {}
+  ResourceMonitor() = default;
+
   explicit ResourceMonitor(ResourceUsage const& maxResources)
       : currentResources(), maxResources(maxResources) {}
 
@@ -63,8 +63,7 @@ struct ResourceMonitor {
     if (maxResources.memoryUsage > 0 &&
         ADB_UNLIKELY(currentResources.memoryUsage > maxResources.memoryUsage)) {
       currentResources.memoryUsage -= value;
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
     }
 
     currentResources.peakMemoryUsage = std::max(currentResources.memoryUsage, currentResources.peakMemoryUsage);
@@ -81,7 +80,6 @@ struct ResourceMonitor {
   ResourceUsage maxResources;
 };
 
-}  // namespace aql
 }  // namespace arangodb
 
 #endif
