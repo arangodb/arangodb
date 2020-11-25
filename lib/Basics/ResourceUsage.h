@@ -80,6 +80,46 @@ struct ResourceMonitor {
   ResourceUsage maxResources;
 };
 
+/// @brief RAII object for temporary resource tracking
+/// will track the resource usage on creation, and untrack it
+/// on destruction
+class ResourceUsageScope {
+ public:
+  ResourceUsageScope(ResourceUsageScope const&) = delete;
+  ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
+
+  explicit ResourceUsageScope(ResourceMonitor* resourceMonitor, size_t value)
+      : _resourceMonitor(resourceMonitor), _value(value) {
+    // may throw
+    increase(_value);
+  }
+
+  ~ResourceUsageScope() {
+    decrease(_value);
+  }
+
+  inline void increase(size_t value) {
+    if (value > 0) {
+      // may throw
+      _resourceMonitor->increaseMemoryUsage(value);
+    }
+  }
+  
+  inline void decrease(size_t value) noexcept {
+    if (value > 0) {
+      _resourceMonitor->decreaseMemoryUsage(value);
+    }
+  }
+
+  void steal() noexcept {
+    _value = 0;
+  }
+
+ private:
+  ResourceMonitor* _resourceMonitor;
+  size_t _value;
+};
+
 }  // namespace arangodb
 
 #endif

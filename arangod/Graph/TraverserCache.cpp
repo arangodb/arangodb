@@ -35,7 +35,6 @@
 #include "Logger/LoggerStream.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -45,22 +44,28 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace {
+constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::StringRef);
+};
+
 TraverserCache::TraverserCache(aql::Query* query, BaseOptions const* opts)
-    : _mmdr(new ManagedDocumentResult{}),
-      _query(query),
+    : _query(query),
       _trx(query->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(new StringHeap{4096}), /* arbitrary block-size may be adjusted for performance */
-      _baseOptions(opts) {
+      _stringHeap(query->resourceMonitor(), 4096), /* arbitrary block-size may be adjusted for performance */
+      _baseOptions(opts) {}
+
+TraverserCache::~TraverserCache() {
+  clear();
 }
 
-TraverserCache::~TraverserCache() = default;
-
 void TraverserCache::clear() {
-  _stringHeap->clear();
+  _query->resourceMonitor()->decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
+
+  _stringHeap.clear();
   _persistedStrings.clear();
-  _mmdr->clear();
+  _mmdr.clear();
 }
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
@@ -75,7 +80,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
+  if (!col->readDocument(_trx, idToken.localDocumentId(), _mmdr)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
@@ -85,7 +90,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  return VPackSlice(_mmdr->vpack());
+  return VPackSlice(_mmdr.vpack());
 }
 
 VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id) {
@@ -99,7 +104,7 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
   }
 
 
-  std::string collectionName = id.substr(0,pos).toString();
+  std::string collectionName = id.substr(0, pos).toString();
 
   auto const& map = _baseOptions->collectionToShard();
   if (!map.empty()) {
@@ -110,10 +115,10 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
   }
 
   Result res = _trx->documentFastPathLocal(collectionName,
-                                           id.substr(pos + 1), *_mmdr, true);
+                                           id.substr(pos + 1), _mmdr, true);
   if (res.ok()) {
     ++_insertedDocuments;
-    return VPackSlice(_mmdr->vpack());
+    return VPackSlice(_mmdr.vpack());
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     ++_insertedDocuments;
 
@@ -153,7 +158,13 @@ arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypa
   if (it != _persistedStrings.end()) {
     return *it;
   }
-  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.data(), idString.length());
+  arangodb::velocypack::StringRef res = _stringHeap.registerString(idString.data(), idString.length());
+
+  ResourceUsageScope guard(_query->resourceMonitor(), ::costPerPersistedString);
   _persistedStrings.emplace(res);
+
+  // now make the TraverserCache responsible for memory tracking
+  guard.steal();
+
   return res;
 }
