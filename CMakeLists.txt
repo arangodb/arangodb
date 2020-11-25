@@ -557,7 +557,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
+if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
@@ -943,7 +943,8 @@ else () # NOT MSVC
   elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-  
+    set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
+
     if (DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
       # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
       # enabled by default or changed analysis behaviour. The compiler now complains about "wrong" usage of
@@ -954,9 +955,8 @@ else () # NOT MSVC
       # Since we're stopping compilation on Apple in any warning case, we need to temporary disable that warning and
       # check upcoming versions if the compiler behaviour will be fixed.
       set(EXTRA_C_FLAGS "-Wno-range-loop-analysis")
-      set(EXTRA_CXX_FLAGS "-Wno-range-loop-analysis")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-range-loop-analysis")
     endif()
-    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wnon-virtual-dtor")
   else ()
     # unknown compiler
     message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
