@@ -420,86 +420,88 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   VPackSlice varsUsedLaterStackSlice = slice.get("varsUsedLaterStack");
 
-  if (!varsUsedLaterStackSlice.isArray() || varsUsedLaterStackSlice.length() == 0) {
+  if (varsUsedLaterStackSlice.isArray()) {
+    _varsUsedLaterStack.reserve(varsUsedLaterStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+            "\"varsUsedLaterStack\" needs to contain arrays");
+      }
+      auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
+
+      varsUsedLater.reserve(stackEntrySlice.length());
+      for (auto it : VPackArrayIterator(stackEntrySlice)) {
+        Variable oneVarUsedLater(it);
+        Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
+
+        if (oneVariable == nullptr) {
+          std::string errmsg = "varsUsedLaterStack: ID not found in all-array: " +
+                               StringUtils::itoa(oneVarUsedLater.id);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+        }
+        varsUsedLater.insert(oneVariable);
+      }
+    }
+  } else if (!varsUsedLaterStackSlice.isNone()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
         "\"varsUsedLaterStack\" needs to be a non-empty array");
   }
 
-  _varsUsedLaterStack.reserve(varsUsedLaterStackSlice.length());
-  for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
-    if (!stackEntrySlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-          "\"varsUsedLaterStack\" needs to contain arrays");
-    }
-    auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
-
-    varsUsedLater.reserve(stackEntrySlice.length());
-    for (auto it : VPackArrayIterator(stackEntrySlice)) {
-      Variable oneVarUsedLater(it);
-      Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
-
-      if (oneVariable == nullptr) {
-        std::string errmsg = "varsUsedLaterStack: ID not found in all-array: " +
-                             StringUtils::itoa(oneVarUsedLater.id);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
-      }
-      varsUsedLater.insert(oneVariable);
-    }
-  }
-
   VPackSlice varsValidStackSlice = slice.get("varsValidStack");
 
-  if (!varsValidStackSlice.isArray() || varsValidStackSlice.length() == 0) {
+  if (varsValidStackSlice.isArray()) {
+    _varsValidStack.reserve(varsValidStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            "\"varsValidStack\" needs to contain arrays");
+      }
+      auto& varsValid = _varsValidStack.emplace_back();
+
+      varsValid.reserve(stackEntrySlice.length());
+      for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
+        Variable oneVarValid(it);
+        Variable* oneVariable = allVars->getVariable(oneVarValid.id);
+
+        if (oneVariable == nullptr) {
+          std::string errmsg = "varsValidStack: ID not found in all-array: " +
+                               StringUtils::itoa(oneVarValid.id);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+        }
+        varsValid.insert(oneVariable);
+      }
+    }
+  } else if (!varsValidStackSlice.isNone()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
         "\"varsValidStack\" needs to be a non-empty array");
   }
 
-  _varsValidStack.reserve(varsValidStackSlice.length());
-  for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
-    if (!stackEntrySlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          "\"varsValidStack\" needs to contain arrays");
-    }
-    auto& varsValid = _varsValidStack.emplace_back();
-
-    varsValid.reserve(stackEntrySlice.length());
-    for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-      Variable oneVarValid(it);
-      Variable* oneVariable = allVars->getVariable(oneVarValid.id);
-
-      if (oneVariable == nullptr) {
-        std::string errmsg = "varsValidStack: ID not found in all-array: " +
-                             StringUtils::itoa(oneVarValid.id);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
-      }
-      varsValid.insert(oneVariable);
-    }
-  }
-
   VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
   
-  if (!regsToKeepStackSlice.isArray() || regsToKeepStackSlice.length() == 0) {
+  if (regsToKeepStackSlice.isArray()) {
+    // || regsToKeepStackSlice.length() == 0) {
+    _regsToKeepStack.reserve(regsToKeepStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(regsToKeepStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            "\"regsToKeepStack\" needs to contain arrays");
+      }
+      auto& regsToKeep = _regsToKeepStack.emplace_back();
+
+      regsToKeep.reserve(stackEntrySlice.length());
+      for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
+        regsToKeep.insert(it.getNumericValue<RegisterId>());
+      }
+    }
+  } else if (!regsToKeepStackSlice.isNone()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
         "\"regsToKeepStack\" needs to be a non-empty array");
   }
 
-  _regsToKeepStack.reserve(regsToKeepStackSlice.length());
-  for (auto stackEntrySlice : VPackArrayIterator(regsToKeepStackSlice)) {
-    if (!stackEntrySlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          "\"regsToKeepStack\" needs to contain arrays");
-    }
-    auto& regsToKeep = _regsToKeepStack.emplace_back();
-
-    regsToKeep.reserve(stackEntrySlice.length());
-    for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-      regsToKeep.insert(it.getNumericValue<RegisterId>());
-    }
-  }
 
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
