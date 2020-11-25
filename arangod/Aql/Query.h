@@ -351,12 +351,9 @@ class Query {
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
 
-  /// @brief returns the next query id
-  static TRI_voc_tick_t nextId();
-
  private:
   /// @brief query id
-  const TRI_voc_tick_t _id;
+  TRI_voc_tick_t const _id;
 
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;

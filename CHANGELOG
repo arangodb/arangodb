@@ -1,6 +1,73 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Fix HTTP/1.1 status response header in fuerte responses
+
+  This change makes fuerte return the full status header, including the numeric
+  status code and the status string in the `http/1.1` header of fuerte
+  responses.
+
+  Previously, the return header lacked the numeric status code, so it looked
+  like
+  ```
+  "http/1.1" : "Ok"
+  ```
+  Now, with the numeric status code, the response header will look like
+  ```
+  "http/1.1" : "200 Ok"
+  ```
+  This PR also adds a protocol() method for arango client connections in order
+  to check the protocol in use. The possible return values are
+  - "http" for HTTP/1.1 connections
+  - "http2" for HTTP/2 connections
+  - "vst" for VST connections
+  - "unknown" for everyhting else
+  This is needed during testing, but can also be used for other purposes.
+
+* Make the cancel operation safe for asynchronoulsly started JavaScript
+  transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
+  header set).
+
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
+    distribution.
+
+* Added load-balancing support for listing currently running and slow AQL
+  queries, killing running AQL queries and clearing the list of slow AQL
+  queries.
+
+  This change also will also modify the values returned in the "id" attribute of
+  AQL query objects. While the values of the "id" attribute remain strings with
+  numeric content, the ids will now start at arbitrary offsets after server
+  start and are supposed to have much higher numeric values than in previous
+  ArangoDB versions.
+  In previous ArangoDB versions, query ids always started at value 1 after a
+  server start/restart and were increased in increments of 1.
+  This change may lead to query ids being greater than what a 4 byte integer can
+  hold, which may affect client applications that treat the ids as numeric
+  values and do not have proper support for integer numbers requiring more than
+  4 byte/32 bits of storage.
+
+* Added support for fetching the list of currently running and slow AQL queries
+  from all databases at once, by adding an `all` parameter to the following
+  query APIs:
+
+  * `require("@arangodb/aql/queries").current({ all: true })`: will return the
+    currently running queries from all databases, not just the currently
+    selected database.
+  * HTTP GET `/_api/query/current?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").slow({ all: true })`: will return the slow
+    query history from all databases, not just the currently selected database.
+  * HTTP GET `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").clearSlow({ all: true })`: will clear the
+    slow query history for all databases, not just the currently selected
+    database.
+  * HTTP DELETE `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+
+  Using the `all` parameter is only allowed when making the call inside the
+  `_system` database and with superuser privileges.
+
 * Updated OpenSSL to 1.1.1h.
 
 * Fixed a hanger in the socket shutdown for the TLS case in fuerte (cluster
