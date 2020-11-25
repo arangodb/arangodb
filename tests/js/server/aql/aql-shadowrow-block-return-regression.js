@@ -290,7 +290,7 @@ function nonMaterializingViewRegressionSuite() {
       // This test requires that the Producer (View) can optimize away its output
       // and the consumer (Subquery) cannot passthrough the Block.
       // Hence all optimzation is turned off to guarantee these two stay connected.
-      const query = `FOR d IN hv LET p = (RETURN 1 + 1) RETURN 1`;
+      const query = `FOR d IN hv OPTIONS {waitForSync:true} LET p = (RETURN 1 + 1) RETURN 1`;
       const res = db._query(query, {}, {optimizer: {rules: ["-all", "+spliced-subqueries"] }});
       // This result was never wrong, the internal assertion is tested. 
       assertEqual(res.toArray().length, 1010);
@@ -307,4 +307,3 @@ jsunity.run(collectionInSubqeryRegressionSuite);
 jsunity.run(nonMaterializingViewRegressionSuite);
 
 return jsunity.done();
-
