@@ -1,6 +1,44 @@
 devel
 -----
 
+* Make the cancel operation safe for asynchronoulsly started JavaScript 
+  transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
+  header set).
+
+* Updated OpenSSL to 1.1.1h.
+
+* Added new scheduler metrics:
+  - `arangodb_scheduler_jobs_done`: Total number of scheduler queue jobs done
+  - `arangodb_scheduler_jobs_submitted`: Total number of jobs submitted to the 
+    scheduler queue
+  - `arangodb_scheduler_jobs_dequeued`: Total number of jobs dequeued from the 
+    scheduler queue
+  - `arangodb_scheduler_num_working_threads`: Number of currently working 
+    scheduler threads
+
+* Added new metric `arangodb_replication_cluster_inventory_requests` to track
+  the number of requests received for cluster inventories. The cluster
+  inventory API is called at the beginning of a dump process or by arangosync.
+
+* Added startup option `--server.unavailability-queue-fill-grade`. This option
+  has a consequence for the `/_admin/server/availability` API only, which is
+  often called by load-balancers and other availability probing systems. 
+  The `/_admin/server/availability` API will now return HTTP 200 if the fill 
+  grade of the scheduler's queue is below the configured value, or HTTP 503 if 
+  the fill grade is above it. This can be used to flag a server as unavailable 
+  in case it is already highly loaded.
+  
+  The default value for this option is `0.75`, i.e. 75%. This is a change
+  compared to previous versions of ArangoDB, where the default value was `1`.
+  
+  To prevent sending more traffic to an already overloaded server, it can be 
+  sensible to reduce the default value to even `0.5`.
+  This would mean that instances with a queue longer than 50% of their 
+  maximum queue capacity would return HTTP 503 instead of HTTP 200 when their 
+  availability API is probed. 
+  
+  nb: the default value for the scheduler queue length is 4096.
+
 * Added metrics for the system CPU usage:
   - `arangodb_server_statistics_user_percent`: Percentage of time that the
     system CPUs have spent in user mode

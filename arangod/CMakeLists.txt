@@ -847,7 +847,7 @@ add_library(arango_rocksdb STATIC
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
   target_compile_options(arango_rocksdb PUBLIC "-maes")
 endif ()
 
