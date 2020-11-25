@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,42 +18,32 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_QUEUE_TRACER_H
-#define ARANGOD_GRAPH_QUEUE_TRACER_H 1
+#ifndef ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H
+#define ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H 1
 
-#include "Graph/Helpers/TraceEntry.h"
-
-#include <unordered_map>
-#include <vector>
+#include <numeric>
+#include <ostream>
 
 namespace arangodb {
 namespace graph {
 
-template <class QueueImpl>
-class QueueTracer {
-  using Step = typename QueueImpl::Step;
-
+class TraceEntry {
  public:
-  QueueTracer();
-  ~QueueTracer();
+  TraceEntry();
+  ~TraceEntry();
 
-  void clear();
-  void append(Step step);
-  bool hasProcessableElement() const;
-  size_t size() const;
-  bool isEmpty() const;
-  std::vector<Step*> getLooseEnds();
+  void addTiming(double timeTaken);
 
-  Step pop();
+  friend auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream&;
 
  private:
-  QueueImpl _impl;
-
-  // Mapping MethodName => Statistics
-  // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
+  double _min{std::numeric_limits<double>::max()};
+  double _max{0};
+  double _total{0};
+  uint64_t _count{0};
 };
 
 }  // namespace graph
