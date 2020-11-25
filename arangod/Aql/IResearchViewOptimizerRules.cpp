@@ -758,8 +758,7 @@ void handleViewsRule(Optimizer* opt,
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
     if (viewNode.noMaterialization() && viewNode.options().emitOnlyCount &&
         !viewNode.hasNonMaterializedVariables() &&
-        viewNode.scorers().empty() &&
-        viewNode.filterConditionIsEmpty()) {
+        viewNode.scorers().empty()) {
       // check if we have query like FOR d IN view [SEARCH smth] COLLECT_WITH_COUNT_INTO c RETURN c 
       auto current = viewNode.getFirstParent();
       while (current != nullptr) {
