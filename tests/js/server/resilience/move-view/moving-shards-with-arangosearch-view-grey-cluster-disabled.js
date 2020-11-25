@@ -140,8 +140,11 @@ function MovingShardsWithViewSuite (options) {
           s => global.ArangoClusterInfo.getCollectionInfoCurrent(
             database, c[i].name(), s)
         );
-        let replicas = ccinfo.map(s => s.servers.length);
-        if (_.every(replicas, x => x === replFactor)) {
+        var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
+        if (replicas.every(x => x[0] === replFactor && x[0] === x[1])) {
+          // This also checks that there are as many failoverCandidates
+          // as there are followers in sync. This should eventually be
+          // reached.
           console.info("Replication up and running!");
           break;
         }

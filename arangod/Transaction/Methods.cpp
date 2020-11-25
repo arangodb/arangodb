@@ -277,15 +277,19 @@ transaction::Status transaction::Methods::status() const {
 }
 
 velocypack::Options const& transaction::Methods::vpackOptions() const {
-  return *_transactionContext->getVPackOptions();
+  return *transactionContextPtr()->getVPackOptions();
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
-        it.get().response->statusCode() == fuerte::StatusNotAcceptable) {
-      return true;
+        it.get().statusCode() == fuerte::StatusNotAcceptable) {
+      auto r = it.get().combinedResult();
+      bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      if (followerRefused) {
+        return true;
+      }
     }
   }
   return false;
@@ -296,7 +300,13 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     : _state(nullptr),
       _transactionContext(transactionContext),
       _mainTransaction(false) {
+
   TRI_ASSERT(transactionContext != nullptr);
+  if (ADB_UNLIKELY(transactionContext == nullptr)) {
+    // in production, we must not go on with undefined behavior, so we bail out
+    // here with an exception as last resort
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction context pointer");
+  }
 
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
@@ -713,17 +723,30 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   if (_state->isCoordinator()) {
-    OperationOptions options;  // use default configuration
-
+    OperationOptions options;
     OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (opRes.fail()) {
       return opRes.result;
     }
     result.add(opRes.slice());
     return Result();
-  }
+  } 
 
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  auto translateName = [this](std::string const& collectionName) { 
+    if (_state->isDBServer() && vocbase().isOneShard()) {
+      auto collection = resolver()->getCollectionStructCluster(collectionName);
+      if (collection != nullptr) {
+        auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto shards = ci.getShardList(std::to_string(collection->id().id()));
+        if (shards != nullptr && shards->size() == 1) {
+          return (*shards)[0];
+        }
+      }
+    }
+    return collectionName;
+  };
+
+  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName), AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
   arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
@@ -964,7 +987,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   // Really big documents need additional adjustment. Using total size
   // of all messages to handle worst case scenario of constrained resource
   // processing all
-  timeout += (totalBytes / 4096) * ReplicationTimeoutFeature::timeoutPer4k;
+  timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
 
   if (timeout < ReplicationTimeoutFeature::lowerLimit) {
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
@@ -992,6 +1015,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
+      // This indicates that we believe to be the leader.
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -1794,6 +1818,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
       reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
+      reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
       for (auto const& f : *followers) {
         network::Headers headers;
@@ -1808,8 +1833,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
             responses[i].hasValue() && responses[i].get().ok() &&
-            (responses[i].get().response->statusCode() == fuerte::StatusAccepted ||
-             responses[i].get().response->statusCode() == fuerte::StatusOK);
+            (responses[i].get().statusCode() == fuerte::StatusAccepted ||
+             responses[i].get().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
           res = followerInfo->remove((*followers)[i]);
@@ -1832,6 +1857,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(responses)) {
+        vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
@@ -1887,7 +1913,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     // always return from the cache, regardless what's in it
     documents = cache.get();
   } else if (type == transaction::CountType::TryCache) {
-    documents = cache.get(CountCache::Ttl);
+    documents = cache.getWithTtl();
   }
 
   if (documents == CountCache::NotPopulated) {
@@ -2297,49 +2323,69 @@ Future<Result> Methods::replicateOperations(
   // this operation to succeed, since the new leader is now responsible.
   // In case (2) we at least have to drop the follower such that it
   // resyncs and we can be sure that it is in sync again.
-  // Therefore, we drop the follower here (just in case), and refuse to
-  // return with a refusal error (note that we use the follower version,
-  // since we have lost leadership):
+  // We have some hint from the error message of the follower. If it is
+  // TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, we have reason
+  // to believe that the follower is now the new leader and we assume
+  // case (1).
+  // If the error is TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,
+  // we continue with the operation, since most likely, the follower was
+  // simply dropped in the meantime.
+  // In any case, we drop the follower here (just in case).
   auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
 
     bool didRefuse = false;
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followerList->size(); ++i) {
       network::Response const& resp = responses[i].get();
+      ServerID const& follower = (*followerList)[i];
 
       bool replicationWorked = false;
       if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = resp.response->statusCode() == fuerte::StatusAccepted ||
-                            resp.response->statusCode() == fuerte::StatusCreated ||
-                            resp.response->statusCode() == fuerte::StatusOK;
+        replicationWorked = resp.statusCode() == fuerte::StatusAccepted ||
+                            resp.statusCode() == fuerte::StatusCreated ||
+                            resp.statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
+        } else {
+          auto r = resp.combinedResult();
+          bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+          didRefuse = didRefuse || followerRefused;
+
+          if (followerRefused) {
+            vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+
+            LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
+                << "synchronous replication: follower "
+                << follower << " for shard " << collection->name()
+                << " in database " << collection->vocbase().name() 
+                << " refused the operation: " << r.errorMessage();
+          }
         }
-        didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
+      }
+
+      TRI_IF_FAILURE("replicateOperationsDropFollower") {
+        replicationWorked = false;
       }
 
       if (!replicationWorked) {
-        ServerID const& deadFollower = (*followerList)[i];
-        LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
+        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower "
-            << deadFollower << " for shard " << collection->name()
-            << ", status code: " << static_cast<int>(resp.statusCode())
-            << ", message: " << network::fuerteToArangoErrorMessage(resp);
+            << follower << " for shard " << collection->name()
+            << " in database " << collection->vocbase().name() 
+            << ": " << resp.combinedResult().errorMessage();
         
-        Result res = collection->followers()->remove(deadFollower);
+        Result res = collection->followers()->remove(follower);
         if (res.ok()) {
           // simon: follower cannot be re-added without lock on collection
-          _state->removeKnownServer(deadFollower);
-          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropped follower "
-              << deadFollower << " for shard " << collection->name();
+          _state->removeKnownServer(follower);
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
-              << deadFollower << " for shard " << collection->name() << ": "
-              << res.errorMessage();
+              << follower << " for shard " << collection->name() 
+              << " in database " << collection->vocbase().name() 
+              << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }

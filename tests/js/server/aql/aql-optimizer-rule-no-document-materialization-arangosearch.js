@@ -139,6 +139,17 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
         return obj.type === "EnumerateViewNode";
       })[0].hasOwnProperty('noMaterialization'));
     },
+    testNotAppliedDueToAccessToUnknownAttribute() {
+      let query = "FOR d IN " + svn
+                   // this node will be replaced completely and act as an issue trigger
+                  + " SORT d.obj.b ASC LIMIT 10 "
+                  // this will fail on third attribute but first two will be replaced and produce the dangling reference
+                  + " RETURN {o:d.obj.b, b:d.obj.a.a1, c:d.not_in_sorted }";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertFalse(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].hasOwnProperty('noMaterialization'));
+    },
     testQueryResultsWithSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
                   "LET a = NOOPT(d.obj.b.b1) " +

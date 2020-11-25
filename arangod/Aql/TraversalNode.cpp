@@ -576,7 +576,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp), _graphObj);
-  
+
   traversalCloneHelper(*plan, *c, withProperties);
 
   if (_optionsBuilt) {
@@ -703,7 +703,7 @@ void TraversalNode::prepareOptions() {
    * HACK: DO NOT use other indexes for smart BFS. Otherwise this will produce
    * wrong results.
    */
-  bool onlyEdgeIndexes = this->isSmart() && opts->useBreadthFirst;
+  bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;
     // We probably have to adopt minDepth. We cannot fulfill a condition of

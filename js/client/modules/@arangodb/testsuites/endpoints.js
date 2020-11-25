@@ -35,8 +35,8 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const platform = require('internal').platform;
 
@@ -59,69 +59,226 @@ function endpoints (options) {
   fs.makeDirectory(dummyDir);
   pu.cleanupDBDirectoriesAppend(dummyDir);
 
+  const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
   let endpoints = {
-    'tcpv4': function () {
-      return 'tcp://127.0.0.1:' + pu.findFreePort(options.minPort, options.maxPort);
+    ssl: {
+      skip: function () { return options.skipEndpointsSSL; },
+      serverArgs: function () {
+        return {
+          'server.endpoint': 'ssl://127.0.0.1:' + pu.findFreePort(options.minPort, options.maxPort),
+          'ssl.keyfile': keyFile,
+        };
+      },
+      shellTests: [
+        {
+          name: 'tcp',
+          endpoint: function (endpoint) { return endpoint; },
+          success: true,
+          forceJson: false
+        },
+        { 
+          name: 'any',
+          endpoint: function (endpoint) { return endpoint.replace(/^ssl:\/\/.*:/, 'ssl://0.0.0.0:'); },
+          success: false,
+          forceJson: false
+        },
+        { 
+          name: 'vst',
+          endpoint: function (endpoint) { return endpoint.replace(/^ssl:\/\//, 'vst+ssl://'); },
+          success: true,
+          forceJson: false
+        },
+        { 
+          name: 'h2',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'h2+ssl://'); },
+          success: true,
+          forceJson: false
+        },
+        { 
+          name: 'non-ssl',
+          endpoint: function (endpoint) { return endpoint.replace(/^ssl:\/\//, 'tcp://'); },
+          success: false,
+          forceJson: false
+        },
+      ],
     },
-    'tcpv6': function () {
-      if (options.skipEndpointsIpv6) {
-        return undefined;
-      }
-      return 'tcp://[::1]:' + pu.findFreePort(options.minPort, options.maxPort);
+
+    tcpv4: {
+      skip: function () { return options.skipEndpointsIpv4; },
+      serverArgs: function () {
+        return 'tcp://127.0.0.1:' + pu.findFreePort(options.minPort, options.maxPort);
+      },
+      shellTests: [
+        {
+          name: 'tcp-json',
+          endpoint: function (endpoint) { return endpoint; },
+          success: true,
+          forceJson: true
+        },
+        {
+          name: 'tcp',
+          endpoint: function (endpoint) { return endpoint; },
+          success: true,
+          forceJson: false
+        },
+        { 
+          name: 'tcp-any',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\/.*:/, 'tcp://0.0.0.0:'); },
+          success: false,
+          forceJson: false
+        },
+        { 
+          name: 'vst',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'vst://'); },
+          success: true,
+          forceJson: false
+        },
+        { 
+          name: 'h2',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'h2://'); },
+          success: true,
+          forceJson: false
+        },
+        {
+          name: 'ssl',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'ssl://'); },
+          success: false
+        },
+      ],
     },
-    'unix': function () {
-      if (platform.substr(0, 3) === 'win' || options.skipEndpointsUnix) {
-        return undefined;
-      }
-      // use a random filename
-      return 'unix://' + dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8);
-    }
+
+    tcpv6: {
+      skip: function () { return options.skipEndpointsIpv6; },
+      serverArgs: function () {
+        return 'tcp://[::1]:' + pu.findFreePort(options.minPort, options.maxPort);
+      },
+      shellTests: [
+        {
+          name: 'tcp-json',
+          endpoint: function (endpoint) { return endpoint; },
+          success: true,
+          forceJson: false
+        },
+        {
+          name: 'tcp',
+          endpoint: function (endpoint) { return endpoint; },
+          success: true,
+          forceJson: false
+        },
+        { 
+          name: 'tcp-any',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\/\[::1\]:/, 'tcp://[::]:'); },
+          success: false,
+          forceJson: false
+        },
+        { 
+          name: 'vst',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'vst://'); },
+          success: true,
+          forceJson: false
+        },
+        { 
+          name: 'h2',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'h2://'); },
+          success: true,
+          forceJson: false
+        },
+        {
+          name: 'ssl',
+          endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'ssl://'); },
+          success: false,
+          forceJson: false
+        },
+      ],
+    },
+
+    unix: {
+      skip: function () { return options.skipEndpointsUnix || platform.substr(0, 3) === 'win'; },
+      serverArgs: function () {
+        // use a random filename
+        return 'unix://' + dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8);
+      },
+      shellTests: [
+        {
+          name: 'tcp',
+          endpoint: function (endpoint) { return endpoint; },
+          success: true
+        },
+      ]
+    },
   };
 
   return Object.keys(endpoints).reduce((results, endpointName) => {
-    results.failed = 0;
-    results.shutdown = true;
     let testName = 'endpoint-' + endpointName;
-    results[testName] = (function () {
-      let endpoint = endpoints[endpointName]();
-      if (endpoint === undefined || options.cluster || options.skipEndpoints) {
-        return {
-          failed: 0,
-          status: true,
-          skipped: true
-        };
+    let testCase = endpoints[endpointName];
+    if (options.cluster || options.skipEndpoints || (testCase.skip && testCase.skip())) {
+      return {
+        failed: 0,
+        status: true,
+        skipped: true
+      };
+    }
+
+    let serverArgs = testCase.serverArgs();
+    if (typeof serverArgs === 'string') {
+      serverArgs = { 'server.endpoint': serverArgs };
+    }
+
+    let instanceInfo = pu.startInstance('tcp', Object.assign(options, {useReconnect: true}), serverArgs, testName);
+
+    if (instanceInfo === false) {
+      results.failed += 1;
+      return {
+        failed: 1,
+        status: false,
+        message: 'failed to start server!'
+      };
+    }
+
+    const specFile = testPaths.endpoints[0];
+    let filtered = {};
+
+    testCase.shellTests.forEach(function(testCase) {
+      if (tu.filterTestcaseByOptions(testCase.name, options, filtered)) {
+        let old = instanceInfo.endpoint;
+        let shellEndpoint = testCase.endpoint(serverArgs['server.endpoint']);
+        instanceInfo.endpoint = shellEndpoint;
+        try {
+          let arangoshOpts = { 'server.connection-timeout': 2, 'server.request-timeout': 2 };
+          if (testCase.forceJson) {
+            arangoshOpts['server.force-json'] = true;
+          }
+          let result = tu.runInArangosh(options, instanceInfo, specFile, arangoshOpts);
+          let success = result.status === testCase.success;
+          results[endpointName + '-' + testCase.name] = { status: success }; 
+          if (!success) {
+            // arangosh or the test returned an error
+            results[endpointName + '-' + testCase.name].message = result.message;
+            results.failed += 1;
+          }
+        } finally {
+          instanceInfo.endpoint = old;
+        }
       } else {
-        let instanceInfo = pu.startInstance('tcp', Object.assign(options, {useReconnect: true}), {
-          'server.endpoint': endpoint
-        }, testName);
-
-        if (instanceInfo === false) {
-          results.failed += 1;
-          return {
-            failed: 1,
-            status: false,
-            message: 'failed to start server!'
-          };
+        if (options.extremeVerbosity) {
+          print('Skipped ' + testCase.name + ' because of ' + filtered.filter);
         }
-
-        let oneTestResult = tu.runInArangosh(options, instanceInfo, testPaths.endpoints[0]);
-
-        print(CYAN + 'Shutting down...' + RESET);
-        // mop: mehhh...when launched with a socket we can't use download :S
-        oneTestResult['shutdown'] = pu.shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
-        print(CYAN + 'done.' + RESET);
-
-        if (!oneTestResult.status || !oneTestResult.shutdown) {
-          results.failed += 1;
-          results.shutdown = false;
-        } else {
-          pu.cleanupLastDirectory(options);
-        }
-        return oneTestResult;
       }
-    }());
+    });
+
+    print(CYAN + 'Shutting down...' + RESET);
+    let shutdown = pu.shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
+    print(CYAN + 'done.' + RESET);
+
+    if (!shutdown) {
+      results.failed += 1;
+      results.shutdown = false;
+    } else {
+      pu.cleanupLastDirectory(options);
+    }
+
     return results;
-  }, {});
+  }, { failed: 0, shutdown: true });
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
@@ -130,6 +287,8 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   opts['skipEndpoints'] = false;
   opts['skipEndpointsIpv6'] = false;
+  opts['skipEndpointsIpv4'] = false;
+  opts['skipEndpointsSSL'] = false;
   opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
 
   defaultFns.push('endpoints');

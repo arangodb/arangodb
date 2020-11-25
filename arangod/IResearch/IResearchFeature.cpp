@@ -92,7 +92,7 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 // -----------------------------------------------------------------------------
 
 arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
+                                        arangodb::aql::AstNode const&,
                                         arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
@@ -106,7 +106,7 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
 /// Just returns its first argument as outside ArangoSearch context
 /// there is nothing to do with search stuff, but optimization could roll.
 arangodb::aql::AqlValue contextFunc(arangodb::aql::ExpressionContext*,
-                                    arangodb::transaction::Methods*,
+                                    arangodb::aql::AstNode const&,
                                     arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
   TRI_ASSERT(!args.empty()); //ensured by function signature
   return args[0];
@@ -127,7 +127,7 @@ inline arangodb::aql::AqlValue errorAqlValue(arangodb::aql::ExpressionContext* c
 /// it will be done in ArangoSearch at runtime
 /// This will allow optimize out STARTS_WITH call if all arguments are const
 arangodb::aql::AqlValue startsWithFunc(arangodb::aql::ExpressionContext* ctx,
-                                       arangodb::transaction::Methods*,
+                                       arangodb::aql::AstNode const&,
                                        arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
   static char const* AFN = "STARTS_WITH";
 
@@ -186,7 +186,7 @@ arangodb::aql::AqlValue startsWithFunc(arangodb::aql::ExpressionContext* ctx,
 /// it will be done in ArangoSearch at runtime
 /// This will allow optimize out MIN_MATCH call if all arguments are const
 arangodb::aql::AqlValue minMatchFunc(arangodb::aql::ExpressionContext* ctx,
-                                     arangodb::transaction::Methods*,
+                                     arangodb::aql::AstNode const&,
                                      arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
   static char const* AFN = "MIN_MATCH";
 
@@ -209,7 +209,7 @@ arangodb::aql::AqlValue minMatchFunc(arangodb::aql::ExpressionContext* ctx,
 }
 
 arangodb::aql::AqlValue dummyScorerFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
+                                        arangodb::aql::AstNode const&,
                                         arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
@@ -438,7 +438,8 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   auto flags =
       arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                          arangodb::aql::Function::Flags::Cacheable,
-                                         arangodb::aql::Function::Flags::CanRunOnDBServer);
+                                         arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                         arangodb::aql::Function::Flags::CanRunOnDBServerOneShard);
   addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
   addFunction(functions, { "STARTS_WITH", ".,.|.,.", flags, &startsWithFunc });  // (attribute, [ '[' ] prefix [, prefix, ... ']' ] [, scoring-limit|min-match-count ] [, scoring-limit ])
   addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
@@ -503,7 +504,8 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
             std::move(upperName), args.c_str(),
             arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                                arangodb::aql::Function::Flags::Cacheable,
-                                               arangodb::aql::Function::Flags::CanRunOnDBServer),
+                                               arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                               arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
             &dummyScorerFunc  // function implementation
         });
 
@@ -514,8 +516,9 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
-void registerRecoveryHelper() {
-  auto helper = std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>();
+void registerRecoveryHelper(arangodb::application_features::ApplicationServer& server) {
+  auto helper =
+      std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>(server);
   auto res = arangodb::RocksDBEngine::registerRecoveryHelper(helper);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -614,8 +617,7 @@ void IResearchLogTopic::log_appender(void* context, const char* function, const 
                                      irs::logger::level_t level, const char* message,
                                      size_t message_len) {
   auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
-  std::string msg = LIBIRESEARCH.displayName();
-  msg.append(message, message_len);
+  std::string msg(message, message_len); 
   arangodb::Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
 }
 
@@ -913,7 +915,7 @@ void IResearchFeature::Async::start() {
     thread.start(&_join);
   }
 
-  LOG_TOPIC("c1b64", DEBUG, arangodb::iresearch::TOPIC)
+  LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
       << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
@@ -1015,7 +1017,7 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' Transaction DataSource registration callback
   registerTransactionDataSourceRegistrationCallback();
 
-  registerRecoveryHelper();
+  registerRecoveryHelper(server());
 
   // start the async task thread pool
   if (!ServerState::instance()->isCoordinator() // not a coordinator

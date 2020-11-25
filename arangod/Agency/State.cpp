@@ -293,10 +293,21 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
-
-  auto byteSize = slice.byteSize();
-  auto buf = std::make_shared<Buffer<uint8_t>>();
-  buf->append((char const*)slice.begin(), byteSize);
+  
+  // verbose logging for all agency operations
+  // there are two different log levels in use here for the AGENCYSTORE topic
+  // - DEBUG: will log writes only on the leader
+  // - TRACE: will log writes on both leaders and followers
+  // the default log level for the AGENCYSTORE topic is WARN
+  if (leading) {
+    LOG_TOPIC("b578f", DEBUG, Logger::AGENCYSTORE)
+        << "leader: true, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  } else {
+    LOG_TOPIC("f586f", TRACE, Logger::AGENCYSTORE)
+        << "leader: false, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  }
 
   bool success = reconfiguration ? persistConf(idx, term, millis, slice, clientId)
     : persist(idx, term, millis, slice, clientId);
@@ -306,16 +317,18 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
       << "RAFT member fails to persist log entries!";
     FATAL_ERROR_EXIT();
   }
+  
+  auto byteSize = slice.byteSize();
+  auto buf = std::make_shared<Buffer<uint8_t>>(byteSize);
+  buf->append(slice.begin(), byteSize);
 
-  logEmplaceBackNoLock(log_t(idx, term, buf, clientId, millis));
-  _log_size += byteSize;
+  logEmplaceBackNoLock(log_t(idx, term, std::move(buf), clientId, millis));
 
   return _log.back().index;
 }
 
 
 void State::logEmplaceBackNoLock(log_t&& l) {
-
   if (!l.clientId.empty()) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
@@ -326,15 +339,15 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       FATAL_ERROR_EXIT();
     }
   }
-
+  
   try {
+    _log_size += l.entry->byteSize();
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
   } catch (std::bad_alloc const&) {
     LOG_TOPIC("f5adc", FATAL, Logger::AGENCY)
       << "RAFT member fails to allocate volatile log entries!";
     FATAL_ERROR_EXIT();
   }
-
 }
 
 /// Log transactions (follower)

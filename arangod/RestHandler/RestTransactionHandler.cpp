@@ -123,8 +123,8 @@ void RestTransactionHandler::executeGetState() {
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  transaction::Status status = mgr->getManagedTrxStatus(tid);
-  
+  transaction::Status status = mgr->getManagedTrxStatus(tid, _vocbase.name());
+
   if (status == transaction::Status::UNDEFINED) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
   } else {
@@ -176,7 +176,7 @@ void RestTransactionHandler::executeBegin() {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
     
-  Result res = mgr->createManagedTrx(_vocbase, tid, slice);
+  Result res = mgr->createManagedTrx(_vocbase, tid, slice, false);
   if (res.fail()) {
     generateError(res);
   } else {
@@ -199,8 +199,8 @@ void RestTransactionHandler::executeCommit() {
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  Result res = mgr->commitManagedTrx(tid);
+
+  Result res = mgr->commitManagedTrx(tid, _vocbase.name());
   if (res.fail()) {
     generateError(res);
   } else {
@@ -235,8 +235,8 @@ void RestTransactionHandler::executeAbort() {
                     "bad transaction ID");
       return;
     }
-  
-    Result res = mgr->abortManagedTrx(tid);
+
+    Result res = mgr->abortManagedTrx(tid, _vocbase.name());
 
     if (res.fail()) {
       generateError(res);
@@ -283,26 +283,37 @@ void RestTransactionHandler::executeJSTransaction() {
 
   bool allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
+  V8Context* v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
 
-  if (!_v8Context) {
+  if (!v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
     return;
   }
 
-  TRI_DEFER(returnContext());
+  // register a function to release the V8Context whenever we exit from this scope
+  auto guard = scopeGuard([this]() {
+    WRITE_LOCKER(lock, _lock);
+    if (_v8Context != nullptr) {
+      V8DealerFeature::DEALER->exitContext(_v8Context);
+      _v8Context = nullptr;
+    }
+  });
+     
+  {
+    // make our V8Context available to the cancel function
+    WRITE_LOCKER(lock, _lock);
+    _v8Context = v8Context;
+    if (_canceled) {
+      // if we cancel here, the shutdown function above will perform the necessary cleanup
+      lock.unlock();
+      generateCanceled();
+      return;
+    }
+  }
 
   VPackBuilder result;
   try {
-    {
-      WRITE_LOCKER(lock, _lock);
-      if (_canceled) {
-        generateCanceled();
-        return;
-      }
-    }
-
-    Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled,
+    Result res = executeTransaction(v8Context->_isolate, _lock, _canceled,
                                     slice, portType, result);
     if (res.ok()) {
       VPackSlice slice = result.slice();
@@ -323,19 +334,15 @@ void RestTransactionHandler::executeJSTransaction() {
   }
 }
 
-void RestTransactionHandler::returnContext() {
-  WRITE_LOCKER(writeLock, _lock);
-  V8DealerFeature::DEALER->exitContext(_v8Context);
-  _v8Context = nullptr;
-}
-
 void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
-  auto isolate = _v8Context->_isolate;
-  if (!isolate->IsExecutionTerminating()) {
-    isolate->TerminateExecution();
+  if (_v8Context != nullptr) {
+    auto isolate = _v8Context->_isolate;
+    if (!isolate->IsExecutionTerminating()) {
+      isolate->TerminateExecution();
+    }
   }
 }
 

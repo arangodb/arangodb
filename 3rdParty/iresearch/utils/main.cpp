@@ -60,7 +60,7 @@ typedef std::unordered_map<
 
 bool init_handlers(handlers_t&);
 
-NS_LOCAL
+namespace {
 
 const std::string HELP = "help";
 const std::string MODE = "mode";
@@ -74,7 +74,7 @@ std::string get_modes_description(const handlers_t& handlers) {
   return message;
 }
 
-NS_END
+}
 
 int main(int argc, char* argv[]) {
   handlers_t handlers;

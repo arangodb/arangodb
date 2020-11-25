@@ -52,8 +52,8 @@
 
 #include "text_token_normalizing_stream.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -74,10 +74,10 @@ struct text_token_normalizing_stream::state_t {
   }
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
-NS_LOCAL
+namespace {
 
 
 bool make_locale_from_name(const irs::string_ref& name,
@@ -319,10 +319,10 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json,
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text, 
                        normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
@@ -469,5 +469,5 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
 }
 
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

@@ -121,7 +121,11 @@ struct OperationOptions {
   // for replication; only set true if you an guarantee that any conflicts have
   // already been removed, and are simply not reflected in the transaction read
   bool ignoreUniqueConstraints;
-  
+
+  // when truncating - should we also run the compaction?
+  // defaults to true.
+  bool truncateCompact;
+
   // get associated execution context
   ExecContext const& context() const;
 

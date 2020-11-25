@@ -27,12 +27,17 @@
 #include "Basics/Result.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace rocksdb {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recalculate collection count on all DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string const& collname);
+Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& server,
+                                       std::string const& dbname,
+                                       std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for estimator sync on all DBServers

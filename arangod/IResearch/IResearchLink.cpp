@@ -32,7 +32,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -57,11 +56,6 @@
 using namespace std::literals;
 
 namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the storage format used with IResearch writers
-////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_STORE_FORMAT("1_3simd");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
@@ -101,8 +95,8 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 
   operator irs::index_writer::documents_context&() noexcept { return _ctx; }
 
-  void remove(arangodb::LocalDocumentId const& value) {
-    _ctx.remove(_removals.emplace(value));
+  void remove(arangodb::StorageEngine& engine, arangodb::LocalDocumentId const& value) {
+    _ctx.remove(_removals.emplace(engine, value));
   }
 
   void reset() noexcept {
@@ -329,7 +323,6 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
 
     prev.reset();
   };
-
 }
 
 IResearchLink::~IResearchLink() {
@@ -388,7 +381,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
 
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
-  
+
   auto lastCommittedTickGuard = irs::make_finally([lastCommittedTick, this, &recoverCommittedTick]()->void {
       if (recoverCommittedTick) {
         _lastCommittedTick = lastCommittedTick;
@@ -418,7 +411,6 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     if (subscription) {
       subscription->tick(_lastCommittedTick);
     }
-
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
@@ -431,135 +423,6 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     IR_LOG_EXCEPTION();
     throw;
   }
-}
-
-void IResearchLink::batchInsert(
-    transaction::Methods& trx,
-    std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& batch,
-    std::shared_ptr<basics::LocalTaskQueue> queue) {
-  if (batch.empty()) {
-    return; // nothing to do
-  }
-
-  TRI_ASSERT(_engine);
-  TRI_ASSERT(queue);
-  TRI_ASSERT(trx.state());
-
-  auto& state = *(trx.state());
-
-  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
-    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-      queue->setStatus(TRI_ERROR_DEBUG);
-      return;
-    }
-  }
-
-  if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
-    LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
-      << "skipping 'batchInsert', operation tick '" << _engine->recoveryTick()
-      << "', recovery tick '" << _dataStore._recoveryTick << "'";
-
-    return;
-  }
-
-  auto batchInsertImpl = [this, &batch, &trx, &queue](irs::index_writer::documents_context& ctx) {
-    auto begin = batch.begin();
-    auto const end = batch.end();
-    try {
-      for (FieldIterator body(trx); begin != end; ++begin) {
-        auto const res = insertDocument(ctx, trx, body, begin->second, begin->first, _meta, id());
-
-        if (!res.ok()) {
-          LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
-          queue->setStatus(res.errorNumber());
-
-          return;
-        }
-      }
-    }
-    catch (basics::Exception const& e) {
-      LOG_TOPIC("72aa5", WARN, iresearch::TOPIC)
-          << "caught exception while inserting batch into arangosearch link '"
-          << id() << "': " << e.code() << " " << e.what();
-      IR_LOG_EXCEPTION();
-      queue->setStatus(e.code());
-    }
-    catch (std::exception const& e) {
-      LOG_TOPIC("3cbae", WARN, iresearch::TOPIC)
-          << "caught exception while inserting batch into arangosearch link '"
-          << id() << "': " << e.what();
-      IR_LOG_EXCEPTION();
-      queue->setStatus(TRI_ERROR_INTERNAL);
-    }
-    catch (...) {
-      LOG_TOPIC("3da8d", WARN, iresearch::TOPIC)
-          << "caught exception while inserting batch into arangosearch link '"
-          << id() << "'";
-      IR_LOG_EXCEPTION();
-      queue->setStatus(TRI_ERROR_INTERNAL);
-    }
-  };
-
-  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
-    auto ctx = _dataStore._writer->documents();
-    batchInsertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
-    TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
-      if (queue->status() == TRI_ERROR_NO_ERROR) {
-        queue->setStatus(TRI_ERROR_DEBUG);
-      }
-    }
-    return;
-  }
-
-  auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
-#endif
-
-  if (!ctx) {
-    // '_dataStore' can be asynchronously modified
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
-
-    if (!*_asyncSelf) {
-      LOG_TOPIC("7d258", WARN, iresearch::TOPIC)
-          << "failed to lock arangosearch link while inserting a batch into "
-             "arangosearch link '"
-          << id() << "', tid '" << state.id() << "'";
-
-      // the current link is no longer valid (checked after ReadLock acquisition)
-      queue->setStatus(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-
-      return;
-    }
-
-    TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
-
-    auto ptr = irs::memory::make_unique<LinkTrxState>(std::move(lock),
-                                                      *(_dataStore._writer));
-
-    ctx = ptr.get();
-    state.cookie(key, std::move(ptr));
-
-    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
-      LOG_TOPIC("61780", WARN, iresearch::TOPIC)
-          << "failed to store state into a TransactionState for batch insert "
-             "into arangosearch link '"
-          << id() << "', tid '" << state.id() << "'";
-      queue->setStatus(TRI_ERROR_INTERNAL);
-
-      return;
-    }
-  }
-
-  // ...........................................................................
-  // below only during recovery after the 'checkpoint' marker, or post recovery
-  // ...........................................................................
-  batchInsertImpl(ctx->_ctx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,15 +479,6 @@ Result IResearchLink::commitUnsafe(bool wait) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while committing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
-
   auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
 
   if (!subscription) {
@@ -633,7 +487,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
   }
 
   try {
-    auto const lastTickBeforeCommit = engine->currentTick();
+    auto const lastTickBeforeCommit = _engine->currentTick();
 
     TRY_SCOPED_LOCK_NAMED(_commitMutex, commitLock);
 
@@ -846,7 +700,7 @@ Result IResearchLink::init(
 
   // definition should already be normalized and analyzers created if required
   if (!meta.init(_collection.vocbase().server(), definition, true, error,
-                 &(_collection.vocbase()))) {
+                 _collection.vocbase().name())) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "error parsing view link parameters from json: " + error
@@ -1064,22 +918,15 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
+  auto format = irs::formats::get(LATEST_FORMAT);
 
   if (!format) {
     return {TRI_ERROR_INTERNAL,
-            "failed to get data store codec '"s + IRESEARCH_STORE_FORMAT.c_str() +
+            "failed to get data store codec '"s + LATEST_FORMAT.data() +
                 "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
-  _engine = EngineSelectorFeature::ENGINE;
-
-  if (!_engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while initializing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
+  _engine = &server.getFeature<EngineSelectorFeature>().engine();
 
   bool pathExists;
 
@@ -1591,7 +1438,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   std::string errorField;
 
   return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    &(_collection.vocbase()))  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
+                    _collection.vocbase().name())  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
          && _meta == other;
 }
 
@@ -1727,7 +1574,7 @@ Result IResearchLink::remove(
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(documentId);
+    ctx->remove(*_engine, documentId);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {

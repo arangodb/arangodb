@@ -26,8 +26,10 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Containers/SmallVector.h"
@@ -66,21 +68,33 @@ class GeoConstructorTest : public ::testing::Test {
         trx(trxMock.get()),
         context(contextMock.get()),
         params{arena} {
+    static VPackOptions options = velocypack::Options::Defaults;
     fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
-    fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+    fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
+    fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&options);
     fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
     fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
   }
 };
 
 namespace geo_point {
 class GeoPointTest : public GeoConstructorTest {
  protected:
-  GeoPointTest() : GeoConstructorTest() {
+  GeoPointTest() 
+      : GeoConstructorTest(),
+        fun("GEO_POINT", &Functions::GeoPoint),
+        funNode(NODE_TYPE_FCALL) {
+
+    funNode.setData(static_cast<void const*>(&fun));
+
     fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
       ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     });
   }
+    
+  arangodb::aql::Function fun;
+  arangodb::aql::AstNode funNode;
 };
 
 TEST_F(GeoPointTest, checking_two_positive_integer_values) {
@@ -91,7 +105,7 @@ TEST_F(GeoPointTest, checking_two_positive_integer_values) {
   foo.close();
   params.emplace_back(foo.slice().at(0));
   params.emplace_back(foo.slice().at(1));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -114,7 +128,7 @@ TEST_F(GeoPointTest, checking_two_negative_integer_values) {
   foo.close();
   params.emplace_back(foo.slice().at(0));
   params.emplace_back(foo.slice().at(1));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -137,7 +151,7 @@ TEST_F(GeoPointTest, checking_two_positive_double_values) {
   foo.close();
   params.emplace_back(foo.slice().at(0));
   params.emplace_back(foo.slice().at(1));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -160,7 +174,7 @@ TEST_F(GeoPointTest, checking_two_negative_double_values) {
   foo.close();
   params.emplace_back(foo.slice().at(0));
   params.emplace_back(foo.slice().at(1));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -183,7 +197,7 @@ TEST_F(GeoPointTest, checking_two_postive_integer_and_positive_double_values) {
   foo.close();
   params.emplace_back(foo.slice().at(0));
   params.emplace_back(foo.slice().at(1));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -206,7 +220,7 @@ TEST_F(GeoPointTest, checking_two_negative_integer_and_positive_double_values) {
   foo.close();
   params.emplace_back(foo.slice().at(0));
   params.emplace_back(foo.slice().at(1));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -229,7 +243,7 @@ TEST_F(GeoPointTest, checking_two_positive_integer_and_negative_double_values) {
   foo.close();
   params.emplace_back(foo.slice().at(0));
   params.emplace_back(foo.slice().at(1));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -251,7 +265,7 @@ TEST_F(GeoPointTest, checking_bool_and_positive_double) {
 
   params.emplace_back(foo.slice().get("boolean"));
   params.emplace_back(foo.slice().get("coords").at(0));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -269,7 +283,7 @@ TEST_F(GeoPointTest, checking_null) {
   params.emplace_back(json);
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -287,7 +301,7 @@ TEST_F(GeoPointTest, checking_string) {
   params.emplace_back(json);
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -303,7 +317,7 @@ TEST_F(GeoPointTest, checking_positive_int_and_bool) {
 
   params.emplace_back(foo.slice().get("coords").at(0));
   params.emplace_back(foo.slice().get("boolean"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -319,7 +333,7 @@ TEST_F(GeoPointTest, checking_bool_and_negative_double) {
 
   params.emplace_back(foo.slice().get("boolean"));
   params.emplace_back(foo.slice().get("coords").at(0));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -336,7 +350,7 @@ TEST_F(GeoPointTest, checking_array_and_positive_double) {
 
   params.emplace_back(foo.slice().get("array"));
   params.emplace_back(foo.slice().get("coords").at(0));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -353,7 +367,7 @@ TEST_F(GeoPointTest, checking_negative_double_and_array) {
 
   params.emplace_back(foo.slice().get("coords").at(0));
   params.emplace_back(foo.slice().get("array"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -376,7 +390,7 @@ TEST_F(GeoPointTest, checking_object_and_positive_double) {
 
   params.emplace_back(b.slice().get("object"));
   params.emplace_back(b.slice().get("coords").at(0));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -399,7 +413,7 @@ TEST_F(GeoPointTest, checking_object_and_negative_double) {
 
   params.emplace_back(b.slice().get("coords").at(0));
   params.emplace_back(b.slice().get("object"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -424,7 +438,7 @@ TEST_F(GeoPointTest, checking_object_and_array) {
 
   params.emplace_back(b.slice().get("object"));
   params.emplace_back(b.slice().get("coords"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -449,7 +463,7 @@ TEST_F(GeoPointTest, checking_array_and_object) {
 
   params.emplace_back(b.slice().get("coords"));
   params.emplace_back(b.slice().get("object"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -466,7 +480,7 @@ TEST_F(GeoPointTest, checking_bool_and_bool) {
 
   params.emplace_back(foo.slice().get("boolone"));
   params.emplace_back(foo.slice().get("booltwo"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -492,7 +506,7 @@ TEST_F(GeoPointTest, checking_array_and_array) {
 
   params.emplace_back(b.slice().get("arrone"));
   params.emplace_back(b.slice().get("arrtwo"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -516,7 +530,7 @@ TEST_F(GeoPointTest, checking_object_and_object) {
 
   params.emplace_back(b.slice().get("coords"));
   params.emplace_back(b.slice().get("object"));
-  AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -527,7 +541,18 @@ TEST_F(GeoPointTest, checking_object_and_object) {
 }  // namespace geo_point
 
 namespace geo_multipoint {
-class GeoMultipointTest : public GeoConstructorTest {};
+struct GeoMultipointTest : public GeoConstructorTest {
+  GeoMultipointTest() 
+      : GeoConstructorTest(),
+        fun("GEO_MULTIPOINT", &Functions::GeoMultiPoint),
+        funNode(NODE_TYPE_FCALL) {
+
+    funNode.setData(static_cast<void const*>(&fun));
+  }
+
+  arangodb::aql::Function fun;
+  arangodb::aql::AstNode funNode;
+};
 
 TEST_F(GeoMultipointTest, checking_multipoint_with_2_positions) {
   char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
@@ -537,7 +562,7 @@ TEST_F(GeoMultipointTest, checking_multipoint_with_2_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -570,7 +595,7 @@ TEST_F(GeoMultipointTest, checking_points_representing_points_in_cologne) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 10);
@@ -594,7 +619,7 @@ TEST_F(GeoMultipointTest, checking_array_with_1_position) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -615,7 +640,7 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -636,7 +661,7 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool_2) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -657,7 +682,7 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions_nested) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -678,7 +703,7 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -699,7 +724,7 @@ TEST_F(GeoMultipointTest, checking_bool) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -720,7 +745,7 @@ TEST_F(GeoMultipointTest, checking_number) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   // Free input parameters
   for (auto& it : params) {
@@ -745,7 +770,7 @@ TEST_F(GeoMultipointTest, checking_object) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiPoint(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   // Free input parameters
   for (auto& it : params) {
@@ -760,7 +785,18 @@ TEST_F(GeoMultipointTest, checking_object) {
 }  // namespace geo_multipoint
 
 namespace geo_polygon {
-class GeoPolygonTest : public GeoConstructorTest {};
+class GeoPolygonTest : public GeoConstructorTest {
+ protected:
+  GeoPolygonTest() 
+      : GeoConstructorTest(),
+        fun("GEO_POLYGON", &Functions::GeoPolygon),
+        funNode(NODE_TYPE_FCALL) {
+    funNode.setData(static_cast<void const*>(&fun));
+  }
+
+  arangodb::aql::Function fun;
+  arangodb::aql::AstNode funNode;
+};
 
 TEST_F(GeoPolygonTest, checking_polygon_with_3_positive_tuples) {
   char const* p = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]";
@@ -770,7 +806,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_positive_tuples) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").at(0).length(), 3);
@@ -806,7 +842,7 @@ TEST_F(GeoPolygonTest, checking_polygon_representing_cologne) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
@@ -829,7 +865,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_3_negative_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
@@ -866,7 +902,7 @@ TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
   params.emplace_back(json);
 
   // TODO check also at 1 position
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_TRUE(res.slice().get("coordinates").at(0).isArray());
@@ -903,7 +939,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_positive_position) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -924,7 +960,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_negative_position) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -945,7 +981,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_positive_tuples) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -966,7 +1002,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_negative_tuples) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -987,7 +1023,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_empty_input) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1008,7 +1044,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_boolean) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1029,7 +1065,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_booleans) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1050,7 +1086,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_nested_booleans) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1071,7 +1107,7 @@ TEST_F(GeoPolygonTest, checking_object_with_single_boolean) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1092,7 +1128,7 @@ TEST_F(GeoPolygonTest, checking_object_with_single_number) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1113,7 +1149,7 @@ TEST_F(GeoPolygonTest, checking_object_with_string) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1134,7 +1170,7 @@ TEST_F(GeoPolygonTest, checking_object_with_null) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1155,7 +1191,7 @@ TEST_F(GeoPolygonTest, checking_object_with_some_data) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoPolygon(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1166,7 +1202,17 @@ TEST_F(GeoPolygonTest, checking_object_with_some_data) {
 }  // namespace geo_polygon
 
 namespace geo_linestring {
-class GeoLinestringTest : public GeoConstructorTest {};
+struct GeoLinestringTest : public GeoConstructorTest {
+  GeoLinestringTest()
+      : GeoConstructorTest(),
+        fun("GEO_LINESTRING", &Functions::GeoLinestring),
+        funNode(NODE_TYPE_FCALL) {
+    funNode.setData(static_cast<void const*>(&fun));
+  }
+  
+  arangodb::aql::Function fun;
+  arangodb::aql::AstNode funNode;
+};
 
 TEST_F(GeoLinestringTest, checking_polygon_with_2_positions) {
   char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
@@ -1176,7 +1222,7 @@ TEST_F(GeoLinestringTest, checking_polygon_with_2_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -1209,7 +1255,7 @@ TEST_F(GeoLinestringTest, checking_linestring_representing_cologne) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 10);
@@ -1234,7 +1280,7 @@ TEST_F(GeoLinestringTest, checking_array_with_1_position) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1255,7 +1301,7 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1276,7 +1322,7 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool_2) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1297,7 +1343,7 @@ TEST_F(GeoLinestringTest, checking_empty_nested_array) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1318,7 +1364,7 @@ TEST_F(GeoLinestringTest, checking_empty_array) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1339,7 +1385,7 @@ TEST_F(GeoLinestringTest, checking_bool) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1360,7 +1406,7 @@ TEST_F(GeoLinestringTest, checking_number) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1381,7 +1427,7 @@ TEST_F(GeoLinestringTest, checking_object) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1392,7 +1438,17 @@ TEST_F(GeoLinestringTest, checking_object) {
 }  // namespace geo_linestring
 
 namespace geo_multilinestring {
-class GeoMultilinestringTest : public GeoConstructorTest {};
+struct GeoMultilinestringTest : public GeoConstructorTest {
+  GeoMultilinestringTest() 
+      : GeoConstructorTest(),
+        fun("GEO_MULTILINESTRING", &Functions::GeoMultiLinestring),
+        funNode(NODE_TYPE_FCALL) {
+    funNode.setData(static_cast<void const*>(&fun));
+  }
+
+  arangodb::aql::Function fun;
+  arangodb::aql::AstNode funNode;
+};
 
 TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions) {
   char const* p = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
@@ -1402,7 +1458,7 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -1436,7 +1492,7 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions_2) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.isObject());
   EXPECT_TRUE(res.slice().get("coordinates").isArray());
   EXPECT_EQ(res.slice().get("coordinates").length(), 2);
@@ -1473,7 +1529,7 @@ TEST_F(GeoMultilinestringTest, checking_object) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1494,7 +1550,7 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1515,7 +1571,7 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1536,7 +1592,7 @@ TEST_F(GeoMultilinestringTest, checking_bool) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters
@@ -1557,7 +1613,7 @@ TEST_F(GeoMultilinestringTest, checking_number) {
   VPackSlice json = builder->slice();
   params.emplace_back(json);
 
-  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
+  AqlValue res = Functions::GeoMultiLinestring(&expressionContext, funNode, params);
   EXPECT_TRUE(res.slice().isNull());
   res.destroy();
   // Free input parameters

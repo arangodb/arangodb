@@ -181,6 +181,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // query shard for a given document
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
+  int getResponsibleShard(std::string_view key, std::string& shardID);
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           std::string& shardID, bool& usesDefaultShardKeys,
@@ -349,8 +350,6 @@ class LogicalCollection : public LogicalDataSource {
 
   bool determineSyncByRevision() const;
 
-  transaction::CountCache _countCache;
-
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
@@ -396,6 +395,8 @@ class LogicalCollection : public LogicalDataSource {
   RevisionId const _minRevision;
 
   std::string _smartJoinAttribute;
+  
+  transaction::CountCache _countCache;
 
   // SECTION: Key Options
 

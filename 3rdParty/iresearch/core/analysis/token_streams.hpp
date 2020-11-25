@@ -28,7 +28,7 @@
 #include "utils/frozen_attributes.hpp"
 #include "utils/numeric_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_token_stream
@@ -264,6 +264,6 @@ class IRESEARCH_API null_token_stream final
   bool in_use_{false};
 }; // null_token_stream
 
-NS_END
+}
 
 #endif

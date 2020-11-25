@@ -26,7 +26,7 @@
 #include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
 
-NS_LOCAL
+namespace {
 
 using irs::mmap_utils::mmap_handle;
 
@@ -127,9 +127,9 @@ class mmap_index_input : public irs::bytes_ref_input {
   mmap_handle_ptr handle_;
 }; // mmap_index_input
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     mmap_directory implementation
@@ -154,4 +154,4 @@ index_input::ptr mmap_directory::open(
   return mmap_index_input::open(path.c_str(), advice);
 }
 
-NS_END // ROOT
+} // ROOT

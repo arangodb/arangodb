@@ -217,9 +217,12 @@ void ensureLink(arangodb::DatabaseFeature& db,
 namespace arangodb {
 namespace iresearch {
 
+IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(application_features::ApplicationServer& server)
+    : _server(server) {}
+
 void IResearchRocksDBRecoveryHelper::prepare() {
   _dbFeature = DatabaseFeature::DATABASE;
-  _engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  _engine = &_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   _documentCF = RocksDBColumnFamily::documents()->GetID();
 }
 

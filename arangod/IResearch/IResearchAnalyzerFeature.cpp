@@ -59,6 +59,7 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
+#include "IResearchAqlAnalyzer.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
@@ -84,7 +85,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
-
+#include "frozen/map.h"
 #include <Containers/HashSet.h>
 
 namespace {
@@ -97,10 +98,17 @@ static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
+static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZERS_NAMES {
+  {irs::type<IdentityAnalyzer>::name(), irs::type<IdentityAnalyzer>::name()},
+  {"text_de", "de"}, {"text_en", "en"}, {"text_es", "es"}, {"text_fi", "fi"},
+  {"text_fr", "fr"}, {"text_it", "it"}, {"text_nl", "nl"}, {"text_no", "no"},
+  {"text_pt", "pt"}, {"text_ru", "ru"}, {"text_sv", "sv"}, {"text_zh", "zh"} };
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack, AqlAnalyzer::normalize_vpack);
+REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json, AqlAnalyzer::normalize_json);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -457,8 +465,8 @@ REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_bui
   pipeline_vpack_normalizer);
 } // namespace pipeline_vpack
 
-arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
-                                    arangodb::transaction::Methods* trx,
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
+                                    arangodb::aql::AstNode const&,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
@@ -481,17 +489,13 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
     arangodb::iresearch::getStringRef(args[1].slice()) :
     irs::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
-  TRI_ASSERT(trx);
-  auto& server = trx->vocbase().server();
+  TRI_ASSERT(expressionContext);
+  auto& trx = expressionContext->trx();
+  auto& server = expressionContext->vocbase().server();
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
-                          ? server.getFeature<SystemDatabaseFeature>().use()
-                          : nullptr;
-    if (sysVocbase) {
-      pool = analyzers.get(name, trx->vocbase(), *sysVocbase,
-                           trx->state()->analyzersRevision());
-    }
+    pool = analyzers.get(name, trx.vocbase(),
+                         trx.state()->analyzersRevision());
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   }
@@ -658,7 +662,8 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
           // used to calculate values for constant expressions)
           arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                              arangodb::aql::Function::Flags::Cacheable,
-                                             arangodb::aql::Function::Flags::CanRunOnDBServer),
+                                             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
           &aqlFnTokens  // function implementation
       });
 }
@@ -770,7 +775,7 @@ arangodb::Result visitAnalyzers(
     if (!coords.empty() &&
         !vocbase.isSystem() && // System database could be on other server so OneShard optimization will not work
         (vocbase.server().getFeature<arangodb::ClusterFeature>().forceOneShard() ||
-          vocbase.isShardingSingle())) {
+          vocbase.isOneShard())) {
       auto& clusterInfo = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
       if (!collection) {
@@ -834,7 +839,6 @@ arangodb::Result visitAnalyzers(
       builder.close();
     }
 
-
     for (auto const& coord : coords) {
       auto f = arangodb::network::sendRequest(
             pool,
@@ -854,12 +858,12 @@ arangodb::Result visitAnalyzers(
         return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
-      if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
+      if (response.statusCode() == arangodb::fuerte::StatusNotFound) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
       }
 
-      std::vector<VPackSlice> slices = response.response->slices();
-      if (slices.empty() || !slices[0].isObject()) {
+      VPackSlice answer = response.slice();
+      if (!answer.isObject()) {
         return {
           TRI_ERROR_INTERNAL,
           "got misformed result while visiting Analyzer collection'" +
@@ -868,7 +872,6 @@ arangodb::Result visitAnalyzers(
         };
       }
 
-      VPackSlice answer = slices[0];
       auto result = arangodb::network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
       if (result.fail()) {
         return result;
@@ -1105,9 +1108,13 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
 getAnalyzerMeta(irs::type_info::type_id type) noexcept {
   if (type == irs::type<GeoJSONAnalyzer>::id()) {
-    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoJSONAnalyzer::store };
+    return { AnalyzerValueType::Object | AnalyzerValueType::Array,
+             AnalyzerValueType::String,
+             &GeoJSONAnalyzer::store };
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
-    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoPointAnalyzer::store };
+    return { AnalyzerValueType::Object | AnalyzerValueType::Array,
+             AnalyzerValueType::String,
+             &GeoPointAnalyzer::store };
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -1199,6 +1206,13 @@ AnalyzerPool::Builder::make(
 AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
   : _cache(DEFAULT_POOL_SIZE),
     _name(name) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validation for name - should  be only normalized or static!
+  auto splitted = IResearchAnalyzerFeature::splitAnalyzerName(_name);
+  if (splitted.first.empty()) {
+    TRI_ASSERT(STATIC_ANALYZERS_NAMES.find(name) != STATIC_ANALYZERS_NAMES.end()); // This should be static analyzer
+  }
+#endif
 }
 
 bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
@@ -1665,7 +1679,7 @@ Result IResearchAnalyzerFeature::emplace(
       return res;
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -1685,9 +1699,9 @@ Result IResearchAnalyzerFeature::emplace(
       }
 
       // persist only on coordinator and single-server while not in recovery
-      if ((!engine || !engine->inRecovery()) // do not persist during recovery
-          && (ServerState::instance()->isCoordinator() // coordinator
-              || ServerState::instance()->isSingleServer())) {// single-server
+      if ((!engine.inRecovery())  // do not persist during recovery
+          && (ServerState::instance()->isCoordinator()          // coordinator
+              || ServerState::instance()->isSingleServer())) {  // single-server
         res = storeAnalyzer(*pool);
       }
 
@@ -1747,8 +1761,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       return cleanupResult;
     }
   }
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine && !engine->inRecovery());
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  TRI_ASSERT(!engine.inRecovery());
   if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
     auto ctx = transaction::StandaloneContext::Create(vocbase);
@@ -1847,12 +1861,12 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     if (!res.ok()) {
       return res;
     }
-    
+
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine && !engine->inRecovery());
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
     auto cleanup = irs::make_finally([&erase, &inserted, this]()->void {
@@ -1910,7 +1924,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
             "' type '" + std::string(type) +
             "' properties '" + properties.toString() + "'" };
         }
-        TRI_ASSERT(engine && !engine->inRecovery());
+        TRI_ASSERT(!engine.inRecovery());
         // persist only on coordinator and single-server while not in recovery
         if (ServerState::instance()->isCoordinator() // coordinator
           || ServerState::instance()->isSingleServer()) {// single-server
@@ -2050,16 +2064,15 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name,
     TRI_vocbase_t const& activeVocbase,
-    TRI_vocbase_t const& systemVocbase,
     arangodb::QueryAnalyzerRevisions const& revision,
     bool onlyCached /*= false*/) const {
-  auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
+  auto const normalizedName = normalize(name, activeVocbase.name(), true);
 
   auto const split = splitAnalyzerName(normalizedName);
 
   if (!split.first.null() &&
       split.first != activeVocbase.name() &&
-      split.first != systemVocbase.name()) {
+      split.first != arangodb::StaticStrings::SystemDatabase) {
     // accessing local analyzer from within another database
     return nullptr;
   }
@@ -2085,7 +2098,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
 
-
+        static_assert(STATIC_ANALYZERS_NAMES.begin()->first == irs::type<IdentityAnalyzer>::name(), "Identity analyzer is misplaced");
         if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
                                  VPackSlice::emptyObjectSlice(),
                                  AnalyzersRevision::MIN,
@@ -2108,11 +2121,6 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       // register the text analyzers
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-        irs::string_ref const locales[] = {
-          "de", "en", "es", "fi", "fr", "it",
-          "nl", "no", "pt", "ru", "sv", "zh"
-        };
-
         irs::flags const extraFeatures = {
           irs::type<irs::frequency>::get(),
           irs::type<irs::norm>::get(),
@@ -2121,30 +2129,24 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         irs::string_ref const type("text");
 
-        std::string name;
         VPackBuilder properties;
-        for (auto const& locale : locales) {
-          // "text_<locale>"
-          {
-            name = "text_";
-            name.append(locale.c_str(), locale.size());
-          }
-
+        static_assert(STATIC_ANALYZERS_NAMES.size() > 1, "Static analyzer count too low");
+        for (auto staticName = (STATIC_ANALYZERS_NAMES.cbegin()+1); staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
           // { locale: "<locale>.UTF-8", stopwords: [] }
           {
             properties.clear();
             VPackObjectBuilder rootScope(&properties);
-            properties.add("locale", VPackValue(std::string(locale) + ".UTF-8"));
+            properties.add("locale", VPackValue(std::string(staticName->second) + ".UTF-8"));
             VPackArrayBuilder stopwordsArrayScope(&properties, "stopwords");
           }
 
-          auto pool = std::make_shared<AnalyzerPool>(name);
+          auto pool = std::make_shared<AnalyzerPool>(staticName->first);
 
           if (!pool->init(type, properties.slice(), AnalyzersRevision::MIN, extraFeatures)) {
             LOG_TOPIC("e25f5", WARN, iresearch::TOPIC)
                 << "failure creating an arangosearch static analyzer instance "
                    "for name '"
-                << name << "'";
+                << std::string(staticName->first) << "'";
 
             // this should never happen, treat as an assertion failure
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer instance");
@@ -2193,10 +2195,10 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     }
 
     auto& dbFeature = server().getFeature<DatabaseFeature>();
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto* vocbase = dbFeature.lookupDatabase(database);
     if (!vocbase) {
-      if (engine && engine->inRecovery()) {
+      if (engine.inRecovery()) {
         return {}; // database might not have come up yet
       }
       return {
@@ -2361,13 +2363,13 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
     auto databaseKey = // database key used in '_lastLoad'
       irs::make_hashed_ref(database, std::hash<irs::string_ref>());
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto itr = _lastLoad.find(databaseKey); // find last update timestamp
 
     auto* vocbase = dbFeature.lookupDatabase(database);
 
     if (!vocbase) {
-      if (engine && engine->inRecovery()) {
+      if (engine.inRecovery()) {
         return {}; // database might not have come up yet
       }
       if (itr != _lastLoad.end()) {
@@ -2383,7 +2385,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
     AnalyzersRevision::Revision loadingRevision{getAnalyzersRevision(*vocbase, true)->getRevision()};
 
-    if (!engine || engine->inRecovery()) {
+    if (engine.inRecovery()) {
       // always load if inRecovery since collection contents might have changed
       // unless on db-server which does not store analyzer definitions in collections
       if (ServerState::instance()->isDBServer()) {
@@ -2467,7 +2469,10 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
 
       if (!res.ok()) {
-        return res; // caught error emplacing analyzer (abort further processing)
+        LOG_TOPIC("7cc7f", ERR, arangodb::iresearch::TOPIC)
+            << "analyzer '" << name
+            << "' ignored as emplace failed with reason:" << res.errorMessage();
+        return {};  // caught error emplacing analyzer  - skip it
       }
 
       if (result.second && result.first->second) {
@@ -2594,8 +2599,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
     irs::string_ref const& name, // analyzer name
-    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
-    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+    irs::string_ref const& activeVocbase, // fallback vocbase if not part of name
     bool expandVocbasePrefix /*= true*/) { // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
   auto& staticAnalyzers = getStaticAnalyzers();
 
@@ -2607,24 +2611,24 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
   if (expandVocbasePrefix) {
     if (split.first.null()) {
-      return normalizedAnalyzerName(activeVocbase.name(), split.second);
+      return normalizedAnalyzerName(activeVocbase, split.second);
     }
 
     if (split.first.empty()) {
-      return normalizedAnalyzerName(systemVocbase.name(), split.second);
+      return normalizedAnalyzerName(arangodb::StaticStrings::SystemDatabase, split.second);
     }
   } else {
     // .........................................................................
     // normalize vocbase such that active vocbase takes precedence over system
     // vocbase i.e. prefer NIL over EMPTY
     // .........................................................................
-    if (&systemVocbase == &activeVocbase ||
+    if (arangodb::StaticStrings::SystemDatabase == activeVocbase ||
         split.first.null() ||
-        (split.first == activeVocbase.name())) { // active vocbase
+        (split.first == activeVocbase)) { // active vocbase
       return split.second;
     }
 
-    if (split.first.empty() || split.first == systemVocbase.name()) { // system vocbase
+    if (split.first.empty() || split.first == arangodb::StaticStrings::SystemDatabase) { // system vocbase
       return normalizedAnalyzerName("", split.second);
     }
   }
@@ -2819,10 +2823,10 @@ Result IResearchAnalyzerFeature::remove(
         "' while removing arangosearch analyzer '" + std::string(name)+ "'" };
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
     // do not allow persistence while in recovery
-    if (engine && engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return { TRI_ERROR_INTERNAL,
                "failure to remove arangosearch analyzer '" + std::string(name) +
                "' configuration while storage engine in recovery" };
@@ -2926,7 +2930,6 @@ void IResearchAnalyzerFeature::start() {
   if (!isEnabled()) {
     return;
   }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we rely on having a system database
   if (server().hasFeature<SystemDatabaseFeature>()) {
@@ -2987,10 +2990,10 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
                pool.name() + "' configuration with 'null' type" };
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
     // do not allow persistence while in recovery
-    if (engine && engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return { TRI_ERROR_INTERNAL,
                "failure to persist arangosearch analyzer '" + pool.name() +
                "' configuration while storage engine in recovery" };

@@ -28,9 +28,11 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/StringRef.h>
-
 namespace arangodb {
+namespace velocypack {
+class HashedStringRef;
+class StringRef;
+}
 
 class StringHeap {
  public:
@@ -40,11 +42,9 @@ class StringHeap {
   explicit StringHeap(size_t blockSize);
   ~StringHeap();
 
-  /// @brief register a string
-  arangodb::velocypack::StringRef registerString(char const* ptr, size_t length);
-  arangodb::velocypack::StringRef registerString(arangodb::velocypack::StringRef const& str) {
-    return registerString(str.data(), str.size());
-  }
+  /// @brief register a string - implemented for StringRef and HashedStringRef
+  template <typename T>
+  T registerString(T const& str);
  
   /// @brief clear all data from the StringHeap, not releasing any occupied memory 
   /// the caller must make sure that nothing points into the data of the StringHeap
@@ -56,6 +56,9 @@ class StringHeap {
  private:
   /// @brief allocate a new block of memory
   void allocateBlock();
+
+  /// @brief register a string
+  char const* registerString(char const* data, size_t length);
 
  private:
   /// @brief already allocated string blocks

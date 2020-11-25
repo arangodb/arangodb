@@ -93,6 +93,7 @@ class Manager final {
     double expiryTime;  // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     std::string user;         /// user owning the transaction
+    std::string db;           /// database in which the transaction operates
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -125,7 +126,8 @@ class Manager final {
 
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                          velocypack::Slice trxOpts);
+                          velocypack::Slice trxOpts,
+                          bool isFollowerTransaction);
 
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
@@ -141,10 +143,10 @@ class Manager final {
   void returnManagedTrx(TransactionId) noexcept;
 
   /// @brief get the meta transasction state
-  transaction::Status getManagedTrxStatus(TransactionId) const;
+  transaction::Status getManagedTrxStatus(TransactionId, std::string const& database) const;
 
-  Result commitManagedTrx(TransactionId);
-  Result abortManagedTrx(TransactionId);
+  Result commitManagedTrx(TransactionId, std::string const& database);
+  Result abortManagedTrx(TransactionId, std::string const& database);
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
@@ -196,14 +198,16 @@ class Manager final {
 
  private:
   /// @brief performs a status change on a transaction using a timeout
-  Result statusChangeWithTimeout(TransactionId tid, transaction::Status status);
+  Result statusChangeWithTimeout(TransactionId tid, std::string const& database,
+                                 transaction::Status status);
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const {
     return std::hash<TransactionId>()(tid) % numBuckets;
   }
 
-  Result updateTransaction(TransactionId tid, transaction::Status status, bool clearServers);
+  Result updateTransaction(TransactionId tid, transaction::Status status,
+                           bool clearServers, std::string const& database = "" /* leave empty to operate across all databases */);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TransactionId, ManagedTrx const&)> const&) const;

@@ -152,14 +152,14 @@ namespace iresearch {
 struct IResearchView::ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice const& definition) const override {
-    auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+    auto& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
     auto& properties = definition.isObject()
                            ? definition
                            : arangodb::velocypack::Slice::emptyObjectSlice();  // if no 'info' then assume defaults
     auto links = properties.hasKey(StaticStrings::LinksField)
                      ? properties.get(StaticStrings::LinksField)
                      : arangodb::velocypack::Slice::emptyObjectSlice();
-    auto res = engine && engine->inRecovery()
+    auto res = engine.inRecovery()
                    ? arangodb::Result()  // do not validate if in recovery
                    : IResearchLinkHelper::validateLinks(vocbase, links);
 
@@ -752,15 +752,8 @@ arangodb::Result IResearchView::commit() {
 }
 
 void IResearchView::open() {
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
-  if (engine) {
-    _inRecovery = engine->inRecovery();
-  } else {
-    LOG_TOPIC("8b864", WARN, arangodb::iresearch::TOPIC)
-      << "failure to get storage engine while opening arangosearch view: " << name();
-    // assume not inRecovery()
-  }
+  auto& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  _inRecovery = engine.inRecovery();
 }
 
 arangodb::Result IResearchView::properties( // update properties
@@ -1017,7 +1010,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
               TRI_ERROR_FORBIDDEN,
               std::string("while updating arangosearch definition, error: "
                           "collection '") +
-                  collection->name() + "' not authorised for read access");
+                  collection->name() + "' not authorized for read access");
         }
       }
     }

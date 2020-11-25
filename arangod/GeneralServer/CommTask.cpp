@@ -29,7 +29,6 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/compile-time-strlen.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -60,7 +59,7 @@ std::string const ApiUser("/_api/user/");
 std::string const Open("/_open/");
 
 inline bool startsWith(std::string const& path, char const* other) {
-  size_t const size = arangodb::compileTimeStrlen(other);
+  size_t const size = std::char_traits<char>::length(other);
 
   return (size <= path.size() &&
           path.compare(0, size, other, size) == 0);
@@ -90,26 +89,20 @@ CommTask::~CommTask() = default;
 
 namespace {
 TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-
   // get database name from request
-  std::string const& dbName = req.databaseName();
-
-  if (dbName.empty()) {
+  if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database name
     // as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
-    return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
 
-  return databaseFeature->useDatabase(dbName);
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
+  return databaseFeature->useDatabase(req.databaseName());
 }
-}  // namespace
 
 /// Set the appropriate requestContext
-namespace {
 bool resolveRequestContext(GeneralRequest& req) {
-  TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(req);
+  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -387,6 +380,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     }
 
     if (ok) {
+      // always return HTTP 202 Accepted
       auto resp = createResponse(rest::ResponseCode::ACCEPTED, messageId);
       if (jobId > 0) {
         // return the job id we just created
@@ -412,18 +406,14 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();
  
-  {
-    std::lock_guard<std::mutex> guard(_statisticsMutex);
-    return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
-  }
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
+  return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
 }
-
 
 RequestStatistics::Item const& CommTask::statistics(uint64_t id) {
   std::lock_guard<std::mutex> guard(_statisticsMutex);
   return _statisticsMap[id];
 }
-
 
 RequestStatistics::Item CommTask::stealStatistics(uint64_t id) {
   RequestStatistics::Item result;
@@ -483,10 +473,8 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-// Execute a request either on the network thread or put it in a background
-// thread. Depending on the number of running threads requests may be queued
-// and scheduled later when the number of used threads decreases
-
+// Execute a request by queueing it in the scheduler and having it executed via
+// a scheduler worker thread eventually.
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
   handler->statistics().SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
@@ -548,10 +536,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the access rights for a specified path
-////////////////////////////////////////////////////////////////////////////////
-
 CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
                                        GeneralRequest& req) const {
   if (!_auth->isActive()) {
@@ -560,16 +545,15 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   }
 
   std::string const& path = req.requestPath();
-  std::string const& username = req.user();
-  bool userAuthenticated = req.authenticated();
-
+  
   auto const& ap = token.allowedPaths();
   if (!ap.empty()) {
     if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
       return Flow::Abort;
     }
   }
-
+  
+  bool userAuthenticated = req.authenticated();
   Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
@@ -611,6 +595,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
 
     if (result == Flow::Abort) {
+      std::string const& username = req.user();
+
       if (path == "/" || StringUtils::isPrefix(path, Open) ||
           StringUtils::isPrefix(path, AdminAardvark) ||
           path == "/_admin/server/availability") {

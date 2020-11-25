@@ -203,7 +203,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       return Result(res);
     }
 
-    resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
+    resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
     _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
     
     if (!useVst) {
@@ -242,17 +242,15 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << ex.what();
+    << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
-    << "caught velocypack exception in " << name() << ": "
+    << "maintainer mode: caught velocypack exception in " << name() << ": "
     << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
     (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
      ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -262,25 +260,22 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
-    << "caught memory exception in " << name() << ": "
+    << "maintainer mode: caught memory exception in " << name() << ": "
     << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << ex.what();
+    << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
+    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -361,7 +356,6 @@ void RestHandler::prepareEngine() {
 
   if (_canceled) {
     _state = HandlerState::FAILED;
-    _statistics.SET_EXECUTE_ERROR();
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
@@ -374,14 +368,11 @@ void RestHandler::prepareEngine() {
     _state = HandlerState::EXECUTE;
     return;
   } catch (Exception const& ex) {
-    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (std::exception const& ex) {
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -433,17 +424,15 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbb", WARN, arangodb::Logger::FIXME)
-        << "caught velocypack exception in " << name() << ": "
+        << "maintainer mode: caught velocypack exception in " << name() << ": "
         << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
          ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -453,25 +442,22 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f5", WARN, arangodb::Logger::FIXME)
-        << "caught memory exception in " << name() << ": "
+        << "maintainer mode: caught memory exception in " << name() << ": "
         << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
+    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -480,7 +466,7 @@ void RestHandler::executeEngine(bool isContinue) {
 }
 
 void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
-                                std::string_view const message) {
+                                std::string_view const errorMessage) {
   resetResponse(code);
 
   if (_request->requestType() != rest::RequestType::HEAD) {
@@ -490,7 +476,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       builder.add(VPackValue(VPackValueType::Object));
       builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
       builder.add(StaticStrings::Error, VPackValue(true));
-      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
       builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
       builder.close();
 
@@ -525,13 +511,13 @@ void RestHandler::compressResponse() {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandler::generateError(rest::ResponseCode code, int errorCode) {
-  char const* message = TRI_errno_string(errorCode);
+void RestHandler::generateError(rest::ResponseCode code, int errorNumber) {
+  char const* message = TRI_errno_string(errorNumber);
 
   if (message != nullptr) {
-    generateError(code, errorCode, std::string(message));
+    generateError(code, errorNumber, std::string_view(message));
   } else {
-    generateError(code, errorCode, std::string("unknown error"));
+    generateError(code, errorNumber, std::string_view("unknown error"));
   }
 }
 

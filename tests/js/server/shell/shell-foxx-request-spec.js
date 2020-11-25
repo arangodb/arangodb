@@ -6,6 +6,8 @@ const crypto = require('@arangodb/crypto');
 const SyntheticRequest = require('@arangodb/foxx/router/request');
 const createNativeRequest = require('@arangodb/foxx/test-utils').createNativeRequest;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('SyntheticRequest', function () {
   describe('protocol/secure', function () {
     it('defaults to the protocol of the native request for http', function () {

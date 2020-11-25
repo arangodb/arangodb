@@ -54,9 +54,9 @@ RestStatus RestCompactHandler::execute() {
   bool changeLevel = _request->parsedValue("changeLevel", false);
   bool compactBottomMostLevel = _request->parsedValue("compactBottomMostLevel", false);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  Result res = engine->compactAll(changeLevel, compactBottomMostLevel);
+  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
   if (res.fail()) {
     generateError(
         GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(), std::string("database compaction failied: ") + res.errorMessage());

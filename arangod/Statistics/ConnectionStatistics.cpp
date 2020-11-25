@@ -64,7 +64,7 @@ void ConnectionStatistics::initialize() {
 ConnectionStatistics::Item ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
-  if (StatisticsFeature::enabled() && _freeList.pop(statistics)) {
+  if (_freeList.pop(statistics)) {
     return Item{ statistics };
   }
 
@@ -72,13 +72,10 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() {
 }
 
 void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
-  if (!StatisticsFeature::enabled()) {
-    // all the below objects may be deleted if we don't have statistics enabled
-    return;
-  }
-
   snapshot.httpConnections = statistics::HttpConnections;
   snapshot.totalRequests = statistics::TotalRequests;
+  snapshot.totalRequestsSuperuser = statistics::TotalRequestsSuperuser;
+  snapshot.totalRequestsUser = statistics::TotalRequestsUser;
   snapshot.methodRequests = statistics::MethodRequests;
   snapshot.asyncRequests = statistics::AsyncRequests;
   snapshot.connectionTime = statistics::ConnectionTimeDistribution;

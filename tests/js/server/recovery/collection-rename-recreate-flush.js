@@ -40,7 +40,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery1');
-  db.UnitTestsRecovery1.properties({ journalSize: 8 * 1024 * 1024, doCompact: false });
 
   for (i = 0; i < 1000; ++i) {
     db.UnitTestsRecovery1.save({ a: i });

@@ -50,8 +50,8 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Indexes/Index.h"
+#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -59,6 +59,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
@@ -1020,8 +1021,6 @@ void ClusterInfo::loadPlan() {
   //      ],
   //      "isSmart": false,
   //      "isSystem": true,
-  //      "isVolatile": false,
-  //      JOURNAL_SIZE: 1048576,
   //      "keyOptions": {
   //        "allowUserKeys": true,
   //        "lastValue": 0,
@@ -1043,7 +1042,7 @@ void ClusterInfo::loadPlan() {
   //      "status": 3,
   //      "statusString": "loaded",
   //      "type": 2,
-  //      StaticStrings::WaitForSyncString: false
+  //      "waitForSync": false
   //    },...
   //  },...
   // }}
@@ -1062,8 +1061,8 @@ void ClusterInfo::loadPlan() {
     if (!collectionsSlice.hasKey(collectionsPath)) {
       auto it = newCollections.find(databaseName);
       if (it != newCollections.end()) {
-        for (auto collection : *(it->second)) {
-          auto collectionId = collection.first;
+        for (auto const& collection : *(it->second)) {
+          auto& collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
@@ -2469,7 +2468,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         LOG_TOPIC("98762", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
             << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << infos[0].name;
+            << " first collection name: " << ((infos.size() > 0) ? infos[0].name : std::string());
         return res;
       }
     }
@@ -2593,7 +2592,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         LOG_TOPIC("98767", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
             << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << infos[0].name;
+            << " first collection name: " << (infos.size() > 0 ? infos[0].name : std::string());
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
@@ -3180,8 +3179,8 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     std::vector<std::string>{
       AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
-  if (!acb->slice()[0].hasKey(
-        {AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
+  if (!acb->slice()[0].hasKey(std::vector<std::string>{
+        AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
@@ -3632,10 +3631,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
     return collectionFromPlan.state();
   }
 
+  auto& engine = _server.getFeature<EngineSelectorFeature>().engine();
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (true == arangodb::Index::Compare(slice, other)) {
+    if (true == arangodb::Index::Compare(engine, slice, other, collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);
         resultBuilder.add(VPackObjectIterator(other));
@@ -4312,7 +4312,7 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }
@@ -4363,7 +4363,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }
@@ -4814,6 +4814,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
   int tries = 0;
+  TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
+    // Simulate 3 failed tries below.
+    return std::make_shared<std::vector<ShardID>>();
+  }
   while (true) {
     {
       // Get the sharding keys and the number of shards:

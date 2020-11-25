@@ -32,7 +32,7 @@
 const internal = require('internal');
 const inspect = internal.inspect;
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const cu = require('@arangodb/testutils/crash-utils');
 const yaml = require('js-yaml');
 
