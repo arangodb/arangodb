@@ -132,7 +132,7 @@ class Supervision : public arangodb::Thread {
  private:
 
   /// @brief get reference to the spearhead snapshot
-  Node const& snapshot() const ;
+  Node const& snapshot() const;
 
   /// @brief decide, if we can start supervision ahead of armageddon delay
   bool earlyBird() const;
