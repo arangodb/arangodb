@@ -56,7 +56,6 @@ devel
   availability API is probed. 
   
   nb: the default value for the scheduler queue length is 4096.
->>>>>>> 29ba9bd83fb4de51aed3a0fe2b49441d6e32e1f0
 
 * Added metrics for the system CPU usage:
   - `arangodb_server_statistics_user_percent`: Percentage of time that the
