@@ -57,18 +57,6 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
   return _memberToUpdate;
 }
 
-BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
-                                         std::vector<IndexAccessor> indexInfo)
-    : _temporaryVariable(tmpVar), _indexInformation(std::move(indexInfo)) {}
-
-aql::Variable const* BaseProviderOptions::tmpVar() const {
-  return _temporaryVariable;
-}
-
-std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
-  return _indexInformation;
-}
-
 SingleServerProvider::Step::Step(VertexType v)
     : _vertex(v), _edge(std::nullopt) {}
 

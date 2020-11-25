@@ -28,6 +28,7 @@
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 
@@ -53,37 +54,6 @@ class HashedStringRef;
 
 namespace graph {
 
-// Todo this needs to be placed in a more public space.
-// It is not depending on this provider
-struct IndexAccessor {
-  IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-                std::optional<size_t> memberToUpdate);
-
-  aql::AstNode* getCondition() const;
-  transaction::Methods::IndexHandle indexHandle() const;
-  std::optional<size_t> getMemberToUpdate() const;
-
- private:
-  transaction::Methods::IndexHandle _idx;
-  aql::AstNode* _indexCondition;
-  std::optional<size_t> _memberToUpdate;
-};
-
-struct BaseProviderOptions {
- public:
-  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo);
-
-  aql::Variable const* tmpVar() const;
-  std::vector<IndexAccessor> const& indexInformations() const;
-
- private:
-  // The temporary Variable used in the Indexes
-  aql::Variable const* _temporaryVariable;
-  // One entry per collection, ShardTranslation needs
-  // to be done by Provider
-  std::vector<IndexAccessor> _indexInformation;
-};
-
 // TODO we need to control from the outside if and which ports of the vertex
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
@@ -100,7 +70,8 @@ struct SingleServerProvider {
       // NUr implementiert wenn baseOptions>produceVertices()
       // Sonst add `null`.
 
-      void addToBuilder(SingleServerProvider& provider, arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(SingleServerProvider& provider,
+                        arangodb::velocypack::Builder& builder) const;
 
       VertexType data() const;
 
@@ -120,7 +91,8 @@ struct SingleServerProvider {
      public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
 
-      void addToBuilder(SingleServerProvider& provider, arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(SingleServerProvider& provider,
+                        arangodb::velocypack::Builder& builder) const;
 
      private:
       EdgeDocumentToken data() const;
@@ -147,7 +119,7 @@ struct SingleServerProvider {
     bool isLooseEnd() const { return false; }
 
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
-    
+
    private:
     Vertex _vertex;
     std::optional<Edge> _edge;
@@ -169,8 +141,8 @@ struct SingleServerProvider {
 
   void insertVertexIntoResult(VertexType vertex, arangodb::velocypack::Builder& builder);
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
-  
-  void destroyEngines() {}; // TODO: remove after refactor
+
+  void destroyEngines(){};  // TODO: remove after refactor
 
   [[nodiscard]] transaction::Methods* trx();
 
