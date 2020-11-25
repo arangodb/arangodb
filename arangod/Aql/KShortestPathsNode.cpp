@@ -38,9 +38,11 @@
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KPathFinder.h"
 #include "Graph/KShortestPathsFinder.h"
+#include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
@@ -49,7 +51,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Graph/PathManagement/PathResult.h>
 #include <memory>
 
 using namespace arangodb;
@@ -335,31 +336,39 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
     if (opts->refactor()) {
-      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to be changed in the future)
-      // create BaseProviderOptions
+      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to be
+      // changed in the future) create BaseProviderOptions
       BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes());
       BaseProviderOptions backwardProviderOptions(opts->tmpVar(), buildReverseUsedIndexes());
 
-      arangodb::graph::TwoSidedEnumeratorOptions lolOptions{opts->minDepth, opts->maxDepth};
+      arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
+                                                                   opts->maxDepth};
 
       using KPathRefactored =
           TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
 
-      auto kPathUnique =
-          std::make_unique<KPathRefactored>(SingleServerProvider{opts->query(), forwardProviderOptions},
-                                            SingleServerProvider{opts->query(), backwardProviderOptions},
-                                            std::move(lolOptions));
+      // TODO: Cleanup this later - manual switch here between KPathRefactored and KPathRefactoredTracer
+      using KPathRefactoredTracer =
+          TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                             PathStore<SingleServerProvider::Step>, SingleServerProvider>;
+
+      auto kPathUnique = std::make_unique<KPathRefactoredTracer>(
+          SingleServerProvider{opts->query(), forwardProviderOptions},
+          SingleServerProvider{opts->query(), backwardProviderOptions},
+          std::move(enumeratorOptions));
 
       auto executorInfos =
-          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(), std::move(kPathUnique),
-                                      std::move(sourceInput), std::move(targetInput));
-      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
+          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                      std::move(kPathUnique), std::move(sourceInput),
+                                      std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredTracer>>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
       auto finder = std::make_unique<graph::KPathFinder>(*opts);
       auto executorInfos =
-          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(), std::move(finder),
-                                      std::move(sourceInput), std::move(targetInput));
+          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                      std::move(finder), std::move(sourceInput),
+                                      std::move(targetInput));
       return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
@@ -430,13 +439,15 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         case TRI_EDGE_IN: {
           // Index 2 is _to edge index
           auto idx = _edgeColls[i]->getCollection()->getIndexes().at(2);
-          indexAccessors.emplace_back(idx, _toCondition->clone(options()->query().ast()), 0);
+          indexAccessors.emplace_back(idx,
+                                      _toCondition->clone(options()->query().ast()), 0);
           break;
         }
         case TRI_EDGE_OUT: {
           // Index 2 is _from edge index
           auto idx = _edgeColls[i]->getCollection()->getIndexes().at(1);
-          indexAccessors.emplace_back(idx, _fromCondition->clone(options()->query().ast()), 0);
+          indexAccessors.emplace_back(idx,
+                                      _fromCondition->clone(options()->query().ast()), 0);
           break;
         }
         case TRI_EDGE_ANY:
@@ -466,13 +477,15 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
         case TRI_EDGE_IN: {
           // Index 2 is _from edge index
           auto idx = _edgeColls[i]->getCollection()->getIndexes().at(1);
-          indexAccessors.emplace_back(idx, _fromCondition->clone(options()->query().ast()), 0);
+          indexAccessors.emplace_back(idx,
+                                      _fromCondition->clone(options()->query().ast()), 0);
           break;
         }
         case TRI_EDGE_OUT: {
           // Index 2 is _to edge index
           auto idx = _edgeColls[i]->getCollection()->getIndexes().at(2);
-          indexAccessors.emplace_back(idx, _toCondition->clone(options()->query().ast()), 0);
+          indexAccessors.emplace_back(idx,
+                                      _toCondition->clone(options()->query().ast()), 0);
           break;
         }
         case TRI_EDGE_ANY:

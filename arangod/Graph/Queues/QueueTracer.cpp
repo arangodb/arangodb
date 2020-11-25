@@ -23,8 +23,10 @@
 
 #include "QueueTracer.h"
 
-#include "Basics/system-functions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/system-functions.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Queues/FifoQueue.h"
 #include "Logger/LogMacros.h"
 
 #include <iomanip>
@@ -32,8 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraceEntry::TraceEntry() {
-}
+TraceEntry::TraceEntry() {}
 TraceEntry::~TraceEntry() = default;
 void TraceEntry::addTiming(double timeTaken) {
   _count++;
@@ -52,20 +53,20 @@ auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream& {
   if (entry._count == 0) {
     out << "not called";
   } else {
-    out << "calls: " << entry._count  << " min: " << std::setprecision(2) << std::fixed << entry._min / 1000 << "ms max: " << entry._max / 1000
-        << "ms avg: " << entry._total / entry._count / 1000 << "ms total: " << entry._total / 1000 << "ms";
+    out << "calls: " << entry._count << " min: " << std::setprecision(2)
+        << std::fixed << entry._min / 1000 << "ms max: " << entry._max / 1000
+        << "ms avg: " << entry._total / entry._count / 1000
+        << "ms total: " << entry._total / 1000 << "ms";
   }
   return out;
 }
-}
-}
+}  // namespace graph
+}  // namespace arangodb
 
+template <class QueueImpl>
+QueueTracer<QueueImpl>::QueueTracer() : _impl{} {}
 
-template<class QueueImpl>
-QueueTracer<QueueImpl>::QueueTracer() :_impl{} {
-}
-
-template<class QueueImpl>
+template <class QueueImpl>
 QueueTracer<QueueImpl>::~QueueTracer() {
   LOG_TOPIC("f39e8", TRACE, Logger::GRAPHS) << "Queue Trace report:";
   for (auto const& [name, trace] : _stats) {
@@ -73,51 +74,53 @@ QueueTracer<QueueImpl>::~QueueTracer() {
   }
 }
 
-template<class QueueImpl>
+template <class QueueImpl>
 void QueueTracer<QueueImpl>::clear() {
   double start = TRI_microtime();
   TRI_DEFER(_stats["clear"].addTiming(TRI_microtime() - start));
   return _impl.clear();
 }
 
-template<class QueueImpl>
+template <class QueueImpl>
 void QueueTracer<QueueImpl>::append(typename QueueImpl::Step step) {
   double start = TRI_microtime();
   TRI_DEFER(_stats["append"].addTiming(TRI_microtime() - start));
   return _impl.append(std::move(step));
 }
 
-template<class QueueImpl>
+template <class QueueImpl>
 bool QueueTracer<QueueImpl>::hasProcessableElement() const {
   double start = TRI_microtime();
   TRI_DEFER(_stats["hasProcessableElement"].addTiming(TRI_microtime() - start));
   return _impl.hasProcessableElement();
 }
 
-template<class QueueImpl>
+template <class QueueImpl>
 size_t QueueTracer<QueueImpl>::size() const {
   double start = TRI_microtime();
   TRI_DEFER(_stats["size"].addTiming(TRI_microtime() - start));
   return _impl.size();
 }
 
-template<class QueueImpl>
+template <class QueueImpl>
 bool QueueTracer<QueueImpl>::isEmpty() const {
   double start = TRI_microtime();
   TRI_DEFER(_stats["isEmpty"].addTiming(TRI_microtime() - start));
   return _impl.isEmpty();
 }
 
-template<class QueueImpl>
+template <class QueueImpl>
 auto QueueTracer<QueueImpl>::getLooseEnds() -> std::vector<typename QueueImpl::Step*> {
   double start = TRI_microtime();
   TRI_DEFER(_stats["getLooseEnds"].addTiming(TRI_microtime() - start));
   return _impl.getLooseEnds();
 }
 
-template<class QueueImpl>
+template <class QueueImpl>
 auto QueueTracer<QueueImpl>::pop() -> typename QueueImpl::Step {
   double start = TRI_microtime();
   TRI_DEFER(_stats["pop"].addTiming(TRI_microtime() - start));
   return _impl.pop();
 }
+
+template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>>;

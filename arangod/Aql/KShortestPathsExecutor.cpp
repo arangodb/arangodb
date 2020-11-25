@@ -36,6 +36,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Transaction/Helpers.h"
@@ -64,10 +65,8 @@ static bool isValidId(VPackSlice id) {
 
 template <class FinderType>
 KShortestPathsExecutorInfos<FinderType>::KShortestPathsExecutorInfos(
-    RegisterId outputRegister,
-    QueryContext& query,
-    std::unique_ptr<FinderType>&& finder,
-    InputVertex&& source, InputVertex&& target)
+    RegisterId outputRegister, QueryContext& query,
+    std::unique_ptr<FinderType>&& finder, InputVertex&& source, InputVertex&& target)
     : _query(query),
       _finder(std::move(finder)),
       _source(std::move(source)),
@@ -141,7 +140,9 @@ auto KShortestPathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 
 template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::cache() const -> graph::TraverserCache* {
-  if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+  if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                                                              PathStore<SingleServerProvider::Step>, SingleServerProvider>> ||
+                std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
     TRI_ASSERT(false);
     return nullptr;
   } else {
@@ -261,7 +262,9 @@ template <class FinderType>
 auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) -> void {
   //
 
-  if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+  if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                                                              PathStore<SingleServerProvider::Step>, SingleServerProvider>> ||
+                std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
     transaction::BuilderLeaser tmp{&_trx};
     tmp->clear();
 
@@ -314,7 +317,9 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
         try {
           std::string idString;
           // TODO:  calculate expression once e.g. header constexpr bool and check then here
-          if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+          if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                                                                      PathStore<SingleServerProvider::Step>, SingleServerProvider>> ||
+                        std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
             idString = _trx.extractIdString(in.slice());
           } else {
             idString = _finder.options().trx()->extractIdString(in.slice());
@@ -335,7 +340,9 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
         id = in.slice();
         // Validation
         if (!::isValidId(id)) {
-          if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+          if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                                                                      PathStore<SingleServerProvider::Step>, SingleServerProvider>> ||
+                        std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
             TRI_ASSERT(false);  // TODO: MISSING!
           } else {
             _finder.options().query().warnings().registerWarning(
@@ -349,7 +356,9 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
         }
         return true;
       } else {
-        if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+        if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                                                                    PathStore<SingleServerProvider::Step>, SingleServerProvider>> ||
+                      std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
           TRI_ASSERT(false);  // TODO: MISSING!
         } else {
           _finder.options().query().warnings().registerWarning(
@@ -365,7 +374,9 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
     case InputVertex::Type::CONSTANT: {
       id = builder.slice();
       if (!::isValidId(id)) {
-        if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
+        if constexpr (std::is_same_v<FinderType, TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                                                                    PathStore<SingleServerProvider::Step>, SingleServerProvider>> ||
+                      std::is_same_v<FinderType, TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>) {
           TRI_ASSERT(false);  // TODO: MISSING!
         } else {
           _finder.options().query().warnings().registerWarning(
@@ -385,10 +396,22 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
 
 template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;
 template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KPathFinder>;
+
+// FifoQueue Infos Without Tracer
 template class ::arangodb::aql::KShortestPathsExecutorInfos<
     TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>;
 
+// FifoQueue Infos With Tracer
+template class ::arangodb::aql::KShortestPathsExecutorInfos<
+    TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>;
+
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>;
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KPathFinder>;
+
+// FifoQueue Without Tracer
+template class ::arangodb::aql::KShortestPathsExecutor<
+    TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>;
+
+// FifoQueue With Tracer
 template class ::arangodb::aql::KShortestPathsExecutor<
     TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>>;

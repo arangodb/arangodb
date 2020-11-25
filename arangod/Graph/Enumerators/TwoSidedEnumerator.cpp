@@ -34,6 +34,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
@@ -149,8 +150,10 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   auto neighbors = _provider.expand(step, previous);
-  
-  LOG_TOPIC("a092f", DEBUG, Logger::GRAPHS) << (_direction == Direction::FORWARD ? "Forward" : "Backward") << " expanding step " << step << " with " << neighbors.size() << " neighbors.";
+
+  LOG_TOPIC("a092f", DEBUG, Logger::GRAPHS)
+      << (_direction == Direction::FORWARD ? "Forward" : "Backward")
+      << " expanding step " << step << " with " << neighbors.size() << " neighbors.";
 
   for (auto& n : neighbors) {
     // Check if other Ball knows this Vertex.
@@ -178,13 +181,15 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResu
   auto [first, last] = _shell.equal_range(match);
   if (_direction == FORWARD) {
     while (first != last) {
-      LOG_TOPIC("6a01b", DEBUG, Logger::GRAPHS) << "Found path " << *first << " and " << match;
+      LOG_TOPIC("6a01b", DEBUG, Logger::GRAPHS)
+          << "Found path " << *first << " and " << match;
       results.push_back(std::make_pair(*first, match));
       first++;
     }
   } else {
     while (first != last) {
-      LOG_TOPIC("d1830", DEBUG, Logger::GRAPHS) << "Found path " << match << " and " << *first;
+      LOG_TOPIC("d1830", DEBUG, Logger::GRAPHS)
+          << "Found path " << match << " and " << *first;
       results.push_back(std::make_pair(match, *first));
       first++;
     }
@@ -202,7 +207,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::provider() -> ProviderType& {
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::provider()
+    -> ProviderType& {
   return _provider;
 }
 
@@ -355,4 +361,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::fetchResults() 
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>,
+    ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
     ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider>;

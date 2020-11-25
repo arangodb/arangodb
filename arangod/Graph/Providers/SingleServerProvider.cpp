@@ -27,9 +27,6 @@
 #include "Aql/QueryContext.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Transaction/Helpers.h"
-//#include "Graph/TraverserCacheFactory.h" // TODO: remove
-//#include "Graph/TraverserDocumentCache.h" // TODO: remove
-//#include "Cache/CacheManagerFeature.h" // TODO: remove
 
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"

@@ -74,20 +74,25 @@
 #include "Basics/system-functions.h"
 #include "Transaction/Context.h"
 
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
+
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
 
-#include <Graph/Enumerators/TwoSidedEnumerator.h>
-#include <Graph/PathManagement/PathStore.h>
-#include <Graph/Providers/SingleServerProvider.h>
-#include <Graph/Queues/FifoQueue.h>
-
 #include <type_traits>
 
 using KPathRefactored = arangodb::graph::TwoSidedEnumerator<
     arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>,
+    arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>, arangodb::graph::SingleServerProvider>;
+
+using KPathRefactoredTracer = arangodb::graph::TwoSidedEnumerator<
+    arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>>,
     arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>, arangodb::graph::SingleServerProvider>;
 
 using namespace arangodb;
@@ -546,7 +551,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
               KShortestPathsExecutor<graph::KPathFinder>, KShortestPathsExecutor<graph::KShortestPathsFinder>,
-              KShortestPathsExecutor<KPathRefactored>, ParallelUnsortedGatherExecutor,
+              KShortestPathsExecutor<KPathRefactored>, KShortestPathsExecutor<KPathRefactoredTracer>, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
               AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
@@ -1892,6 +1897,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<arangodb::graph::KPathFinder>>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>;
+template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredTracer>>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
