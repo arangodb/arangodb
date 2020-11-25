@@ -28,7 +28,6 @@
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
-#include "Graph/ShortestPathFinder.h"  // TODO: Change / remove / minimize
 #include "Transaction/Methods.h"
 
 #include <set>
@@ -65,10 +64,10 @@ class TwoSidedEnumerator {
     auto clear() -> void;
     auto reset(VertexRef center) -> void;
     auto startNextDepth() -> void;
-    auto noPathLeft() const -> bool;
-    auto getDepth() const -> size_t;
-    auto shellSize() const -> size_t;
-    auto doneWithDepth() const -> bool;
+    [[nodiscard]] auto noPathLeft() const -> bool;
+    [[nodiscard]] auto getDepth() const -> size_t;
+    [[nodiscard]] auto shellSize() const -> size_t;
+    [[nodiscard]] auto doneWithDepth() const -> bool;
     auto testDepthZero(Ball const& other, ResultList& results) const -> void;
 
     auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void;
@@ -105,7 +104,7 @@ class TwoSidedEnumerator {
   TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
                      TwoSidedEnumeratorOptions&& options);
   TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
-  TwoSidedEnumerator(TwoSidedEnumerator&& other) = default;
+  TwoSidedEnumerator(TwoSidedEnumerator&& other) noexcept = default;
 
   ~TwoSidedEnumerator();
 
@@ -117,7 +116,7 @@ class TwoSidedEnumerator {
    * @return true There will be no further path.
    * @return false There is a chance that there is more data available.
    */
-  bool isDone() const;
+  [[nodiscard]] bool isDone() const;
 
   /**
    * @brief Reset to new source and target vertices.
@@ -156,10 +155,8 @@ class TwoSidedEnumerator {
   bool skipPath();
   auto destroyEngines() -> void {};  // TODO: remove me
 
-  TwoSidedEnumerator(void);
-
  private:
-  auto searchDone() const -> bool;
+  [[nodiscard]] auto searchDone() const -> bool;
   auto startNextDepth() -> void;
 
   // Ensure that we have fetched all vertices
