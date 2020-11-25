@@ -211,9 +211,9 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
     ProviderType&& forwardProvider, ProviderType&& backwardProvider,
     TwoSidedEnumeratorOptions&& options)
     : _options(std::move(options)),
-      _left{std::make_unique<Ball>(Direction::FORWARD, std::move(forwardProvider), _options)},
-      _right{std::make_unique<Ball>(Direction::BACKWARD, std::move(backwardProvider), _options)},
-      _resultPath{_left->provider(), _right->provider()} {}
+      _left{Direction::FORWARD, std::move(forwardProvider), _options},
+      _right{Direction::BACKWARD, std::move(backwardProvider), _options},
+      _resultPath{_left.provider(), _right.provider()} {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
@@ -250,13 +250,13 @@ template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef source,
                                                                        VertexRef target) {
   _results.clear();
-  _left.get()->reset(source);
-  _right.get()->reset(target);
+  _left.reset(source);
+  _right.reset(target);
   _resultPath.clear();
 
   // Special depth == 0 case
   if (_options.getMinDepth() == 0 && source == target) {
-    _left->testDepthZero(*_right.get(), _results);
+    _left.testDepthZero(_right, _results);
   }
 }
 
@@ -279,16 +279,16 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPa
     while (_results.empty() && !searchDone()) {
       _resultsFetched = false;
       if (_searchLeft) {
-        if (ADB_UNLIKELY(_left->doneWithDepth())) {
+        if (ADB_UNLIKELY(_left.doneWithDepth())) {
           startNextDepth();
         } else {
-          _left->computeNeighbourhoodOfNextVertex(*_right.get(), _results);
+          _left.computeNeighbourhoodOfNextVertex(_right, _results);
         }
       } else {
-        if (ADB_UNLIKELY(_right->doneWithDepth())) {
+        if (ADB_UNLIKELY(_right.doneWithDepth())) {
           startNextDepth();
         } else {
-          _right->computeNeighbourhoodOfNextVertex(*_left.get(), _results);
+          _right.computeNeighbourhoodOfNextVertex(_left, _results);
         }
       }
     }
@@ -299,8 +299,8 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPa
       auto [leftVertex, rightVertex] = _results.back();
 
       _resultPath.clear();
-      _left->buildPath(leftVertex, _resultPath);
-      _right->buildPath(rightVertex, _resultPath);
+      _left.buildPath(leftVertex, _resultPath);
+      _right.buildPath(rightVertex, _resultPath);
 
       // result done
       _results.pop_back();
@@ -328,27 +328,27 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::skipPath() {
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::startNextDepth()
     -> void {
-  if (_right->shellSize() < _left->shellSize()) {
+  if (_right.shellSize() < _left.shellSize()) {
     _searchLeft = false;
-    _right->startNextDepth();
+    _right.startNextDepth();
   } else {
     _searchLeft = true;
-    _left->startNextDepth();
+    _left.startNextDepth();
   }
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::searchDone() const
     -> bool {
-  return _left->noPathLeft() || _right->noPathLeft() ||
-         _left->getDepth() + _right->getDepth() > _options.getMaxDepth();
+  return _left.noPathLeft() || _right.noPathLeft() ||
+         _left.getDepth() + _right.getDepth() > _options.getMaxDepth();
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
-    _left->fetchResults(_results);
-    _right->fetchResults(_results);
+    _left.fetchResults(_results);
+    _right.fetchResults(_results);
   }
   _resultsFetched = true;
 }

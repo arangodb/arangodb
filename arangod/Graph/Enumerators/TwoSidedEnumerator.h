@@ -170,8 +170,8 @@ class TwoSidedEnumerator {
 
  private:
   GraphOptions _options;
-  std::unique_ptr<Ball> _left;   // TODO: check
-  std::unique_ptr<Ball> _right;  // TODO: check
+  Ball _left;
+  Ball _right;
   bool _searchLeft{true};
   ResultList _results{};
   bool _resultsFetched{false};
