@@ -250,12 +250,61 @@ function collectionInSubqeryRegressionSuite() {
     }
   };
 }
+
+function nonMaterializingViewRegressionSuite() {
+  const cname = "UnitTestCollection";
+  const vname = "UnitTestView";
+
+  const cleanup = () => {
+    try {
+      db._drop(cname);
+    } catch(e) {}
+    try {
+      db._dropView(vname);
+    } catch(e) {}
+  };
+
+  return {
+    setUp: function () {
+      cleanup();
+      db._create(cname);
+      // create a view on the collection, specifics here do not matter
+      db._createView(vname, "arangosearch", {links:{[cname]:{includeAllFields:true}}});
+      // We need more docs then batchSize, to have enough rows available in the view
+      const docs = [];
+      for (let i = 0; i < 1010; ++i) {
+        docs.push({});
+      }
+      db[cname].save(docs);
+    },
+
+    tearDown: function () {
+      cleanup();
+    },
+
+    testRowsWithoutRegisters: function() {
+      // This tests a logic assertion in the ExecutionBlock.
+      // If a Block (view node) HASMORE it is required to write something
+      // In this Query `d` is optimized away, so the Block will write
+      // empty rows only.
+      // This test requires that the Producer (View) can optimize away its output
+      // and the consumer (Subquery) cannot passthrough the Block.
+      // Hence all optimzation is turned off to guarantee these two stay connected.
+      const query = `FOR d IN hv LET p = (RETURN 1 + 1) RETURN 1`;
+      const res = db._query(query, {}, {optimizer: {rules: ["-all", "+spliced-subqueries"] }});
+      // This result was never wrong, the internal assertion is tested. 
+      assertEqual(res.toArray().length, 1010);
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(blockReturnRegressionSuite);
 jsunity.run(collectionInSubqeryRegressionSuite);
+jsunity.run(nonMaterializingViewRegressionSuite);
 
 return jsunity.done();
 
