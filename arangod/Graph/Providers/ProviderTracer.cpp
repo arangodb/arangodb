@@ -28,7 +28,6 @@
 #include "Logger/LogMacros.h"
 
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/FifoQueue.h"
 
 #include <iomanip>
 
