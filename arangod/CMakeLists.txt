@@ -193,6 +193,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Options/TwoSidedEnumeratorOptions.cpp
   Graph/Providers/SingleServerProvider.cpp
   Graph/Providers/BaseProviderOptions.cpp
+  Graph/Providers/ProviderTracer.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
 )
