@@ -42,6 +42,7 @@ namespace graph {
 
 template <class ProviderImpl>
 class ProviderTracer {
+ public:
   using Step = typename ProviderImpl::Step;
 
  public:
@@ -60,6 +61,11 @@ class ProviderTracer {
 
   void insertVertexIntoResult(VertexType vertex, arangodb::velocypack::Builder& builder);
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
+
+  void addVertexToBuilder(typename Step::Vertex const& vertex,
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
 
   void destroyEngines(){};  // TODO: remove after refactor
 

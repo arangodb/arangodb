@@ -24,6 +24,7 @@
 #include "./PathResult.h"
 #include "Basics/StaticStrings.h"
 
+#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 #include <velocypack/Builder.h>
@@ -82,11 +83,11 @@ auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder&
     VPackArrayBuilder vertices{&builder};
     // Write first part of the Path
     for (size_t i = 0; i < _numVerticesFromSourceProvider; i++) {
-      _vertices.at(i).addToBuilder(_sourceProvider, builder);
+      _sourceProvider.addVertexToBuilder(_vertices.at(i), builder);
     }
     // Write second part of the Path
     for (size_t i = _numVerticesFromSourceProvider; i < _vertices.size(); i++) {
-      _vertices.at(i).addToBuilder(_targetProvider, builder);
+      _targetProvider.addVertexToBuilder(_vertices.at(i), builder);
     }
   }
 
@@ -95,11 +96,11 @@ auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder&
     VPackArrayBuilder edges(&builder);
     // Write first part of the Path
     for (size_t i = 0; i < _numEdgesFromSourceProvider; i++) {
-      _edges.at(i).addToBuilder(_sourceProvider, builder);
+      _sourceProvider.addEdgeToBuilder(_edges.at(i), builder);
     }
     // Write second part of the Path
     for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
-      _edges.at(i).addToBuilder(_targetProvider, builder);
+      _targetProvider.addEdgeToBuilder(_edges.at(i), builder);
     }
   }
 }
@@ -115,4 +116,7 @@ auto PathResult<ProviderType, Step>::isValid() const -> bool {
 }
 
 template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider,
+                                             ::arangodb::graph::SingleServerProvider::Step>;
+
+template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider>,
                                              ::arangodb::graph::SingleServerProvider::Step>;

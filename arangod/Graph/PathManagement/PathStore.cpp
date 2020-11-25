@@ -24,6 +24,7 @@
 #include "PathStore.h"
 #include "Graph/PathManagement/PathResult.h"
 
+#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 #include <Logger/LogMacros.h>
@@ -83,7 +84,8 @@ void PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Ste
 
 template <class Step>
 template <class ProviderType>
-void PathStore<Step>::reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
+void PathStore<Step>::reverseBuildPath(Step const& vertex,
+                                       PathResult<ProviderType, Step>& path) const {
   // For backward we just need to attach ourself
   // So everything until here should be done.
   // We never start with an empty path here, the other side should at least have
@@ -125,8 +127,20 @@ bool PathStore<Step>::testPath(Step step) {
 }
 
 template class PathStore<SingleServerProvider::Step>;
-template void PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(SingleServerProvider::Step const& vertex, PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
-template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(SingleServerProvider::Step const& vertex, PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
+template void PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(
+    SingleServerProvider::Step const& vertex,
+    PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
+template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(
+    SingleServerProvider::Step const& vertex,
+    PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
+
+// Tracing
+template void PathStore<SingleServerProvider::Step>::buildPath<ProviderTracer<SingleServerProvider>>(
+    ProviderTracer<SingleServerProvider>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+template void PathStore<SingleServerProvider::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
+    ProviderTracer<SingleServerProvider>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
 
 }  // namespace graph
 }  // namespace arangodb

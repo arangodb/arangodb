@@ -48,11 +48,14 @@ class PathResult;
 
 template <class QueueType, class PathStoreType, class ProviderType>
 class TwoSidedEnumerator {
+ public:
+  using Step = typename ProviderType::Step; // public due to tracer access
+
  private:
   enum Direction { FORWARD, BACKWARD };
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
-  using Step = typename ProviderType::Step;
+
   using Shell = std::multiset<Step>;
   using ResultList = std::vector<std::pair<Step, Step>>;
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
@@ -80,7 +83,7 @@ class TwoSidedEnumerator {
     // Otherwise we will not be able to
     // generate the resulting path
     auto fetchResults(ResultList& results) -> void;
-    
+
     auto provider() -> ProviderType&;
 
    private:
@@ -153,7 +156,7 @@ class TwoSidedEnumerator {
    */
 
   bool skipPath();
-  auto destroyEngines() -> void {};  // TODO: remove me
+  auto destroyEngines() -> void{};  // TODO: remove me
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;

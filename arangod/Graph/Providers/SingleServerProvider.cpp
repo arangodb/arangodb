@@ -72,6 +72,14 @@ void SingleServerProvider::Step::Vertex::addToBuilder(SingleServerProvider& prov
   provider.insertVertexIntoResult(data(), builder);
 };
 
+void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder) {
+  insertVertexIntoResult(vertex.data(), builder);
+};
+
+void SingleServerProvider::addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  insertEdgeIntoResult(edge.data(), builder);
+};
+
 void SingleServerProvider::Step::Edge::addToBuilder(SingleServerProvider& provider, arangodb::velocypack::Builder& builder) const {
   provider.insertEdgeIntoResult(data(), builder);
 }

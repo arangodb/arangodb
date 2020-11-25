@@ -29,39 +29,9 @@
 
 #include "Graph/Providers/SingleServerProvider.h"
 
-#include <iomanip>
-
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraceEntry::TraceEntry() {}
-TraceEntry::~TraceEntry() = default;
-void TraceEntry::addTiming(double timeTaken) {
-  _count++;
-  _total += timeTaken;
-  if (_min > timeTaken) {
-    _min = timeTaken;
-  }
-  if (_max < timeTaken) {
-    _max = timeTaken;
-  }
-}
-
-namespace arangodb {
-namespace graph {
-auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream& {
-  if (entry._count == 0) {
-    out << "not called";
-  } else {
-    out << "calls: " << entry._count << " min: " << std::setprecision(2)
-        << std::fixed << entry._min / 1000 << "ms max: " << entry._max / 1000
-        << "ms avg: " << entry._total / entry._count / 1000
-        << "ms total: " << entry._total / 1000 << "ms";
-  }
-  return out;
-}
-}  // namespace graph
-}  // namespace arangodb
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryContext,
@@ -113,6 +83,22 @@ void ProviderTracer<ProviderImpl>::insertEdgeIntoResult(EdgeDocumentToken edge,
   double start = TRI_microtime();
   TRI_DEFER(_stats["insertEdgeIntoResult"].addTiming(TRI_microtime() - start));
   return _impl.insertEdgeIntoResult(edge, builder);
+}
+
+template <class ProviderImpl>
+void ProviderTracer<ProviderImpl>::addVertexToBuilder(typename Step::Vertex const& vertex,
+                                                      arangodb::velocypack::Builder& builder) {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["addVertexToBuilder"].addTiming(TRI_microtime() - start));
+  return _impl.addVertexToBuilder(vertex, builder);
+}
+
+template <class ProviderImpl>
+void ProviderTracer<ProviderImpl>::addEdgeToBuilder(typename Step::Edge const& edge,
+                                                    arangodb::velocypack::Builder& builder) {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["addEdgeToBuilder"].addTiming(TRI_microtime() - start));
+  return _impl.addEdgeToBuilder(edge, builder);
 }
 
 template <class ProviderImpl>

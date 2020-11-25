@@ -93,8 +93,6 @@ struct SingleServerProvider {
 
       void addToBuilder(SingleServerProvider& provider,
                         arangodb::velocypack::Builder& builder) const;
-
-     private:
       EdgeDocumentToken data() const;
 
      private:
@@ -141,6 +139,9 @@ struct SingleServerProvider {
 
   void insertVertexIntoResult(VertexType vertex, arangodb::velocypack::Builder& builder);
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
+
+  void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
+  void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
   void destroyEngines(){};  // TODO: remove after refactor
 

@@ -40,6 +40,7 @@
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
@@ -350,11 +351,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       // TODO: Cleanup this later - manual switch here between KPathRefactored and KPathRefactoredTracer
       using KPathRefactoredTracer =
           TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
-                             PathStore<SingleServerProvider::Step>, SingleServerProvider>;
+                             PathStore<SingleServerProvider::Step>, ProviderTracer<SingleServerProvider>>;
 
       auto kPathUnique = std::make_unique<KPathRefactoredTracer>(
-          SingleServerProvider{opts->query(), forwardProviderOptions},
-          SingleServerProvider{opts->query(), backwardProviderOptions},
+          ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions},
+          ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions},
           std::move(enumeratorOptions));
 
       auto executorInfos =
