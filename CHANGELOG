@@ -1,6 +1,10 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Make the cancel operation safe for asynchronoulsly started JavaScript
+  transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
+  header set).
+
 * Added new metrics for tracking AQL queries and slow queries:
   * `arangodb_aql_query_time`: histogram with AQL query times distribution.
   * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
