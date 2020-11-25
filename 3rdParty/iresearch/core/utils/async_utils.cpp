@@ -356,7 +356,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
       if (0 == threads_) {
         // failed to spawn a thread to execute a task
         queue_.pop();
-        return false;
+        throw;
       }
     }
   }

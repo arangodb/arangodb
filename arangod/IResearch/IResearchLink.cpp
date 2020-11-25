@@ -285,7 +285,9 @@ struct Task {
         << T::typeName() << " pool: "
         << ThreadGroupStats(async->stats(T::threadGroup()));
 
-    async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
+    if (!link->terminationRequested()) {
+      async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
+    }
   }
 
   std::shared_ptr<MaintenanceState> state;
@@ -418,7 +420,7 @@ void CommitTask::operator()() {
       ++state->noopCommitCount;
 
       for (auto count = state->pendingCommits.load(); count < 1; ) {
-        if (state->pendingCommits.compare_exchange_strong(count, count + 1)) {
+        if (state->pendingCommits.compare_exchange_weak(count, 1)) {
           schedule(commitIntervalMsec);
           break;
         }
@@ -533,7 +535,7 @@ void ConsolidationTask::operator()() {
 
   auto reschedule = scopeGuard([this](){
     for (auto count = state->pendingConsolidations.load(); count < 1; ) {
-      if (state->pendingConsolidations.compare_exchange_strong(count, count + 1)) {
+      if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
         ++ConsolidationsCount;
         schedule(consolidationIntervalMsec);
         break;

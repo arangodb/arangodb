@@ -36,6 +36,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Cluster/ClusterFeature.h"
@@ -69,6 +70,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
+
+using namespace std::chrono_literals;
 
 namespace arangodb {
 
@@ -837,6 +840,34 @@ void IResearchFeature::start() {
   }
 
   registerUpgradeTasks(server());  // register tasks after UpgradeFeature::prepare() has finished
+
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isSingleServer()) {
+    // ensure at least 1 thread is running for each group
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::atomic<size_t> counter{0};
+
+    auto startThread = [this, &counter, &cv](ThreadGroup group) {
+      return _async->get(group).run([&counter, &cv]() noexcept {
+        ++counter;
+        cv.notify_one();
+      });
+    };
+
+    if (!startThread(ThreadGroup::_0) || !startThread(ThreadGroup::_1)) {
+      LOG_TOPIC("eba43", FATAL, arangodb::iresearch::TOPIC)
+        << "failed to start ArangoSearch maintenance threads";
+      FATAL_ERROR_EXIT();
+    }
+
+    auto lock = irs::make_unique_lock(mtx);
+    if (!cv.wait_for(lock, 30s, [&counter](){ return counter < 2; })) {
+      LOG_TOPIC("eba42", FATAL, arangodb::iresearch::TOPIC)
+        << "failed to start ArangoSearch maintenance threads";
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   _running.store(true);
 }
