@@ -109,9 +109,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
-  // return true if direct handler execution is allowed
-  bool allowDirectExecution() const { return _allowDirectExecution; }
-
   RequestLane getRequestLane() {
     bool found;
     _request->header(StaticStrings::XArangoFrontend, found);
@@ -191,6 +188,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// handler state machine
   HandlerState state() const { return _state; }
+  
+  static char const* stateString(HandlerState state);
 
  private:
   void runHandlerStateMachine();
@@ -202,6 +201,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///        otherwise execute() will be called
   void executeEngine(bool isContinue);
   void compressResponse();
+
+  /// @brief log information about the handler state,
+  /// in log topic HANDLER
+  void logState(char const* context) const;
 
  protected:
   std::unique_ptr<GeneralRequest> _request;
@@ -220,10 +223,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   HandlerState _state;
 
+  bool _enableHandlerLogging;
+
  protected:
   std::atomic<bool> _canceled;
-
-  bool _allowDirectExecution = false;
 };
 
 }  // namespace rest
