@@ -4361,17 +4361,40 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           bool hasFoundMultipleShards = false;
           auto p = previous;
           while (p != nullptr) {
-            if (p->getType() == ExecutionNode::REMOTE) {
-              hasFoundMultipleShards = true;
-            } else if (p->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-                       p->getType() == ExecutionNode::INDEX) {
-              auto col = getCollection(p);
-              if (col->numberOfShards() > 1) {
+            switch(p->getType()) {
+              case ExecutionNode::REMOTE:
                 hasFoundMultipleShards = true;
-              }
-            } else if (p->getType() == ExecutionNode::TRAVERSAL) {
-              hasFoundMultipleShards = true;
+                break;
+              case ExecutionNode::ENUMERATE_COLLECTION:
+              case ExecutionNode::INDEX:
+                {
+                  auto col = getCollection(p);
+                  if (col->numberOfShards() > 1) {
+                    hasFoundMultipleShards = true;
+                  }
+                }
+                break;
+              case ExecutionNode::TRAVERSAL:
+                hasFoundMultipleShards = true;
+                break;
+              case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+                {
+                  auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(p);
+                  if (!viewNode.emitOnlyCount()) { // TODO remove
+                    auto collections = viewNode.collections();
+                    auto const collCount = collections.size();
+                    TRI_ASSERT(collCount > 0);
+                    if (collCount > 1) {
+                      hasFoundMultipleShards = true;
+                    } else if (1 == collCount) {
+                      hasFoundMultipleShards = collections.front().get().numberOfShards() > 1;
+                    }
+                  }
+                }
+                break;
             }
+
+
             if (hasFoundMultipleShards) {
               break;
             }
