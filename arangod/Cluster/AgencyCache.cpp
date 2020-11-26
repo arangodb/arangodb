@@ -248,8 +248,12 @@ void AgencyCache::run() {
   using namespace std::chrono;
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
-  _commitIndex = 0;
-  _readDB.clear();
+  {
+    std::shared_lock g(_storeLock);
+    _commitIndex = 0;
+    _readDB.clear();
+  }
+
   double wait = 0.0;
 
   auto increaseWaitTime = [&wait]() noexcept {
@@ -264,7 +268,9 @@ void AgencyCache::run() {
       index_t commitIndex = 0;
       {
         std::shared_lock g(_storeLock);
-        commitIndex = _commitIndex + 1;
+        if (_commitIndex > 0) {
+          commitIndex = _commitIndex + 1;
+        }
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
           << "AgencyCache: poll polls: waiting for commitIndex " << commitIndex;
@@ -607,7 +613,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" + VERSION);
   uint64_t version = tmp.second ? tmp.first : 0;
 
-  if (last < _lastSnapshot) {
+  if (last < _lastSnapshot || last == 0) {
     get_rest = true;
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
     databases.reserve(keys.size());
