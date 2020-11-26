@@ -77,7 +77,7 @@ TEST(EncryptionProviderTest, simple) {
     }
     
     size_t offset = RandomGenerator::interval(0, kBuffSize / 2);
-    size_t len = RandomGenerator::interval(0, kBuffSize - offset);
+    size_t len = RandomGenerator::interval(0, static_cast<std::int32_t>(kBuffSize - offset));
     
     softprovider.CreateNewPrefix("", prefix.data(), prefix.size());
     rocksdb::Slice prefixSlice(prefix);
