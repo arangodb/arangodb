@@ -21,8 +21,8 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDER_TRACER_H
-#define ARANGOD_GRAPH_PROVIDER_TRACER_H 1
+#ifndef ARANGOD_GRAPH_PATHMANAGEMENT_PATHSTORE_TRACER_H
+#define ARANGOD_GRAPH_PATHMANAGEMENT_PATHSTORE_TRACER_H 1
 
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Helpers/TraceEntry.h"
@@ -41,10 +41,10 @@ class QueryContext;
 
 namespace graph {
 
-template <class PathStoreImpl, class Step>
+template <class PathStoreImpl>
 class PathStoreTracer {
  public:
-  //using Step = typename PathStoreImpl::Step;
+  using Step = typename PathStoreImpl::Step;
 
  public:
   PathStoreTracer();
@@ -55,9 +55,6 @@ class PathStoreTracer {
 
   // @brief reset
   void reset();
-
-  // @brief Method adds the first element to the schreier vetor
-  void setStartVertex(Step startVertex);
 
   // @brief Method adds a new element to the schreier vector
   // returns the index of inserted element

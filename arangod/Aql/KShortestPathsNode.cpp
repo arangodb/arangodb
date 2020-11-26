@@ -40,6 +40,7 @@
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -344,14 +345,14 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                    opts->maxDepth};
-/*
-      using KPathRefactored =
-          TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
-*/
+      /*
+            using KPathRefactored =
+                TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
+      */
       // TODO: Cleanup this later - manual switch here between KPathRefactored and KPathRefactoredTracer
       using KPathRefactoredTracer =
           TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
-                             PathStore<SingleServerProvider::Step>, ProviderTracer<SingleServerProvider>>;
+                             PathStoreTracer<PathStore<SingleServerProvider::Step>>, ProviderTracer<SingleServerProvider>>;
 
       auto kPathUnique = std::make_unique<KPathRefactoredTracer>(
           ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions},

@@ -28,55 +28,73 @@
 #include "Logger/LogMacros.h"
 
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class PathStoreImpl, class Step>
-PathStoreTracer<PathStoreImpl, Step>::PathStoreTracer() : _impl{} {}
+template <class PathStoreImpl>
+PathStoreTracer<PathStoreImpl>::PathStoreTracer() : _impl{} {}
 
-template <class PathStoreImpl, class Step>
-PathStoreTracer<PathStoreImpl, Step>::~PathStoreTracer() {
+template <class PathStoreImpl>
+PathStoreTracer<PathStoreImpl>::~PathStoreTracer() {
   LOG_TOPIC("f39e8", INFO, Logger::GRAPHS) << "PathStore Trace report:";
   for (auto const& [name, trace] : _stats) {
     LOG_TOPIC("f39e9", INFO, Logger::GRAPHS) << "  " << name << ": " << trace;
   }
 }
 
-template <class PathStoreImpl, class Step>
-bool PathStoreTracer<PathStoreImpl, Step>::testPath(Step step) {
+template <class PathStoreImpl>
+bool PathStoreTracer<PathStoreImpl>::testPath(Step step) {
   double start = TRI_microtime();
   TRI_DEFER(_stats["testPath"].addTiming(TRI_microtime() - start));
   return _impl.testPath(step);
 }
 
-template <class PathStoreImpl, class Step>
-void PathStoreTracer<PathStoreImpl, Step>::reset() {
+template <class PathStoreImpl>
+void PathStoreTracer<PathStoreImpl>::reset() {
   double start = TRI_microtime();
   TRI_DEFER(_stats["reset"].addTiming(TRI_microtime() - start));
   return _impl.reset();
 }
 
-template <class PathStoreImpl, class Step>
-void PathStoreTracer<PathStoreImpl, Step>::setStartVertex(Step step) {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["setStartVertex"].addTiming(TRI_microtime() - start));
-  return _impl.setStartVertex(step);
-}
-
-template <class PathStoreImpl, class Step>
-size_t PathStoreTracer<PathStoreImpl, Step>::append(Step step) {
+template <class PathStoreImpl>
+size_t PathStoreTracer<PathStoreImpl>::append(Step step) {
   double start = TRI_microtime();
   TRI_DEFER(_stats["append"].addTiming(TRI_microtime() - start));
   return _impl.append(step);
 }
 
-template <class PathStoreImpl, class Step>
-size_t PathStoreTracer<PathStoreImpl, Step>::size() const {
+template <class PathStoreImpl>
+size_t PathStoreTracer<PathStoreImpl>::size() const {
   double start = TRI_microtime();
   TRI_DEFER(_stats["size"].addTiming(TRI_microtime() - start));
   return _impl.size();
 }
 
-template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>, SingleServerProvider::Step>;
+template <class PathStoreImpl>
+template <class ProviderType>
+void PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["buildPath"].addTiming(TRI_microtime() - start));
+  return _impl.buildPath(vertex, path);
+}
+
+template <class PathStoreImpl>
+template <class ProviderType>
+void PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["reverseBuildPath"].addTiming(TRI_microtime() - start));
+  return _impl.reverseBuildPath(vertex, path);
+}
+
+template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>;
+
+// Tracing
+template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<ProviderTracer<SingleServerProvider>>(
+    ProviderTracer<SingleServerProvider>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
+    ProviderTracer<SingleServerProvider>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;

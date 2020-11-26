@@ -53,8 +53,11 @@ class PathResult;
  * }
  */
 
-template <class Step>
+template <class StepType>
 class PathStore {
+ public:
+  using Step = StepType;
+
  public:
   PathStore();
   ~PathStore() = default;
@@ -67,9 +70,6 @@ class PathStore {
 
   // @brief reset
   void reset();
-
-  // @brief Method adds the first element to the schreier vetor
-  void setStartVertex(Step startVertex);
 
   // @brief Method adds a new element to the schreier vector
   // returns the index of inserted element

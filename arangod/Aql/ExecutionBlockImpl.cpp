@@ -76,6 +76,7 @@
 
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -94,7 +95,7 @@ using KPathRefactored = arangodb::graph::TwoSidedEnumerator<
 
 using KPathRefactoredTracer = arangodb::graph::TwoSidedEnumerator<
     arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>>,
-    arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>,
+    arangodb::graph::PathStoreTracer<arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>>,
     arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider>>;
 
 using namespace arangodb;

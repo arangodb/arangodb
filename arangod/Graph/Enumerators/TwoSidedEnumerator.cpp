@@ -32,6 +32,7 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -366,4 +367,5 @@ template class ::arangodb::graph::TwoSidedEnumerator<
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
-    ::arangodb::graph::PathStore<SingleServerProvider::Step>, ::arangodb::graph::ProviderTracer<SingleServerProvider>>;
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
+    ::arangodb::graph::ProviderTracer<SingleServerProvider>>;
