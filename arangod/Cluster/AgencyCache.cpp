@@ -250,6 +250,11 @@ void AgencyCache::run() {
 
   {
     std::shared_lock g(_storeLock);
+    // technically it is not necessary to acquire the lock here,
+    // as there shouldn't be any concurrency when we get here.
+    // however, the code may change later, so let's play nice
+    // and always access _commitIndex and _readDB under the lock,
+    // as all other places in this file do.
     _commitIndex = 0;
     _readDB.clear();
   }
@@ -269,6 +274,12 @@ void AgencyCache::run() {
       {
         std::shared_lock g(_storeLock);
         if (_commitIndex > 0) {
+          // in the normal case, we will already have a commitIndex != 0.
+          // however, on the first call, we need to call with commitIndex 0
+          // and not 1 in order to get a full snapshot from the agency.
+          // if we poll with a commitIndex value of 1, we will not get a
+          // snapshot but only the changes since commitIndex 1, so we may
+          // be missing data!
           commitIndex = _commitIndex + 1;
         }
       }
@@ -604,16 +615,22 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   std::unordered_map<std::string, query_t> db_res;
   query_t rest_res = nullptr;
 
-  decltype(_planChanges) const& changes = (what == PLAN) ? _planChanges : _currentChanges;
   std::vector<std::string> const& goodies = (what == PLAN) ? planGoodies : currentGoodies;
-
   std::unordered_set<std::string> databases;
+  
   std::shared_lock g(_storeLock);
+  
+  decltype(_planChanges) const& changes = (what == PLAN) ? _planChanges : _currentChanges;
 
   auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" + VERSION);
   uint64_t version = tmp.second ? tmp.first : 0;
 
   if (last < _lastSnapshot || last == 0) {
+    // we will get here when we call this with a "last" index value that is less than
+    // the index of the last snapshot we got. in this case our changeset needs to 
+    // contain all databases.
+    // in addition, in case the "last" value is 0, this is the initial call, 
+    // and we need to handle this in a special way, too.
     get_rest = true;
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
     databases.reserve(keys.size());
@@ -621,7 +638,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       databases.emplace(std::move(i));
     }
   } else {
-    auto it = changes.lower_bound(last+1);
+    TRI_ASSERT(last != 0);
+    auto it = changes.lower_bound(last + 1);
     if (it != changes.end()) {
       for (; it != changes.end(); ++it) {
         if (it->second.empty()) { // Need to get rest
