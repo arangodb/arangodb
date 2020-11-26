@@ -656,7 +656,15 @@ class IResearchAsync{
     stop();
   }
 
-  ThreadPool& get(ThreadGroup id) noexcept {
+  ThreadPool& get(ThreadGroup id)
+#ifndef ARANGODB_ENABLE_FAILURE_TESTS
+  noexcept
+#endif
+  {
+    TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     TRI_ASSERT(static_cast<size_t>(id) < 2);
     return (ThreadGroup::_0 == id) ? _0 : _1;
   }
@@ -786,10 +794,10 @@ void IResearchFeature::prepare() {
   _running.store(false);
 
   // load all known codecs
-  ::iresearch::formats::init();
+  ::irs::formats::init();
 
   // load all known scorers
-  ::iresearch::scorers::init();
+  ::irs::scorers::init();
 
   // register 'arangosearch' index
   registerIndexFactory(_factories, server());
@@ -803,16 +811,14 @@ void IResearchFeature::prepare() {
   registerRecoveryHelper(server());
 
   // register filters
-  {
-    if (server().hasFeature<arangodb::aql::AqlFunctionFeature>()) {
-      auto& functions = server().getFeature<arangodb::aql::AqlFunctionFeature>();
-      registerFilters(functions);
-      registerScorers(functions);
-    } else {
-      LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
-          << "failure to find feature 'AQLFunctions' while registering "
-             "arangosearch filters";
-    }
+  if (server().hasFeature<arangodb::aql::AqlFunctionFeature>()) {
+    auto& functions = server().getFeature<arangodb::aql::AqlFunctionFeature>();
+    registerFilters(functions);
+    registerScorers(functions);
+  } else {
+    LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
+        << "failure to find feature 'AQLFunctions' while registering "
+           "arangosearch filters";
   }
 
   // register tasks after UpgradeFeature::prepare() has finished
@@ -870,6 +876,8 @@ void IResearchFeature::start() {
     auto lock = irs::make_unique_lock(_startState->mtx);
     if (!_startState->cv.wait_for(lock, 60s,
                                   [this](){ return _startState->counter == 2; })) {
+
+
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_SYS_ERROR,
         "failed to start ArangoSearch maintenance threads");

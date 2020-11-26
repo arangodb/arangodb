@@ -1863,6 +1863,29 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   EXPECT_TRUE(100ms < diff);
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(IResearchFeatureTest, test_fail_to_submit_task) {
+  auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+
+  TRI_AddFailurePointDebugging("IResearchFeature::testGroupAccess");
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
+  ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
+}
+
+TEST_F(IResearchFeatureTest, test_fail_to_start) {
+  auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
+  feature.prepare();
+  TRI_AddFailurePointDebugging("IResearchFeature::testGroupAccess");
+  ASSERT_THROW(feature.start(), arangodb::basics::Exception);
+}
+#endif
+
 class IResearchFeatureTestCoordinator
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
