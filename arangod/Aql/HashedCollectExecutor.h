@@ -37,6 +37,8 @@
 #include <unordered_map>
 
 namespace arangodb {
+class ResourceMonitor;
+
 namespace aql {
 class OutputAqlItemRow;
 class ExecutorInfos;
@@ -54,7 +56,8 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
                              std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             transaction::Methods* trxPtr, bool count);
+                             transaction::Methods* trxPtr, 
+                             arangodb::ResourceMonitor* resourceMonitor, bool count);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -68,6 +71,7 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   bool getCount() const noexcept;
   transaction::Methods* getTransaction() const;
   RegisterId getCollectRegister() const noexcept;
+  arangodb::ResourceMonitor* getResourceMonitor() const;
 
  private:
   /// @brief aggregate types
@@ -90,6 +94,9 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
 
   /// @brief the transaction for this query
   transaction::Methods* _trxPtr;
+  
+  /// @brief resource manager
+  arangodb::ResourceMonitor* _resourceMonitor;
 };
 
 /**
@@ -156,6 +163,8 @@ class HashedCollectExecutor {
   void consumeInputRow(InputAqlItemRow& input);
 
   void writeCurrentGroupToOutput(OutputAqlItemRow& output);
+
+  size_t calculateMemoryUsage(GroupKeyType const& values) const;
 
  private:
   Infos const& _infos;

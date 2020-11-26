@@ -61,7 +61,7 @@ TraverserCache::~TraverserCache() {
 }
 
 void TraverserCache::clear() {
-  _query->resourceMonitor()->decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
+  _query->decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
 
   _stringHeap.clear();
   _persistedStrings.clear();
