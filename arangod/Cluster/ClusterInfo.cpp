@@ -655,6 +655,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
+
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
@@ -797,17 +798,20 @@ void ClusterInfo::loadPlan() {
       std::shared_ptr<VPackBuilder> plan;
       {
         READ_LOCKER(guard, _planProt.lock);
-        plan = _plan.at(name);
-      }
-      std::vector<std::string> colPath{AgencyCommHelper::path(), "Plan", "Collections", name};
-      if (plan->slice()[0].hasKey(colPath)) {
-        for (auto const& col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
-          if (col.value.hasKey("shards")) {
-            for (auto const& shard : VPackObjectIterator(col.value.get("shards"))) {
-              auto const& shardName = shard.key.copyString();
-              newShards.erase(shardName);
-              newShardServers.erase(shardName);
-              newShardToName.erase(shardName);
+        auto it = _plan.find(name);
+        if (it != _plan.end()) {
+          plan = it->second;
+          std::vector<std::string> colPath{AgencyCommHelper::path(), "Plan", "Collections", name};
+          if (plan->slice()[0].hasKey(colPath)) {
+            for (auto const& col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
+              if (col.value.hasKey("shards")) {
+                for (auto const& shard : VPackObjectIterator(col.value.get("shards"))) {
+                  auto const& shardName = shard.key.copyString();
+                  newShards.erase(shardName);
+                  newShardServers.erase(shardName);
+                  newShardToName.erase(shardName);
+                }
+              }
             }
           }
         }
@@ -3877,8 +3881,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   if (result.successful()) {
     if (result.slice().get("results").length()) {
-      auto& c = _server.getFeature<ClusterFeature>().agencyCache();
-      auto [a,b] = c.get("/");
       waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
   }
