@@ -909,7 +909,9 @@ bool IResearchFeature::queue(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    return _async->get(id).run(std::move(fn), delay);
+    if (_async->get(id).run(std::move(fn), delay)) {
+      return true;
+    }
   } catch (std::exception const& e) {
     LOG_TOPIC("c1b64", WARN, arangodb::iresearch::TOPIC)
       << "Caught exception while sumbitting a task to thread group '"
