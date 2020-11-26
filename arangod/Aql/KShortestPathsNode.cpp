@@ -344,10 +344,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                    opts->maxDepth};
-
+/*
       using KPathRefactored =
           TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
-
+*/
       // TODO: Cleanup this later - manual switch here between KPathRefactored and KPathRefactoredTracer
       using KPathRefactoredTracer =
           TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
