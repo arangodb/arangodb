@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
-#include <thread>
 
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyStrings.h"
