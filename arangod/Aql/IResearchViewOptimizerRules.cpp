@@ -772,20 +772,7 @@ void handleViewsRule(Optimizer* opt,
               // For the single server we could completely remove it out and get collect directly from view.
               // For the cluster we still need to make the COLLECT SUM node to sum counts on DB servers (just like with collection),
               // The distribution iself will happen during regular view scattering in cluster.
-              if (arangodb::ServerState::instance()->isCoordinator()) {
-                auto tempOutVariable = plan->getAst()->variables()->createTemporaryVariable();
-                viewNode.setEmitOnlyCount(tempOutVariable);
-                std::vector<AggregateVarInfo> aggregateVariables;
-                aggregateVariables.emplace_back(AggregateVarInfo{collectOutVars[0], tempOutVariable, "SUM"});
-                collectNode.aggregationMethod(CollectOptions::CollectMethod::SORTED);
-                collectNode.count(false);
-                collectNode.setAggregateVariables(std::move(aggregateVariables));
-                collectNode.clearOutVariable();
-              } else {
-                viewNode.setEmitOnlyCount(collectOutVars[0]);
-                plan->unlinkNode(current);
-              }
-              plan->clearVarUsageComputed();
+              viewNode.setEmitOnlyCount();
             }
           }
           break;

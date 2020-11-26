@@ -434,11 +434,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
       documentWritten = next(ctx);
 
       if (documentWritten) {
-        if constexpr (Traits::CustomStats) {
-          static_cast<Impl&>(*this).incrScanned(stats);
-        } else  {
-          stats.incrScanned();
-        }
+        stats.incrScanned();
         output.advanceRow();
       } else {
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -1403,6 +1399,10 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
   return Base::writeRow(ctx, bufferEntry, documentId, *collection);
 }
 
+arangodb::aql::IResearchViewCountExecutor::IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos) : Base(fetcher, infos) {
+  _filterConditionIsEmpty = filterConditionIsEmpty(&this->infos().filterCondition());
+}
+
 size_t arangodb::aql::IResearchViewCountExecutor::skip(size_t toSkip) {
   // we do not expect skip to be used for this executor
   // but anyway we happily could skip our only row
@@ -1416,15 +1416,14 @@ size_t arangodb::aql::IResearchViewCountExecutor::skip(size_t toSkip) {
 }
 
 size_t arangodb::aql::IResearchViewCountExecutor::skipAll() {
-  return skip(1);
-}
-
-void arangodb::aql::IResearchViewCountExecutor::fillBuffer(ReadContext& ctx) {
   size_t const subReadersCount = this->_reader->size();
   if (_readerOffset >= subReadersCount) {
-    return;
+    return 0;
   }
-  if (!filterConditionIsEmpty(&infos().filterCondition())) {
+  if (_filterConditionIsEmpty) {
+    _count = this->_reader->live_docs_count();
+    _readerOffset = subReadersCount; // simulate that all readers are iterated
+  } else {
     _count = 0;
     for (; _readerOffset < subReadersCount; ++_readerOffset) {
       auto& segmentReader = (*this->_reader)[_readerOffset];
@@ -1435,25 +1434,17 @@ void arangodb::aql::IResearchViewCountExecutor::fillBuffer(ReadContext& ctx) {
         ++_count;
       }
     }
-  } else {
-    _count = this->_reader->live_docs_count();
-    _readerOffset = subReadersCount; // simulate that all readers are iterated
   }
-  this->_indexReadBuffer.pushValue(_count);
-  return;
+  return _count;
 }
+
+void arangodb::aql::IResearchViewCountExecutor::fillBuffer(ReadContext&) {}
 
 bool arangodb::aql::IResearchViewCountExecutor::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-  TRI_ASSERT(_infos.emitCount());
-  auto index = this->_indexReadBuffer.getValue(bufferEntry);
-  AqlValue a{ AqlValueHintUInt(index) };
-  AqlValueGuard guard{ a, true };
-  ctx.outputRow.moveValueInto(ctx.getCountReg(), ctx.inputRow, guard);
-  return true;
-}
-
-void arangodb::aql::IResearchViewCountExecutor::incrScanned(IResearchViewStats& stats) {
-  stats.incrScanned(_count);
+  TRI_ASSERT(FALSE)
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED, "Counting view enumerator is called to produce row");
+  return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

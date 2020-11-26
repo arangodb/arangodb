@@ -1205,9 +1205,7 @@ function processQuery(query, explain, planIndex) {
               }).join('');
             }
           }).join('');
-        } else if (node.hasOwnProperty('outCountVariable')) {
-          viewVariables = keyword(' LET ') + variableName(node.outCountVariable) + ' = COUNT(' + variableName(node.outVariable) + ')';
-        } 
+        }
         return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
                view(node.view) + condition + sortCondition + scorers + viewVariables +
                '   ' + annotation(viewAnnotation);

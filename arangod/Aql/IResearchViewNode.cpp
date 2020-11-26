@@ -775,7 +775,6 @@ const char* NODE_DATABASE_PARAM = "database";
 const char* NODE_VIEW_NAME_PARAM = "view";
 const char* NODE_VIEW_ID_PARAM = "viewId";
 const char* NODE_OUT_VARIABLE_PARAM = "outVariable";
-const char* NODE_OUT_COUNT_VARIABLE_PARAM = "outCountVariable";
 const char* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
 const char* NODE_OUT_NM_COL_PARAM = "outNmColPtr";
 const char* NODE_CONDITION_PARAM = "condition";
@@ -892,7 +891,6 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       _vocbase(vocbase),
       _view(view),
       _outVariable(&outVariable),
-      _outCountVariable(nullptr),
       _outNonMaterializedDocId(nullptr),
       _outNonMaterializedColPtr(nullptr),
       _noMaterialization(false),
@@ -919,7 +917,6 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     : aql::ExecutionNode(&plan, base),
       _vocbase(plan.getAst()->query().vocbase()),
       _outVariable(aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_VARIABLE_PARAM)),
-      _outCountVariable(aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_COUNT_VARIABLE_PARAM, true)),
       _outNonMaterializedDocId(
           aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_NM_DOC_PARAM, true)),
       _outNonMaterializedColPtr(
@@ -1168,11 +1165,6 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
   _outVariable->toVelocyPack(nodes);
 
-  if (_outCountVariable != nullptr) {
-    nodes.add(VPackValue(NODE_OUT_COUNT_VARIABLE_PARAM));
-    _outCountVariable->toVelocyPack(nodes);
-  }
-
   if (_outNonMaterializedDocId != nullptr) {
     nodes.add(VPackValue(NODE_OUT_NM_DOC_PARAM));
     _outNonMaterializedDocId->toVelocyPack(nodes);
@@ -1408,8 +1400,6 @@ void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
   if (!outVariableAlreadyInVarSet) {
     vars.erase(_outVariable);
   }
-
-  //TRI_ASSERT(!_outCountVariable || !vars.contains(_outCountVariable));
 }
 
 std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHere() const {
@@ -1419,14 +1409,14 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
   // collection + docId or document
   if (isLateMaterialized()) {
     reserve += 2;
-  } else if (!noMaterialization() || emitOnlyCount()) {
+  } else if (!noMaterialization()) {
     reserve += 1;
   }
   vars.reserve(reserve);
 
   std::transform(_scorers.cbegin(), _scorers.cend(), std::back_inserter(vars),
                  [](auto const& scorer) { return scorer.var; });
-  if (isLateMaterialized() || (noMaterialization() && !emitOnlyCount() )) {
+  if (isLateMaterialized() || noMaterialization()) {
     if (isLateMaterialized()) {
       vars.emplace_back(_outNonMaterializedColPtr);
       vars.emplace_back(_outNonMaterializedDocId);
@@ -1437,12 +1427,7 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
                      [](auto const& fieldVar) { return fieldVar.var; });
     }
   } else {
-    if (emitOnlyCount()) {
-      TRI_ASSERT(_outCountVariable);
-      vars.emplace_back(_outCountVariable);
-    } else {
-      vars.emplace_back(_outVariable);
-    }
+    vars.emplace_back(_outVariable);
   }
   return vars;
 }
@@ -1559,7 +1544,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     } else if (emitOnlyCount()) {
       TRI_ASSERT(options().emitOnlyCount);
       materializeType = MaterializeType::EmitCount;
-      numDocumentRegs += 1;
     } else {
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
@@ -1596,10 +1580,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         writableOutputRegisters.emplace(documentRegId);
         writableOutputRegisters.emplace(collectionRegId);
         return aql::IResearchViewExecutorInfos::LateMaterializeRegister{documentRegId, collectionRegId};
-      } else if (noMaterialization() && !emitOnlyCount()) {
+      } else if (noMaterialization()) {
         return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
       } else {
-        auto outReg = variableToRegisterId(emitOnlyCount() ? _outCountVariable : _outVariable);
+        auto outReg = variableToRegisterId(_outVariable);
         writableOutputRegisters.emplace(outReg);
         return aql::IResearchViewExecutorInfos::MaterializeRegisters{outReg};
       }
