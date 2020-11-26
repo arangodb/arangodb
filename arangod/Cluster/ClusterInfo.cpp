@@ -795,22 +795,24 @@ void ClusterInfo::loadPlan() {
 
     // Dropped from Plan?
     if (!dbSlice.hasKey(dbPath)) {
-      std::shared_ptr<VPackBuilder> plan;
+      std::shared_ptr<VPackBuilder> plan = nullptr;
       {
         READ_LOCKER(guard, _planProt.lock);
         auto it = _plan.find(name);
         if (it != _plan.end()) {
           plan = it->second;
-          std::vector<std::string> colPath{AgencyCommHelper::path(), "Plan", "Collections", name};
-          if (plan->slice()[0].hasKey(colPath)) {
-            for (auto const& col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
-              if (col.value.hasKey("shards")) {
-                for (auto const& shard : VPackObjectIterator(col.value.get("shards"))) {
-                  auto const& shardName = shard.key.copyString();
-                  newShards.erase(shardName);
-                  newShardServers.erase(shardName);
-                  newShardToName.erase(shardName);
-                }
+        }
+      }
+      if (plan != nullptr) {
+        std::vector<std::string> colPath{AgencyCommHelper::path(), "Plan", "Collections", name};
+        if (plan->slice()[0].hasKey(colPath)) {
+          for (auto const& col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
+            if (col.value.hasKey("shards")) {
+              for (auto const& shard : VPackObjectIterator(col.value.get("shards"))) {
+                auto const& shardName = shard.key.copyString();
+                newShards.erase(shardName);
+                newShardServers.erase(shardName);
+                newShardToName.erase(shardName);
               }
             }
           }
