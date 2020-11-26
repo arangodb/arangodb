@@ -1446,9 +1446,12 @@ TEST_F(IResearchLinkTest, test_commit_task_fail) {
     ASSERT_NE(nullptr, linkImpl);
 
     // ensure commit and consolidation are scheduled upon link creation
-    ASSERT_EQ(std::make_tuple(size_t(1), size_t(1), size_t(1)),
+    // 2 tasks:
+    //   - post recovery callback
+    //   - linking with a view
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(2), size_t(1)),
               feature.stats(ThreadGroup::_0));
-    ASSERT_EQ(std::make_tuple(size_t(1), size_t(1), size_t(1)),
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(2), size_t(1)),
               feature.stats(ThreadGroup::_1));
   }
 }

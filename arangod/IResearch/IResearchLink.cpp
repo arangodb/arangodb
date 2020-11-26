@@ -1420,11 +1420,6 @@ Result IResearchLink::initDataStore(
   }
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
-          LOG_TOPIC("5b591", WARN, iresearch::TOPIC)
-            << _maintenanceState->pendingCommits.load()
-            << " "
-            << _maintenanceState->pendingConsolidations.load();
-
   return dbFeature.registerPostRecoveryCallback(  // register callback
       [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
         auto lock = irs::make_lock_guard(asyncSelf->mutex());  // ensure link does not get deallocated before callback finishes
