@@ -83,11 +83,11 @@ auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder&
     VPackArrayBuilder vertices{&builder};
     // Write first part of the Path
     for (size_t i = 0; i < _numVerticesFromSourceProvider; i++) {
-      _sourceProvider.addVertexToBuilder(_vertices.at(i), builder);
+      _sourceProvider.addVertexToBuilder(_vertices[i], builder);
     }
     // Write second part of the Path
     for (size_t i = _numVerticesFromSourceProvider; i < _vertices.size(); i++) {
-      _targetProvider.addVertexToBuilder(_vertices.at(i), builder);
+      _targetProvider.addVertexToBuilder(_vertices[i], builder);
     }
   }
 

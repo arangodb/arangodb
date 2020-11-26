@@ -84,8 +84,8 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  void insertVertexIntoResult(arangodb::velocypack::StringRef idString,
-                                      velocypack::Builder& builder);
+  void insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
+                              velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -132,7 +132,7 @@ class RefactoredTraverserCache {
   ///        The Slice returned here is only valid until the NEXT call of this
   ///        function.
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::Slice lookupVertexInCollection(arangodb::velocypack::StringRef idString);
+  arangodb::velocypack::Slice lookupVertexInCollection(arangodb::velocypack::HashedStringRef const& idString);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

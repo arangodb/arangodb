@@ -70,14 +70,6 @@ std::vector<typename ProviderImpl::Step> ProviderTracer<ProviderImpl>::expand(St
 }
 
 template <class ProviderImpl>
-void ProviderTracer<ProviderImpl>::insertVertexIntoResult(VertexType vertex,
-                                                          arangodb::velocypack::Builder& builder) {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["insertVertexIntoResult"].addTiming(TRI_microtime() - start));
-  return _impl.insertVertexIntoResult(vertex, builder);
-}
-
-template <class ProviderImpl>
 void ProviderTracer<ProviderImpl>::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                         arangodb::velocypack::Builder& builder) {
   double start = TRI_microtime();

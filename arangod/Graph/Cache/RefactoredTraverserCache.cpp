@@ -86,12 +86,13 @@ VPackSlice RefactoredTraverserCache::lookupToken(EdgeDocumentToken const& idToke
   return VPackSlice(_mmdr.vpack());
 }
 
-VPackSlice RefactoredTraverserCache::lookupVertexInCollection(arangodb::velocypack::StringRef id) {
+VPackSlice RefactoredTraverserCache::lookupVertexInCollection(arangodb::velocypack::HashedStringRef const& idHashed) {
   // TODO: Missing produceVertices check
   /*if (!_baseOptions->produceVertices()) {
     // this traversal does not produce any vertices
     return arangodb::velocypack::Slice::nullSlice();
   }*/
+  arangodb::velocypack::StringRef id{idHashed};
 
   // TRI_ASSERT(!ServerState::instance()->isCoordinator()); // TODO: if we're just setting this up for singleserver we can enable that assert
   size_t pos = id.find('/');
@@ -157,7 +158,7 @@ void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idT
   builder.add(lookupToken(idToken));
 }
 
-void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef idString,
+void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
                                                       VPackBuilder& builder) {
   builder.add(lookupVertexInCollection(idString));
 }
@@ -168,7 +169,8 @@ aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken con
 }
 
 aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
-  return aql::AqlValue(lookupVertexInCollection(idString));
+  arangodb::velocypack::HashedStringRef hashedId{idString.begin(), static_cast<uint32_t>(idString.length())};
+  return aql::AqlValue(lookupVertexInCollection(hashedId));
 }
 
 arangodb::velocypack::StringRef RefactoredTraverserCache::persistString(arangodb::velocypack::StringRef idString) {

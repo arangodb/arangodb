@@ -59,7 +59,6 @@ class ProviderTracer {
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
 
-  void insertVertexIntoResult(VertexType vertex, arangodb::velocypack::Builder& builder);
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,

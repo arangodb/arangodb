@@ -67,13 +67,7 @@ struct SingleServerProvider {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
-      // NUr implementiert wenn baseOptions>produceVertices()
-      // Sonst add `null`.
-
-      void addToBuilder(SingleServerProvider& provider,
-                        arangodb::velocypack::Builder& builder) const;
-
-      VertexType data() const;
+      VertexType const& data() const;
 
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
@@ -93,7 +87,7 @@ struct SingleServerProvider {
 
       void addToBuilder(SingleServerProvider& provider,
                         arangodb::velocypack::Builder& builder) const;
-      EdgeDocumentToken data() const;
+      EdgeDocumentToken const& data() const;
 
      private:
       EdgeDocumentToken _token;
@@ -137,7 +131,6 @@ struct SingleServerProvider {
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
 
-  void insertVertexIntoResult(VertexType vertex, arangodb::velocypack::Builder& builder);
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
