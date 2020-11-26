@@ -68,13 +68,11 @@ template <class Step>
 template <class ProviderType>
 void PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
   Step const* myStep = &vertex;
-
+  
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
-
-    if (myStep->getEdge().has_value()) {
-      path.prependEdge(myStep->getEdge().value());
-    }
+    TRI_ASSERT(myStep->getEdge().has_value());
+    path.prependEdge(myStep->getEdge().value());
 
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
@@ -97,22 +95,21 @@ void PathStore<Step>::reverseBuildPath(Step const& vertex,
     // The buildPath of the other side has included the vertex already
     return;
   }
-  Step const* myStep = &vertex;
-  TRI_ASSERT(size() > myStep->getPrevious());
+
+  TRI_ASSERT(size() > vertex.getPrevious());
   // We have added the vertex, but we still need the edge on the other side of the path
 
-  if (myStep->getEdge().has_value()) {
-    path.appendEdge(myStep->getEdge().value());
-  }
-  myStep = &_schreier[myStep->getPrevious()];
+  TRI_ASSERT(vertex.getEdge().has_value());
+  path.appendEdge(vertex.getEdge().value());
+  
+  Step const* myStep = &_schreier[vertex.getPrevious()];
 
   while (!myStep->isFirst()) {
     path.appendVertex(myStep->getVertex());
 
-    if (myStep->getEdge().has_value()) {
-      path.appendEdge(myStep->getEdge().value());
-    }
-
+    TRI_ASSERT(myStep->getEdge().has_value());
+    path.appendEdge(myStep->getEdge().value());
+    
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }

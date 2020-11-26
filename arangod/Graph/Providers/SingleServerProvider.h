@@ -101,8 +101,8 @@ struct SingleServerProvider {
       return _vertex < other._vertex;
     }
 
-    Vertex getVertex() const { return _vertex; }
-    std::optional<Edge> getEdge() const { return _edge; }
+    Vertex const& getVertex() const { return _vertex; }
+    std::optional<Edge> const& getEdge() const { return _edge; }
 
     std::string toString() const {
       return "<Step><Vertex>: " + _vertex.data().toString();

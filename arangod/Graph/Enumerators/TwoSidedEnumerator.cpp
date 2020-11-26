@@ -110,6 +110,7 @@ template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::fetchResults(ResultList& results)
     -> void {
   std::vector<Step*> looseEnds{};
+#if 0
   if (_direction == Direction::FORWARD) {
     for (auto& [step, unused] : results) {
       if (!step.isProcessable()) {
@@ -132,6 +133,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::fetchResu
     // or that we need to refetch at some later point.
     // TODO maybe we can combine this with prefetching of paths
   }
+#endif
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -151,6 +153,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
   }
   auto step = _queue.pop();
   auto previous = _interior.append(step);
+  
   auto neighbors = _provider.expand(step, previous);
 
   LOG_TOPIC("a092f", DEBUG, Logger::GRAPHS)
@@ -304,7 +307,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPa
     fetchResults();
 
     while (!_results.empty()) {
-      auto [leftVertex, rightVertex] = _results.back();
+      auto const& [leftVertex, rightVertex] = _results.back();
 
       _resultPath.clear();
       _left.buildPath(leftVertex, _resultPath);

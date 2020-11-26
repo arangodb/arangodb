@@ -41,8 +41,7 @@ class FifoQueue {
   FifoQueue() {}
   ~FifoQueue() {}
 
-  /// @brief queue datastore
-  std::deque<Step> _queue;
+
 
   void clear() { _queue.clear(); };
 
@@ -50,10 +49,8 @@ class FifoQueue {
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
-      auto& first = _queue.front();
-      if (first.isProcessable()) {
-        return true;
-      }
+      auto const& first = _queue.front();
+      return first.isProcessable();
     }
 
     return false;
@@ -61,7 +58,7 @@ class FifoQueue {
 
   size_t size() const { return _queue.size(); };
 
-  bool isEmpty() const { return _queue.size() == 0; };
+  bool isEmpty() const { return _queue.empty(); }
 
   std::vector<Step*> getLooseEnds() {
     TRI_ASSERT(!hasProcessableElement());
@@ -83,6 +80,11 @@ class FifoQueue {
     _queue.pop_front();
     return first;
   };
+  
+private:
+  
+  /// @brief queue datastore
+  std::deque<Step> _queue;
 };
 
 }  // namespace graph
