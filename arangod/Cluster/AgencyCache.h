@@ -129,6 +129,7 @@ public:
   /**
    * @brief         Clean up planned/current changes before index
    *
+   * @param section "Plan" or "Current"
    * @param index   Done index
    */
   void clearChanged(std::string const& section, consensus::index_t const& last);

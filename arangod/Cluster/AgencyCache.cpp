@@ -189,7 +189,7 @@ void AgencyCache::handleCallbacksNoLock(
     }
 
     // Paths are normalized. We omit the first 8 characters for "/arango" + "/"
-    const static size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
+    const size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
     if (k.size() > offset) {
       std::string_view r(k.c_str() + offset, k.size() - offset);
       auto rs = r.size();
@@ -348,7 +348,6 @@ void AgencyCache::run() {
                           std::lock_guard g(_callbacksLock);
                           handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
                         }
-
                         for (auto const& i : pc) {
                           _planChanges.emplace(_commitIndex, i);
                         }
@@ -579,6 +578,14 @@ void AgencyCache::clearChanged(std::string const& what, consensus::index_t const
   decltype(_planChanges)& changes = (what == PLAN) ? _planChanges : _currentChanges;
   if (changes.size() > 0) {
     changes.erase(changes.begin(), changes.upper_bound(done));
+  }
+}
+
+void AgencyCache::clearChanged(std::string const& what, consensus::index_t const& doneIndex) {
+  std::shared_lock g(_storeLock);
+  decltype(_planChanges)& changes = (what == PLAN) ? _planChanges : _currentChanges;
+  if (!changes.empty()) {
+    changes.erase(changes.begin(), changes.upper_bound(doneIndex));
   }
 }
 
