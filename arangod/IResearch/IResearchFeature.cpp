@@ -821,9 +821,6 @@ void IResearchFeature::prepare() {
            "arangosearch filters";
   }
 
-  // register tasks after UpgradeFeature::prepare() has finished
-  registerUpgradeTasks(server());
-
   // ensure no tasks are scheduled and no threads are started
   TRI_ASSERT(std::make_tuple(size_t(0), size_t(0), size_t(0)) == stats(ThreadGroup::_0));
   TRI_ASSERT(std::make_tuple(size_t(0), size_t(0), size_t(0)) == stats(ThreadGroup::_1));
@@ -857,6 +854,9 @@ void IResearchFeature::prepare() {
 
 void IResearchFeature::start() {
   TRI_ASSERT(isEnabled());
+
+  // register tasks after UpgradeFeature::prepare() has finished
+  registerUpgradeTasks(server());
 
   // ensure that at least 1 worker for each group is started
   if (ServerState::instance()->isDBServer() ||

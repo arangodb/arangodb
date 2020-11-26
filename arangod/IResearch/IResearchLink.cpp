@@ -354,10 +354,6 @@ void CommitTask::operator()() {
     return;
   }
 
-  TRI_IF_FAILURE("IResearchCommitTask::tryToLockLink") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
   auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
 
   if (!linkLock.owns_lock()) {
@@ -380,6 +376,10 @@ void CommitTask::operator()() {
 
   // reload RuntimeState
   {
+    TRI_IF_FAILURE("IResearchCommitTask::lockDataStore") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
     ReadMutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
     auto lock = irs::make_lock_guard(mutex);
@@ -526,6 +526,10 @@ void ConsolidationTask::operator()() {
 
   // reload RuntimeState
   {
+    TRI_IF_FAILURE("IResearchConsolidationTask::lockDataStore") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
     ReadMutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
     auto lock = irs::make_lock_guard(mutex);
@@ -565,6 +569,10 @@ void ConsolidationTask::operator()() {
   } else {
     --state->pendingConsolidations;
     --ConsolidationsCount;
+  }
+
+  TRI_IF_FAILURE("IResearchConsolidationTask::consolidateUnsafe") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   // run consolidation ('_asyncSelf' locked by async task)
@@ -1411,6 +1419,11 @@ Result IResearchLink::initDataStore(
     return {}; // nothing more to do
   }
   auto& dbFeature = server.getFeature<DatabaseFeature>();
+
+          LOG_TOPIC("5b591", WARN, iresearch::TOPIC)
+            << _maintenanceState->pendingCommits.load()
+            << " "
+            << _maintenanceState->pendingConsolidations.load();
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
       [asyncSelf = _asyncSelf, &flushFeature]() -> Result {

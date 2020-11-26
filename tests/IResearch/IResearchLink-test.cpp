@@ -67,6 +67,8 @@
 #include "IResearchTestCompressor.h"
 #include "Mocks/IResearchLinkMock.h"
 
+using namespace std::chrono_literals;
+
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
@@ -94,8 +96,28 @@ class IResearchLinkTest
   IResearchLinkTest() : server(false) {
     arangodb::tests::init();
 
+    // ensure ArangoSearch start 1 maintenance for each group
+    auto opts = server.server().options();
+    auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
+    ars.collectOptions(opts);
+    auto* commitThreads = opts->get<arangodb::options::UInt64Parameter>("--arangosearch.commit-threads");
+    opts->processingResult().touch("arangosearch.commit-threads");
+    EXPECT_NE(nullptr, commitThreads);
+    *commitThreads->ptr = 1;
+    auto* consolidationThreads = opts->get<arangodb::options::UInt64Parameter>("--arangosearch.consolidation-threads");
+    opts->processingResult().touch("arangosearch.consolidation-threads");
+    EXPECT_NE(nullptr, consolidationThreads);
+    *consolidationThreads->ptr = 1;
+    ars.validateOptions(opts);
+
     server.addFeature<arangodb::FlushFeature>(false);
     server.startFeatures();
+    EXPECT_EQ(
+      (std::pair<size_t, size_t>{1, 1}),
+      ars.limits(arangodb::iresearch::ThreadGroup::_0));
+    EXPECT_EQ(
+      (std::pair<size_t, size_t>{1, 1}),
+      ars.limits(arangodb::iresearch::ThreadGroup::_1));
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -1225,7 +1247,6 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
-  
   auto linkCallbackRemover = arangodb::iresearch::IResearchLinkMock::setCallbakForScope([](irs::directory& dir) {
     dir.attributes().emplace<iresearch::mock::test_encryption>(enc_block_size);
     });
@@ -1331,3 +1352,105 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()), abc2Slice.byteSize());
   EXPECT_EQ(expected, compressed_values);
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(IResearchLinkTest, test_commit_task_fail) {
+  using namespace arangodb;
+  using namespace arangodb::iresearch;
+
+  std::mutex mtx;
+  std::condition_variable cv;
+
+  auto& feature = server.getFeature<IResearchFeature>();
+  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+            feature.stats(ThreadGroup::_0));
+  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+            feature.stats(ThreadGroup::_1));
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  auto collectionJson = VPackParser::fromJson(R"({
+    "name": "testCollection" })");
+  auto linkJson = VPackParser::fromJson(R"({
+    "id": 42, "view": "42",
+    "type": "arangosearch",
+    "consolidationIntervalMsec": 1000,
+    "commitIntervalMsec": 1000 })");
+  auto viewJson = VPackParser::fromJson(R"({
+    "id": 42, "name": "testView",
+    "type": "arangosearch" })");
+
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_NE(nullptr, logicalCollection);
+  auto view = std::dynamic_pointer_cast<IResearchView>(vocbase.createView(viewJson->slice()));
+  ASSERT_NE(nullptr, view);
+  view->open();
+  ASSERT_TRUE(server.server().hasFeature<FlushFeature>());
+
+  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+            feature.stats(ThreadGroup::_0));
+  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+            feature.stats(ThreadGroup::_1));
+
+  // stop queue
+  {
+    auto lock = irs::make_lock_guard(mtx);
+
+    // schedule blocking task for group 0
+    ASSERT_TRUE(
+      feature.queue(ThreadGroup::_0, 0ms, [&](){
+        {
+          auto lock = irs::make_lock_guard(mtx);
+        }
+        cv.notify_one();
+      })
+    );
+    {
+      auto const end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      auto stats = feature.stats(ThreadGroup::_0);
+      while (decltype(stats){ 1, 0, 1 } != stats) {
+        std::this_thread::sleep_for(50ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+        stats = feature.stats(ThreadGroup::_0);
+      }
+    }
+
+    // schedule blocking task for group 1
+    ASSERT_TRUE(
+      feature.queue(ThreadGroup::_1, 0ms, [&](){
+        {
+          auto lock = irs::make_lock_guard(mtx);
+        }
+        cv.notify_one();
+      })
+    );
+    {
+      auto const end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      auto stats = feature.stats(ThreadGroup::_1);
+      while (decltype(stats){ 1, 0, 1 } != stats) {
+        std::this_thread::sleep_for(50ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+        stats = feature.stats(ThreadGroup::_1);
+      }
+    }
+
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
+              feature.stats(ThreadGroup::_0));
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
+              feature.stats(ThreadGroup::_1));
+
+    bool created;
+    auto link = logicalCollection->createIndex(linkJson->slice(), created);
+    ASSERT_TRUE(created);
+    ASSERT_NE(nullptr, link);
+    auto linkImpl = std::dynamic_pointer_cast<IResearchLink>(link);
+    ASSERT_NE(nullptr, linkImpl);
+
+    // ensure commit and consolidation are scheduled upon link creation
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(1), size_t(1)),
+              feature.stats(ThreadGroup::_0));
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(1), size_t(1)),
+              feature.stats(ThreadGroup::_1));
+  }
+}
+
+#endif
