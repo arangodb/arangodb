@@ -70,6 +70,15 @@ std::vector<typename ProviderImpl::Step> ProviderTracer<ProviderImpl>::expand(St
 }
 
 template <class ProviderImpl>
+auto ProviderTracer<ProviderImpl>::expand(Step const& from,
+                                                                              size_t previous,
+                                                                              std::function<void(Step)> callback) -> void {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["expand"].addTiming(TRI_microtime() - start));
+  _impl.expand(from, previous, std::move(callback));
+}
+
+template <class ProviderImpl>
 void ProviderTracer<ProviderImpl>::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                         arangodb::velocypack::Builder& builder) {
   double start = TRI_microtime();

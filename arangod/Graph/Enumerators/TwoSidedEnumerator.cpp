@@ -153,7 +153,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
   }
   auto step = _queue.pop();
   auto previous = _interior.append(step);
-  
+#if 0
   auto neighbors = _provider.expand(step, previous);
 
   LOG_TOPIC("a092f", DEBUG, Logger::GRAPHS)
@@ -170,6 +170,18 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     // Add the step to our shell
     _shell.emplace(std::move(n));
   }
+#else
+  _provider.expand(step, previous, [&](Step n) -> void {
+    // Check if other Ball knows this Vertex.
+    // Include it in results.
+    if (getDepth() + other.getDepth() >= _minDepth) {
+      other.matchResultsInShell(n, results);
+    }
+    LOG_TOPIC("9620c", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
+    // Add the step to our shell
+    _shell.emplace(std::move(n));
+  });
+#endif
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>

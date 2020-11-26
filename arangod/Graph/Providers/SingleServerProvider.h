@@ -130,6 +130,8 @@ struct SingleServerProvider {
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
+  
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
