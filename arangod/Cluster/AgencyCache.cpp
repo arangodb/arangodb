@@ -572,15 +572,6 @@ void AgencyCache::invokeAllCallbacks() const {
   invokeCallbacks(toCall);
 }
 
-
-void AgencyCache::clearChanged(std::string const& what, consensus::index_t const& done) {
-  std::shared_lock g(_storeLock);
-  decltype(_planChanges)& changes = (what == PLAN) ? _planChanges : _currentChanges;
-  if (changes.size() > 0) {
-    changes.erase(changes.begin(), changes.upper_bound(done));
-  }
-}
-
 void AgencyCache::clearChanged(std::string const& what, consensus::index_t const& doneIndex) {
   std::shared_lock g(_storeLock);
   decltype(_planChanges)& changes = (what == PLAN) ? _planChanges : _currentChanges;
