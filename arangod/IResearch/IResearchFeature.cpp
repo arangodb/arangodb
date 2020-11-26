@@ -805,19 +805,34 @@ void IResearchFeature::prepare() {
 
   registerRecoveryHelper(server());
 
-  // start the async task thread pool
+  // ensure no tasks are scheduled and no threads are started
+  TRI_ASSERT(std::make_tuple(size_t(0), size_t(0), size_t(0)) == stats(ThreadGroup::_0));
+  TRI_ASSERT(std::make_tuple(size_t(0), size_t(0), size_t(0)) == stats(ThreadGroup::_1));
+
+  // submit tasks to ensure that at least 1 worker for each group is started
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
-    TRI_ASSERT(_commitThreads && _commitThreadsIdle);
-    TRI_ASSERT(_consolidationThreads && _consolidationThreadsIdle);
+    _startState = std::make_shared<State>();
 
-    _async->get(ThreadGroup::_0).limits(_commitThreads, _commitThreadsIdle);
-    _async->get(ThreadGroup::_1).limits(_consolidationThreads, _consolidationThreadsIdle);
+    auto submitTask = [this](ThreadGroup group) {
+      return _async->get(group).run([state = _startState]() noexcept {
+        {
+          auto lock = irs::make_lock_guard(state->mtx);
+          ++state->counter;
+        }
+        state->cv.notify_one();
+      });
+    };
 
-    LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
-        << "ArangoSearch maintenance: "
-        << "[" << _commitThreadsIdle << ".." << _commitThreads << "] commit thread(s), "
-        << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads << "] consolidation thread(s)";
+    if (!submitTask(ThreadGroup::_0) ||
+        !submitTask(ThreadGroup::_1)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_SYS_ERROR,
+        "failed to initialize ArangoSearch maintenance threads");
+    }
+
+    TRI_ASSERT(std::make_tuple(size_t(0), size_t(1), size_t(0)) == stats(ThreadGroup::_0));
+    TRI_ASSERT(std::make_tuple(size_t(0), size_t(1), size_t(0)) == stats(ThreadGroup::_1));
   }
 }
 
@@ -841,32 +856,30 @@ void IResearchFeature::start() {
 
   registerUpgradeTasks(server());  // register tasks after UpgradeFeature::prepare() has finished
 
+  // ensure that at least 1 worker for each group is started
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
-    // ensure at least 1 thread is running for each group
-    std::mutex mtx;
-    std::condition_variable cv;
-    std::atomic<size_t> counter{0};
+    TRI_ASSERT(_startState);
+    TRI_ASSERT(_commitThreads && _commitThreadsIdle);
+    TRI_ASSERT(_consolidationThreads && _consolidationThreadsIdle);
 
-    auto startThread = [this, &counter, &cv](ThreadGroup group) {
-      return _async->get(group).run([&counter, &cv]() noexcept {
-        ++counter;
-        cv.notify_one();
-      });
-    };
+    _async->get(ThreadGroup::_0).limits(_commitThreads, _commitThreadsIdle);
+    _async->get(ThreadGroup::_1).limits(_consolidationThreads, _consolidationThreadsIdle);
 
-    if (!startThread(ThreadGroup::_0) || !startThread(ThreadGroup::_1)) {
+    LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
+        << "ArangoSearch maintenance: "
+        << "[" << _commitThreadsIdle << ".." << _commitThreads << "] commit thread(s), "
+        << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads << "] consolidation thread(s)";
+
+    auto lock = irs::make_unique_lock(_startState->mtx);
+    if (!_startState->cv.wait_for(lock, 60s,
+                                  [this](){ return _startState->counter == 2; })) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_SYS_ERROR,
         "failed to start ArangoSearch maintenance threads");
     }
 
-    auto lock = irs::make_unique_lock(mtx);
-    if (!cv.wait_for(lock, 30s, [&counter](){ return counter == 2; })) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_SYS_ERROR,
-        "failed to start ArangoSearch maintenance threads");
-    }
+    _startState = nullptr;
   }
 
   _running.store(true);

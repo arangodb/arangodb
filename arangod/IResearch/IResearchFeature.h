@@ -97,6 +97,13 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   IndexTypeFactory& factory();
 
  private:
+  struct State {
+    std::mutex mtx;
+    std::condition_variable cv;
+    size_t counter{0};
+  };
+
+  std::shared_ptr<State> _startState;
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
   size_t _consolidationThreads;
