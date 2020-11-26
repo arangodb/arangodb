@@ -574,6 +574,7 @@ class IResearchViewCountExecutor
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   void reset() noexcept {
+    Base::reset();
     _readerOffset = 0;
   }
 

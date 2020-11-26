@@ -785,6 +785,7 @@ void handleViewsRule(Optimizer* opt,
                 viewNode.setEmitOnlyCount(collectOutVars[0]);
                 plan->unlinkNode(current);
               }
+              plan->clearVarUsageComputed();
             }
           }
           break;

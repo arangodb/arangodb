@@ -110,7 +110,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
                             bool withProperties) const override final;
 
-  /// @returns the list of the linked collections + view itself
+  /// @returns the list of the linked collections
   std::vector<std::reference_wrapper<aql::Collection const>> collections() const;
 
   /// @returns true if underlying view has no links
@@ -211,7 +211,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setEmitOnlyCount(aql::Variable const* countVariable) noexcept {
     TRI_ASSERT(!isLateMaterialized());
-    _outVariable = countVariable;
+    _outCountVariable = countVariable;
     _emitOnlyCount = true;
   }
 
@@ -293,6 +293,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief output variable to write to
   aql::Variable const* _outVariable;
+
+  /// @brief output count variable for writing results count
+  /// for emitting count (we could not re-use _outVariable as 
+  /// we still need it to properly filter out "used" in SEARCH 
+  /// variables in getVariablesUsedHere)
+  aql::Variable const* _outCountVariable;
 
   // Following two variables should be set in pairs.
   // Info is split between 2 registers to allow constructing
