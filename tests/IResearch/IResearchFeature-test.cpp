@@ -1882,6 +1882,24 @@ TEST_F(IResearchFeatureTest, test_fail_to_submit_task) {
     feature.validateOptions(server.server().options());
     ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
   }
+
+  {
+    auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+    TRI_AddFailurePointDebugging("IResearchFeature::queueGroup0");
+    arangodb::iresearch::IResearchFeature feature(server.server());
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
+    ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
+  }
+
+  {
+    auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+    TRI_AddFailurePointDebugging("IResearchFeature::queueGroup1");
+    arangodb::iresearch::IResearchFeature feature(server.server());
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
+    ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
+  }
 }
 
 TEST_F(IResearchFeatureTest, test_fail_to_start) {

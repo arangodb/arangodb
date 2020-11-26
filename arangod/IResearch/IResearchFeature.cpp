@@ -905,9 +905,28 @@ bool IResearchFeature::queue(
     std::chrono::steady_clock::duration delay,
     std::function<void()>&& fn) {
   try {
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("IResearchFeature::queue") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+
+    switch (id) {
+      case ThreadGroup::_0:
+        TRI_IF_FAILURE("IResearchFeature::queueGroup0") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        break;
+      case ThreadGroup::_1:
+        TRI_IF_FAILURE("IResearchFeature::queueGroup1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        break;
+      default:
+        TRI_ASSERT(false);
+        break;
+    }
+#endif
 
     if (_async->get(id).run(std::move(fn), delay)) {
       return true;
