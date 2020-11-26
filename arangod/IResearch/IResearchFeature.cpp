@@ -707,12 +707,10 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
 
 void IResearchFeature::beginShutdown() {
   _running.store(false);
-  ApplicationFeature::beginShutdown();
 }
 
 void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
   _running.store(false);
-  ApplicationFeature::collectOptions(options);
   options->addSection("arangosearch",
                       std::string("Configure the ") + FEATURE_NAME + " feature");
   options->addOption(THREADS_PARAM,
@@ -786,7 +784,6 @@ void IResearchFeature::prepare() {
   TRI_ASSERT(isEnabled());
 
   _running.store(false);
-  ApplicationFeature::prepare();
 
   // load all known codecs
   ::iresearch::formats::init();
@@ -804,6 +801,22 @@ void IResearchFeature::prepare() {
   registerTransactionDataSourceRegistrationCallback();
 
   registerRecoveryHelper(server());
+
+  // register filters
+  {
+    if (server().hasFeature<arangodb::aql::AqlFunctionFeature>()) {
+      auto& functions = server().getFeature<arangodb::aql::AqlFunctionFeature>();
+      registerFilters(functions);
+      registerScorers(functions);
+    } else {
+      LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
+          << "failure to find feature 'AQLFunctions' while registering "
+             "arangosearch filters";
+    }
+  }
+
+  // register tasks after UpgradeFeature::prepare() has finished
+  registerUpgradeTasks(server());
 
   // ensure no tasks are scheduled and no threads are started
   TRI_ASSERT(std::make_tuple(size_t(0), size_t(0), size_t(0)) == stats(ThreadGroup::_0));
@@ -839,23 +852,6 @@ void IResearchFeature::prepare() {
 void IResearchFeature::start() {
   TRI_ASSERT(isEnabled());
 
-  ApplicationFeature::start();
-
-  // register IResearchView filters
-  {
-    if (server().hasFeature<arangodb::aql::AqlFunctionFeature>()) {
-      auto& functions = server().getFeature<arangodb::aql::AqlFunctionFeature>();
-      registerFilters(functions);
-      registerScorers(functions);
-    } else {
-      LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
-          << "failure to find feature 'AQLFunctions' while registering "
-             "arangosearch filters";
-    }
-  }
-
-  registerUpgradeTasks(server());  // register tasks after UpgradeFeature::prepare() has finished
-
   // ensure that at least 1 worker for each group is started
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
@@ -889,13 +885,11 @@ void IResearchFeature::stop() {
   TRI_ASSERT(isEnabled());
   _async->stop();
   _running.store(false);
-  ApplicationFeature::stop();
 }
 
 void IResearchFeature::unprepare() {
   TRI_ASSERT(isEnabled());
   _running.store(false);
-  ApplicationFeature::unprepare();
 }
 
 void IResearchFeature::queue(
