@@ -86,7 +86,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @param fn the function to execute
   /// @param delay how log to sleep before the execution
   //////////////////////////////////////////////////////////////////////////////
-  void queue(ThreadGroup id,
+  bool queue(ThreadGroup id,
              std::chrono::steady_clock::duration delay,
              std::function<void()>&& fn);
 

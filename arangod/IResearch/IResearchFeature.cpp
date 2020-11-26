@@ -834,7 +834,7 @@ void IResearchFeature::prepare() {
     _startState = std::make_shared<State>();
 
     auto submitTask = [this](ThreadGroup group) {
-      return _async->get(group).run([state = _startState]() noexcept {
+      return queue(group, 0ms, [state = _startState]() noexcept {
         {
           auto lock = irs::make_lock_guard(state->mtx);
           ++state->counter;
@@ -900,11 +900,32 @@ void IResearchFeature::unprepare() {
   _running.store(false);
 }
 
-void IResearchFeature::queue(
+bool IResearchFeature::queue(
     ThreadGroup id,
     std::chrono::steady_clock::duration delay,
     std::function<void()>&& fn) {
-  _async->get(id).run(std::move(fn), delay);
+  try {
+    TRI_IF_FAILURE("IResearchFeature::queue") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    return _async->get(id).run(std::move(fn), delay);
+  } catch (std::exception const& e) {
+    LOG_TOPIC("c1b64", WARN, arangodb::iresearch::TOPIC)
+      << "Caught exception while sumbitting a task to thread group '"
+      << std::to_string(std::underlying_type_t<ThreadGroup>(id))
+      << "' error '" << e.what() << "'";
+  } catch (...) {
+    LOG_TOPIC("c1b65", WARN, arangodb::iresearch::TOPIC)
+      << "Caught an exception while sumbitting a task to thread group '"
+      << std::to_string(std::underlying_type_t<ThreadGroup>(id)) << "'";
+  }
+
+  LOG_TOPIC("c1b66", ERR, arangodb::iresearch::TOPIC)
+    << "Failed to submit a task to thread group '"
+    << std::to_string(std::underlying_type_t<ThreadGroup>(id)) << "'";
+
+  return false;
 }
 
 std::tuple<size_t, size_t, size_t> IResearchFeature::stats(ThreadGroup id) const {

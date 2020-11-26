@@ -354,6 +354,10 @@ void CommitTask::operator()() {
     return;
   }
 
+  TRI_IF_FAILURE("IResearchCommitTask::tryToLockLink") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
 
   if (!linkLock.owns_lock()) {
@@ -428,6 +432,10 @@ void CommitTask::operator()() {
     }
   });
 
+  TRI_IF_FAILURE("IResearchCommitTask::commitUnsafe") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
@@ -438,6 +446,11 @@ void CommitTask::operator()() {
     if (code == IResearchLink::CommitResult::DONE) {
       if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
         cleanupIntervalCount = 0;
+
+        TRI_IF_FAILURE("IResearchCommitTask::cleanupUnsafe") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
         res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
         if (res.ok()) {
