@@ -157,6 +157,7 @@ class RocksDBEngine final : public StorageEngine {
 
   void getStatistics(velocypack::Builder& builder) const override;
   void getStatistics(std::string& result) const override;
+  bool getIsWriteStopped() const;
 
   // inventory functionality
   // -----------------------

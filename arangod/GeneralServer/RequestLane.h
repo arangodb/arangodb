@@ -85,12 +85,18 @@ enum class RequestLane {
   // in-sync mode (wal tailing)
   SERVER_REPLICATION_CATCHUP,
 
+  // For synchronous replication requests on the follower
+  SERVER_SYNCHRONOUS_REPLICATION,
+
   // For periodic or one-off V8-based tasks executed by the
   // Scheduler.
   TASK_V8,
 
   // Internal tasks with low priority
   INTERNAL_LOW,
+
+  // Continuations of requests:
+  CONTINUATIONS,
 
   // Not yet used:
   // For requests which go from the agency back to coordinators or
@@ -103,15 +109,16 @@ enum class RequestLane {
 };
 
 enum class RequestPriority {
-  HIGH = 0,
-  MED = 1,
-  LOW = 2
+  MAINTENANCE = 0,
+  HIGH = 1,
+  MED = 2,
+  LOW = 3
 };
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {
     case RequestLane::CLIENT_FAST:
-      return RequestPriority::HIGH;
+      return RequestPriority::MAINTENANCE;
     case RequestLane::CLIENT_AQL:
       return RequestPriority::LOW;
     case RequestLane::CLIENT_V8:
@@ -142,6 +149,10 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::HIGH;
     case RequestLane::DELAYED_FUTURE:
       return RequestPriority::HIGH;
+    case RequestLane::SERVER_SYNCHRONOUS_REPLICATION:
+      return RequestPriority::HIGH;
+    case RequestLane::CONTINUATIONS:
+      return RequestPriority::MED;
   }
   return RequestPriority::LOW;
 }

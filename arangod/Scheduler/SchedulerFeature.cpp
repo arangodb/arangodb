@@ -61,8 +61,8 @@ size_t defaultNumberOfThreads() {
   // use two times the number of hardware threads as the default
   size_t result = arangodb::NumberOfCores::getValue() * 2;
   // but only if higher than 64. otherwise use a default minimum value of 64
-  if (result < 64) {
-    result = 64;
+  if (result < 32) {
+    result = 32;
   }
   return result;
 }
@@ -111,19 +111,19 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      std::string("controls the number of requests that can be in flight at a given point in time, relative to the number of request handling threads"),
                      new DoubleParameter(&_inFlightMultiplier),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic, arangodb::options::Flags::Hidden));
-  options->addOption("--server.maximal-expected-fanout",
-                     std::string("only change this if you have collections with considerably more shards than you have DBServers, in this case, set it to roughly the maximal number of shards in any collection multiplied by the number of coordinators and divided by the number of DBServers, this value is used to limit the number of low priority requests being worked on concurrently in coordinators, thereby preventing cluster internal parallel overload"),
-                     new UInt64Parameter(&_maxExpectedFanout),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic, arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size",
-                     "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
+                     "size of the priority 3 fifo", new UInt64Parameter(&_fifo3Size));
 
   options->addOption(
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption("--server.prio2-size", "size of the priority 2 fifo",
+                     new UInt64Parameter(&_fifo2Size),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.prio1-size", "size of the priority 1 fifo",
                      new UInt64Parameter(&_fifo1Size),
@@ -153,10 +153,10 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _nrMaximalThreads = defaultNumberOfThreads();
   }
 
-  if (_nrMinimalThreads < 2) {
+  if (_nrMinimalThreads < 4) {
     LOG_TOPIC("bf034", WARN, arangodb::Logger::THREADS)
-        << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
-    _nrMinimalThreads = 2;
+        << "--server.minimal-threads (" << _nrMinimalThreads << ") must be at least 4";
+    _nrMinimalThreads = 4;
   }
 
   if (_inFlightMultiplier < 1.0) {
@@ -166,13 +166,6 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _inFlightMultiplier = 4.0;
   }
   
-  if (_maxExpectedFanout < 1) {
-    LOG_TOPIC("0a93b", WARN, arangodb::Logger::THREADS)
-      << "--server.maximal-expected-fanout (" << _maxExpectedFanout
-      << ") is less than 1, setting to default (3)";
-    _maxExpectedFanout = 3;
-  }
-
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
@@ -181,6 +174,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
   }
 
   if (_queueSize == 0) {
+    // Note that this is way smaller than the default of 4096!
     _queueSize = _nrMaximalThreads * 8;
   }
 
@@ -194,7 +188,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
 }
 
 void SchedulerFeature::prepare() {
-  TRI_ASSERT(2 <= _nrMinimalThreads);
+  TRI_ASSERT(4 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
 // wait for windows fix or implement operator new
 #if (_MSC_VER >= 1)
@@ -203,7 +197,7 @@ void SchedulerFeature::prepare() {
 #endif
   auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
                                                      _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size, _inFlightMultiplier, _maxExpectedFanout);
+                                                     _fifo1Size, _fifo2Size, _fifo3Size,_inFlightMultiplier);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

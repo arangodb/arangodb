@@ -41,7 +41,7 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size, double inFlightMultiplier, uint64_t maxExpectedFanout);
+                      uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size, double inFlightMultiplier);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
@@ -63,6 +63,23 @@ class SupervisedScheduler final : public Scheduler {
 
   void increaseOngoingLowPrio();
   void decreaseOngoingLowPrio();
+  void increaseOngoingLowPrioWithFanout(uint64_t c = 1);
+  void decreaseOngoingLowPrioWithFanout(uint64_t c = 1);
+  void setOngoingLowPrioLimitWithFanout(size_t numberOfCoordinators,
+                                        size_t numberOfDBServers) {
+    // The thinking goes as follows: We want all servers to do at most
+    // _ongoingLowPrioLimit of low prio jobs at the same time. Sometimes,
+    // a coordinator request fans out to a lot of dbserver (leader) requests,
+    // for example if a collection has many shards. Then we want to throttle
+    // on the coordinator, if it has already so many things going on that
+    // the dbservers could get too much. This is a heuristic here. We set
+    // the limit to the coordinator limit times the number of coordinators
+    // divided by the number of dbservers.
+    _ongoingLowPrioLimitWithFanout 
+      = _ongoingLowPrioLimit * numberOfCoordinators / numberOfDBServers;
+  }
+
+  constexpr static uint64_t const NumberOfQueues = 4;
 
  private:
   friend class SupervisedSchedulerManagerThread;
@@ -80,7 +97,7 @@ class SupervisedScheduler final : public Scheduler {
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queues[3];
+  boost::lockfree::queue<WorkItem*> _queues[NumberOfQueues];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
@@ -138,8 +155,8 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _minNumWorker;
   size_t const _maxNumWorker;
   size_t const _maxInFlight;
-  size_t const _maxExpectedFanout;
   size_t const _ongoingLowPrioLimit;
+  size_t _ongoingLowPrioLimitWithFanout;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
   std::atomic<uint64_t> _nrWorking;   // Number of threads actually working
@@ -161,9 +178,7 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  uint64_t const _maxFifoSize;
-  uint64_t const _fifo1Size;
-  uint64_t const _fifo2Size;
+  uint64_t const _maxFifoSizes[NumberOfQueues];
 
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 
@@ -176,7 +191,9 @@ class SupervisedScheduler final : public Scheduler {
   bool sortoutLongRunningThreads();
 
   // Check if we are allowed to pull from a queue with the given index
-  // This is used to give priority to "FAST" and "MED" lanes accordingly.
+  // This is used to give priority to higher prio lanes accordingly.
+  // The principle is that threads running prio p work can never block
+  // all threads that can run a higher prio.
   bool canPullFromQueue(uint64_t queueIdx) const;
 
   Gauge<uint64_t>& _metricsQueueLength;
@@ -186,6 +203,8 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
   Gauge<uint64_t>& _ongoingLowPrioGauge;
+  Gauge<uint64_t>& _ongoingLowPrioGaugeWithFanout;
+  std::array<Gauge<uint64_t>*, NumberOfQueues> _metricsQueueLengths;
 };
 
 }  // namespace arangodb

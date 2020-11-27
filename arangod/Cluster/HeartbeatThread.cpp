@@ -377,6 +377,9 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
     ci.loadCurrentDBServers();
     _updateCounter = 0;
     clusterFeature.pruneAsyncAgencyConnectionPool();
+    SchedulerFeature::SCHEDULER->setOngoingLowPrioLimitWithFanout(
+        ci.getCurrentCoordinators().size(),
+        ci.getCurrentDBServers().size());
   }
 }
 
@@ -649,6 +652,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     _updateCounter = 0;
     auto& clusterFeature = server().getFeature<ClusterFeature>();
     clusterFeature.pruneAsyncAgencyConnectionPool();
+    SchedulerFeature::SCHEDULER->setOngoingLowPrioLimitWithFanout(
+        ci.getCurrentCoordinators().size(),
+        ci.getCurrentDBServers().size());
   }
 }
 

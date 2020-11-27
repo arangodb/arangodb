@@ -491,16 +491,24 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
   uint64_t ticket = counter++;
-  auto cb = [self = shared_from_this(), handler = std::move(handler), prio, ticket]() mutable {
+  auto startTime = std::chrono::steady_clock::now();
+  auto cb = [self = shared_from_this(), handler = std::move(handler), prio, ticket, startTime]() mutable {
     if (prio == RequestPriority::LOW) {
       SchedulerFeature::SCHEDULER->increaseOngoingLowPrio();
       LOG_DEVEL << "Starting low prio rest handler... " << ticket;
+    } else {
+      LOG_DEVEL << "Staring high prio rest handler... " << ticket;
     }
     handler->statistics().SET_QUEUE_END();
-    handler->runHandler([self = std::move(self), prio, ticket](rest::RestHandler* handler) {
+    handler->runHandler([self = std::move(self), prio, ticket, startTime](rest::RestHandler* handler) {
+      auto dur = std::chrono::steady_clock::now() - startTime;
       if (prio == RequestPriority::LOW) {
         SchedulerFeature::SCHEDULER->decreaseOngoingLowPrio();
-        LOG_DEVEL << "Finishing low prio rest handler... " << ticket;
+        LOG_DEVEL << "Finishing low prio rest handler... " << ticket
+            << " took time: " << dur.count() << " stats: " << handler->statistics().timingsCsv();
+      } else {
+        LOG_DEVEL << "Finishing high prio rest handler... " << ticket
+            << " took time: " << dur.count() << " stats: " << handler->statistics().timingsCsv();
       }
       try {
         // Pass the response to the io context

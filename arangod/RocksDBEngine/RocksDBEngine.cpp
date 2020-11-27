@@ -648,10 +648,10 @@ void RocksDBEngine::start() {
           "rocksdb.max-write-buffer-number")) {
     // user hasn't explicitly set the number of write buffers, so we use a default value based
     // on the number of column families
-    // this is cfFamilies.size() + 2 ... but _option needs to be set before
+    // this is 15 * cfFamilies.size() ... but _option needs to be set before
     //  building cfFamilies
     // Update max_write_buffer_number above if you change number of families used
-    _options.max_write_buffer_number = 7 + 2;
+    _options.max_write_buffer_number = 15 * 7;
   } else if (_options.max_write_buffer_number < 7 + 2) {
     // user set the value explicitly, and it is lower than recommended
     _options.max_write_buffer_number = 7 + 2;
@@ -2402,6 +2402,17 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   }
 
   builder.close();
+}
+
+bool RocksDBEngine::getIsWriteStopped() const {
+  std::string v;
+  if (_db->GetProperty(rocksdb::DB::Properties::kIsWriteStopped, &v)) {
+    int64_t i = basics::StringUtils::int64(v);
+    if (i != 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 Result RocksDBEngine::handleSyncKeys(DatabaseInitialSyncer& syncer,
