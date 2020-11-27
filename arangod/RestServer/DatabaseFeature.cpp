@@ -255,7 +255,8 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
-      _useOldSystemCollections(true) {
+      _useOldSystemCollections(true),
+      _started(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -391,6 +392,8 @@ void DatabaseFeature::start() {
 
   // update all v8 contexts
   updateContexts();
+
+  _started.store(true);
 }
 
 // signal to all databases that active cursors can be wiped
@@ -582,6 +585,10 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
   _pendingRecoveryCallbacks.emplace_back(std::move(callback));
 
   return Result();
+}
+
+bool DatabaseFeature::started() const noexcept {
+  return _started.load(std::memory_order_relaxed);
 }
   
 void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
