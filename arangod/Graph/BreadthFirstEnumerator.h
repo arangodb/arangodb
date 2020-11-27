@@ -143,6 +143,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
  private:
+  constexpr size_t pathStepSize() const noexcept;
+
   inline size_t getDepth(size_t index) const {
     size_t depth = 0;
     while (index != 0) {

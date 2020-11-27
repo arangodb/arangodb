@@ -36,6 +36,8 @@
 #include <unordered_set>
 
 namespace arangodb {
+class ResourceMonitor;
+
 namespace transaction {
 class Methods;
 }
@@ -56,7 +58,8 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
                                std::unordered_set<RegisterId>&& readableInputRegisters,
                                std::unordered_set<RegisterId>&& writeableInputRegisters,
                                std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-                               transaction::Methods* trxPtr);
+                               transaction::Methods* trxPtr,
+                               arangodb::ResourceMonitor* resourceMonitor);
 
   DistinctCollectExecutorInfos() = delete;
   DistinctCollectExecutorInfos(DistinctCollectExecutorInfos&&) = default;
@@ -66,6 +69,7 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
  public:
   std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
   transaction::Methods* getTransaction() const;
+  arangodb::ResourceMonitor* getResourceMonitor() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -73,6 +77,8 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
 
   /// @brief the transaction for this query
   transaction::Methods* _trxPtr;
+
+  arangodb::ResourceMonitor* _resourceMonitor;
 };
 
 /**
@@ -110,6 +116,7 @@ class DistinctCollectExecutor {
  private:
   Infos const& infos() const noexcept;
   void destroyValues();
+  size_t memoryUsageForGroup(std::vector<AqlValue> const& groupValues) const;
 
  private:
   Infos const& _infos;

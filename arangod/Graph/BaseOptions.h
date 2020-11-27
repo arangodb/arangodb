@@ -32,6 +32,7 @@
 #include "Transaction/Methods.h"
 
 namespace arangodb {
+class ResourceMonitor;
 
 namespace aql {
 struct AstNode;
@@ -118,6 +119,8 @@ struct BaseOptions {
   aql::Query* query() const;
 
   TraverserCache* cache() const;
+  
+  arangodb::ResourceMonitor* resourceMonitor() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
@@ -164,6 +167,8 @@ struct BaseOptions {
 
  protected:
   aql::Query* _query;
+
+  arangodb::ResourceMonitor* _resourceMonitor;
 
   aql::FixedVarExpressionContext* _ctx;
 

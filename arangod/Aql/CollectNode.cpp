@@ -378,7 +378,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                                          getRegsToClear(), calcRegsToKeep(),
                                          std::move(readableInputRegisters),
                                          std::move(writeableOutputRegisters),
-                                         std::move(groupRegisters), trxPtr);
+                                         std::move(groupRegisters), trxPtr,
+                                         _plan->getAst()->query()->resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
                                                                            std::move(infos));

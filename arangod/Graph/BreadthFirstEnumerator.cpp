@@ -145,6 +145,27 @@ bool BreadthFirstEnumerator::next() {
             }
           }
 
+          size_t capacity;
+          if (_schreier.empty()) {
+            // minimal reserve size
+            capacity = 8;
+          } else {
+            capacity = _schreier.size() + 1;
+            if (capacity > _schreier.capacity()) {
+              capacity *= 2;
+            }
+          }
+
+          TRI_ASSERT(capacity > _schreier.size());
+          if (capacity > _schreier.capacity()) {
+            arangodb::ResourceUsageScope guard(_opts->resourceMonitor(), (capacity - _schreier.capacity()) * pathStepSize());
+
+            _schreier.reserve(capacity - _schreier.capacity());
+
+            // now we are responsible for tracking the memory
+            guard.steal();
+          }
+
           _schreier.emplace_back(std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {
             // Prune here
@@ -330,4 +351,8 @@ bool BreadthFirstEnumerator::shouldPrune() {
     }
   }
   return false;
+}
+
+constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
+  return sizeof(void*) + sizeof(PathStep);
 }

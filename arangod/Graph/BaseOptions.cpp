@@ -168,6 +168,7 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query)
     : _query(query),
+      _resourceMonitor(_query->resourceMonitor()),
       _ctx(new aql::FixedVarExpressionContext(_query)),
       _trx(_query->trx()),
       _tmpVar(nullptr),
@@ -176,6 +177,7 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query)
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _query(other._query),
+      _resourceMonitor(_query->resourceMonitor()),
       _ctx(new aql::FixedVarExpressionContext(_query)),
       _trx(other._trx),
       _tmpVar(nullptr),
@@ -187,6 +189,7 @@ BaseOptions::BaseOptions(BaseOptions const& other)
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
     : _query(query),
+      _resourceMonitor(_query->resourceMonitor()),
       _ctx(new aql::FixedVarExpressionContext(_query)),
       _trx(_query->trx()),
       _tmpVar(nullptr),
@@ -328,6 +331,10 @@ arangodb::aql::Query* BaseOptions::query() const { return _query; }
 
 arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
+}
+
+arangodb::ResourceMonitor* BaseOptions::resourceMonitor() const {
+  return _resourceMonitor;
 }
 
 void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
