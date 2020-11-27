@@ -107,7 +107,6 @@ bool BreadthFirstEnumerator::next() {
     // If not it should have bailed out before.
     TRI_ASSERT(_toSearchPos < _toSearch.size());
 
-    _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx]->vertex;
     arangodb::velocypack::StringRef vId;
