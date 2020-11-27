@@ -140,10 +140,47 @@ function traversalResetRegression2Suite() {
   };
 }
 
+// Regression test suite for https://github.com/arangodb/arangodb/issues/13099
+function subqueryFetchTooMuchRegressionSuite() {
+  const splice = {profile: 0, optimizer: {rules: ["+splice-subqueries"] }};
+  const nonSplice = {optimizer: {rules: ["-splice-subqueries"] }};
+  return {
+    setUpAll: function() {},
+    tearDownAll: function() {},
+
+    testSubqueryEndHitExactEndOfInput: function() {
+      // This tests needs to fill an AQL itemBlock, s.t. one shadowRow
+      // for the subqueryEnd is the start of the next AQLItemBlock
+      // This will cause the upstream on subquery to be "DONE" but
+      // Bot not on the main query.
+      const query = `
+        FOR x IN 1..10000
+          LET sub = (
+            FOR y IN 1..10
+              /* We need a condition on X, but want the optimizer to not know it*/
+              LET add = x + 10000 * y
+              /* mod == x */
+              LET mod = add % 10000
+              /* on the 100 x we want to have 10 y values*/
+              FILTER y != 10 || mod == 100
+              RETURN 1
+          )
+          FILTER LENGTH(sub) > 0
+          LIMIT 20
+          RETURN 1
+      `;
+      const res1 = db._query(query, {}, splice).toArray();
+      const res2 = db._query(query, {}, nonSplice).toArray();
+      assertEqual(res1, res2);
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(traversalResetRegression2Suite);
+jsunity.run(subqueryFetchTooMuchRegressionSuite);
 
 return jsunity.done();
