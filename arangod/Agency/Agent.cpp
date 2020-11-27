@@ -881,7 +881,7 @@ void Agent::advanceCommitIndex() {
           << "Critical mass for commiting "
           << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
           << index << " to read db";
-      
+
       // Change _readDB and _commitIndex atomically together:
       _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
                                             ci + 1, index), ci, t, true);
@@ -983,7 +983,7 @@ bool Agent::active() const {
 void Agent::activateAgency() {
   _config.activate();
   syncActiveAndAcknowledged();
-  
+
   try {
     _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
   } catch (std::exception const& e) {
@@ -1118,7 +1118,7 @@ void Agent::lastAckedAgo(Builder& ret) const {
 
   ret.add("lastCompactionAt", VPackValue(lastCompactionAt));
   ret.add("nextCompactionAfter", VPackValue(nextCompactionAfter));
-  
+
   if (leading()) {
     ret.add(VPackValue("lastAcked"));
     VPackObjectBuilder b(&ret);
@@ -1935,7 +1935,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
   uint64_t commitIndex = 0;
 
-  { 
+  {
     READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex.load(std::memory_order_relaxed);
@@ -1945,7 +1945,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
     // key-value store {}
     builder.add(VPackValue("agency"));
-    _readDB.get("", builder, true); 
+    _readDB.get("", builder, true);
   }
 
   // replicated log []
