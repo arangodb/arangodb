@@ -146,10 +146,30 @@ auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vec
         return other;
       }
     })());
-
     result.emplace_back(id, std::move(eid), previous);
   });
   return result;
+}
+
+auto SingleServerProvider::expand(Step const& step, size_t previous, std::function<void(Step)> callback) -> void {
+  TRI_ASSERT(!step.isLooseEnd());
+  auto const& vertex = step.getVertex();
+  TRI_ASSERT(_cursor != nullptr);
+  _cursor->rearm(vertex.data(), 0);
+  _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+    VertexType id = _cache.persistString(([&]() -> auto {
+      if (edge.isString()) {
+        return VertexType(edge);
+      } else {
+        VertexType other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex.data()) {  // TODO: Check getId
+          other = VertexType(transaction::helpers::extractToFromDocument(edge));
+        }
+        return other;
+      }
+    })());
+    callback(Step{id, std::move(eid), previous});
+  });
 }
 
 void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder) {

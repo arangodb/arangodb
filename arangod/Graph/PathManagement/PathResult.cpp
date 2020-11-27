@@ -51,27 +51,31 @@ auto PathResult<ProviderType, Step>::clear() -> void {
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> void {
-  _vertices.push_back(v);
-  _uniqueVertices.emplace(v.data()); // TODO: let insertion return a bool whether insertion was a success / failure
+  _uniqueVertices.emplace(v.data());
+  _vertices.push_back(std::move(v)); // TODO: let insertion return a bool whether insertion was a success / failure
 }
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v) -> void {
   _numVerticesFromSourceProvider++;
-  _vertices.insert(_vertices.begin(), v);
   _uniqueVertices.emplace(v.data());
+  _vertices.insert(_vertices.begin(), std::move(v));
 }
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
-  _edges.push_back(e);
+  _edges.push_back(std::move(e));
 }
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e) -> void {
   _numEdgesFromSourceProvider++;
-  _edges.insert(_edges.begin(), e);
+  _edges.insert(_edges.begin(), std::move(e));
 }
+
+// NOTE:
+// Potential optimization: Instead of counting on each append
+// We can do a size call to the vector when switching the Provider.
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder& builder)
@@ -96,11 +100,11 @@ auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder&
     VPackArrayBuilder edges(&builder);
     // Write first part of the Path
     for (size_t i = 0; i < _numEdgesFromSourceProvider; i++) {
-      _sourceProvider.addEdgeToBuilder(_edges.at(i), builder);
+      _sourceProvider.addEdgeToBuilder(_edges[i], builder);
     }
     // Write second part of the Path
     for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
-      _targetProvider.addEdgeToBuilder(_edges.at(i), builder);
+      _targetProvider.addEdgeToBuilder(_edges[i], builder);
     }
   }
 }
