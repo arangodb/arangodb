@@ -52,7 +52,7 @@ auto PathResult<ProviderType, Step>::clear() -> void {
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> void {
   _vertices.push_back(v);
-  _uniqueVertices.emplace(v.data());
+  _uniqueVertices.emplace(v.data()); // TODO: let insertion return a bool whether insertion was a success / failure
 }
 
 template <class ProviderType, class Step>
