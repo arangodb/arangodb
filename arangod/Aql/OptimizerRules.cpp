@@ -4390,6 +4390,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
                   }
                 }
                 break;
+              default:
+                break;
             }
 
 

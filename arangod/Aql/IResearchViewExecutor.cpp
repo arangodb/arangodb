@@ -65,6 +65,12 @@ constexpr irs::payload NoPayload;
 
 constexpr size_t UNKOWN_TOTAL_COUNT{std::numeric_limits<size_t>::max()};
 
+size_t calculateSkipAllCount(size_t currentPos, bool filterIsEmpty,
+                             std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const> reader,
+                             irs::filter::prepared::ptr filter) {
+  
+}
+
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
     arangodb::transaction::Methods& trx,  // transaction
     DataSourceId cid,                     // collection identifier
@@ -605,6 +611,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       _order = order.prepare();
     }
 
+    // TODO: fucntor for lazy cost evaluation
     // compile filter
     _filter = root.prepare(*_reader, _order, irs::no_boost(), &_filterCtx);
 
