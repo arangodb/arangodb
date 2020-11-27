@@ -243,7 +243,6 @@ start() {
           --rocksdb.enable-statistics true \
           --log.level=rocksdb=trace \
           --log.level=engines=debug \
-          --rocksdb.max-write-buffer-number 100 \
           $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
@@ -275,7 +274,6 @@ start() {
         --rocksdb.debug-logging true \
         --rocksdb.enable-statistics true \
         --log.level=rocksdb=trace \
-        --rocksdb.max-write-buffer-number 100 \
         --log.level=engines=debug \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
