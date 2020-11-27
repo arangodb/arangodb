@@ -209,6 +209,13 @@ class Scheduler {
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
 
+  /// @brief approximate fill grade of the scheduler's queue (in %)
+  virtual double approximateQueueFillGrade() const = 0;
+  
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  virtual double unavailabilityQueueFillGrade() const = 0;
+
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff
   // ---------------------------------------------------------------------------

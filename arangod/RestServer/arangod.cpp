@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -192,6 +193,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ClusterUpgradeFeature>();
     server.addFeature<ConfigFeature>(name);
     server.addFeature<ConsoleFeature>();
+    server.addFeature<CpuUsageFeature>();
     server.addFeature<DatabaseFeature>();
     server.addFeature<DatabasePathFeature>();
     server.addFeature<EndpointFeature, HttpEndpointProvider>();

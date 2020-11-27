@@ -41,20 +41,12 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size, double inFlightMultiplier);
+                      uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
+                      double inFlightMultiplier, double unavailabilityQueueFillGrade);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
 
- private:
-  std::atomic<size_t> _numWorkers;
-  std::atomic<bool> _stopping;
-  std::atomic<bool> _acceptingNewJobs;
-
- protected:
-  bool isStopping() override { return _stopping; }
-
- public:
   bool start() override;
   void shutdown() override;
 
@@ -81,6 +73,16 @@ class SupervisedScheduler final : public Scheduler {
 
   constexpr static uint64_t const NumberOfQueues = 4;
 
+  /// @brief approximate fill grade of the scheduler's queue (in %)
+  double approximateQueueFillGrade() const override;
+  
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  double unavailabilityQueueFillGrade() const override;
+ 
+ protected:
+  bool isStopping() override { return _stopping; }
+
  private:
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
@@ -98,6 +100,10 @@ class SupervisedScheduler final : public Scheduler {
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
   boost::lockfree::queue<WorkItem*> _queues[NumberOfQueues];
+
+  std::atomic<uint64_t> _numWorkers;
+  std::atomic<bool> _stopping;
+  std::atomic<bool> _acceptingNewJobs;
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
@@ -130,7 +136,6 @@ class SupervisedScheduler final : public Scheduler {
   // _working indicates if the thread is currently processing a job.
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
-
   struct WorkerState {
     uint64_t _queueRetryTime_us; // t1
     uint64_t _sleepTimeout_ms;  // t2
@@ -152,36 +157,14 @@ class SupervisedScheduler final : public Scheduler {
     // cppcheck-suppress missingOverride
     bool start();
   };
+
   size_t const _minNumWorker;
   size_t const _maxNumWorker;
   size_t const _maxInFlight;
   size_t const _ongoingLowPrioLimit;
   size_t _ongoingLowPrioLimitWithFanout;
-  std::list<std::shared_ptr<WorkerState>> _workerStates;
-  std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
-  std::atomic<uint64_t> _nrWorking;   // Number of threads actually working
-  std::atomic<uint64_t> _nrAwake;     // Number of threads working or spinning
-                                      // (i.e. not sleeping)
-
-  // The following mutex protects the lists _workerStates and
-  // _abandonedWorkerStates, whenever one accesses any of these two
-  // lists, this mutex is needed. Note that if you need a mutex of one
-  // of the workers, always acquire _mutex first and then the worker
-  // mutex, never, the other way round. You may acquire only the
-  // worker's mutex.
-  std::mutex _mutex;
-
-  void runWorker();
-  void runSupervisor();
-
-  std::mutex _mutexSupervisor;
-  std::condition_variable _conditionSupervisor;
-  std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
-
-  uint64_t const _maxFifoSizes[NumberOfQueues];
-
+  
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
-
   void startOneThread();
   void stopOneThread();
 
@@ -191,14 +174,45 @@ class SupervisedScheduler final : public Scheduler {
   bool sortoutLongRunningThreads();
 
   // Check if we are allowed to pull from a queue with the given index
-  // This is used to give priority to higher prio lanes accordingly.
-  // The principle is that threads running prio p work can never block
-  // all threads that can run a higher prio.
-  bool canPullFromQueue(uint64_t queueIdx) const;
+  // This is used to give priority to "FAST" and "MED" lanes accordingly.
+  bool canPullFromQueue(uint64_t queueIdx) const noexcept;
+  
+  void runWorker();
+  void runSupervisor();
+
+ private:
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  double const _unavailabilityQueueFillGrade;
+
+  std::list<std::shared_ptr<WorkerState>> _workerStates;
+  std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
+  std::atomic<uint64_t> _numWorking;   // Number of threads actually working
+  std::atomic<uint64_t> _numAwake;     // Number of threads working or spinning
+                                       // (i.e. not sleeping)
+
+  uint64_t const _maxFifoSizes[NumberOfQueues];
+
+  // The following mutex protects the lists _workerStates and
+  // _abandonedWorkerStates, whenever one accesses any of these two
+  // lists, this mutex is needed. Note that if you need a mutex of one
+  // of the workers, always acquire _mutex first and then the worker
+  // mutex, never, the other way round. You may acquire only the
+  // worker's mutex.
+  std::mutex _mutex;
+
+  std::mutex _mutexSupervisor;
+  std::condition_variable _conditionSupervisor;
+  std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
   Gauge<uint64_t>& _metricsQueueLength;
+  Gauge<uint64_t>& _metricsJobsDone;
+  Gauge<uint64_t>& _metricsJobsSubmitted;
+  Gauge<uint64_t>& _metricsJobsDequeued;
   Gauge<uint64_t>& _metricsAwakeThreads;
+  Gauge<uint64_t>& _metricsNumWorkingThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
+
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
