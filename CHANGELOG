@@ -1,6 +1,8 @@
 devel
 -----
 
+* Clean up callback bin and empty promises in single-host-agency.
+
 * Increase background garbage-collection interval for cluster transactions
   from 1 second to 2 seconds. This change should reduce the amount of
   background task activity a tiny bit (though hardly measurable on an 
