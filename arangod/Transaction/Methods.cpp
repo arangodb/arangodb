@@ -978,7 +978,19 @@ Future<OperationResult> transaction::Methods::insertCoordinator(std::string cons
 
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
-static double chooseTimeout(size_t count, size_t totalBytes) {
+static double chooseTimeoutForReplication(size_t count, size_t totalBytes) {
+  // We essentially stop using a meaningful timeout for this operation. 
+  // This is achieved by setting the default for the minimal timeout to 1h or 3600s.
+  // The reason behind this is the following: We have to live with RocksDB stalls
+  // and write stops, which can happen in overload situations. Then, no meaningful
+  // timeout helps and it is almost certainly better to keep trying to not have
+  // to drop the follower and make matters worse. In case of an actual failure
+  // (or indeed a restart), the follower is marked as failed and its reboot id is
+  // increased. As a consequence, the connection is aborted and we run into an
+  // error anyway. This is when a follower will be dropped.
+
+  // We leave this code in place for now.
+  
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
@@ -2312,7 +2324,7 @@ Future<Result> Methods::replicateOperations(
     return Result();
   }
 
-  reqOpts.timeout = network::Timeout(chooseTimeout(count, payload->size()));
+  reqOpts.timeout = network::Timeout(chooseTimeoutForReplication(count, payload->size()));
 
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
