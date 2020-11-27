@@ -353,5 +353,5 @@ bool BreadthFirstEnumerator::shouldPrune() {
 }
 
 constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
-  return sizeof(void*) + sizeof(PathStep);
+  return sizeof(void*) + sizeof(PathStep) + 2 * sizeof(NextStep);
 }

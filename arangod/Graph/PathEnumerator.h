@@ -30,6 +30,8 @@
 #include "Graph/EdgeDocumentToken.h"
 
 namespace arangodb {
+class ResourceMonitor;
+
 namespace aql {
 struct AqlValue;
 }
@@ -46,10 +48,31 @@ namespace traverser {
 class Traverser;
 struct TraverserOptions;
 
-struct EnumeratedPath {
-  std::vector<graph::EdgeDocumentToken> edges;
-  std::vector<arangodb::velocypack::StringRef> vertices;
-  EnumeratedPath() {}
+class EnumeratedPath {
+ public:
+  explicit EnumeratedPath(arangodb::ResourceMonitor* resourceMonitor);
+  ~EnumeratedPath();
+
+  void pushVertex(arangodb::velocypack::StringRef const& v);
+  void pushEdge(graph::EdgeDocumentToken const& e);
+  void popVertex() noexcept;
+  void popEdge() noexcept;
+  void clear();
+  size_t numVertices() const noexcept;
+  size_t numEdges() const noexcept;
+  std::vector<arangodb::velocypack::StringRef> const& vertices() const noexcept;
+  std::vector<graph::EdgeDocumentToken> const& edges() const noexcept;
+  arangodb::velocypack::StringRef const& lastVertex() const noexcept;
+  graph::EdgeDocumentToken const& lastEdge() const noexcept;
+
+ private:
+  template <typename T>
+  void growStorage(std::vector<T>& data);
+
+ private: 
+  arangodb::ResourceMonitor* _resourceMonitor;
+  std::vector<graph::EdgeDocumentToken> _edges;
+  std::vector<arangodb::velocypack::StringRef> _vertices;
 };
 
 class PathEnumerator {
