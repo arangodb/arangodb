@@ -471,7 +471,6 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
             // do not grant rights on system collections
             if (!col->system()) {
               entry.grantCollection(vocbase.name(), col->name(), auth::Level::RW);
-              events::CreateCollection(vocbase.name(), col->name(), TRI_ERROR_NO_ERROR);
             }
           }
           return TRI_ERROR_NO_ERROR;
@@ -511,7 +510,11 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
   for (auto const& info : infos) {
-    events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    if (!ServerState::instance()->isSingleServer()) {
+      // don't log here (again) for single servers, because on the single
+      // server we will log the creation of each collection inside vocbase::createCollectionWorker
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    }
     velocypack::Builder builder(info.properties);
     OperationResult result(Result(), builder.steal(), options);
     events::PropertyUpdateCollection(vocbase.name(), info.name, result);
