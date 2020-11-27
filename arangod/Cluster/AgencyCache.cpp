@@ -36,9 +36,8 @@ using namespace arangodb::consensus;
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
   AgencyCallbackRegistry& callbackRegistry)
-  : Thread(server, "AgencyCache"), _commitIndex(0),
-    _readDB(server, nullptr, "readDB"), _callbackRegistry(callbackRegistry),
-    _lastSnapshot(0) {}
+  : Thread(server, "AgencyCache"), _commitIndex(0), _readDB(server, nullptr, "readDB"),
+    _initialised(false), _callbackRegistry(callbackRegistry), _lastSnapshot(0) {}
 
 
 AgencyCache::~AgencyCache() {
@@ -336,6 +335,7 @@ void AgencyCache::run() {
                 index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
 
                 if (firstIndex > 0) {
+                  TRI_ASSERT(_initialised);
                   // Do incoming logs match our cache's index?
                   if (firstIndex != curIndex + 1) {
                     LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
@@ -380,6 +380,7 @@ void AgencyCache::run() {
                   LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
                     "Fresh start: overwriting agency cache with " << rs.toJson();
                   _readDB = rs;                  // overwrite
+                  _initialised.store(true, std::memory_order_relaxed);
                   std::unordered_set<std::string> pc = reInitPlan();
                   for (auto const& i : pc) {
                     _planChanges.emplace(_commitIndex, i);

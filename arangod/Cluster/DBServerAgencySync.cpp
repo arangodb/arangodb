@@ -203,12 +203,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  // TODO: figure out if waiting here for the initial plan to arrive
-  // is required and sensible. also check if we need to wait here until
-  // the DatabaseFeature has reported ready or it is good enough as it
-  // is now.
-  // clusterInfo.waitForPlan(1);
-
   AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
   if (!dirty.empty() && plan.empty()) {
     // TODO increase log level, except during shutdown?
