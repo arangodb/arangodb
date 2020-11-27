@@ -569,16 +569,14 @@ class IResearchViewCountExecutor
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
-  void reset() noexcept {
-    Base::reset();
-    _readerOffset = 0;
-  }
+  void reset() noexcept;
 
  private:
+   irs::doc_iterator::ptr _itr;
    size_t _readerOffset {0};
    size_t _count{0};
+   size_t _totalCount;
    bool  _filterConditionIsEmpty;
-   size_t _totalCount{std::numeric_limits<size_t>::max()};
 };
 
 }  // namespace aql

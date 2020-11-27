@@ -63,6 +63,8 @@ namespace {
 
 constexpr irs::payload NoPayload;
 
+constexpr size_t UNKOWN_TOTAL_COUNT{std::numeric_limits<size_t>::max()};
+
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
     arangodb::transaction::Methods& trx,  // transaction
     DataSourceId cid,                     // collection identifier
@@ -1012,7 +1014,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
 
   size_t const toSkip = limit;
 
-  for (size_t count = this->_reader->size(); _readerOffset < count;) {
+  for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
     if (!_itr && !resetIterator()) {
       continue;
     }
@@ -1024,14 +1026,10 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
     if (!limit) {
       break;  // do not change iterator if already reached limit
     }
-
-    ++_readerOffset;
     _itr.reset();
     _doc = nullptr;
   }
-
   saveCollection();
-
   return toSkip - limit;
 }
 
@@ -1399,43 +1397,72 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
   return Base::writeRow(ctx, bufferEntry, documentId, *collection);
 }
 
-arangodb::aql::IResearchViewCountExecutor::IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos) : Base(fetcher, infos) {
-  _filterConditionIsEmpty = filterConditionIsEmpty(&this->infos().filterCondition());
-}
+arangodb::aql::IResearchViewCountExecutor::IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos)
+  : Base(fetcher, infos), _totalCount(UNKOWN_TOTAL_COUNT),
+    _filterConditionIsEmpty(filterConditionIsEmpty(&this->infos().filterCondition())) {}
 
 size_t arangodb::aql::IResearchViewCountExecutor::skip(size_t toSkip) {
-  // we do not expect skip to be used for this executor
-  // but anyway we happily could skip our only row
-  TRI_ASSERT(FALSE);
-  size_t const count = this->_reader->size();
-  if (_readerOffset >= count || 0 == toSkip) {
-    return 0;
+  if (_filterConditionIsEmpty && _totalCount == UNKOWN_TOTAL_COUNT) {
+     _totalCount = this->_reader->live_docs_count();
   }
-  _readerOffset = count; // simulate that all readers are iterated
-  return 1;
+  if (_totalCount != UNKOWN_TOTAL_COUNT) {
+    TRI_ASSERT(_totalCount >= _count);
+    size_t const skipped = std::min(toSkip, _totalCount - _count);
+    _count += skipped;
+    return skipped;
+  }
+
+  size_t limit{toSkip};
+  for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
+    if (!_itr) {
+      auto& segmentReader = (*this->_reader)[_readerOffset];
+      _itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
+      TRI_ASSERT(_itr);
+      _itr = segmentReader.mask(std::move(_itr));
+    }
+    if (!_itr) {
+      continue;
+    }
+
+    while (limit && _itr->next()) {
+      --limit;
+    }
+
+    if (!limit) {
+      break;  // do not change iterator if already reached limit
+    }
+    _itr.reset();
+  }
+  return toSkip - limit;
 }
 
 size_t arangodb::aql::IResearchViewCountExecutor::skipAll() {
-  size_t const subReadersCount = this->_reader->size();
-  if (_readerOffset >= subReadersCount) {
-    return 0;
+  if (_totalCount != UNKOWN_TOTAL_COUNT) {
+    TRI_ASSERT(_totalCount >= _count);
+    size_t const limitLeft =  _totalCount - _count;
+    _count = _totalCount;
+    return limitLeft;
   }
+  size_t const subReadersCount = this->_reader->size();
   if (_filterConditionIsEmpty) {
-    _count = this->_reader->live_docs_count();
-    _readerOffset = subReadersCount; // simulate that all readers are iterated
+    _totalCount = this->_reader->live_docs_count();
+    _count = _totalCount;
+    return _count;
   } else {
     _count = 0;
     for (; _readerOffset < subReadersCount; ++_readerOffset) {
       auto& segmentReader = (*this->_reader)[_readerOffset];
-      auto itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
-      TRI_ASSERT(itr);
-      itr = segmentReader.mask(std::move(itr));
-      while (itr->next()) {
+      _itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
+      TRI_ASSERT(_itr);
+      _itr = segmentReader.mask(std::move(_itr));
+      while (_itr->next()) {
         ++_count;
       }
+      _itr.reset();
     }
+    _totalCount = _count;
+    return _count;
   }
-  return _count;
 }
 
 void arangodb::aql::IResearchViewCountExecutor::fillBuffer(ReadContext&) {}
@@ -1445,6 +1472,13 @@ bool arangodb::aql::IResearchViewCountExecutor::writeRow(ReadContext& ctx, Index
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED, "Counting view enumerator is called to produce row");
   return false;
+}
+
+void arangodb::aql::IResearchViewCountExecutor::reset() noexcept {
+  Base::reset();
+  _readerOffset = 0;
+  _totalCount = UNKOWN_TOTAL_COUNT;
+  _count = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
