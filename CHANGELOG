@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Clean up callback bin and empty promises in single-host-agency.
+
 * Updated OpenSSL to 1.1.1h.
 
 * Make the number of network I/O threads properly configurable via the startup
