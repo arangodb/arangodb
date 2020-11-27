@@ -213,8 +213,8 @@ RestStatus RestAgencyHandler::pollIndex(
           }
         } else {
           generateError(
-            rest::ResponseCode::SERVER_ERROR,
-            TRI_ERROR_HTTP_SERVER_ERROR, "No leader");
+            rest::ResponseCode::SERVICE_UNAVAILABLE,
+            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
         }
       })
       .thenError<VPackException>([this](VPackException const& e) {
@@ -226,8 +226,8 @@ RestStatus RestAgencyHandler::pollIndex(
       }));
   } else {
     generateError(
-      rest::ResponseCode::SERVER_ERROR,
-      TRI_ERROR_HTTP_SERVER_ERROR, "No leader");
+      rest::ResponseCode::SERVICE_UNAVAILABLE,
+      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
     return RestStatus::DONE;
   }
   
