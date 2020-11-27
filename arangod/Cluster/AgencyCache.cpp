@@ -360,7 +360,6 @@ void AgencyCache::run() {
                         _readDB.applyTransaction(i); // apply logs
                         _commitIndex = i.get("index").getNumber<uint64_t>();
 
-                        std::unordered_set<std::string> pc, cc;
                         {
                           std::lock_guard g(_callbacksLock);
                           handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
