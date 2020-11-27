@@ -926,7 +926,7 @@ std::pair<futures::Future<query_t>, bool> Agent::poll(
   auto leader = _constituent.leaderID();
   if (!loaded() || (size() > 1 && leader != id())) {
     return std::pair<futures::Future<query_t>, bool>{
-      futures::makeFuture(std::move(builder)),true};
+      futures::makeFuture(std::move(builder)),false};
   }
 
   {
