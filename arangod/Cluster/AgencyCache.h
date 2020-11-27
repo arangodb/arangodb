@@ -160,6 +160,9 @@ private:
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
 
+  /// @brief Make sure, that we have seen in the beginning a snapshot
+  std::atomic<bool> _initialised;
+
   /// @brief Agency callback registry
   AgencyCallbackRegistry& _callbackRegistry;
 
