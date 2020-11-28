@@ -48,9 +48,6 @@
 
 namespace {
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
-
 void ensureImmutableProperties(
     arangodb::iresearch::IResearchViewMeta& dst,
     arangodb::iresearch::IResearchViewMeta const& src) {
@@ -68,6 +65,8 @@ void ensureImmutableProperties(
 
 namespace arangodb {
 namespace iresearch {
+
+using irs::async_utils::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
@@ -217,7 +216,7 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
     VPackBuilder tmp;
 
-    ReadMutex mutex(_mutex);
+    read_write_mutex::read_mutex mutex(_mutex);
     // '_collections' can be asynchronously modified
     auto lock = irs::make_lock_guard(mutex);
 
@@ -307,7 +306,7 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   sanitizedBuilder.close();
 
-  WriteMutex mutex(_mutex); // '_collections' can be asynchronously read
+  read_write_mutex::write_mutex mutex(_mutex); // '_collections' can be asynchronously read
   auto lock = irs::make_lock_guard(mutex);
   auto [it, emplaced] = _collections.try_emplace(
     cid,
@@ -340,7 +339,7 @@ IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
 }
 
 bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor) const {
-  ReadMutex mutex(_mutex);
+  read_write_mutex::read_mutex mutex(_mutex);
   // '_collections' can be asynchronously modified
   auto lock = irs::make_lock_guard(mutex);
 
@@ -441,7 +440,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     std::unordered_set<DataSourceId> currentCids;
 
     {
-      ReadMutex mutex(_mutex);
+      read_write_mutex::read_mutex mutex(_mutex);
       // '_collections' can be asynchronously modified
       auto lock = irs::make_lock_guard(mutex);
 

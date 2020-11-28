@@ -60,18 +60,18 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+using irs::async_utils::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct LinkTrxState final : public TransactionState::Cookie {
   irs::index_writer::documents_context _ctx;
-  std::unique_lock<ReadMutex> _linkLock;  // prevent data-store deallocation (lock @ AsyncSelf)
+  std::unique_lock<ReadMutex> _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
-  LinkTrxState(std::unique_lock<ReadMutex>&& linkLock, irs::index_writer& writer) noexcept
+  LinkTrxState(std::unique_lock<ReadMutex>&& linkLock,
+               irs::index_writer& writer) noexcept
       : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
     TRI_ASSERT(_linkLock.owns_lock());
   }
@@ -354,7 +354,7 @@ void CommitTask::operator()() {
     return;
   }
 
-  auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
+  auto linkLock = link->try_lock();
 
   if (!linkLock.owns_lock()) {
     LOG_TOPIC("eb0de", DEBUG, iresearch::TOPIC)
@@ -381,7 +381,7 @@ void CommitTask::operator()() {
     }
 
     TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    ReadMutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
+    irs::async_utils::read_write_mutex::read_mutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
     auto lock = irs::make_lock_guard(mutex);
     auto& meta = link->_dataStore._meta;
 
@@ -504,7 +504,7 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
+  auto linkLock = link->try_lock();
 
   if (!linkLock.owns_lock()) {
     LOG_TOPIC("eb0dc", DEBUG, iresearch::TOPIC)
@@ -531,7 +531,7 @@ void ConsolidationTask::operator()() {
     }
 
     TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    ReadMutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
+    read_write_mutex::read_mutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
     auto lock = irs::make_lock_guard(mutex);
     auto& meta = link->_dataStore._meta;
 
@@ -681,7 +681,7 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
 
 void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
                                   transaction::Methods* trx) {
-  auto lock = irs::make_lock_guard(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+  auto lock = _asyncSelf->lock();  // '_dataStore' can be asynchronously modified
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -782,7 +782,7 @@ Result IResearchLink::cleanupUnsafe() {
 }
 
 Result IResearchLink::commit(bool wait /*= true*/) {
-  auto lock = irs::make_lock_guard(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
+  auto lock = _asyncSelf->lock(); // '_dataStore' can be asynchronously modified
 
   if (!_asyncSelf.get()) {
     // the current link is no longer valid (checked after ReadLock acquisition)
@@ -1422,7 +1422,7 @@ Result IResearchLink::initDataStore(
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
       [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
-        auto lock = irs::make_lock_guard(asyncSelf->mutex());  // ensure link does not get deallocated before callback finishes
+        auto lock = asyncSelf->lock();  // ensure link does not get deallocated before callback finishes
         auto* link = asyncSelf->get();
 
         if (!link) {
@@ -1462,9 +1462,15 @@ Result IResearchLink::initDataStore(
         // register flush subscription
         flushFeature.registerFlushSubscription(link->_flushSubscription);
 
-        // setup asynchronous tasks for commit, consolidation, cleanup
-        link->scheduleCommit(0ms);
-        link->scheduleConsolidation(0ms);
+        // setup asynchronous tasks for commit, cleanup if enabled
+        if (dataStore._meta._commitIntervalMsec) {
+          link->scheduleCommit(0ms);
+        }
+
+        // setup asynchronous tasks for consolidation if enabled
+        if (dataStore._meta._consolidationIntervalMsec) {
+          link->scheduleConsolidation(0ms);
+        }
 
         return res;
       });
@@ -1546,7 +1552,7 @@ Result IResearchLink::insert(
   }
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
+    auto lock = _asyncSelf->lock();
     auto ctx = _dataStore._writer->documents();
 
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
@@ -1569,7 +1575,7 @@ Result IResearchLink::insert(
 
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
-    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
+    auto lock = _asyncSelf->lock();
 
     if (!_asyncSelf.get()) {
       // the current link is no longer valid (checked after ReadLock acquisition)
@@ -1662,7 +1668,7 @@ Result IResearchLink::properties(
 
 Result IResearchLink::properties(IResearchViewMeta const& meta) {
   // '_dataStore' can be asynchronously modified
-  auto lock = irs::make_lock_guard(_asyncSelf->mutex());
+  auto lock = _asyncSelf->lock();
 
   if (!_asyncSelf.get()) {
     // the current link is no longer valid (checked after ReadLock acquisition)
@@ -1675,7 +1681,7 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   {
-    WriteMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously read
+    read_write_mutex::write_mutex mutex(_dataStore._mutex); // '_meta' can be asynchronously read
     auto lock = irs::make_lock_guard(mutex);
 
     _dataStore._meta = meta;
@@ -1731,7 +1737,7 @@ Result IResearchLink::remove(
 
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
-    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
+    auto lock = _asyncSelf->lock();
 
     if (!_asyncSelf.get()) {
       // the current link is no longer valid (checked after ReadLock acquisition)
@@ -1796,7 +1802,7 @@ Result IResearchLink::remove(
 
 IResearchLink::Snapshot IResearchLink::snapshot() const {
   // '_dataStore' can be asynchronously modified
-  auto lock = irs::make_unique_lock(_asyncSelf->mutex());
+  auto lock = _asyncSelf->lock();
 
   if (!_asyncSelf.get()) {
     LOG_TOPIC("f42dc", WARN, iresearch::TOPIC)
@@ -1877,7 +1883,7 @@ IResearchLink::Stats IResearchLink::stats() const {
   Stats stats;
 
   // '_dataStore' can be asynchronously modified
-  auto lock = irs::make_unique_lock(_asyncSelf->mutex());
+  auto lock = _asyncSelf->lock();
 
   if (_dataStore) {
     stats.numBufferedDocs = _dataStore._writer->buffered_docs();

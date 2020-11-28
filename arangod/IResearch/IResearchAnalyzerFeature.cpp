@@ -1065,8 +1065,7 @@ bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
   return false;
 }
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+using irs::async_utils::read_write_mutex;
 
 arangodb::AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
   arangodb::application_features::ApplicationServer& server,
@@ -1661,7 +1660,7 @@ Result IResearchAnalyzerFeature::emplace(
       }
     }
 
-    WriteMutex mutex(_mutex);
+    read_write_mutex::write_mutex mutex(_mutex);
     auto lock = irs::make_lock_guard(mutex);
 
     // validate and emplace an analyzer
@@ -1856,7 +1855,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
       return res;
     }
 
-    WriteMutex mutex(_mutex);
+    read_write_mutex::write_mutex mutex(_mutex);
     auto lock = irs::make_lock_guard(mutex);
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
@@ -1993,7 +1992,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             break; // we don`t care about specific revision.
           }
           {
-            ReadMutex mutex(_mutex);
+            read_write_mutex::read_mutex mutex(_mutex);
             auto lock = irs::make_lock_guard(mutex);
             auto itr = _lastLoad.find(name.first);
             if (itr != _lastLoad.end() && itr->second >= revision) {
@@ -2013,7 +2012,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       }
     }
 
-    ReadMutex mutex(_mutex);
+    read_write_mutex::read_mutex mutex(_mutex);
     auto lock = irs::make_lock_guard(mutex);
     auto itr = _analyzers.find(irs::make_hashed_ref(normalizedName, std::hash<irs::string_ref>()));
 
@@ -2290,7 +2289,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   auto& dbFeature = server().getFeature<DatabaseFeature>();
 
   try {
-    WriteMutex mutex(_mutex);
+    read_write_mutex::write_mutex mutex(_mutex);
     // '_analyzers'/'_lastLoad' can be asynchronously read
     auto lock = irs::make_lock_guard(mutex);
 
@@ -2754,7 +2753,7 @@ Result IResearchAnalyzerFeature::remove(
     //  }
     //}
 
-    WriteMutex mutex(_mutex);
+    read_write_mutex::write_mutex mutex(_mutex);
     auto lock = irs::make_lock_guard(mutex);
 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
@@ -2958,7 +2957,7 @@ void IResearchAnalyzerFeature::stop() {
   }
 
   {
-    WriteMutex mutex(_mutex);
+    read_write_mutex::write_mutex mutex(_mutex);
     // '_analyzers' can be asynchronously read
     auto lock = irs::make_lock_guard(mutex);
 
@@ -3076,7 +3075,7 @@ bool IResearchAnalyzerFeature::visit(
   Analyzers analyzers;
 
   {
-    ReadMutex mutex(_mutex);
+    read_write_mutex::read_mutex mutex(_mutex);
     auto lock = irs::make_lock_guard(mutex);
     analyzers = _analyzers;
   }
@@ -3117,7 +3116,7 @@ bool IResearchAnalyzerFeature::visit(
   Analyzers analyzers;
 
   {
-    ReadMutex mutex(_mutex);
+    read_write_mutex::read_mutex mutex(_mutex);
     auto lock = irs::make_lock_guard(mutex);
     analyzers = _analyzers;
   }
@@ -3150,7 +3149,7 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref const& database)
 }
 
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
-  WriteMutex mutex(_mutex);
+  read_write_mutex::write_mutex mutex(_mutex);
   auto lock = irs::make_lock_guard(mutex);
   auto database = irs::string_ref(vocbase.name());
   auto itr = _lastLoad.find(

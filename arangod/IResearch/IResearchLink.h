@@ -59,7 +59,8 @@ class AsyncLinkHandle {
   explicit AsyncLinkHandle(IResearchLink* link);
   ~AsyncLinkHandle();
   IResearchLink* get() noexcept { return _link.get(); }
-  ResourceMutex::ReadMutex& mutex() noexcept { return _link.mutex(); }
+  std::unique_lock<ReadMutex> lock() { return _link.lock(); }
+  std::unique_lock<ReadMutex> try_lock() { return _link.try_lock(); }
   bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
 
  private:
@@ -71,7 +72,7 @@ class AsyncLinkHandle {
   friend class IResearchLink;
   void reset();
 
-  TypedResourceMutex<IResearchLink> _link;
+  ResourceMutexT<IResearchLink> _link;
   std::atomic<bool> _asyncTerminate{false}; // trigger termination of long-running async jobs
 }; // AsyncLinkHandle
 
@@ -89,8 +90,8 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   class Snapshot {
    public:
-    Snapshot() noexcept {}  // non-default implementation required for MacOS
-    Snapshot(std::unique_lock<irs::async_utils::read_write_mutex::read_mutex>&& lock,
+    Snapshot() { }
+    Snapshot(std::unique_lock<ReadMutex>&& lock,
              irs::directory_reader&& reader) noexcept
         : _lock(std::move(lock)), _reader(std::move(reader)) {
       TRI_ASSERT(_lock.owns_lock());
@@ -98,7 +99,7 @@ class IResearchLink {
     operator irs::directory_reader const&() const noexcept { return _reader; }
 
    private:
-    std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _lock;  // lock preventing data store dealocation
+    std::unique_lock<ReadMutex> _lock; // lock preventing data store dealocation
     const irs::directory_reader _reader;
   };
 

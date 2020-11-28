@@ -26,10 +26,13 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_CONTAINERS_H 1
 
 #include <memory>
+#include <shared_mutex>
 #include <unordered_map>
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
 
 #include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
@@ -46,6 +49,67 @@ struct typelist;
 
 namespace arangodb {
 namespace iresearch {
+
+class ReadMutex {
+ public:
+  ReadMutex(basics::ReadWriteLock& mtx) noexcept
+    : _mtx(&mtx) {
+  }
+  ReadMutex(ReadMutex&& rhs) noexcept
+    : _mtx(rhs._mtx) {
+    rhs._mtx = nullptr;
+  }
+
+  void lock() { _mtx->lockRead(); }
+  bool try_lock() { return _mtx->tryLockRead(); }
+  void unlock() { _mtx->unlockRead(); }
+
+ private:
+  ReadMutex(ReadMutex const&) = delete;
+  ReadMutex operator=(ReadMutex const&) = delete;
+  ReadMutex operator=(ReadMutex&&) = delete;
+
+  basics::ReadWriteLock* _mtx;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a read-mutex for a resource
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class ResourceMutexT {
+ public:
+  explicit ResourceMutexT(T* resource) noexcept
+      : _readMutex(_mutex),
+        _resource(resource) {
+  }
+  ~ResourceMutexT() { reset(); }
+
+  operator bool() { return get() != nullptr; }
+
+  std::unique_lock<ReadMutex> lock() const {
+    return std::unique_lock<ReadMutex>{ _readMutex };
+  }
+
+  std::unique_lock<ReadMutex> try_lock() const {
+    return { _readMutex, std::try_to_lock };
+  }
+
+  // will block until a write lock can be acquired on the _mutex
+  void reset() {
+    if (get()) {
+      WRITE_LOCKER(lock, _mutex);
+      _resource.store(nullptr);
+    }
+  }
+
+  T* get() const noexcept { return _resource.load(); }
+
+ private:
+  basics::ReadWriteLock _mutex;
+  mutable ReadMutex _readMutex; // read-lock to prevent '_resource' reset()
+  std::atomic<T*> _resource;  // atomic because of 'operator bool()'
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-mutex for a resource
