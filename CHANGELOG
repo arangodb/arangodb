@@ -1,6 +1,10 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed initial population of local AgencyCache values after a server restart.
+  Previously the local cache was populated from the agency using a commit index
+  value of 1, whereas it should have been 0 to get the full agency snapshot.
+
 * Updated OpenSSL to 1.1.1h.
 
 * Make the number of network I/O threads properly configurable via the startup
