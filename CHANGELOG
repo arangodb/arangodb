@@ -1,7 +1,7 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
-* Clean up agency change log, cluster info caches
+* Clean up agency change log, cluster info caches.
 
 * Fix an issue where a query would not return a result when the geo index was
   used.
