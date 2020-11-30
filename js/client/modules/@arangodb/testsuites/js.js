@@ -151,7 +151,7 @@ function jsDriver (options) {
     });
     results['timeout'] = false;
     results['status'] = totalSuccess;
-    results['message'] = '';
+    results['message'] = totalSuccess?'':'did you remember running yarn in the source?';
     return results;
   }
   runInJsTest.info = 'runInJsTest';
