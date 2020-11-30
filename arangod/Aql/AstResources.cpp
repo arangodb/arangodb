@@ -25,8 +25,8 @@
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/tri-strings.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/tri-strings.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -38,9 +38,7 @@ static char const* EmptyString = "";
 
 AstResources::AstResources(arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _stringsLength(0),
-#endif
       _shortStringStorage(_resourceMonitor, 1024) {
 }
 
@@ -54,15 +52,26 @@ AstResources::~AstResources() {
   for (auto& it : _nodes) {
     delete it;
   }
+  
+  size_t memoryUsage = 
+      (_nodes.capacity() * memoryUsageForNode()) + 
+      (_strings.capacity() * memoryUsageForStringBlock()) +
+      _stringsLength;
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+}
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // we are in the destructor here already. decreasing the memory usage counters
-  // will only provide a benefit (in terms of assertions) if we are in
-  // maintainer mode, so we can save all these operations in non-maintainer mode
-  _resourceMonitor.decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
-  _resourceMonitor.decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) +
-                                       _nodes.capacity() * sizeof(AstNode*));
-#endif
+template <typename T>
+size_t AstResources::newCapacity(T const& container, size_t initialCapacity) const noexcept {
+  if (container.empty()) {
+    // reserve some initial space for vector
+    return initialCapacity;
+  }
+
+  size_t capacity = container.size() + 1;
+  if (capacity > container.capacity()) {
+    capacity *= 2;
+  }
+  return capacity;
 }
 
 /// @brief add a node to the list of nodes
@@ -73,37 +82,20 @@ void AstResources::addNode(AstNode* node) {
     delete node;
   });
 
-  size_t capacity;
-
-  if (_nodes.empty()) {
-    // reserve some initial space for nodes
-    capacity = 64;
-  } else {
-    capacity = _nodes.size() + 1;
-    if (capacity > _nodes.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > _nodes.size());
+  size_t capacity = newCapacity(_nodes, 64);
 
   // reserve space for pointers
   if (capacity > _nodes.capacity()) {
-    _resourceMonitor.increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
-    try {
-      _nodes.reserve(capacity);
-    } catch (...) {
-      // revert change in memory increase
-      _resourceMonitor.decreaseMemoryUsage((capacity - _nodes.capacity()) *
-                                            sizeof(AstNode*));
-      throw;
-    }
+    ResourceUsageScope scope(_resourceMonitor, (capacity - _nodes.capacity()) * memoryUsageForNode());
+
+    _nodes.reserve(capacity);
+
+    // now we are responsible for tracking the memory usage
+    scope.steal();
   }
 
-  // may throw
-  _resourceMonitor.increaseMemoryUsage(sizeof(AstNode));
-
   // will not fail
+  TRI_ASSERT(_nodes.capacity() > _nodes.size());
   _nodes.push_back(node);
 
   // safely took over the ownership for the node, cancel the deletion now
@@ -163,46 +155,37 @@ char* AstResources::registerLongString(char* copy, size_t length) {
     TRI_FreeString(copy);
   });
 
-  size_t capacity;
-
-  if (_strings.empty()) {
-    // reserve some initial space for string storage
-    capacity = 8;
-  } else {
-    capacity = _strings.size() + 1;
-    if (capacity > _strings.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > _strings.size());
+  size_t capacity = newCapacity(_strings, 8);
 
   // reserve space
   if (capacity > _strings.capacity()) {
     // not enough capacity...
-    _resourceMonitor.increaseMemoryUsage(
-        ((capacity - _strings.capacity()) * sizeof(char*)) + length);
-    try {
-      _strings.reserve(capacity);
-    } catch (...) {
-      // revert change in memory increase
-      _resourceMonitor.decreaseMemoryUsage(
-          ((capacity - _strings.capacity()) * sizeof(char*)) + length);
-      throw;
-    }
+    ResourceUsageScope scope(_resourceMonitor, (capacity - _strings.capacity()) * memoryUsageForStringBlock() + length);
+      
+    _strings.reserve(capacity);
+
+    // we are now responsible for tracking the memory usage
+    scope.steal();
   } else {
     // got enough capacity for the new string
     _resourceMonitor.increaseMemoryUsage(length);
   }
 
   // will not fail
+  TRI_ASSERT(_strings.capacity() > _strings.size());
   _strings.push_back(copy);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _stringsLength += length;
-#endif
 
   // safely took over the ownership fo the string, cancel the deletion now
   guard.cancel();
 
   return copy;
+}
+
+constexpr size_t AstResources::memoryUsageForStringBlock() const noexcept {
+  return sizeof(char*);
+}
+
+constexpr size_t AstResources::memoryUsageForNode() const noexcept {
+  return sizeof(AstNode*) + sizeof(AstNode);
 }

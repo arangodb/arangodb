@@ -96,7 +96,7 @@ class CalculationExecutorTest
         var("a", 0, false),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
-        plan(&ast),
+        plan(&ast, false),
         expr(&ast, node),
         outRegID(1),
         inRegID(0),

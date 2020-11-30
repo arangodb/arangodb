@@ -205,7 +205,7 @@ class TraverserHelper : public Traverser {
     _done = false;
   }
 
-  bool getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) override {
+  bool getVertex(VPackSlice, arangodb::traverser::EnumeratedPath&) override {
     // Implement
     return false;
   }

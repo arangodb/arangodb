@@ -38,6 +38,8 @@
 #include <unordered_map>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 
 struct AqlCall;
@@ -67,7 +69,9 @@ class HashedCollectExecutorInfos {
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             velocypack::Options const*, bool count);
+                             velocypack::Options const* vpackOptions, 
+                             arangodb::ResourceMonitor& resourceMonitor,
+                             bool count);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -81,6 +85,7 @@ class HashedCollectExecutorInfos {
   bool getCount() const noexcept;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
+  arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief aggregate types
@@ -100,6 +105,9 @@ class HashedCollectExecutorInfos {
   
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
+
+  /// @brief resource manager
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief COUNTing node?
   bool _count;
@@ -186,6 +194,8 @@ class HashedCollectExecutor {
   void consumeInputRow(InputAqlItemRow& input);
 
   void writeCurrentGroupToOutput(OutputAqlItemRow& output);
+
+  size_t memoryUsageForGroup(GroupKeyType const& group, bool withBase) const;
 
  private:
   Infos const& _infos;

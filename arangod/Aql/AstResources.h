@@ -32,8 +32,8 @@
 
 namespace arangodb {
 struct ResourceMonitor;
-namespace aql {
 
+namespace aql {
 struct AstNode;
 
 class AstResources {
@@ -63,8 +63,17 @@ class AstResources {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
  private:
+  template <typename T>
+  size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
+
   /// @brief registers a long string and takes over the ownership for it
   char* registerLongString(char* copy, size_t length);
+  
+  /// @brief return the memory usage for a block of strings
+  constexpr size_t memoryUsageForStringBlock() const noexcept;
+
+  /// @brief return the memory usage for a single allocated node
+  constexpr size_t memoryUsageForNode() const noexcept;
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;
@@ -76,9 +85,7 @@ class AstResources {
   std::vector<char*> _strings;
 
   /// @brief cumulated length of strings in _strings
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t _stringsLength;
-#endif
 
   /// @brief short string storage. uses less memory allocations for short
   /// strings

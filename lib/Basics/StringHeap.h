@@ -30,7 +30,7 @@
 #include <vector>
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 class StringHeap {
  public:
@@ -50,8 +50,6 @@ class StringHeap {
   /// the caller must make sure that nothing points into the data of the StringHeap
   /// when calling this method
   void clear() noexcept;
-  
-  // void merge(StringHeap&& heap);
   
  private:
   /// @brief allocate a new block of memory
