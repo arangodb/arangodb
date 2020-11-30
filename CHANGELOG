@@ -1,6 +1,10 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fix the activation of the agency supervision maintenance via the REST API
+  `/_admin/cluster/maintenance`. This API stored a boolean value instead of an
+  (expected) maintenance period end date/time string.
+
 * Make the cancel operation safe for asynchronoulsly started JavaScript
   transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
   header set).
