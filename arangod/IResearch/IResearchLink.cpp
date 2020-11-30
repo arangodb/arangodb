@@ -337,12 +337,47 @@ struct CommitTask : Task<CommitTask> {
   }
 
   void operator()();
+  void finalize(IResearchLink* link, IResearchLink::CommitResult code);
 
   size_t cleanupIntervalCount{};
   std::chrono::milliseconds commitIntervalMsec{};
   std::chrono::milliseconds consolidationIntervalMsec{};
   size_t cleanupIntervalStep{};
 }; // CommitTask
+
+
+void CommitTask::finalize(
+    IResearchLink* link,
+    IResearchLink::CommitResult code) {
+  constexpr size_t MAX_NON_EMPTY_COMMITS = 10;
+  constexpr size_t MAX_PENDING_CONSOLIDATIONS = 3;
+
+  if (code != IResearchLink::CommitResult::NO_CHANGES) {
+    ++state->pendingCommits;
+    schedule(commitIntervalMsec);
+
+    if (code == IResearchLink::CommitResult::DONE) {
+      state->noopCommitCount = 0;
+      state->noopConsolidationCount = 0;
+
+      if (state->pendingConsolidations < MAX_PENDING_CONSOLIDATIONS &&
+          ++state->nonEmptyCommits > MAX_NON_EMPTY_COMMITS) {
+        link->scheduleConsolidation(consolidationIntervalMsec);
+        state->nonEmptyCommits = 0;
+      }
+    }
+  } else {
+    state->nonEmptyCommits = 0;
+    ++state->noopCommitCount;
+
+    for (auto count = state->pendingCommits.load(); count < 1; ) {
+      if (state->pendingCommits.compare_exchange_weak(count, 1)) {
+        schedule(commitIntervalMsec);
+        break;
+      }
+    }
+  }
+}
 
 void CommitTask::operator()() {
   const char runId = 0;
@@ -377,34 +412,7 @@ void CommitTask::operator()() {
   IResearchLink::CommitResult code = IResearchLink::CommitResult::UNDEFINED;
 
   auto reschedule = scopeGuard([&code, link, this](){
-    constexpr size_t MAX_NON_EMPTY_COMMITS = 10;
-    constexpr size_t MAX_PENDING_CONSOLIDATIONS = 3;
-
-    if (code != IResearchLink::CommitResult::NO_CHANGES) {
-      ++state->pendingCommits;
-      schedule(commitIntervalMsec);
-
-      if (code == IResearchLink::CommitResult::DONE) {
-        state->noopCommitCount = 0;
-        state->noopConsolidationCount = 0;
-
-        if (state->pendingConsolidations < MAX_PENDING_CONSOLIDATIONS &&
-            ++state->nonEmptyCommits > MAX_NON_EMPTY_COMMITS) {
-          link->scheduleConsolidation(consolidationIntervalMsec);
-          state->nonEmptyCommits = 0;
-        }
-      }
-    } else {
-      state->nonEmptyCommits = 0;
-      ++state->noopCommitCount;
-
-      for (auto count = state->pendingCommits.load(); count < 1; ) {
-        if (state->pendingCommits.compare_exchange_weak(count, 1)) {
-          schedule(commitIntervalMsec);
-          break;
-        }
-      }
-    }
+    finalize(link, code);
   });
 
   --state->pendingCommits;
@@ -526,6 +534,16 @@ void ConsolidationTask::operator()() {
     return;
   }
 
+  auto reschedule = scopeGuard([this](){
+    for (auto count = state->pendingConsolidations.load(); count < 1; ) {
+      if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
+        ++ConsolidationsCount;
+        schedule(consolidationIntervalMsec);
+        break;
+      }
+    }
+  });
+
   // reload RuntimeState
   {
     TRI_IF_FAILURE("IResearchConsolidationTask::lockDataStore") {
@@ -543,24 +561,15 @@ void ConsolidationTask::operator()() {
 
   if (std::chrono::milliseconds::zero() == consolidationIntervalMsec // disabled via interval
       || !consolidationPolicy.policy()) { // disabled via policy
+    reschedule.cancel();
+    --state->pendingConsolidations;
+    --ConsolidationsCount;
+
     LOG_TOPIC("eba3a", DEBUG, iresearch::TOPIC)
         << "consolidation is disabled for the link '" << id
         << "', runId '" << size_t(&runId) << "'";
-
-    --state->pendingConsolidations;
-    --ConsolidationsCount;
     return;
   }
-
-  auto reschedule = scopeGuard([this](){
-    for (auto count = state->pendingConsolidations.load(); count < 1; ) {
-      if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
-        ++ConsolidationsCount;
-        schedule(consolidationIntervalMsec);
-        break;
-      }
-    }
-  });
 
   constexpr size_t MAX_NOOP_COMMITS = 10;
   constexpr size_t MAX_NOOP_CONSOLIDATIONS = 10;
