@@ -38,9 +38,7 @@ static char const* EmptyString = "";
 
 QueryResources::QueryResources(arangodb::ResourceMonitor* resourceMonitor)
     : _resourceMonitor(resourceMonitor),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _stringsLength(0),
-#endif
       _shortStringStorage(_resourceMonitor, 1024) {
 }
 
@@ -55,14 +53,9 @@ QueryResources::~QueryResources() {
     delete it;
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // we are in the destructor here already. decreasing the memory usage counters
-  // will only provide a benefit (in terms of assertions) if we are in
-  // maintainer mode, so we can save all these operations in non-maintainer mode
-  _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
-  _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) +
-                                        _nodes.capacity() * sizeof(AstNode*));
-#endif
+  size_t memoryUsage = (_strings.capacity() * sizeof(char*) + _stringsLength) +
+                       (_nodes.capacity() * (sizeof(AstNode*) + sizeof(AstNode)));
+  _resourceMonitor->decreaseMemoryUsage(memoryUsage);
 }
 
 /// @brief add a node to the list of nodes
@@ -85,25 +78,19 @@ void QueryResources::addNode(AstNode* node) {
     }
   }
 
-  TRI_ASSERT(capacity > _nodes.size());
 
   // reserve space for pointers
   if (capacity > _nodes.capacity()) {
-    _resourceMonitor->increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
-    try {
-      _nodes.reserve(capacity);
-    } catch (...) {
-      // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage((capacity - _nodes.capacity()) *
-                                            sizeof(AstNode*));
-      throw;
-    }
+    ResourceUsageScope guard(_resourceMonitor, (capacity - _nodes.capacity()) * (sizeof(AstNode*) + sizeof(AstNode)));
+
+    _nodes.reserve(capacity);
+
+    // now we are responsible for tracking the memory usage
+    guard.steal();
   }
 
-  // may throw
-  _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
-
   // will not fail
+  TRI_ASSERT(_nodes.capacity() > _nodes.size());
   _nodes.push_back(node);
 
   // safely took over the ownership for the node, cancel the deletion now
@@ -180,26 +167,21 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
   // reserve space
   if (capacity > _strings.capacity()) {
     // not enough capacity...
-    _resourceMonitor->increaseMemoryUsage(
-        ((capacity - _strings.capacity()) * sizeof(char*)) + length);
-    try {
-      _strings.reserve(capacity);
-    } catch (...) {
-      // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage(
-          ((capacity - _strings.capacity()) * sizeof(char*)) + length);
-      throw;
-    }
+    ResourceUsageScope guard(_resourceMonitor, ((capacity - _strings.capacity()) * sizeof(char*)) + length);
+      
+    _strings.reserve(capacity);
+
+    // we are now responsible for tracking the memory usage
+    guard.steal();
   } else {
     // got enough capacity for the new string
     _resourceMonitor->increaseMemoryUsage(length);
   }
 
   // will not fail
+  TRI_ASSERT(_strings.capacity() > _strings.size());
   _strings.push_back(copy);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _stringsLength += length;
-#endif
 
   // safely took over the ownership fo the string, cancel the deletion now
   guard.cancel();

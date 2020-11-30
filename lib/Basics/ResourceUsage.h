@@ -55,6 +55,8 @@ struct ResourceMonitor {
   explicit ResourceMonitor(ResourceUsage const& maxResources)
       : currentResources(), maxResources(maxResources) {}
 
+  ~ResourceMonitor();
+
   void setMemoryLimit(size_t value) { maxResources.memoryUsage = value; }
 
   inline void increaseMemoryUsage(size_t value) {

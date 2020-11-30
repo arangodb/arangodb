@@ -164,7 +164,7 @@ class HashedCollectExecutor {
 
   void writeCurrentGroupToOutput(OutputAqlItemRow& output);
 
-  size_t calculateMemoryUsage(GroupKeyType const& values) const;
+  size_t memoryUsageForGroup(GroupKeyType const& values, bool withBase) const;
 
  private:
   Infos const& _infos;

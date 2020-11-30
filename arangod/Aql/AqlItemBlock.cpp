@@ -93,18 +93,8 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
-  _nrItems = static_cast<size_t>(nrItems);
 
-  _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
-
-  // Initialize the data vector:
-  increaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
-  try {
-    _data.resize(_nrItems * internalNrRegs());
-  } catch (...) {
-    decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
-    throw;
-  }
+  rescale(static_cast<size_t>(nrItems), VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0));
 
   // Now put in the data:
   VPackSlice data = slice.get("data");
@@ -344,7 +334,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
                                    "cannot use shrink() to increase block");
   }
 
-  decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
+  decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * internalNrRegs());
 
   // remove the shadow row indices pointing to now invalid rows.
   _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),

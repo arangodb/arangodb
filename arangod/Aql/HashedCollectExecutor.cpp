@@ -142,7 +142,7 @@ HashedCollectExecutor::~HashedCollectExecutor() {
 void HashedCollectExecutor::destroyAllGroupsAqlValues() {
   size_t memoryUsage = 0;
   for (auto& it : _allGroups) {
-    memoryUsage += calculateMemoryUsage(it.first);
+    memoryUsage += memoryUsageForGroup(it.first, true);
     for (auto& it2 : it.first) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
@@ -189,6 +189,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
   TRI_ASSERT(_currentGroup->second != nullptr);
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
+  size_t memoryUsage = memoryUsageForGroup(keys, false);
   size_t i = 0;
   for (auto& it : keys) {
     AqlValue& key = *const_cast<AqlValue*>(&it);
@@ -197,6 +198,9 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
                          _lastInitializedInputRow, guard);
     key.erase();  // to prevent double-freeing later
   }
+
+  _infos.getResourceMonitor()->decreaseMemoryUsage(memoryUsage);
+
 
   if (!_infos.getCount()) {
     TRI_ASSERT(_currentGroup->second->size() == _infos.getAggregatedRegisters().size());
@@ -335,7 +339,7 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
     aggregateValues->emplace_back((*it)(trx));
   }
   
-  ResourceUsageScope guard(_infos.getResourceMonitor(), calculateMemoryUsage(_nextGroupValues));
+  ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForGroup(_nextGroupValues, true));
 
   // note: aggregateValues may be a nullptr!
   auto [result, emplaced] = _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
@@ -378,14 +382,16 @@ const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcep
   return _infos;
 }
 
-size_t HashedCollectExecutor::calculateMemoryUsage(GroupKeyType const& group) const {
+size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group, bool withBase) const {
   // track memory usage of unordered_map entry (somewhat)
-  size_t memoryUsage = 
-    4 * sizeof(void*) + /* generic overhead */
-    group.size() * sizeof(AqlValue) + 
-    _aggregatorFactories.size() * sizeof(void*);
+  size_t memoryUsage = 0;
+  if (withBase) {
+    memoryUsage += 4 * sizeof(void*) + /* generic overhead */
+                   group.size() * sizeof(AqlValue) + 
+                   _aggregatorFactories.size() * sizeof(void*);
+  }
 
-  for (auto const& it : _nextGroupValues) {
+  for (auto const& it : group) {
     if (it.requiresDestruction()) {
       memoryUsage += it.memoryUsage();
     }
