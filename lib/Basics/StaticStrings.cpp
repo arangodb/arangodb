@@ -271,6 +271,7 @@ std::string const StaticStrings::GraphOrphans("orphanCollections");
 std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
+std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
 
 // Query Strings
 std::string const StaticStrings::QuerySortASC("ASC");

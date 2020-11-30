@@ -255,6 +255,7 @@ class StaticStrings {
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
   static std::string const GraphName;
+  static std::string const GraphTraversalProfileLevel;
 
   // Query Strings
   static std::string const QuerySortASC;
