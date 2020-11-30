@@ -294,9 +294,9 @@ template<typename T> void gauge_test() {
     i.wait();
   }
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-4f);
   } else {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-15f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-13f);
   }
 
   g = one;
@@ -313,9 +313,9 @@ template<typename T> void gauge_test() {
     i.wait();
   }
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-4f);
   } else {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-15f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-13f);
   }
 
   g = zero;
