@@ -60,7 +60,7 @@ class AsyncLinkHandle {
   ~AsyncLinkHandle();
   IResearchLink* get() noexcept { return _link.get(); }
   std::unique_lock<ReadMutex> lock() { return _link.lock(); }
-  std::unique_lock<ReadMutex> try_lock() { return _link.try_lock(); }
+  std::unique_lock<ReadMutex> try_lock() noexcept { return _link.try_lock(); }
   bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
 
  private:

@@ -90,7 +90,7 @@ class ResourceMutexT {
     return std::unique_lock<ReadMutex>{ _readMutex };
   }
 
-  std::unique_lock<ReadMutex> try_lock() const {
+  std::unique_lock<ReadMutex> try_lock() const noexcept {
     return { _readMutex, std::try_to_lock };
   }
 

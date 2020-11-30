@@ -374,31 +374,6 @@ void CommitTask::operator()() {
     return;
   }
 
-  // reload RuntimeState
-  {
-    TRI_IF_FAILURE("IResearchCommitTask::lockDataStore") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    irs::async_utils::read_write_mutex::read_mutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
-    auto lock = irs::make_lock_guard(mutex);
-    auto& meta = link->_dataStore._meta;
-
-    commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
-    consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
-    cleanupIntervalStep = meta._cleanupIntervalStep;
-  }
-
-  --state->pendingCommits;
-
-  if (std::chrono::milliseconds::zero() == commitIntervalMsec) {
-    LOG_TOPIC("eba4a", DEBUG, iresearch::TOPIC)
-        << "sync is disabled for the link '" << id
-        << "', runId '" << size_t(&runId) << "'";
-    return;
-  }
-
   IResearchLink::CommitResult code = IResearchLink::CommitResult::UNDEFINED;
 
   auto reschedule = scopeGuard([&code, link, this](){
@@ -431,6 +406,33 @@ void CommitTask::operator()() {
       }
     }
   });
+
+  --state->pendingCommits;
+
+  // reload RuntimeState
+  {
+    TRI_IF_FAILURE("IResearchCommitTask::lockDataStore") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
+    irs::async_utils::read_write_mutex::read_mutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto lock = irs::make_lock_guard(mutex);
+    auto& meta = link->_dataStore._meta;
+
+    commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
+    consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
+    cleanupIntervalStep = meta._cleanupIntervalStep;
+  }
+
+  if (std::chrono::milliseconds::zero() == commitIntervalMsec) {
+    reschedule.cancel();
+
+    LOG_TOPIC("eba4a", DEBUG, iresearch::TOPIC)
+        << "sync is disabled for the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
+    return;
+  }
 
   TRI_IF_FAILURE("IResearchCommitTask::commitUnsafe") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
