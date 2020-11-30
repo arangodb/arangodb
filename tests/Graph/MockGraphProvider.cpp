@@ -53,7 +53,7 @@ auto operator<<(std::ostream& out, MockGraphProvider::Step const& step) -> std::
 MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
     : arangodb::graph::BaseStep<Step>{},
       _vertex(v),
-      _edge(std::nullopt),
+      _edge(),
       _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProcessable)

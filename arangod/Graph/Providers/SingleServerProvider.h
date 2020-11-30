@@ -84,10 +84,14 @@ struct SingleServerProvider {
     class Edge {
      public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
+      explicit Edge() : _token() {
+        _token = EdgeDocumentToken();
+      }
 
       void addToBuilder(SingleServerProvider& provider,
                         arangodb::velocypack::Builder& builder) const;
       EdgeDocumentToken const& data() const;
+      bool isValid() const;
 
      private:
       EdgeDocumentToken _token;
@@ -102,7 +106,7 @@ struct SingleServerProvider {
     }
 
     Vertex const& getVertex() const { return _vertex; }
-    std::optional<Edge> const& getEdge() const { return _edge; }
+    Edge const& getEdge() const { return _edge; }
 
     std::string toString() const {
       return "<Step><Vertex>: " + _vertex.data().toString();
@@ -114,7 +118,7 @@ struct SingleServerProvider {
 
    private:
     Vertex _vertex;
-    std::optional<Edge> _edge;
+    Edge _edge;
   };
 
  public:

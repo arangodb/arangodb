@@ -69,7 +69,8 @@ class MockGraphProvider {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
-      void addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(MockGraphProvider& provider,
+                        arangodb::velocypack::Builder& builder) const;
       VertexRef getId() const;
 
       // This is only internal for the mock.
@@ -93,11 +94,21 @@ class MockGraphProvider {
     class Edge {
      public:
       Edge(EdgeType e) : _edge(e){};
-      void addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const;
+      Edge() : _edge({{}, {}, 0}){};
+      void addToBuilder(MockGraphProvider& provider,
+                        arangodb::velocypack::Builder& builder) const;
 
       std::string toString() const {
         return "Edge - _from: " + _edge._from + ", _to: " + _edge._to;
       }
+
+      EdgeType getEdge() const { return _edge; }
+      bool isValid() const {
+        if (_edge._from.empty() && _edge._to.empty()) {
+          return false;
+        }
+        return true;
+      };
 
      private:
       EdgeType _edge;
@@ -112,9 +123,9 @@ class MockGraphProvider {
     }
 
     std::string toString() const {
-      if (_edge.has_value()) {
+      if (_edge.isValid()) {
         return "<Step><Vertex>: " + _vertex.data().toString() +
-               ", <Edge>:" + _edge.value().toString() +
+               ", <Edge>:" + _edge.toString() +
                ", previous: " + basics::StringUtils::itoa(getPrevious());
       } else {
         return "<Step><Vertex>: " + _vertex.data().toString() +
@@ -131,10 +142,10 @@ class MockGraphProvider {
       return _vertex;
     }
 
-    std::optional<Edge> getEdge() const {
+    Edge getEdge() const {
       if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Accessing edge (" + _edge.value().toString() +
+                                       "Accessing edge (" + _edge.toString() +
                                            "), before fetching it");
       }
       return _edge;
@@ -146,17 +157,18 @@ class MockGraphProvider {
       TRI_ASSERT(!isProcessable());
       _isProcessable = true;
     }
-    
+
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:
     Vertex _vertex;
-    std::optional<Edge> _edge;
+    Edge _edge;
     bool _isProcessable;
   };
 
   MockGraphProvider() = delete;
-  MockGraphProvider(MockGraph const& data, arangodb::aql::QueryContext& queryContext, LooseEndBehaviour looseEnds, bool reverse = false);
+  MockGraphProvider(MockGraph const& data, arangodb::aql::QueryContext& queryContext,
+                    LooseEndBehaviour looseEnds, bool reverse = false);
   MockGraphProvider(MockGraphProvider const&) = delete;  // TODO: check "Rule of 5"
   MockGraphProvider(MockGraphProvider&&) = default;
   ~MockGraphProvider();
@@ -167,17 +179,18 @@ class MockGraphProvider {
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> std::vector<Step>;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
+      -> std::vector<Step>;
 
   // TODO: Implement those if needed
-  void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder){};
+  void addVertexToBuilder(Step::Vertex const& vertex,
+                          arangodb::velocypack::Builder& builder){};
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder){};
 
   [[nodiscard]] transaction::Methods* trx();
-  
+
  private:
   auto decideProcessable() const -> bool;
-
 
  private:
   std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _fromIndex;

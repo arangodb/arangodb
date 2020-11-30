@@ -58,15 +58,18 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
 }
 
 SingleServerProvider::Step::Step(VertexType v)
-    : _vertex(v), _edge(std::nullopt) {}
+    : _vertex(v), _edge() {}
 
 SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev)
-: BaseStep(prev), _vertex(v), _edge(std::in_place, std::move(edge)) {}
+: BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
 
 SingleServerProvider::Step::~Step() = default;
 
 VertexType const& SingleServerProvider::Step::Vertex::data() const { return _vertex; }
 EdgeDocumentToken const& SingleServerProvider::Step::Edge::data() const { return _token; }
+bool SingleServerProvider::Step::Edge::isValid() const {
+    return data().localDocumentId() != DataSourceId::none();
+};
 
 void SingleServerProvider::addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
   insertEdgeIntoResult(edge.data(), builder);

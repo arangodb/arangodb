@@ -71,8 +71,8 @@ void PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Ste
   
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
-    TRI_ASSERT(myStep->getEdge().has_value());
-    path.prependEdge(myStep->getEdge().value());
+    TRI_ASSERT(myStep->getEdge().isValid());
+    path.prependEdge(myStep->getEdge());
 
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
@@ -99,16 +99,16 @@ void PathStore<Step>::reverseBuildPath(Step const& vertex,
   TRI_ASSERT(size() > vertex.getPrevious());
   // We have added the vertex, but we still need the edge on the other side of the path
 
-  TRI_ASSERT(vertex.getEdge().has_value());
-  path.appendEdge(vertex.getEdge().value());
+  TRI_ASSERT(vertex.getEdge().isValid());
+  path.appendEdge(vertex.getEdge());
   
   Step const* myStep = &_schreier[vertex.getPrevious()];
 
   while (!myStep->isFirst()) {
     path.appendVertex(myStep->getVertex());
 
-    TRI_ASSERT(myStep->getEdge().has_value());
-    path.appendEdge(myStep->getEdge().value());
+    TRI_ASSERT(myStep->getEdge().isValid());
+    path.appendEdge(myStep->getEdge());
     
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
