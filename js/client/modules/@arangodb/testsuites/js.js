@@ -85,7 +85,7 @@ function jsDriver (options) {
       enterprise = 'true';
     }
     process.env['ARANGO_VERSION']='30700'; // todo db._version(),
-    process.env['TEST_ARANGODB_URL'] = instanceInfo.url;
+    process.env['TEST_ARANGODB_URL'] = instanceInfo.urls.join(',');
     process.env['TEST_ARANGODB_URL_SELF_REACHABLE'] = instanceInfo.url;
     
     // testResultsDir

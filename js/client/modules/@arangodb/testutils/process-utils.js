@@ -1823,6 +1823,14 @@ function launchFinalize(options, instanceInfo, startTime) {
         }
       }
     });
+    instanceInfo.urls = [instanceInfo.url];
+  } else {
+    instanceInfo.urls = [];
+    instanceInfo.arangods.forEach(arangod => {
+      if (arangod.role === 'coordinator') {
+        instanceInfo.urls.push(arangod.url);
+      }
+    });
   }
   print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
   var matchPort = /.*:.*:([0-9]*)/;
