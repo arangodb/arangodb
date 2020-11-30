@@ -448,6 +448,8 @@ class IResearchViewExecutor
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
+  size_t _currentSegmentPos; // current document iterator position in segment
+  size_t _totalPos;
   LogicalCollection const* _collection{};
 
   // case ordered only:

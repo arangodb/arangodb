@@ -68,6 +68,19 @@ constexpr size_t UNKOWN_TOTAL_COUNT{std::numeric_limits<size_t>::max()};
 size_t calculateSkipAllCount(size_t currentPos, bool filterIsEmpty,
                              std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const> reader,
                              irs::filter::prepared::ptr filter) {
+
+  // 3 cases:
+  // 1. empty filter conditon -> live_docs_count (exact)
+  // 2. by_term filter. 
+  //    2.1 - segments without deletions  -> docs_count on term reader, field seeked (exact)
+  //    2.2 - segments with deletions -> docs_count on term reader, field seeked (approx) / next (exact)
+  // 3. All other cases
+  //     cost (unexact)/next(exact)
+
+  // Use functor for lazy cost evaluation
+
+  // add counter for tracking current position in segment
+  return 0;
   
 }
 
@@ -812,6 +825,8 @@ IResearchViewExecutor<ordered, materializeType>::IResearchViewExecutor(Fetcher& 
       _pkReader(),
       _itr(),
       _readerOffset(0),
+      _currentSegmentPos(0),
+      _totalPos(0),
       _scr(&irs::score::no_score()),
       _numScores(0) {
   this->_storedValuesReaders.resize(this->_infos.getOutNonMaterializedViewRegs().size());
@@ -1000,7 +1015,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
 
   _itr = segmentReader.mask(std::move(_itr));
   TRI_ASSERT(_itr);
-
+  _currentSegmentPos = 0;
   return true;
 }
 
@@ -1012,6 +1027,8 @@ void IResearchViewExecutor<ordered, materializeType>::reset() {
   _itr.reset();
   _doc = nullptr;
   _readerOffset = 0;
+  _currentSegmentPos = 0;
+  _totalPos = 0;
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1027,6 +1044,8 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
     }
 
     while (limit && _itr->next()) {
+      ++_currentSegmentPos;
+      ++_totalPos;
       --limit;
     }
 
@@ -1047,18 +1066,24 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
 
   size_t skipped = 0;
 
-  for (size_t count = this->_reader->size(); _readerOffset < count;) {
-    if (!_itr && !resetIterator()) {
-      continue;
+  if (filterConditionIsEmpty(&this->infos().filterCondition()) || 
+    _totalPos == this->_reader->live_docs_count()) {
+    skipped =  this->_reader->live_docs_count() -_totalPos;
+    _totalPos = this->_reader->live_docs_count();
+  } else {
+    for (size_t count = this->_reader->size(); _readerOffset < count;) {
+      if (!_itr && !resetIterator()) {
+        continue;
+      }
+      while (_itr->next()) {
+        ++_currentSegmentPos;
+        ++_totalPos;
+        skipped++;
+      }
+      ++_readerOffset;
+      _itr.reset();
+      _doc = nullptr;
     }
-
-    while (_itr->next()) {
-      skipped++;
-    }
-
-    ++_readerOffset;
-    _itr.reset();
-    _doc = nullptr;
   }
 
   return skipped;
