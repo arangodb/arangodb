@@ -418,7 +418,6 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // Otherwise we will overallocate here.
       // In production it is now very unlikely in the non-softlimit case
       // that the upstream is no block using less than batchSize many rows, but returns HASMORE.
-      //if (inputRange.finalState() == ExecutorState::DONE || call.hasSoftLimit()) {
       if (inputRange.finalState() == ExecutorState::DONE || call.hasSoftLimit()) {
         blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
         if (inputRange.finalState() == ExecutorState::HASMORE) {
@@ -1141,32 +1140,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   TRI_ASSERT(stack.hasAllValidCalls());
   AqlCallList clientCallList = stack.popCall();
   AqlCall clientCall;
-  
-  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable && !executorHasSideEffects<Executor>) {
-    // Passthroughblocks can never leave anything behind,
-    // side-effect Executors need to Work through everything themselfes even if skipped.
-    if ((_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS) && !stack.empty()) {
-      // We need to check inside a subquery if the outer query has been skipped.
-      // But we only need to do this if we were not in WAITING state.
-      if (stack.needToSkipSubquery() && _lastRange.hasValidRow()) {
-        LOG_DEVEL << "Need to test Detected";
-        auto depthToSkip = stack.shadowRowDepthToSkip();
-        auto& shadowCall = stack.modifyCallAtDepth(depthToSkip);
-        // We can never hit an offset on the shadowRow level again,
-        // we can only hit this with HARDLIMIT / FULLCOUNT
-        TRI_ASSERT(shadowCall.getOffset() == 0);
-        auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
-        LOG_DEVEL << shadowCall << " skipped " << skipped;
-        if (_lastRange.hasShadowRow()) {
-          // Need to handle ShadowRow next
-          _execState = ExecState::SHADOWROWS;
-        } else {
-          _execState = ExecState::CHECKCALL;
-        }
-        // Reset Executor && Fastforward to ShadowRow to skip
-      }
-    }
-  }
 
   if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     // In subqeryEndExecutor we actually manage two calls.
@@ -1212,6 +1185,30 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                (std::is_same_v<Executor, IdExecutor<ConstFetcher>>));
   }
 
+  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable && !executorHasSideEffects<Executor>) {
+    // Passthroughblocks can never leave anything behind,
+    // side-effect Executors need to Work through everything themselfes even if skipped.
+    if ((_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS) && !stack.empty()) {
+      // We need to check inside a subquery if the outer query has been skipped.
+      // But we only need to do this if we were not in WAITING state.
+      if (stack.needToSkipSubquery() && _lastRange.hasValidRow()) {
+        auto depthToSkip = stack.shadowRowDepthToSkip();
+        auto& shadowCall = stack.modifyCallAtDepth(depthToSkip);
+        // We can never hit an offset on the shadowRow level again,
+        // we can only hit this with HARDLIMIT / FULLCOUNT
+        TRI_ASSERT(shadowCall.getOffset() == 0);
+        auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+        if (_lastRange.hasShadowRow()) {
+          // Need to handle ShadowRow next
+          _execState = ExecState::SHADOWROWS;
+        } else {
+          _execState = ExecState::CHECKCALL;
+        }
+        // Reset Executor && Fastforward to ShadowRow to skip
+      }
+    }
+  }
+
   // In some executors we may write something into the output, but then return
   // waiting. In this case we are not allowed to lose the call we have been
   // working on, we have noted down created or skipped rows in there. The client
@@ -1219,7 +1216,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   // the call we already have The guarantee is, if we have returned the block,
   // and modified our local call, then the outputItemRow is not initialized
   if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
-    // The subqueryEndeExecutor has handled it above
+    // The subqueryEndExecutor has handled it above
     if (_outputItemRow != nullptr && _outputItemRow->isInitialized()) {
       clientCall = _outputItemRow->getClientCall();
     }
