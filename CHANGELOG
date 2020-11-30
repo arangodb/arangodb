@@ -1,11 +1,8 @@
-v3.7.6 (XXXX-XX-XX)
--------------------
-
-* Fix an issue where a query would not return a result when the geo index was used.
-
-
 v3.7.5 (XXXX-XX-XX)
 -------------------
+
+* Fix an issue where a query would not return a result when the geo index was
+  used.
 
 * Updated OpenSSL to 1.1.1h.
 
