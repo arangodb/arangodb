@@ -111,23 +111,10 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   TRI_ASSERT(_shadowRows.empty());
   TRI_ASSERT(_maxModifiedRowIndex == 0);
 
-  _nrItems = static_cast<size_t>(nrItems);
-  _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
-
   // will be increased by later setValue() calls
   _maxModifiedRowIndex = 0;
-
-  _shadowRows.clear();
-  _shadowRows.resize(_nrItems);
-
-  // Initialize the data vector:
-  increaseMemoryUsage(sizeof(AqlValue) * numEntries());
-  try {
-    _data.resize(numEntries());
-  } catch (...) {
-    decreaseMemoryUsage(sizeof(AqlValue) * numEntries());
-    throw;
-  }
+  
+  rescale(static_cast<size_t>(nrItems), VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0));
 
   // Now put in the data:
   VPackSlice data = slice.get("data");
@@ -937,7 +924,7 @@ void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
   }
 }
 
-ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
+arangodb::ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
   return *_manager.resourceMonitor();
 }
 

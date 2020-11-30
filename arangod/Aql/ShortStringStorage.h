@@ -30,9 +30,9 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace aql {
-
 struct ResourceMonitor;
+
+namespace aql {
 
 class ShortStringStorage {
  public:
@@ -58,7 +58,7 @@ class ShortStringStorage {
   static constexpr size_t maxStringLength = 127;
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  ResourceMonitor& _resourceMonitor;
 
   /// @brief already allocated string blocks
   std::vector<char*> _blocks;

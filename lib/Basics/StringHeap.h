@@ -24,20 +24,20 @@
 #ifndef ARANGODB_BASICS_STRING_HEAP_H
 #define ARANGODB_BASICS_STRING_HEAP_H 1
 
-#include <vector>
-
 #include "Basics/Common.h"
 
 #include <velocypack/StringRef.h>
+#include <vector>
 
 namespace arangodb {
+class ResourceMonitor;
 
 class StringHeap {
  public:
   StringHeap(StringHeap const&) = delete;
   StringHeap& operator=(StringHeap const&) = delete;
 
-  explicit StringHeap(size_t blockSize);
+  explicit StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize);
   ~StringHeap();
 
   /// @brief register a string
@@ -49,15 +49,18 @@ class StringHeap {
   /// @brief clear all data from the StringHeap, not releasing any occupied memory 
   /// the caller must make sure that nothing points into the data of the StringHeap
   /// when calling this method
-  void clear();
+  void clear() noexcept;
   
-  void merge(StringHeap&& heap);
+  // void merge(StringHeap&& heap);
   
  private:
   /// @brief allocate a new block of memory
   void allocateBlock();
 
  private:
+  /// @brief memory usage tracker
+  ResourceMonitor& _resourceMonitor;
+
   /// @brief already allocated string blocks
   std::vector<char*> _blocks;
 

@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortStringStorage.h"
-#include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 
@@ -32,7 +32,7 @@
 using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
-ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
+ShortStringStorage::ShortStringStorage(arangodb::ResourceMonitor& resourceMonitor, size_t blockSize)
     : _resourceMonitor(resourceMonitor),
       _blockSize(blockSize),
       _current(nullptr),
@@ -43,7 +43,7 @@ ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t 
 /// @brief destroy a short string storage instance
 ShortStringStorage::~ShortStringStorage() {
   for (auto& it : _blocks) {
-    _resourceMonitor->decreaseMemoryUsage(_blockSize);
+    _resourceMonitor.decreaseMemoryUsage(_blockSize);
     delete[] it;
   }
 }
@@ -97,12 +97,12 @@ void ShortStringStorage::allocateBlock() {
   char* buffer = new char[_blockSize];
 
   try {
-    _resourceMonitor->increaseMemoryUsage(_blockSize);
+    _resourceMonitor.increaseMemoryUsage(_blockSize);
     try {
       _blocks.emplace_back(buffer);
     } catch (...) {
       // rollback
-      _resourceMonitor->decreaseMemoryUsage(_blockSize);
+      _resourceMonitor.decreaseMemoryUsage(_blockSize);
       throw;
     }
     _current = buffer;

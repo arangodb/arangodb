@@ -67,7 +67,7 @@ class AstResources {
   char* registerLongString(char* copy, size_t length);
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief all nodes created in the AST - will be used for freeing them later
   std::vector<AstNode*> _nodes;

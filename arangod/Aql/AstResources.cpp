@@ -23,8 +23,8 @@
 
 #include "AstResources.h"
 #include "Aql/AstNode.h"
-#include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ScopeGuard.h"
 
@@ -36,7 +36,7 @@ namespace {
 static char const* EmptyString = "";
 }  // namespace
 
-AstResources::AstResources(ResourceMonitor* resourceMonitor)
+AstResources::AstResources(arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _stringsLength(0),
@@ -89,19 +89,19 @@ void AstResources::addNode(AstNode* node) {
 
   // reserve space for pointers
   if (capacity > _nodes.capacity()) {
-    _resourceMonitor->increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
+    _resourceMonitor.increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
     try {
       _nodes.reserve(capacity);
     } catch (...) {
       // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage((capacity - _nodes.capacity()) *
+      _resourceMonitor.decreaseMemoryUsage((capacity - _nodes.capacity()) *
                                             sizeof(AstNode*));
       throw;
     }
   }
 
   // may throw
-  _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
+  _resourceMonitor.increaseMemoryUsage(sizeof(AstNode));
 
   // will not fail
   _nodes.push_back(node);
@@ -180,19 +180,19 @@ char* AstResources::registerLongString(char* copy, size_t length) {
   // reserve space
   if (capacity > _strings.capacity()) {
     // not enough capacity...
-    _resourceMonitor->increaseMemoryUsage(
+    _resourceMonitor.increaseMemoryUsage(
         ((capacity - _strings.capacity()) * sizeof(char*)) + length);
     try {
       _strings.reserve(capacity);
     } catch (...) {
       // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage(
+      _resourceMonitor.decreaseMemoryUsage(
           ((capacity - _strings.capacity()) * sizeof(char*)) + length);
       throw;
     }
   } else {
     // got enough capacity for the new string
-    _resourceMonitor->increaseMemoryUsage(length);
+    _resourceMonitor.increaseMemoryUsage(length);
   }
 
   // will not fail
