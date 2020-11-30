@@ -345,26 +345,39 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                    opts->maxDepth};
-      /*
-            using KPathRefactored =
-                TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
-      */
-      // TODO: Cleanup this later - manual switch here between KPathRefactored and KPathRefactoredTracer
-      using KPathRefactoredTracer =
-          TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
-                             PathStoreTracer<PathStore<SingleServerProvider::Step>>, ProviderTracer<SingleServerProvider>>;
 
-      auto kPathUnique = std::make_unique<KPathRefactoredTracer>(
-          ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions},
-          ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions},
-          std::move(enumeratorOptions));
+      if (opts->query().queryOptions().getTraversalProfileLevel() ==
+          TraversalProfileLevel::None) {
+        using KPathRefactored =
+            TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
+        auto kPathUnique = std::make_unique<KPathRefactored>(
+            SingleServerProvider{opts->query(), forwardProviderOptions},
+            SingleServerProvider{opts->query(), backwardProviderOptions},
+            std::move(enumeratorOptions));
 
-      auto executorInfos =
-          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
-                                      std::move(kPathUnique), std::move(sourceInput),
-                                      std::move(targetInput));
-      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredTracer>>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      } else {
+        using KPathRefactored =
+            TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
+                               PathStoreTracer<PathStore<SingleServerProvider::Step>>, ProviderTracer<SingleServerProvider>>;
+        // TODO: below copy paste from above. clean this up later.
+        auto kPathUnique = std::make_unique<KPathRefactored>(
+            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions},
+            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions},
+            std::move(enumeratorOptions));
+
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      }
     } else {
       auto finder = std::make_unique<graph::KPathFinder>(*opts);
       auto executorInfos =
