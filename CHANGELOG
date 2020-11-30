@@ -15,6 +15,10 @@ v3.7.6 (XXXX-XX-XX)
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fix Gauge class' assignment operators.
+
+* Clean up callback bin and empty promises in single-host-agency.
+
 * Fix an issue where a query would not return a result when the geo index was
   used.
 
