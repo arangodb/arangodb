@@ -167,6 +167,7 @@ class MockGraphProvider {
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> std::vector<Step>;
 
   // TODO: Implement those if needed
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder){};

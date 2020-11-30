@@ -122,6 +122,10 @@ auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
   return futures::makeFuture(std::move(result));
 }
 
+auto MockGraphProvider::expand(Step const& step, size_t previous, std::function<void(Step)> callback) -> std::vector<Step> {
+  return this->expand(step, previous);
+}
+
 auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
     -> std::vector<Step> {
   LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
