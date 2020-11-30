@@ -337,6 +337,12 @@ arangodb::ResourceMonitor* BaseOptions::resourceMonitor() const {
   return _resourceMonitor;
 }
 
+void BaseOptions::isQueryKilledCallback() const {
+  if (_query != nullptr && _query->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+}
+
 void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 

@@ -121,6 +121,8 @@ struct BaseOptions {
   TraverserCache* cache() const;
   
   arangodb::ResourceMonitor* resourceMonitor() const;
+  
+  void isQueryKilledCallback() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;

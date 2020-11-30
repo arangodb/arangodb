@@ -228,9 +228,3 @@ void ShortestPathOptions::fetchVerticesCoordinator(
                              /*forShortestPath*/ true);
   }
 }
-
-void ShortestPathOptions::isQueryKilledCallback() const {
-  if (query()->killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-}

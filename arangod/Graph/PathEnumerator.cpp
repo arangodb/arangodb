@@ -273,6 +273,8 @@ bool DepthFirstEnumerator::next() {
       _enumeratedPath.clear();
       return false;
     }
+  
+    _opts->isQueryKilledCallback();
   }  // while (true)
 }
 

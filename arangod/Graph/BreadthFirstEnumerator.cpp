@@ -177,6 +177,8 @@ bool BreadthFirstEnumerator::next() {
     // Nothing found for this vertex.
     // _toSearchPos is increased so
     // we are not stuck in an endless loop
+    
+    _opts->isQueryKilledCallback();
   }
 
   // _lastReturned points to the last used
