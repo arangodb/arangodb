@@ -1,6 +1,9 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fix an issue where a query would not return a result when the geo index was
+  used.
+
 * Fix the activation of the agency supervision maintenance via the REST API
   `/_admin/cluster/maintenance`. This API stored a boolean value instead of an
   (expected) maintenance period end date/time string.
