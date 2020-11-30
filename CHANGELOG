@@ -1,8 +1,18 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
-
 * Clean up agency change log, cluster info caches
+
+* Fix an issue where a query would not return a result when the geo index was
+  used.
+
+* Fix the activation of the agency supervision maintenance via the REST API
+  `/_admin/cluster/maintenance`. This API stored a boolean value instead of an
+  (expected) maintenance period end date/time string.
+
+* Make the cancel operation safe for asynchronoulsly started JavaScript
+  transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
+  header set).
 
 * Fixed initial population of local AgencyCache values after a server restart.
   Previously the local cache was populated from the agency using a commit index
