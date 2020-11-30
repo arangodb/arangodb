@@ -286,19 +286,19 @@ const std::string fu_content_encoding_deflate("deflate");
 const std::string fu_content_encoding_gzip("gzip");
 
 ContentEncoding to_ContentEncoding(std::string const& val) {
-    if (val.empty()) {
-      return ContentEncoding::Identity;
-    } else if (val.compare(0, fu_content_encoding_gzip.size(),
-                           fu_content_encoding_gzip) == 0) {
-      return ContentEncoding::Gzip;
-    } else if (val.compare(0, fu_content_encoding_deflate.size(),
-                           fu_content_encoding_deflate) == 0) {
-      return ContentEncoding::Deflate;
-    } else if (val.compare(0, fu_content_encoding_identity.size(),
-                           fu_content_encoding_identity) == 0) {
-      return ContentEncoding::Identity;
-    }
+  if (val.empty()) {
     return ContentEncoding::Identity;
+  } else if (val.compare(0, fu_content_encoding_gzip.size(),
+                         fu_content_encoding_gzip) == 0) {
+    return ContentEncoding::Gzip;
+  } else if (val.compare(0, fu_content_encoding_deflate.size(),
+                         fu_content_encoding_deflate) == 0) {
+    return ContentEncoding::Deflate;
+  } else if (val.compare(0, fu_content_encoding_identity.size(),
+                         fu_content_encoding_identity) == 0) {
+    return ContentEncoding::Identity;
+  }
+  return ContentEncoding::Identity;
 }
 
 std::string to_string(ContentEncoding type) {
