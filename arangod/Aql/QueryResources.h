@@ -76,9 +76,7 @@ class QueryResources {
   std::vector<char*> _strings;
 
   /// @brief cumulated length of strings in _strings
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t _stringsLength;
-#endif
 
   /// @brief short string storage. uses less memory allocations for short
   /// strings
