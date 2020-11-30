@@ -881,7 +881,7 @@ void Agent::advanceCommitIndex() {
           << "Critical mass for commiting "
           << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
           << index << " to read db";
-      
+
       // Change _readDB and _commitIndex atomically together:
       _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
                                             ci + 1, index), ci, t, true);
@@ -998,7 +998,7 @@ bool Agent::active() const {
 void Agent::activateAgency() {
   _config.activate();
   syncActiveAndAcknowledged();
-  
+
   try {
     _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
   } catch (std::exception const& e) {
@@ -1133,7 +1133,7 @@ void Agent::lastAckedAgo(Builder& ret) const {
 
   ret.add("lastCompactionAt", VPackValue(lastCompactionAt));
   ret.add("nextCompactionAfter", VPackValue(nextCompactionAfter));
-  
+
   if (leading()) {
     ret.add(VPackValue("lastAcked"));
     VPackObjectBuilder b(&ret);
@@ -1534,96 +1534,117 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
 
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
-  // Only run in case we are in multi-host mode
-  while (!isStopping() && size() > 1) {
-    {
-      // We set the variable to false here, if any change happens during
-      // or after the calls in this loop, this will be set to true to
-      // indicate no sleeping. Any change will happen under the mutex.
-      CONDITION_LOCKER(guard, _appendCV);
-      _agentNeedsWakeup = false;
+
+  if (size() == 1) {
+    while (!this->isStopping()) {
+      try {
+        // Clear expired long polls
+        clearExpiredPolls();
+        // Empty store callback trash bin
+        emptyCbTrashBin();
+        // Go to sleep some:
+        std::this_thread::sleep_for(1s);
+      } catch (std::exception const& e) {
+        LOG_TOPIC("52719", INFO, Logger::AGENCY) <<
+          "failed to clear expired polls and callbacks from the agency " << e.what();
+      }
     }
-
-    if (leading() && getPrepareLeadership() == 1) {
-      // If we are officially leading but the _preparing flag is set, we
-      // are in the process of preparing for leadership. This flag is
-      // set when the Constituent celebrates an election victory. Here,
-      // in the main thread, we do the actual preparations:
-
-      if (!prepareLead()) {
-        _constituent.follow(0);  // do not change _term or _votedFor
-      } else {
-        // we need to start work as leader
-        lead();
-      }
-
-      donePrepareLeadership();  // we are ready to roll, except that we
-                                // have to wait for the _commitIndex to
-                                // reach the end of our log
-    }
-
-    // Clear expired long polls
-    clearExpiredPolls();
-
-      // Leader working only
-    if (leading()) {
-      if (1 == getPrepareLeadership()) {
-        // Skip the usual work and the waiting such that above preparation
-        // code runs immediately. We will return with value 2 such that
-        // replication and confirmation of it can happen. Service will
-        // continue once _commitIndex has reached the end of the log and then
-        // getPrepareLeadership() will finally return 0.
-        continue;
-      }
-
-      // Challenge leadership.
-      // Let's proactively know, that we no longer lead instead of finding out
-      // through read/write.
-      if (challengeLeadership()) {
-        resign();
-        continue;
-      }
-
-      // Append entries to followers
-      sendAppendEntriesRPC();
-
-      // Check whether we can advance _commitIndex
-      advanceCommitIndex();
-
-      // Empty store callback trash bin
-      emptyCbTrashBin();
-
-      bool commenceService = false;
-      {
-        READ_LOCKER(oLocker, _outputLock);
-        if (leading() && getPrepareLeadership() == 2 &&
-            _commitIndex.load(std::memory_order_relaxed) == _state.lastIndex()) {
-          commenceService = true;
+  } else {
+    // Only run in case we are in multi-host mode
+    while (!this->isStopping()) {
+      try {
+        {
+          // We set the variable to false here, if any change happens during
+          // or after the calls in this loop, this will be set to true to
+          // indicate no sleeping. Any change will happen under the mutex.
+          CONDITION_LOCKER(guard, _appendCV);
+          _agentNeedsWakeup = false;
         }
-      }
 
-      if (commenceService) {
-        _tiLock.assertNotLockedByCurrentThread();
-        MUTEX_LOCKER(ioLocker, _ioLock);
-        READ_LOCKER(oLocker, _outputLock);
-        _spearhead = _readDB;
-        endPrepareLeadership();  // finally service can commence
-      }
+        if (leading() && getPrepareLeadership() == 1) {
+          // If we are officially leading but the _preparing flag is set, we
+          // are in the process of preparing for leadership. This flag is
+          // set when the Constituent celebrates an election victory. Here,
+          // in the main thread, we do the actual preparations:
 
-      // Go to sleep some:
-      {
-        CONDITION_LOCKER(guard, _appendCV);
-        if (!_agentNeedsWakeup) {
-          // wait up to minPing():
-          _appendCV.wait(static_cast<uint64_t>(1.0e6 * _config.minPing()));
-          // We leave minPing here without the multiplier to run this
-          // loop often enough in cases of high load.
+          if (!prepareLead()) {
+            _constituent.follow(0);  // do not change _term or _votedFor
+          } else {
+            // we need to start work as leader
+            lead();
+          }
+
+          donePrepareLeadership();  // we are ready to roll, except that we
+          // have to wait for the _commitIndex to
+          // reach the end of our log
         }
-      }
-    } else {
-      CONDITION_LOCKER(guard, _appendCV);
-      if (!_agentNeedsWakeup) {
-        _appendCV.wait(1000000);
+
+        // Clear expired long polls
+        clearExpiredPolls();
+
+        // Leader working only
+        if (leading()) {
+          if (1 == getPrepareLeadership()) {
+            // Skip the usual work and the waiting such that above preparation
+            // code runs immediately. We will return with value 2 such that
+            // replication and confirmation of it can happen. Service will
+            // continue once _commitIndex has reached the end of the log and then
+            // getPrepareLeadership() will finally return 0.
+            continue;
+          }
+
+          // Challenge leadership.
+          // Let's proactively know, that we no longer lead instead of finding out
+          // through read/write.
+          if (challengeLeadership()) {
+            resign();
+            continue;
+          }
+
+          // Append entries to followers
+          sendAppendEntriesRPC();
+
+          // Check whether we can advance _commitIndex
+          advanceCommitIndex();
+
+          // Empty store callback trash bin
+          emptyCbTrashBin();
+
+          bool commenceService = false;
+          {
+            READ_LOCKER(oLocker, _outputLock);
+            if (leading() && getPrepareLeadership() == 2 &&
+                _commitIndex.load(std::memory_order_relaxed) == _state.lastIndex()) {
+              commenceService = true;
+            }
+          }
+
+          if (commenceService) {
+            _tiLock.assertNotLockedByCurrentThread();
+            MUTEX_LOCKER(ioLocker, _ioLock);
+            READ_LOCKER(oLocker, _outputLock);
+            _spearhead = _readDB;
+            endPrepareLeadership();  // finally service can commence
+          }
+
+          // Go to sleep some:
+          {
+            CONDITION_LOCKER(guard, _appendCV);
+            if (!_agentNeedsWakeup) {
+              // wait up to minPing():
+              _appendCV.wait(static_cast<uint64_t>(1.0e6 * _config.minPing()));
+              // We leave minPing here without the multiplier to run this
+              // loop often enough in cases of high load.
+            }
+          }
+        } else {
+          CONDITION_LOCKER(guard, _appendCV);
+          if (!_agentNeedsWakeup) {
+            _appendCV.wait(1000000);
+          }
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC("92715", WARN, Logger::AGENCY) << "caught exception in the agent thread " << e.what();
       }
     }
   }
@@ -1940,7 +1961,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
   uint64_t commitIndex = 0;
 
-  { 
+  {
     READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex.load(std::memory_order_relaxed);
@@ -1950,7 +1971,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
     // key-value store {}
     builder.add(VPackValue("agency"));
-    _readDB.get("", builder, true); 
+    _readDB.get("", builder, true);
   }
 
   // replicated log []
