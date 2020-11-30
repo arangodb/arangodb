@@ -175,6 +175,12 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
   return 0;
 }
 
+size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return 0;
+}
+
+
 ExecutorState AqlItemBlockInputMatrix::incrBlockIndex() {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   if (_currentBlockRowIndex + 1 < _aqlItemMatrix->numberOfBlocks()) {

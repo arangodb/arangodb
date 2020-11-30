@@ -255,6 +255,18 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   return 0;
 }
 
+size_t MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  size_t const n = _inputs.size();
+  for (size_t i = 0; i < n; i++) {
+    std::ignore = _inputs[i].skipAllRemainingDataRows();
+    if (_inputs.at(i).upstreamState() == ExecutorState::HASMORE) {
+      return i;
+    }
+  }
+  return 0;
+}
+
 // Subtract up to count rows from the local _skipped state
 auto MultiAqlItemBlockInputRange::skipForDependency(size_t const dependency,
                                                     size_t count) -> size_t {

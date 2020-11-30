@@ -418,9 +418,10 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // Otherwise we will overallocate here.
       // In production it is now very unlikely in the non-softlimit case
       // that the upstream is no block using less than batchSize many rows, but returns HASMORE.
+      //if (inputRange.finalState() == ExecutorState::DONE || call.hasSoftLimit()) {
       if (inputRange.finalState() == ExecutorState::DONE || call.hasSoftLimit()) {
         blockSize = _executor.expectedNumberOfRowsNew(inputRange, call);
-        if (inputRange.upstreamState() == ExecutorState::HASMORE) {
+        if (inputRange.finalState() == ExecutorState::HASMORE) {
           // There might be more from above!
           blockSize = std::max(call.getLimit(), blockSize);
         }
@@ -1140,6 +1141,33 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   TRI_ASSERT(stack.hasAllValidCalls());
   AqlCallList clientCallList = stack.popCall();
   AqlCall clientCall;
+  
+  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable && !executorHasSideEffects<Executor>) {
+    // Passthroughblocks can never leave anything behind,
+    // side-effect Executors need to Work through everything themselfes even if skipped.
+    if ((_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS) && !stack.empty()) {
+      // We need to check inside a subquery if the outer query has been skipped.
+      // But we only need to do this if we were not in WAITING state.
+      if (stack.needToSkipSubquery() && _lastRange.hasValidRow()) {
+        LOG_DEVEL << "Need to test Detected";
+        auto depthToSkip = stack.shadowRowDepthToSkip();
+        auto& shadowCall = stack.modifyCallAtDepth(depthToSkip);
+        // We can never hit an offset on the shadowRow level again,
+        // we can only hit this with HARDLIMIT / FULLCOUNT
+        TRI_ASSERT(shadowCall.getOffset() == 0);
+        auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+        LOG_DEVEL << shadowCall << " skipped " << skipped;
+        if (_lastRange.hasShadowRow()) {
+          // Need to handle ShadowRow next
+          _execState = ExecState::SHADOWROWS;
+        } else {
+          _execState = ExecState::CHECKCALL;
+        }
+        // Reset Executor && Fastforward to ShadowRow to skip
+      }
+    }
+  }
+
   if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     // In subqeryEndExecutor we actually manage two calls.
     // The clientCall defines what will go into the Executor.
@@ -1820,6 +1848,17 @@ auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack, s
     // Pop the corresponding production call.
     std::ignore = stack.modifyCallListAtDepth(depth - 1).popNextCall();
   }
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range, SkipResult skipped) -> void {
+  if (range.finalState() == ExecutorState::DONE) {
+    _upstreamState = ExecutionState::DONE;
+  } else {
+    _upstreamState = ExecutionState::HASMORE;
+  }
+  _lastRange = std::move(range);
+  _skipped = skipped;
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

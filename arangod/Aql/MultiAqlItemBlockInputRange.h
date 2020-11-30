@@ -84,6 +84,8 @@ class MultiAqlItemBlockInputRange {
   // This discards all remaining data rows
   auto skipAllRemainingDataRows() -> size_t;
 
+  size_t skipAllShadowRowsOfDepth(size_t depth);
+
   // Subtract up to count rows from the local _skipped state
   auto skipForDependency(size_t const dependency, size_t count) -> size_t;
   // Skipp all that is available

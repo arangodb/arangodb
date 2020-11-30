@@ -56,6 +56,76 @@ namespace aql {
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
+// The numbers here are random, but all of them are below 1000 which is the default batch size
+static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
+
+static constexpr auto skipCall = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 15;
+  return res;
+};
+
+static constexpr auto softLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.softLimit = 35u;
+  return res;
+};
+
+static constexpr auto hardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 76u;
+  return res;
+};
+
+static constexpr auto fullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 17u;
+  res.fullCount = true;
+  return res;
+};
+
+static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.softLimit = 64u;
+  return res;
+};
+
+static constexpr auto skipAndHardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 32;
+  res.hardLimit = 51u;
+  return res;
+};
+static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 8;
+  res.hardLimit = 57u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlyFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlySkipAndCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
+
+static constexpr auto hardLimitAll = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 0;
+  res.hardLimit = 0u;
+  res.fullCount = false;
+  return res;
+};
+
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
 
@@ -2370,67 +2440,79 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   }
 }
 
-// The numbers here are random, but all of them are below 1000 which is the default batch size
-static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, hardlimit_outer_subquery_one_row) {
+  // This tests simlate a case, where we already overfetched data, and then the Subquery
+  // end decides to stop. (e.g. LET sub = (...<testee>...) FILTER x LIMIT 10 )
 
-static constexpr auto skipCall = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 15;
-  return res;
-};
+  // Let the upstream not return anything anymore, for simplicity
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  auto producer = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER, 1);
+  size_t allowedCalls = 2;
+  NoneAsserter produceAsserter{getCall(), allowedCalls};
+  NoneAsserter skipAsserter{getCall(), allowedCalls};
+  RegisterId outReg = 0;
+  // We only need this test for non-passthrough blocks
 
-static constexpr auto softLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.softLimit = 35u;
-  return res;
-};
+  auto testee = forwardBlock(produceAsserter, skipAsserter, producer.get(), outReg);
+  // We fake a left over input here
+  // 3 DataRows One ShadowRow
+  auto leftoverBlock = buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(),
+    {{1}, {2}, {3}, {4}}, {{3, 0}});
+  AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
+  SkipResult skip{};
+  skip.incrementSubquery();
+  // Need to downcast to specific Impl, as this method is only
+  // Possible to define per InputBlock, otherwise range type cannot be determined.
+  static_cast<ExecutionBlockImpl<LambdaExe>*>(testee.get())
+      ->testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+  
+  auto stack = buildStack(hardLimitAll(), getCall());
 
-static constexpr auto hardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 76u;
-  return res;
-};
+  // Skip all of the block
+  auto [state, skipped, block] = testee->execute(stack);
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(block, nullptr);
+}
 
-static constexpr auto fullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 17u;
-  res.fullCount = true;
-  return res;
-};
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, hardlimit_outer_subquery_many_rows) {
+  // This tests simlate a case, where we already overfetched data, and then the Subquery
+  // end decides to stop. (e.g. LET sub = (...<testee>...) FILTER x LIMIT 10 )
 
-static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.softLimit = 64u;
-  return res;
-};
+  // Let the upstream not return anything anymore, for simplicity
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  auto producer = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER, 1);
+  size_t allowedCalls = 2;
+  NoneAsserter produceAsserter{getCall(), allowedCalls};
+  NoneAsserter skipAsserter{getCall(), allowedCalls};
+  RegisterId outReg = 0;
+  // We only need this test for non-passthrough blocks
 
-static constexpr auto skipAndHardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 32;
-  res.hardLimit = 51u;
-  return res;
-};
-static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 8;
-  res.hardLimit = 57u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlyFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlySkipAndCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
+  auto testee = forwardBlock(produceAsserter, skipAsserter, producer.get(), outReg);
+  // We fake a left over input here
+  // 3 DataRows One ShadowRow
+  auto leftoverBlock = buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(),
+    {{1}, {2}, {3}, {4}, {5}, {6}}, {{2, 0}, {4, 0}, {5, 0}});
+  AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
+  SkipResult skip{};
+  skip.incrementSubquery();
+  // Need to downcast to specific Impl, as this method is only
+  // Possible to define per InputBlock, otherwise range type cannot be determined.
+  static_cast<ExecutionBlockImpl<LambdaExe>*>(testee.get())
+      ->testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+  
+  auto stack = buildStack(hardLimitAll(), getCall());
+  
+  // Skip all of the block
+  auto [state, skipped, block] = testee->execute(stack);
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(block, nullptr);
+}
 
 INSTANTIATE_TEST_CASE_P(
     ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,
