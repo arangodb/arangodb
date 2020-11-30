@@ -212,6 +212,7 @@ class StaticStrings {
   static std::string const MultiPartContentType;
 
   // encodings
+  static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
 
   // collection attributes
