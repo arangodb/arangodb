@@ -1969,7 +1969,9 @@ again:
         v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
         result->Set(context,
                     TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false);
-      } else setBinaryPayload();
+      } else {
+        setBinaryPayload();
+      }
     }
 
     auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
