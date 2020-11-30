@@ -54,7 +54,7 @@ AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
   // noskip && no data => state != HASMORE
   // <=> skipped || data || state != HASMORE
   TRI_ASSERT(!_skipped.nothingSkipped() ||
-             (_block != nullptr && _block->numEntries() > 0) ||
+             (_block != nullptr && _block->size() > 0) ||
              _state != ExecutionState::HASMORE);
 }
 
