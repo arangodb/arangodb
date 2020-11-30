@@ -16,6 +16,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
 var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
+const isVst = arango.getEndpoint().match('^vst://') !== null;
 
 require("@arangodb/test-helper").waitForFoxxInitialized();
 
@@ -167,7 +168,12 @@ describe('FoxxApi commit', function () {
     expect(result).to.have.property('parsedBody');
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
-    expect(result.body).to.be.instanceof(Buffer);
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }      
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');
