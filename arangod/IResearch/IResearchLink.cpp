@@ -345,7 +345,6 @@ struct CommitTask : Task<CommitTask> {
   size_t cleanupIntervalStep{};
 }; // CommitTask
 
-
 void CommitTask::finalize(
     IResearchLink* link,
     IResearchLink::CommitResult code) {

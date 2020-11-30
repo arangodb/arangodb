@@ -50,6 +50,9 @@ struct typelist;
 namespace arangodb {
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief std::unique_lock<...> compliant wrapper for arangodb::ReadWriteLock
+////////////////////////////////////////////////////////////////////////////////
 class ReadMutex {
  public:
   ReadMutex(basics::ReadWriteLock& mtx) noexcept
@@ -61,7 +64,7 @@ class ReadMutex {
   }
 
   void lock() { _mtx->lockRead(); }
-  bool try_lock() { return _mtx->tryLockRead(); }
+  bool try_lock() noexcept { return _mtx->tryLockRead(); }
   void unlock() { _mtx->unlockRead(); }
 
  private:
@@ -70,7 +73,7 @@ class ReadMutex {
   ReadMutex operator=(ReadMutex&&) = delete;
 
   basics::ReadWriteLock* _mtx;
-};
+}; // ReadMutex
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-mutex for a resource

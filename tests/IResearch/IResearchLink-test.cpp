@@ -1353,6 +1353,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   EXPECT_EQ(expected, compressed_values);
 }
 
+// ensure no task scheduled for commit interval 0 at creation
+// ensure no task scheduled when asyn self is reset
+
 TEST_F(IResearchLinkTest, test_maintenance_commitTask) {
   using namespace arangodb;
   using namespace arangodb::iresearch;
