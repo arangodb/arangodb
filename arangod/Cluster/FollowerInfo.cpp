@@ -303,8 +303,8 @@ bool FollowerInfo::updateFailoverCandidates() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_failoverCandidates->size() == _followers->size());
     std::vector<std::string> diff;
-    auto followers = _followers;
-    auto failoverCandidates = _failoverCandidates;
+    auto followers = std::make_shared<std::vector<ServerID>>(*_followers);
+    auto failoverCandidates = std::make_shared<std::vector<ServerID>>(*_failoverCandidates);
     std::sort(failoverCandidates->begin(), failoverCandidates->end(), std::greater<std::string>());
     std::sort(followers->begin(), followers->end(), std::greater<std::string>());
     std::set_symmetric_difference(_failoverCandidates->begin(),
@@ -322,8 +322,8 @@ bool FollowerInfo::updateFailoverCandidates() {
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<std::string> diff;
-  auto followers = _followers;
-  auto failoverCandidates = _failoverCandidates;
+  auto followers = std::make_shared<std::vector<ServerID>>(*_followers);
+  auto failoverCandidates = std::make_shared<std::vector<ServerID>>(*_failoverCandidates);
   std::sort(failoverCandidates->begin(), failoverCandidates->end(), std::greater<std::string>());
   std::sort(followers->begin(), followers->end(), std::greater<std::string>());
   std::set_symmetric_difference(_failoverCandidates->begin(),
