@@ -58,8 +58,12 @@ enum class MaterializeType {
   NotMaterialize = 1,   // do not materialize a document
   LateMaterialize = 2,  // a document will be materialized later
   Materialize = 4,      // materialize a document
-  UseStoredValues = 8,  // use stored or sort column values
-  EmitCount = 16,       // emit only total row count in out variable
+  UseStoredValues = 8   // use stored or sort column values
+};
+
+enum class CountApproximate {
+  Exact = 0,  // skipAll should return exact number of records
+  Cost = 1,   // iterator cost could be used as skipAllCount
 };
 
 ENABLE_BITMASK_ENUM(MaterializeType);
@@ -83,13 +87,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     /// @brief try not to materialize documents
     bool noMaterialization{true};
 
-    /// @brief node should try emit just total count of documents if possible
-    bool emitOnlyCount{true};
-
     /// @brief condition optimization Auto - condition will be transformed to DNF.
     arangodb::aql::ConditionOptimization conditionOptimization{
         arangodb::aql::ConditionOptimization::Auto};
 
+    /// @brief skipAll method for view
+    CountApproximate countApproximate{CountApproximate::Exact};
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
@@ -207,13 +210,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
 
-  bool emitOnlyCount() const noexcept { return _emitOnlyCount; }
-
-  void setEmitOnlyCount() noexcept {
-    TRI_ASSERT(!isLateMaterialized());
-    _emitOnlyCount = true;
-  }
-
   static constexpr ptrdiff_t SortColumnNumber {-1};
 
   // A variable with a field number in a column
@@ -311,9 +307,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief is no materialization should be applied
   bool _noMaterialization;
 
-  /// @brief emit only count optimization should be applied
-  /// TODO: serialization!
-  bool _emitOnlyCount;
+  /// @brief skipAll method for view
+  CountApproximate _countApproximate{CountApproximate::Exact};
 
   OptimizationState _optState;
 

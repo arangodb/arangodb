@@ -44,6 +44,7 @@
 #include <analysis/token_attributes.hpp>
 #include <search/boolean_filter.hpp>
 #include <search/score.hpp>
+#include <search/cost.hpp>
 #include <utility>
 
 // TODO Eliminate access to the plan if possible!
@@ -63,14 +64,13 @@ namespace {
 
 constexpr irs::payload NoPayload;
 
-constexpr size_t UNKOWN_TOTAL_COUNT{std::numeric_limits<size_t>::max()};
 
 size_t calculateSkipAllCount(size_t currentPos, bool filterIsEmpty,
                              std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const> reader,
                              irs::filter::prepared::ptr filter) {
 
   // 3 cases:
-  // 1. empty filter conditon -> live_docs_count (exact)
+  // 1. empty filter conditon -> live_docs_count (exact) - DONE
   // 2. by_term filter. 
   //    2.1 - segments without deletions  -> docs_count on term reader, field seeked (exact)
   //    2.2 - segments with deletions -> docs_count on term reader, field seeked (approx) / next (exact)
@@ -139,8 +139,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility, bool emitCount, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
-    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
+    std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
+    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs, iresearch::CountApproximate countApproximate)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -151,12 +151,12 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outVariable(outVariable),
       _filterCondition(filterCondition),
       _volatileSort(volatility.second),
-      _emitCount(emitCount),
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter(_volatileSort || volatility.first),
       _varInfoMap(varInfoMap),
       _depth(depth),
-      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
+      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
+      _countApproximate(countApproximate) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
@@ -852,6 +852,8 @@ bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& do
   TRI_ASSERT(_pkReader.value);
 
   if (_itr->next()) {
+    ++_totalPos;
+    ++_currentSegmentPos;
     if (_doc->value == _pkReader.itr->seek(_doc->value)) {
       bool const readSuccess = DocumentPrimaryKey::read(documentId, _pkReader.value->value);
 
@@ -908,6 +910,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
 
         // We don't have a collection, skip the current reader.
         ++_readerOffset;
+        _currentSegmentPos = 0;
         _itr.reset();
         _doc = nullptr;
         continue;
@@ -931,6 +934,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
       if (iteratorExhausted) {
         // The iterator is exhausted, we need to continue with the next reader.
         ++_readerOffset;
+        _currentSegmentPos = 0;
         _itr.reset();
         _doc = nullptr;
       }
@@ -959,6 +963,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next reader.
       ++_readerOffset;
+      _currentSegmentPos = 0;
       _itr.reset();
       _doc = nullptr;
 
@@ -1070,19 +1075,40 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
     _totalPos == this->_reader->live_docs_count()) {
     skipped =  this->_reader->live_docs_count() -_totalPos;
     _totalPos = this->_reader->live_docs_count();
+    _readerOffset = this->_reader->size();
   } else {
-    for (size_t count = this->_reader->size(); _readerOffset < count;) {
-      if (!_itr && !resetIterator()) {
-        continue;
+    if (this->infos().countApproximate() == CountApproximate::Cost) {
+      if (_itr) { // we already have open segment. Account it properly.
+        skipped += irs::cost::extract(*_itr, 0); // TODO to separate method ?
+        if (skipped < _currentSegmentPos) {
+          skipped = 0;
+        } else {
+          skipped -= _currentSegmentPos;
+        }
+        ++_readerOffset;
+        _itr.reset();
       }
-      while (_itr->next()) {
-        ++_currentSegmentPos;
-        ++_totalPos;
-        skipped++;
+      for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
+        if (!resetIterator()) {
+          continue;
+        }
+        skipped += irs::cost::extract(*_itr, 0); // TODO to separate method ?
+        _itr.reset();
       }
-      ++_readerOffset;
-      _itr.reset();
-      _doc = nullptr;
+      _totalPos = this->_reader->live_docs_count(); // mark node as exhausted so future skips will return 0 immediately
+    } else {
+      for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
+        if (!_itr && !resetIterator()) {
+          continue;
+        }
+        while (_itr->next()) {
+          ++_currentSegmentPos;
+          ++_totalPos;
+          skipped++;
+        }
+        _itr.reset();
+        _doc = nullptr;
+      }
     }
   }
 
@@ -1110,6 +1136,7 @@ void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
 
       // We don't have a collection, skip the current reader.
       ++_readerOffset;
+      _currentSegmentPos = 0;
       _itr.reset();
       _doc = nullptr;
     }
@@ -1429,90 +1456,6 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
   return Base::writeRow(ctx, bufferEntry, documentId, *collection);
 }
 
-arangodb::aql::IResearchViewCountExecutor::IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos)
-  : Base(fetcher, infos), _totalCount(UNKOWN_TOTAL_COUNT),
-    _filterConditionIsEmpty(filterConditionIsEmpty(&this->infos().filterCondition())) {}
-
-size_t arangodb::aql::IResearchViewCountExecutor::skip(size_t toSkip) {
-  if (_filterConditionIsEmpty && _totalCount == UNKOWN_TOTAL_COUNT) {
-     _totalCount = this->_reader->live_docs_count();
-  }
-  if (_totalCount != UNKOWN_TOTAL_COUNT) {
-    TRI_ASSERT(_totalCount >= _count);
-    size_t const skipped = std::min(toSkip, _totalCount - _count);
-    _count += skipped;
-    return skipped;
-  }
-
-  size_t limit{toSkip};
-  for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
-    if (!_itr) {
-      auto& segmentReader = (*this->_reader)[_readerOffset];
-      _itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
-      TRI_ASSERT(_itr);
-      _itr = segmentReader.mask(std::move(_itr));
-    }
-    if (!_itr) {
-      continue;
-    }
-
-    while (limit && _itr->next()) {
-      --limit;
-    }
-
-    if (!limit) {
-      break;  // do not change iterator if already reached limit
-    }
-    _itr.reset();
-  }
-  return toSkip - limit;
-}
-
-size_t arangodb::aql::IResearchViewCountExecutor::skipAll() {
-  if (_totalCount != UNKOWN_TOTAL_COUNT) {
-    TRI_ASSERT(_totalCount >= _count);
-    size_t const limitLeft =  _totalCount - _count;
-    _count = _totalCount;
-    return limitLeft;
-  }
-  size_t const subReadersCount = this->_reader->size();
-  if (_filterConditionIsEmpty) {
-    _totalCount = this->_reader->live_docs_count();
-    _count = _totalCount;
-    return _count;
-  } else {
-    _count = 0;
-    for (; _readerOffset < subReadersCount; ++_readerOffset) {
-      auto& segmentReader = (*this->_reader)[_readerOffset];
-      _itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
-      TRI_ASSERT(_itr);
-      _itr = segmentReader.mask(std::move(_itr));
-      while (_itr->next()) {
-        ++_count;
-      }
-      _itr.reset();
-    }
-    _totalCount = _count;
-    return _count;
-  }
-}
-
-void arangodb::aql::IResearchViewCountExecutor::fillBuffer(ReadContext&) {}
-
-bool arangodb::aql::IResearchViewCountExecutor::writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-  TRI_ASSERT(FALSE)
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED, "Counting view enumerator is called to produce row");
-  return false;
-}
-
-void arangodb::aql::IResearchViewCountExecutor::reset() noexcept {
-  Base::reset();
-  _readerOffset = 0;
-  _totalCount = UNKOWN_TOTAL_COUNT;
-  _count = 0;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                 explicit template instantiation
 ///////////////////////////////////////////////////////////////////////////////
@@ -1578,6 +1521,3 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewCountExecutor,
-                                                          ::arangodb::aql::IResearchViewCountExecutorTraits>;

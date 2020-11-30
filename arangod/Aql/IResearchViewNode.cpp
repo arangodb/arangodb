@@ -164,8 +164,8 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
     builder.add("noMaterialization", VPackValue(options.noMaterialization));
   }
 
-  if (!options.emitOnlyCount) {
-    builder.add("emitOnlyCount", VPackValue(options.emitOnlyCount));
+  if (options.countApproximate != CountApproximate::Exact) {
+    builder.add("countApproximate", VPackValue(static_cast<uint32_t>(options.countApproximate)));
   }
 }
 
@@ -255,14 +255,14 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
 
   // emitOnlyCount
   {
-    auto const optionSlice = optionsSlice.get("emitOnlyCount");
+    auto const optionSlice = optionsSlice.get("countApproximate");
     if (!optionSlice.isNone()) {
       // 'emitOnlyCount' is optional
-      if (!optionSlice.isBool()) {
+      if (!optionSlice.isInt()) {
         return false;
       }
 
-      options.emitOnlyCount = optionSlice.getBool();
+      options.countApproximate = static_cast<CountApproximate>(optionSlice.getInt());
     }
   }
 
@@ -386,15 +386,15 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          return true;
        }},
        // cppcheck-suppress constStatement
-       {"emitOnlyCount", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+       {"countApproximate", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
                                aql::AstNode const& value,
                                IResearchViewNode::Options& options, std::string& error) {
-         if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
-           error = "boolean value expected for option 'emitOnlyCount'";
+         if (!value.isValueType(aql::VALUE_TYPE_INT)) {
+           error = "string value expected for option 'countApproximate'";
            return false;
          }
 
-         options.emitOnlyCount = value.getBoolValue();
+         options.countApproximate = static_cast<CountApproximate>(value.getIntValue());
          return true;
        }},
        // cppcheck-suppress constStatement
@@ -792,7 +792,7 @@ const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
 const char* NODE_VIEW_NO_MATERIALIZATION = "noMaterialization";
-const char* NODE_VIEW_EMIT_ONLY_COUNT = "emitOnlyCount";
+const char* NODE_VIEW_COUNT_APPROX = "countApproximate";
 
 void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
@@ -894,7 +894,6 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       _outNonMaterializedDocId(nullptr),
       _outNonMaterializedColPtr(nullptr),
       _noMaterialization(false),
-      _emitOnlyCount(false),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
@@ -1084,20 +1083,33 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     _noMaterialization = false;
   }
 
-  if (base.hasKey(NODE_VIEW_EMIT_ONLY_COUNT)) {
-    auto const emitOnlyCountSlice = base.get(NODE_VIEW_EMIT_ONLY_COUNT);
-    if (!emitOnlyCountSlice.isBool()) {
+  if (base.hasKey(NODE_VIEW_COUNT_APPROX)) {
+    auto const countApproximateSlice = base.get(NODE_VIEW_COUNT_APPROX);
+    if (!countApproximateSlice.isInteger()) {
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_BAD_PARAMETER,
-          "\"%s\" %s should be a bool value",
-          NODE_VIEW_EMIT_ONLY_COUNT, emitOnlyCountSlice.toString().c_str());
+          "\"%s\" %s should be a non-negative numeric value",
+          NODE_VIEW_COUNT_APPROX, countApproximateSlice.toString().c_str());
     }
-    _emitOnlyCount = emitOnlyCountSlice.getBool();
+    auto const tmp = countApproximateSlice.getInt();
+    switch (tmp) {
+      case static_cast<int64_t>(CountApproximate::Exact):
+        _countApproximate = CountApproximate::Exact;
+        break;
+      case  static_cast<int64_t>(CountApproximate::Cost):
+        _countApproximate = CountApproximate::Cost;
+        break;
+      default:
+        LOG_TOPIC("10734", WARN, arangodb::iresearch::TOPIC)
+            << "Unknown value '" << tmp << "' for the '" << NODE_VIEW_COUNT_APPROX << "'. 'Exact' fallback will be used.";
+        _countApproximate = CountApproximate::Exact;
+        break;
+    }
   } else {
-    _emitOnlyCount = false;
+    _countApproximate = CountApproximate::Exact;
   }
 
-  if (isLateMaterialized() || (noMaterialization() && !emitOnlyCount())) {
+  if (isLateMaterialized() || noMaterialization()) {
     auto const* vars = plan.getAst()->variables();
     TRI_ASSERT(vars);
 
@@ -1179,8 +1191,8 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
   }
 
-  if (_emitOnlyCount) {
-    nodes.add(NODE_VIEW_EMIT_ONLY_COUNT, VPackValue(_emitOnlyCount));
+  if (_countApproximate != CountApproximate::Exact) {
+    nodes.add(NODE_VIEW_COUNT_APPROX, VPackValue(static_cast<uint32_t>(_countApproximate)));
   }
 
   // stored values
@@ -1538,12 +1550,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       TRI_ASSERT(!noMaterialization());
       materializeType = MaterializeType::LateMaterialize;
       numDocumentRegs += 2;
-    } else if (noMaterialization() && !emitOnlyCount()) {
+    } else if (noMaterialization()) {
       TRI_ASSERT(options().noMaterialization);
       materializeType = MaterializeType::NotMaterialize;
-    } else if (emitOnlyCount()) {
-      TRI_ASSERT(options().emitOnlyCount);
-      materializeType = MaterializeType::EmitCount;
     } else {
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
@@ -1630,10 +1639,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         outVariable(),
                                         filterCondition(),
                                         volatility(),
-                                        emitOnlyCount(),
                                         getRegisterPlan()->varInfo,   // ??? do we need this?
                                         getDepth(),
-                                        std::move(outNonMaterializedViewRegs)};
+                                        std::move(outNonMaterializedViewRegs),
+                                        _options.countApproximate};
 
     return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
   };
@@ -1655,9 +1664,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
       return ::executors<MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::EmitCount:
-       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewCountExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:
       return ::executors<MaterializeType::LateMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](

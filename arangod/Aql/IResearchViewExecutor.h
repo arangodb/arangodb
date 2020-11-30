@@ -89,8 +89,9 @@ class IResearchViewExecutorInfos {
       std::pair<iresearch::IResearchViewSort const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
       Variable const& outVariable, aql::AstNode const& filterCondition,
-      std::pair<bool, bool> volatility, bool emitCount, VarInfoMap const& varInfoMap, int depth,
-      iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
+      std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
+      iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
+      iresearch::CountApproximate);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -109,7 +110,7 @@ class IResearchViewExecutorInfos {
   int getDepth() const noexcept;
   bool volatileSort() const noexcept;
   bool volatileFilter() const noexcept;
-  bool emitCount() const noexcept { return _emitCount; }
+  iresearch::CountApproximate countApproximate() const noexcept { return _countApproximate; }
 
   // first - sort
   // second - number of sort conditions to take into account
@@ -131,10 +132,10 @@ class IResearchViewExecutorInfos {
   aql::AstNode const& _filterCondition;
   bool const _volatileSort;
   bool const _volatileFilter;
-  bool const _emitCount;
   VarInfoMap const& _varInfoMap;
   int const _depth;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
+  iresearch::CountApproximate _countApproximate;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
@@ -548,39 +549,6 @@ struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materiali
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
-
-struct IResearchViewCountExecutorTraits {
-  using IndexBufferValueType = uint64_t;
-  static constexpr bool Ordered {false};
-  static constexpr iresearch::MaterializeType MaterializeType {iresearch::MaterializeType::EmitCount};
-};
-
-class IResearchViewCountExecutor 
-  : public IResearchViewExecutorBase<IResearchViewCountExecutor, IResearchViewCountExecutorTraits> {
- public:
-  using Base = IResearchViewExecutorBase<IResearchViewCountExecutor, IResearchViewCountExecutorTraits>;
-  using Fetcher = typename Base::Fetcher;
-  using Infos = typename Base::Infos;
-
-  IResearchViewCountExecutor(IResearchViewCountExecutor&&) = default;
-  IResearchViewCountExecutor(Fetcher& fetcher, Infos& infos);
-
-  size_t skip(size_t toSkip);
-  size_t skipAll();
-  void fillBuffer(ReadContext&);
-
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
-
-  void reset() noexcept;
-
- private:
-   irs::doc_iterator::ptr _itr;
-   size_t _readerOffset {0};
-   size_t _count{0};
-   size_t _totalCount;
-   bool  _filterConditionIsEmpty;
-};
-
 }  // namespace aql
 }  // namespace arangodb
 
