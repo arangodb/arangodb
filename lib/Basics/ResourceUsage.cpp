@@ -27,7 +27,7 @@
 using namespace arangodb;
 
 ResourceMonitor::~ResourceMonitor() {
-  if (currentResources.memoryUsage > 0) {
-    LOG_DEVEL << "SHUttIng dOWN RESOURCEMONITOR WITH " << currentResources.memoryUsage;
-  }
+  // this can be enabled for debugging. not necessary in production as no
+  // assertions are enabled.
+  // TRI_ASSERT(currentResources.memoryUsage == 0);
 }
