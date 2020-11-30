@@ -1905,26 +1905,8 @@ again:
 
   v8::Local<v8::Object> headers = v8::Object::New(isolate);
   auto responseBody = response->payload();
-  if (response->contentType() != fuerte::ContentType::Custom) {
-    if ((responseBody.size() > 0) && response->isContentTypeVPack()) {
-      std::vector<VPackSlice> const& slices = response->slices();
-      if (!slices.empty()) {
-        result->Set(context,
-                    TRI_V8_ASCII_STRING(isolate, "parsedBody"),
-                    TRI_VPackToV8(isolate, slices[0])).FromMaybe(false);
-      }
-    }
-    if (responseBody.size() > 0) {
-      const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
-      v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false);
-    }
 
-    auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
-    headers->Set(context,
-                 TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), contentType).FromMaybe(false);
-  } else {
+  auto setBinaryPayload = [isolate, context, responseBody, result]{
     V8Buffer* buffer = V8Buffer::New
       (isolate,
        static_cast<char const*>(responseBody.data()),
@@ -1933,6 +1915,35 @@ again:
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "body"),
                 bufObj).FromMaybe(false);
+  };
+
+  if (response->contentType() != fuerte::ContentType::Custom) {
+    if ((responseBody.size() > 0) && response->isContentTypeVPack() &&
+      (response->contentEncoding() == fuerte::ContentEncoding::Identity)) {
+      std::vector<VPackSlice> const& slices = response->slices();
+      if (!slices.empty()) {
+        result->Set(context,
+                    TRI_V8_ASCII_STRING(isolate, "parsedBody"),
+                    TRI_VPackToV8(isolate, slices[0])).FromMaybe(false);
+      }
+    }
+    
+    if (responseBody.size() > 0) {
+      if (response->contentEncoding() == fuerte::ContentEncoding::Identity) {
+        const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
+        v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+        result->Set(context,
+                    TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false);
+      } else {
+        setBinaryPayload();
+      }
+    }
+
+    auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
+    headers->Set(context,
+                 TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), contentType).FromMaybe(false);
+  } else {
+    setBinaryPayload();
   }
 
   for (auto const& it : response->header.meta()) {
