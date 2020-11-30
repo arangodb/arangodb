@@ -50,7 +50,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
 
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   SubqueryEndExecutorInfos _infos;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher{
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false};

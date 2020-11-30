@@ -31,10 +31,10 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+struct ResourceMonitor;
 namespace aql {
 
 struct AstNode;
-struct ResourceMonitor;
 
 class AstResources {
  public:
@@ -42,7 +42,7 @@ class AstResources {
   AstResources(AstResources const&) = delete;
   AstResources& operator=(AstResources const&) = delete;
 
-  explicit AstResources(ResourceMonitor*);
+  explicit AstResources(arangodb::ResourceMonitor&);
   ~AstResources();
 
   /// @brief add a node to the list of nodes

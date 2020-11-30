@@ -39,7 +39,7 @@ class ShortStringStorage {
   ShortStringStorage(ShortStringStorage const&) = delete;
   ShortStringStorage& operator=(ShortStringStorage const&) = delete;
 
-  ShortStringStorage(ResourceMonitor*, size_t);
+  ShortStringStorage(arangodb::ResourceMonitor& resourceMonitor, size_t);
 
   ~ShortStringStorage();
 
@@ -58,7 +58,7 @@ class ShortStringStorage {
   static constexpr size_t maxStringLength = 127;
 
  private:
-  ResourceMonitor& _resourceMonitor;
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief already allocated string blocks
   std::vector<char*> _blocks;

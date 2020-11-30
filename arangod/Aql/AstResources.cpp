@@ -59,9 +59,9 @@ AstResources::~AstResources() {
   // we are in the destructor here already. decreasing the memory usage counters
   // will only provide a benefit (in terms of assertions) if we are in
   // maintainer mode, so we can save all these operations in non-maintainer mode
-  _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
-  _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) +
-                                        _nodes.capacity() * sizeof(AstNode*));
+  _resourceMonitor.decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
+  _resourceMonitor.decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) +
+                                       _nodes.capacity() * sizeof(AstNode*));
 #endif
 }
 

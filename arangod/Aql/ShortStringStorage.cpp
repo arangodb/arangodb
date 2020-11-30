@@ -94,21 +94,21 @@ char* ShortStringStorage::unescape(char const* p, size_t length, size_t* outLeng
 
 /// @brief allocate a new block of memory
 void ShortStringStorage::allocateBlock() {
+  ResourceUsageScope guard(_resourceMonitor, _blockSize);
+
   char* buffer = new char[_blockSize];
 
   try {
-    _resourceMonitor.increaseMemoryUsage(_blockSize);
-    try {
-      _blocks.emplace_back(buffer);
-    } catch (...) {
-      // rollback
-      _resourceMonitor.decreaseMemoryUsage(_blockSize);
-      throw;
-    }
-    _current = buffer;
-    _end = _current + _blockSize;
+    _blocks.emplace_back(buffer);
   } catch (...) {
+    // prevent leak
     delete[] buffer;
     throw;
   }
+
+  _current = buffer;
+  _end = _current + _blockSize;
+
+  // now we are responsible for memory usage tracking
+  guard.steal();
 }

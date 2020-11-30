@@ -36,11 +36,11 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 

@@ -36,8 +36,8 @@
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -90,7 +90,7 @@ class CalculationExecutorTest
   CalculationExecutorInfos executorInfos;
 
   CalculationExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
         var("a", 0, false),

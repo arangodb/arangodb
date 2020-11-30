@@ -81,7 +81,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              std::shared_ptr<VPackBuilder> const& options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
-      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
       _sharedState(std::move(sharedState)),

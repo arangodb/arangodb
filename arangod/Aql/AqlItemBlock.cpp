@@ -925,7 +925,7 @@ void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
 }
 
 arangodb::ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
-  return *_manager.resourceMonitor();
+  return _manager.resourceMonitor();
 }
 
 void AqlItemBlock::copySubqueryDepthFromOtherBlock(size_t targetRow,
