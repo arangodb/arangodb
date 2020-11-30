@@ -32,7 +32,7 @@
 #include "Transaction/Methods.h"
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace aql {
 struct AstNode;

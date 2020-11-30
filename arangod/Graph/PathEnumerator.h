@@ -30,7 +30,7 @@
 #include "Graph/EdgeDocumentToken.h"
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace aql {
 struct AqlValue;

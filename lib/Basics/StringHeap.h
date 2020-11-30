@@ -30,7 +30,7 @@
 #include <vector>
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 class StringHeap {
  public:

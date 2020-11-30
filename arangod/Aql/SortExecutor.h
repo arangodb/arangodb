@@ -35,7 +35,7 @@
 #include <memory>
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace transaction {
 class Methods;

@@ -37,7 +37,7 @@
 #include <unordered_map>
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace aql {
 class OutputAqlItemRow;
