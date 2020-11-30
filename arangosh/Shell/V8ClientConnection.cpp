@@ -1975,7 +1975,9 @@ again:
     auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
     headers->Set(context,
                  TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), contentType).FromMaybe(false);
-  } else setBinaryPayload();
+  } else {
+    setBinaryPayload();
+  }
 
   for (auto const& it : response->header.meta()) {
     headers->Set(context,
