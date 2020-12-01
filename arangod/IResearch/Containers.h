@@ -87,8 +87,6 @@ class ResourceMutexT {
   }
   ~ResourceMutexT() { reset(); }
 
-  operator bool() { return get() != nullptr; }
-
   std::unique_lock<ReadMutex> lock() const {
     return std::unique_lock<ReadMutex>{ _readMutex };
   }
@@ -99,20 +97,20 @@ class ResourceMutexT {
 
   // will block until a write lock can be acquired on the _mutex
   void reset() {
-    if (get()) {
-      WRITE_LOCKER(lock, _mutex);
-      _resource.store(nullptr);
-    }
+    WRITE_LOCKER(lock, _mutex);
+    _resource = nullptr;
   }
 
-  T* get() const noexcept { return _resource.load(); }
+  T* get() const noexcept {
+    TRI_ASSERT(_mutex.isLocked());
+    return _resource;
+  }
 
  private:
   basics::ReadWriteLock _mutex;
   mutable ReadMutex _readMutex; // read-lock to prevent '_resource' reset()
-  std::atomic<T*> _resource;  // atomic because of 'operator bool()'
+  T* _resource;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-mutex for a resource
