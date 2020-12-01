@@ -3762,8 +3762,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   if (result.successful()) {
     if (result.slice().get("results").length()) {
-      auto& c = _server.getFeature<ClusterFeature>().agencyCache();
-      auto [a,b] = c.get("/");
       waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
   }
