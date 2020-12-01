@@ -416,7 +416,6 @@ router.get('/coordshort', function (req, res) {
         FILTER s.time > @start
         FILTER s.clusterId IN @clusterIds
         SORT s.time
-        LET clientConnectionsCurrent = s.client.httpConnections
         COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections
         LET clientConnectionsCurrent = LAST(clientConnections)
         COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent)
