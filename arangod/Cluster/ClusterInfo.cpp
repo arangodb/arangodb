@@ -1416,18 +1416,16 @@ void ClusterInfo::loadCurrent() {
           db = it->second;
         }
       }
-      std::vector<std::string> colPath {
-        AgencyCommHelper::path(), "Current", "Collections", databaseName};
-
       if (db != nullptr) {
-        if (db->slice()[0].hasKey(colPath)) {
-          auto const colsSlice = db->slice()[0].get(colPath);
-          if (colsSlice.isObject()) {
-            for (auto const cc : VPackObjectIterator(colsSlice)) {
-              if (cc.value.isObject()) {
-                for (auto const cs : VPackObjectIterator(cc.value)) {
-                  newShardIds.erase(cs.key.copyString());
-                }
+        std::vector<std::string> colPath {
+            AgencyCommHelper::path(), "Current", "Collections", databaseName};
+
+        auto colsSlice = db->slice()[0].get(colPath);
+        if (colsSlice.isObject()) {
+          for (auto const cc : VPackObjectIterator(colsSlice)) {
+            if (cc.value.isObject()) {
+              for (auto const cs : VPackObjectIterator(cc.value)) {
+                newShardIds.erase(cs.key.copyString());
               }
             }
           }
