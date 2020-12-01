@@ -205,12 +205,6 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   }
 }
 
-void ShortestPathOptions::isQueryKilledCallback() const {
-  if (query().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-}
-
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
   // We certainly have no clue how the depth actually is.
   // So we return a "random" number here.

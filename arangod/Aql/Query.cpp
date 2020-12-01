@@ -83,7 +83,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              aql::QueryOptions&& options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
-      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
       _sharedState(std::move(sharedState)),
@@ -313,7 +313,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
-  auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
+  auto plan = ExecutionPlan::instantiateFromAst(_ast.get(), true);
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -823,7 +823,7 @@ QueryResult Query::explain() {
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     std::unique_ptr<ExecutionPlan> plan =
-        ExecutionPlan::instantiateFromAst(parser.ast());
+        ExecutionPlan::instantiateFromAst(parser.ast(), true);
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);

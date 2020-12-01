@@ -92,11 +92,10 @@ void ClusterTraverser::clear() {
   _verticesToFetch.clear();
 }
 
-bool ClusterTraverser::getVertex(VPackSlice edge,
-                                 std::vector<arangodb::velocypack::StringRef>& result) {
-  bool res = _vertexGetter->getVertex(edge, result);
+bool ClusterTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+  bool res = _vertexGetter->getVertex(edge, path);
   if (res) {
-    auto const& last = result.back();
+    auto const& last = path.lastVertex();
     // There will be no idString of length above uint32_t
     arangodb::velocypack::HashedStringRef other(last.data(),
                                                 static_cast<uint32_t>(last.length()));

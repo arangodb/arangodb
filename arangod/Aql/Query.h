@@ -33,9 +33,9 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "V8Server/V8Context.h"
 

@@ -483,7 +483,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -557,7 +557,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -631,7 +631,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -722,7 +722,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -813,7 +813,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -905,7 +905,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -979,7 +979,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1049,7 +1049,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1188,7 +1188,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1310,7 +1310,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);

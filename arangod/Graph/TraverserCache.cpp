@@ -46,17 +46,25 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace {
+constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
+};
+
 TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
       _trx(opts->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(4096), /* arbitrary block-size may be adjusted for performance */
+      _stringHeap(query.resourceMonitor(), 4096), /* arbitrary block-size may be adjusted for performance */
       _baseOptions(opts) {}
 
-TraverserCache::~TraverserCache() = default;
+TraverserCache::~TraverserCache() {
+  clear();
+}
 
 void TraverserCache::clear() {
+  _query.resourceMonitor().decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
+
   _stringHeap.clear();
   _persistedStrings.clear();
   _mmdr.clear();
@@ -170,16 +178,7 @@ aql::AqlValue TraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringR
 }
 
 arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef idString) {
-  arangodb::velocypack::HashedStringRef hsr(idString.data(), static_cast<uint32_t>(idString.size()));
-
-  auto it = _persistedStrings.find(hsr);
-  if (it != _persistedStrings.end()) {
-    return (*it).stringRef();
-  }
-  auto res = _stringHeap.registerString(hsr);
-  _persistedStrings.emplace(res);
-  // convert to simple StringRef here, as caller is not prepared to receive a HashedStringRef
-  return res.stringRef();
+  return persistString(arangodb::velocypack::HashedStringRef(idString.data(), static_cast<uint32_t>(idString.size()))).stringRef();
 }
 
 arangodb::velocypack::HashedStringRef TraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) {
@@ -188,6 +187,13 @@ arangodb::velocypack::HashedStringRef TraverserCache::persistString(arangodb::ve
     return *it;
   }
   auto res = _stringHeap.registerString(idString);
-  _persistedStrings.emplace(res);
+  {
+    ResourceUsageScope guard(_query.resourceMonitor(), ::costPerPersistedString);
+   
+    _persistedStrings.emplace(res);
+    
+    // now make the TraverserCache responsible for memory tracking
+    guard.steal();
+  }
   return res;
 }

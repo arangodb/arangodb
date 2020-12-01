@@ -206,7 +206,7 @@ Ast::SpecialNodes::SpecialNodes()
 /// @brief create the AST
 Ast::Ast(QueryContext& query, AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
-      _resources(&query.resourceMonitor()),
+      _resources(query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),

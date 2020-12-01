@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_RESOURCE_USAGE_H
-#define ARANGOD_AQL_RESOURCE_USAGE_H 1
+#ifndef ARANGOD_BASICS_RESOURCE_USAGE_H
+#define ARANGOD_BASICS_RESOURCE_USAGE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -33,7 +33,6 @@
 #include <atomic>
 
 namespace arangodb {
-namespace aql {
 
 struct ResourceUsage final {
   constexpr ResourceUsage() 
@@ -50,7 +49,14 @@ struct ResourceUsage final {
 };
 
 struct ResourceMonitor final {
-  ResourceMonitor() : currentResources(), maxMemoryUsage(0) {}
+  ResourceMonitor(ResourceMonitor const&) = delete;
+  ResourceMonitor& operator=(ResourceMonitor const&) = delete;
+
+  ResourceMonitor() : 
+      currentResources(), 
+      maxMemoryUsage(0) {}
+
+  ~ResourceMonitor();
 
   void setMemoryLimit(size_t value) { maxMemoryUsage = value; }
 
@@ -62,8 +68,7 @@ struct ResourceMonitor final {
 
     if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
       currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
     }
     
     size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
@@ -87,13 +92,52 @@ struct ResourceMonitor final {
     return currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
   }
   
-private:
+ private:
 
   ResourceUsage currentResources;
   std::size_t maxMemoryUsage;
 };
 
-}  // namespace aql
+/// @brief RAII object for temporary resource tracking
+/// will track the resource usage on creation, and untrack it
+/// on destruction
+class ResourceUsageScope {
+ public:
+  ResourceUsageScope(ResourceUsageScope const&) = delete;
+  ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
+
+  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value)
+      : _resourceMonitor(resourceMonitor), _value(value) {
+    // may throw
+    increase(_value);
+  }
+
+  ~ResourceUsageScope() {
+    decrease(_value);
+  }
+
+  inline void increase(size_t value) {
+    if (value > 0) {
+      // may throw
+      _resourceMonitor.increaseMemoryUsage(value);
+    }
+  }
+  
+  inline void decrease(size_t value) noexcept {
+    if (value > 0) {
+      _resourceMonitor.decreaseMemoryUsage(value);
+    }
+  }
+
+  void steal() noexcept {
+    _value = 0;
+  }
+
+ private:
+  ResourceMonitor& _resourceMonitor;
+  size_t _value;
+};
+
 }  // namespace arangodb
 
 #endif
