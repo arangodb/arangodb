@@ -423,8 +423,7 @@ void CommitTask::operator()() {
     }
 
     TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    irs::async_utils::read_write_mutex::read_mutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
-    auto lock = irs::make_lock_guard(mutex);
+    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
     auto& meta = link->_dataStore._meta;
 
     commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
@@ -550,8 +549,7 @@ void ConsolidationTask::operator()() {
     }
 
     TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
-    read_write_mutex::read_mutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
-    auto lock = irs::make_lock_guard(mutex);
+    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
     auto& meta = link->_dataStore._meta;
 
     consolidationPolicy = meta._consolidationPolicy;
@@ -1691,9 +1689,7 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   {
-    read_write_mutex::write_mutex mutex(_dataStore._mutex); // '_meta' can be asynchronously read
-    auto lock = irs::make_lock_guard(mutex);
-
+    WRITE_LOCKER(lock, _dataStore._mutex); // '_meta' can be asynchronously modified
     _dataStore._meta = meta;
   }
 

@@ -320,7 +320,7 @@ class IResearchLink {
   struct DataStore {
     IResearchViewMeta _meta; // runtime meta for a data store (not persisted)
     irs::directory::ptr _directory;
-    irs::async_utils::read_write_mutex _mutex; // for use with member '_meta'
+    basics::ReadWriteLock _mutex; // for use with member '_meta'
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
