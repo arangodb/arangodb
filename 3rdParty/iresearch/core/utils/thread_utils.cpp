@@ -24,7 +24,7 @@
 
 #include <cstring>
 
-#ifdef __linux__
+#if defined(__linux__)
 
 #include <sys/prctl.h>
 #include <memory>
@@ -73,7 +73,7 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& na
 
 } // iresearch
 
-#elseif defined (__APPLE__)
+#elif defined(__APPLE__)
 
 #include <pthread.h>
 #include <sys/proc_info.h>
@@ -84,12 +84,12 @@ namespace iresearch {
 constexpr size_t MAX_THREAD_NAME_LENGTH = 64;
 
 bool set_thread_name(const thread_name_t name) noexcept {
-  return pthread_setname_np(name) != 0;
+  return 0 == pthread_setname_np(name);
 }
 
-bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) {
+bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
   name.resize(MAX_THREAD_NAME_LENGTH, 0);
-  if (0 == pthread_getname_np(pthread_self(), const_cast<char*>(name.data()), name.size()) {
+  if (0 == pthread_getname_np(pthread_self(), const_cast<char*>(name.data()), name.size())) {
     name.resize(std::strlen(name.c_str()));
     return true;
   }
