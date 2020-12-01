@@ -1823,12 +1823,15 @@ function launchFinalize(options, instanceInfo, startTime) {
         }
       }
     });
+    instanceInfo.endpoints = [instanceInfo.endpoint];
     instanceInfo.urls = [instanceInfo.url];
   } else {
     instanceInfo.urls = [];
+    instanceInfo.endpoints = [];
     instanceInfo.arangods.forEach(arangod => {
       if (arangod.role === 'coordinator') {
         instanceInfo.urls.push(arangod.url);
+        instanceInfo.endpoints.push(arangod.endpoint);
       }
     });
   }
@@ -2257,7 +2260,7 @@ exports.cleanupLastDirectory = cleanupLastDirectory;
 exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
-
+exports.dumpAgency = dumpAgency;
 Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
 Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
 Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
