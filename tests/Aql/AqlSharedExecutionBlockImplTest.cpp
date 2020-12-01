@@ -31,10 +31,11 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SkipResult.h"
-#include "Aql/RegisterInfos.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -45,8 +46,10 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// Add more Executors here
-using ExecutorsToTest = ::testing::Types<FilterExecutor>;
+// Right now we use the following Executors:
+//  FilterExecutor => SingleRowFetcher, non-passthrough
+// IdExecutor => SingleRowFetcher, passthrough
+using ExecutorsToTest = ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
 
 template <class ExecutorType>
 class AqlSharedExecutionBlockImplTest : public ::testing::Test {
@@ -79,7 +82,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
    * @return RegisterInfo
    */
   auto buildRegisterInfos() -> RegisterInfos {
-    return RegisterInfos(RegIdSet{0}, {}, 2, 2, {}, {RegIdSet{0, 1}});
+    return RegisterInfos(RegIdSet{0}, {}, 1, 1, {}, {RegIdSet{0}});
   }
 
   auto emptyProducer() -> WaitingExecutionBlockMock {
@@ -95,11 +98,21 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                               generateNodeDummy(), std::move(buildRegisterInfos()),
                                               std::move(execInfos)};
     }
+    if constexpr(std::is_same_v<ExecutorType, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>) {
+      IdExecutorInfos execInfos{false};
+      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
+                                              generateNodeDummy(), std::move(buildRegisterInfos()),
+                                              std::move(execInfos)};
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto runLeftoverTest(ExecutionBlockImpl<ExecutorType>& testee, SharedAqlItemBlockPtr leftoverBlock,
                AqlCallStack stack, SkipResult expectedSkip) -> void {
+    if constexpr (ExecutorType::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+      // Passthrough Blocks cannot leave this situation behind
+      return;
+    }
     auto prod = emptyProducer();
     testee.addDependency(&prod);
 
