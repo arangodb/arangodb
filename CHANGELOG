@@ -1,6 +1,21 @@
 devel
 -----
 
+* Added new command line options for fine-grained ArangoSearch maintenance
+  control:
+  - `--arangosearch.commit-threads` - max number of ArangoSearch commit
+    threads
+  - `--arangosearch.commit-threads-idle` - min number of ArangoSearch
+    commit threads
+  - `--arangosearch.consolidation-threads` - max number of ArangoSearch
+    consolidation threads
+  - `--arangosearch.consolidation-threads-idle` - min number of ArangoSearch
+    consolidation threads
+
+  Deprecate the following command line options:
+  - `--arangosearch.threads`
+  - `--arangosearch.threads-limit`
+
 * Fixed initial population of local AgencyCache values after a server restart.
   Previously the local cache was populated from the agency using a commit index
   value of 1, whereas it should have been 0 to get the full agency snapshot.
