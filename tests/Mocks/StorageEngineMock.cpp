@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -61,7 +60,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <boost/asio/io_context.hpp>
 
 namespace {
 
@@ -994,16 +992,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     return nullptr;
   }
 
-  asio_ns::io_context ioContext;
-  auto poster = [&ioContext](std::function<void()> fn) -> bool {
-    ioContext.post(fn);
-    return true;
-  };
-  auto& server = _logicalCollection.vocbase().server();
-  arangodb::basics::LocalTaskQueue taskQueue(server, poster);
-  std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(
-      &taskQueue, [](arangodb::basics::LocalTaskQueue*) -> void {});
-
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                             _logicalCollection,
@@ -1026,13 +1014,11 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
-    l->batchInsert(trx, docs, taskQueuePtr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second);
+    }
   } else {
     TRI_ASSERT(false);
-  }
-
-  if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
-    return nullptr;
   }
 
   _indexes.emplace(index);
