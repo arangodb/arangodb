@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed initial population of local AgencyCache values after a server restart.
+  Previously the local cache was populated from the agency using a commit index
+  value of 1, whereas it should have been 0 to get the full agency snapshot.
+
 * Increase background garbage-collection interval for cluster transactions
   from 1 second to 2 seconds. This change should reduce the amount of
   background task activity a tiny bit (though hardly measurable on an 

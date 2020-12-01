@@ -4904,9 +4904,11 @@ void ClusterInfo::invalidateCurrentMappings() {
 
 std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>
 ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dirty) {
-  if (!_planProt.isValid) {
-    loadPlan();
-  }
+
+  // We should never proceed here, until we have seen an
+  // initial agency cache through loadPlan
+  waitForPlan(1);
+
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   READ_LOCKER(readLocker, _planProt.lock);
   index = _planIndex;
@@ -4926,9 +4928,11 @@ ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dir
 
 std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
 ClusterInfo::getCurrent(uint64_t& index, std::unordered_set<std::string> const& dirty) {
-  if (!_currentProt.isValid) {
-    loadCurrent();
-  }
+
+  // We should never proceed here, until we have seen an
+  // initial agency cache through loadCurrent
+  waitForCurrent(1);
+
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   READ_LOCKER(readLocker, _currentProt.lock);
   index = _currentIndex;
