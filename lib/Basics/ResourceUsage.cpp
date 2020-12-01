@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/ResourceUsage.h"
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 
@@ -30,5 +29,5 @@ ResourceMonitor::~ResourceMonitor() {
   // this assertion is here to ensure that our memory usage tracking works
   // correctly, and everything that we accounted for is actually properly torn
   // down. the assertion will have no effect in production.
-  TRI_ASSERT(currentResources.memoryUsage == 0);
+  TRI_ASSERT(currentResources.memoryUsage.load(std::memory_order_relaxed) == 0);
 }

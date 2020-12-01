@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
@@ -46,6 +47,7 @@ ClusterTraverserCache::ClusterTraverserCache(
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     BaseOptions* options)
     : TraverserCache(query, options), 
+      _datalake(options->resourceMonitor()),
       _engines(engines) {}
 
 VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {

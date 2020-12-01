@@ -46,8 +46,8 @@ EnumeratedPath::EnumeratedPath(arangodb::ResourceMonitor& resourceMonitor)
 
 EnumeratedPath::~EnumeratedPath() {
   size_t memoryUsage = 
-    (_vertices.capacity() * sizeof(arangodb::velocypack::StringRef)) +
-    (_edges.capacity() * sizeof(graph::EdgeDocumentToken));
+      (_vertices.capacity() * sizeof(typename decltype(_vertices)::value_type)) +
+      (_edges.capacity() * sizeof(typename decltype(_edges)::value_type));
 
   _resourceMonitor.decreaseMemoryUsage(memoryUsage);
 }
