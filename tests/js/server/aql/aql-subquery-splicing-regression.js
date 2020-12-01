@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, assertTrue, fail */
+/*global assertEqual, assertLess, AQL_EXECUTE, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for regression returning blocks to the manager
@@ -144,6 +144,8 @@ function traversalResetRegression2Suite() {
 function subqueryFetchTooMuchRegressionSuite() {
   const splice = {optimizer: {rules: ["+splice-subqueries"] }};
   const nonSplice = {optimizer: {rules: ["-splice-subqueries"] }};
+  const countSplice = {...splice, fullCount: true};
+  const countNonSplice = {...nonSplice, fullCount: true};
   return {
     setUpAll: function() {},
     tearDownAll: function() {},
@@ -170,9 +172,26 @@ function subqueryFetchTooMuchRegressionSuite() {
           LIMIT 20
           RETURN 1
       `;
-      const res1 = db._query(query, {}, splice).toArray();
-      const res2 = db._query(query, {}, nonSplice).toArray();
-      assertEqual(res1, res2);
+      {
+        // Data
+        const q1 = db._query(query, {}, splice);
+        const res1 = q1.toArray();
+        const q2 = db._query(query, {}, nonSplice);
+        const res2 = q2.toArray();
+        assertEqual(res1, res2);
+        // Make sure splice is better
+        const stat1 = q1.getExtra().stats;
+        const stat2 = q2.getExtra().stats;
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
+      {
+        // FullCount
+        const stat1 = db._query(query, {}, countSplice).getExtra().stats;
+        const stat2 = db._query(query, {}, countNonSplice).getExtra().stats;
+        assertEqual(stat1.fullCount, stat2.fullCount);
+        assertEqual(stat1.filtered, stat2.filtered);
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
     },
 
     testSubqueryEndHitExactEndOfInput: function() {
@@ -196,9 +215,27 @@ function subqueryFetchTooMuchRegressionSuite() {
           LIMIT 20
           RETURN 1
       `;
-      const res1 = db._query(query, {}, splice).toArray();
-      const res2 = db._query(query, {}, nonSplice).toArray();
-      assertEqual(res1, res2);
+      {
+        // Data
+        const q1 = db._query(query, {}, splice);
+        const res1 = q1.toArray();
+        const q2 = db._query(query, {}, nonSplice);
+        const res2 = q2.toArray();
+        assertEqual(res1, res2);
+
+        // Make sure splice is better
+        const stat1 = q1.getExtra().stats;
+        const stat2 = q2.getExtra().stats;
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
+      {
+        // FullCount
+        const stat1 = db._query(query, {}, countSplice).getExtra().stats;
+        const stat2 = db._query(query, {}, countNonSplice).getExtra().stats;
+        assertEqual(stat1.fullCount, stat2.fullCount);
+        assertEqual(stat1.filtered, stat2.filtered);
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
     }
   };
 }
