@@ -105,7 +105,7 @@ VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::String
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid
-    // _from/_to values or the traverser did a let an illegal start through
+    // _from/_to values or the traverser let an illegal start id through
     TRI_ASSERT(false);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
   }
