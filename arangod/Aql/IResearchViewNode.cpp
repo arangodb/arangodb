@@ -137,7 +137,14 @@ std::map<std::string, arangodb::aql::ConditionOptimization> const conditionOptim
     {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
     {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
     {"none", arangodb::aql::ConditionOptimization::None}};
+
+std::map<std::string, arangodb::iresearch::CountApproximate> const countApproximationTypeMap = {
+    {"exact", arangodb::iresearch::CountApproximate::Exact},
+    {"cost", arangodb::iresearch::CountApproximate::Cost}};
 }
+
+
+
 
 void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
@@ -164,8 +171,13 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
     builder.add("noMaterialization", VPackValue(options.noMaterialization));
   }
 
-  if (options.countApproximate != CountApproximate::Exact) {
-    builder.add("countApproximate", VPackValue(static_cast<uint32_t>(options.countApproximate)));
+  if (options.countApproximate != CountApproximate::Exact) { // to be backward compatible - do not write default value
+    for (auto const& r : countApproximationTypeMap) {
+      if (r.second == options.countApproximate) {
+        builder.add("countApproximate", VPackValue(r.first));
+        break;
+      }
+    }
   }
 }
 
@@ -253,16 +265,22 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
     }
   }
 
-  // emitOnlyCount
+  // countApproximate
   {
-    auto const optionSlice = optionsSlice.get("countApproximate");
-    if (!optionSlice.isNone()) {
-      // 'emitOnlyCount' is optional
-      if (!optionSlice.isInt()) {
+    auto const countApproximateSlice =
+        optionsSlice.get("countApproximate");
+    if (!countApproximateSlice.isNone() && !countApproximateSlice.isNull()) {
+      if (!countApproximateSlice.isString()) {
         return false;
       }
-
-      options.countApproximate = static_cast<CountApproximate>(optionSlice.getInt());
+      VPackValueLength l;
+      auto type = countApproximateSlice.getString(l);
+      irs::string_ref typeStr(type, l);
+      auto conditionTypeIt = countApproximationTypeMap.find(typeStr);
+      if (conditionTypeIt == countApproximationTypeMap.end()) {
+        return false;
+      }
+      options.countApproximate = conditionTypeIt->second;
     }
   }
 
@@ -389,12 +407,18 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
        {"countApproximate", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
                                aql::AstNode const& value,
                                IResearchViewNode::Options& options, std::string& error) {
-         if (!value.isValueType(aql::VALUE_TYPE_INT)) {
+         if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
            error = "string value expected for option 'countApproximate'";
            return false;
          }
-
-         options.countApproximate = static_cast<CountApproximate>(value.getIntValue());
+         auto type = value.getString();
+         auto countTypeIt = countApproximationTypeMap.find(type);
+         if (countTypeIt == countApproximationTypeMap.end()) {
+           error =
+               "unknown value '" + type + "' for option 'countApproximate'";
+           return false;
+         }
+         options.countApproximate = countTypeIt->second;
          return true;
        }},
        // cppcheck-suppress constStatement
@@ -1083,32 +1107,6 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     _noMaterialization = false;
   }
 
-  if (base.hasKey(NODE_VIEW_COUNT_APPROX)) {
-    auto const countApproximateSlice = base.get(NODE_VIEW_COUNT_APPROX);
-    if (!countApproximateSlice.isInteger()) {
-      THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_BAD_PARAMETER,
-          "\"%s\" %s should be a non-negative numeric value",
-          NODE_VIEW_COUNT_APPROX, countApproximateSlice.toString().c_str());
-    }
-    auto const tmp = countApproximateSlice.getInt();
-    switch (tmp) {
-      case static_cast<int64_t>(CountApproximate::Exact):
-        _countApproximate = CountApproximate::Exact;
-        break;
-      case  static_cast<int64_t>(CountApproximate::Cost):
-        _countApproximate = CountApproximate::Cost;
-        break;
-      default:
-        LOG_TOPIC("10734", WARN, arangodb::iresearch::TOPIC)
-            << "Unknown value '" << tmp << "' for the '" << NODE_VIEW_COUNT_APPROX << "'. 'Exact' fallback will be used.";
-        _countApproximate = CountApproximate::Exact;
-        break;
-    }
-  } else {
-    _countApproximate = CountApproximate::Exact;
-  }
-
   if (isLateMaterialized() || noMaterialization()) {
     auto const* vars = plan.getAst()->variables();
     TRI_ASSERT(vars);
@@ -1189,10 +1187,6 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
   if (_noMaterialization) {
     nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
-  }
-
-  if (_countApproximate != CountApproximate::Exact) {
-    nodes.add(NODE_VIEW_COUNT_APPROX, VPackValue(static_cast<uint32_t>(_countApproximate)));
   }
 
   // stored values

@@ -307,9 +307,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief is no materialization should be applied
   bool _noMaterialization;
 
-  /// @brief skipAll method for view
-  CountApproximate _countApproximate{CountApproximate::Exact};
-
   OptimizationState _optState;
 
   /// @brief filter node to pass to the view

@@ -155,8 +155,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _volatileFilter(_volatileSort || volatility.first),
       _varInfoMap(varInfoMap),
       _depth(depth),
-      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
-      _countApproximate(countApproximate) {
+      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {

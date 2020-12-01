@@ -1191,16 +1191,9 @@ function processQuery(query, explain, planIndex) {
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
         }
-        if (node.hasOwnProperty('countApproximate') && node.countApproximate != 0) {
-          viewAnnotation += ' count mode is ';
-          switch(node.countApproximate) {
-            case 1:
-              viewAnnotation +=  'cost based';
-              break;
-            default:
-              viewAnnotation += 'unknown';
-              break;
-          }
+        if (node.hasOwnProperty('options')) {
+          if (node.options.hasOwnProperty('countApproximate'))
+          viewAnnotation += ' count mode is ' + node.options.countApproximate;
         }
         viewAnnotation += ' */';
         let viewVariables = '';
