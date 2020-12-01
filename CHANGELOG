@@ -1,5 +1,12 @@
 devel
 -----
+
+* Turn off `StatisticsWorker` thread on DB servers. 
+  This thread was previously only running queries on the local RocksDB 
+  instance, but using the cluster-wide collection names. So effectively it 
+  did nothing except use a bit of background CPU. In this case it is better 
+  to turn off the background thread entirely on the DB servers.
+
 * Reimplement coordshort request handler. The new implementation only runs
   two DB queries without any additional requests to other coordinators,
   resulting in reduced load on the cluster. Previously this involved
