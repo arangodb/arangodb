@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 1.2.1.
+
 * Added support for fetching the list of currently running and slow AQL queries
   from all databases at once, by adding an `all` parameter to the following
   query APIs:
@@ -107,8 +109,6 @@ v3.7.5 (XXXX-XX-XX)
   their availability API is probed.
 
   nb: the default value for the scheduler queue length is 4096.
-
-* Updated arangosync to 0.7.12.
 
 * Fixed bug with ArangoSearch views on SmartGraph edge collections which could
   contain some documents twice.
