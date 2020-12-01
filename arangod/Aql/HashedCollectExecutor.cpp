@@ -380,7 +380,6 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
 
   // Moving _nextGroupValues left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
-  _nextGroupValues.clear();
   _nextGroupValues.reserve(_infos.getGroupRegisters().size());
 
   return result;
