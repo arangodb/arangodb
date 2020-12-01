@@ -1,5 +1,13 @@
 devel
 -----
+* Reimplement coordshort request handler. The new implementation only runs
+  two DB queries without any additional requests to other coordinators,
+  resulting in reduced load on the cluster. Previously this involved
+  requests to all coordinators, where each of them ran two DB queries.
+
+* Fixed initial population of local AgencyCache values after a server restart.
+  Previously the local cache was populated from the agency using a commit index
+  value of 1, whereas it should have been 0 to get the full agency snapshot.
 
 * Better tracking of memory used in AQL graph traversals, COLLECT and SORT
   operations. From this version onwards, certain AQL queries can report a 
