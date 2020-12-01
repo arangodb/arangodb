@@ -115,7 +115,7 @@ class BenchmarkThread : public arangodb::Thread {
     _histogram[bucket] ++;
   }
 
-  void aggregateValues(double& minTime, double& maxTime, double& avgTime, size_t& counter) {
+  void aggregateValues(double& minTime, double& maxTime, double& avgTime, uint64_t& counter) {
       if (minTime == -1.0 || minTime < _minTime) {
         minTime = _minTime;
       }
