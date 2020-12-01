@@ -461,11 +461,10 @@ arangodb::Result modifyLinks(                              // modify links
                   collectionsToRemove.end()  // also has a removal request
                                              // (duplicate removal request)
               || collectionsToUpdate.find(cid) != collectionsToUpdate.end())) {  // also has a reindex request
-        itr = linkModifications.erase(itr);
         LOG_TOPIC("5c99e", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, came from stale list, for link '"
             << state._link->id() << "'";
-
+        itr = linkModifications.erase(itr);
         continue;
       }
 
@@ -483,11 +482,10 @@ arangodb::Result modifyLinks(                              // modify links
           && state._linkDefinitionsOffset >= linkDefinitions.size()  // link removal request
           && collectionsToUpdate.find(state._collection->id()) !=
                  collectionsToUpdate.end()) {  // also has a reindex request
-        itr = linkModifications.erase(itr);
         LOG_TOPIC("1d095", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, remove+update, for link '"
             << state._link->id() << "'";
-
+        itr = linkModifications.erase(itr);
         continue;
       }
 
@@ -497,11 +495,10 @@ arangodb::Result modifyLinks(                              // modify links
           && collectionsToRemove.find(state._collection->id()) ==
                  collectionsToRemove.end()  // not a reindex request
           && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second) {  // link meta not modified
-        itr = linkModifications.erase(itr);
         LOG_TOPIC("4c196", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, no change, for link '"
             << state._link->id() << "'";
-
+        itr = linkModifications.erase(itr);
         continue;
       }
 

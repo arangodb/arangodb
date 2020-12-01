@@ -5429,7 +5429,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto* userManager = authFeature->userManager();
     
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
