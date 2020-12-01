@@ -1399,8 +1399,6 @@ void ClusterInfo::loadCurrent() {
       continue;
     }
 
-    std::vector<std::string> colsPath {
-      AgencyCommHelper::path(), "Current", "Collections", databaseName};
     std::vector<std::string> dbPath{
       AgencyCommHelper::path(), "Current", "Databases", databaseName};
     auto databaseSlice = database.second->slice()[0];
