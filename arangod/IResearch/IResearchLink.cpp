@@ -281,7 +281,7 @@ struct Task {
         << " task for arangosearch link '" << id
         << "', delay '" << delay.count() << "'";
 
-    LOG_TOPIC("eb0d2", DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("eb0d2", TRACE, arangodb::iresearch::TOPIC)
         << T::typeName() << " pool: "
         << ThreadGroupStats(async->stats(T::threadGroup()));
 

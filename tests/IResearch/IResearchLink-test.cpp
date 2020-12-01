@@ -498,7 +498,8 @@ TEST_F(IResearchLinkTest, test_init) {
 TEST_F(IResearchLinkTest, test_self_token) {
   // test empty token
   {
-    arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type empty(nullptr);
+    arangodb::iresearch::AsyncLinkHandle empty(nullptr);
+    auto lock = empty.lock();
     EXPECT_EQ(nullptr, empty.get());
   }
 
@@ -523,10 +524,12 @@ TEST_F(IResearchLinkTest, test_self_token) {
     ASSERT_NE(nullptr, link);
     self = link->self();
     EXPECT_NE(nullptr, self);
+    auto lock = self->lock();
     EXPECT_EQ(link.get(), self->get());
   }
 
   EXPECT_TRUE(self);
+  auto lock = self->lock();
   EXPECT_EQ(nullptr, self->get());
 }
 

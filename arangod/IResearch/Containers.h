@@ -106,6 +106,11 @@ class ResourceMutexT {
     return _resource;
   }
 
+  bool empty() const {
+    auto lock = irs::make_unique_lock(_readMutex);
+    return nullptr == _resource;
+  }
+
  private:
   basics::ReadWriteLock _mutex;
   mutable ReadMutex _readMutex; // read-lock to prevent '_resource' reset()

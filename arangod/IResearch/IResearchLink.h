@@ -59,6 +59,7 @@ class AsyncLinkHandle {
   explicit AsyncLinkHandle(IResearchLink* link);
   ~AsyncLinkHandle();
   IResearchLink* get() noexcept { return _link.get(); }
+  bool empty() const { return _link.empty(); }
   std::unique_lock<ReadMutex> lock() { return _link.lock(); }
   std::unique_lock<ReadMutex> try_lock() noexcept { return _link.try_lock(); }
   bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
@@ -90,17 +91,32 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   class Snapshot {
    public:
-    Snapshot() { }
+    Snapshot() = default;
     Snapshot(std::unique_lock<ReadMutex>&& lock,
              irs::directory_reader&& reader) noexcept
         : _lock(std::move(lock)), _reader(std::move(reader)) {
       TRI_ASSERT(_lock.owns_lock());
     }
-    operator irs::directory_reader const&() const noexcept { return _reader; }
+    Snapshot(Snapshot&& rhs) noexcept
+      : _lock(std::move(rhs._lock)),
+        _reader(std::move(rhs._reader)) {
+      TRI_ASSERT(_lock.owns_lock());
+    }
+    Snapshot& operator=(Snapshot&& rhs) noexcept {
+      if (this != &rhs) {
+        _lock = std::move(rhs._lock);
+        _reader = std::move(rhs._reader);
+      }
+      TRI_ASSERT(_lock.owns_lock());
+      return *this;
+    }
+    operator irs::directory_reader const&() const noexcept {
+      return _reader;
+    }
 
    private:
     std::unique_lock<ReadMutex> _lock; // lock preventing data store dealocation
-    const irs::directory_reader _reader;
+    irs::directory_reader _reader;
   };
 
   virtual ~IResearchLink();

@@ -669,17 +669,17 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
   auto const cid = linkPtr->collection().id();
   read_write_mutex::write_mutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
   auto lock = irs::make_lock_guard(mutex);
-  auto const itr = _links.find(cid);
+  auto itr = _links.find(cid);
 
   if (itr == _links.end()) {
     _links.try_emplace(cid, link);
   } else if (ServerState::instance()->isSingleServer() && !itr->second) {
-    _links[cid] = link;
+    itr->second = link;
     linkPtr->properties(_meta);
 
     return {}; // single-server persisted cid placeholder substituted with actual link
-  } else if (itr->second && !itr->second->get()) {
-    _links[cid] = link;
+  } else if (itr->second && itr->second->empty()) {
+    itr->second = link;
     linkPtr->properties(_meta);
 
     return {}; // a previous link instance was unload()ed and a new instance is linking
@@ -687,8 +687,8 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
     return {
         TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
         std::string("duplicate entry while emplacing collection '") +
-            std::to_string(cid.id()) + "' into arangosearch View '" + name() +
-            "'" };
+          std::to_string(cid.id()) + "' into arangosearch View '" + name() +
+          "'" };
   }
 
   Result res;
@@ -868,22 +868,25 @@ IResearchView::Snapshot const* IResearchView::snapshot(
   try {
     // collect snapshots from all requested links
     for (auto const cid : *collections) {
-      auto itr = _links.find(cid);
-      auto* link = itr != _links.end() && itr->second
-                       ? itr->second->get()
-                       : nullptr;  // do not need to lock link since collection
-                                   // is part of the transaction
+      IResearchLink::Snapshot snapshot;
 
-      if (!link) {
-        LOG_TOPIC("d63ff", ERR, arangodb::iresearch::TOPIC)
-            << "failed to find an arangosearch link in collection '" << cid
-            << "' for arangosearch view '" << name() << "', skipping it";
-        state.cookie(key, nullptr);  // unset cookie
+      if (auto const itr = _links.find(cid);
+          itr != _links.end() && itr->second) {
+        auto lock = itr->second->lock();
 
-        return nullptr;  // skip missing links
+        auto* link = itr->second->get();
+
+        if (!link) {
+          LOG_TOPIC("d63ff", ERR, arangodb::iresearch::TOPIC)
+              << "failed to find an arangosearch link in collection '" << cid
+              << "' for arangosearch view '" << name() << "', skipping it";
+          state.cookie(key, nullptr);  // unset cookie
+
+          return nullptr;  // skip missing links
+        }
+
+        snapshot = link->snapshot();
       }
-
-      auto snapshot = link->snapshot();
 
       if (!static_cast<irs::directory_reader const&>(snapshot)) {
         LOG_TOPIC("e76eb", ERR, arangodb::iresearch::TOPIC)

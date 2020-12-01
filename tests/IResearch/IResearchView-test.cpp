@@ -1665,6 +1665,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
+      auto lock = link->self()->lock();
       EXPECT_FALSE(view->link(link->self()).ok());
       EXPECT_FALSE(persisted); // emplace() does not modify view meta if cid existed previously
     }
@@ -3567,6 +3568,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+        ASSERT_NE(nullptr, link);
+        auto lock = link->self()->lock();
         ASSERT_TRUE((!link->self()->get())); // check that link is unregistred from view
       }
     }
