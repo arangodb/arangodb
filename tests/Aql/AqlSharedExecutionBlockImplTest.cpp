@@ -27,6 +27,7 @@
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -39,7 +40,7 @@
 #include "Aql/SkipResult.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
-#include "Aql/AllRowsFetcher.h"
+#include "Aql/UnsortedGatherExecutor.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -56,8 +57,7 @@ namespace aql {
 //   SortExecutor => AllRowsFetcher;
 //   UnsortedGatherExecutor => MultoDependencySingleRowFetcher
 using ExecutorsToTest =
-    ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
-    SortExecutor>;
+    ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, SortExecutor, UnsortedGatherExecutor>;
 
 template <class ExecutorType>
 class AqlSharedExecutionBlockImplTest : public ::testing::Test {
@@ -131,6 +131,13 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                               std::move(buildRegisterInfos(nestingLevel)),
                                               std::move(execInfos)};
     }
+    if constexpr (std::is_same_v<ExecutorType, UnsortedGatherExecutor>) {
+      IdExecutorInfos execInfos{false};
+      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
+                                              generateNodeDummy(),
+                                              std::move(buildRegisterInfos(nestingLevel)),
+                                              std::move(execInfos)};
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -158,6 +165,12 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
       _aqlItemBlockMatrix->addBlock(leftoverBlock);
       AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::DONE, _aqlItemBlockMatrix.get()};
+      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    }
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, MultiAqlItemBlockInputRange>) {
+      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, 1};
+      AqlItemBlockInputRange tmpInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
+      fakedInternalRange.setDependency(0, tmpInternalRange);
       testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
     }
 
