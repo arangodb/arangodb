@@ -606,10 +606,10 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
 CostEstimate GraphNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  size_t incoming = estimate.estimatedNrItems;
+  size_t incoming = estimate.estimatedNrItems();
   if (_optionsBuilt) {
     // We know which indexes are in use.
-    estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
+    estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems());
   } else {
     // Some hard-coded value, this is identical to build lookupInfos
     // if no index estimate is availble (and it is not as long as the options are not built)
@@ -627,9 +627,9 @@ CostEstimate GraphNode::estimateCost() const {
     // Protect against size_t overflow, just to be sure.
     if (tmpNrItems > static_cast<double>(std::numeric_limits<size_t>::max())) {
       // This will be an expensive query...
-      estimate.estimatedNrItems = std::numeric_limits<size_t>::max();
+      estimate.estimatedNrItems() = std::numeric_limits<size_t>::max();
     } else {
-      estimate.estimatedNrItems += static_cast<size_t>(tmpNrItems);
+      estimate.estimatedNrItems() += static_cast<size_t>(tmpNrItems);
     }
     estimate.estimatedCost += incoming * std::pow(baseCost, estDepth);
   }

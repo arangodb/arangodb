@@ -666,17 +666,17 @@ CostEstimate CollectNode::estimateCost() const {
 
   if (_groupVariables.empty()) {
     // we are known to only produce a single output row
-    estimate.estimatedNrItems = 1;
+    estimate.estimatedNrItems() = 1;
   } else {
     // we do not know how many rows the COLLECT with produce...
     // the worst case is that there will be as many output rows as input rows
-    if (estimate.estimatedNrItems >= 10) {
+    if (estimate.estimatedNrItems() >= 10) {
       // we assume that the collect will reduce the number of results at least
       // somewhat
-      estimate.estimatedNrItems = static_cast<size_t>(estimate.estimatedNrItems * 0.8);
+      estimate.estimatedNrItems() = static_cast<size_t>(estimate.estimatedNrItems() * 0.8);
     }
   }
-  estimate.estimatedCost += estimate.estimatedNrItems;
+  estimate.estimatedCost += estimate.estimatedNrItems();
   return estimate;
 }
 

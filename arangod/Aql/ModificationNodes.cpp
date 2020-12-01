@@ -87,10 +87,10 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 /// why we can make it final here.
 CostEstimate ModificationNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems;
+  estimate.estimatedCost += estimate.estimatedNrItems();
   if (_outVariableOld == nullptr && _outVariableNew == nullptr && !_producesResults) {
     // node produces no output
-    estimate.estimatedNrItems = 0;
+    estimate.estimatedNrItems() = 0;
   }
   return estimate;
 }

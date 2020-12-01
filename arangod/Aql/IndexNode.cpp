@@ -512,7 +512,7 @@ IndexNode::~IndexNode() = default;
 /// its unique dependency
 CostEstimate IndexNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  size_t incoming = estimate.estimatedNrItems;
+  size_t incoming = estimate.estimatedNrItems();
 
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   // estimate for the number of documents in the collection. may be outdated...
@@ -541,7 +541,7 @@ CostEstimate IndexNode::estimateCost() const {
     totalItems = 1;
   }
 
-  estimate.estimatedNrItems *= totalItems;
+  estimate.estimatedNrItems() *= totalItems;
   estimate.estimatedCost += incoming * totalCost;
   return estimate;
 }

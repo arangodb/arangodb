@@ -28,12 +28,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 CostEstimate::CostEstimate(double estimatedCost, std::size_t estimatedNrItems)
-    : estimatedCost(estimatedCost), estimatedNrItems(estimatedNrItems) {}
+    : estimatedCost(estimatedCost), _estimatedNrItems(estimatedNrItems) {}
 
 CostEstimate::CostEstimate() : CostEstimate(-1.0, 0) {}
 
 bool CostEstimate::operator==(CostEstimate const& other) const {
-  return estimatedCost == other.estimatedCost && estimatedNrItems == other.estimatedNrItems;
+  return estimatedCost == other.estimatedCost && _estimatedNrItems == other._estimatedNrItems;
 }
 
 CostEstimate CostEstimate::empty() { return {0.0, 0}; }
@@ -41,17 +41,21 @@ CostEstimate CostEstimate::empty() { return {0.0, 0}; }
 void CostEstimate::invalidate() {
   // a value of < 0 will mean that the cost estimation was not performed yet
   estimatedCost = -1.0;
-  estimatedNrItems = 0;
+  _estimatedNrItems = 0;
   TRI_ASSERT(!isValid());
 }
 
 void CostEstimate::initialize() {
   estimatedCost = 0.0;
-  estimatedNrItems = 0;
+  _estimatedNrItems = 0;
   TRI_ASSERT(isValid());
 }
 
 bool CostEstimate::isValid() const {
   // a value of < 0 will mean that the cost estimation was not performed yet
   return estimatedCost >= 0.0;
+}
+
+std::size_t& CostEstimate::estimatedNrItems() {
+  return _estimatedNrItems;
 }
