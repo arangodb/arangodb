@@ -295,9 +295,9 @@ void append_segments_refs(
 }
 
 const std::string& write_document_mask(
-    iresearch::directory& dir,
-    iresearch::segment_meta& meta,
-    const iresearch::document_mask& docs_mask,
+    irs::directory& dir,
+    irs::segment_meta& meta,
+    const irs::document_mask& docs_mask,
     bool increment_version = true
 ) {
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
@@ -1352,7 +1352,7 @@ index_writer::ptr index_writer::make(
     } else {
       reader->read(dir, meta, segments_file);
       append_segments_refs(file_refs, dir, meta);
-      file_refs.emplace_back(iresearch::directory_utils::reference(dir, segments_file));
+      file_refs.emplace_back(directory_utils::reference(dir, segments_file));
     }
   }
 
@@ -1405,7 +1405,7 @@ uint64_t index_writer::buffered_docs() const {
   return docs_in_ram;
 }
 
-std::pair<bool, size_t> index_writer::consolidate(
+index_writer::consolidation_result index_writer::consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec /*= nullptr*/,
     const merge_writer::flush_progress_t& progress /*= {}*/) {
@@ -1435,18 +1435,18 @@ std::pair<bool, size_t> index_writer::consolidate(
     switch (candidates.size()) {
       case 0:
         // nothing to consolidate
-        return { true, 0 };
+        return { 0, ConsolidationError::OK };
       case 1: {
         const auto* segment = *candidates.begin();
 
         if (!segment) {
           // invalid candidate
-          return { false, 0 };
+          return { 0, ConsolidationError::FAIL };
         }
 
         if (segment->live_docs_count == segment->docs_count) {
           // no deletes, nothing to consolidate
-          return { true, 0 };
+          return { 0, ConsolidationError::OK };
         }
       }
     }
@@ -1455,7 +1455,7 @@ std::pair<bool, size_t> index_writer::consolidate(
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
       if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
-        return { false, 0 };
+        return { 0, ConsolidationError::FAIL };
       }
     }
     try {
@@ -1497,22 +1497,23 @@ std::pair<bool, size_t> index_writer::consolidate(
     if (found != candidates.size()) {
       // not all candidates are valid
       IR_FRMT_DEBUG(
-        "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+        "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER "', "
+        "found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
         committed_meta->generation(),
         found,
-        candidates.size()
-      );
-      return { false, 0 };
+        candidates.size());
+      return { 0, ConsolidationError::FAIL };
     }
   }
 
   IR_FRMT_TRACE(
     "Starting consolidation id='" IR_SIZE_T_SPECIFIER "':\n%s",
     run_id,
-    ::to_string(candidates).c_str()
-  );
+    ::to_string(candidates).c_str());
 
   // do lock-free merge
+
+  consolidation_result result { candidates.size(),  ConsolidationError::FAIL };
 
   index_meta::index_segment_t consolidation_segment;
   consolidation_segment.meta.codec = codec_; // should use new codec
@@ -1521,7 +1522,7 @@ std::pair<bool, size_t> index_writer::consolidate(
 
   ref_tracking_directory dir(dir_); // track references for new segment
   merge_writer merger(dir, column_info_, comparator_);
-  merger.reserve(candidates.size());
+  merger.reserve(result.size);
 
   // add consolidated segments to the merge_writer
   for (const auto* segment : candidates) {
@@ -1532,15 +1533,14 @@ std::pair<bool, size_t> index_writer::consolidate(
 
     if (reader) {
       // merge_writer holds a reference to reader
-      merger.add(static_cast<irs::sub_reader::ptr>(reader));
+      merger.add(static_cast<sub_reader::ptr>(reader));
     }
   }
 
-  const size_t candidates_count = candidates.size();
-
   // we do not persist segment meta since some removals may come later
   if (!merger.flush(consolidation_segment, progress)) {
-    return { false, 0 }; // nothing to consolidate or consolidation failure
+    // nothing to consolidate or consolidation failure
+    return result;
   }
 
   // commit merge
@@ -1589,12 +1589,13 @@ std::pair<bool, size_t> index_writer::consolidate(
               "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER
               "', not found segment %s in committed state",
               committed_meta->generation(),
-              candidate->name.c_str()
-            );
-            return { false, 0 };
+              candidate->name.c_str());
+            return result;
           }
         }
       }
+
+      result.error = ConsolidationError::PENDING;
 
       // transaction has been started, we're somewhere in the middle
       auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
@@ -1606,12 +1607,11 @@ std::pair<bool, size_t> index_writer::consolidate(
         extract_refs(dir), // do not forget to track refs
         std::move(candidates), // consolidation context candidates
         std::move(committed_meta), // consolidation context meta
-        std::move(merger) // merge context
-      );
+        std::move(merger)); // merge context
+
       IR_FRMT_TRACE(
         "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: pending",
-        run_id
-      );
+        run_id);
     } else if (committed_meta == current_committed_meta) {
       // before new transaction was started:
       // no commits happened in since consolidation was started
@@ -1645,13 +1645,15 @@ std::pair<bool, size_t> index_writer::consolidate(
       }
 
       IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: Name='%s', docs_count=" IR_UINT64_T_SPECIFIER ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: "
+        "Name='%s', docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "live_docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "size=" IR_SIZE_T_SPECIFIER "",
         run_id,
         consolidation_meta.name.c_str(),
         consolidation_meta.docs_count,
         consolidation_meta.live_docs_count,
-        consolidation_meta.size
-      );
+        consolidation_meta.size);
     } else {
       // before new transaction was started:
       // there was a commit(s) since consolidation was started,
@@ -1673,14 +1675,14 @@ std::pair<bool, size_t> index_writer::consolidate(
         // at least one candidate is missing
         // can't finish consolidation
         IR_FRMT_DEBUG(
-          "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+          "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', "
+          "found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
           run_id,
           consolidation_segment.meta.name.c_str(),
           res.second,
-          candidates.size()
-        );
+          candidates.size());
 
-        return { false, 0 };
+        return result;
       }
 
       // handle deletes if something changed
@@ -1690,12 +1692,12 @@ std::pair<bool, size_t> index_writer::consolidate(
         if (!map_removals(mappings, merger, cached_readers_, docs_mask)) {
           // consolidated segment has docs missing from current_committed_meta->segments()
           IR_FRMT_DEBUG(
-            "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', due removed documents still present the consolidation candidates",
+            "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', "
+            "due removed documents still present the consolidation candidates",
             run_id,
-            consolidation_segment.meta.name.c_str()
-          );
+            consolidation_segment.meta.name.c_str());
 
-          return { false, 0 };
+          return result;
         }
 
         if (!docs_mask.empty()) {
@@ -1734,17 +1736,20 @@ std::pair<bool, size_t> index_writer::consolidate(
       }
 
       IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', docs_count=" IR_UINT64_T_SPECIFIER ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', "
+        "docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "live_docs_count=" IR_UINT64_T_SPECIFIER ", "
+        "size=" IR_SIZE_T_SPECIFIER "",
         run_id,
         consolidation_meta.name.c_str(),
         consolidation_meta.docs_count,
         consolidation_meta.live_docs_count,
-        consolidation_meta.size
-      );
+        consolidation_meta.size);
     }
   }
 
-  return { true, candidates_count };
+  result.error = ConsolidationError::OK;
+  return result;
 }
 
 bool index_writer::import(

@@ -932,7 +932,7 @@ Result IResearchLink::consolidateUnsafe(
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
-    auto const [res, count] = _dataStore._writer->consolidate(policy.policy(), nullptr, progress);
+    auto const res = _dataStore._writer->consolidate(policy.policy(), nullptr, progress);
     if (!res) {
       return {TRI_ERROR_INTERNAL,
               "failure while executing consolidation policy '" +
@@ -940,7 +940,7 @@ Result IResearchLink::consolidateUnsafe(
                   std::to_string(id().id()) + "'"};
     }
 
-    emptyConsolidation = (count == 0);
+    emptyConsolidation = (res.size == 0);
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
