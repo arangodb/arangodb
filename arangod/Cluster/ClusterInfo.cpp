@@ -1133,7 +1133,7 @@ void ClusterInfo::loadPlan() {
         auto nps = np->second->slice()[0];
         for (auto const& ec : *(stillExistingCollections->second)) {
           auto const& cid = ec.first;
-          if (!std::isdigit(cid.front())) {
+          if (cid.empty() || !std::isdigit(cid.front())) {
             continue;
           }
           collectionsPath.push_back(cid);
