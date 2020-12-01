@@ -713,7 +713,7 @@ TEST(thread_pool_test, test_stop_signle_threads_mt) {
   ASSERT_EQ(0, pool.threads());
 }
 
-#if (__linux__ || (defined(_WIN32) || _WIN32_WINNT >= _WIN32_WINNT_WIN10))
+#if (defined(__linux__) || defined(__APPLE__) || (defined(_WIN32) && (_WIN32_WINNT >= _WIN32_WINNT_WIN10)))
 TEST(thread_pool_test, test_check_name_mt) {
   // test stop with a single thread will stop threads
   const thread_name_t expected_name = "foo";

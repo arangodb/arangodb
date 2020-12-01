@@ -31,12 +31,15 @@
 
 namespace iresearch {
 
+// posix restricts name length to 16 bytes
+constexpr size_t MAX_THREAD_NAME_LENGTH = 16;
+
 bool set_thread_name(const thread_name_t name) noexcept {
   return 0 == prctl(PR_SET_NAME, name, 0, 0, 0);
 }
 
 bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
-  name.resize(16, 0); // posix restricts name length to 16 bytes
+  name.resize(MAX_THREAD_NAME_LENGTH, 0);
   if (0 == prctl(PR_GET_NAME, const_cast<char*>(name.data()), 0, 0, 0)) {
     name.resize(std::strlen(name.c_str()));
     return true;
@@ -63,6 +66,31 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& na
   guard.reset(tmp);
   if (SUCCEEDED(res)) {
     name = tmp;
+    return true;
+  }
+  return false;
+}
+
+} // iresearch
+
+#elseif defined (__APPLE__)
+
+#include <pthread.h>
+#include <sys/proc_info.h>
+
+namespace iresearch {
+
+// OSX as of 10.6 restricts name length to 64 bytes
+constexpr size_t MAX_THREAD_NAME_LENGTH = 64;
+
+bool set_thread_name(const thread_name_t name) noexcept {
+  return pthread_setname_np(name) != 0;
+}
+
+bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) noexcept {
+  name.resize(MAX_THREAD_NAME_LENGTH, 0);
+  if (0 == pthread_getname_np(pthread_self(), const_cast<char*>(name.data()), name.size()) {
+    name.resize(std::strlen(name.c_str()));
     return true;
   }
   return false;
