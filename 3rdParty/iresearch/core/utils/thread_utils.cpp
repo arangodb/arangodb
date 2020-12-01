@@ -87,7 +87,7 @@ bool set_thread_name(const thread_name_t name) noexcept {
   return pthread_setname_np(name) != 0;
 }
 
-bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) noexcept {
+bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) {
   name.resize(MAX_THREAD_NAME_LENGTH, 0);
   if (0 == pthread_getname_np(pthread_self(), const_cast<char*>(name.data()), name.size()) {
     name.resize(std::strlen(name.c_str()));
@@ -106,7 +106,7 @@ bool set_thread_name(const thread_name_t name) noexcept {
   return false;
 }
 
-bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) noexcept {
+bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) {
   return false;
 }
 
