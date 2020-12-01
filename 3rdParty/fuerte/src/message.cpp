@@ -124,6 +124,10 @@ void RequestHeader::parseArangoPath(std::string const& p) {
 // class Message
 ///////////////////////////////////////////////
 
+ContentEncoding Message::contentEncoding() const {
+  return messageHeader().contentEncoding();
+}
+
 // content-type header accessors
 
 ContentType Message::contentType() const {
