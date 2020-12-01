@@ -765,7 +765,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
 TEST(thread_utils_test, get_set_name) {
   const thread_name_t expected_name = "foo";
-#if !defined(_WIN32) || _WIN32_WINNT >= _WIN32_WINNT_WIN10
+#if (__linux__ || (defined(_WIN32) && (_WIN32_WINNT >= _WIN32_WINNT_WIN10)))
   std::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
 
   std::thread thread([expected_name, &actual_name]()mutable{
