@@ -1198,6 +1198,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // we can only hit this with HARDLIMIT / FULLCOUNT
         TRI_ASSERT(shadowCall.getOffset() == 0);
         auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+        if (shadowCall.needsFullCount()) {
+          shadowCall.didSkip(1);
+          shadowCall.resetSkipCount();
+          _skipped.didSkipSubquery(skipped, depthToSkip);
+        }
         if (_lastRange.hasShadowRow()) {
           // Need to handle ShadowRow next
           _execState = ExecState::SHADOWROWS;
