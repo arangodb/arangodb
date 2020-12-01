@@ -473,8 +473,6 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-static std::atomic<uint64_t> counter = 0;
-
 // Execute a request by queueing it in the scheduler and having it executed via
 // a scheduler worker thread eventually.
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
@@ -490,25 +488,14 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
-  uint64_t ticket = counter++;
-  auto startTime = std::chrono::steady_clock::now();
-  auto cb = [self = shared_from_this(), handler = std::move(handler), prio, ticket, startTime]() mutable {
+  auto cb = [self = shared_from_this(), handler = std::move(handler), prio]() mutable {
     if (prio == RequestPriority::LOW) {
       SchedulerFeature::SCHEDULER->increaseOngoingLowPrio();
-      LOG_DEVEL << "Starting low prio rest handler... " << ticket;
-    } else {
-      LOG_DEVEL << "Staring high prio rest handler... " << ticket;
     }
     handler->statistics().SET_QUEUE_END();
-    handler->runHandler([self = std::move(self), prio, ticket, startTime](rest::RestHandler* handler) {
-      auto dur = std::chrono::steady_clock::now() - startTime;
+    handler->runHandler([self = std::move(self), prio](rest::RestHandler* handler) {
       if (prio == RequestPriority::LOW) {
         SchedulerFeature::SCHEDULER->decreaseOngoingLowPrio();
-        LOG_DEVEL << "Finishing low prio rest handler... " << ticket
-            << " took time: " << dur.count() << " stats: " << handler->statistics().timingsCsv();
-      } else {
-        LOG_DEVEL << "Finishing high prio rest handler... " << ticket
-            << " took time: " << dur.count() << " stats: " << handler->statistics().timingsCsv();
       }
       try {
         // Pass the response to the io context

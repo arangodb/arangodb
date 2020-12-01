@@ -486,7 +486,6 @@ void SupervisedScheduler::runWorker() {
           << "scheduler loop caught unknown exception";
     }
 
-    LOG_DEVEL << "Scheduler done with job";
     _jobsDone.fetch_add(1, std::memory_order_release);
   }
   _numAwake.fetch_sub(1, std::memory_order_relaxed);
@@ -697,7 +696,6 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   std::size_t const ongoingWithFanout = _ongoingLowPrioGaugeWithFanout.load();
   if (ongoing >= _ongoingLowPrioLimit ||
       ongoingWithFanout >= _ongoingLowPrioLimitWithFanout) {
-    //LOG_DEVEL << "REFUSED to dequeue because " << ongoing << " low prio things are ongoing (limit=" << _ongoingLowPrioLimit << ").";
     return false;
   }
 
@@ -714,7 +712,6 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
-        LOG_DEVEL << "grabbed work from queue " << i << " ongoing: " << _ongoingLowPrioGauge.load();
         (*_metricsQueueLengths[i]) -= 1;
         return res;
       }
@@ -765,15 +762,12 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     }
 
     if (state->_sleepTimeout_ms == 0) {
-      //LOG_DEVEL << "sleeping thread indefinitely";
       state->_conditionWork.wait(guard);
     } else {
-      //LOG_DEVEL << "sleeping thread for " << state->_sleepTimeout_ms << "ms";
       state->_conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
     state->_sleeping = false;
     _numAwake.fetch_add(1, std::memory_order_relaxed);
-    //LOG_DEVEL << "waking thread";
   }  // while
 
   return nullptr;

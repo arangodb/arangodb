@@ -495,9 +495,6 @@ int64_t RocksDBThrottle::ComputeBacklog() {
     compaction_backlog += (imm_backlog - imm_trigger);
   }  // if
 
-  LOG_DEVEL << "Compaction backlog computed: " << compaction_backlog
-    << " imm_backlog: " << imm_backlog << " imm_trigger: " << imm_trigger;
-
   return compaction_backlog;
 }  // RocksDBThrottle::Computebacklog
 

@@ -1019,8 +1019,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  auto startTime = std::chrono::steady_clock::now();
-
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
@@ -1165,10 +1163,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     return Result();
   };
 
-  LOG_DEVEL << "Just before actual replication after "
-    << (std::chrono::steady_clock::now() - startTime).count()
-    << " this=" << std::ios::hex << (uint64_t) this;
-
   Result res;
   std::unordered_map<int, size_t> errorCounter;
   if (value.isArray()) {
@@ -1206,11 +1200,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
       return OperationResult(std::move(res), std::move(resDocs), options, std::move(errs));
     });
-  }
-  if (replicationType == ReplicationType::FOLLOWER) {
-    LOG_DEVEL << "Finished replication after "
-      << (std::chrono::steady_clock::now() - startTime).count()
-      << " this=" << std::ios::hex << (uint64_t) this;
   }
   if (options.silent && errorCounter.empty()) {
     // We needed the results, but do not want to report:
@@ -2364,8 +2353,6 @@ Future<Result> Methods::replicateOperations(
       = vocbase().server().getFeature<ReplicationTimeoutFeature>();
     replTimeout._metricsReplicationOpsTotal += 1;
     replTimeout._metricsReplicationTimeTotal +=
-      std::chrono::nanoseconds(duration).count();
-    LOG_DEVEL << "Replication took " << 
       std::chrono::nanoseconds(duration).count();
 
     bool didRefuse = false;

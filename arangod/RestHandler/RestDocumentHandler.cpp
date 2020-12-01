@@ -204,8 +204,6 @@ RestStatus RestDocumentHandler::insertDocument() {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  auto startTime = std::chrono::steady_clock::now();
-
   Result res = _activeTrx->begin();
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -230,8 +228,6 @@ RestStatus RestDocumentHandler::insertDocument() {
               return;
             }
 
-            LOG_DEVEL << "insertDocument operation including commit took "
-                 << std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() << ", isMultiple: " << isMultiple << ", isRepl: " << !opOptions.isSynchronousReplicationFrom.empty();
             generateSaved(opres, cname,
                           TRI_col_type_e(_activeTrx->getCollectionType(cname)),
                           _activeTrx->transactionContextPtr()->getVPackOptions(),
