@@ -118,14 +118,6 @@ static constexpr auto onlySkipAndCount = []() -> const AqlCall {
   return res;
 };
 
-static constexpr auto hardLimitAll = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 0;
-  res.hardLimit = 0u;
-  res.fullCount = false;
-  return res;
-};
-
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
 
