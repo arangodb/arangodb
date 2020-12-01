@@ -38,7 +38,7 @@ const STATISTICS_HISTORY_INTERVAL = 15 * 60; // seconds
 const joi = require('joi');
 const httperr = require('http-errors');
 const createRouter = require('@arangodb/foxx/router');
-const { MergeStatisticSamples } = require('../../../../../server/modules/@arangodb/statistics-helper');
+const { MergeStatisticSamples } = require('@arangodb/statistics-helper');
 
 const router = createRouter();
 module.exports = router;
@@ -417,9 +417,8 @@ router.get('/coordshort', function (req, res) {
         FILTER s.clusterId IN @clusterIds
         SORT s.time
         LET clientConnectionsCurrent = s.client.httpConnections
-        LET time = s.time
-        COLLECT clusterId = s.clusterId INTO server KEEP clientConnectionsCurrent, time
-        LET clientConnectionsCurrent = LAST(server).clientConnectionsCurrent
+        COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections
+        LET clientConnectionsCurrent = LAST(clientConnections)
         COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent)
         RETURN {clientConnections15M: clientConnections15M || 0}`;
 
@@ -430,6 +429,9 @@ router.get('/coordshort', function (req, res) {
         RETURN {
           time: s.time,
           clusterId: s.clusterId,
+          physicalMemory: s.server.physicalMemory,
+          residentSizeCurrent: s.system.residentSize,
+          clientConnectionsCurrent: s.client.httpConnections,
           avgRequestTime: s.client.avgRequestTime,
           bytesSentPerSecond: s.client.bytesSentPerSecond,
           bytesReceivedPerSecond: s.client.bytesReceivedPerSecond,
@@ -457,7 +459,7 @@ router.get('/coordshort', function (req, res) {
     // ignore exceptions, because throwing here will render the entire web UI cluster stats broken
   }
 
-  res.json({'enabled': Object.keys(merged).length !== 0 , 'data': merged});
+  res.json({'enabled': internal.enabledStatistics(), 'data': merged});
 })
   .summary('Short term history for all coordinators')
   .description('This function is used to get the statistics history.');
