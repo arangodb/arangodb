@@ -1,5 +1,35 @@
 devel
 -----
+* Reimplement coordshort request handler. The new implementation only runs
+  two DB queries without any additional requests to other coordinators,
+  resulting in reduced load on the cluster. Previously this involved
+  requests to all coordinators, where each of them ran two DB queries.
+
+* Fixed initial population of local AgencyCache values after a server restart.
+  Previously the local cache was populated from the agency using a commit index
+  value of 1, whereas it should have been 0 to get the full agency snapshot.
+
+* Increase background garbage-collection interval for cluster transactions
+  from 1 second to 2 seconds. This change should reduce the amount of
+  background task activity a tiny bit (though hardly measurable on an 
+  otherwise idle server).
+
+* Make the audit log honor the configured logging date/time output format
+  (i.e. `--log.time-format` option). Previously the audit logging always
+  created a time value in the server's local time, and logged it in 
+  format YYYY-MM-DDTHH:MM:SS. 
+
+  From 3.8 onwards, the audit logger will honor the date/time format
+  specified via the `--log.time-format` option, which defaults to 
+  `utc-datestring`. The means the audit logging will by default log all
+  dates/times in UTC time. To restore the pre-3.8 behavior, please set
+  the option `--log.time-format` to `local-datestring`, which will make
+  the audit logger (and all other server log messages) use the server's
+  local time.
+
+* Fix the activation of the agency supervision maintenance via the REST API
+  `/_admin/cluster/maintenance`. This API stored a boolean value instead of
+  an (expected) maintenance period end date/time string.
 
 * Make the cancel operation safe for asynchronoulsly started JavaScript 
   transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`

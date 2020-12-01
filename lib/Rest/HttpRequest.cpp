@@ -505,6 +505,11 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
 
   if (key == StaticStrings::Accept) {
     _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
+    if (value.find(',') != std::string::npos) {
+      _contentTypeResponsePlain = value;
+    } else {
+      _contentTypeResponsePlain.clear();
+    }
     return;
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {

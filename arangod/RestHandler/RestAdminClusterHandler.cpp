@@ -1150,7 +1150,10 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
 
   auto sendTransaction = [&] {
     if (wantToActive) {
-      return AsyncAgencyComm().setValue(60s, maintenancePath, VPackValue(true), 3600);
+      constexpr int timeout = 3600; // 1 hour
+      return AsyncAgencyComm().setValue(60s, maintenancePath, 
+          VPackValue(timepointToString(
+              std::chrono::system_clock::now() + std::chrono::seconds(timeout))), 3600);
     } else {
       return AsyncAgencyComm().deleteKey(60s, maintenancePath);
     }
