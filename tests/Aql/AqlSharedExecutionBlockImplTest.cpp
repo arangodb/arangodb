@@ -37,6 +37,9 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SkipResult.h"
+#include "Aql/SortExecutor.h"
+#include "Aql/SortRegister.h"
+#include "Aql/AllRowsFetcher.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -48,10 +51,13 @@ namespace tests {
 namespace aql {
 
 // Right now we use the following Executors:
-//  FilterExecutor => SingleRowFetcher, non-passthrough
-// IdExecutor => SingleRowFetcher, passthrough
+//   FilterExecutor => SingleRowFetcher, non-passthrough
+//   IdExecutor => SingleRowFetcher, passthrough
+//   SortExecutor => AllRowsFetcher;
+//   UnsortedGatherExecutor => MultoDependencySingleRowFetcher
 using ExecutorsToTest =
-    ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
+    ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
+    SortExecutor>;
 
 template <class ExecutorType>
 class AqlSharedExecutionBlockImplTest : public ::testing::Test {
@@ -60,6 +66,9 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
   ResourceMonitor monitor{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
+
+  // Used for AllRowsFetcherCases
+  std::unique_ptr<AqlItemMatrix> _aqlItemBlockMatrix;
 
   /**
    * @brief Creates and manages a ExecutionNode.
@@ -112,6 +121,16 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                               std::move(buildRegisterInfos(nestingLevel)),
                                               std::move(execInfos)};
     }
+    if constexpr (std::is_same_v<ExecutorType, SortExecutor>) {
+      std::vector<SortRegister> sortRegisters{};
+      // We do not care for sorting, we skip anyways.
+      sortRegisters.emplace_back(SortRegister{0, SortElement{nullptr, true}});
+      SortExecutorInfos execInfos{1, 1, {}, std::move(sortRegisters), 0, fakedQuery->itemBlockManager(), nullptr, true};
+      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
+                                              generateNodeDummy(),
+                                              std::move(buildRegisterInfos(nestingLevel)),
+                                              std::move(execInfos)};
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -126,12 +145,21 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     auto prod = emptyProducer();
     testee.addDependency(&prod);
 
-    AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
+
     SkipResult skip{};
     for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
       skip.incrementSubquery();
     }
-    testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputRange>) {
+      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
+      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    }
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputMatrix>) {
+      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
+      _aqlItemBlockMatrix->addBlock(leftoverBlock);
+      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::DONE, _aqlItemBlockMatrix.get()};
+      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    }
 
     auto [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
