@@ -1,6 +1,9 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
 * Fix HTTP/1.1 status response header in fuerte responses
 
   This change makes fuerte return the full status header, including the numeric
