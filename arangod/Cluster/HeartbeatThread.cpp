@@ -391,9 +391,16 @@ DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
 
 void HeartbeatThread::runDBServer() {
 
-    using namespace std::chrono_literals;
+  using namespace std::chrono_literals;
 
   _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+
+  while (!isStopping() && !server().getFeature<DatabaseFeature>().started()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    LOG_TOPIC("eec21", DEBUG, Logger::HEARTBEAT)
+        << "Waiting for database feature to finish start up";
+  }
+
   if (!_maintenanceThread->start()) {
     // WHAT TO DO NOW?
     LOG_TOPIC("12cee", ERR, Logger::HEARTBEAT)

@@ -194,7 +194,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
   }
 
-
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute no dirty collections";

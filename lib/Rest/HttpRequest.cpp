@@ -505,6 +505,11 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
 
   if (key == StaticStrings::Accept) {
     _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
+    if (value.find(',') != std::string::npos) {
+      _contentTypeResponsePlain = value;
+    } else {
+      _contentTypeResponsePlain.clear();
+    }
     return;
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
@@ -828,7 +833,7 @@ void HttpRequest::parseCookies(char const* buffer, size_t length) {
 
     // check for missing value phase
     if (valueBegin == nullptr) {
-      valueBegin = value = key;
+      valueBegin = key;
     } else {
       *value = '\0';
     }
