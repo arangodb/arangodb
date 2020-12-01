@@ -868,7 +868,7 @@ void IResearchFeature::start() {
     _async->get(ThreadGroup::_0).limits(_commitThreads, _commitThreadsIdle);
     _async->get(ThreadGroup::_1).limits(_consolidationThreads, _consolidationThreadsIdle);
 
-    LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("c1b63", INFO, arangodb::iresearch::TOPIC)
         << "ArangoSearch maintenance: "
         << "[" << _commitThreadsIdle << ".." << _commitThreads << "] commit thread(s), "
         << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads << "] consolidation thread(s)";

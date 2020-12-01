@@ -403,7 +403,7 @@ void CommitTask::operator()() {
   auto* link = this->link->get();
 
   if (!link) {
-    LOG_TOPIC("eb0du", DEBUG, iresearch::TOPIC)
+    LOG_TOPIC("ebada", DEBUG, iresearch::TOPIC)
         << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
     return;
   }
