@@ -32,6 +32,8 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 
+#include "Basics/ResourceUsage.h"
+
 #include "Transaction/Methods.h"
 
 #include <vector>
@@ -58,6 +60,7 @@ namespace graph {
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
 struct SingleServerProvider {
+  enum Direction { FORWARD, BACKWARD };  // TODO check
   enum class LooseEndBehaviour { NEVER, ALLWAYS };
 
   class Step : public arangodb::graph::BaseStep<Step> {
@@ -83,9 +86,7 @@ struct SingleServerProvider {
     class Edge {
      public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
-      explicit Edge() : _token() {
-        _token = EdgeDocumentToken();
-      }
+      explicit Edge() : _token() { _token = EdgeDocumentToken(); }
 
       void addToBuilder(SingleServerProvider& provider,
                         arangodb::velocypack::Builder& builder) const;
@@ -121,7 +122,8 @@ struct SingleServerProvider {
   };
 
  public:
-  SingleServerProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts);
+  SingleServerProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+                       arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;
   ~SingleServerProvider() = default;
@@ -133,7 +135,7 @@ struct SingleServerProvider {
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
-  
+
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
@@ -144,6 +146,7 @@ struct SingleServerProvider {
   void destroyEngines(){};  // TODO: remove after refactor
 
   [[nodiscard]] transaction::Methods* trx();
+  arangodb::ResourceMonitor* resourceMonitor();
 
  private:
   void activateCache(bool enableDocumentCache);
@@ -164,6 +167,7 @@ struct SingleServerProvider {
   RefactoredTraverserCache _cache;
 
   BaseProviderOptions _opts;
+  arangodb::ResourceMonitor* _resourceMonitor;
 };
 }  // namespace graph
 }  // namespace arangodb

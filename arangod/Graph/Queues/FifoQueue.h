@@ -25,6 +25,7 @@
 #define ARANGOD_GRAPH_QUEUE_H 1
 
 #include "Basics/debugging.h"
+#include "Basics/ResourceUsage.h"
 
 #include <queue>
 
@@ -38,10 +39,8 @@ class FifoQueue {
   // TODOS: Add Sorting (Performance)
   // -> loose ends to the end
 
-  FifoQueue() {}
+  FifoQueue(arangodb::ResourceMonitor& resourceMonitor) : _resourceMonitor{resourceMonitor} {}
   ~FifoQueue() {}
-
-
 
   void clear() { _queue.clear(); };
 
@@ -64,7 +63,7 @@ class FifoQueue {
     TRI_ASSERT(!hasProcessableElement());
 
     std::vector<Step*> steps;
-    for (auto& step: _queue) {
+    for (auto& step : _queue) {
       if (!step.isProcessable()) {
         steps.emplace_back(&step);
       }
@@ -80,11 +79,13 @@ class FifoQueue {
     _queue.pop_front();
     return first;
   };
-  
-private:
-  
+
+ private:
   /// @brief queue datastore
   std::deque<Step> _queue;
+
+  /// @brief query context
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace graph

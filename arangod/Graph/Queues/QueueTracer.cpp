@@ -33,7 +33,7 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class QueueImpl>
-QueueTracer<QueueImpl>::QueueTracer() : _impl{} {}
+QueueTracer<QueueImpl>::QueueTracer(arangodb::ResourceMonitor& resourceMonitor) : _impl{resourceMonitor} {}
 
 template <class QueueImpl>
 QueueTracer<QueueImpl>::~QueueTracer() {

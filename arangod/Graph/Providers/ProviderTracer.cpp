@@ -35,8 +35,8 @@ using namespace arangodb::graph;
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryContext,
-                                             BaseProviderOptions opts)
-    : _impl{queryContext, opts} {}
+                                             BaseProviderOptions opts, arangodb::ResourceMonitor& resourceMonitor)
+    : _impl{queryContext, opts, resourceMonitor} {}
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::~ProviderTracer() {
@@ -107,6 +107,13 @@ transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
   double start = TRI_microtime();
   TRI_DEFER(_stats["trx"].addTiming(TRI_microtime() - start));
   return _impl.trx();
+}
+
+template <class ProviderImpl>
+arangodb::ResourceMonitor* ProviderTracer<ProviderImpl>::resourceMonitor() {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["resourceMonitor"].addTiming(TRI_microtime() - start));
+  return _impl.resourceMonitor();
 }
 
 template class ::arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider>;

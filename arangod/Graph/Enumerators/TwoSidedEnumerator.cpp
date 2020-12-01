@@ -48,8 +48,13 @@ using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(
-    Direction dir, ProviderType&& provider, GraphOptions const& options)
-    : _provider(std::move(provider)), _direction(dir), _minDepth(options.getMinDepth()) {}
+    Direction dir, ProviderType&& provider, GraphOptions const& options,
+    arangodb::ResourceMonitor& resourceMonitor)
+    : _resourceMonitor(resourceMonitor),
+      _queue(resourceMonitor),
+      _provider(std::move(provider)),
+      _direction(dir),
+      _minDepth(options.getMinDepth()) {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::~Ball() = default;
@@ -232,10 +237,10 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::provider(
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
     ProviderType&& forwardProvider, ProviderType&& backwardProvider,
-    TwoSidedEnumeratorOptions&& options)
+    TwoSidedEnumeratorOptions&& options, arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
-      _left{Direction::FORWARD, std::move(forwardProvider), _options},
-      _right{Direction::BACKWARD, std::move(backwardProvider), _options},
+      _left{Direction::FORWARD, std::move(forwardProvider), _options, resourceMonitor},
+      _right{Direction::BACKWARD, std::move(backwardProvider), _options, resourceMonitor},
       _resultPath{_left.provider(), _right.provider()} {}
 
 template <class QueueType, class PathStoreType, class ProviderType>

@@ -66,16 +66,19 @@ class QueueTest : public ::testing::Test {
  public:
   QueueTest() {}
   ~QueueTest() {}
+
+ public:
+  arangodb::ResourceMonitor _resourceMonitor {};
 };
 
 TEST_F(QueueTest, it_should_be_empty_if_new_queue_initialized) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   ASSERT_EQ(queue.size(), 0);
   ASSERT_TRUE(queue.isEmpty());
 }
 
 TEST_F(QueueTest, it_should_contain_element_after_insertion) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   auto step = Step{1, 1, false};
   queue.append(step);
   ASSERT_EQ(queue.size(), 1);
@@ -83,7 +86,7 @@ TEST_F(QueueTest, it_should_contain_element_after_insertion) {
 }
 
 TEST_F(QueueTest, it_should_contain_zero_elements_after_clear) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
@@ -94,7 +97,7 @@ TEST_F(QueueTest, it_should_contain_zero_elements_after_clear) {
 }
 
 TEST_F(QueueTest, it_should_contain_processable_elements) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
@@ -104,7 +107,7 @@ TEST_F(QueueTest, it_should_contain_processable_elements) {
 }
 
 TEST_F(QueueTest, it_should_not_contain_processable_elements) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, true});
   queue.append(Step{2, 1, true});
   queue.append(Step{3, 1, true});
@@ -114,7 +117,7 @@ TEST_F(QueueTest, it_should_not_contain_processable_elements) {
 }
 
 TEST_F(QueueTest, it_should_pop_first_element_if_processable) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, true});
@@ -129,7 +132,7 @@ TEST_F(QueueTest, it_should_pop_first_element_if_processable) {
 }
 
 TEST_F(QueueTest, it_should_pop_in_correct_order) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
@@ -147,7 +150,7 @@ TEST_F(QueueTest, it_should_pop_in_correct_order) {
 }
 
 TEST_F(QueueTest, it_should_pop_all_loose_ends) {
-  auto queue = FifoQueue<Step>();
+  auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, true});
   queue.append(Step{2, 1, true});
   queue.append(Step{3, 1, true});

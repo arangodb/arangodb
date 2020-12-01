@@ -346,14 +346,16 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                    opts->maxDepth};
 
+      // TODO: After ResourceMonitor Feature this needs to be replaced and read by the query here.
+      arangodb::ResourceMonitor resourceMonitor{};
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
         using KPathRefactored =
             TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider{opts->query(), forwardProviderOptions},
-            SingleServerProvider{opts->query(), backwardProviderOptions},
-            std::move(enumeratorOptions));
+            SingleServerProvider{opts->query(), forwardProviderOptions, resourceMonitor},
+            SingleServerProvider{opts->query(), backwardProviderOptions, resourceMonitor},
+            std::move(enumeratorOptions), resourceMonitor);
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -367,9 +369,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                PathStoreTracer<PathStore<SingleServerProvider::Step>>, ProviderTracer<SingleServerProvider>>;
         // TODO: below copy paste from above. clean this up later.
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions},
-            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions},
-            std::move(enumeratorOptions));
+            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions, resourceMonitor},
+            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions, resourceMonitor},
+            std::move(enumeratorOptions), resourceMonitor);
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),

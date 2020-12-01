@@ -29,6 +29,8 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/TypeAliases.h"
 
+#include "Basics/ResourceUsage.h"
+
 #include <unordered_map>
 #include <vector>
 
@@ -46,7 +48,8 @@ class ProviderTracer {
   using Step = typename ProviderImpl::Step;
 
  public:
-  ProviderTracer(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts);
+  ProviderTracer(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+                 arangodb::ResourceMonitor& resourceMonitor);
   ProviderTracer(ProviderTracer const&) = delete;
   ProviderTracer(ProviderTracer&&) = default;
   ~ProviderTracer();
@@ -59,17 +62,18 @@ class ProviderTracer {
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
-  
+
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
-                          arangodb::velocypack::Builder& builder);
+                        arangodb::velocypack::Builder& builder);
 
   void destroyEngines(){};  // TODO: remove after refactor
 
   [[nodiscard]] transaction::Methods* trx();
+  arangodb::ResourceMonitor* resourceMonitor();
 
  private:
   ProviderImpl _impl;

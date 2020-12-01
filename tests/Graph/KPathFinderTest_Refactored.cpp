@@ -116,9 +116,10 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
   
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
+    arangodb::ResourceMonitor resourceMonitor{};
     return KPathFinder{MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), false),
       MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), true),
-      std::move(options)};
+      std::move(options), resourceMonitor};
   }
 
   auto vId(size_t nr) -> std::string {

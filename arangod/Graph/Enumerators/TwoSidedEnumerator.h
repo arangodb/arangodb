@@ -26,6 +26,8 @@
 
 #include "Containers/HashSet.h"
 
+#include "Basics/ResourceUsage.h"
+
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Transaction/Methods.h"
@@ -49,7 +51,7 @@ class PathResult;
 template <class QueueType, class PathStoreType, class ProviderType>
 class TwoSidedEnumerator {
  public:
-  using Step = typename ProviderType::Step; // public due to tracer access
+  using Step = typename ProviderType::Step;  // public due to tracer access
 
  private:
   enum Direction { FORWARD, BACKWARD };
@@ -62,7 +64,8 @@ class TwoSidedEnumerator {
 
   class Ball {
    public:
-    Ball(Direction dir, ProviderType&& provider, GraphOptions const& options);
+    Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
+         arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center) -> void;
@@ -92,8 +95,10 @@ class TwoSidedEnumerator {
     // This stores all paths processed by this ball
     PathStoreType _interior{};
 
+    arangodb::ResourceMonitor& _resourceMonitor;
+
     // The next elements to process
-    QueueType _queue{};
+    QueueType _queue;
 
     ProviderType _provider;
 
@@ -105,7 +110,8 @@ class TwoSidedEnumerator {
 
  public:
   TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
-                     TwoSidedEnumeratorOptions&& options);
+                     TwoSidedEnumeratorOptions&& options,
+                     arangodb::ResourceMonitor& resourceMonitor);
   TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
   TwoSidedEnumerator(TwoSidedEnumerator&& other) noexcept = default;
 

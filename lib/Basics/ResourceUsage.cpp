@@ -18,47 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_QUEUE_TRACER_H
-#define ARANGOD_GRAPH_QUEUE_TRACER_H 1
-
-#include "Graph/Helpers/TraceEntry.h"
 #include "Basics/ResourceUsage.h"
+#include "Logger/LogMacros.h"
 
-#include <unordered_map>
-#include <vector>
+using namespace arangodb;
 
-namespace arangodb {
-namespace graph {
-
-template <class QueueImpl>
-class QueueTracer {
-  using Step = typename QueueImpl::Step;
-
- public:
-  QueueTracer(arangodb::ResourceMonitor& resourceMonitor);
-  ~QueueTracer();
-
-  void clear();
-  void append(Step step);
-  bool hasProcessableElement() const;
-  size_t size() const;
-  bool isEmpty() const;
-  std::vector<Step*> getLooseEnds();
-
-  Step pop();
-
- private:
-  QueueImpl _impl;
-
-  // Mapping MethodName => Statistics
-  // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
-};
-
-}  // namespace graph
-}  // namespace arangodb
-
-#endif
+ResourceMonitor::~ResourceMonitor() {
+  // this assertion is here to ensure that our memory usage tracking works
+  // correctly, and everything that we accounted for is actually properly torn
+  // down. the assertion will have no effect in production.
+  TRI_ASSERT(currentResources.memoryUsage == 0);
+}

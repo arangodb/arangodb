@@ -66,8 +66,9 @@ class GraphProviderTest : public ::testing::Test {
 
       // We now have collections "v" and "e"
       query = singleServer->getQuery("RETURN 1", {"v", "e"});
-      
-      return MockGraphProvider(graph, *query.get(), MockGraphProvider::LooseEndBehaviour::NEVER);
+
+      return MockGraphProvider(graph, *query.get(),
+                               MockGraphProvider::LooseEndBehaviour::NEVER);
     }
     if constexpr (std::is_same_v<ProviderType, SingleServerProvider>) {
       s = std::make_unique<GraphTestSetup>();
@@ -87,7 +88,8 @@ class GraphProviderTest : public ::testing::Test {
           IndexAccessor{edgeIndexHandle, indexCondition, 0}};
 
       BaseProviderOptions opts(tmpVar, std::move(usedIndexes));
-      return SingleServerProvider(*query.get(), std::move(opts));
+      arangodb::ResourceMonitor resourceMonitor{};
+      return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
