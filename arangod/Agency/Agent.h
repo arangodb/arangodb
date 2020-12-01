@@ -122,8 +122,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Read from agency
   read_ret_t read(query_t const&);
 
-  /// @brief Long pool for higher index than given
-  futures::Future<query_t> poll(index_t const& index, double const& timeout);
+  /// @brief Long pool for higher index than given if leader or else empty builder and false
+  std::pair<futures::Future<query_t>, bool> poll(index_t const& index, double const& timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);

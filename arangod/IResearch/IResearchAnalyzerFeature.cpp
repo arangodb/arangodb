@@ -662,7 +662,8 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
           // used to calculate values for constant expressions)
           arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                              arangodb::aql::Function::Flags::Cacheable,
-                                             arangodb::aql::Function::Flags::CanRunOnDBServer),
+                                             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
           &aqlFnTokens  // function implementation
       });
 }
@@ -774,7 +775,7 @@ arangodb::Result visitAnalyzers(
     if (!coords.empty() &&
         !vocbase.isSystem() && // System database could be on other server so OneShard optimization will not work
         (vocbase.server().getFeature<arangodb::ClusterFeature>().forceOneShard() ||
-          vocbase.isShardingSingle())) {
+          vocbase.isOneShard())) {
       auto& clusterInfo = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
       if (!collection) {

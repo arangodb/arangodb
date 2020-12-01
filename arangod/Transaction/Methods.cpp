@@ -284,7 +284,7 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
-        it.get().response->statusCode() == fuerte::StatusNotAcceptable) {
+        it.get().statusCode() == fuerte::StatusNotAcceptable) {
       auto r = it.get().combinedResult();
       bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       if (followerRefused) {
@@ -723,17 +723,30 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   if (_state->isCoordinator()) {
-    OperationOptions options;  // use default configuration
-
+    OperationOptions options;
     OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (opRes.fail()) {
       return opRes.result;
     }
     result.add(opRes.slice());
     return Result();
-  }
+  } 
 
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  auto translateName = [this](std::string const& collectionName) { 
+    if (_state->isDBServer() && vocbase().isOneShard()) {
+      auto collection = resolver()->getCollectionStructCluster(collectionName);
+      if (collection != nullptr) {
+        auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto shards = ci.getShardList(std::to_string(collection->id().id()));
+        if (shards != nullptr && shards->size() == 1) {
+          return (*shards)[0];
+        }
+      }
+    }
+    return collectionName;
+  };
+
+  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName), AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
   arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
@@ -1820,8 +1833,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
             responses[i].hasValue() && responses[i].get().ok() &&
-            (responses[i].get().response->statusCode() == fuerte::StatusAccepted ||
-             responses[i].get().response->statusCode() == fuerte::StatusOK);
+            (responses[i].get().statusCode() == fuerte::StatusAccepted ||
+             responses[i].get().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
           res = followerInfo->remove((*followers)[i]);
@@ -2328,9 +2341,9 @@ Future<Result> Methods::replicateOperations(
 
       bool replicationWorked = false;
       if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = resp.response->statusCode() == fuerte::StatusAccepted ||
-                            resp.response->statusCode() == fuerte::StatusCreated ||
-                            resp.response->statusCode() == fuerte::StatusOK;
+        replicationWorked = resp.statusCode() == fuerte::StatusAccepted ||
+                            resp.statusCode() == fuerte::StatusCreated ||
+                            resp.statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);

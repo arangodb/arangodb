@@ -239,13 +239,14 @@ void BenchFeature::start() {
     auto connectDB = client.databaseName();
     client.setDatabaseName("_system");
     auto createDbClient = client.createHttpClient();
+    createDbClient->params().setUserNamePassword("/", client.username(), client.password());
     auto createStr = std::string("{\"name\":\"") + connectDB + "\"}";
     auto result = createDbClient->request(rest::RequestType::POST,
                                           "/_api/database",
                                           createStr.c_str(),
                                           createStr.length());
 
-    if (!result || !result->isComplete()) {
+    if (!result || result->wasHttpError()) {
       std::string msg;
       if (result) {
         msg = result->getHttpReturnMessage();
@@ -389,7 +390,7 @@ void BenchFeature::start() {
     });
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
       if (_duration != 0) {
-        _realOperations = threads[i]->_counter;
+        _realOperations += threads[i]->_counter;
       }
       threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
       double scope;
@@ -562,7 +563,7 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
   builder.add("requestResponseDurationPerThread", VPackValue(result.requestTime / (double)_concurrency));
 
   std::cout << "Time needed per operation: " << std::fixed
-            << (result.time / _operations) << " s" << std::endl;
+            << (result.time / _realOperations) << " s" << std::endl;
   builder.add("timeNeededPerOperation", VPackValue(result.time / _realOperations));
   
   std::cout << "Time needed per operation per thread: " << std::fixed
