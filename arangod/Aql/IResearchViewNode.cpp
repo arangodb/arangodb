@@ -1331,8 +1331,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   }
 
   aql::CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedNrItems() *= estimatedNrItems;
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedNrItems *= estimatedNrItems;
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 

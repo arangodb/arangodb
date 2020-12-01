@@ -25,10 +25,9 @@
 #define ARANGOD_AQL_COST_ESTIMATE_H 1
 
 #include <cstddef>
-#include <stack>
-#include <vector>
 
-namespace arangodb::aql {
+namespace arangodb {
+namespace aql {
 
 /// @brief a simple object containing a cost estimate for ExecutionNodes
 struct CostEstimate {
@@ -38,7 +37,7 @@ struct CostEstimate {
   /// @brief initialize a still-invalid cost estimate
   CostEstimate();
 
-  [[nodiscard]] bool operator==(CostEstimate const& other) const;
+  bool operator==(CostEstimate const& other) const;
 
   /// @brief return an empty but valid cost estimate
   static CostEstimate empty();
@@ -50,20 +49,17 @@ struct CostEstimate {
   void initialize();
 
   /// @brief whether or not the estimate is valid
-  [[nodiscard]] bool isValid() const;
+  bool isValid() const;
 
-  /// @brief estimated cost produced by the node, including cost of upstream nodes.
+  /// @brief estimated cost produced by the node
   double estimatedCost;
 
-  std::size_t& estimatedNrItems();
-
- private:
-  /// @brief estimated number of items returned by the node, per subquery-level.
-  ///        The top entry corresponds to the innermost subquery.
-  // std::stack<std::size_t, std::vector<std::size_t>> estimatedNrItems;
-  std::size_t _estimatedNrItems;
+  /// @brief cost
+  /// @brief estimated number of items returned by the node
+  std::size_t estimatedNrItems;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

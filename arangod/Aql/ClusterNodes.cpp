@@ -178,13 +178,13 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 CostEstimate RemoteNode::estimateCost() const {
   if (_dependencies.size() == 1) {
     CostEstimate estimate = _dependencies[0]->getCost();
-    estimate.estimatedCost += estimate.estimatedNrItems();
+    estimate.estimatedCost += estimate.estimatedNrItems;
     return estimate;
   }
   // We really should not get here, but if so, do something bordering on
   // sensible:
   CostEstimate estimate = CostEstimate::empty();
-  estimate.estimatedNrItems() = 1;
+  estimate.estimatedNrItems = 1;
   estimate.estimatedCost = 1.0;
   return estimate;
 }
@@ -264,7 +264,7 @@ void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
 /// @brief estimateCost
 CostEstimate ScatterNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems() * _clients.size();
+  estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
   return estimate;
 }
 
@@ -372,7 +372,7 @@ void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
 /// @brief estimateCost
 CostEstimate DistributeNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
@@ -541,7 +541,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 /// @brief estimateCost
 CostEstimate GatherNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 

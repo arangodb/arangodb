@@ -179,7 +179,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(1, node.options().sources.size());
     EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   {
@@ -225,7 +225,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(1, node.options().sources.size());
     EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // invalid 'primarySortBuckets' specified
@@ -324,7 +324,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_FALSE(node.options().forceSync);
 
     EXPECT_EQ(1., node.getCost().estimatedCost);
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);
   }
 
   // with options
@@ -369,7 +369,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ConditionOptimization::Auto, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options default optimization
@@ -416,7 +416,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ConditionOptimization::Auto, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
   // with options none optimization
   {
@@ -462,7 +462,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ConditionOptimization::None, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
   // with options noneg optimization
   {
@@ -508,7 +508,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ConditionOptimization::NoNegation, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
   // with options nodnf optimization
   {
@@ -554,7 +554,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(arangodb::aql::ConditionOptimization::NoDNF, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
   // invalid options
   {
@@ -666,7 +666,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_FALSE(node.options().forceSync);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 }
 
@@ -791,7 +791,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_FALSE(node.options().forceSync);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // no options, ignore 'primarySortBuckets'
@@ -832,7 +832,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_FALSE(node.options().forceSync);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // no options
@@ -873,7 +873,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_FALSE(node.options().forceSync);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options
@@ -916,7 +916,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(1, node.options().sources.size());
     EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options
@@ -959,7 +959,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     ASSERT_EQ(arangodb::aql::ConditionOptimization::Auto, node.options().conditionOptimization); // default value
     EXPECT_EQ(0, node.options().sources.size());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options none condition optimization
@@ -1004,7 +1004,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     ASSERT_EQ(arangodb::aql::ConditionOptimization::None, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
   // with options noneg conditionOptimization
   {
@@ -1048,7 +1048,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     ASSERT_EQ(arangodb::aql::ConditionOptimization::NoNegation, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
   // with options nodnf conditionOptimization
   {
@@ -1092,7 +1092,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     ASSERT_EQ(arangodb::aql::ConditionOptimization::NoDNF, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems());  // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // invalid option 'waitForSync'

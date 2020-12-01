@@ -861,7 +861,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
   if (flags & ExecutionNode::SERIALIZE_ESTIMATES) {
     CostEstimate estimate = getCost();
     nodes.add("estimatedCost", VPackValue(estimate.estimatedCost));
-    nodes.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems()));
+    nodes.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   }
 
   // SERIALIZE_REGISTER_INFORMATION => SERIALIZE_DETAILS
@@ -1510,7 +1510,7 @@ void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 /// @brief the cost of a singleton is 1, it produces one item only
 CostEstimate SingletonNode::estimateCost() const {
   CostEstimate estimate = CostEstimate::empty();
-  estimate.estimatedNrItems() = 1;
+  estimate.estimatedNrItems = 1;
   estimate.estimatedCost = 1.0;
   return estimate;
 }
@@ -1618,7 +1618,7 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above must not
     // be multiplied with the number of items in this collection
-    estimate.estimatedNrItems() *= estimatedNrItems;
+    estimate.estimatedNrItems *= estimatedNrItems; 
   }
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
@@ -1720,14 +1720,14 @@ CostEstimate EnumerateListNode::estimateCost() const {
       // length will be set by the subquery's cost estimator
       CostEstimate subEstimate =
           ExecutionNode::castTo<SubqueryNode const*>(setter)->getSubquery()->getCost();
-      length = subEstimate.estimatedNrItems();
+      length = subEstimate.estimatedNrItems;
     }
   }
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedNrItems() *= length;
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedNrItems *= length;
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
@@ -1800,7 +1800,7 @@ CostEstimate LimitNode::estimateCost() const {
   // case, we need to move iterarors forward, invoke the comparator etc.
   double const skipCost = 0.000001;
 
-  size_t estimatedNrItems = estimate.estimatedNrItems();
+  size_t estimatedNrItems = estimate.estimatedNrItems;
   if (estimatedNrItems >= _offset) {
     estimate.estimatedCost += _offset * skipCost;
     estimatedNrItems -= _offset;
@@ -1808,9 +1808,9 @@ CostEstimate LimitNode::estimateCost() const {
     estimate.estimatedCost += estimatedNrItems * skipCost;
     estimatedNrItems = 0;
   }
-  estimate.estimatedNrItems() =
+  estimate.estimatedNrItems =
       (std::min)(_limit, estimatedNrItems);
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
@@ -1985,7 +1985,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies
 CostEstimate CalculationNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
@@ -2196,7 +2196,7 @@ CostEstimate SubqueryNode::estimateCost() const {
   CostEstimate subEstimate = _subquery->getCost();
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems() * subEstimate.estimatedCost;
+  estimate.estimatedCost += estimate.estimatedNrItems * subEstimate.estimatedCost;
   return estimate;
 }
 
@@ -2363,7 +2363,7 @@ CostEstimate FilterNode::estimateCost() const {
   // the rule throwing away a FilterNode that is already covered by an
   // IndexNode cannot reduce the costs.
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
@@ -2464,7 +2464,7 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 CostEstimate ReturnNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
@@ -2683,7 +2683,7 @@ CostEstimate MaterializeNode::estimateCost() const {
   }
   aql::CostEstimate estimate = _dependencies[0]->getCost();
   // we will materialize all output of our dependency
-  estimate.estimatedCost += estimate.estimatedNrItems();
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 

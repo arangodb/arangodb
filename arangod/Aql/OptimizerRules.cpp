@@ -781,7 +781,7 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
 bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
                                  arangodb::aql::LimitNode& limitNode) {
-  size_t input = sortNode.getCost().estimatedNrItems();
+  size_t input = sortNode.getCost().estimatedNrItems;
   size_t output = limitNode.limit() + limitNode.offset();
 
   // first check an easy case
@@ -978,7 +978,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       // estimate items in subquery
       CostEstimate estimate = sub->getSubquery()->getCost();
 
-      if (estimate.estimatedNrItems() < AstNode::SortNumberThreshold) {
+      if (estimate.estimatedNrItems < AstNode::SortNumberThreshold) {
         continue;
       }
 
