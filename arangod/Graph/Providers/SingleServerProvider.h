@@ -58,7 +58,6 @@ namespace graph {
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
 struct SingleServerProvider {
-  enum Direction { FORWARD, BACKWARD };  // TODO check
   enum class LooseEndBehaviour { NEVER, ALLWAYS };
 
   class Step : public arangodb::graph::BaseStep<Step> {
