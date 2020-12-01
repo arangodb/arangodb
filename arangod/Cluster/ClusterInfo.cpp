@@ -800,8 +800,9 @@ void ClusterInfo::loadPlan() {
       }
       if (plan != nullptr) {
         std::vector<std::string> colPath{AgencyCommHelper::path(), "Plan", "Collections", name};
-        if (plan->slice()[0].hasKey(colPath)) {
-          for (auto const& col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
+        auto planColSlice = plan->slice()[0].get(colPath);
+        if (planColSlice.isObject()) {
+          for (auto const& col : VPackObjectIterator(planColSlice)) {
             if (col.value.hasKey("shards")) {
               for (auto const& shard : VPackObjectIterator(col.value.get("shards"))) {
                 auto const& shardName = shard.key.copyString();
