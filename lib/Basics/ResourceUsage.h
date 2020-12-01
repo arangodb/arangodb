@@ -82,8 +82,8 @@ struct ResourceMonitor final {
   }
 
   inline void decreaseMemoryUsage(size_t value) noexcept {
-    TRI_ASSERT(currentResources.memoryUsage >= value);
-    currentResources.memoryUsage -= value;
+    [[maybe_unused]] size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+    TRI_ASSERT(previous >= value);
   }
 
   void clear() { currentResources.clear(); }
