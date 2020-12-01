@@ -54,8 +54,8 @@ class BenchmarkThread : public arangodb::Thread {
  public:
   BenchmarkThread(application_features::ApplicationServer& server,
                   BenchmarkOperation* operation, basics::ConditionVariable* condition,
-                  void (*callback)(), int threadNumber, const unsigned long batchSize,
-                  BenchmarkCounter<unsigned long>* operationsCounter,
+                  void (*callback)(), int threadNumber, uint64_t const batchSize,
+                  BenchmarkCounter<uint64_t>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async, bool verbose,
                   double histogramIntervalSize, uint64_t histogramNumIntervals )
       : Thread(server, "BenchmarkThread"),
@@ -219,7 +219,7 @@ class BenchmarkThread : public arangodb::Thread {
     }
 
     while (!isStopping()) {
-      unsigned long numOps = _operationsCounter->next(_batchSize);
+      uint64_t numOps = _operationsCounter->next(_batchSize);
 
       if (numOps == 0) {
         break;
@@ -279,7 +279,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief execute a batch request with numOperations parts
   //////////////////////////////////////////////////////////////////////////////
 
-  void executeBatchRequest(const unsigned long numOperations) {
+  void executeBatchRequest(const uint64_t numOperations) {
     static char const boundary[] = "XXXarangobench-benchmarkXXX";
     size_t blen = strlen(boundary);
 
@@ -291,7 +291,7 @@ class BenchmarkThread : public arangodb::Thread {
           << numOperations << " batch operations: " << ret;
       FATAL_ERROR_EXIT();
     }
-    for (unsigned long i = 0; i < numOperations; ++i) {
+    for (uint64_t i = 0; i < numOperations; ++i) {
       // append boundary
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("--"));
       batchPayload.appendText(boundary, blen);
@@ -509,7 +509,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief batch size
   //////////////////////////////////////////////////////////////////////////////
 
-  unsigned long const _batchSize;
+  uint64_t const _batchSize;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief warning counter
@@ -521,7 +521,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief benchmark counter
   //////////////////////////////////////////////////////////////////////////////
 
-  arangobench::BenchmarkCounter<unsigned long>* _operationsCounter;
+  arangobench::BenchmarkCounter<uint64_t>* _operationsCounter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief client feature
@@ -575,14 +575,15 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief thread offset value
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _offset;
+  uint64_t _offset;
 
 public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread counter value
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _counter;
+  uint64_t _counter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief time
