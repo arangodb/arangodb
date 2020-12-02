@@ -288,6 +288,9 @@ class Query : public QueryContext {
   /// @brief query start time (steady clock value)
   double const _startTime;
 
+  /// @brief total memory used for building the (partial) result
+  size_t _resultMemoryUsage;
+
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
   

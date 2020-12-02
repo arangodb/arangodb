@@ -47,7 +47,7 @@ using RegisterSet = std::unordered_set<RegisterId>;
 class SubqueryEndExecutorTest : public ::testing::Test {
  public:
   SubqueryEndExecutorTest()
-      : _infos(nullptr, RegisterId{0}, RegisterId{0}) {}
+      : _infos(nullptr, monitor, RegisterId{0}, RegisterId{0}) {}
 
  protected:
   ResourceMonitor monitor;
