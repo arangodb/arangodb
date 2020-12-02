@@ -155,7 +155,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _volatileFilter(_volatileSort || volatility.first),
       _varInfoMap(varInfoMap),
       _depth(depth),
-      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
+      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
+      _countApproximate(countApproximate) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
@@ -1078,7 +1079,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
   } else {
     if (this->infos().countApproximate() == CountApproximate::Cost) {
       if (_itr) { // we already have open segment. Account it properly.
-        skipped += irs::cost::extract(*_itr, 0); // TODO to separate method ?
+        skipped += irs::cost::extract(*_itr, 0);
         if (skipped < _currentSegmentPos) {
           skipped = 0;
         } else {
@@ -1091,7 +1092,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
         if (!resetIterator()) {
           continue;
         }
-        skipped += irs::cost::extract(*_itr, 0); // TODO to separate method ?
+        skipped += irs::cost::extract(*_itr, 0);
         _itr.reset();
       }
       _totalPos = this->_reader->live_docs_count(); // mark node as exhausted so future skips will return 0 immediately
@@ -1176,7 +1177,7 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     irs::score const& score, size_t numScores,
     LogicalCollection const& collection,
     irs::doc_iterator::ptr&& pkReader,
-    size_t storedValuesIndex,
+    size_t segmentIndex,
     irs::doc_iterator* sortReaderRef,
     irs::payload const* sortReaderValue,
     irs::doc_iterator::ptr&& sortReader) noexcept
@@ -1185,7 +1186,7 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     score(&score),
     numScores(numScores),
     collection(&collection),
-    storedValuesIndex(storedValuesIndex),
+    currentSegmentIndex(segmentIndex),
     sortReaderRef(sortReaderRef),
     sortValue(sortReaderValue),
     sortReader(std::move(sortReader)) {
@@ -1210,6 +1211,7 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
   assert(i < _segments->size());
   auto& segment = (*_segments)[i];
   while (segment.docs->next()) {
+    ++segment.segmentPos;
     auto const doc = segment.docs->value();
 
     if (doc == segment.sortReaderRef->seek(doc)) {
@@ -1402,7 +1404,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(segment.doc);
-      this->pushStoredValues(*segment.doc, segment.storedValuesIndex);
+      this->pushStoredValues(*segment.doc, segment.currentSegmentIndex);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
@@ -1435,10 +1437,31 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
 
   size_t skipped = 0;
 
-  while (_heap_it.next()) {
-    skipped++;
+  for (auto& segment : _segments) {
+    TRI_ASSERT(segment.docs);
+    if (filterConditionIsEmpty(&this->infos().filterCondition())) {
+      TRI_ASSERT(segment.currentSegmentIndex < this->_reader->size());
+      auto const live_docs_count =  (*this->_reader)[segment.currentSegmentIndex].live_docs_count();
+      TRI_ASSERT(segment.segmentPos <= live_docs_count);
+      skipped += live_docs_count - segment.segmentPos;
+      segment.segmentPos = live_docs_count;
+    } else {
+      if (this->infos().countApproximate() == CountApproximate::Cost) {
+        auto cost = irs::cost::extract(*segment.docs, 0);
+        if (cost > segment.segmentPos) {
+          skipped += (cost - segment.segmentPos);
+          segment.segmentPos = cost;
+        } 
+      } else {
+        while (segment.docs->next()) {
+         ++skipped;
+         ++segment.segmentPos;
+        }
+      }
+    }
   }
 
+  _heap_it.reset();
   return skipped;
 }
 
