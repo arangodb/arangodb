@@ -30,6 +30,7 @@
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/CountCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/FilterExecutor.h"
@@ -65,12 +66,13 @@ namespace aql {
  *   IdExecutor => SingleRowFetcher, passthrough
  *   SortExecutor => AllRowsFetcher;
  *   UnsortedGatherExecutor => MultiDependencySingleRowFetcher
+ *   CountCollectExecutor => Reports even if no data is present, needs to handle this skip correctly.
  * TODO
  *   Insert/Update => SideEffectExecutor
- *   CountExecutor => Reports even if no data is present, needs to handle this skip correctly.
  */
 using ExecutorsToTest =
-    ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, SortExecutor, UnsortedGatherExecutor>;
+    ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
+                     SortExecutor, UnsortedGatherExecutor, CountCollectExecutor>;
 
 template <class ExecutorType>
 class AqlSharedExecutionBlockImplTest : public ::testing::Test {
@@ -110,7 +112,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     for (size_t i = 0; i <= nestingLevel; ++i) {
       regStack.emplace_back(RegIdSet{0});
     }
-    return RegisterInfos(RegIdSet{0}, {}, 1, 1, {}, std::move(regStack));
+    return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {}, std::move(regStack));
   }
 
   auto emptyProducer() -> WaitingExecutionBlockMock {
@@ -146,6 +148,13 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     }
     if constexpr (std::is_same_v<ExecutorType, UnsortedGatherExecutor>) {
       IdExecutorInfos execInfos{false};
+      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
+                                              generateNodeDummy(),
+                                              std::move(buildRegisterInfos(nestingLevel)),
+                                              std::move(execInfos)};
+    }
+    if constexpr (std::is_same_v<ExecutorType, CountCollectExecutor>) {
+      CountCollectExecutorInfos execInfos{0};
       return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
                                               generateNodeDummy(),
                                               std::move(buildRegisterInfos(nestingLevel)),
