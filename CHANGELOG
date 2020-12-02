@@ -1,5 +1,26 @@
 devel
 -----
+
+* Throttle work coming from low priority queue, according to a constant
+  and to an estimate taking into account fanout for multi-shard operations.
+
+* Move to 4 priority levels "low", "medium", "high" and "maintenance" in
+  scheduler to ensure that maintenance work and diagnostics is always
+  possible, even in the case of RocksDB throttles. Do not allow any
+  RocksDB work on "maintenance".
+
+* Commit replications on high priority queue.
+
+* Essentially get rid of timeout in replication to drop followers. This
+  is now entirely handled via reboot and failure tracking. The timeout
+  has now a minimum of 15 minutes but can still be configured via options.
+
+* Additional metrics for all queue lengths and low prio ongoing work.
+
+* New metric to see RocksDB write stops after they have finished.
+
+* New metric for number and total time of replication operations.
+
 * Reimplement coordshort request handler. The new implementation only runs
   two DB queries without any additional requests to other coordinators,
   resulting in reduced load on the cluster. Previously this involved

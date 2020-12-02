@@ -458,7 +458,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
   compaction_backlog = 0;
   imm_backlog = 0;
   if (_families.size()) {
-    imm_trigger = _internalRocksDB->GetOptions(_families[0]).max_write_buffer_number / 4;
+    imm_trigger = _internalRocksDB->GetOptions(_families[0]).max_write_buffer_number / 2;
   } else {
     imm_trigger = 3;
   }  // else

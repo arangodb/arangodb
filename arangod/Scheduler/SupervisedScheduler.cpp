@@ -147,7 +147,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize,
                                          uint64_t fifo1Size, uint64_t fifo2Size,
-                                         uint64_t fifo3Size, double inFlightMultiplier,
+                                         uint64_t fifo3Size, double ongoingMultiplier,
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _numWorkers(0),
@@ -156,20 +156,19 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _jobsSubmitted(0),
       _jobsDequeued(0),
       _jobsDone(0),
+      _minNumWorker(minThreads),
+      _maxNumWorker(maxThreads),
+      _maxFifoSizes{maxQueueSize, fifo1Size, fifo1Size, fifo3Size},
+      _ongoingLowPrioLimit(
+          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
+      _ongoingLowPrioLimitWithFanout(
+          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _wakeupQueueLength(5),
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
-      _minNumWorker(minThreads),
-      _maxNumWorker(maxThreads),
-      _maxInFlight(ServerState::instance()->isCoordinator() ? static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker) : std::numeric_limits<std::size_t>::max()),
-      _ongoingLowPrioLimit(
-          static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker)),
-      _ongoingLowPrioLimitWithFanout(
-          static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker)),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
-      _maxFifoSizes{maxQueueSize, fifo1Size, fifo1Size, fifo3Size},
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerQueueLength, 0,
           "Servers internal queue length")),
@@ -205,7 +204,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
             "arangodb_scheduler_ongoing_low_prio_with_fanout", uint64_t(0),
             "This is the total number of ongoing RestHandlers coming from "
             "the low prio queue, in case of fanout counted with multiplicity.")),
-      _metricsQueueLengths({
+      _metricsQueueLengths{
           &_server.getFeature<arangodb::MetricsFeature>().gauge(
             "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
             "This is current queue length of the maintenance priority queue in "
@@ -221,7 +220,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           &_server.getFeature<arangodb::MetricsFeature>().gauge(
               "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
               "This is current queue length of the low priority queue in "
-              "the scheduler.")}) {
+              "the scheduler.")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -264,7 +263,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     return false;
   }
 
-  (*_metricsQueueLengths[queueNo]) += 1;
+  *(_metricsQueueLengths[queueNo]) += 1;
 
   // queue now has ownership for the WorkItem
   (void)work.release();  // intentionally ignore return value
@@ -663,7 +662,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   uint64_t threadsWorking = jobsDequeued - jobsDone;
 
   if (queueIndex == 1) {
-    // We can work on med if less than 87.5% of the workers are busy
+    // We can work on high if less than 87.5% of the workers are busy
     size_t limit =   (_maxNumWorker >= 8)
                    ? (_maxNumWorker * 7 / 8)
                    : _maxNumWorker - 1;
@@ -678,19 +677,6 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
                  
     return threadsWorking < limit;
   }
-
-#if 0
-  // For low priority we also throttle user jobs on the coordinator if we have
-  // too many requests in flight internally; If we aren't a coordinator, then
-  // _maxInFlight is just the max size_t
-  std::size_t const inFlight = this->inFlight();
-  std::size_t const flip = RandomGenerator::interval(0, _maxInFlight);
-  if ((inFlight > _maxInFlight) ||
-      ((_maxInFlight < std::numeric_limits<std::size_t>::max()) && (flip < inFlight))) {
-    LOG_DEVEL << "NO GOOD, " << inFlight << " inflight, flip " << flip << " vs. " << _maxInFlight << " max";
-    return false;
-  }
-#endif
 
   std::size_t const ongoing = _ongoingLowPrioGauge.load();
   std::size_t const ongoingWithFanout = _ongoingLowPrioGaugeWithFanout.load();
@@ -712,7 +698,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
-        (*_metricsQueueLengths[i]) -= 1;
+        *(_metricsQueueLengths[i]) -= 1;
         return res;
       }
     }

@@ -236,13 +236,7 @@ start() {
           --javascript.app-path cluster/apps$PORT \
           --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
-          --log.time-format utc-datestring-millis \
-          --log.thread true \
           --javascript.allow-admin-execute true \
-          --rocksdb.debug-logging true \
-          --rocksdb.enable-statistics true \
-          --log.level=rocksdb=trace \
-          --log.level=engines=debug \
           $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
@@ -268,13 +262,7 @@ start() {
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
-        --log.time-format utc-datestring-millis \
-        --log.thread true \
         --javascript.allow-admin-execute true \
-        --rocksdb.debug-logging true \
-        --rocksdb.enable-statistics true \
-        --log.level=rocksdb=trace \
-        --log.level=engines=debug \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
         $AUTHENTICATION \

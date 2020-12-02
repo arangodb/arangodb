@@ -42,7 +42,7 @@ class SupervisedScheduler final : public Scheduler {
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
-                      double inFlightMultiplier, double unavailabilityQueueFillGrade);
+                      double ongoingMultiplier, double unavailabilityQueueFillGrade);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
@@ -65,10 +65,10 @@ class SupervisedScheduler final : public Scheduler {
     // for example if a collection has many shards. Then we want to throttle
     // on the coordinator, if it has already so many things going on that
     // the dbservers could get too much. This is a heuristic here. We set
-    // the limit to the coordinator limit times the number of coordinators
-    // divided by the number of dbservers.
+    // the limit to the coordinator limit times the number of dbservers
+    // divided by the number of coordinators.
     _ongoingLowPrioLimitWithFanout 
-      = _ongoingLowPrioLimit * numberOfCoordinators / numberOfDBServers;
+      = _ongoingLowPrioLimit * numberOfDBServers / numberOfCoordinators;
   }
 
   constexpr static uint64_t const NumberOfQueues = 4;
@@ -86,39 +86,6 @@ class SupervisedScheduler final : public Scheduler {
  private:
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
-
-  struct WorkItem final {
-    fu2::unique_function<void()> _handler;
-
-    explicit WorkItem(fu2::unique_function<void()>&& handler)
-        : _handler(std::move(handler)) {}
-    ~WorkItem() = default;
-
-    void operator()() { _handler(); }
-  };
-
-  // Since the lockfree queue can only handle PODs, one has to wrap lambdas
-  // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queues[NumberOfQueues];
-
-  std::atomic<uint64_t> _numWorkers;
-  std::atomic<bool> _stopping;
-  std::atomic<bool> _acceptingNewJobs;
-
-  // aligning required to prevent false sharing - assumes cache line size is 64
-  alignas(64) std::atomic<uint64_t> _jobsSubmitted;
-  alignas(64) std::atomic<uint64_t> _jobsDequeued;
-  alignas(64) std::atomic<uint64_t> _jobsDone;
-
-  // During a queue operation there a two reasons to manually wake up a worker
-  //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
-  //      is bigger than _wakeupTime_ns.
-  //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
-  //
-  // The last submit time is a thread local variable that stores the time of the last
-  // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
-  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
   // _queueRetryTime_us is the number of microseconds this particular
@@ -158,12 +125,16 @@ class SupervisedScheduler final : public Scheduler {
     bool start();
   };
 
-  size_t const _minNumWorker;
-  size_t const _maxNumWorker;
-  size_t const _maxInFlight;
-  size_t const _ongoingLowPrioLimit;
-  size_t _ongoingLowPrioLimitWithFanout;
-  
+  struct WorkItem final {
+    fu2::unique_function<void()> _handler;
+
+    explicit WorkItem(fu2::unique_function<void()>&& handler)
+        : _handler(std::move(handler)) {}
+    ~WorkItem() = default;
+
+    void operator()() { _handler(); }
+  };
+
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
   void startOneThread();
   void stopOneThread();
@@ -181,6 +152,35 @@ class SupervisedScheduler final : public Scheduler {
   void runSupervisor();
 
  private:
+  std::atomic<uint64_t> _numWorkers;
+  std::atomic<bool> _stopping;
+  std::atomic<bool> _acceptingNewJobs;
+
+  // Since the lockfree queue can only handle PODs, one has to wrap lambdas
+  // in a container class and store pointers. -- Maybe there is a better way?
+  boost::lockfree::queue<WorkItem*> _queues[NumberOfQueues];
+
+  // aligning required to prevent false sharing - assumes cache line size is 64
+  alignas(64) std::atomic<uint64_t> _jobsSubmitted;
+  alignas(64) std::atomic<uint64_t> _jobsDequeued;
+  alignas(64) std::atomic<uint64_t> _jobsDone;
+
+  size_t const _minNumWorker;
+  size_t const _maxNumWorker;
+  uint64_t const _maxFifoSizes[NumberOfQueues];
+  size_t const _ongoingLowPrioLimit;
+  size_t _ongoingLowPrioLimitWithFanout;
+  
+  // During a queue operation there a two reasons to manually wake up a worker
+  //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
+  //      is bigger than _wakeupTime_ns.
+  //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
+  //
+  // The last submit time is a thread local variable that stores the time of the last
+  // queue operation.
+  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
+  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
+
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
   double const _unavailabilityQueueFillGrade;
@@ -190,8 +190,6 @@ class SupervisedScheduler final : public Scheduler {
   std::atomic<uint64_t> _numWorking;   // Number of threads actually working
   std::atomic<uint64_t> _numAwake;     // Number of threads working or spinning
                                        // (i.e. not sleeping)
-
-  uint64_t const _maxFifoSizes[NumberOfQueues];
 
   // The following mutex protects the lists _workerStates and
   // _abandonedWorkerStates, whenever one accesses any of these two
@@ -218,7 +216,7 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsQueueFull;
   Gauge<uint64_t>& _ongoingLowPrioGauge;
   Gauge<uint64_t>& _ongoingLowPrioGaugeWithFanout;
-  std::array<Gauge<uint64_t>*, NumberOfQueues> _metricsQueueLengths;
+  Gauge<uint64_t>* _metricsQueueLengths[NumberOfQueues];
 };
 
 }  // namespace arangodb
