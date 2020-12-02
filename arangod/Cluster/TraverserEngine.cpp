@@ -37,7 +37,6 @@
 #include "Logger/LoggerStream.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -158,8 +157,6 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
 
-  ManagedDocumentResult mmdr;
-
   size_t read = 0;
   bool shouldProduceVertices = this->produceVertices(); 
   
@@ -189,14 +186,17 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
     if (shouldProduceVertices) {
       arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
-        if (res.ok()) {
+        Result res = _trx->documentFastPathLocal(shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
           // FOUND short circuit.
           read++;
           builder.add(v);
-          mmdr.addToBuilder(builder);
+          builder.add(doc);
+          return true;
+        });
+        if (res.ok()) {
           break;
-        } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        }
+        if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // We are in a very bad condition here...
           THROW_ARANGO_EXCEPTION(res);
         }
@@ -249,9 +249,6 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(arangodb::velocypack::StringRe
 }
 
 void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
-  // We just hope someone has locked the shards properly. We have no clue...
-  // Thanks locking
-    
   auto outputVertex = [this, depth](VPackBuilder& builder, VPackSlice vertex) {
     TRI_ASSERT(vertex.isString());
 

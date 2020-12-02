@@ -103,9 +103,15 @@ class TokenTranslator : public TraverserCache {
     TRI_ASSERT(it != _vertices.end());
     return it->second;
   }
+  
+  bool appendVertex(arangodb::velocypack::StringRef idString, VPackBuilder& builder) override {
+    builder.add(translateVertex(idString));
+    return true;
+  }
 
-  AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override {
-    return AqlValue{translateVertex(idString)};
+  bool appendVertex(arangodb::velocypack::StringRef idString, AqlValue& result) override {
+    result = AqlValue(translateVertex(idString));
+    return true;
   }
 
   AqlValue fetchEdgeAqlResult(EdgeDocumentToken const& edgeTkn) override {

@@ -823,7 +823,10 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result) {
+                               IndexIterator::DocumentCallback const& cb) const {
+  TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
+  
+  rocksdb::PinnableSlice ps;
   Result res;
   do {
     LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
@@ -832,18 +835,20 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       break;
     }  // else found
 
-    std::string* buffer = result.setManaged();
-    rocksdb::PinnableSlice ps(buffer);
     res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true);
     if (res.ok()) {
-      if (ps.IsPinned()) {
-        buffer->assign(ps.data(), ps.size());
-      } // else value is already assigned
-      result.setRevisionId(); // extracts id from buffer
+      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
   return res;
+}
+
+// read using a token!
+bool RocksDBCollection::read(transaction::Methods* trx,
+                             LocalDocumentId const& documentId,
+                             IndexIterator::DocumentCallback const& cb) const {
+  return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
 }
 
 // read using a token!
@@ -860,16 +865,6 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       } // else value is already assigned
       return true;
     }
-  }
-  return false;
-}
-
-// read using a token!
-bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 LocalDocumentId const& documentId,
-                                                 IndexIterator::DocumentCallback const& cb) const {
-  if (documentId.isSet()) {
-    return lookupDocumentVPack(trx, documentId, cb, /*withCache*/true);
   }
   return false;
 }

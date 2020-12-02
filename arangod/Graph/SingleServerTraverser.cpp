@@ -49,11 +49,13 @@ SingleServerTraverser::~SingleServerTraverser() = default;
 
 void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid,
                                                   VPackBuilder& result) {
-  _opts->cache()->insertVertexIntoResult(vid, result);
+  _opts->cache()->appendVertex(vid, result);
 }
 
 aql::AqlValue SingleServerTraverser::fetchVertexData(arangodb::velocypack::StringRef vid) {
-  return _opts->cache()->fetchVertexAqlResult(vid);
+  arangodb::aql::AqlValue result;
+  _opts->cache()->appendVertex(vid, result);
+  return result;
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {

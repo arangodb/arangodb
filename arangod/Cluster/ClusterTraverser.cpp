@@ -141,24 +141,24 @@ void ClusterTraverser::fetchVertices() {
 }
 
 aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
-    // There will be no idString of length above uint32_t
-    arangodb::velocypack::HashedStringRef hashedIdString(idString.data(),
-                                                         static_cast<uint32_t>(
-                                                             idString.length()));
-    auto cached = _vertices.find(hashedIdString);
-    if (cached == _vertices.end()) {
-      // Vertex not yet cached. Prepare for load.
+  // There will be no idString of length above uint32_t
+  arangodb::velocypack::HashedStringRef hashedIdString(idString.data(),
+                                                       static_cast<uint32_t>(
+                                                           idString.length()));
+  auto cached = _vertices.find(hashedIdString);
+  if (cached == _vertices.end()) {
+    // Vertex not yet cached. Prepare for load.
 
-      // we need to make sure the idString remains valid afterwards
-      hashedIdString = _opts->cache()->persistString(hashedIdString);
-      _verticesToFetch.emplace(hashedIdString);
-      fetchVertices();
-      cached = _vertices.find(hashedIdString);
+    // we need to make sure the idString remains valid afterwards
+    hashedIdString = _opts->cache()->persistString(hashedIdString);
+    _verticesToFetch.emplace(hashedIdString);
+    fetchVertices();
+    cached = _vertices.find(hashedIdString);
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
   uint8_t const* ptr = cached->second.begin();
-  return aql::AqlValue(ptr);  // no copy constructor
+  return aql::AqlValue(ptr);  // non-copying constructor
 }
 
 //////////////////////////////////////////////////////////////////////////////
