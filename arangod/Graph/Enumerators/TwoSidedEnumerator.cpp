@@ -54,7 +54,9 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(
       _queue(resourceMonitor),
       _provider(std::move(provider)),
       _direction(dir),
-      _minDepth(options.getMinDepth()) {}
+      _minDepth(options.getMinDepth()) {
+  _resourceMonitor.increaseMemoryUsage(_shell.size());
+}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::~Ball() = default;
@@ -68,6 +70,7 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::reset(Ver
 
 template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::clear() {
+  _resourceMonitor.decreaseMemoryUsage(sizeof(Step) * _shell.size());
   _shell.clear();
   _interior.reset();
   _queue.clear();
@@ -105,6 +108,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::startNext
   // based on the shell contents.
   TRI_ASSERT(_queue.isEmpty());
   for (auto& step : _shell) {
+    _resourceMonitor.decreaseMemoryUsage(sizeof(step));
     _queue.append(std::move(step));
   }
   _shell.clear();
@@ -173,6 +177,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     }
     LOG_TOPIC("9620c", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
     // Add the step to our shell
+    _resourceMonitor.increaseMemoryUsage(sizeof(n));
     _shell.emplace(std::move(n));
   }
 #else
@@ -184,6 +189,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     }
     LOG_TOPIC("9620c", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
     // Add the step to our shell
+    _resourceMonitor.increaseMemoryUsage(sizeof(n));
     _shell.emplace(std::move(n));
   });
 #endif
