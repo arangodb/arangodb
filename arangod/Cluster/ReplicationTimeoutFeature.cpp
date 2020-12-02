@@ -34,8 +34,8 @@ namespace arangodb {
 
 double ReplicationTimeoutFeature::timeoutFactor = 1.0;
 double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
-double ReplicationTimeoutFeature::lowerLimit = 3600.0;  // used to be 30.0
-double ReplicationTimeoutFeature::upperLimit = 7200.0;  // used to be 120.0
+double ReplicationTimeoutFeature::lowerLimit = 900.0;  // used to be 30.0
+double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
 
 // We essentially stop using a meaningful timeout for this operation. 
 // This is achieved by setting the default for the minimal timeout to 1h or 3600s.
