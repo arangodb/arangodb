@@ -235,7 +235,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       auto col = collections.get(collectionName);
       TRI_ASSERT(col != nullptr);  // failed to add collection
       OperationOptions opts{};
-      // NOTE: Somehow i am unable to
       ModificationExecutorInfos execInfos{0,
                                           RegisterPlan::MaxRegisterId,
                                           RegisterPlan::MaxRegisterId,
@@ -300,6 +299,15 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       asserthelper::ValidateBlocksAreEqual(block, expectedResult);
     }
     EXPECT_EQ(skipped, expectedSkip);
+
+    // NOTE all LeftOverBlockExperiments use 3 documents for the collection.
+    // If this ever changes this code needs to be adjusted or moved around
+    if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
+      std::shared_ptr<arangodb::LogicalCollection> col =
+          server.getSystemDatabase().lookupCollection(collectionName);
+      auto docs = col->numberDocuments(nullptr, transaction::CountType::Normal);
+      EXPECT_EQ(docs, 3) << "Not all Documents have been properly inserted";
+    }
   }
 };
 
