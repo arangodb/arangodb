@@ -150,18 +150,18 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                          uint64_t fifo3Size, double ongoingMultiplier,
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
-      _minNumWorker(minThreads),
-      _maxNumWorker(maxThreads),
-      _ongoingLowPrioLimit(
-          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
-      _ongoingLowPrioLimitWithFanout(
-          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),
       _jobsSubmitted(0),
       _jobsDequeued(0),
       _jobsDone(0),
+      _minNumWorker(minThreads),
+      _maxNumWorker(maxThreads),
+      _ongoingLowPrioLimit(
+          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
+      _ongoingLowPrioLimitWithFanout(
+          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _wakeupQueueLength(5),
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),

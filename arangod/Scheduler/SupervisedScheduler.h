@@ -87,20 +87,6 @@ class SupervisedScheduler final : public Scheduler {
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
 
-  struct WorkItem final {
-    fu2::unique_function<void()> _handler;
-
-    explicit WorkItem(fu2::unique_function<void()>&& handler)
-        : _handler(std::move(handler)) {}
-    ~WorkItem() = default;
-
-    void operator()() { _handler(); }
-  };
-
-  // Since the lockfree queue can only handle PODs, one has to wrap lambdas
-  // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queues[NumberOfQueues];
-
   // each worker thread has a state block which contains configuration values.
   // _queueRetryTime_us is the number of microseconds this particular
   // thread should spin before going to sleep. Note that this spinning is only
@@ -139,11 +125,16 @@ class SupervisedScheduler final : public Scheduler {
     bool start();
   };
 
-  size_t const _minNumWorker;
-  size_t const _maxNumWorker;
-  size_t const _ongoingLowPrioLimit;
-  size_t _ongoingLowPrioLimitWithFanout;
-  
+  struct WorkItem final {
+    fu2::unique_function<void()> _handler;
+
+    explicit WorkItem(fu2::unique_function<void()>&& handler)
+        : _handler(std::move(handler)) {}
+    ~WorkItem() = default;
+
+    void operator()() { _handler(); }
+  };
+
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
   void startOneThread();
   void stopOneThread();
@@ -165,11 +156,20 @@ class SupervisedScheduler final : public Scheduler {
   std::atomic<bool> _stopping;
   std::atomic<bool> _acceptingNewJobs;
 
+  // Since the lockfree queue can only handle PODs, one has to wrap lambdas
+  // in a container class and store pointers. -- Maybe there is a better way?
+  boost::lockfree::queue<WorkItem*> _queues[NumberOfQueues];
+
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
 
+  size_t const _minNumWorker;
+  size_t const _maxNumWorker;
+  size_t const _ongoingLowPrioLimit;
+  size_t _ongoingLowPrioLimitWithFanout;
+  
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
   //      is bigger than _wakeupTime_ns.
