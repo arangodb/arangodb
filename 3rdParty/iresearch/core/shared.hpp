@@ -180,7 +180,7 @@
 #endif
 
 // Windows uses wchar_t for unicode handling
-#if defined(_WIN32) && defined(UNICODE)
+#if defined(_WIN32)
   #define IR_NATIVE_STRING(s) L##s
 #else
   #define IR_NATIVE_STRING(s) s

@@ -284,7 +284,7 @@ uint32_t computeIdleThreadsCount(uint32_t idleThreads, uint32_t threads) noexcep
   }
 }
 
-size_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit, uint32_t div) noexcept {
+uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit, uint32_t div) noexcept {
   TRI_ASSERT(div);
   constexpr uint32_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
   constexpr uint32_t MIN_THREADS = 1;  // at least one thread is required
