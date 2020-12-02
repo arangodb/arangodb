@@ -1,5 +1,9 @@
 devel
 -----
+
+* Avoid the usage of std::regex when construction date/time string values 
+  for log messages. This is a performance optimization only.
+
 * Reimplement coordshort request handler. The new implementation only runs
   two DB queries without any additional requests to other coordinators,
   resulting in reduced load on the cluster. Previously this involved
