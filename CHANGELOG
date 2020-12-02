@@ -355,6 +355,9 @@ devel
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
 
+* Added a --continue options to arango restore. arangorestore now keeps track of the progress
+  and can continue the restore operation when some error occured.
+
 * Added the following metrics for synchronous replication in the cluster:
 
   - `arangodb_refused_followers_count`: Number of times a shard leader received
