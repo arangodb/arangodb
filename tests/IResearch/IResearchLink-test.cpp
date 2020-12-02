@@ -100,11 +100,11 @@ class IResearchLinkTest
     auto opts = server.server().options();
     auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
     ars.collectOptions(opts);
-    auto* commitThreads = opts->get<arangodb::options::UInt64Parameter>("--arangosearch.commit-threads");
+    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>("--arangosearch.commit-threads");
     opts->processingResult().touch("arangosearch.commit-threads");
     EXPECT_NE(nullptr, commitThreads);
     *commitThreads->ptr = 1;
-    auto* consolidationThreads = opts->get<arangodb::options::UInt64Parameter>("--arangosearch.consolidation-threads");
+    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>("--arangosearch.consolidation-threads");
     opts->processingResult().touch("arangosearch.consolidation-threads");
     EXPECT_NE(nullptr, consolidationThreads);
     *consolidationThreads->ptr = 1;
