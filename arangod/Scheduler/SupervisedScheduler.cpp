@@ -158,6 +158,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _jobsDone(0),
       _minNumWorker(minThreads),
       _maxNumWorker(maxThreads),
+      _maxFifoSizes{maxQueueSize, fifo1Size, fifo1Size, fifo3Size},
       _ongoingLowPrioLimit(
           static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _ongoingLowPrioLimitWithFanout(
@@ -168,7 +169,6 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
-      _maxFifoSizes{maxQueueSize, fifo1Size, fifo1Size, fifo3Size},
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerQueueLength, 0,
           "Servers internal queue length")),

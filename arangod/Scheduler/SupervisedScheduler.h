@@ -167,6 +167,7 @@ class SupervisedScheduler final : public Scheduler {
 
   size_t const _minNumWorker;
   size_t const _maxNumWorker;
+  uint64_t const _maxFifoSizes[NumberOfQueues];
   size_t const _ongoingLowPrioLimit;
   size_t _ongoingLowPrioLimitWithFanout;
   
@@ -189,8 +190,6 @@ class SupervisedScheduler final : public Scheduler {
   std::atomic<uint64_t> _numWorking;   // Number of threads actually working
   std::atomic<uint64_t> _numAwake;     // Number of threads working or spinning
                                        // (i.e. not sleeping)
-
-  uint64_t const _maxFifoSizes[NumberOfQueues];
 
   // The following mutex protects the lists _workerStates and
   // _abandonedWorkerStates, whenever one accesses any of these two
