@@ -648,10 +648,10 @@ void RocksDBEngine::start() {
           "rocksdb.max-write-buffer-number")) {
     // user hasn't explicitly set the number of write buffers, so we use a default value based
     // on the number of column families
-    // this is 15 * cfFamilies.size() ... but _option needs to be set before
+    // this is cfFamilies.size() + 2 ... but _option needs to be set before
     //  building cfFamilies
     // Update max_write_buffer_number above if you change number of families used
-    _options.max_write_buffer_number = 15 * 7;
+    _options.max_write_buffer_number = 7 + 2;
   } else if (_options.max_write_buffer_number < 7 + 2) {
     // user set the value explicitly, and it is lower than recommended
     _options.max_write_buffer_number = 7 + 2;
@@ -697,8 +697,8 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);         // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
 
-  TRI_ASSERT(static_cast<int>(_options.max_write_buffer_number) >=
-             static_cast<int>(cfFamilies.size()));
+  /*  TRI_ASSERT(static_cast<int>(_options.max_write_buffer_number) >=
+               static_cast<int>(cfFamilies.size()));*/
   // Update max_write_buffer_number above if you change number of families used
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
