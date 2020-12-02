@@ -101,25 +101,6 @@ class SupervisedScheduler final : public Scheduler {
   // in a container class and store pointers. -- Maybe there is a better way?
   boost::lockfree::queue<WorkItem*> _queues[NumberOfQueues];
 
-  std::atomic<uint64_t> _numWorkers;
-  std::atomic<bool> _stopping;
-  std::atomic<bool> _acceptingNewJobs;
-
-  // aligning required to prevent false sharing - assumes cache line size is 64
-  alignas(64) std::atomic<uint64_t> _jobsSubmitted;
-  alignas(64) std::atomic<uint64_t> _jobsDequeued;
-  alignas(64) std::atomic<uint64_t> _jobsDone;
-
-  // During a queue operation there a two reasons to manually wake up a worker
-  //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
-  //      is bigger than _wakeupTime_ns.
-  //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
-  //
-  // The last submit time is a thread local variable that stores the time of the last
-  // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
-  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
-
   // each worker thread has a state block which contains configuration values.
   // _queueRetryTime_us is the number of microseconds this particular
   // thread should spin before going to sleep. Note that this spinning is only
@@ -180,6 +161,25 @@ class SupervisedScheduler final : public Scheduler {
   void runSupervisor();
 
  private:
+  std::atomic<uint64_t> _numWorkers;
+  std::atomic<bool> _stopping;
+  std::atomic<bool> _acceptingNewJobs;
+
+  // aligning required to prevent false sharing - assumes cache line size is 64
+  alignas(64) std::atomic<uint64_t> _jobsSubmitted;
+  alignas(64) std::atomic<uint64_t> _jobsDequeued;
+  alignas(64) std::atomic<uint64_t> _jobsDone;
+
+  // During a queue operation there a two reasons to manually wake up a worker
+  //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
+  //      is bigger than _wakeupTime_ns.
+  //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
+  //
+  // The last submit time is a thread local variable that stores the time of the last
+  // queue operation.
+  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
+  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
+
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
   double const _unavailabilityQueueFillGrade;
