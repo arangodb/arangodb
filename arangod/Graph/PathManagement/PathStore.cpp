@@ -46,12 +46,13 @@ PathStore<Step>::PathStore(arangodb::ResourceMonitor& resourceMonitor)
   // performance optimization: just reserve a little more as per default
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Initialization.";
   _schreier.reserve(32);
-  _resourceMonitor.increaseMemoryUsage(sizeof(_schreier));
+  //_resourceMonitor.increaseMemoryUsage(_schreier.capacity());
 }
 
 template <class Step>
 void PathStore<Step>::reset() {
   LOG_TOPIC("8f726", TRACE, Logger::GRAPHS) << "<PathStore> Resetting.";
+  _resourceMonitor.decreaseMemoryUsage(_schreier.size() * sizeof(Step));
   _schreier.clear();
 }
 
@@ -61,6 +62,7 @@ size_t PathStore<Step>::append(Step step) {
       << "<PathStore> Adding step: " << step.toString();
 
   auto idx = _schreier.size();
+  _resourceMonitor.increaseMemoryUsage(sizeof(step));
   _schreier.emplace_back(step);
 
   return idx;

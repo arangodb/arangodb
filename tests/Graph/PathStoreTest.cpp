@@ -89,16 +89,32 @@ TEST_F(PathStoreTest, it_should_be_able_to_set_startVertex) {
 
 TEST_F(PathStoreTest, it_should_be_able_to_clear) {
   auto ps = PathStore<Step>(_resourceMonitor);
+  size_t memoryUsage = _resourceMonitor.currentMemoryUsage();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
+  ASSERT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
+  memoryUsage = _resourceMonitor.currentMemoryUsage();
   lastIndex = ps.append({1, 1, lastIndex, false});
+  ASSERT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
+  memoryUsage = _resourceMonitor.currentMemoryUsage();
   lastIndex = ps.append({2, 1, lastIndex, false});
+  ASSERT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
+  memoryUsage = _resourceMonitor.currentMemoryUsage();
   lastIndex = ps.append({3, 1, lastIndex, false});
+  ASSERT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
+  memoryUsage = _resourceMonitor.currentMemoryUsage();
   lastIndex = ps.append({4, 1, lastIndex, false});
+  ASSERT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
+  memoryUsage = _resourceMonitor.currentMemoryUsage();
   ASSERT_EQ(ps.size(), 5);
+
   ps.reset();
+  memoryUsage = _resourceMonitor.currentMemoryUsage();
+
   ASSERT_EQ(ps.size(), 0);
+  ASSERT_EQ(_resourceMonitor.currentMemoryUsage(), memoryUsage);
+  ASSERT_EQ(_resourceMonitor.currentMemoryUsage(), 0);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {

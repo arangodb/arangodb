@@ -92,6 +92,10 @@ struct ResourceMonitor final {
     return currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
   }
 
+  size_t currentMemoryUsage() const {
+    return currentResources.memoryUsage.load(std::memory_order_relaxed);
+  }
+
  private:
 
   ResourceUsage currentResources;
