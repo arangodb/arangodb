@@ -39,12 +39,20 @@ class FifoQueue {
   // TODOS: Add Sorting (Performance)
   // -> loose ends to the end
 
-  FifoQueue(arangodb::ResourceMonitor& resourceMonitor) : _resourceMonitor{resourceMonitor} {}
+  FifoQueue(arangodb::ResourceMonitor& resourceMonitor) : _resourceMonitor{resourceMonitor} {
+    _resourceMonitor.increaseMemoryUsage(sizeof(_queue));
+  }
   ~FifoQueue() {}
 
-  void clear() { _queue.clear(); };
+  void clear() {
+    _resourceMonitor.decreaseMemoryUsage(sizeof(_queue));
+    _queue.clear();
+  };
 
-  void append(Step step) { _queue.push_back(step); };
+  void append(Step step) {
+    _resourceMonitor.increaseMemoryUsage(sizeof(step));
+    _queue.push_back(std::move(step));
+  };
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
@@ -75,6 +83,7 @@ class FifoQueue {
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
+    _resourceMonitor.decreaseMemoryUsage(sizeof(first));
     LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS) << "<FifoQueue> Pop: " << first.toString();
     _queue.pop_front();
     return first;
