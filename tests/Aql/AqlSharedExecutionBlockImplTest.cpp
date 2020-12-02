@@ -35,8 +35,11 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorInfos.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/SimpleModifier.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SkipResult.h"
 #include "Aql/SortExecutor.h"
@@ -66,24 +69,42 @@ namespace aql {
  *   IdExecutor => SingleRowFetcher, passthrough
  *   SortExecutor => AllRowsFetcher;
  *   UnsortedGatherExecutor => MultiDependencySingleRowFetcher
- *   CountCollectExecutor => Reports even if no data is present, needs to handle this skip correctly.
- * TODO
+ *   CountCollectExecutor => Reports even if no data is present,
+ *                           needs to handle this skip correctly.
  *   Insert/Update => SideEffectExecutor
  */
 using ExecutorsToTest =
     ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
-                     SortExecutor, UnsortedGatherExecutor, CountCollectExecutor>;
+                     SortExecutor, UnsortedGatherExecutor, CountCollectExecutor,
+                     ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
 
 template <class ExecutorType>
 class AqlSharedExecutionBlockImplTest : public ::testing::Test {
  protected:
+  std::string const collectionName = "UnitTestCollection";
   mocks::MockAqlServer server{};
   ResourceMonitor monitor{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery{
+      server.createFakeQuery(false, "", [&](aql::Query& query) {
+        if constexpr (std::is_same_v<ExecutorType, ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>) {
+          // Create dummy collection
+          auto info = VPackParser::fromJson(R"({"name": ")" + collectionName + R"("})");
+          auto collection = server.getSystemDatabase().createCollection(info->slice());
+          //"Failed to create collection";
+          TRI_ASSERT(collection.get() != nullptr);
+          auto& collections = query.collections();
+          auto col = collections.add(collectionName, AccessMode::Type::WRITE,
+                                     Collection::Hint::Shard);
+          TRI_ASSERT(col != nullptr);  // failed to add collection
+        }
+      })};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
   // Used for AllRowsFetcherCases
   std::unique_ptr<AqlItemMatrix> _aqlItemBlockMatrix;
+
+  // Used only for InsertExecutor:
+  std::unique_ptr<aql::Collection> _aqlCollection;
 
   /**
    * @brief Creates and manages a ExecutionNode.
@@ -140,7 +161,10 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       std::vector<SortRegister> sortRegisters{};
       // We do not care for sorting, we skip anyways.
       sortRegisters.emplace_back(SortRegister{0, SortElement{nullptr, true}});
-      SortExecutorInfos execInfos{1, 1, {}, std::move(sortRegisters), 0, fakedQuery->itemBlockManager(), nullptr, true};
+      SortExecutorInfos execInfos{1,       1,
+                                  {},      std::move(sortRegisters),
+                                  0,       fakedQuery->itemBlockManager(),
+                                  nullptr, true};
       return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
                                               generateNodeDummy(),
                                               std::move(buildRegisterInfos(nestingLevel)),
@@ -160,6 +184,32 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                               std::move(buildRegisterInfos(nestingLevel)),
                                               std::move(execInfos)};
     }
+    if constexpr (std::is_same_v<ExecutorType, ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>) {
+      auto const& collections = fakedQuery->collections();
+      auto col = collections.get(collectionName);
+      TRI_ASSERT(col != nullptr);  // failed to add collection
+      OperationOptions opts{};
+      // NOTE: Somehow i am unable to
+      ModificationExecutorInfos execInfos{0,
+                                          RegisterPlan::MaxRegisterId,
+                                          RegisterPlan::MaxRegisterId,
+                                          0,
+                                          RegisterPlan::MaxRegisterId,
+                                          RegisterPlan::MaxRegisterId,
+                                          *fakedQuery.get(),
+                                          std::move(opts),
+                                          col,
+                                          ProducesResults(true),
+                                          ConsultAqlWriteFilter(false),
+                                          IgnoreErrors(false),
+                                          DoCount(false),
+                                          IsReplace(false),
+                                          IgnoreDocumentNotFound(false)};
+      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
+                                              generateNodeDummy(),
+                                              std::move(buildRegisterInfos(nestingLevel)),
+                                              std::move(execInfos)};
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -174,7 +224,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     auto prod = emptyProducer();
     testee.addDependency(&prod);
 
-
     SkipResult skip{};
     for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
       skip.incrementSubquery();
@@ -186,7 +235,8 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputMatrix>) {
       _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
       _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::DONE, _aqlItemBlockMatrix.get()};
+      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::DONE,
+                                                 _aqlItemBlockMatrix.get()};
       testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, MultiAqlItemBlockInputRange>) {
