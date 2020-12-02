@@ -42,7 +42,7 @@ class SupervisedScheduler final : public Scheduler {
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
-                      double inFlightMultiplier, double unavailabilityQueueFillGrade);
+                      double ongoingMultiplier, double unavailabilityQueueFillGrade);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
@@ -65,10 +65,10 @@ class SupervisedScheduler final : public Scheduler {
     // for example if a collection has many shards. Then we want to throttle
     // on the coordinator, if it has already so many things going on that
     // the dbservers could get too much. This is a heuristic here. We set
-    // the limit to the coordinator limit times the number of coordinators
-    // divided by the number of dbservers.
+    // the limit to the coordinator limit times the number of dbservers
+    // divided by the number of coordinators.
     _ongoingLowPrioLimitWithFanout 
-      = _ongoingLowPrioLimit * numberOfCoordinators / numberOfDBServers;
+      = _ongoingLowPrioLimit * numberOfDBServers / numberOfCoordinators;
   }
 
   constexpr static uint64_t const NumberOfQueues = 4;
@@ -160,7 +160,6 @@ class SupervisedScheduler final : public Scheduler {
 
   size_t const _minNumWorker;
   size_t const _maxNumWorker;
-  size_t const _maxInFlight;
   size_t const _ongoingLowPrioLimit;
   size_t _ongoingLowPrioLimitWithFanout;
   

@@ -147,7 +147,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize,
                                          uint64_t fifo1Size, uint64_t fifo2Size,
-                                         uint64_t fifo3Size, double inFlightMultiplier,
+                                         uint64_t fifo3Size, double ongoingMultiplier,
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _numWorkers(0),
@@ -161,11 +161,10 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _definitiveWakeupTime_ns(100000),
       _minNumWorker(minThreads),
       _maxNumWorker(maxThreads),
-      _maxInFlight(ServerState::instance()->isCoordinator() ? static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker) : std::numeric_limits<std::size_t>::max()),
       _ongoingLowPrioLimit(
-          static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker)),
+          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _ongoingLowPrioLimitWithFanout(
-          static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker)),
+          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
@@ -678,19 +677,6 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
                  
     return threadsWorking < limit;
   }
-
-#if 0
-  // For low priority we also throttle user jobs on the coordinator if we have
-  // too many requests in flight internally; If we aren't a coordinator, then
-  // _maxInFlight is just the max size_t
-  std::size_t const inFlight = this->inFlight();
-  std::size_t const flip = RandomGenerator::interval(0, _maxInFlight);
-  if ((inFlight > _maxInFlight) ||
-      ((_maxInFlight < std::numeric_limits<std::size_t>::max()) && (flip < inFlight))) {
-    LOG_DEVEL << "NO GOOD, " << inFlight << " inflight, flip " << flip << " vs. " << _maxInFlight << " max";
-    return false;
-  }
-#endif
 
   std::size_t const ongoing = _ongoingLowPrioGauge.load();
   std::size_t const ongoingWithFanout = _ongoingLowPrioGaugeWithFanout.load();

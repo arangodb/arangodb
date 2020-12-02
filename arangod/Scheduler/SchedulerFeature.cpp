@@ -107,9 +107,9 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
     // max / min number of threads
 
   // Concurrency throttling:
-  options->addOption("--server.in-flight-multiplier",
-                     std::string("controls the number of requests that can be in flight at a given point in time, relative to the number of request handling threads"),
-                     new DoubleParameter(&_inFlightMultiplier),
+  options->addOption("--server.ongoing-multiplier",
+                     std::string("controls the number of low prio requests that can be ongoing at a given point in time, relative to the maximum number of request handling threads"),
+                     new DoubleParameter(&_ongoingMultiplier),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic, arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size",
@@ -164,11 +164,11 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _nrMinimalThreads = 4;
   }
 
-  if (_inFlightMultiplier < 1.0) {
+  if (_ongoingMultiplier < 1.0) {
     LOG_TOPIC("0a93a", WARN, arangodb::Logger::THREADS)
-        << "--server.in-flight-multiplier (" << _inFlightMultiplier
+        << "--server.ongoing-multiplier (" << _ongoingMultiplier
         << ") is less than 1.0, setting to default (4.0)";
-    _inFlightMultiplier = 4.0;
+    _ongoingMultiplier = 4.0;
   }
   
   if (_nrMinimalThreads >= _nrMaximalThreads) {
@@ -214,7 +214,7 @@ void SchedulerFeature::prepare() {
 #endif
   auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
                                                      _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size, _fifo3Size,_inFlightMultiplier, _unavailabilityQueueFillGrade);
+                                                     _fifo1Size, _fifo2Size, _fifo3Size,_ongoingMultiplier, _unavailabilityQueueFillGrade);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
