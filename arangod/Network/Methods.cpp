@@ -178,18 +178,10 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
 
     FutureRes f = p->promise.getFuture();
     Scheduler* sch = SchedulerFeature::SCHEDULER;
-    bool markedInFlight = false;
-    if (sch) {
-      sch->increaseInFlight();
-      markedInFlight = true;
-    }
-    conn->sendRequest(std::move(req), [p(std::move(p)), markedInFlight](fuerte::Error err,
+    conn->sendRequest(std::move(req), [p(std::move(p))](fuerte::Error err,
                                                         std::unique_ptr<fuerte::Request> req,
                                                         std::unique_ptr<fuerte::Response> res) mutable {
       Scheduler* sch = SchedulerFeature::SCHEDULER;
-      if (markedInFlight && sch) {
-        sch->decreaseInFlight();
-      }
       if (p->skipScheduler || sch == nullptr) {
         p->promise.setValue(network::Response{std::move(p->dest), err,
                                               std::move(req), std::move(res)});
@@ -301,20 +293,12 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     auto conn = _pool->leaseConnection(spec.endpoint);
     Scheduler* sch = SchedulerFeature::SCHEDULER;
-    bool markedInFlight = false;
-    if (sch) {
-      sch->increaseInFlight();
-      markedInFlight = true;
-    }
     conn->sendRequest(std::move(_tmp_req),
-                      [self = shared_from_this(), markedInFlight](fuerte::Error err,
+                      [self = shared_from_this()](fuerte::Error err,
                                                   std::unique_ptr<fuerte::Request> req,
                                                   std::unique_ptr<fuerte::Response> res) {
                         
                         Scheduler* sch = SchedulerFeature::SCHEDULER;
-                        if (markedInFlight && sch) {
-                          sch->decreaseInFlight();
-                        }
                         self->_tmp_err = err;
                         self->_tmp_req = std::move(req);
                         self->_tmp_res = std::move(res);
