@@ -732,7 +732,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
