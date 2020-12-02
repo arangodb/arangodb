@@ -718,7 +718,7 @@ size_t IResearchViewMeta::memory() const {
 IResearchViewMetaState::Mask::Mask(bool mask /*=false*/) noexcept
     : _collections(mask) {}
 
-IResearchViewMetaState::IResearchViewMetaState() {}
+IResearchViewMetaState::IResearchViewMetaState() = default;
 
 IResearchViewMetaState::IResearchViewMetaState(IResearchViewMetaState const& defaults) {
   *this = defaults;

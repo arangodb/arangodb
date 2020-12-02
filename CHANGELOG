@@ -16,6 +16,14 @@ devel
   - `--arangosearch.threads`
   - `--arangosearch.threads-limit`
 
+* Avoid the usage of std::regex when construction date/time string values 
+  for log messages. This is a performance optimization only.
+
+* Reimplement coordshort request handler. The new implementation only runs
+  two DB queries without any additional requests to other coordinators,
+  resulting in reduced load on the cluster. Previously this involved
+  requests to all coordinators, where each of them ran two DB queries.
+
 * Fixed initial population of local AgencyCache values after a server restart.
   Previously the local cache was populated from the agency using a commit index
   value of 1, whereas it should have been 0 to get the full agency snapshot.
@@ -148,6 +156,8 @@ devel
 
 * Automatically add "www-authenticate" headers to server HTTP 401 responses,
   as required by the HTTP specification.
+
+* Fixed an AQL bug that ignored PRUNE statements in OneShard setups.
 
 * Make the DOCUMENT AQL function eligible for running on DB servers in
   OneShard deployment mode. This allows pushing more query parts to DB servers
@@ -363,6 +373,9 @@ devel
   Client applications and tests that rely on the behavior that setting
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
+
+* Added a --continue options to arango restore. arangorestore now keeps track of the progress
+  and can continue the restore operation when some error occured.
 
 * Added the following metrics for synchronous replication in the cluster:
 
