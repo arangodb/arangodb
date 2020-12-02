@@ -4597,6 +4597,25 @@ function testEasyPathAllCombinations(testGraph) {
   }
 }
 
+function testEasyPathPruning(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const vertices = ["A", "B", "C", "D", "E", "F"];
+  for (const pruneAt of vertices) {
+    const query = aql`
+        FOR v, e, p IN 2..5 OUTBOUND ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        PRUNE p.vertices[-1].key == ${pruneAt}
+        RETURN v.key
+      `;
+
+    const res = db._query(query);
+    const result = res.toArray();
+
+    const expectedLength = Math.max(vertices.indexOf(pruneAt) - 1, 0);
+    assertEqual(expectedLength, result.length, `Pruning at ${pruneAt} returned vertices ` + result.join(', ') +  ` idx = ${vertices.indexOf(pruneAt)}`);
+  }
+}
+
 function testEasyPathShortestPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const query = aql`
@@ -5566,6 +5585,7 @@ const testsByGraph = {
   },
   easyPath: {
     testEasyPathAllCombinations,
+    testEasyPathPruning,
     testEasyPathShortestPath,
     testEasyPathKPaths,
     testEasyPathShortestPathEnabledWeightCheck,

@@ -144,6 +144,11 @@ class ManagedDirectory {
 
     TRI_read_return_t offset() const;
 
+    /**
+     * @brief skips `count` bytes of uncompressed data.
+     */
+    void skip(size_t count);
+
    private:
     ManagedDirectory const& _directory;
     std::string _path;

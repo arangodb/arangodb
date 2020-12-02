@@ -21,6 +21,9 @@ devel
 
 * New metric for number and total time of replication operations.
 
+* Avoid the usage of std::regex when construction date/time string values 
+  for log messages. This is a performance optimization only.
+
 * Reimplement coordshort request handler. The new implementation only runs
   two DB queries without any additional requests to other coordinators,
   resulting in reduced load on the cluster. Previously this involved
@@ -158,6 +161,8 @@ devel
 
 * Automatically add "www-authenticate" headers to server HTTP 401 responses,
   as required by the HTTP specification.
+
+* Fixed an AQL bug that ignored PRUNE statements in OneShard setups.
 
 * Make the DOCUMENT AQL function eligible for running on DB servers in
   OneShard deployment mode. This allows pushing more query parts to DB servers
@@ -373,6 +378,9 @@ devel
   Client applications and tests that rely on the behavior that setting
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
+
+* Added a --continue options to arango restore. arangorestore now keeps track of the progress
+  and can continue the restore operation when some error occured.
 
 * Added the following metrics for synchronous replication in the cluster:
 
