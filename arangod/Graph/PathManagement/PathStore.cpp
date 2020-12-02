@@ -41,10 +41,12 @@ struct AqlValue;
 namespace graph {
 
 template <class Step>
-PathStore<Step>::PathStore() {
+PathStore<Step>::PathStore(arangodb::ResourceMonitor& resourceMonitor)
+    : _resourceMonitor(resourceMonitor) {
   // performance optimization: just reserve a little more as per default
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Initialization.";
   _schreier.reserve(32);
+  _resourceMonitor.increaseMemoryUsage(sizeof(_schreier));
 }
 
 template <class Step>
@@ -68,7 +70,7 @@ template <class Step>
 template <class ProviderType>
 void PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
   Step const* myStep = &vertex;
-  
+
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
@@ -101,7 +103,7 @@ void PathStore<Step>::reverseBuildPath(Step const& vertex,
 
   TRI_ASSERT(vertex.getEdge().isValid());
   path.appendEdge(vertex.getEdge());
-  
+
   Step const* myStep = &_schreier[vertex.getPrevious()];
 
   while (!myStep->isFirst()) {
@@ -109,7 +111,7 @@ void PathStore<Step>::reverseBuildPath(Step const& vertex,
 
     TRI_ASSERT(myStep->getEdge().isValid());
     path.appendEdge(myStep->getEdge());
-    
+
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }

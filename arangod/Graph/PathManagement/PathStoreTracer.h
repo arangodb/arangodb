@@ -30,6 +30,8 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/TypeAliases.h"
 
+#include "Basics/ResourceUsage.h"
+
 #include <unordered_map>
 #include <vector>
 
@@ -47,7 +49,7 @@ class PathStoreTracer {
   using Step = typename PathStoreImpl::Step;
 
  public:
-  PathStoreTracer();
+  explicit PathStoreTracer(arangodb::ResourceMonitor& resourceMonitor);
   ~PathStoreTracer();
 
   // @brief Method to verify whether path is needed

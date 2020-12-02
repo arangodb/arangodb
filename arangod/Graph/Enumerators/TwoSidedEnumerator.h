@@ -92,10 +92,11 @@ class TwoSidedEnumerator {
    private:
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
-    // This stores all paths processed by this ball
-    PathStoreType _interior{};
 
     arangodb::ResourceMonitor& _resourceMonitor;
+
+    // This stores all paths processed by this ball
+    PathStoreType _interior;
 
     // The next elements to process
     QueueType _queue;

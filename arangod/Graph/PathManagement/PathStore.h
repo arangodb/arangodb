@@ -26,6 +26,7 @@
 
 #include <queue>
 
+#include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
@@ -59,11 +60,13 @@ class PathStore {
   using Step = StepType;
 
  public:
-  PathStore();
+  explicit PathStore(arangodb::ResourceMonitor& resourceMonitor);
   ~PathStore() = default;
 
   /// @brief schreier vector to store the visited vertices
   std::vector<Step> _schreier;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   // @brief Method to verify whether path is needed
   bool testPath(Step);
@@ -78,10 +81,10 @@ class PathStore {
   // @brief returns the current vector size
   size_t size() const { return _schreier.size(); }
 
-  template<class ProviderType>
+  template <class ProviderType>
   void buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
-  
-  template<class ProviderType>
+
+  template <class ProviderType>
   void reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
 
   // TODO: to be defined - section idea: methods to convenient build paths for AQL

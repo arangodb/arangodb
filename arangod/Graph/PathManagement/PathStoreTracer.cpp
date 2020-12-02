@@ -35,7 +35,8 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class PathStoreImpl>
-PathStoreTracer<PathStoreImpl>::PathStoreTracer() : _impl{} {}
+PathStoreTracer<PathStoreImpl>::PathStoreTracer(arangodb::ResourceMonitor& resourceMonitor)
+    : _impl{resourceMonitor} {}
 
 template <class PathStoreImpl>
 PathStoreTracer<PathStoreImpl>::~PathStoreTracer() {
@@ -75,7 +76,8 @@ size_t PathStoreTracer<PathStoreImpl>::size() const {
 
 template <class PathStoreImpl>
 template <class ProviderType>
-void PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
+void PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex,
+                                               PathResult<ProviderType, Step>& path) const {
   double start = TRI_microtime();
   TRI_DEFER(_stats["buildPath"].addTiming(TRI_microtime() - start));
   return _impl.buildPath(vertex, path);
@@ -83,7 +85,8 @@ void PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex, PathResult<Pr
 
 template <class PathStoreImpl>
 template <class ProviderType>
-void PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
+void PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex,
+                                                      PathResult<ProviderType, Step>& path) const {
   double start = TRI_microtime();
   TRI_DEFER(_stats["reverseBuildPath"].addTiming(TRI_microtime() - start));
   return _impl.reverseBuildPath(vertex, path);

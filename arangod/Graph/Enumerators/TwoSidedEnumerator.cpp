@@ -51,6 +51,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(
     Direction dir, ProviderType&& provider, GraphOptions const& options,
     arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
+      _interior(resourceMonitor),
       _queue(resourceMonitor),
       _provider(std::move(provider)),
       _direction(dir),

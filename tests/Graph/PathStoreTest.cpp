@@ -71,22 +71,24 @@ class PathStoreTest : public ::testing::Test {
  protected:
   PathStoreTest() {}
   ~PathStoreTest() {}
+
+  arangodb::ResourceMonitor _resourceMonitor{};
 };
 
 TEST_F(PathStoreTest, it_should_be_empty_if_new_path_store_is_initialized) {
-  auto ps = PathStore<Step>();
+  auto ps = PathStore<Step>(_resourceMonitor);
   ASSERT_EQ(ps.size(), 0);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_set_startVertex) {
-  auto ps = PathStore<Step>();
+  auto ps = PathStore<Step>(_resourceMonitor);
   ASSERT_EQ(ps.size(), 0);
   std::ignore = ps.append({0, 1, 0, false});
   ASSERT_EQ(ps.size(), 1);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_clear) {
-  auto ps = PathStore<Step>();
+  auto ps = PathStore<Step>(_resourceMonitor);
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
@@ -100,7 +102,7 @@ TEST_F(PathStoreTest, it_should_be_able_to_clear) {
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {
-  auto ps = PathStore<Step>();
+  auto ps = PathStore<Step>(_resourceMonitor);
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
@@ -116,7 +118,7 @@ TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {
 }
 
 TEST_F(PathStoreTest, it_should_not_be_empty_if_values_will_be_inserted) {
-  auto ps = PathStore<Step>();
+  auto ps = PathStore<Step>(_resourceMonitor);
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
