@@ -201,7 +201,7 @@ auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange
     if (input) {
       consumeInputRow(input);
       // We need to retain this
-      _lastInitializedInputRow = input;
+      _lastInitializedInputRow = std::move(input);
     }
     if (state == ExecutorState::DONE) {
       // initialize group iterator for output
