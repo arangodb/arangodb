@@ -177,7 +177,6 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     auto p = std::make_shared<Pack>(std::move(dest), options.skipScheduler);
 
     FutureRes f = p->promise.getFuture();
-    Scheduler* sch = SchedulerFeature::SCHEDULER;
     conn->sendRequest(std::move(req), [p(std::move(p))](fuerte::Error err,
                                                         std::unique_ptr<fuerte::Request> req,
                                                         std::unique_ptr<fuerte::Response> res) mutable {
@@ -292,13 +291,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     _tmp_req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(t));
 
     auto conn = _pool->leaseConnection(spec.endpoint);
-    Scheduler* sch = SchedulerFeature::SCHEDULER;
     conn->sendRequest(std::move(_tmp_req),
                       [self = shared_from_this()](fuerte::Error err,
                                                   std::unique_ptr<fuerte::Request> req,
                                                   std::unique_ptr<fuerte::Response> res) {
                         
-                        Scheduler* sch = SchedulerFeature::SCHEDULER;
                         self->_tmp_err = err;
                         self->_tmp_req = std::move(req);
                         self->_tmp_res = std::move(res);
