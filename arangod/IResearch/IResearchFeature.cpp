@@ -675,8 +675,8 @@ class IResearchAsync{
   }
 
  private:
-  ThreadPool _0{0, 0, "ARS-0"};
-  ThreadPool _1{0, 0, "ARS-1"};
+  ThreadPool _0{0, 0, IR_NATIVE_STRING("ARS-0")};
+  ThreadPool _1{0, 0, IR_NATIVE_STRING("ARS-1")};
 }; // IResearchAsync
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
