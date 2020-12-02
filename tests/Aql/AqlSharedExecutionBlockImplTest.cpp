@@ -168,6 +168,20 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                          {{2, 0}, {4, 0}, {5, 0}, {6, 1}});
   }
 
+  /*
+   * Splits the given AqlItemBlock at the given position.
+   * The first return value is the part that is produced later in the query,
+   * the second return value is the part that is produced earlier in the query.
+   * So base := second :: first
+   * This way the first value has to be given to the dependency, second to current block
+   */
+  std::pair<SharedAqlItemBlockPtr, SharedAqlItemBlockPtr> splitBlock(SharedAqlItemBlockPtr base,
+                                                                     size_t splitAtRow) {
+    auto first = base->slice(0, splitAtRow);
+    auto second = base->slice(splitAtRow, base->numRows());
+    return {second, first};
+  }
+
   /**
    * @brief Creates Register Infos. As we do not actually test the Node, those
    * should be good for everything under test.
@@ -186,6 +200,14 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     return WaitingExecutionBlockMock{fakedQuery->rootEngine(), generateNodeDummy(),
                                      std::deque<SharedAqlItemBlockPtr>{},
                                      WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
+  }
+
+  auto leftoverProducer(size_t nestingLevel) -> ExecutionBlockImpl<FilterExecutor> {
+    FilterExecutorInfos execInfos{0};
+    return ExecutionBlockImpl<FilterExecutor>{fakedQuery->rootEngine(),
+                                              generateNodeDummy(),
+                                              std::move(buildRegisterInfos(nestingLevel)),
+                                              std::move(execInfos)};
   }
 
   auto buildExecBlock(size_t nestingLevel) -> ExecutionBlockImpl<ExecutorType> {
@@ -287,6 +309,73 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, MultiAqlItemBlockInputRange>) {
       MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, 1};
       AqlItemBlockInputRange tmpInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
+      fakedInternalRange.setDependency(0, tmpInternalRange);
+      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    }
+
+    auto [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    if (expectedResult == nullptr) {
+      EXPECT_EQ(block, nullptr);
+    } else {
+      asserthelper::ValidateBlocksAreEqual(block, expectedResult);
+    }
+    EXPECT_EQ(skipped, expectedSkip);
+
+    // NOTE all LeftOverBlockExperiments use 3 documents for the collection.
+    // If this ever changes this code needs to be adjusted or moved around
+    if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
+      std::shared_ptr<arangodb::LogicalCollection> col =
+          server.getSystemDatabase().lookupCollection(collectionName);
+      auto docs = col->numberDocuments(nullptr, transaction::CountType::Normal);
+      EXPECT_EQ(docs, 3) << "Not all Documents have been properly inserted";
+    }
+  }
+
+  auto runSplitLeftoverTest(ExecutionBlockImpl<ExecutorType>& testee,
+                            SharedAqlItemBlockPtr joinedLeftoverBlock,
+                            AqlCallStack stack, SkipResult expectedSkip, size_t splitAt,
+                            SharedAqlItemBlockPtr expectedResult = nullptr) -> void {
+    if constexpr (ExecutorType::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+      // Passthrough Blocks cannot leave this situation behind
+      return;
+    }
+
+    SkipResult skip{};
+    for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
+      skip.incrementSubquery();
+    }
+
+    auto start = emptyProducer();
+    // Let us place another leftover executor straight before our Executor under test.
+    auto [dependencyLeftover, leftoverBlock] = splitBlock(joinedLeftoverBlock, splitAt);
+    // We copy a skip of correct size here
+    auto prod = leftoverProducer(skip.subqueryDepth());
+    {
+      // Create the fake intenral state for leftoverProducer
+      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0,
+                                                dependencyLeftover, 0};
+      // We want to copy Skip here, we need it twice
+      prod.testInjectInputRange(std::move(fakedInternalRange), skip);
+    }
+
+    prod.addDependency(&start);
+    testee.addDependency(&prod);
+
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputRange>) {
+      AqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0, leftoverBlock, 0};
+      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    }
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputMatrix>) {
+      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
+      _aqlItemBlockMatrix->addBlock(leftoverBlock);
+      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::HASMORE,
+                                                 _aqlItemBlockMatrix.get()};
+      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    }
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, MultiAqlItemBlockInputRange>) {
+      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0, 1};
+      AqlItemBlockInputRange tmpInternalRange{ExecutorState::HASMORE, 0, leftoverBlock, 0};
       fakedInternalRange.setDependency(0, tmpInternalRange);
       testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
     }
@@ -499,6 +588,194 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_many_rows) {
   expectedSkip.incrementSubquery();
 
   this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip, expectedBlock);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_main_query_one_row_split) {
+  auto testee = this->buildExecBlock(1);
+
+  auto leftoverBlock = this->buildOneRowLeftoverBlock();
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = false;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{hardLimit}};
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_main_query_many_rows_split) {
+  auto testee = this->buildExecBlock(1);
+
+  auto leftoverBlock = this->buildManyRowsLeftoverBlock();
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = false;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{hardLimit}};
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_main_query_one_row_split) {
+  auto testee = this->buildExecBlock(1);
+
+  auto leftoverBlock = this->buildOneRowLeftoverBlock();
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = true;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{hardLimit}};
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.didSkip(1);
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_main_query_many_rows_split) {
+  auto testee = this->buildExecBlock(1);
+
+  auto leftoverBlock = this->buildManyRowsLeftoverBlock();
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = true;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{hardLimit}};
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.didSkip(3);
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_one_row_split) {
+  auto testee = this->buildExecBlock(2);
+
+  auto leftoverBlock = this->buildSubqueryOneRowLeftoverBlock();
+  auto expectedBlock =
+      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = false;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{call}};
+  stack.pushCall(AqlCallList{hardLimit});
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.incrementSubquery();
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_many_rows_split) {
+  auto testee = this->buildExecBlock(2);
+
+  auto leftoverBlock = this->buildSubqueryManyRowsLeftoverBlock();
+  auto expectedBlock =
+      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = false;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{call}};
+  stack.pushCall(AqlCallList{hardLimit});
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.incrementSubquery();
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_one_row_split) {
+  auto testee = this->buildExecBlock(2);
+
+  auto leftoverBlock = this->buildSubqueryOneRowLeftoverBlock();
+  auto expectedBlock =
+      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = true;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{call}};
+  stack.pushCall(AqlCallList{hardLimit});
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.incrementSubquery();
+  expectedSkip.didSkip(1);
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
+}
+
+TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_many_rows_split) {
+  auto testee = this->buildExecBlock(2);
+
+  auto leftoverBlock = this->buildSubqueryManyRowsLeftoverBlock();
+  auto expectedBlock =
+      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
+  // MainQuery does a hardLimit 0
+  AqlCall hardLimit{};
+  hardLimit.offset = 0;
+  hardLimit.hardLimit = 0u;
+  hardLimit.fullCount = true;
+  // Depth 1
+  AqlCall call{};
+
+  AqlCallStack stack{AqlCallList{call}};
+  stack.pushCall(AqlCallList{hardLimit});
+  stack.pushCall(AqlCallList{call, call});
+
+  SkipResult expectedSkip{};
+  expectedSkip.incrementSubquery();
+  expectedSkip.didSkip(3);
+  expectedSkip.incrementSubquery();
+
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
 }
 
 }  // namespace aql
