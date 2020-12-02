@@ -295,7 +295,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
                       [self = shared_from_this()](fuerte::Error err,
                                                   std::unique_ptr<fuerte::Request> req,
                                                   std::unique_ptr<fuerte::Response> res) {
-                        
                         self->_tmp_err = err;
                         self->_tmp_req = std::move(req);
                         self->_tmp_res = std::move(res);
