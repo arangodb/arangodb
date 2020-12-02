@@ -216,6 +216,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/QueueTest.cpp
+  Graph/SingleServerProviderTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
