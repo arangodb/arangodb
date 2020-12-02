@@ -216,7 +216,7 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsQueueFull;
   Gauge<uint64_t>& _ongoingLowPrioGauge;
   Gauge<uint64_t>& _ongoingLowPrioGaugeWithFanout;
-  std::array<Gauge<uint64_t>*, NumberOfQueues> _metricsQueueLengths;
+  Gauge<uint64_t>* _metricsQueueLengths[NumberOfQueues];
 };
 
 }  // namespace arangodb

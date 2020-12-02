@@ -204,7 +204,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
             "arangodb_scheduler_ongoing_low_prio_with_fanout", uint64_t(0),
             "This is the total number of ongoing RestHandlers coming from "
             "the low prio queue, in case of fanout counted with multiplicity.")),
-      _metricsQueueLengths({
+      _metricsQueueLengths{
           &_server.getFeature<arangodb::MetricsFeature>().gauge(
             "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
             "This is current queue length of the maintenance priority queue in "
@@ -220,7 +220,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           &_server.getFeature<arangodb::MetricsFeature>().gauge(
               "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
               "This is current queue length of the low priority queue in "
-              "the scheduler.")}) {
+              "the scheduler.")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -263,7 +263,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     return false;
   }
 
-  (*_metricsQueueLengths[queueNo]) += 1;
+  *(_metricsQueueLengths[queueNo]) += 1;
 
   // queue now has ownership for the WorkItem
   (void)work.release();  // intentionally ignore return value
@@ -698,7 +698,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
-        (*_metricsQueueLengths[i]) -= 1;
+        *(_metricsQueueLengths[i]) -= 1;
         return res;
       }
     }
