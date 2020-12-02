@@ -463,7 +463,7 @@ void QueryCacheDatabaseEntry::link(QueryCacheResultEntry* e) {
 }
 
 /// @brief create the query cache
-QueryCache::QueryCache() {}
+QueryCache::QueryCache() = default;
 
 /// @brief destroy the query cache
 QueryCache::~QueryCache() {
