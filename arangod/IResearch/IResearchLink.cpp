@@ -301,11 +301,6 @@ struct Task {
 ////////////////////////////////////////////////////////////////////////////////
 std::atomic<size_t> LinksCount{0};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief total number of active consolidations
-////////////////////////////////////////////////////////////////////////////////
-std::atomic<size_t> ConsolidationsCount{0};
-
 }  // namespace
 
 namespace arangodb {
@@ -380,6 +375,7 @@ void CommitTask::finalize(
 
 void CommitTask::operator()() {
   const char runId = 0;
+  --state->pendingCommits;
 
   if (link->terminationRequested()) {
     LOG_TOPIC("eba1a", DEBUG, iresearch::TOPIC)
@@ -396,6 +392,7 @@ void CommitTask::operator()() {
         << "', runId '" << size_t(&runId) << "'";
 
     // blindly reschedule commit task
+    ++state->pendingCommits;
     schedule(commitIntervalMsec);
     return;
   }
@@ -413,8 +410,6 @@ void CommitTask::operator()() {
   auto reschedule = scopeGuard([&code, link, this](){
     finalize(link, code);
   });
-
-  --state->pendingCommits;
 
   // reload RuntimeState
   {
@@ -504,6 +499,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 
 void ConsolidationTask::operator()() {
   const char runId = 0;
+  --state->pendingConsolidations;
 
   if (link->terminationRequested()) {
     LOG_TOPIC("eba2a", DEBUG, iresearch::TOPIC)
@@ -520,6 +516,7 @@ void ConsolidationTask::operator()() {
         << "', run id '" << size_t(&runId) << "'";
 
     // blindly reschedule consolidation task
+    ++state->pendingConsolidations;
     schedule(consolidationIntervalMsec);
     return;
   }
@@ -535,7 +532,6 @@ void ConsolidationTask::operator()() {
   auto reschedule = scopeGuard([this](){
     for (auto count = state->pendingConsolidations.load(); count < 1; ) {
       if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
-        ++ConsolidationsCount;
         schedule(consolidationIntervalMsec);
         break;
       }
@@ -559,8 +555,6 @@ void ConsolidationTask::operator()() {
   if (std::chrono::milliseconds::zero() == consolidationIntervalMsec // disabled via interval
       || !consolidationPolicy.policy()) { // disabled via policy
     reschedule.cancel();
-    --state->pendingConsolidations;
-    --ConsolidationsCount;
 
     LOG_TOPIC("eba3a", DEBUG, iresearch::TOPIC)
         << "consolidation is disabled for the link '" << id
@@ -573,10 +567,8 @@ void ConsolidationTask::operator()() {
 
   if (state->noopCommitCount < MAX_NOOP_COMMITS &&
       state->noopConsolidationCount < MAX_NOOP_CONSOLIDATIONS) {
+    ++state->pendingConsolidations;
     schedule(consolidationIntervalMsec);
-  } else {
-    --state->pendingConsolidations;
-    --ConsolidationsCount;
   }
 
   TRI_IF_FAILURE("IResearchConsolidationTask::consolidateUnsafe") {
