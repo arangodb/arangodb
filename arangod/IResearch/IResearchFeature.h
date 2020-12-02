@@ -106,12 +106,12 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   std::shared_ptr<State> _startState;
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
-  size_t _consolidationThreads;
-  size_t _consolidationThreadsIdle;
-  size_t _commitThreads;
-  size_t _commitThreadsIdle;
-  uint64_t _threads;
-  uint64_t _threadsLimit;
+  uint32_t _consolidationThreads;
+  uint32_t _consolidationThreadsIdle;
+  uint32_t _commitThreads;
+  uint32_t _commitThreadsIdle;
+  uint32_t _threads;
+  uint32_t _threadsLimit;
   std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
 };
 

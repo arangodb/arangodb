@@ -276,22 +276,22 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 };  // IResearchLogTopic
 
-size_t computeIdleThreadsCount(size_t idleThreads, size_t threads) noexcept {
+uint32_t computeIdleThreadsCount(uint32_t idleThreads, uint32_t threads) noexcept {
   if (0 == idleThreads) {
-    return std::max(threads/2, size_t(1));
+    return std::max(threads/2, 1U);
   } else {
     return std::min(idleThreads, threads);
   }
 }
 
-size_t computeThreadsCount(size_t threads, size_t threadsLimit, size_t div) noexcept {
+size_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit, uint32_t div) noexcept {
   TRI_ASSERT(div);
-  constexpr size_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
-  constexpr size_t MIN_THREADS = 1;  // at least one thread is required
+  constexpr uint32_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
+  constexpr uint32_t MIN_THREADS = 1;  // at least one thread is required
 
   return std::max(MIN_THREADS,
                   std::min(threadsLimit ? threadsLimit : MAX_THREADS,
-                           threads ? threads : arangodb::NumberOfCores::getValue() / div));
+                           threads ? threads : uint32_t(arangodb::NumberOfCores::getValue()) / div));
 }
 
 bool upgradeSingleServerArangoSearchView0_1(
@@ -724,32 +724,32 @@ void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::Program
   options->addOption(THREADS_PARAM,
                      "the exact number of threads to use for asynchronous "
                      "tasks (0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_threads))
+                     new options::UInt32Parameter(&_threads))
                      .setDeprecatedIn(30800);
   options->addOption(THREADS_LIMIT_PARAM,
                      "upper limit to the autodetected number of threads to use "
                      "for asynchronous tasks (0 == use default)",
-                     new arangodb::options::UInt64Parameter(&_threadsLimit))
+                     new options::UInt32Parameter(&_threadsLimit))
                      .setDeprecatedIn(30800);
   options->addOption(CONSOLIDATION_THREADS_PARAM,
                      "upper limit to the allowed number of consolidation threads "
                      "(0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_consolidationThreads))
+                     new options::UInt32Parameter(&_consolidationThreads))
                      .setIntroducedIn(30760);
   options->addOption(CONSOLIDATION_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for consolidation tasks (0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_consolidationThreadsIdle))
+                     new options::UInt32Parameter(&_consolidationThreadsIdle))
                      .setIntroducedIn(30760);
   options->addOption(COMMIT_THREADS_PARAM,
                      "upper limit to the allowed number of commit threads "
                      "(0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_commitThreads))
+                     new options::UInt32Parameter(&_commitThreads))
                      .setIntroducedIn(30760);
   options->addOption(COMMIT_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for commit tasks (0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_commitThreadsIdle))
+                     new options::UInt32Parameter(&_commitThreadsIdle))
                      .setIntroducedIn(30760);
 }
 
@@ -762,15 +762,16 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   bool const consolidationThreadsSet = args.touched(CONSOLIDATION_THREADS_PARAM);
   bool const consolidationThreadsIdleSet = args.touched(CONSOLIDATION_THREADS_IDLE_PARAM);
 
+  uint32_t threadsLimit = static_cast<uint32_t>(4*arangodb::NumberOfCores::getValue());
+
   if ((threadsLimitSet || threadsSet) &&
       !commitThreadsSet && !consolidationThreadsSet) {
     // backwards compatibility
-    size_t const threadsLimit = std::min(4*arangodb::NumberOfCores::getValue(), _threadsLimit);
-    size_t const threads      = computeThreadsCount(_threads, threadsLimit, 4);
-    _commitThreads            = std::max(threads/2, size_t(1));
+    threadsLimit              = std::min(threadsLimit, _threadsLimit);
+    uint32_t const threads    = computeThreadsCount(_threads, threadsLimit, 4);
+    _commitThreads            = std::max(threads/2, 1U);
     _consolidationThreads     = _commitThreads;
   } else {
-    size_t const threadsLimit = 4*arangodb::NumberOfCores::getValue();
     _commitThreads            = computeThreadsCount(_commitThreads, threadsLimit, 6);
     _consolidationThreads     = computeThreadsCount(_consolidationThreads, threadsLimit, 6);
   }
