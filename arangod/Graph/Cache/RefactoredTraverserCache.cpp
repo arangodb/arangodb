@@ -47,9 +47,11 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Methods* trx,
-                                                   aql::QueryContext* query)
+                                                   aql::QueryContext* query,
+                                                   arangodb::ResourceMonitor& resourceMonitor)
     : _query(query),
       _trx(trx),
+      _resourceMonitor(&resourceMonitor),
       _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(4096) /* arbitrary block-size may be adjusted for performance */
@@ -86,7 +88,8 @@ VPackSlice RefactoredTraverserCache::lookupToken(EdgeDocumentToken const& idToke
   return VPackSlice(_mmdr.vpack());
 }
 
-VPackSlice RefactoredTraverserCache::lookupVertexInCollection(arangodb::velocypack::HashedStringRef const& idHashed) {
+VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
+    arangodb::velocypack::HashedStringRef const& idHashed) {
   // TODO: Missing produceVertices check
   /*if (!_baseOptions->produceVertices()) {
     // this traversal does not produce any vertices
@@ -169,7 +172,8 @@ aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken con
 }
 
 aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
-  arangodb::velocypack::HashedStringRef hashedId{idString.begin(), static_cast<uint32_t>(idString.length())};
+  arangodb::velocypack::HashedStringRef hashedId{idString.begin(),
+                                                 static_cast<uint32_t>(idString.length())};
   return aql::AqlValue(lookupVertexInCollection(hashedId));
 }
 

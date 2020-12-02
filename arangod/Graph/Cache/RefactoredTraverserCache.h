@@ -25,6 +25,7 @@
 #define ARANGOD_GRAPH_CACHE_REFACTORED_TRAVERSER_CACHE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -62,7 +63,8 @@ struct EdgeDocumentToken;
 class RefactoredTraverserCache {
  public:
   explicit RefactoredTraverserCache(arangodb::transaction::Methods* trx,
-                                    aql::QueryContext* query);
+                                    aql::QueryContext* query,
+                                    arangodb::ResourceMonitor& resourceMonitor);
   ~RefactoredTraverserCache() = default;
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -78,8 +80,7 @@ class RefactoredTraverserCache {
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
   //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
-                                    velocypack::Builder& builder);
+  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn, velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
@@ -150,6 +151,11 @@ class RefactoredTraverserCache {
   /// @brief Transaction to access data, This class is NOT responsible for it.
   //////////////////////////////////////////////////////////////////////////////
   arangodb::transaction::Methods* _trx;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ResourceMonitor to track memory usage.
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::ResourceMonitor* _resourceMonitor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Documents inserted in this cache

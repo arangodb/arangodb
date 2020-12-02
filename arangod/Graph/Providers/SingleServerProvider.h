@@ -163,11 +163,13 @@ struct SingleServerProvider {
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
 
   arangodb::aql::QueryContext* _query;
+
+  arangodb::ResourceMonitor* _resourceMonitor;
+
   // We DO take responsibility for the Cache (TODO?)
   RefactoredTraverserCache _cache;
 
   BaseProviderOptions _opts;
-  arangodb::ResourceMonitor* _resourceMonitor;
 };
 }  // namespace graph
 }  // namespace arangodb
