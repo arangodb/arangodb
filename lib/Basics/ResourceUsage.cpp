@@ -22,12 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/ResourceUsage.h"
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 
 ResourceMonitor::~ResourceMonitor() {
   // this can be enabled for debugging. not necessary in production as no
   // assertions are enabled.
-  // TRI_ASSERT(currentResources.memoryUsage == 0);
+  TRI_ASSERT(currentResources.memoryUsage == 0);
 }

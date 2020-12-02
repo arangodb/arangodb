@@ -370,6 +370,9 @@ class Query {
   /// @brief the currently used V8 context
   V8Context* _context;
 
+  /// @brief total memory used for building the (partial) result
+  size_t _resultMemoryUsage;
+
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 

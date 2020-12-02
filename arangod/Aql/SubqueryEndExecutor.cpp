@@ -26,6 +26,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 
 #include <velocypack/Builder.h>
@@ -43,11 +44,14 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
+    velocypack::Options const* const options, 
+    arangodb::ResourceMonitor* resourceMonitor,
+    RegisterId inReg, RegisterId outReg)
     : ExecutorInfos(std::move(readableInputRegisters),
                     std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _vpackOptions(options),
+      _resourceMonitor(resourceMonitor),
       _outReg(outReg),
       _inReg(inReg) {}
 
@@ -69,8 +73,12 @@ RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept {
   return _inReg;
 }
 
+arangodb::ResourceMonitor* SubqueryEndExecutorInfos::getResourceMonitor() const noexcept {
+  return _resourceMonitor;
+}
+
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
-    : _fetcher(fetcher), _infos(infos), _accumulator(_infos.vpackOptions()) {}
+    : _fetcher(fetcher), _infos(infos), _accumulator(_infos.getResourceMonitor(), _infos.vpackOptions()) {}
 
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
@@ -164,20 +172,50 @@ void SubqueryEndExecutor::Accumulator::reset() {
   } else {
     _builder->clear();
   }
+  if (_memoryUsage > 0) {
+    _resourceMonitor->decreaseMemoryUsage(_memoryUsage);
+    _memoryUsage = 0;
+  }
   TRI_ASSERT(_builder != nullptr);
   _builder->openArray();
   _numValues = 0;
 }
 
 void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
+  size_t previousLength = _builder->bufferRef().byteSize();
+
   TRI_ASSERT(_builder->isOpenArray());
   value.toVelocyPack(_options, *_builder, false);
   ++_numValues;
+
+  size_t currentLength = _builder->bufferRef().byteSize();
+  TRI_ASSERT(currentLength >= previousLength);
+  
+  // per-item overhead (this is because we have to account for the index
+  // table entries as well, which are only added later in VelocyPack when
+  // the array is closed). this is approximately only, but that should be
+  // ok here.
+  size_t entryOverhead;
+  if (_memoryUsage > 65535) {
+    entryOverhead = 4;
+  } else if (_memoryUsage > 255) {
+    entryOverhead = 2;
+  } else {
+    entryOverhead = 1;
+  }
+  size_t diff = currentLength - previousLength + entryOverhead;
+  _resourceMonitor->increaseMemoryUsage(diff);
+  _memoryUsage += diff;
 }
 
-SubqueryEndExecutor::Accumulator::Accumulator(VPackOptions const* const options)
-    : _options(options) {
+SubqueryEndExecutor::Accumulator::Accumulator(arangodb::ResourceMonitor* resourceMonitor, 
+                                              VPackOptions const* const options)
+    : _resourceMonitor(resourceMonitor), _options(options) {
   reset();
+}
+
+SubqueryEndExecutor::Accumulator::~Accumulator() {
+  _resourceMonitor->decreaseMemoryUsage(_memoryUsage);
 }
 
 AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
