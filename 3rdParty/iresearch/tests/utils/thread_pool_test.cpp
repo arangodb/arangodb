@@ -25,7 +25,7 @@
 #include <condition_variable>
 #include <mutex>
 
-#include "gtest/gtest.h"
+#include "tests_shared.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/misc.hpp"
 
@@ -103,7 +103,7 @@ TEST(thread_pool_test, test_run_3tasks_parallel_mt) {
 
 TEST(thread_pool_test, test_run_1task_excpetion_1task_mt) {
   // test schedule 1 task exception + 1 task
-  irs::async_utils::thread_pool pool(1, 0, "foo");
+  irs::async_utils::thread_pool pool(1, 0, IR_NATIVE_STRING("foo"));
   std::condition_variable cond;
   notifying_counter count(cond, 2);
   std::mutex mutex;
@@ -716,9 +716,9 @@ TEST(thread_pool_test, test_stop_signle_threads_mt) {
 #if (defined(__linux__) || defined(__APPLE__) || (defined(_WIN32) && (_WIN32_WINNT >= _WIN32_WINNT_WIN10)))
 TEST(thread_pool_test, test_check_name_mt) {
   // test stop with a single thread will stop threads
-  const thread_name_t expected_name = "foo";
+  const thread_name_t expected_name = IR_NATIVE_STRING("foo");
   std::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
-  irs::async_utils::thread_pool pool(1, 1, "foo");
+  irs::async_utils::thread_pool pool(1, 1, IR_NATIVE_STRING("foo"));
 
   ASSERT_TRUE(pool.run([expected_name, &actual_name]()->void{
     EXPECT_TRUE(irs::set_thread_name(expected_name));

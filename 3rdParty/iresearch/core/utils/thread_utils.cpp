@@ -51,16 +51,22 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& na
 
 #elif defined(_WIN32) && (_WIN32_WINNT >= _WIN32_WINNT_WIN10)
 
-#include <processthreadsapi.h>
+#include <windows.h>
 
 namespace iresearch {
+
+struct local_deleter {
+  void operator()(void* p) const noexcept {
+    LocalFree(p);
+  }
+};
 
 bool set_thread_name(const thread_name_t name) noexcept {
   return SUCCEEDED(SetThreadDescription(GetCurrentThread(), name));
 }
 
 bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
-  std::unique_ptr<void*, ::LocalFree> guard;
+  std::unique_ptr<void, local_deleter> guard;
   thread_name_t tmp;
   auto const res = GetThreadDescription(GetCurrentThread(), &tmp);
   guard.reset(tmp);

@@ -32,6 +32,12 @@
 
 #include "utils/utf8_path.hpp"
 
+#if defined(_WIN32) && defined(UNICODE)
+  #define IR_NATIVE_STRING(s) L##s
+#else
+  #define IR_NATIVE_STRING(s) s
+#endif
+
 namespace cmdline {
 class parser;
 } // cmdline

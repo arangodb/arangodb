@@ -25,7 +25,7 @@
 #include <condition_variable>
 #include <mutex>
 
-#include "gtest/gtest.h"
+#include "tests_shared.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/thread_utils.hpp"
 
@@ -418,7 +418,7 @@ TEST_F(async_utils_tests, test_thread_pool_run_mt) {
 
   // test schedule 1 task exception + 1 task
   {
-    irs::async_utils::thread_pool pool(1, 0, "foo");
+    irs::async_utils::thread_pool pool(1, 0, IR_NATIVE_STRING("foo"));
     std::condition_variable cond;
     notifying_counter count(cond, 2);
     std::mutex mutex;
@@ -593,7 +593,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
     }
     {
       const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
-      while (pool.tasks_active()) {
+      while (pool.tasks_active() || pool.threads() ) {
         std::this_thread::sleep_for(100ms);
         ASSERT_LE(std::chrono::steady_clock::now(), end);
       }
@@ -764,7 +764,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 }
 
 TEST(thread_utils_test, get_set_name) {
-  const thread_name_t expected_name = "foo";
+  const thread_name_t expected_name = IR_NATIVE_STRING("foo");
 #if (defined(__linux__) || defined(__APPLE__) || (defined(_WIN32) && (_WIN32_WINNT >= _WIN32_WINNT_WIN10)))
   std::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
 
