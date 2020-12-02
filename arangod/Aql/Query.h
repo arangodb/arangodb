@@ -34,7 +34,6 @@
 #include "Aql/QueryString.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
-#include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "V8Server/V8Context.h"
 #include "Cluster/ClusterTypes.h"
@@ -286,9 +285,12 @@ class Query : public QueryContext {
   /// only populated when the query has generated its result(s) and before
   /// storing the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
-  
+
   /// @brief query start time (steady clock value)
   double const _startTime;
+  
+  /// @brief total memory used for building the (partial) result
+  size_t _resultMemoryUsage;
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
