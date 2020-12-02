@@ -1199,9 +1199,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         TRI_ASSERT(shadowCall.getOffset() == 0);
         auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
         if (shadowCall.needsFullCount()) {
-          shadowCall.didSkip(1);
-          shadowCall.resetSkipCount();
-          _skipped.didSkipSubquery(skipped, depthToSkip);
+          if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+            _rowFetcher.reportSubqueryFullCounts(depthToSkip, skipped);
+            // We need to report exactly one of those values to the _skipped container
+            // If we need help from upstream, they report it via `execute` API.
+            auto reportedSkip = std::min_element(std::begin(skipped), std::end(skipped));
+            _skipped.didSkipSubquery(*reportedSkip, depthToSkip);
+          } else {
+            _skipped.didSkipSubquery(skipped, depthToSkip);
+          }
         }
         if (_lastRange.hasShadowRow()) {
           // Need to handle ShadowRow next
@@ -1209,7 +1215,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         } else {
           _execState = ExecState::CHECKCALL;
         }
-        // Reset Executor && Fastforward to ShadowRow to skip
+        // We need to reset local executor state.
+        resetExecutor();
       }
     }
   }
@@ -1861,6 +1868,13 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range, SkipRes
   }
   _lastRange = std::move(range);
   _skipped = skipped;
+  if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>) {
+    // Make sure we have initialized the Fetcher / Dependencides properly
+    initOnce();
+    // Now we need to initialize the SkipCounts, to simulate that something
+    // was skipped.
+    _rowFetcher.initialize(skipped.subqueryDepth());
+  }
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

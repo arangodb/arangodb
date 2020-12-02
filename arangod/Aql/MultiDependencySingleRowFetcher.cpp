@@ -79,6 +79,13 @@ auto MultiDependencySingleRowFetcher::UpstreamSkipReport::setFullCount(size_t su
   _report[subqueryDepth].second = skipped;
 }
 
+auto MultiDependencySingleRowFetcher::UpstreamSkipReport::incFullCount(size_t subqueryDepth,
+                                                                       size_t skipped)
+    -> void {
+  TRI_ASSERT(subqueryDepth < _report.size());
+  _report[subqueryDepth].second += skipped;
+}
+
 MultiDependencySingleRowFetcher::DependencyInfo::DependencyInfo()
     : _upstreamState{ExecutionState::HASMORE}, _currentBlock{nullptr}, _rowIndex{0} {}
 
@@ -158,12 +165,9 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
                                               AqlCallSet const& aqlCallSet)
     -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
   TRI_ASSERT(_callsInFlight.size() == numberDependencies());
-  if (!_maximumSkipReport.isInitialized()) {
+   if (!_maximumSkipReport.isInitialized()) {
     size_t levels = stack.subqueryLevel();
-    _maximumSkipReport.initialize(levels);
-    for (auto& depRep : _dependencySkipReports) {
-      depRep.initialize(levels);
-    }
+    initializeReports(levels);
   }
 
   auto ranges = std::vector<std::pair<size_t, AqlItemBlockInputRange>>{};
@@ -289,6 +293,12 @@ auto MultiDependencySingleRowFetcher::resetDidReturnSubquerySkips(size_t shadowR
     rep.clearCounts(shadowRowDepth);
   }
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+auto MultiDependencySingleRowFetcher::initialize(size_t subqueryDepth) -> void {
+  initializeReports(subqueryDepth);
+}
+#endif
 
 AqlCallStack MultiDependencySingleRowFetcher::adjustStackWithSkipReport(
     AqlCallStack const& callStack, const size_t dependency) {
@@ -433,5 +443,38 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
                                   })
                      ->getFullCount(reportLevel));
     }
+  }
+}
+
+void MultiDependencySingleRowFetcher::reportSubqueryFullCounts(
+    size_t subqueryDepth, std::vector<size_t> const& skippedInDependency) {
+  // We need to have exactly one value per dependency
+  TRI_ASSERT(skippedInDependency.size() == _dependencySkipReports.size());
+  for (size_t dependency = 0; dependency < skippedInDependency.size(); ++dependency) {
+    auto& branchReport = _dependencySkipReports[dependency];
+    branchReport.incFullCount(subqueryDepth, skippedInDependency[dependency]);
+    auto const& newFC = branchReport.getFullCount(subqueryDepth);
+    if (newFC > _maximumSkipReport.getFullCount(subqueryDepth)) {
+      _maximumSkipReport.setFullCount(subqueryDepth, newFC);
+    }
+  }
+
+  // This code can only run AFTER the skip has already been consumed, otherwise the caling SubqueryEnd cannot take the decission to
+  // revert to a hardLimit/fullCount without having the former limit fulfilled.
+  // _maximumReport needs to contain maximum values
+  TRI_ASSERT(_maximumSkipReport.getFullCount(subqueryDepth) ==
+             std::max_element(_dependencySkipReports.begin(),
+                              _dependencySkipReports.end(),
+                              [subqueryDepth](auto const& a, auto const& b) -> bool {
+                                return a.getFullCount(subqueryDepth) <
+                                       b.getFullCount(subqueryDepth);
+                              })
+                 ->getFullCount(subqueryDepth));
+}
+
+void MultiDependencySingleRowFetcher::initializeReports(size_t subqueryDepth) {
+  _maximumSkipReport.initialize(subqueryDepth);
+  for (auto& depRep : _dependencySkipReports) {
+    depRep.initialize(subqueryDepth);
   }
 }
