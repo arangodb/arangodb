@@ -662,7 +662,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   uint64_t threadsWorking = jobsDequeued - jobsDone;
 
   if (queueIndex == 1) {
-    // We can work on med if less than 87.5% of the workers are busy
+    // We can work on high if less than 87.5% of the workers are busy
     size_t limit =   (_maxNumWorker >= 8)
                    ? (_maxNumWorker * 7 / 8)
                    : _maxNumWorker - 1;
