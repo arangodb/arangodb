@@ -1,3 +1,10 @@
+v3.7.6 (XXXX-XX-XX)
+-------------------
+
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
+
+
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
