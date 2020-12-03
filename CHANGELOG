@@ -1,6 +1,11 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Fixed bug with ArangoSearch views on SmartGraph edge collections which could
+  contain some documents twice.
+  This change removes `_to_*` local auxiliary link creation and existence within
+  a view linked with a SmartGraph edge collection.
+
 * Added startup option `--foxx.force-update-on-startup` to toggle waiting for
   all Foxx services in all databases to be propagated to a coordinator before it
   completes the boot sequence.
@@ -64,9 +69,6 @@ v3.6.10 (XXXX-XX-XX)
 
   All the above APIs were intended to be used for internal means only. These
   APIs are deprecated now and will be removed in ArangoDB v3.9.
-
-* Views on SmartGraph Edge collections do not contain some documents
-  twice.
 
 * Added arangobench options:
   `--create-database` to create the test database on start
