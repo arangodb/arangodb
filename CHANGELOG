@@ -1,7 +1,13 @@
 devel
 -----
 
-* Avoid the usage of std::regex when construction date/time string values 
+* Turn off `StatisticsWorker` thread on DB servers. 
+  This thread was previously only running queries on the local RocksDB 
+  instance, but using the cluster-wide collection names. So effectively it 
+  did nothing except use a bit of background CPU. In this case it is better 
+  to turn off the background thread entirely on the DB servers.
+
+* Avoid the usage of std::regex when constructing date/time string values 
   for log messages. This is a performance optimization only.
 
 * Reimplement coordshort request handler. The new implementation only runs
