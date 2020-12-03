@@ -104,8 +104,8 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   /// is used)
   Counter& _forwardedRequests;
 
-  std::size_t _maxInFlight;
-  Gauge<std::size_t>& _requestsInFlight;
+  std::uint64_t _maxInFlight;
+  Gauge<std::uint64_t>& _requestsInFlight;
 
   Counter& _requestTimeouts;
   Histogram<fixed_scale_t<double>>& _requestDurations;

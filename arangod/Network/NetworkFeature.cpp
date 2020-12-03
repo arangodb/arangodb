@@ -91,7 +91,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
           "arangodb_network_forwarded_requests", 0,
           "Number of requests forwarded to another coordinator")),
       _maxInFlight(::MaxAllowedInFlight),
-      _requestsInFlight(server.getFeature<arangodb::MetricsFeature>().gauge<std::size_t>(
+      _requestsInFlight(server.getFeature<arangodb::MetricsFeature>().gauge<std::uint64_t>(
           "arangodb_network_requests_in_flight", 0,
           "Number of outgoing internal requests in flight")),
       _requestTimeouts(server.getFeature<arangodb::MetricsFeature>().counter(
