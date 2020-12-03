@@ -142,7 +142,6 @@ class fs_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -205,7 +204,6 @@ class fs_index_output : public buffered_index_output {
         std::move(handle),
         buf_size);
     } catch(...) {
-      IR_LOG_EXCEPTION();
     }
 
     return nullptr;
@@ -327,7 +325,6 @@ class fs_index_input : public buffered_index_input {
         buf_size,
         pool_size));
     } catch(...) {
-      IR_LOG_EXCEPTION();
     }
 
     return nullptr;
@@ -533,7 +530,6 @@ index_output::ptr fs_directory::create(const std::string& name) noexcept {
 
     return out;
   } catch(...) {
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -573,7 +569,6 @@ bool fs_directory::remove(const std::string& name) noexcept {
 
     return path.remove();
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -591,7 +586,6 @@ index_input::ptr fs_directory::open(
 
     return fs_index_input::open(path.c_str(), pool_size, advice);
   } catch(...) {
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -609,7 +603,6 @@ bool fs_directory::rename(
 
     return src_path.rename(dst_path);
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -661,7 +654,7 @@ bool fs_directory::sync(const std::string& name) noexcept {
 
     IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.utf8().c_str());
   } catch (...) {
-    IR_LOG_EXCEPTION();
+    IR_FRMT_ERROR("Failed to sync file, name : %s", name.c_str());
   }
 
   return false;

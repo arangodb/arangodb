@@ -1305,11 +1305,11 @@ class block_disjunction final
 
         if constexpr (traits_type::score()) {
           if (!it.score->is_default()) {
-            return refill<true>(it, empty);
+            return this->refill<true>(it, empty);
           }
         }
 
-        return refill<false>(it, empty);
+        return this->refill<false>(it, empty);
       });
     } while (empty && !itrs_.empty());
 

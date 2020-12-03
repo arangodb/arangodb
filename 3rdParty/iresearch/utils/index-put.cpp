@@ -389,7 +389,7 @@ int put(
     std::vector<std::string> buf_;
 
     bool swap(std::vector<std::string>& buf) {
-      SCOPED_LOCK_NAMED(mutex_, lock);
+      auto lock = irs::make_unique_lock(mutex_);
 
       for (;;) {
         buf_.swap(buf);
@@ -419,7 +419,7 @@ int put(
   // stream reader thread
   thread_pool.run([&batch_provider, lines_max, batch_size, &stream]()->void {
     SCOPED_TIMER("Stream read total time");
-    SCOPED_LOCK_NAMED(batch_provider.mutex_, lock);
+    auto lock = irs::make_unique_lock(batch_provider.mutex_);
 
     for (auto i = lines_max ? lines_max : (std::numeric_limits<size_t>::max)(); i; --i) {
       batch_provider.buf_.resize(batch_provider.buf_.size() + 1);
@@ -457,7 +457,7 @@ int put(
 
         // notify consolidation threads
         if (consolidation_threads) {
-          SCOPED_LOCK(consolidation_mutex);
+          auto lock = irs::make_unique_lock(consolidation_mutex);
           consolidation_cv.notify_all();
         }
 
@@ -474,7 +474,7 @@ int put(
     thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, &writer]()->void {
       while (!batch_provider.done_.load()) {
         {
-          SCOPED_LOCK_NAMED(consolidation_mutex, lock);
+          auto lock = irs::make_unique_lock(consolidation_mutex);
           if (std::cv_status::timeout ==
               consolidation_cv.wait_for(lock, std::chrono::seconds(5))) {
             continue;
