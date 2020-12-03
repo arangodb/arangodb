@@ -435,7 +435,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       }
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                        std::string("transaction ID '") + std::to_string(tid) +
-                           "' already used (while creating)");
+                           " already used (while creating)");
     }
   }
 

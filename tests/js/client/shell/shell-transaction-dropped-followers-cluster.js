@@ -68,7 +68,7 @@ function getEndpointsByType(type) {
                               .map(toEndpoint)
                               .map(endpointToURL);
 }
-  
+
 function getMetric(endpoint, name) {
   let res = request.get({
     url: endpoint + '/_admin/metrics',
@@ -88,28 +88,26 @@ function transactionDroppedFollowersSuite() {
   return {
 
     setUp: function () {
-      db._drop(cn + "1");
-      db._drop(cn + "2");
+      db._drop(cn);
     },
 
     tearDown: function () {
-      db._drop(cn + "1");
-      db._drop(cn + "2");
+      db._drop(cn);
     },
 
-    testTransactionNoDroppedFollowers: function () {
-      db._create(cn + "1", { numberOfShards: 40, replicationFactor: 3 });
+    testTransactionWritesSameFollower: function () {
+      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
       let docs = [];
       for (let i = 0; i < 1000; ++i) { 
         docs.push({});
       }
       const opts = {
         collections: {
-          write: [ cn + "1" ]
+          write: [ cn  ]
         }
       };
-      
-      let shards = db._collection(cn + "1").shards(true);
+
+      let shards = db._collection(cn ).shards(true);
       let servers = shards[Object.keys(shards)[0]];
 
       let droppedFollowers = {};
@@ -117,22 +115,62 @@ function transactionDroppedFollowersSuite() {
         let endpoint = getEndpointById(serverId);
         droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_count");
       });
-      
+
       for (let i = 0; i < 50; ++i) { 
         const trx = db._createTransaction(opts);
-        const tc = trx.collection(cn + "1");
+        const tc = trx.collection(cn);
         tc.insert(docs);
         let result = trx.commit();
         assertEqual("committed", result.status);
       }
-      
+
       // follower must not have been dropped
       servers.forEach((serverId) => {
         let endpoint = getEndpointById(serverId);
         assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_count"));
       });
+
+      assertEqual(1000 * 50, c.count());
     },
     
+    testTransactionExclusiveSameFollower: function () {
+      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) { 
+        docs.push({});
+      }
+      const opts = {
+        collections: {
+          exclusive: [ cn  ]
+        }
+      };
+
+      let shards = db._collection(cn ).shards(true);
+      let servers = shards[Object.keys(shards)[0]];
+
+      let droppedFollowers = {};
+      servers.forEach((serverId) => {
+        let endpoint = getEndpointById(serverId);
+        droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_count");
+      });
+
+      for (let i = 0; i < 50; ++i) { 
+        const trx = db._createTransaction(opts);
+        const tc = trx.collection(cn);
+        tc.insert(docs);
+        let result = trx.commit();
+        assertEqual("committed", result.status);
+      }
+
+      // follower must not have been dropped
+      servers.forEach((serverId) => {
+        let endpoint = getEndpointById(serverId);
+        assertEqual(droppedFollowers[serverId], getMetric(endpoint, "arangodb_dropped_followers_count"));
+      });
+      
+      assertEqual(1000 * 50, c.count());
+    },
+
   };
 }
 
