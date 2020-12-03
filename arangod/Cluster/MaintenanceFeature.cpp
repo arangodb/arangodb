@@ -131,7 +131,7 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
     LOG_TOPIC("37726", WARN, Logger::MAINTENANCE)
         << "Need at least" << minThreadLimit << "maintenance-threads";
     _maintenanceThreadsMax = minThreadLimit;
-  } else if (_maintenanceThreadsMax >= maxThreadLimit) {
+  } else if (_maintenanceThreadsMax > maxThreadLimit) {
     LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE)
         << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
@@ -149,6 +149,11 @@ void MaintenanceFeature::start() {
     LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE)
         << "Disable maintenance-threads"
         << " for single-server or agents.";
+    return;
+  }
+
+  if (serverState->isCoordinator()) {
+    // no need for maintenance on a coordinator
     return;
   }
 

@@ -876,8 +876,14 @@ endfunction()
 # JEMALLOC
 # ------------------------------------------------------------------------------
 
+option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+endif ()
+
+if (USE_JEMALLOC_PROF)
+  add_definitions("-DUSE_MEMORY_PROFILE=1")
 endif ()
 
 # ------------------------------------------------------------------------------
@@ -920,7 +926,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Wno-range-loop-analysis ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")

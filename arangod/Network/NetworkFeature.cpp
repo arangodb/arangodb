@@ -30,6 +30,7 @@
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -64,8 +65,8 @@ namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
     : NetworkFeature(server, network::ConnectionPool::Config{}) {
-      this->_numIOThreads = 2; // override default
-    }
+  this->_numIOThreads = 1; // override default
+}
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
@@ -73,7 +74,10 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _numIOThreads(config.numIOThreads),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
-      _verifyHosts(config.verifyHosts) {
+      _verifyHosts(config.verifyHosts),
+      _forwardedRequests(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_forwarded_requests", 0, "Number of requests forwarded to another coordinator")) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -100,7 +104,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  _numIOThreads = std::min<unsigned>(1, std::max<unsigned>(_numIOThreads, 8));
+  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
@@ -181,6 +185,10 @@ void NetworkFeature::stop() {
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {
   return _poolPtr.load(std::memory_order_acquire);
+}
+
+void NetworkFeature::trackForwardedRequest() {
+  ++_forwardedRequests;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

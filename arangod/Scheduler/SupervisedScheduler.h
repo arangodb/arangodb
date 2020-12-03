@@ -42,18 +42,11 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size);
+                      uint64_t fifo1Size, uint64_t fifo2Size,
+                      double unavailabilityQueueFillGrade);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, std::function<void()>) override ADB_WARN_UNUSED_RESULT;
-
- private:
-  std::atomic<size_t> _numWorkers;
-  std::atomic<bool> _stopping;
-  std::atomic<bool> _acceptingNewJobs;
-
- protected:
-  bool isStopping() override { return _stopping; }
 
  public:
   bool start() override;
@@ -61,6 +54,16 @@ class SupervisedScheduler final : public Scheduler {
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
+
+  /// @brief approximate fill grade of the scheduler's queue (in %)
+  double approximateQueueFillGrade() const override;
+  
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  double unavailabilityQueueFillGrade() const override;
+ 
+ protected:
+  bool isStopping() override { return _stopping; }
 
  private:
   friend class SupervisedSchedulerManagerThread;
@@ -77,6 +80,10 @@ class SupervisedScheduler final : public Scheduler {
 
     void operator()() { _handler(); }
   };
+  
+  std::atomic<uint64_t> _numWorkers;
+  std::atomic<bool> _stopping;
+  std::atomic<bool> _acceptingNewJobs;
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
@@ -86,17 +93,6 @@ class SupervisedScheduler final : public Scheduler {
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
-  alignas(64) std::atomic<uint64_t> _jobsDirectExec;
-
-  // During a queue operation there a two reasons to manually wake up a worker
-  //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
-  //      is bigger than _wakeupTime_ns.
-  //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
-  //
-  // The last submit time is a thread local variable that stores the time of the last
-  // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
-  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
   // _queueRetryTime_us is the number of microseconds this particular
@@ -136,13 +132,21 @@ class SupervisedScheduler final : public Scheduler {
     // cppcheck-suppress missingOverride
     bool start();
   };
-  size_t const _minNumWorker;
-  size_t const _maxNumWorker;
+  uint64_t const _minNumWorkers;
+  uint64_t const _maxNumWorkers;
+  uint64_t const _maxFifoSize;
+  uint64_t const _fifo1Size;
+  uint64_t const _fifo2Size;
+
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  double const _unavailabilityQueueFillGrade;
+
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
-  std::atomic<uint64_t> _nrWorking;   // Number of threads actually working
-  std::atomic<uint64_t> _nrAwake;     // Number of threads working or spinning
-                                      // (i.e. not sleeping)
+  std::atomic<uint64_t> _numWorking;   // Number of threads actually working
+  std::atomic<uint64_t> _numAwake;     // Number of threads working or spinning
+                                       // (i.e. not sleeping)
 
   // The following mutex protects the lists _workerStates and
   // _abandonedWorkerStates, whenever one accesses any of these two
@@ -159,13 +163,15 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  uint64_t const _maxFifoSize;
-  uint64_t const _fifo1Size;
-  uint64_t const _fifo2Size;
-
   Gauge<uint64_t>& _metricsQueueLength;
+  Gauge<uint64_t>& _metricsJobsDone;
+  Gauge<uint64_t>& _metricsJobsSubmitted;
+  Gauge<uint64_t>& _metricsJobsDequeued;
   Gauge<uint64_t>& _metricsAwakeThreads;
+  Gauge<uint64_t>& _metricsNumWorkingThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
+  Counter& _metricsThreadsStarted;
+  Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
 
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);

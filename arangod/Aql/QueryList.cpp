@@ -30,6 +30,7 @@
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -62,6 +63,33 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
       runTime(runTime),
       state(state),
       stream(stream) {}
+
+void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
+  auto timeString = TRI_StringTimeStamp(started, Logger::getUseLocalTime());
+
+  out.add(VPackValue(VPackValueType::Object));
+  out.add("id", VPackValue(basics::StringUtils::itoa(id)));
+  out.add("database", VPackValue(database));
+  out.add("user", VPackValue(user));
+  out.add("query", VPackValue(queryString));
+  if (bindParameters != nullptr) {
+    out.add("bindVars", bindParameters->slice());
+  } else {
+    out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
+  }
+  if (!dataSources.empty()) {
+    out.add("dataSources", VPackValue(VPackValueType::Array));
+    for (auto const& dn : dataSources) {
+      out.add(VPackValue(dn));
+    }
+    out.close();
+  }
+  out.add("started", VPackValue(timeString));
+  out.add("runTime", VPackValue(runTime));
+  out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
+  out.add("stream", VPackValue(stream));
+  out.close();
+}
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
@@ -128,20 +156,23 @@ void QueryList::remove(Query* query) {
 
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
+  
+  double const started = query->startTime();
+  double const now = TRI_microtime();
+  double const elapsed = now - started;
+
+  _queryRegistryFeature.trackQuery(elapsed);
 
   if (!trackSlowQueries() || threshold < 0.0) {
     return;
   }
 
-  double const started = query->startTime();
-  double const now = TRI_microtime();
-
   try {
     // check if we need to push the query into the list of slow queries
-    if (now - started >= threshold && !query->killed()) {
+    if (elapsed >= threshold && !query->killed()) {
       // yes.
   
-      _queryRegistryFeature.trackSlowQuery();
+      _queryRegistryFeature.trackSlowQuery(elapsed);
 
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -200,13 +231,13 @@ void QueryList::remove(Query* query) {
         LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
             << bindParameters << dataSources << ", database: " << query->vocbase().name()
-            << ", user: " << query->user() << ", took: " << Logger::FIXED(now - started) << " s";
+            << ", user: " << query->user() << ", took: " << Logger::FIXED(elapsed) << " s";
       }
 
       _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
-                         started, now - started,
+                         started, elapsed,
                          query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
 
       if (++_slowCount > _maxSlowQueries) {
@@ -221,8 +252,6 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
-  size_t const maxLength = _maxQueryStringLength;
-
   READ_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
@@ -233,7 +262,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 
   Query* query = (*it).second;
   LOG_TOPIC("25cc4", WARN, arangodb::Logger::FIXME)
-      << "killing AQL query " << id << " '" << extractQueryString(query, maxLength) << "'";
+      << "killing AQL query " << id << " '" << extractQueryString(query, _maxQueryStringLength) << "'";
 
   query->kill();
   return Result();
