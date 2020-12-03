@@ -248,6 +248,50 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
   _closedSnippets.emplace_back(std::move(e));
 }
 
+std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
+    VPackBuilder& infoBuilder, ServerID server,
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
+  LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
+        << "Building Engine Info for " << server;
+
+    infoBuilder.clear();
+    infoBuilder.openObject();
+    addLockingPart(infoBuilder, server);
+    TRI_ASSERT(infoBuilder.isOpenObject());
+
+    addOptionsPart(infoBuilder, server);
+    TRI_ASSERT(infoBuilder.isOpenObject());
+
+    addVariablesPart(infoBuilder);
+    TRI_ASSERT(infoBuilder.isOpenObject());
+
+    infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
+    infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
+
+    infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+    infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
+
+    addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
+    TRI_ASSERT(infoBuilder.isOpenObject());
+    auto shardMapping = _shardLocking.getShardMapping();
+    std::vector<bool> didCreateEngine =
+        addTraversalEnginesPart(infoBuilder, shardMapping, server);
+    TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
+    TRI_ASSERT(infoBuilder.isOpenObject());
+
+    infoBuilder.add(StaticStrings::SerializationFormat,
+                    VPackValue(static_cast<SerializationFormatType>(
+                        aql::SerializationFormat::SHADOWROWS)));
+
+    transaction::Methods& trx = _query.trxForOptimization();
+    trx.state()->analyzersRevision().toVelocyPack(infoBuilder);
+    infoBuilder.close();  // Base object
+    TRI_ASSERT(infoBuilder.isClosed());
+
+    return didCreateEngine;
+}
+
 // Build the Engines for the DBServer
 //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
 //   same DB)
@@ -277,7 +321,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   auto cleanupGuard = scopeGuard([this, &snippetIds]() {
     cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), snippetIds);
   });
-  
+
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
@@ -298,41 +342,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   for (ServerID const& server : dbServers) {
     std::string serverDest = "server:" + server;
 
-    LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
-        << "Building Engine Info for " << server;
-    infoBuilder.clear();
-    infoBuilder.openObject();
-    addLockingPart(infoBuilder, server);
-    TRI_ASSERT(infoBuilder.isOpenObject());
-
-    addOptionsPart(infoBuilder, server);
-    TRI_ASSERT(infoBuilder.isOpenObject());
-
-    addVariablesPart(infoBuilder);
-    TRI_ASSERT(infoBuilder.isOpenObject());
-    
-    infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
-    infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
-
-    infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
-
-    addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
-    TRI_ASSERT(infoBuilder.isOpenObject());
-    auto shardMapping = _shardLocking.getShardMapping();
-    std::vector<bool> didCreateEngine =
-        addTraversalEnginesPart(infoBuilder, shardMapping, server);
-    TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
-    TRI_ASSERT(infoBuilder.isOpenObject());
-
-    infoBuilder.add(StaticStrings::SerializationFormat,
-                    VPackValue(static_cast<SerializationFormatType>(
-                        aql::SerializationFormat::SHADOWROWS)));
-
-    trx.state()->analyzersRevision().toVelocyPack(infoBuilder);
-    infoBuilder.close();  // Base object
-    TRI_ASSERT(infoBuilder.isClosed());
-
+    auto didCreateEngine = buildEngineInfo(infoBuilder, server, nodesById, nodeAliases);
     VPackSlice infoSlice = infoBuilder.slice();
     // Partial assertions to check if all required keys are present
     TRI_ASSERT(infoSlice.hasKey("lockInfo"));
@@ -358,6 +368,21 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // add the transaction ID header
     network::Headers headers;
     ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
+
+    /*
+    auto sendNetworkRequest = [pool, serverDest, buffer, options, headers](network::FutureRes response) {
+      return network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
+                           "/_api/aql/setup", std::move(buffer),
+                           options, std::move(headers));
+    };
+
+    bool fastPath = false;
+    if (fastPath) {
+      // execute sync
+    } else {
+      // execute async
+    }*/
+
     auto res = network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
                                     "/_api/aql/setup", std::move(buffer),
                                     options, std::move(headers))
@@ -403,7 +428,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   }
 
   VPackSlice result = response.get("result");
-  
+
   // simon: in 3.7 we get a queryId for all snippets
   VPackSlice queryIdSlice = result.get("queryId");
   if (queryIdSlice.isNumber()) {
@@ -411,7 +436,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   } else {
     globalQueryId = 0;
   }
-  
+
   VPackSlice snippets = result.get("snippets");
   // Link Snippets to their sinks
   for (auto const& resEntry : VPackObjectIterator(snippets)) {
@@ -484,10 +509,10 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
     int errorCode, std::string const& dbname,
     MapRemoteToSnippet& snippetIds) const {
-  
+
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  
+
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily

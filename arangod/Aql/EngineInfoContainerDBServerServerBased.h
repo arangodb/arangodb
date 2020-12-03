@@ -69,7 +69,7 @@ class EngineInfoContainerDBServerServerBased {
     void serializeIntoBuilder(arangodb::velocypack::Builder& infoBuilder) const;
 
     bool hasShard() const { return _hasShard; }
-    
+
     /// inaccessible edge and verte collection names
 #ifdef USE_ENTERPRISE
     std::set<CollectionID> inaccessibleCollNames() const {
@@ -121,6 +121,10 @@ class EngineInfoContainerDBServerServerBased {
   // the given queryid of the coordinator as data provider.
   void closeSnippet(QueryId inputSnippet);
 
+  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID server,
+                                    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                                    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+
   // Build the Engines for the DBServer
   //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
   //   same DB)
@@ -134,8 +138,7 @@ class EngineInfoContainerDBServerServerBased {
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                      MapRemoteToSnippet& snippetIds,
-                      aql::ServerQueryIdList& serverQueryIds,
+                      MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   /**
@@ -187,6 +190,7 @@ class EngineInfoContainerDBServerServerBased {
                        QueryId& globalQueryId) const;
 
   void injectVertexCollections(GraphNode* node);
+
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
 
