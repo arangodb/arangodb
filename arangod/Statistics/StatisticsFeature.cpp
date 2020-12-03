@@ -388,7 +388,15 @@ void StatisticsFeature::start() {
     _statisticsHistory = false;
   } 
 
+  if (ServerState::instance()->isDBServer()) {
+    // the StatisticsWorker runs queries against the _statistics
+    // collections, so it does not work on DB servers
+    _statisticsHistory = false;
+  }
+
   if (_statisticsHistory) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
+
     _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
     if (!_statisticsWorker->start()) {
