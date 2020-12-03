@@ -27,6 +27,7 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Futures/Future.h"
+#include "GeneralServer/RequestLane.h"
 #include "Network/ConnectionPool.h"
 #include "Network/types.h"
 
@@ -94,6 +95,7 @@ struct RequestOptions {
   Timeout timeout = TimeoutDefault;
   bool retryNotFound = false;  // retry if answers is "datasource not found"
   bool skipScheduler = false;  // do not use Scheduler queue
+  RequestLane continuationLane = RequestLane::CONTINUATIONS;
 
   template <typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {

@@ -166,15 +166,17 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
       std::unique_ptr<fuerte::Response> tmp_res;
       std::unique_ptr<fuerte::Request> tmp_req;
       fuerte::Error tmp_err;
+      RequestLane continuationLane;
       bool skipScheduler;
-      Pack(DestinationId&& dest, bool skip)
-          : dest(std::move(dest)), skipScheduler(skip) {}
+      Pack(DestinationId&& dest, RequestLane lane, bool skip)
+          : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
     };
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
     auto& server = pool->config().clusterInfo->server();
-    auto p = std::make_shared<Pack>(std::move(dest), options.skipScheduler);
+    auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
+                                    options.skipScheduler);
     FutureRes f = p->promise.getFuture();
     NetworkFeature& nf = server.getFeature<NetworkFeature>();
     nf.sendRequest(*pool, options, spec.endpoint, std::move(req), [p(std::move(p))](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res) mutable {
@@ -189,7 +191,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
       p->tmp_res = std::move(res);
       p->tmp_req = std::move(req);
 
-      bool queued = sch->queue(RequestLane::CLUSTER_INTERNAL, [p]() mutable {
+      bool queued = sch->queue(p->continuationLane, [p]() mutable {
         p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
                                      std::move(p->tmp_req), std::move(p->tmp_res)});
       });
@@ -402,7 +404,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
 
     bool queued =
-        sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this()]() mutable {
+        sch->queue(_options.continuationLane, [self = shared_from_this()]() mutable {
           self->_promise.setValue(Response{std::move(self->_destination),
                                            self->_tmp_err, std::move(self->_tmp_req),
                                            std::move(self->_tmp_res)});
@@ -428,7 +430,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     bool queued;
     std::tie(queued, _workItem) =
-        sch->queueDelay(RequestLane::CLUSTER_INTERNAL, tryAgainAfter,
+        sch->queueDelay(_options.continuationLane, tryAgainAfter,
                         [self = shared_from_this()](bool canceled) {
                           if (canceled) {
                             self->_promise.setValue(
