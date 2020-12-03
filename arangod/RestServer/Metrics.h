@@ -25,16 +25,16 @@
 #define ARANGODB_REST_SERVER_METRICS_H 1
 
 #include <atomic>
-#include <map>
-#include <iostream>
-#include <string>
-#include <memory>
-#include <variant>
-#include <vector>
-#include <unordered_map>
 #include <cassert>
 #include <cmath>
+#include <iostream>
 #include <limits>
+#include <map>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
@@ -136,9 +136,7 @@ template<typename T> class Gauge : public Metric {
     _g.store(t);
     return *this;
   }
-  T load() const {
-    return _g.load();
-  }
+  T load() const { return _g.load(); }
   virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
@@ -150,7 +148,7 @@ template<typename T> class Gauge : public Metric {
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
-enum ScaleType {LINEAR, LOGARITHMIC};
+enum ScaleType { FIXED, LINEAR, LOGARITHMIC };
 
 template<typename T>
 struct scale_t {
@@ -231,6 +229,40 @@ template<typename T>
 std::ostream& operator<< (std::ostream& o, scale_t<T> const& s) {
   return s.print(o);
 }
+
+template <typename T>
+struct fixed_scale_t : public scale_t<T> {
+ public:
+  using value_type = T;
+  static constexpr ScaleType scale_type = FIXED;
+
+  fixed_scale_t(T const& low, T const& high, std::initializer_list<T> const& list)
+      : scale_t<T>(low, high, list.size() + 1) {
+    this->_delim = list;
+  }
+  virtual ~fixed_scale_t() = default;
+  /**
+   * @brief index for val
+   * @param val value
+   * @return    index
+   */
+  size_t pos(T const& val) const {
+    for (std::size_t i = 0; i < this->_delim.size(); ++i) {
+      if (val <= this->_delim[i]) {
+        return i;
+      }
+    }
+    return this->_delim.size();
+  }
+
+  virtual void toVelocyPack(VPackBuilder& b) const override {
+    b.add("scale-type", VPackValue("fixed"));
+    scale_t<T>::toVelocyPack(b);
+  }
+
+ private:
+  T _base, _div;
+};
 
 template<typename T>
 struct log_scale_t : public scale_t<T> {

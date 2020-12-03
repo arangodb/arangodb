@@ -170,17 +170,15 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
       Pack(DestinationId&& dest, bool skip)
           : dest(std::move(dest)), skipScheduler(skip) {}
     };
-
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
-    auto conn = pool->leaseConnection(spec.endpoint);
-    auto p = std::make_shared<Pack>(std::move(dest), options.skipScheduler);
 
+    auto& server = pool->config().clusterInfo->server();
+    auto p = std::make_shared<Pack>(std::move(dest), options.skipScheduler);
     FutureRes f = p->promise.getFuture();
-    conn->sendRequest(std::move(req), [p(std::move(p))](fuerte::Error err,
-                                                        std::unique_ptr<fuerte::Request> req,
-                                                        std::unique_ptr<fuerte::Response> res) mutable {
-      Scheduler* sch = SchedulerFeature::SCHEDULER;
+    NetworkFeature& nf = server.getFeature<NetworkFeature>();
+    nf.sendRequest(*pool, options, spec.endpoint, std::move(req), [p(std::move(p))](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res) mutable {
+      auto* sch = SchedulerFeature::SCHEDULER;
       if (p->skipScheduler || sch == nullptr) {
         p->promise.setValue(network::Response{std::move(p->dest), err,
                                               std::move(req), std::move(res)});
@@ -200,6 +198,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                                      std::move(p->tmp_req), nullptr});
       }
     });
+
     return f;
 
   } catch (std::exception const& e) {
@@ -290,16 +289,17 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     TRI_ASSERT(t.count() > 0);
     _tmp_req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(t));
 
-    auto conn = _pool->leaseConnection(spec.endpoint);
-    conn->sendRequest(std::move(_tmp_req),
-                      [self = shared_from_this()](fuerte::Error err,
-                                                  std::unique_ptr<fuerte::Request> req,
-                                                  std::unique_ptr<fuerte::Response> res) {
-                        self->_tmp_err = err;
-                        self->_tmp_req = std::move(req);
-                        self->_tmp_res = std::move(res);
-                        self->handleResponse();
-                      });
+    auto& server = _pool->config().clusterInfo->server();
+    NetworkFeature& nf = server.getFeature<NetworkFeature>();
+    nf.sendRequest(*_pool, _options, spec.endpoint, std::move(_tmp_req),
+                   [self = shared_from_this()](fuerte::Error err,
+                                               std::unique_ptr<fuerte::Request> req,
+                                               std::unique_ptr<fuerte::Response> res) {
+                     self->_tmp_err = err;
+                     self->_tmp_req = std::move(req);
+                     self->_tmp_res = std::move(res);
+                     self->handleResponse();
+                   });
   }
 
  private:

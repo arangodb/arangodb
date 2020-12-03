@@ -22,26 +22,26 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
+
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Basics/StaticStrings.h>
-#include <memory>
-
-#include "Scheduler.h"
 #include "SupervisedScheduler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
-#include "Statistics/RequestStatistics.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/MetricsFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -671,8 +671,17 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
     return threadsWorking < limit;
   }
 
+  // We limit the number of ongoing low priority jobs to prevent a cluster
+  // from getting overwhelmed
   std::size_t const ongoing = _ongoingLowPriorityGauge.load();
   if (ongoing >= _ongoingLowPriorityLimit) {
+    return false;
+  }
+
+  // Because jobs may fan out to multiple servers and shards, we also limit
+  // dequeuing based on the number of internal requests in flight
+  TRI_ASSERT(_server.hasFeature<NetworkFeature>());
+  if (_server.getFeature<NetworkFeature>().isSaturated()) {
     return false;
   }
 
