@@ -770,7 +770,7 @@ function dumpTestEnterpriseSuite () {
       assertTrue("UnitTestsDumpView::smartCustom", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[1]);
 
       // _to_UnitTestDumpSmartEdges
-      assertFalse(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges")););
+      assertFalse(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
 
       // _from_UnitTestDumpSmartEdges
       assertTrue(props.links.hasOwnProperty("_from_UnitTestDumpSmartEdges"));
