@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
@@ -1719,9 +1719,10 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 
       {
         auto scopedLock = irs::make_lock_guard(*mutex);
-        cond->notify_all();
         feature->queue(arangodb::iresearch::ThreadGroup::_1, 1000ms, *this);
       }
+
+      cond->notify_all();
     }
 
     std::shared_ptr<bool> flag;
@@ -1747,9 +1748,16 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   feature.queue(arangodb::iresearch::ThreadGroup::_1, 0ms,
                 Task(deallocated, mutex, cond, count, feature));
 
-  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));  // first run invoked immediately
+  auto const end = std::chrono::steady_clock::now() + 10s;
+  while (!count) {
+    std::this_thread::sleep_for(10ms);
+    ASSERT_LE(std::chrono::steady_clock::now(), end);
+  }
+
+  EXPECT_EQ(1, count);
+  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));  // first run invoked immediately
   EXPECT_FALSE(deallocated);
-  EXPECT_EQ(std::cv_status::timeout, cond.wait_for(lock, 100ms));
+  EXPECT_EQ(std::cv_status::timeout, cond.wait_for(lock, 1000ms));
   EXPECT_FALSE(deallocated);  // still scheduled
   EXPECT_EQ(1, count);
 }
