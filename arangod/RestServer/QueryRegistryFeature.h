@@ -86,6 +86,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   double _queryRegistryTTL;
   std::string _queryCacheMode;
   
+  Histogram<log_scale_t<double>>& _queryTimes;
+  Histogram<log_scale_t<double>>& _slowQueryTimes;
   Counter& _totalQueryExecutionTime;
   Counter& _queriesCounter;
   Counter& _slowQueriesCounter;

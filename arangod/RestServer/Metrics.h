@@ -156,46 +156,241 @@ private:
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
+enum ScaleType {LINEAR, LOGARITHMIC};
+
+template<typename T>
+struct scale_t {
+ public:
+
+  using value_type = T;
+
+  scale_t(T const& low, T const& high, size_t n) :
+    _low(low), _high(high), _n(n) {
+    TRI_ASSERT(n > 1);
+    _delim.resize(n - 1);
+  }
+  virtual ~scale_t() = default;
+  /**
+   * @brief number of buckets
+   */
+  size_t n() const {
+    return _n;
+  }
+  /**
+   * @brief number of buckets
+   */
+  T low() const {
+    return _low;
+  }
+  /**
+   * @brief number of buckets
+   */
+  T high() const {
+    return _high;
+  }
+  /**
+   * @brief number of buckets
+   */
+  std::string const delim(size_t const& s) const {
+    return (s < _n - 1) ? std::to_string(_delim.at(s)) : "+Inf";
+  }
+  /**
+   * @brief number of buckets
+   */
+  std::vector<T> const& delims() const {
+    return _delim;
+  }
+  /**
+   * @brief dump to builder
+   */
+  virtual void toVelocyPack(VPackBuilder& b) const {
+    TRI_ASSERT(b.isOpenObject());
+    b.add("lower-limit", VPackValue(_low));
+    b.add("upper-limit", VPackValue(_high));
+    b.add("value-type", VPackValue(typeid(T).name()));
+    b.add(VPackValue("range"));
+    VPackArrayBuilder abb(&b);
+    for (auto const& i : _delim) {
+      b.add(VPackValue(i));
+    }
+  }
+  /**
+   * @brief dump to
+   */
+  std::ostream& print(std::ostream& o) const {
+    VPackBuilder b;
+    {
+      VPackObjectBuilder bb(&b);
+      this->toVelocyPack(b);
+    }
+    o << b.toJson();
+    return o;
+  }
+
+ protected:
+  T _low, _high;
+  std::vector<T> _delim;
+  size_t _n;
+};
+
+template<typename T>
+std::ostream& operator<< (std::ostream& o, scale_t<T> const& s) {
+  return s.print(o);
+}
+
+template<typename T>
+struct log_scale_t : public scale_t<T> {
+ public:
+
+  using value_type = T;
+  static constexpr ScaleType scale_type = LOGARITHMIC;
+
+  log_scale_t(T const& base, T const& low, T const& high, size_t n) :
+    scale_t<T>(low, high, n), _base(base) {
+    TRI_ASSERT(base > T(0));
+    double nn = -1.0 * (n - 1);
+    for (auto& i : this->_delim) {
+      i = static_cast<T>(
+        static_cast<double>(high - low) *
+        std::pow(static_cast<double>(base), static_cast<double>(nn++)) + static_cast<double>(low));
+    }
+    _div = this->_delim.front() - low;
+    TRI_ASSERT(_div > T(0));
+    _lbase = log(_base);
+  }
+  virtual ~log_scale_t() = default;
+  /**
+   * @brief index for val
+   * @param val value
+   * @return    index
+   */
+  size_t pos(T const& val) const {
+    return static_cast<size_t>(1+std::floor(log((val - this->_low)/_div)/_lbase));
+  }
+  /**
+   * @brief Dump to builder
+   * @param b Envelope
+   */
+  virtual void toVelocyPack(VPackBuilder& b) const {
+    b.add("scale-type", VPackValue("logarithmic"));
+    b.add("base", VPackValue(_base));
+    scale_t<T>::toVelocyPack(b);
+  }
+  /**
+   * @brief Base
+   * @return base
+   */
+  T base() const {
+    return _base;
+  }
+ 
+ private:
+  T _base, _div;
+  double _lbase;
+};
+
+template<typename T>
+struct lin_scale_t : public scale_t<T> {
+ public:
+
+  using value_type = T;
+  static constexpr ScaleType scale_type = LINEAR;
+
+  lin_scale_t(T const& low, T const& high, size_t n) :
+    scale_t<T>(low, high, n) {
+    this->_delim.resize(n-1);
+    _div = (high - low) / (T)n;
+    if (_div <= 0) {
+    }
+    TRI_ASSERT(_div > 0);
+    T le = low;
+    for (auto& i : this->_delim) {
+      le += _div;
+      i = le;
+    }
+  }
+  virtual ~lin_scale_t() = default;
+  /**
+   * @brief index for val
+   * @param val value
+   * @return    index
+   */
+  size_t pos(T const& val) const {
+    return static_cast<size_t>(std::floor((val - this->_low)/ _div));
+  }
+
+  virtual void toVelocyPack(VPackBuilder& b) const {
+    b.add("scale-type", VPackValue("linear"));
+    scale_t<T>::toVelocyPack(b);
+  }
+ 
+ private:
+  T _base, _div;
+};
+
+
+template<typename ... Args>
+std::string strfmt (std::string const& format, Args ... args) {
+  size_t size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1;
+  if( size <= 0 ) {
+    throw std::runtime_error( "Error during formatting." );
+  }
+  std::unique_ptr<char[]> buf(new char[size]);
+  snprintf(buf.get(), size, format.c_str(), args ...);
+  return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
+}
+
 /**
  * @brief Histogram functionality
  */
-template<typename T> class Histogram : public Metric {
+template<typename Scale> class Histogram : public Metric {
 
-public:
+ public:
+
+  using value_type = typename Scale::value_type;
 
   Histogram() = delete;
 
-  Histogram (size_t const& buckets, T const& low, T const& high, std::string const& name, std::string const& help = "")
-    : Metric(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
-      _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
-    TRI_ASSERT(_c.size() > 0);
-    _n = _c.size() - 1;
-    _div = (high - low) / (double)_c.size();
-    TRI_ASSERT(_div != 0);
-  }
+  Histogram(Scale&& scale, std::string const& name, std::string const& help,
+            std::string const& labels = std::string())
+    : Metric(name, help), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
+      _lowr(std::numeric_limits<value_type>::max()),
+      _highr(std::numeric_limits<value_type>::min()),
+      _n(_scale.n() - 1) {}
+
+  Histogram(Scale const& scale, std::string const& name, std::string const& help,
+            std::string const& labels = std::string())
+    : Metric(name, help), _c(Metrics::hist_type(scale.n())), _scale(scale),
+      _lowr(std::numeric_limits<value_type>::max()),
+      _highr(std::numeric_limits<value_type>::min()),
+      _n(_scale.n() - 1) {}
 
   ~Histogram() = default;
 
-  void records(T const& t) {
-    if(t < _lowr) {
-      _lowr = t;
-    } else if (t > _highr) {
-      _highr = t;
+  void records(value_type const& val) {
+    if (val < _lowr) {
+      _lowr = val;
+    } else if (val > _highr) {
+      _highr = val;
     }
   }
 
-  size_t pos(T const& t) const {
-    return static_cast<size_t>(std::floor((t - _low)/ _div));
+  Scale const& scale() {
+    return _scale;
   }
 
-  void count(T const& t) {
+  size_t pos(value_type const& t) const {
+    return _scale.pos(t);
+  }
+
+  void count(value_type const& t) {
     count(t, 1);
   }
 
-  void count(T const& t, uint64_t n) {
-    if (t < _low) {
+  void count(value_type const& t, uint64_t n) {
+    if (t < _scale.delims().front()) {
       _c[0] += n;
-    } else if (t >= _high) {
+    } else if (t >= _scale.delims().back()) {
       _c[_n] += n;
     } else {
       _c[pos(t)] += n;
@@ -203,8 +398,8 @@ public:
     records(t);
   }
 
-  T const& low() const { return _low; }
-  T const& high() const { return _high; }
+  value_type const& low() const { return _scale.low(); }
+  value_type const& high() const { return _scale.high(); }
 
   Metrics::hist_type::value_type& operator[](size_t n) {
     return _c[n];
@@ -223,31 +418,30 @@ public:
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result) const override {
-    result += "#TYPE " + name() + " histogram\n";
+    result += "\n#TYPE " + name() + " histogram\n";
     result += "#HELP " + name() + " " + help() + "\n";
-    T le = _low;
-    T sum = T(0);
+    uint64_t sum(0);
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{le=\"" + std::to_string(le) + "\"} " +
-        std::to_string(n) + "\n";
-      le += _div;
+      result += name() + "_bucket{le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
     }
     result += name() + "_count " + std::to_string(sum) + "\n";
   }
 
   std::ostream& print(std::ostream& o) const {
-    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();
+    o << name() << " scale: " <<  _scale << " extremes: [" << _lowr << ", " << _highr << "]";
     return o;
   }
 
-private:
+ private:
   Metrics::hist_type _c;
-  T _low, _high, _div, _lowr, _highr;
+  Scale _scale;
+  value_type _lowr, _highr;
   size_t _n;
 
 };
+
 
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);

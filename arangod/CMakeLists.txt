@@ -700,6 +700,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
+  VocBase/Methods/Queries.cpp
 )
 
 set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES

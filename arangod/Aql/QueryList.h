@@ -52,6 +52,8 @@ struct QueryEntryCopy {
                  std::vector<std::string> dataSources,
                  double started, double runTime,
                  QueryExecutionState::ValueType state, bool stream);
+  
+  void toVelocyPack(arangodb::velocypack::Builder& out) const;
 
   TRI_voc_tick_t const id;
   std::string const database;

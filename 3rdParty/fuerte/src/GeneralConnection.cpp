@@ -95,7 +95,8 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
   }
 
   try {
-    _proto.shutdown();  // Close socket
+    auto self = Connection::shared_from_this();
+    _proto.shutdown(self);  // Close socket
   } catch (...) { }
 
   abortOngoingRequests(err);
@@ -126,7 +127,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
     _timeout.expires_after(_config._connectTimeout);
     _timeout.async_wait([self, this](asio_ns::error_code const& ec) {
       if (!ec && _connecting) { // someone else will retry
-        _proto.shutdown();
+        _proto.shutdown(self);
       }
     });
   }

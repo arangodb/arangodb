@@ -56,11 +56,11 @@ template <SocketType ST>
 int HttpConnection<ST>::on_status(http_parser* parser, const char* at,
                                   size_t len) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
-  // required for some arango shenanigans
+  
   self->_response->header.addMeta(std::string("http/") +
                                       std::to_string(parser->http_major) + '.' +
                                       std::to_string(parser->http_minor),
-                                  std::string(at, len));
+                                  std::to_string(parser->status_code) + ' ' + std::string(at, len));
   return 0;
 }
 
@@ -595,7 +595,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutTyp
     if ((type == TimeoutType::WRITE && thisPtr->_writing) ||
         (type == TimeoutType::READ && thisPtr->_reading)) {
       FUERTE_LOG_DEBUG << "HTTP-Request timeout" << " this=" << thisPtr << "\n";
-      thisPtr->_proto.shutdown();
+      thisPtr->_proto.shutdown(s);
       thisPtr->_timeoutOnReadWrite = true;
       // We simply cancel all ongoing asynchronous operations, the completion
       // handlers will do the rest.
