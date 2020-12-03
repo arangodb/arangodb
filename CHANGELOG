@@ -1,6 +1,9 @@
 devel
 -----
 
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
+
 * Avoid the usage of std::regex when construction date/time string values 
   for log messages. This is a performance optimization only.
 
