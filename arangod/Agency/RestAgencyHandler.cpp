@@ -195,14 +195,20 @@ RestStatus RestAgencyHandler::pollIndex(
                   TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
                 return;
               }
-              uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
+              uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(), i = 0;
+              
               builder.add("commitIndex", slice.get("commitIndex"));
               VPackSlice logs = slice.get("log");
-              builder.add("firstIndex", logs[i].get("index"));
+              if (start <= firstIndex) {
+                builder.add("firstIndex", logs[i].get("index"));
+              }
               builder.add(VPackValue("log"));
-              VPackArrayBuilder a(&builder);
-              for (; i < logs.length(); ++i) {
-                builder.add(logs[i]);
+              if (start <= firstIndex) {
+                uint64_t i = start - firstIndex;
+                VPackArrayBuilder a(&builder);
+                for (; i < logs.length(); ++i) {
+                  builder.add(logs[i]);
+                }
               }
             }
             generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
