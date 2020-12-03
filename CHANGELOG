@@ -4,6 +4,9 @@ v3.7.6 (XXXX-XX-XX)
 * Reduce the number of dropped followers when running larger (>= 128 MB)
   write transactions.
 
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
+
 * Added metrics for collection locks:
   - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts 
     when trying to acquire collection exclusive locks

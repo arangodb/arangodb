@@ -338,7 +338,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                        std::string("transaction id ") + std::to_string(tid) +
-                       " already used, (before creating)");
+                       " already used (before creating)");
     }
   }
 
@@ -497,9 +497,13 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     TRI_ASSERT(state->id() == tid);
     auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl, std::move(state));
     if (!it.second) {
+      if (options.isFollowerTransaction || transaction::isFollowerTransactionId(tid)) {
+        TRI_ASSERT(res.ok());
+        return res;
+      }
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                        std::string("transaction id ") + std::to_string(tid) +
-                           " already used, (while creating)");
+                           " already used (while creating)");
     }
   }
 
