@@ -226,7 +226,7 @@ RestStatus RestAgencyHandler::pollIndex(
       }));
   } else {
     auto const& leader = std::get<2>(pollResult);
-    if (leader.empty()) {
+    if (leader == NO_LEADER) {
       generateError(
         rest::ResponseCode::SERVICE_UNAVAILABLE,
         TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
@@ -266,11 +266,16 @@ RestStatus RestAgencyHandler::handlePoll() {
 
   // WARNING ////////////////////////////////////////////////////
   // Leader only
+  auto const& leaderId = _agent->leaderID();
   if (!_agent->leading()) {  // Redirect to leader
-    if (_agent->leaderID() == NO_LEADER) {
+    if (leaderId == NO_LEADER) {
       return reportMessage(
         rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
-    } // WARNING REDIRECTS NEEDS BE DOING
+    } else {
+      TRI_ASSERT(leaderId != _agent->id());
+      redirectRequest(leaderId);
+      return RestStatus::DONE;
+    }
   }
 
   // Get queryString index

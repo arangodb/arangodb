@@ -908,7 +908,7 @@ void Agent::advanceCommitIndex() {
 
 }
 
-std::tuple<futures::Future<query_t>, bool, std::string const&> Agent::poll(
+std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
   index_t const& index, double const& timeout) {
 
   using namespace std::chrono;
@@ -924,10 +924,10 @@ std::tuple<futures::Future<query_t>, bool, std::string const&> Agent::poll(
   std::vector<log_t> logs;
   query_t builder;
 
-  auto const& leader = _constituent.leaderID();
+  std::string leader = _constituent.leaderID();
   if (!loaded() || (size() > 1 && leader != id())) {
     return std::tuple<futures::Future<query_t>, bool, std::string const&>{
-      futures::makeFuture(std::move(builder)), false, leader};
+      futures::makeFuture(std::move(builder)), false, std::move(leader)};
   }
 
   {
@@ -967,7 +967,7 @@ std::tuple<futures::Future<query_t>, bool, std::string const&> Agent::poll(
       }
     }
     if (builder != nullptr) {
-      return std::tuple<futures::Future<query_t>, bool, std::string const&>{
+      return std::tuple<futures::Future<query_t>, bool, std::string>{
         futures::makeFuture(std::move(builder)),true,std::string()};
     }
   }
@@ -981,7 +981,7 @@ std::tuple<futures::Future<query_t>, bool, std::string const&> Agent::poll(
     if (_lowestPromise > index) {
       _lowestPromise = index;
     }
-    return std::tuple<futures::Future<query_t>, bool, std::string const&>{
+    return std::tuple<futures::Future<query_t>, bool, std::string>{
       res->second.getFuture(), true, std::string()};
   } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
