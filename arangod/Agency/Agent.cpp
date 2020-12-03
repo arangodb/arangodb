@@ -908,7 +908,7 @@ void Agent::advanceCommitIndex() {
 
 }
 
-std::pair<futures::Future<query_t>, bool> Agent::poll(
+std::tuple<futures::Future<query_t>, bool, std::string const&> Agent::poll(
   index_t const& index, double const& timeout) {
 
   using namespace std::chrono;
@@ -924,10 +924,10 @@ std::pair<futures::Future<query_t>, bool> Agent::poll(
   std::vector<log_t> logs;
   query_t builder;
 
-  auto leader = _constituent.leaderID();
+  auto const& leader = _constituent.leaderID();
   if (!loaded() || (size() > 1 && leader != id())) {
-    return std::pair<futures::Future<query_t>, bool>{
-      futures::makeFuture(std::move(builder)),false};
+    return std::tuple<futures::Future<query_t>, bool, std::string const&>{
+      futures::makeFuture(std::move(builder)), false, leader};
   }
 
   {
@@ -967,8 +967,8 @@ std::pair<futures::Future<query_t>, bool> Agent::poll(
       }
     }
     if (builder != nullptr) {
-      return std::pair<futures::Future<query_t>, bool>{
-        futures::makeFuture(std::move(builder)),true};
+      return std::tuple<futures::Future<query_t>, bool, std::string const&>{
+        futures::makeFuture(std::move(builder)),true,std::string()};
     }
   }
 
@@ -981,7 +981,8 @@ std::pair<futures::Future<query_t>, bool> Agent::poll(
     if (_lowestPromise > index) {
       _lowestPromise = index;
     }
-    return std::pair<futures::Future<query_t>, bool>{res->second.getFuture(), true};
+    return std::tuple<futures::Future<query_t>, bool, std::string const&>{
+      res->second.getFuture(), true, std::string()};
   } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "Failed to add promise for polling");

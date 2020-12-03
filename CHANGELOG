@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed agency redirect in poll api.
+
 * Updated arangosync to 1.2.1.
 
 * Added support for fetching the list of currently running and slow AQL queries

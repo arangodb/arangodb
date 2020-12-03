@@ -160,9 +160,9 @@ RestStatus RestAgencyHandler::pollIndex(
   index_t const& start, double const& timeout) {
   auto pollResult = _agent->poll(start, timeout);
   
-  if (pollResult.second) {
+  if (std::get<1>(pollResult)) {
     return waitForFuture(
-      std::move(pollResult.first).thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+      std::move(std::get<0>(pollResult)).thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
         VPackSlice res = rb->slice();
 
         if (res.isObject() && res.hasKey("result")) {
@@ -225,9 +225,14 @@ RestStatus RestAgencyHandler::pollIndex(
           rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
       }));
   } else {
-    generateError(
-      rest::ResponseCode::SERVICE_UNAVAILABLE,
-      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+    auto const& leader = std::get<2>(pollResult);
+    if (leader.empty()) {
+      generateError(
+        rest::ResponseCode::SERVICE_UNAVAILABLE,
+        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+    } else {
+      redirectRequest(leader);
+    }
     return RestStatus::DONE;
   }
   
