@@ -229,11 +229,16 @@ uint64_t Manager::getActiveTransactionCount() {
 
 Manager::ManagedTrx::ManagedTrx(MetaType t, TransactionState* st)
     : type(t),
+      intermediateCommits(false),
       finalStatus(Status::UNDEFINED),
       usedTimeSecs(TRI_microtime()),
       state(st),
       user(::currentUser()),
       rwlock(){}
+
+bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const {
+  return this->intermediateCommits;
+}
 
 bool Manager::ManagedTrx::expired() const {
   double now = TRI_microtime();
@@ -295,7 +300,8 @@ void Manager::registerAQLTrx(TransactionState* state) {
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
+                                     std::string("transaction ID ") + std::to_string(tid) + 
+                                     "' already used (while registering AQL trx)");
     }
     buck._managed.try_emplace(tid, MetaType::StandaloneAQL, state);
   }
@@ -393,8 +399,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
-    << "managed trx creating: '" << tid << "'";
+  LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS) << "managed trx creating: " << tid;
 
   const size_t bucket = getBucket(tid);
 
@@ -404,14 +409,73 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
+      if (ServerState::instance()->isDBServer() && 
+          (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
+        // it is ok for two different leaders to try to create the same
+        // follower transaction on a leader.
+        // for example, if we have 3 database servers and 2 shards, so that
+        // - db server 1 is the leader for shard A
+        // - db server 2 is the leader for shard B
+        // - db server 3 is the follower for both shard A and B,
+        // then db server 1 may try to lazily start a follower transaction
+        // on db server 3, and db server 2 may try to do the same. It is 
+        // important that both succeed, because otherwise one of the calls
+        // would just drop db server 3 as a follower.
+        TRI_ASSERT(res.ok());
+        return res;
+      }
+
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx lookup");
+                       std::string("transaction id ") + std::to_string(tid) +
+                       " already used (before creating)");
     }
   }
 
   // enforce size limit per DBServer
-  options.maxTransactionSize =
-      std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
+  if (ServerState::instance()->isDBServer() && 
+      (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
+    // if we are a follower, we reuse the leader's max transaction size and slightly
+    // increase it. this is to ensure that the follower can process at least as many
+    // data as the leader, even if the data representation is slightly varied for
+    // network transport etc.
+    if (options.maxTransactionSize != UINT64_MAX) {
+      uint64_t adjust = options.maxTransactionSize / 10;
+      if (adjust < UINT64_MAX - options.maxTransactionSize) {
+        // now the transaction on the follower should be able to grow to at least the
+        // size of the transaction on the leader.
+        options.maxTransactionSize += adjust;
+      }
+    }
+    // it is also important that we set this option, so that it is ok for two 
+    // different leaders to add "their" shards to the same follower transaction.
+    // for example, if we have 3 database servers and 2 shards, so that
+    // - db server 1 is the leader for shard A
+    // - db server 2 is the leader for shard B
+    // - db server 3 is the follower for both shard A and B,
+    // then db server 1 may try to lazily start a follower transaction
+    // on db server 3 for shard A, and db server 2 may try to do the same for shard B.
+    // Both calls will only send data for "their" shards, so effectively we need to 
+    // add write collections to the transaction at runtime whenever this happens.
+    // It is important that all these calls succeed, because otherwise one of the calls
+    // would just drop db server 3 as a follower.
+    options.allowImplicitCollectionsForWrite = true;
+
+    // we should not have any locking conflicts on followers, generally. shard locking
+    // should be performed on leaders first, which will then, eventually replicate
+    // changes to followers. replication to followers is only done once the locks have
+    // been acquired on the leader(s). so if there are any locking issues, they are
+    // supposed to happen first on leaders, and not affect followers.
+    // that's why we can hard-code the lock timeout here to a rather low value on
+    // followers
+    constexpr double followerLockTimeout = 15.0;
+    if (options.lockTimeout == 0.0 || options.lockTimeout >= followerLockTimeout) {
+      options.lockTimeout = followerLockTimeout;
+    }
+  } else {
+    // for all other transactions, apply a size limitation 
+    options.maxTransactionSize =
+        std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
+  }
 
   std::unique_ptr<TransactionState> state;
   try {
@@ -488,8 +552,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::LOCK_ENTIRELY);
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (options.isFollowerTransaction) {
+  if (ServerState::instance()->isDBServer() && 
+      (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    // turn on intermediate commits on followers as well. otherwise huge leader
+    // transactions could make the follower claim all memory and crash.
+    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
   res = state->beginTransaction(hints);  // registers with transaction manager
   if (res.fail()) {
@@ -500,11 +568,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   {  // add transaction to bucket
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    auto it = _transactions[bucket]._managed.find(tid);
-    if (it != _transactions[bucket]._managed.end()) {
-      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
-    }
+    
     TRI_ASSERT(state->id() == tid);
     bool emplaced = _transactions[bucket]._managed.try_emplace(
         tid,
@@ -512,10 +576,21 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     ).second;
     if (emplaced) {
       state.release();
+    } else {
+      // we need to adjust the status to aborted here, because otherwise an assertion
+      // in the TransactionState's destructor will be triggered.
+      state->updateStatus(transaction::Status::ABORTED);
+      if (options.isFollowerTransaction || transaction::isFollowerTransactionId(tid)) {
+        TRI_ASSERT(res.ok());
+        return res;
+      }
+      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                       std::string("transaction id ") + std::to_string(tid) +
+                           " already used (while creating)");
     }
   }
 
-  LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
+  LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx " << tid;
 
   return res;
 }
@@ -576,7 +651,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                     std::string("transaction '") + std::to_string(tid) + "' is already in use");
+                                     std::string("cannot read-lock, transaction ") + std::to_string(tid) +
+                                          " is already in use");
     }
 
     writeLocker.unlock();  // failure;
@@ -586,7 +662,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     // either busy loop until we get the lock or throw an error
 
     LOG_TOPIC("abd72", TRACE, Logger::TRANSACTIONS)
-        << "transaction '" << tid << "' is already in use (RO)";
+        << "transaction " << tid << " is already in use (RO)";
 
     // simon: Two allowed scenarios:
     // 1. User sends concurrent write (CRUD) requests, (which was never intended to be possible)
@@ -597,8 +673,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 
     if (!ServerState::isDBServer(role) && std::chrono::steady_clock::now() > endTime) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                     std::string("cannot write-lock, transaction '") + std::to_string(tid) +
-                                         "' is already in use");
+                                     std::string("cannot write-lock, transaction ") + std::to_string(tid) +
+                                         " is already in use");
     } else if ((i % 32) == 0) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
@@ -726,7 +802,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
              status == transaction::Status::ABORTED);
 
   LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx '" << tid << " updating to '" << (status == transaction::Status::COMMITTED ? "COMMITED" : "ABORTED") << "'";
+      << "managed trx " << tid << " updating to '" << (status == transaction::Status::COMMITTED ? "COMMITED" : "ABORTED") << "'";
 
   Result res;
   size_t const bucket = getBucket(tid);
@@ -746,9 +822,9 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     ManagedTrx& mtrx = it->second;
     TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
     if (!tryGuard.isLocked()) {
-      LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << "transaction '" << tid << "' is in use";
-      return res.reset(TRI_ERROR_LOCKED,
-                       std::string("transaction '") + std::to_string(tid) + "' is in use");
+      LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << "transaction " << tid << " is in use";
+      return res.reset(TRI_ERROR_LOCKED, std::string("read lock failed, transaction ") + std::to_string(tid) +
+                                             " is in use");
     }
     TRI_ASSERT(tryGuard.isLocked());
 
@@ -760,6 +836,15 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
       // make sure everyone who asks gets the updated timestamp
       mtrx.usedTimeSecs = TRI_microtime();
       if (mtrx.finalStatus == status) {
+        if (ServerState::instance()->isDBServer() &&
+            isFollowerTransactionId(tid) &&
+            mtrx.finalStatus == transaction::Status::ABORTED && 
+            mtrx.intermediateCommits) {
+          // we are trying to abort a follower transaction (again) that had intermediate
+          // commits already. in this case we return a special error code, which makes
+          // the leader drop us as a follower for all shards in the transaction.
+          return res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
+        }
         return res;  // all good
       } else {
         std::string msg("transaction was already ");
@@ -778,6 +863,11 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     mtrx.type = MetaType::Tombstone;
     mtrx.usedTimeSecs = TRI_microtime();
     mtrx.finalStatus = status;
+    if (state->numCommits() > 0) {
+      // note that we have performed a commit or an intermediate commit.
+      // this is necessary for follower transactions
+      mtrx.intermediateCommits = true;
+    }
     // it is sufficient to pretend that the operation already succeeded
   }
 
@@ -802,6 +892,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
   }
 
   bool const isCoordinator = state->isCoordinator();
+  bool const intermediateCommits = state->numCommits() > 0;
 
   auto ctx = std::make_shared<ManagedContext>(tid, state.get(), AccessMode::Type::NONE);
   state.release();  // now owned by ctx
@@ -821,8 +912,16 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
       abortTombstone();
     }
   } else {
+    bool const isFollowerTrx = trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     res = trx.abort();
-    if (res.ok() && wasExpired) {
+    if (intermediateCommits &&
+        ServerState::instance()->isDBServer() &&
+        (isFollowerTransactionId(tid) || isFollowerTrx)) {
+      // we are trying to abort a follower transaction that had intermediate
+      // commits already. in this case we return a special error code, which makes
+      // the leader drop us as a follower for all shards in the transaction.
+      res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
+    } else if (res.ok() && wasExpired) {
       res.reset(TRI_ERROR_TRANSACTION_ABORTED);
     }
     TRI_ASSERT(!trx.state()->isRunning());
@@ -894,7 +993,7 @@ bool Manager::garbageCollect(bool abortAll) {
 
   for (TRI_voc_tid_t tid : toAbort) {
     LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
-                                                   << "transaction: '" << tid << "'";
+                                                   << "transaction " << tid;
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
     // successfully aborts, so ignore this error.
@@ -903,10 +1002,11 @@ bool Manager::garbageCollect(bool abortAll) {
     // infrequently, but is not an error
     if (res.fail() &&
         !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+        !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED) && 
         !res.is(TRI_ERROR_LOCKED)) {
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
-                                                        "transaction: '"
-                                                     << res.errorMessage() << "'";
+                                                        "transaction: "
+                                                     << res.errorMessage();
     }
     didWork = true;
   }
@@ -945,10 +1045,11 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::s
 
   for (TRI_voc_tid_t tid : toAbort) {
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
-    if (res.fail()) {
+    if (res.fail() &&
+        !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS) << "error aborting "
-                                                        "transaction: '"
-                                                     << res.errorMessage() << "'";
+                                                        "transaction: "
+                                                     << res.errorMessage();
     }
   }
   return !toAbort.empty();

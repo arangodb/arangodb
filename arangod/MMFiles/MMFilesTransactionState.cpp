@@ -221,6 +221,13 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
 
+// @brief return number of commits
+uint64_t MMFilesTransactionState::numCommits() const {
+  // there are no intermediate commits for a cluster transaction, so we can
+  // return 1 for a committed transaction and 0 otherwise
+  return _status == transaction::Status::COMMITTED ? 1 : 0;
+}
+
 /// @brief add a WAL operation for a transaction collection
 int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
                                           TRI_voc_rid_t revisionId,

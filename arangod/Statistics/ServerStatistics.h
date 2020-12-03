@@ -30,10 +30,8 @@
 
 namespace arangodb {
 class MetricsFeature;
-}
 
 struct TransactionStatistics {
-
   TransactionStatistics();
   TransactionStatistics(TransactionStatistics const&) = delete;
   TransactionStatistics(TransactionStatistics &&) = delete;
@@ -46,6 +44,14 @@ struct TransactionStatistics {
   Counter& _transactionsAborted;
   Counter& _transactionsCommitted;
   Counter& _intermediateCommits;
+  // total number of lock timeouts for exclusive locks
+  Counter& _exclusiveLockTimeouts;
+  // total number of lock timeouts for write locks
+  Counter& _writeLockTimeouts;
+  // total duration of lock acquisition (in microseconds)
+  Counter& _lockTimeMicros;
+  // histogram for lock acquisition (in seconds)
+  Histogram<log_scale_t<double>>& _lockTimes;
 };
 
 struct ServerStatistics {
@@ -65,5 +71,7 @@ struct ServerStatistics {
   explicit ServerStatistics(double start) :
     _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
 };
+
+} // namespace
 
 #endif
