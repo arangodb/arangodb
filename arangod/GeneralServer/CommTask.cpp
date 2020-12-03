@@ -490,12 +490,12 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // and there is currently only a single client handled by the IoContext
   auto cb = [self = shared_from_this(), handler = std::move(handler), prio]() mutable {
     if (prio == RequestPriority::LOW) {
-      SchedulerFeature::SCHEDULER->increaseOngoingLowPrio();
+      SchedulerFeature::SCHEDULER->increaseOngoingLowPriority();
     }
     handler->statistics().SET_QUEUE_END();
     handler->runHandler([self = std::move(self), prio](rest::RestHandler* handler) {
       if (prio == RequestPriority::LOW) {
-        SchedulerFeature::SCHEDULER->decreaseOngoingLowPrio();
+        SchedulerFeature::SCHEDULER->decreaseOngoingLowPriority();
       }
       try {
         // Pass the response to the io context

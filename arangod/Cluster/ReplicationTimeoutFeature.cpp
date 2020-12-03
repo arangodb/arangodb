@@ -48,13 +48,7 @@ double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
 // error anyway. This is when a follower will be dropped.
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicationTimeout"),
-      _metricsReplicationTimeTotal(server.getFeature<arangodb::MetricsFeature>().counter("arangodb_sync_replication_requests_total_time",
-                                                                                         0,
-                                                                                         "Total time needed for all synchronous replication requests accumulated.")),
-      _metricsReplicationOpsTotal(server.getFeature<arangodb::MetricsFeature>().counter("arangodb_sync_replication_requests_total_number",
-                                                                                        0,
-                                                                                        "Total number of all synchronous replication requests accumulated.")) {
+    : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }

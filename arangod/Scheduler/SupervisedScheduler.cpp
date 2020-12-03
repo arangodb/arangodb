@@ -145,9 +145,9 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
-                                         uint64_t maxQueueSize,
-                                         uint64_t fifo1Size, uint64_t fifo2Size,
-                                         uint64_t fifo3Size, double ongoingMultiplier,
+                                         uint64_t maxQueueSize, uint64_t fifo1Size,
+                                         uint64_t fifo2Size, uint64_t fifo3Size,
+                                         double ongoingMultiplier,
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _numWorkers(0),
@@ -159,10 +159,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _minNumWorker(minThreads),
       _maxNumWorker(maxThreads),
       _maxFifoSizes{maxQueueSize, fifo1Size, fifo1Size, fifo3Size},
-      _ongoingLowPrioLimit(
-          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
-      _ongoingLowPrioLimitWithFanout(
-          static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
+      _ongoingLowPriorityLimit(static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _wakeupQueueLength(5),
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
@@ -175,17 +172,19 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           "arangodb_scheduler_jobs_done", 0, "Total number of queue jobs done")),
       _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_submitted", 0, "Total number of jobs submitted to the queue")),
+          "arangodb_scheduler_jobs_submitted", 0,
+          "Total number of jobs submitted to the queue")),
       _metricsJobsDequeued(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_dequeued", 0, "Total number of jobs dequeued")),
+          "arangodb_scheduler_jobs_dequeued", 0,
+          "Total number of jobs dequeued")),
       _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerAwakeWorkers, 0,
           "Number of awake worker threads")),
       _metricsNumWorkingThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_num_working_threads", 0, "Number of working threads")),
+          "arangodb_scheduler_num_working_threads", 0,
+          "Number of working threads")),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerNumWorker, 0,
-          "Number of worker threads")),
+          StaticStrings::SchedulerNumWorker, 0, "Number of worker threads")),
       _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_scheduler_threads_started", 0,
           "Number of scheduler threads started")),
@@ -193,34 +192,28 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "arangodb_scheduler_threads_stopped", 0,
           "Number of scheduler threads stopped")),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")),
-      _ongoingLowPrioGauge(
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-            "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
-            "This is the total number of ongoing RestHandlers coming from "
-            "the low prio queue.")),
-      _ongoingLowPrioGaugeWithFanout(
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-            "arangodb_scheduler_ongoing_low_prio_with_fanout", uint64_t(0),
-            "This is the total number of ongoing RestHandlers coming from "
-            "the low prio queue, in case of fanout counted with multiplicity.")),
-      _metricsQueueLengths{
-          &_server.getFeature<arangodb::MetricsFeature>().gauge(
-            "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
-            "This is current queue length of the maintenance priority queue in "
-            "the scheduler."),
-          &_server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_high_prio_queue_length", uint64_t(0),
-              "This is current queue length of the high priority queue in "
-              "the scheduler."),
-          &_server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_medium_prio_queue_length", uint64_t(0),
-              "This is current queue length of the medium priority queue in "
-              "the scheduler."),
-          &_server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
-              "This is current queue length of the low priority queue in "
-              "the scheduler.")} {
+          "arangodb_scheduler_queue_full_failures", 0,
+          "Tasks dropped and not added to internal queue")),
+      _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
+          "This is the total number of ongoing RestHandlers coming from "
+          "the low prio queue.")),
+      _metricsQueueLengths{_server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_maintenance_prio_queue_length",
+                                                                                uint64_t(0),
+                                                                                "This is current queue length of the maintenance priority queue in "
+                                                                                "the scheduler."),
+                           _server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_high_prio_queue_length",
+                                                                                uint64_t(0),
+                                                                                "This is current queue length of the high priority queue in "
+                                                                                "the scheduler."),
+                           _server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_medium_prio_queue_length",
+                                                                                uint64_t(0),
+                                                                                "This is current queue length of the medium priority queue in "
+                                                                                "the scheduler."),
+                           _server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_low_prio_queue_length",
+                                                                                uint64_t(0),
+                                                                                "This is current queue length of the low priority queue in "
+                                                                                "the scheduler.")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -263,7 +256,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     return false;
   }
 
-  *(_metricsQueueLengths[queueNo]) += 1;
+  _metricsQueueLengths[queueNo].get() += 1;
 
   // queue now has ownership for the WorkItem
   (void)work.release();  // intentionally ignore return value
@@ -678,10 +671,8 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
     return threadsWorking < limit;
   }
 
-  std::size_t const ongoing = _ongoingLowPrioGauge.load();
-  std::size_t const ongoingWithFanout = _ongoingLowPrioGaugeWithFanout.load();
-  if (ongoing >= _ongoingLowPrioLimit ||
-      ongoingWithFanout >= _ongoingLowPrioLimitWithFanout) {
+  std::size_t const ongoing = _ongoingLowPriorityGauge.load();
+  if (ongoing >= _ongoingLowPriorityLimit) {
     return false;
   }
 
@@ -698,7 +689,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
-        *(_metricsQueueLengths[i]) -= 1;
+        _metricsQueueLengths[i].get() -= 1;
         return res;
       }
     }
@@ -870,20 +861,12 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("direct-exec", VPackValue(0)); // obsolete
 }
 
-void SupervisedScheduler::increaseOngoingLowPrio() {
-  _ongoingLowPrioGauge += 1;
+void SupervisedScheduler::increaseOngoingLowPriority() {
+  _ongoingLowPriorityGauge += 1;
 }
 
-void SupervisedScheduler::decreaseOngoingLowPrio() {
-  _ongoingLowPrioGauge -= 1;
-}
-
-void SupervisedScheduler::increaseOngoingLowPrioWithFanout(uint64_t c) {
-  _ongoingLowPrioGaugeWithFanout += c;
-}
-
-void SupervisedScheduler::decreaseOngoingLowPrioWithFanout(uint64_t c) {
-  _ongoingLowPrioGaugeWithFanout -= c;
+void SupervisedScheduler::decreaseOngoingLowPriority() {
+  _ongoingLowPriorityGauge -= 1;
 }
 
 double SupervisedScheduler::approximateQueueFillGrade() const {

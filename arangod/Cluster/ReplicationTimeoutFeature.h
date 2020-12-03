@@ -42,8 +42,6 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
   static double timeoutPer4k;
   static double lowerLimit;
   static double upperLimit;
-  Counter& _metricsReplicationTimeTotal;
-  Counter& _metricsReplicationOpsTotal;
 };
 
 }  // namespace arangodb

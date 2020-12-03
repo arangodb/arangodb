@@ -24,13 +24,10 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_SYNC_THREAD_H
 #define ARANGOD_ROCKSDB_ENGINE_SYNC_THREAD_H 1
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
-#include "RestServer/Metrics.h"
-#include "RestServer/MetricsFeature.h"
 
 #include <rocksdb/types.h>
 
@@ -85,9 +82,6 @@ class RocksDBSyncThread final : public Thread {
 
   /// @brief protects _lastSyncTime and _lastSequenceNumber
   arangodb::basics::ConditionVariable _condition;
-
-  /// @brief counter for metrics to remember RocksDB stopped writes:
-  Counter& _metricsRocksDBStopped;
 };
 }  // namespace arangodb
 

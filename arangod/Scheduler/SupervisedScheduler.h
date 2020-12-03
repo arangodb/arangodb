@@ -53,23 +53,8 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
-  void increaseOngoingLowPrio();
-  void decreaseOngoingLowPrio();
-  void increaseOngoingLowPrioWithFanout(uint64_t c = 1);
-  void decreaseOngoingLowPrioWithFanout(uint64_t c = 1);
-  void setOngoingLowPrioLimitWithFanout(size_t numberOfCoordinators,
-                                        size_t numberOfDBServers) {
-    // The thinking goes as follows: We want all servers to do at most
-    // _ongoingLowPrioLimit of low prio jobs at the same time. Sometimes,
-    // a coordinator request fans out to a lot of dbserver (leader) requests,
-    // for example if a collection has many shards. Then we want to throttle
-    // on the coordinator, if it has already so many things going on that
-    // the dbservers could get too much. This is a heuristic here. We set
-    // the limit to the coordinator limit times the number of dbservers
-    // divided by the number of coordinators.
-    _ongoingLowPrioLimitWithFanout 
-      = _ongoingLowPrioLimit * numberOfDBServers / numberOfCoordinators;
-  }
+  void increaseOngoingLowPriority();
+  void decreaseOngoingLowPriority();
 
   constexpr static uint64_t const NumberOfQueues = 4;
 
@@ -168,9 +153,8 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _minNumWorker;
   size_t const _maxNumWorker;
   uint64_t const _maxFifoSizes[NumberOfQueues];
-  size_t const _ongoingLowPrioLimit;
-  size_t _ongoingLowPrioLimitWithFanout;
-  
+  size_t const _ongoingLowPriorityLimit;
+
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
   //      is bigger than _wakeupTime_ns.
@@ -214,9 +198,8 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
-  Gauge<uint64_t>& _ongoingLowPrioGauge;
-  Gauge<uint64_t>& _ongoingLowPrioGaugeWithFanout;
-  Gauge<uint64_t>* _metricsQueueLengths[NumberOfQueues];
+  Gauge<uint64_t>& _ongoingLowPriorityGauge;
+  std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
 };
 
 }  // namespace arangodb

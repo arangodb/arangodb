@@ -52,7 +52,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _fifo1Size = 4096;
   uint64_t _fifo2Size = 4096;
   uint64_t _fifo3Size = 4096;
-  double _ongoingMultiplier = 4.0;
+  double _ongoingLowPriorityMultiplier = 4.0;
   double _unavailabilityQueueFillGrade = 0.75;
 
   std::unique_ptr<Scheduler> _scheduler;

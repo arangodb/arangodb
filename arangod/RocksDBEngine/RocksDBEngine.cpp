@@ -697,8 +697,8 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);         // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
 
-  /*  TRI_ASSERT(static_cast<int>(_options.max_write_buffer_number) >=
-               static_cast<int>(cfFamilies.size()));*/
+  TRI_ASSERT(static_cast<int>(_options.max_write_buffer_number) >=
+             static_cast<int>(cfFamilies.size()));
   // Update max_write_buffer_number above if you change number of families used
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
@@ -2402,17 +2402,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   }
 
   builder.close();
-}
-
-bool RocksDBEngine::getIsWriteStopped() const {
-  std::string v;
-  if (_db->GetProperty(rocksdb::DB::Properties::kIsWriteStopped, &v)) {
-    int64_t i = basics::StringUtils::int64(v);
-    if (i != 0) {
-      return true;
-    }
-  }
-  return false;
 }
 
 Result RocksDBEngine::handleSyncKeys(DatabaseInitialSyncer& syncer,

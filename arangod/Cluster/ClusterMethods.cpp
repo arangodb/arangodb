@@ -48,7 +48,6 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/Version.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/HotBackupCommon.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -442,29 +441,6 @@ struct CrudOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   std::map<ShardID, std::vector<VPackSlice>> shardMap;
   arangodb::OperationOptions options;
- private:
-  uint64_t fanoutInScheduler;
- public:
-  // We remember how much fanout we have leased from the scheduler for
-  // low prio queue throtteling. We return the lease in the destructor, but
-  // we want to move the lease with the move constructor:
-  CrudOperationCtx() : fanoutInScheduler(0) {}
-  CrudOperationCtx(CrudOperationCtx&& other)
-      : reverseMapping(std::move(other.reverseMapping)),
-        shardMap(std::move(other.shardMap)),
-        options(std::move(other.options)),
-        fanoutInScheduler(other.fanoutInScheduler) {
-    other.fanoutInScheduler = 0;
-  }
-  ~CrudOperationCtx() {
-    SchedulerFeature::SCHEDULER->decreaseOngoingLowPrioWithFanout(
-        fanoutInScheduler);
-  }
-  void addFanoutToScheduler() {
-    uint64_t fanout = shardMap.size();
-    SchedulerFeature::SCHEDULER->increaseOngoingLowPrioWithFanout(fanout);
-    fanoutInScheduler += fanout;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -516,29 +492,6 @@ struct CreateOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   std::map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
   arangodb::OperationOptions options;
- private:
-  uint64_t fanoutInScheduler;
- public:
-  // We remember how much fanout we have leased from the scheduler for
-  // low prio queue throtteling. We return the lease in the destructor, but
-  // we want to move the lease with the move constructor:
-  CreateOperationCtx() : fanoutInScheduler(0) {}
-  CreateOperationCtx(CreateOperationCtx&& other)
-      : reverseMapping(std::move(other.reverseMapping)),
-        shardMap(std::move(other.shardMap)),
-        options(std::move(other.options)),
-        fanoutInScheduler(other.fanoutInScheduler) {
-    other.fanoutInScheduler = 0;
-  }
-  ~CreateOperationCtx() {
-    SchedulerFeature::SCHEDULER->decreaseOngoingLowPrioWithFanout(
-        fanoutInScheduler);
-  }
-  void addFanoutToScheduler() {
-    uint64_t fanout = shardMap.size();
-    SchedulerFeature::SCHEDULER->increaseOngoingLowPrioWithFanout(fanout);
-    fanoutInScheduler += fanout;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1377,8 +1330,6 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     }
   }
 
-  opCtx.addFanoutToScheduler();
-
   Future<Result> f = makeFuture(Result());
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
@@ -1507,8 +1458,6 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     }
   }
   // We sorted the shards correctly.
-
-  opCtx.addFanoutToScheduler();
 
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
@@ -1738,8 +1687,6 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       canUseFastPath = false;
     }
   }
-
-  opCtx.addFanoutToScheduler();
 
   // lazily begin transactions on leaders
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -2267,8 +2214,6 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       canUseFastPath = false;
     }
   }
-
-  opCtx.addFanoutToScheduler();
 
   // Some stuff to prepare cluster-internal requests:
 

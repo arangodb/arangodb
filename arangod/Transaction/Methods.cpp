@@ -57,6 +57,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -979,15 +980,15 @@ Future<OperationResult> transaction::Methods::insertCoordinator(std::string cons
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
 static double chooseTimeoutForReplication(size_t count, size_t totalBytes) {
-  // We essentially stop using a meaningful timeout for this operation. 
-  // This is achieved by setting the default for the minimal timeout to 1h or 3600s.
-  // The reason behind this is the following: We have to live with RocksDB stalls
-  // and write stops, which can happen in overload situations. Then, no meaningful
-  // timeout helps and it is almost certainly better to keep trying to not have
-  // to drop the follower and make matters worse. In case of an actual failure
-  // (or indeed a restart), the follower is marked as failed and its reboot id is
-  // increased. As a consequence, the connection is aborted and we run into an
-  // error anyway. This is when a follower will be dropped.
+  // We essentially stop using a meaningful timeout for this operation.
+  // This is achieved by setting the default for the minimal timeout to 15m or
+  // 900s. The reason behind this is the following: We have to live with RocksDB
+  // stalls and write stops, which can happen in overload situations. Then, no
+  // meaningful timeout helps and it is almost certainly better to keep trying
+  // to not have to drop the follower and make matters worse. In case of an
+  // actual failure (or indeed a restart), the follower is marked as failed and
+  // its reboot id is increased. As a consequence, the connection is aborted and
+  // we run into an error anyway. This is when a follower will be dropped.
 
   // We leave this code in place for now.
   
@@ -1001,10 +1002,8 @@ static double chooseTimeoutForReplication(size_t count, size_t totalBytes) {
   // processing all
   timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
 
-  if (timeout < ReplicationTimeoutFeature::lowerLimit) {
-    return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
-  }
-  return (std::min)(ReplicationTimeoutFeature::upperLimit, timeout) *
+  return std::clamp(timeout, ReplicationTimeoutFeature::lowerLimit,
+                    ReplicationTimeoutFeature::upperLimit) *
          ReplicationTimeoutFeature::timeoutFactor;
 }
 
@@ -2349,11 +2348,9 @@ Future<Result> Methods::replicateOperations(
   auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
 
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
-    auto& replTimeout 
-      = vocbase().server().getFeature<ReplicationTimeoutFeature>();
-    replTimeout._metricsReplicationOpsTotal += 1;
-    replTimeout._metricsReplicationTimeTotal +=
-      std::chrono::nanoseconds(duration).count();
+    auto& replMetrics = vocbase().server().getFeature<ReplicationMetricsFeature>();
+    replMetrics.synchronousOpsTotal() += 1;
+    replMetrics.synchronousTimeTotal() += std::chrono::nanoseconds(duration).count();
 
     bool didRefuse = false;
     // We drop all followers that were not successful:

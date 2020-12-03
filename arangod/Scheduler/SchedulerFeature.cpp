@@ -107,10 +107,10 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
     // max / min number of threads
 
   // Concurrency throttling:
-  options->addOption("--server.ongoing-multiplier",
-                     std::string("controls the number of low prio requests that can be ongoing at a given point in time, relative to the maximum number of request handling threads"),
-                     new DoubleParameter(&_ongoingMultiplier),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic, arangodb::options::Flags::Hidden));
+  options->addOption("--server.ongoing-low-priority-multiplier", std::string("controls the number of low prio requests that can be ongoing at a given point in time, relative to the maximum number of request handling threads"),
+                     new DoubleParameter(&_ongoingLowPriorityMultiplier),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic,
+                                                         arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 3 fifo", new UInt64Parameter(&_fifo3Size));
@@ -164,11 +164,11 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _nrMinimalThreads = 4;
   }
 
-  if (_ongoingMultiplier < 1.0) {
+  if (_ongoingLowPriorityMultiplier < 1.0) {
     LOG_TOPIC("0a93a", WARN, arangodb::Logger::THREADS)
-        << "--server.ongoing-multiplier (" << _ongoingMultiplier
+        << "--server.ongoing-multiplier (" << _ongoingLowPriorityMultiplier
         << ") is less than 1.0, setting to default (4.0)";
-    _ongoingMultiplier = 4.0;
+    _ongoingLowPriorityMultiplier = 4.0;
   }
   
   if (_nrMinimalThreads >= _nrMaximalThreads) {
@@ -212,9 +212,11 @@ void SchedulerFeature::prepare() {
 #pragma warning(push)
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
 #endif
-  auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
-                                                     _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size, _fifo3Size,_ongoingMultiplier, _unavailabilityQueueFillGrade);
+  auto sched =
+      std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads, _nrMaximalThreads,
+                                            _queueSize, _fifo1Size, _fifo2Size,
+                                            _fifo3Size, _ongoingLowPriorityMultiplier,
+                                            _unavailabilityQueueFillGrade);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

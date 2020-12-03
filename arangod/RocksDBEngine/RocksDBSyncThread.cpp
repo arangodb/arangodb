@@ -34,20 +34,14 @@
 
 using namespace arangodb;
 
-RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine, 
-                                     std::chrono::milliseconds interval,
+RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval,
                                      std::chrono::milliseconds delayThreshold)
     : Thread(engine.server(), "RocksDBSync"),
       _engine(engine),
       _interval(interval),
       _lastSyncTime(std::chrono::steady_clock::now()),
       _lastSequenceNumber(0),
-      _delayThreshold(delayThreshold),
-      _metricsRocksDBStopped(
-          engine.server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_rocksdb_caught_is_stopped", 0,
-          "Number of times the syncer thread saw RocksDB had stopped writing."))
-{}
+      _delayThreshold(delayThreshold) {}
 
 RocksDBSyncThread::~RocksDBSyncThread() { shutdown(); }
 
@@ -113,12 +107,6 @@ void RocksDBSyncThread::run() {
   while (!isStopping()) {
     try {
       auto const now = std::chrono::steady_clock::now();
-
-      // Quickly check if RocksDB is write stopped:
-      if (_engine.getIsWriteStopped()) {
-        // Increase a counter:
-        _metricsRocksDBStopped += 1;
-      }
 
       rocksdb::SequenceNumber lastSequenceNumber;
       rocksdb::SequenceNumber previousLastSequenceNumber;
