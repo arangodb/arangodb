@@ -35,10 +35,10 @@ namespace agency {
 
 namespace detail {
 struct no_op_deleter {
-    void operator()(void *) const {};
+  void operator()(void*) const {};
 };
 
-template<typename T>
+template <typename T>
 using moving_ptr = std::unique_ptr<T, no_op_deleter>;
 
 template <typename V>
@@ -75,16 +75,13 @@ struct envelope {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       return *this;
     }
-    ~read_trx() noexcept {
-      try {
-        if (_builder) {
-          end();
-        }
-      } catch (...) {
-      }
-    }
     read_trx(read_trx&&) = default;
     read_trx& operator=(read_trx&&) = default;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // if this assertion triggers you forgot to call `end()`
+    ~read_trx() { TRI_ASSERT(_builder == nullptr); }
+#endif
 
    private:
     friend envelope;
@@ -119,20 +116,19 @@ struct envelope {
       _builder->close();
       return envelope(_builder.release());
     }
-    ~precs_trx() noexcept {
-      try {
-        if (_builder) {
-          end();
-        }
-      } catch (...) {
-      }
-    }
     precs_trx(precs_trx&&) = default;
     precs_trx& operator=(precs_trx&&) = default;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // if this assertion triggers you forgot to call `end()`
+    ~precs_trx() { TRI_ASSERT(_builder == nullptr); }
+#endif
+
    private:
     friend write_trx;
-    precs_trx(builder_ptr b) : _builder(std::move(b)) { _builder->openObject(); }
+    precs_trx(builder_ptr b) : _builder(std::move(b)) {
+      _builder->openObject();
+    }
     builder_ptr _builder;
   };
 
@@ -188,16 +184,13 @@ struct envelope {
       return std::move(*this);
     }
 
-    ~write_trx() noexcept {
-      try {
-        if (_builder) {
-          end();
-        }
-      } catch (...) {
-      }
-    }
     write_trx(write_trx&&) = default;
     write_trx& operator=(write_trx&&) = default;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // if this assertion triggers you forgot to call `end()`
+    ~write_trx() { TRI_ASSERT(_builder == nullptr); }
+#endif
 
     precs_trx precs() { return precs_trx(std::move(_builder)); }
 
@@ -217,14 +210,7 @@ struct envelope {
     _builder->close();
     _builder.release();
   }
-  ~envelope() noexcept {
-    try {
-      if (_builder) {
-        done();
-      }
-    } catch (...) {
-    }
-  }
+
   envelope(envelope&&) = default;
   envelope& operator=(envelope&&) = default;
 
@@ -232,7 +218,10 @@ struct envelope {
     b.openArray();
     return envelope(&b);
   }
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // if this assertion triggers you forgot to call `done()`
+    ~envelope() { TRI_ASSERT(_builder == nullptr); }
+#endif
  private:
   envelope(VPackBuilder* b) : _builder(b) {}
   builder_ptr _builder;
