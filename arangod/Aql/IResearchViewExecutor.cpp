@@ -1072,7 +1072,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
   size_t skipped = 0;
 
   if (filterConditionIsEmpty(&this->infos().filterCondition()) || 
-    _totalPos == this->_reader->live_docs_count()) {
+      _totalPos == this->_reader->live_docs_count()) {
     skipped =  this->_reader->live_docs_count() -_totalPos;
     _totalPos = this->_reader->live_docs_count();
     _readerOffset = this->_reader->size();
