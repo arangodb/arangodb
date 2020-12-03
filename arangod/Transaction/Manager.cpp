@@ -574,12 +574,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
         tid,
         MetaType::Managed, state.get()
     ).second;
-    if (emplaced) {
-      state.release();
-    } else {
-      // we need to adjust the status to aborted here, because otherwise an assertion
-      // in the TransactionState's destructor will be triggered.
-      state->updateStatus(transaction::Status::ABORTED);
+    if (!emplaced) {
+      // transaction was already started
       if (options.isFollowerTransaction || transaction::isFollowerTransactionId(tid)) {
         TRI_ASSERT(res.ok());
         return res;
@@ -588,6 +584,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction id ") + std::to_string(tid) +
                            " already used (while creating)");
     }
+    state.release();
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx " << tid;
