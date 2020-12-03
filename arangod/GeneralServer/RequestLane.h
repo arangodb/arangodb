@@ -139,7 +139,7 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::CLUSTER_AQL:
       return RequestPriority::MED;
     case RequestLane::CLUSTER_AQL_CONTINUATION:
-      return RequestPriority::MED;
+      return RequestPriority::HIGH;
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
