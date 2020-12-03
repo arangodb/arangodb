@@ -62,7 +62,7 @@ class IAggregator {
   enum class ResetBy { Worker, Master, Legacy };
   virtual void reset(ResetBy who) {
     reset();
-  };
+  }
   virtual void reset() = 0;
 
   virtual bool isConverging() const = 0;

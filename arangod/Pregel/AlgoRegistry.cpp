@@ -39,17 +39,12 @@
 #include "Pregel/Algos/WCC.h"
 #include "Pregel/Utils.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 IAlgorithm* AlgoRegistry::createAlgorithm(application_features::ApplicationServer& server,
                                           std::string const& algorithm,
                                           VPackSlice userParams) {
-
-  LOG_DEVEL << " algorithm: " << algorithm;
-
   if (algorithm == "sssp") {
     return new algos::SSSPAlgorithm(server, userParams);
   } else if (algorithm == "pagerank") {
@@ -108,7 +103,6 @@ template <typename V, typename E, typename M>
   std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
 
   auto& server = vocbase.server();
-  LOG_DEVEL << " worker algorithm: " << algorithm;
   if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(server, userParams), body);
   } else if (algorithm == "pagerank") {

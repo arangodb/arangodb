@@ -103,7 +103,7 @@ struct Algorithm : IAlgorithm {
   }
   virtual graph_format* inputFormat() const = 0;
   virtual message_format* messageFormat() const = 0;
-  virtual message_combiner* messageCombiner() const { return nullptr; };
+  virtual message_combiner* messageCombiner() const { return nullptr; }
   virtual vertex_computation* createComputation(WorkerConfig const*) const = 0;
   virtual vertex_compensation* createCompensation(WorkerConfig const*) const {
     return nullptr;

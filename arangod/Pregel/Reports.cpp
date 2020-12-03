@@ -77,10 +77,10 @@ void Report::intoBuilder(VPackBuilder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("msg", VPackValue(message));
   builder.add("level", VPackValue(to_string(level)));
-    VPackObjectBuilder pob(&builder, "annotations");
-    for (auto&& pair : annotations) {
-      builder.add(pair.first, pair.second.slice());
-    }
+  VPackObjectBuilder pob(&builder, "annotations");
+  for (auto&& pair : annotations) {
+    builder.add(pair.first, pair.second.slice());
+  }
 }
 
 auto ReportManager::report(ReportLevel level) -> ReportBuilder {

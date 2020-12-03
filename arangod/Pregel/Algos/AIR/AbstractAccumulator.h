@@ -46,7 +46,7 @@ template <typename T>
 class Accumulator;
 
 struct AccumulatorBase {
-  AccumulatorBase(){};
+  AccumulatorBase() = default;
   virtual ~AccumulatorBase() = default;
   template <typename T>
   Accumulator<T>* castAccumulatorType() {
@@ -94,7 +94,7 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(AccumulatorOptions const&, CustomAccumulatorDefinitions const&){};
+  explicit Accumulator(AccumulatorOptions const&, CustomAccumulatorDefinitions const&) = default;
   ~Accumulator() override = default;
 
   auto clear() -> greenspun::EvalResult override {
@@ -106,7 +106,7 @@ class Accumulator : public AccumulatorBase {
   virtual auto set(data_type v) -> greenspun::EvalResult {
     _value = std::move(v);
     return {};
-  };
+  }
 
   // Needed to implement updates by slice
   virtual auto update(data_type v) -> greenspun::EvalResultT<UpdateResult> {

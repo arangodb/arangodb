@@ -8201,10 +8201,9 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
   greenspun::InitMachine(m);
 
   transaction::BuilderLeaser programBuilder(trx);
-  transaction::BuilderLeaser paramBuilder(trx);
   {
     VPackArrayBuilder array(programBuilder.builder());
-    for (size_t p = 0; p<parameters.size(); p++) {
+    for (size_t p = 0; p < parameters.size(); p++) {
       programBuilder->add(extractFunctionParameterValue(parameters, p).slice());
     }
   }
@@ -8227,4 +8226,3 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
-

@@ -631,7 +631,6 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
     builder.openObject(true);
     builder.add(StaticStrings::KeyString,
                 VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    /// bool store =
     {
       auto result = _graphFormat->buildVertexDocumentWithResult(builder, &data);
       if (result.fail()) {

@@ -33,7 +33,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
-#include "Reports.h"
+#include "Pregel/Reports.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 

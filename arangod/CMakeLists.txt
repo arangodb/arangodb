@@ -792,7 +792,7 @@ endif()
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 
-add_library(arango-greenspun STATIC
+add_library(arango_greenspun STATIC
         ${LIB_ARANGO_AIR_SOURCES})
 
 add_library(arango_graph STATIC
@@ -951,11 +951,11 @@ target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
 
-target_link_libraries(arango-greenspun arango)
+target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
-target_link_libraries(arango_pregel arango-greenspun)
+target_link_libraries(arango_pregel arango_greenspun)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)

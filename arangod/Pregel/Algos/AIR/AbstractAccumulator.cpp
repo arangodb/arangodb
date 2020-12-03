@@ -149,7 +149,7 @@ std::unique_ptr<AccumulatorBase> instantiateAccumulator(AccumulatorOptions const
   auto ptr = my_type_mapping::invoke(options.valueType, [&](auto type_tag) -> std::unique_ptr<AccumulatorBase> {
     using used_type = decltype(type_tag);
     if constexpr (used_type::found) {
-        return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(options.type, options, customDefinitions);
+      return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(options.type, options, customDefinitions);
     }
 
     return nullptr;

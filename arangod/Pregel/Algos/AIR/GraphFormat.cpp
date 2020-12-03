@@ -110,7 +110,6 @@ void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice
       finalBuilder.add(tmp.slice());
     } else {
       // TODO: this cannot happen anymore if we introduce type checking within the deserializer
-      LOG_DEVEL << "filterDocumentData: Expecting key to be a string nor an array, got: " << key.toJson();
       TRI_ASSERT(false);
     }
   }
@@ -175,7 +174,6 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
     VPackBuilder tmpBuilder;
     auto res = Evaluate(m, _dataAccess.writeVertex->slice(), tmpBuilder);
     if (res.fail()) {
-      LOG_DEVEL << "finalize program failed: " << res.error().toString();
       THROW_ARANGO_EXCEPTION(res);
     }
 

@@ -65,7 +65,7 @@ struct GraphFormat {
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* targetPtr) const = 0;
 
   virtual greenspun::EvalResult buildVertexDocumentWithResult(arangodb::velocypack::Builder& b,
-                                                              const V* targetPtr) const {
+                                                              V const* targetPtr) const {
     buildVertexDocument(b, targetPtr);
     return {};
   }

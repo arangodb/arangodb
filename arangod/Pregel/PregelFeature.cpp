@@ -208,7 +208,6 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   }
 
   uint64_t en = instance->createExecutionNumber();
-  LOG_DEVEL << "ALGORITHM: " << algorithm;
   auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
                                                edgeColls, edgeCollectionRestrictions,
                                                algorithm, params);

@@ -60,7 +60,6 @@ struct PregelID {
 
   bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
 
-  using VPackSlice = arangodb::velocypack::Slice;
 };
 
 template <typename V, typename E>

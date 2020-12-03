@@ -51,12 +51,12 @@ auto CustomAccumulator<VPackSlice>::setBySlice(VPackSlice v)
   inputSlice = v;
   TRI_DEFER({ inputSlice = Slice::noneSlice(); })
 
-    if (_definition.setProgram.isEmpty()) {
-      _buffer.clear();
-      _buffer.add(v);
-      _value = _buffer.slice();
-      return {};
-    }
+  if (_definition.setProgram.isEmpty()) {
+    _buffer.clear();
+    _buffer.add(v);
+    _value = _buffer.slice();
+    return {};
+  }
 
   VPackBuilder result;
   return greenspun::Evaluate(_machine, this->_definition.setProgram.slice(), result)
@@ -81,13 +81,13 @@ auto CustomAccumulator<VPackSlice>::getIntoBuilder(VPackBuilder& result)
 // FIXME: duplicate code here and below
 auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> {
   this->inputSlice = msg.get("value");
-  this->inputSender =  msg.get("sender");
+  this->inputSender = msg.get("sender");
 
   TRI_DEFER({
       this->inputSlice = VPackSlice::noneSlice();
       this->inputSender = VPackSlice::noneSlice(); })
 
-    VPackBuilder result;
+  VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
   if (res.fail()) {
     return res.error().wrapMessage("in updateProgram of custom accumulator");

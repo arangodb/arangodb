@@ -269,13 +269,13 @@ struct vertex_accumulator_options_validator {
   }
 
   std::optional<deserialize_error> operator()(VertexAccumulatorOptions const& opts) {
-    for(auto&& acc : opts.globalAccumulators) {
+    for (auto const& acc : opts.globalAccumulators) {
       if (auto err = validate(opts, acc); err) {
         return err->wrap("validating global accumulator");
       }
     }
 
-    for(auto&& acc : opts.vertexAccumulators) {
+    for (auto const& acc : opts.vertexAccumulators) {
       if (auto err = validate(opts, acc); err) {
         return err->wrap("validating vertex accumulator");
       }
