@@ -204,6 +204,7 @@ void segment_writer::finish() {
   // write document normalization factors (for each field marked for normalization))
   float_t value;
   for (auto* field : norm_fields_) {
+    assert(field->size() > 0);
     value = 1.f / float_t(std::sqrt(double_t(field->size())));
     if (value != norm::DEFAULT()) {
       auto& stream = field->norms(*col_writer_);
