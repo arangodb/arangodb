@@ -149,6 +149,24 @@ class ConfigBuilder {
   haveSetAllDatabases() {
     return this.config.hasOwnProperty('all-databases');
   }
+  activateFailurePoint() {
+    if (this.type !== "restore") {
+      throw '"activateFailurePoint" is not supported for binary: ' + this.type;
+    }
+    this.config['fail-after-update-continue-file'] = 'true';
+  }
+  enableContinue() {
+    if (this.type !== "restore") {
+      throw '"enableContinue" is not supported for binary: ' + this.type;
+    }
+    this.config['continue'] = 'true';
+  }
+  deactivateFailurePoint() {
+    delete this.config['fail-after-update-continue-file'];
+  }
+  disableContinue() {
+    delete this.config['continue'];
+  }
   toArgv() { return internal.toArgv(this.config); }
 
   getExe() { return this.executable; }
@@ -214,8 +232,8 @@ function coverageEnvironment () {
     result.push(
       name +
       "=" +
-      process.env[name] + 
-      "/" + 
+      process.env[name] +
+      "/" +
       crypto.md5(String(internal.time() + Math.random())));
   }
 
@@ -296,7 +314,7 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOEXPORT_BIN,
     ARANGOSH_BIN
   ];
-  
+
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
@@ -692,7 +710,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     if (crashUtils.runProcdump(options, instanceInfo, rootDir, res.pid)) {
-      Object.assign(instanceInfo.exitStatus, 
+      Object.assign(instanceInfo.exitStatus,
                     statusExternal(res.pid, true, timeout * 1000));
       if (instanceInfo.exitStatus.status === 'TIMEOUT') {
         print('Timeout while running ' + cmd + ' - will kill it now! ' + JSON.stringify(args));
@@ -765,7 +783,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         timeout: false,
         status: false,
         message: 'exit code was ' + instanceInfo.exitStatus.exit,
-        duration: deltaTime
+        duration: deltaTime,
+        exitCode: instanceInfo.exitStatus.exit,
       };
     }
   } else if (instanceInfo.exitStatus.status === 'ABORTED') {
@@ -934,7 +953,7 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
 function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
   const cfg = createBaseConfigBuilder(which, options, instanceInfo, database);
   cfg.setIncludeSystem(includeSystem);
-  if (rootDir) { cfg.setRootDir(rootDir); } 
+  if (rootDir) { cfg.setRootDir(rootDir); }
 
   if (which === 'dump') {
     cfg.setOutputDirectory(dumpDir);
@@ -968,13 +987,13 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   if (options.password) {
     args['server.password'] = options.password;
   }
-  
+
   args = Object.assign(args, cmds);
 
   if (!args.hasOwnProperty('verbose')) {
     args['log.level'] = 'warning';
   }
-  
+
   args['flatCommands'] = [which];
 
   return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
@@ -1065,9 +1084,9 @@ function checkUptime (instanceInfo, options) {
     if (reply.hasOwnProperty('error') || reply.code !== 200) {
       throw new Error("unable to get statistics reply: " + JSON.stringify(reply));
     }
-  
+
     let statisticsReply = JSON.parse(reply.body);
-    
+
     ret [ arangod.name ] = statisticsReply.server.uptime;
   });
   return ret;
@@ -1137,7 +1156,7 @@ function checkInstanceAlive (instanceInfo, options) {
       return false;
     }
   }
-  
+
   let rc = instanceInfo.arangods.reduce((previous, arangod) => {
     let ret = checkArangoAlive(arangod, options);
     if (!ret) {
@@ -1382,7 +1401,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       print(x);
     }
   }
-  
+
   // Shut down all non-agency servers:
   const n = instanceInfo.arangods.length;
 
@@ -1401,7 +1420,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
   let nonAgenciesCount = instanceInfo.arangods
       .filter(arangod => {
-        if (arangod.hasOwnProperty('exitStatus') && 
+        if (arangod.hasOwnProperty('exitStatus') &&
             (arangod.exitStatus.status !== 'RUNNING')) {
           return false;
         }
@@ -1494,11 +1513,11 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     });
     if (toShutdown.length > 0) {
       let roles = {};
-      toShutdown.forEach(arangod => { 
+      toShutdown.forEach(arangod => {
         if (!roles.hasOwnProperty(arangod.role)) {
           roles[arangod.role] = 0;
-        } 
-        ++roles[arangod.role]; 
+        }
+        ++roles[arangod.role];
       });
       let roleNames = [];
       for (let r in roles) {
@@ -1823,6 +1842,17 @@ function launchFinalize(options, instanceInfo, startTime) {
         }
       }
     });
+    instanceInfo.endpoints = [instanceInfo.endpoint];
+    instanceInfo.urls = [instanceInfo.url];
+  } else {
+    instanceInfo.urls = [];
+    instanceInfo.endpoints = [];
+    instanceInfo.arangods.forEach(arangod => {
+      if (arangod.role === 'coordinator') {
+        instanceInfo.urls.push(arangod.url);
+        instanceInfo.endpoints.push(arangod.endpoint);
+      }
+    });
   }
   print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
   var matchPort = /.*:.*:([0-9]*)/;
@@ -2071,7 +2101,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      let rc = { 
+      let rc = {
                  endpoint: options.server,
                  rootDir: options.serverRoot,
                  url: options.server.replace('tcp', 'http'),
@@ -2107,7 +2137,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
-      
+
       throw x;
     }
     if (crashUtils.isEnabledWindowsMonitor(options, oneInstanceInfo, oneInstanceInfo.pid, ARANGOD_BIN)) {
@@ -2120,7 +2150,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       }
     }
   };
-  
+
   const startTime = time();
 
   instanceInfo.arangods.forEach(function (oneInstance, i) {
@@ -2131,7 +2161,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
     delete(oneInstance.pid);
     oneInstance.upAndRunning = false;
   });
-  
+
   if (options.cluster) {
     let agencyInstance = {arangods: []};
     instanceInfo.arangods.forEach(function (oneInstance, i) {
@@ -2249,7 +2279,7 @@ exports.cleanupLastDirectory = cleanupLastDirectory;
 exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
-
+exports.dumpAgency = dumpAgency;
 Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
 Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
 Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
