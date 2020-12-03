@@ -60,12 +60,12 @@ MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t& vocbase, TRI_voc
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
-      _hasOperations(false) {
-}
+      _hasOperations(false) {}
 
 /// @brief free a transaction container
 MMFilesTransactionState::~MMFilesTransactionState() {
   delete _rocksTransaction;
+  _status = transaction::Status::ABORTED;
 }
 
 /// @brief get (or create) a rocksdb WriteTransaction

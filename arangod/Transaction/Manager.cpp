@@ -410,6 +410,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       if (ServerState::instance()->isDBServer() && 
+          EngineSelectorFeature::ENGINE->typeName() == "rocksdb" &&
           (isFollowerTransactionId(tid) || options.isFollowerTransaction)) {
         // it is ok for two different leaders to try to create the same
         // follower transaction on a leader.
@@ -458,7 +459,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     // add write collections to the transaction at runtime whenever this happens.
     // It is important that all these calls succeed, because otherwise one of the calls
     // would just drop db server 3 as a follower.
-    options.allowImplicitCollectionsForWrite = true;
+    if (EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
+      options.allowImplicitCollectionsForWrite = true;
+    }
 
     // we should not have any locking conflicts on followers, generally. shard locking
     // should be performed on leaders first, which will then, eventually replicate

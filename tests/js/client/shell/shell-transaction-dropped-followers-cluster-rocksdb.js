@@ -78,7 +78,7 @@ function getMetric(endpoint, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*?\} (\d+)$/, '$1'));
+  return Number(matches[0].replace(/^.*? (\d+)$/, '$1'));
 }
 
 function transactionDroppedFollowersSuite() {
