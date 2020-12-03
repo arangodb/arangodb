@@ -203,9 +203,9 @@ RestStatus RestAgencyHandler::pollIndex(
                 builder.add("firstIndex", logs[i].get("index"));
               }
               builder.add(VPackValue("log"));
+              VPackArrayBuilder a(&builder);
               if (start <= firstIndex) {
                 uint64_t i = start - firstIndex;
-                VPackArrayBuilder a(&builder);
                 for (; i < logs.length(); ++i) {
                   builder.add(logs[i]);
                 }
