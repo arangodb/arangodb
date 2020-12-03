@@ -284,6 +284,10 @@ bool Query::killed() const {
   }
   return _killed;
 }
+  
+void Query::setKilled() {
+  _killed = true;
+}
 
 /// @brief set the query to killed
 void Query::kill() {
