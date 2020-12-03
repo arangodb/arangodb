@@ -46,6 +46,7 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "StorageEngine/HotBackup.h"
 #include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
@@ -1738,6 +1739,38 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hotbackup
+//////////////////////////////////////////////////////////////////////////////
+
+static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createHotbackup(obj)");
+  }
+  VPackBuilder obj;
+  int res = TRI_V8ToVPack(isolate, obj, args[0], false, true);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createHotbackup(obj): could not convert bodyto object");
+  }
+
+  VPackBuilder result;
+#if USE_ENTERPRISE
+  auto& server = application_features::ApplicationServer::server();
+  HotBackup h(server);
+  auto r = h.execute("create", obj.slice(), result);
+  if (r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+#else
+  result.add(obj.slice());
+#endif
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
@@ -1745,6 +1778,11 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CREATE_HOTBACKUP"),
+                               JS_CreateHotbackup);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
