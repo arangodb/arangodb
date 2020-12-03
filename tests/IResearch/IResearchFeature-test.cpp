@@ -1719,7 +1719,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 
       {
         auto scopedLock = irs::make_lock_guard(*mutex);
-        feature->queue(arangodb::iresearch::ThreadGroup::_1, 1000ms, *this);
+        feature->queue(arangodb::iresearch::ThreadGroup::_1, 5000ms, *this);
       }
 
       cond->notify_all();
@@ -1757,8 +1757,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   EXPECT_EQ(1, count);
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));  // first run invoked immediately
   EXPECT_FALSE(deallocated);
-  EXPECT_EQ(std::cv_status::timeout, cond.wait_for(lock, 1000ms));
-  EXPECT_FALSE(deallocated);  // still scheduled
+  EXPECT_EQ(std::cv_status::timeout, cond.wait_for(lock, 100ms));
+  EXPECT_FALSE(deallocated); // still scheduled
   EXPECT_EQ(1, count);
 }
 
