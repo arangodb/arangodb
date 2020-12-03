@@ -1074,7 +1074,6 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
   if (filterConditionIsEmpty(&this->infos().filterCondition()) || 
       _totalPos == this->_reader->live_docs_count()) {
     skipped =  this->_reader->live_docs_count() -_totalPos;
-    _totalPos = this->_reader->live_docs_count();
     _readerOffset = this->_reader->size();
   } else {
     if (this->infos().countApproximate() == CountApproximate::Cost) {
@@ -1095,15 +1094,12 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
         skipped += irs::cost::extract(*_itr, 0);
         _itr.reset();
       }
-      _totalPos = this->_reader->live_docs_count(); // mark node as exhausted so future skips will return 0 immediately
     } else {
       for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
         if (!_itr && !resetIterator()) {
           continue;
         }
         while (_itr->next()) {
-          ++_currentSegmentPos;
-          ++_totalPos;
           skipped++;
         }
         _itr.reset();
@@ -1111,7 +1107,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
       }
     }
   }
-
+  _totalPos = this->_reader->live_docs_count(); // mark node as exhausted so future skips will return 0 immediately
   return skipped;
 }
 
