@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -42,13 +43,6 @@
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-bool TransactionState::debugWasDelayed = false;
-std::mutex TransactionState::debugDelayMutex{};
-std::vector<TransactionId> TransactionState::debugWaitingInDelay{};
-std::condition_variable TransactionState::debugDelayConditionVariable{};
-#endif
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
@@ -125,6 +119,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
   return std::move(cookie);
 }
 
+#include <any>
 #include "Basics/StringUtils.h"
 
 /// @brief add a collection to a transaction
@@ -133,37 +128,35 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     LOG_DEVEL << "Locking " << cname << " with " << (int)accessType
               << " Server: " << _id.serverId() << " id: " << _id.id();
-    // Needs to be static class Member
-    if (!TransactionState::debugWasDelayed) {
-      {
-        std::unique_lock<std::mutex> guard(TransactionState::debugDelayMutex);
-
-        TransactionState::debugWaitingInDelay.emplace_back(_id);
-        TransactionState::debugDelayConditionVariable.wait(guard, [&] {
-          return TransactionState::debugWaitingInDelay.size() == 2;
-        });
-        TransactionState::debugDelayConditionVariable.notify_all();
-      }
-
+    auto& raceController = basics::DebugRaceController::sharedInstance();
+    if (!raceController.didTrigger()) {
+      raceController.waitForOthers(2, _id);
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
       LOG_DEVEL << "Testing: " << shardNum << " on id " << _id.id();
       if (shardNum % 2 == 0) {
-        auto min = *std::min_element(TransactionState::debugWaitingInDelay.begin(),
-                                     TransactionState::debugWaitingInDelay.end());
-        if (_id == min) {
+        std::vector<std::any> const& data = raceController.data();
+        auto min = *std::min_element(data.begin(), data.end(),
+                                     [](std::any const& a, std::any const& b) {
+                                       return std::any_cast<TransactionId>(a) <
+                                              std::any_cast<TransactionId>(b);
+                                     });
+        if (_id == std::any_cast<TransactionId>(min)) {
           LOG_DEVEL << "We sleep on " << _id.id();
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
       } else {
-        auto max = *std::max_element(TransactionState::debugWaitingInDelay.begin(),
-                                     TransactionState::debugWaitingInDelay.end());
-        if (_id == max) {
+        std::vector<std::any> const& data = raceController.data();
+        auto max = *std::max_element(data.begin(), data.end(),
+                                     [](std::any const& a, std::any const& b) {
+                                       return std::any_cast<TransactionId>(a) <
+                                              std::any_cast<TransactionId>(b);
+                                     });
+        if (_id == std::any_cast<TransactionId>(max)) {
           LOG_DEVEL << "We sleep on " << _id.id();
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
       }
-      TransactionState::debugWasDelayed = true;
     }
   }
   Result res;

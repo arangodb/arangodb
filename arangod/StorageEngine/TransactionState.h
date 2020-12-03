@@ -289,16 +289,6 @@ class TransactionState {
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
-
-  // This are used to synchronize parallel locking of two shards
-  // in our tests. Do NOT include in production.
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
- private:
-  static bool debugWasDelayed;
-  static std::mutex debugDelayMutex;
-  static std::vector<TransactionId> debugWaitingInDelay;
-  static std::condition_variable debugDelayConditionVariable;
-#endif
 };
 
 }  // namespace arangodb
