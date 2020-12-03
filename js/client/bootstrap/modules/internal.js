@@ -236,13 +236,23 @@
   let appendHeaders = function(appender, headers) {
     var key;
     // generate header
-    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+    const protocol = exports.arango.protocol();
+    if (protocol === 'http') {
+      if (headers.hasOwnProperty('http/1.1')) {
+        appender(`HTTP/1.1 ${headers['http/1.1']}\n`);
+      } else {
+        throw `Header field 'http/1.1' is missing.`;
+      }
+    } else {
+      throw `ArangoConnection::protocol() is '${protocol}', expected 'http'.`;
+    }
 
     for (key in headers) {
       if (headers.hasOwnProperty(key)) {
-        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-            && key !== 'content-length') {
-          appender(key + ': ' + headers[key] + '\n');
+        if (key !== 'http/1.1') {
+          // Could filter out some common header fields here
+          //key !== 'server' && key !== 'connection' && key !== 'content-length'
+          appender(`${key}: ${headers[key]}\n`);
         }
       }
     }

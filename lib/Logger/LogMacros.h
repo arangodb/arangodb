@@ -58,9 +58,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message for a topic
-////////////////////////////////////////////////////////////////////////////////
 
 #define ARANGO_INTERNAL_LOG_HELPER(id)                        \
   ::arangodb::Logger::LINE(__LINE__)                          \
@@ -68,14 +65,23 @@
   << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
   << ::arangodb::Logger::LOGID((id))
 
-#define LOG_TOPIC(id, level, topic)                                         \
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message for a topic
+////////////////////////////////////////////////////////////////////////////////
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+#define LOG_TOPIC(id, level, topic)                                     \
+  ::arangodb::LoggerStream() << (::arangodb::LogLevel::level)           \
+                             << (topic)                                 \
+                             << ARANGO_INTERNAL_LOG_HELPER(id)
+#else
+#define LOG_TOPIC(id, level, topic)                                     \
   !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic))    \
     ? (void)nullptr                                                         \
     : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
       << (::arangodb::LogLevel::level))                                     \
       << (topic)                                                            \
       << ARANGO_INTERNAL_LOG_HELPER(id)
-
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////

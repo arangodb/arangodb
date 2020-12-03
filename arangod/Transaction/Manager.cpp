@@ -474,10 +474,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (options.isFollowerTransaction || tid.isFollowerTransactionId()) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-    // turn on intermediate commits on followers as well. otherwise huge leader
-    // transactions could make the follower claim all memory and crash.
   }
   if (isFollowerTransactionOnDBServer) {
+    // turn on intermediate commits on followers as well. otherwise huge leader
+    // transactions could make the follower claim all memory and crash.
     hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
   try {
