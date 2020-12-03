@@ -2,7 +2,7 @@ v3.6.11 (XXXX-XX-XX)
 --------------------
 
 * Reduce the number of dropped followers when running larger (>= 128 MB)
-  write transactions.
+  write transactions in the RocksDB storage engine.
 
 * Added metrics for collection locks:
   - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts 
