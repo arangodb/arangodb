@@ -1,10 +1,15 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
-* Reimplement coordshort request handler. The new implementation only runs
-  two DB queries without any additional requests to other coordinators,
-  resulting in reduced load on the cluster. Previously this involved
-  requests to all coordinators, where each of them ran two DB queries.
+* Reimplement coordshort request handler. The new implementation only runs two
+  DB queries without any additional requests to other coordinators, resulting in
+  reduced load on the cluster. Previously this involved requests to all
+  coordinators, where each of them ran two DB queries.
+
+* Fixed bug with ArangoSearch views on SmartGraph edge collections which could
+  contain some documents twice.
+  This change removes `_to_*` local auxiliary link creation and existence within
+  a view linked with a SmartGraph edge collection.
 
 * Updated arangosync to 0.7.13.
 
