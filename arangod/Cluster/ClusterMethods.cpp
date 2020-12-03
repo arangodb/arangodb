@@ -3700,7 +3700,6 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   }
 
   // Perform the requests
-//  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
   for (Future<network::Response>& f : futures) {
      network::Response const& r = f.get();
 
