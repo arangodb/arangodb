@@ -143,6 +143,16 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
 
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
+
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
   auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
@@ -186,10 +196,8 @@ TEST_F(IResearchFeatureTest, test_options_default) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -206,6 +214,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -256,11 +274,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -277,6 +292,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -328,11 +353,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -349,6 +371,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -399,10 +431,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -419,6 +449,16 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -469,11 +509,8 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -490,6 +527,16 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -542,11 +589,8 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -563,6 +607,16 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -616,11 +670,8 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -637,6 +688,16 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -690,11 +751,8 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -711,6 +769,16 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_greater_tha
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -764,11 +832,8 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_greater_tha
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -785,6 +850,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -837,11 +912,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -858,6 +930,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -912,11 +994,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -933,6 +1012,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commi
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -986,11 +1075,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commi
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1007,6 +1093,16 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -1064,11 +1160,8 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1085,6 +1178,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -1135,11 +1238,8 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1156,6 +1256,16 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -1202,11 +1312,8 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1223,6 +1330,16 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -1270,11 +1387,8 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1291,6 +1405,16 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -1338,11 +1462,8 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1359,6 +1480,16 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_1));
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != feature.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
@@ -1406,11 +1537,8 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr), size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            feature.stats(ThreadGroup::_1));
-
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1426,6 +1554,16 @@ TEST_F(IResearchFeatureTest, test_start) {
   auto& functions = server.addFeatureUntracked<aql::AqlFunctionFeature>();
   auto& iresearch = server.addFeatureUntracked<IResearchFeature>();
   auto cleanup = irs::make_finally([&functions]() { functions.unprepare(); });
+
+  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
+                          arangodb::iresearch::ThreadGroup group,
+                          std::chrono::steady_clock::duration timeout = 10s) {
+    auto const end = std::chrono::steady_clock::now() + timeout;
+    while (expectedStats != iresearch.stats(group)) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  };
 
   enum class FunctionType { FILTER = 0, SCORER };
 
@@ -1475,11 +1613,8 @@ TEST_F(IResearchFeatureTest, test_start) {
             iresearch.stats(ThreadGroup::_1));
 
   iresearch.start();
-
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            iresearch.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
-            iresearch.stats(ThreadGroup::_1));
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
 
   for (auto& entry : expected) {
     auto* function = arangodb::iresearch::getFunction(functions, entry.first);
