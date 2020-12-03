@@ -29,22 +29,23 @@ let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
+const request = require('@arangodb/request');
 
-function CommunicationSuite () {
+function CommunicationSuite() {
   'use strict';
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-  
+
   // detect the path of arangosh. quite hacky, but works
   const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
 
   assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
 
-  let debug = function(text) {
+  let debug = function (text) {
     console.warn(text);
   };
-  
-  let runShell = function(args, prefix) {
+
+  let runShell = function (args, prefix) {
     let options = internal.options();
     args.push('--javascript.startup-directory');
     args.push(options['javascript.startup-directory']);
@@ -94,15 +95,17 @@ function CommunicationSuite () {
     let args = ['--javascript.execute', file];
     let pid = runShell(args, file);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, file, pid }; 
+    return { key, file, pid };
   };
+
+
 
   let runTests = function (tests, duration) {
     assertFalse(db[cn].exists("stop"));
     let clients = [];
     debug("starting " + tests.length + " test clients");
     try {
-      tests.forEach(function(test) {
+      tests.forEach(function (test) {
         let key = test[0];
         let code = test[1];
         let client = buildCode(key, code);
@@ -112,9 +115,9 @@ function CommunicationSuite () {
       });
 
       debug("running test for " + duration + " s...");
-      
+
       require('internal').sleep(duration);
-      
+
       debug("stopping all test clients");
 
       // broad cast stop signal
@@ -123,8 +126,8 @@ function CommunicationSuite () {
       let tries = 0;
       let done = 0;
       while (++tries < 60) {
-        clients.forEach(function(client) {
-          if (!client.done) { 
+        clients.forEach(function (client) {
+          if (!client.done) {
             let status = internal.statusExternal(client.pid);
             if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
               client.done = true;
@@ -135,21 +138,21 @@ function CommunicationSuite () {
           }
         });
 
-        done = clients.reduce(function(accumulator, currentValue) {
+        done = clients.reduce(function (accumulator, currentValue) {
           return accumulator + (currentValue.done ? 1 : 0);
         }, 0);
 
         if (done === clients.length) {
           break;
         }
-          
+
         require('internal').sleep(0.5);
       }
 
       assertEqual(done, clients.length, "not all shells could be joined");
       assertEqual(1 + clients.length, db[cn].count());
       let stats = {};
-      clients.forEach(function(client) {
+      clients.forEach(function (client) {
         let doc = db[cn].document(client.key);
         assertEqual(client.key, doc._key);
         assertTrue(doc.done);
@@ -159,11 +162,11 @@ function CommunicationSuite () {
 
       debug("test run iterations: " + JSON.stringify(stats));
     } finally {
-      clients.forEach(function(client) {
+      clients.forEach(function (client) {
         try {
           fs.remove(client.file);
-        } catch (err) {}
-      
+        } catch (err) { }
+
         const logfile = client.file + '.log';
         if (client.failed) {
           if (fs.exists(logfile)) {
@@ -174,7 +177,7 @@ function CommunicationSuite () {
         }
         try {
           fs.remove(logfile);
-        } catch (err) {}
+        } catch (err) { }
 
         if (!client.done) {
           // hard-kill all running instances
@@ -184,9 +187,204 @@ function CommunicationSuite () {
               debug("forcefully killing test client with pid " + client.pid);
               internal.killExternal(client.pid, 9 /*SIGKILL*/);
             }
-          } catch (err) {}
+          } catch (err) { }
         }
       });
+    }
+  };
+
+  const buildSingleRunCode = (key, command) => {
+    const cmd = `
+    (function() {
+        ${command}
+        db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1 });
+    })();
+    `;
+
+    let args = ['--javascript.execute-string', cmd];
+    let pid = runShell(args, key);
+    debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
+    return { key, pid };
+  };
+
+  const singleRun = (tests) => {
+    let clients = [];
+    assertEqual(db[cn].count(), 0, "Test Reports is not empty");
+    debug("starting " + tests.length + " test clients");
+    try {
+      tests.forEach(function ([key, code]) {
+        let client = buildSingleRunCode(key, code);
+        client.done = false;
+        client.failed = true; // assume the worst
+        clients.push(client);
+      });
+
+      debug("waiting for all test clients");
+
+      let tries = 0;
+      let done = 0;
+      while (++tries < 60) {
+        clients.forEach((client) => {
+          if (!client.done) {
+            let status = internal.statusExternal(client.pid);
+            if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
+              client.done = true;
+            }
+            if (status.status === 'TERMINATED' && status.exit === 0) {
+              client.failed = false;
+            }
+          }
+        });
+
+        done = clients.reduce(function (accumulator, currentValue) {
+          return accumulator + (currentValue.done ? 1 : 0);
+        }, 0);
+
+        if (done === clients.length) {
+          break;
+        }
+
+        require('internal').sleep(0.5);
+      }
+
+      assertEqual(done, clients.length, "not all shells could be joined");
+      assertEqual(clients.length, db[cn].count());
+      let stats = {};
+      clients.forEach(function (client) {
+        let doc = db[cn].document(client.key);
+        assertEqual(client.key, doc._key);
+        assertTrue(doc.done);
+
+        stats[client.key] = doc.iterations;
+      });
+
+      debug("test run iterations: " + JSON.stringify(stats));
+    } finally {
+      clients.forEach(function (client) {
+        const logfile = client.file + '.log';
+        if (client.failed) {
+          if (fs.exists(logfile)) {
+            debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
+          } else {
+            debug("test client with pid " + client.pid + " has failed and did not write a logfile");
+          }
+        }
+        try {
+          fs.remove(logfile);
+        } catch (err) { }
+
+        if (!client.done) {
+          // hard-kill all running instances
+          try {
+            let status = internal.statusExternal(client.pid).status;
+            if (status === 'RUNNING') {
+              debug("forcefully killing test client with pid " + client.pid);
+              internal.killExternal(client.pid, 9 /*SIGKILL*/);
+            }
+          } catch (err) { }
+        }
+      });
+    }
+  };
+
+  const twoShardColName = "UnitTestsTwoShard";
+
+  // TODO externalize
+
+
+
+  function getEndpointById(id) {
+    const toEndpoint = (d) => (d.endpoint);
+    const endpointToURL = (endpoint) => {
+      if (endpoint.substr(0, 6) === 'ssl://') {
+        return 'https://' + endpoint.substr(6);
+      }
+      let pos = endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + endpoint;
+      }
+      return 'http' + endpoint.substr(pos);
+    };
+
+    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    return instanceInfo.arangods.filter((d) => (d.id === id))
+      .map(toEndpoint)
+      .map(endpointToURL)[0];
+  }
+
+  function getEndpointsByType(type) {
+    const isType = (d) => (d.role.toLowerCase() === type);
+    const toEndpoint = (d) => (d.endpoint);
+    const endpointToURL = (endpoint) => {
+      if (endpoint.substr(0, 6) === 'ssl://') {
+        return 'https://' + endpoint.substr(6);
+      }
+      let pos = endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + endpoint;
+      }
+      return 'http' + endpoint.substr(pos);
+    };
+
+    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    return instanceInfo.arangods.filter(isType)
+      .map(toEndpoint)
+      .map(endpointToURL);
+  }
+
+  /// @brief set failure point
+  function debugCanUseFailAt(endpoint) {
+    let res = request.get({
+      url: endpoint + '/_admin/debug/failat',
+    });
+    return res.status === 200;
+  }
+
+  /// @brief set failure point
+  function debugSetFailAt(endpoint, failAt) {
+    let res = request.put({
+      url: endpoint + '/_admin/debug/failat/' + failAt,
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error setting failure point";
+    }
+  }
+
+  /// @brief remove failure point
+  function debugRemoveFailAt(endpoint, failAt) {
+    let res = request.delete({
+      url: endpoint + '/_admin/debug/failat/' + failAt,
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error removing failure point";
+    }
+  }
+
+  function debugClearFailAt(endpoint) {
+    let res = request.delete({
+      url: endpoint + '/_admin/debug/failat',
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error removing failure points";
+    }
+  }
+
+  const activateShardLockingFailure = () => {
+    const shardList = db[twoShardColName].shards(true);
+    for (const [shard, servers] of Object.entries(shardList)) {
+      const endpoint = getEndpointById(servers[0]);
+      debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
+    }
+  };
+
+  const deactivateShardLockingFailure = () => {
+    const shardList = db[twoShardColName].shards(true);
+    for (const [shard, servers] of Object.entries(shardList)) {
+      const endpoint = getEndpointById(servers[0]);
+      debugClearFailAt(endpoint);
     }
   };
 
@@ -195,7 +393,10 @@ function CommunicationSuite () {
     setUp: function () {
       db._drop(cn);
       db._create(cn);
-      
+
+      db._drop(twoShardColName);
+      db._create(twoShardColName, { numberOfShards: 2 });
+
       db._drop("UnitTestsTemp");
       let c = db._create("UnitTestsTemp");
       let docs = [];
@@ -211,25 +412,39 @@ function CommunicationSuite () {
     tearDown: function () {
       db._drop(cn);
       db._drop("UnitTestsTemp");
+      deactivateShardLockingFailure();
+      db._drop(twoShardColName);
     },
 
     testWorkInParallel: function () {
       let tests = [
-        [ 'simple-1', 'db._query("FOR doc IN _users RETURN doc");' ],
-        [ 'simple-2', 'db._query("FOR doc IN _users RETURN doc");' ],
-        [ 'insert-remove', 'db._executeTransaction({ collections: { write: "UnitTestsTemp" }, action: function() { let db = require("internal").db; let docs = []; for (let i = 0; i < 1000; ++i) docs.push({ _key: "test" + i }); let c = db.UnitTestsTemp; c.insert(docs); c.remove(docs); } });' ],
-        [ 'aql', 'db._query("FOR doc IN UnitTestsTemp RETURN doc._key");' ],
+        ['simple-1', 'db._query("FOR doc IN _users RETURN doc");'],
+        ['simple-2', 'db._query("FOR doc IN _users RETURN doc");'],
+        ['insert-remove', 'db._executeTransaction({ collections: { write: "UnitTestsTemp" }, action: function() { let db = require("internal").db; let docs = []; for (let i = 0; i < 1000; ++i) docs.push({ _key: "test" + i }); let c = db.UnitTestsTemp; c.insert(docs); c.remove(docs); } });'],
+        ['aql', 'db._query("FOR doc IN UnitTestsTemp RETURN doc._key");'],
       ];
 
       // add some cluster stuff
       if (internal.isCluster()) {
-        tests.push([ 'cluster-health', 'if (arango.GET("/_admin/cluster/health").code !== 200) { throw "nono cluster"; }' ]);
+        tests.push(['cluster-health', 'if (arango.GET("/_admin/cluster/health").code !== 200) { throw "nono cluster"; }']);
       };
 
       // run the suite for 5 minutes
       runTests(tests, 5 * 60);
     },
-    
+
+    testAqlSlowPathDeadLockExclusiveExclusive: function () {
+      if (internal.isCluster()) {
+        let tests = [
+          ["exclusive-1", `db._query("FOR x IN 1..10 INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`],
+          ["exclusive-2", `db._query("FOR x IN 1..10 INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`]
+        ];
+        activateShardLockingFailure();
+
+        // run both queries in parallel
+        singleRun(tests);
+      }
+    },
   };
 }
 
