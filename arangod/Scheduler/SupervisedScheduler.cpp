@@ -194,8 +194,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "Tasks dropped and not added to internal queue")),
       _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().gauge(
           "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
-          "This is the total number of ongoing RestHandlers coming from "
-          "the low prio queue.")),
+          "Total number of ongoing RestHandlers coming from "
+          "the low prio queue")),
       _metricsQueueLengths{
           _server.getFeature<arangodb::MetricsFeature>().gauge(
               "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
