@@ -206,6 +206,7 @@ void RestAqlHandler::setupClusterQuery() {
   // }
   
   QueryOptions options(optionsSlice);
+  LOG_DEVEL << "Options: " << optionsSlice.toJson();
   if (options.ttl <= 0) { // patch TTL value
     options.ttl = _queryRegistry->defaultTTL();
   }

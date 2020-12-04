@@ -109,6 +109,10 @@ class Query : public QueryContext {
   /// @brief set the query to killed
   void kill();
 
+  /// @brief whether or not the query is killed
+  void setLockTimeout(double timeout) noexcept override;
+  double getLockTimeout() const noexcept override;
+
   QueryString const& queryString() const { return _queryString; }
     
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }

@@ -483,7 +483,7 @@ function AqlSetupPathSuite() {
       deactivateTriggersAQLSetupPathTest();
       db._drop(twoShardColName);
     },
-/*
+
     testAqlSetupPathDeadLockExclusiveExclusive: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
@@ -513,7 +513,7 @@ function AqlSetupPathSuite() {
       singleRun(tests);
       assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
     },
-*/
+
     testAqlSetupPathDeadLockExclusiveRead: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [

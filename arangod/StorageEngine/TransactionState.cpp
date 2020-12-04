@@ -198,7 +198,6 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
   // collection not found.
 
   LOG_TRX("ad6e1", TRACE, this) << "adding new collection " << cid << ": '" << cname << "'";
-
   if (_status != transaction::Status::CREATED && AccessMode::isWriteOrExclusive(accessType) &&
       !_options.allowImplicitCollectionsForWrite) {
     // trying to write access a collection that was not declared at start.
@@ -254,8 +253,16 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
 Result TransactionState::useCollections() {
   Result res;
   // process collections in forward order
+
   for (TransactionCollection* trxCollection : _collections) {
+    TRI_IF_FAILURE(("WaitOnLock::" + trxCollection->collectionName()).c_str()) {
+      LOG_DEVEL << "try to get locks: " << _id.id();
+    }
     res = trxCollection->lockUsage();
+    TRI_IF_FAILURE(("WaitOnLock::" + trxCollection->collectionName()).c_str()) {
+      LOG_DEVEL << "got lock: " << _id.id();
+    }
+
     if (!res.ok()) {
       break;
     }

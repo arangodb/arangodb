@@ -311,8 +311,8 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
 
   auto buildCallback =
-      [this, server, serverDest,
-       didCreateEngine = std::move(didCreateEngine), &serverToQueryId, &snippetIds](
+      [this, server, serverDest, didCreateEngine = std::move(didCreateEngine),
+       &serverToQueryId, &snippetIds](
           arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
     auto const& resolvedResponse = response.get();
     if (resolvedResponse.fail()) {
@@ -418,6 +418,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.skipScheduler = true;  // hack to speed up future.get()
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
+  // decreases lock timeout manually for fast path
+  auto oldLockTimeout = _query.getLockTimeout();
+  _query.setLockTimeout(2);
   for (ServerID const& server : dbServers) {
     auto didCreateEngine = buildEngineInfo(infoBuilder, server, nodesById, nodeAliases);
     VPackSlice infoSlice = infoBuilder.slice();
@@ -443,12 +446,40 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             return Result();  // all good
           });
 
-  if (fastPathResult.get().ok()) {
-    cleanupGuard.cancel();
-    return TRI_ERROR_NO_ERROR;
+  if (fastPathResult.get().fail()) {
+    if (fastPathResult.get().is(TRI_ERROR_LOCK_TIMEOUT)) {
+      {
+        // in case of fast path failure, we need to cleanup engines
+        cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), snippetIds);
+        snippetIds.clear();
+      }
+
+      // set back to default lock timeout for slow path fallback
+      _query.setLockTimeout(oldLockTimeout);
+      // fallback routine, use synchronous requests (slowPath)
+      for (ServerID const& server : dbServers) {
+        auto didCreateEngine = buildEngineInfo(infoBuilder, server, nodesById, nodeAliases);
+        VPackSlice infoSlice = infoBuilder.slice();
+
+        if (isNotSatelliteLeader(infoSlice)) {
+          continue;
+        }
+
+        auto request =
+            buildSetupRequest(trx, server, infoSlice, std::move(didCreateEngine),
+                              snippetIds, serverToQueryId, pool, options);
+        _query.incHttpRequests(unsigned(1));
+        if (request.get().fail()) {
+          return request.get();
+        }
+      }
+    } else {
+      return fastPathResult.get();
+    }
   }
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  cleanupGuard.cancel();
+  return TRI_ERROR_NO_ERROR;
 }
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
