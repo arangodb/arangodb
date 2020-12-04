@@ -358,10 +358,10 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilter) {
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSorted) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact'} SORT d.value ASC LIMIT 8, 1  RETURN  d.value ";
+      " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact'} SORT d.value ASC LIMIT 1  RETURN  d.value ";
 
   std::vector<VPackValue> expectedValues{
-    VPackValue(11),
+    VPackValue(2),
   };
   executeAndCheck(queryString, expectedValues, 15);
 }
@@ -412,6 +412,17 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSortedCost) {
 
   std::vector<VPackValue> expectedValues{
     VPackValue(11),
+  };
+  executeAndCheck(queryString, expectedValues, 15);
+}
+
+TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSortedCost) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost'} SORT d.value ASC LIMIT  2  RETURN  d.value ";
+
+  std::vector<VPackValue> expectedValues{
+    VPackValue(2),
+    VPackValue(3),
   };
   executeAndCheck(queryString, expectedValues, 15);
 }

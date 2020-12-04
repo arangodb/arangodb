@@ -1207,7 +1207,6 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
   assert(i < _segments->size());
   auto& segment = (*_segments)[i];
   while (segment.docs->next()) {
-    ++segment.segmentPos;
     auto const doc = segment.docs->value();
 
     if (doc == segment.sortReaderRef->seek(doc)) {
@@ -1374,6 +1373,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
 
   while (_heap_it.next()) {
     auto& segment = _segments[_heap_it.value()];
+    ++segment.segmentPos;
     TRI_ASSERT(segment.docs);
     TRI_ASSERT(segment.doc);
     TRI_ASSERT(segment.score);
@@ -1420,6 +1420,7 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skip(size_t limit) 
   size_t const toSkip = limit;
 
   while (limit && _heap_it.next()) {
+    ++this->_segments[_heap_it.value()].segmentPos;
     --limit;
   }
 
@@ -1450,13 +1451,18 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
         } 
       } else {
         while (segment.docs->next()) {
-         ++skipped;
-         ++segment.segmentPos;
+          auto doc = segment.docs->value();
+          if (doc == segment.sortReaderRef->seek(doc)) {
+            ++skipped;
+          }
         }
       }
     }
   }
-
+  if (this->infos().countApproximate() == CountApproximate::Exact && 
+      !filterConditionIsEmpty(&this->infos().filterCondition())) {
+    skipped += (_heap_it.size() - 1);
+  }
   _heap_it.reset();
   return skipped;
 }

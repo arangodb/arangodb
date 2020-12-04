@@ -73,16 +73,13 @@ class external_heap_iterator : private compact<0, Context> {
 
     while (lead_) {
       auto it = std::end(heap_) - lead_--;
-
       if (!context()(*it)) { // advance iterator
         if (!remove_lead(it)) {
           assert(heap_.empty());
           return false;
         }
-
         continue;
       }
-
       std::push_heap(begin, ++it, context());
     }
 
@@ -98,6 +95,10 @@ class external_heap_iterator : private compact<0, Context> {
     return heap_.back();
   }
 
+  size_t size() const noexcept {
+    return heap_.size();
+  }
+   
  private:
   bool remove_lead(std::vector<size_t>::iterator it) {
     if (&*it != &heap_.back()) {
