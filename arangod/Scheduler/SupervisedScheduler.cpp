@@ -870,12 +870,8 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("direct-exec", VPackValue(0)); // obsolete
 }
 
-void SupervisedScheduler::increaseOngoingLowPriority() {
-  _ongoingLowPriorityGauge += 1;
-}
-
-void SupervisedScheduler::decreaseOngoingLowPriority() {
-  _ongoingLowPriorityGauge -= 1;
+Gauge<uint64_t>& SupervisedScheduler::ongoingLowPriorityTasks() {
+  return _ongoingLowPriorityGauge;
 }
 
 double SupervisedScheduler::approximateQueueFillGrade() const {

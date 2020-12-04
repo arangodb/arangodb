@@ -53,8 +53,7 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
-  void increaseOngoingLowPriority();
-  void decreaseOngoingLowPriority();
+  Gauge<uint64_t>& ongoingLowPriorityTasks();
 
   constexpr static uint64_t const NumberOfQueues = 4;
 
