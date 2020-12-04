@@ -73,6 +73,7 @@ constexpr const char accumulatorValueType_int[] = "int";
 constexpr const char accumulatorValueType_string[] = "string";
 constexpr const char accumulatorValueType_bool[] = "bool";
 constexpr const char accumulatorValueType_slice[] = "slice";
+constexpr const char accumulatorValueType_any[] = "any";
 
 using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueType,
     enum_member<AccumulatorValueType::DOUBLE, values::string_value<accumulatorValueType_doubles>>,
@@ -82,7 +83,8 @@ using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueTy
     enum_member<AccumulatorValueType::INT, values::string_value<accumulatorValueType_int>, true>,
     enum_member<AccumulatorValueType::STRING, values::string_value<accumulatorValueType_string>, true>,
     enum_member<AccumulatorValueType::BOOL, values::string_value<accumulatorValueType_bool>>,
-    enum_member<AccumulatorValueType::SLICE, values::string_value<accumulatorValueType_slice>>
+    enum_member<AccumulatorValueType::SLICE, values::string_value<accumulatorValueType_slice>, true>,
+    enum_member<AccumulatorValueType::SLICE, values::string_value<accumulatorValueType_any>>
 >;
 
 constexpr const char accumulatorType[] = "accumulatorType";
@@ -112,6 +114,9 @@ struct accumulator_options_validator {
     }
     if (opts.type == AccumulatorType::CUSTOM && !opts.customType) {
       return deserialize_error{"missing customType for custom accumulator"};
+    }
+    if (opts.customType && opts.type != AccumulatorType::CUSTOM) {
+      return deserialize_error{"customType must not be set for this type"};
     }
     return {};
   }

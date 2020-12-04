@@ -43,6 +43,9 @@ namespace greenspun {
 struct StackFrame {
   std::unordered_map<std::string, VPackSlice> bindings;
   bool noParentScope = false;
+
+  EvalResult setVariable(std::string const& name, VPackSlice value);
+  EvalResult getVariable(std::string const& name, VPackBuilder& result);
 };
 
 struct Machine {
@@ -50,6 +53,7 @@ struct Machine {
   virtual ~Machine() = default;
   // Variables go here.
   void pushStack(bool noParentScope = false);
+  void emplaceSack(StackFrame sf);
   void popStack();
   EvalResult setVariable(std::string const& name, VPackSlice value);
   EvalResult getVariable(std::string const& name, VPackBuilder& result);
@@ -91,7 +95,12 @@ struct Machine {
 
 template <bool isNewScope, bool noParentScope = false>
 struct StackFrameGuard {
-  StackFrameGuard(Machine& ctx) : _ctx(ctx) {
+  template<bool U = isNewScope, std::enable_if_t<U, int> = 0>
+  StackFrameGuard(Machine& ctx, StackFrame sf) : _ctx(ctx) {
+    ctx.emplaceSack(std::move(sf));
+  }
+
+  explicit StackFrameGuard(Machine& ctx) : _ctx(ctx) {
     if constexpr (isNewScope) {
       ctx.pushStack(noParentScope);
     }

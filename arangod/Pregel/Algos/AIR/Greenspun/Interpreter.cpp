@@ -381,8 +381,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
       VPackArrayBuilder ab(&foo);
       foo.add(isEvaluateParams ? VPackArrayIterator(paramBuilder.slice()) : paramIterator);
     }
-    err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(),
-                 foo.slice());
+    err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(), foo.slice());
   });
 }
 
@@ -398,7 +397,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
     return EvalError("Expected list of bindings, found: " + bindings.toJson());
   }
 
-  StackFrameGuard<true> guard(ctx);
+  StackFrame frame;
 
   for (VPackArrayIterator iter(bindings); iter.valid(); iter++) {
     auto&& pair = *iter;
@@ -418,7 +417,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
         });
       }
 
-      if (auto res = ctx.setVariable(nameSlice.copyString(), builder.slice()); res.fail()) {
+      if (auto res = frame.setVariable(nameSlice.copyString(), builder.slice()); res.fail()) {
         return res;
       }
     } else {
@@ -427,18 +426,17 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
     }
   }
 
+  StackFrameGuard<true> guard(ctx, std::move(frame));
+
   // Now do a seq evaluation of the remaining parameter
   return SpecialSeq(ctx, paramIterator, result).mapError([](EvalError& err) {
     err.wrapMessage("in evaluation of let-statement");
   });
 }
 
-
 EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result);
 
-
 EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBuilder& result) {
-
   if (other.valid()) {
     Slice first = *other;
     if (first.isString() && first.isEqualString("unquote")) {
@@ -458,7 +456,7 @@ EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBui
       }
       auto tempSlice = tempResult.slice();
       if (tempSlice.isArray()) {
-        result.add(VPackArrayIterator (tempSlice));
+        result.add(VPackArrayIterator(tempSlice));
       } else {
         result.add(tempSlice);
       }
@@ -469,10 +467,11 @@ EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBui
   {
     VPackArrayBuilder ab(&result);
 
-    for(; other.valid(); other++) {
+    for (; other.valid(); other++) {
       auto&& part = *other;
       if (part.isArray()) {
-        if (auto res = SpecialQuasiQuoteInternal(ctx, VPackArrayIterator(part), result); res.fail()) {
+        if (auto res = SpecialQuasiQuoteInternal(ctx, VPackArrayIterator(part), result);
+            res.fail()) {
           return res;
         }
       } else {
@@ -627,6 +626,22 @@ EvalResult Machine::getVariable(const std::string& name, VPackBuilder& result) {
   return EvalError("variable `" + name + "` not found");
 }
 
+EvalResult StackFrame::setVariable(std::string const& name, VPackSlice value) {
+  bindings.operator[](name) = value;
+  return {};
+}
+
+EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result) {
+  auto iter = bindings.find(name);
+  if (iter != std::end(bindings)) {
+    result.add(iter->second);
+    return {};
+  }
+  // TODO: variable not found error.
+  result.add(VPackSlice::noneSlice());
+  return EvalError("variable `" + name + "` not found");
+}
+
 EvalResult Machine::setVariable(std::string const& name, VPackSlice value) {
   TRI_ASSERT(!variables.empty());
   variables.back().bindings.operator[](name) = value;  // insert or create
@@ -635,6 +650,10 @@ EvalResult Machine::setVariable(std::string const& name, VPackSlice value) {
 
 void Machine::pushStack(bool noParentScope) {
   variables.emplace_back().noParentScope = noParentScope;
+}
+
+void Machine::emplaceSack(StackFrame sf) {
+  variables.emplace_back(std::move(sf));
 }
 
 void Machine::popStack() {
@@ -664,7 +683,6 @@ EvalResult Machine::unsetFunction(std::string_view name) {
   return {};
 }
 
-
 EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
                                   VPackBuilder& result) {
   TRI_ASSERT(params.isArray());
@@ -687,7 +705,9 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
     }
   }
 
-  return EvalError("function not found `" + function + "`" + (!minFunctionName.empty() ? ", did you mean `" + minFunctionName + "`?" : ""));
+  return EvalError(
+      "function not found `" + function + "`" +
+      (!minFunctionName.empty() ? ", did you mean `" + minFunctionName + "`?" : ""));
 }
 
 std::string EvalError::toString() const {

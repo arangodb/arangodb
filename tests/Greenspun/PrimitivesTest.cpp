@@ -968,6 +968,15 @@ TEST_F(GreenspunTest, let_multi_binding) {
   ASSERT_EQ(result.slice().getNumericValue<double>(), 12.);
 }
 
+TEST_F(GreenspunTest, let_invisible_bindings) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [["a", 1], ["b", ["var-ref", "a"]]], ["+", ["var-ref", "a"], ["var-ref", "b"]]]
+    )aql");
+
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
+
 TEST_F(GreenspunTest, let_error_no_names) {
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["let"]
