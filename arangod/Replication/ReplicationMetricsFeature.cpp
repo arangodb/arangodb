@@ -122,7 +122,7 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
       _syncOpsTotal(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_synchronous_requests_total_number", 0,
           "Total number of all synchronous replication requests "
-          "accumulated.")) {
+          "accumulated")) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
