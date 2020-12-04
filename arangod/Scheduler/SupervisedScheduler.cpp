@@ -156,13 +156,10 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _jobsSubmitted(0),
       _jobsDequeued(0),
       _jobsDone(0),
-      _minNumWorker(minThreads),
-      _maxNumWorker(maxThreads),
+      _minNumWorkers(minThreads),
+      _maxNumWorkers(maxThreads),
       _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
-      _ongoingLowPriorityLimit(static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
-      _wakeupQueueLength(5),
-      _wakeupTime_ns(1000),
-      _definitiveWakeupTime_ns(100000),
+      _ongoingLowPriorityLimit(static_cast<std::size_t>(ongoingMultiplier * _maxNumWorkers)),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
@@ -484,7 +481,7 @@ void SupervisedScheduler::runWorker() {
 }
 
 void SupervisedScheduler::runSupervisor() {
-  while (_numWorkers < _minNumWorker) {
+  while (_numWorkers < _minNumWorkers) {
     startOneThread();
   }
 
@@ -539,11 +536,11 @@ void SupervisedScheduler::runSupervisor() {
     try {
       bool haveStartedThread = false;
 
-      if (doStartOneThread && _numWorkers < _maxNumWorker) {
+      if (doStartOneThread && _numWorkers < _maxNumWorkers) {
         jobsStallingTick = 0;
         startOneThread();
         haveStartedThread = true;
-      } else if (doStopOneThread && _numWorkers > _minNumWorker) {
+      } else if (doStopOneThread && _numWorkers > _minNumWorkers) {
         stopOneThread();
       }
 
@@ -643,8 +640,8 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   // 25% (but at least 2) reserved for HIGH and MAINTENANCE only
   // upto 75% of work can do MEDIUM and LOW
   // uptop 50% of work can do LOW
-  TRI_ASSERT(_maxNumWorker >= 4);
-  
+  TRI_ASSERT(_maxNumWorkers >= 4);
+
   // The ordering of Done and dequeued is important, hence acquire.
   // Otherwise we might have the unlucky case that we first check dequeued,
   // then a job gets done fast (eg dequeued++, done++)
@@ -656,18 +653,14 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
 
   if (queueIndex == 1) {
     // We can work on high if less than 87.5% of the workers are busy
-    size_t limit =   (_maxNumWorker >= 8)
-                   ? (_maxNumWorker * 7 / 8)
-                   : _maxNumWorker - 1;
+    size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers * 7 / 8) : _maxNumWorkers - 1;
     return threadsWorking < limit;
   }
 
   if (queueIndex == 2) {
     // We can work on med if less than 75% of the workers are busy
-    size_t limit =   (_maxNumWorker >= 8)
-                   ? (_maxNumWorker * 3 / 4)
-                   : _maxNumWorker - 2;
-                 
+    size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers * 3 / 4) : _maxNumWorkers - 2;
+
     return threadsWorking < limit;
   }
 
@@ -686,9 +679,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   }
 
   // We can work on low if less than 50% of the workers are busy
-  size_t limit =   (_maxNumWorker >= 8)
-                 ? (_maxNumWorker / 2)
-                 : _maxNumWorker - 3;
+  size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers / 2) : _maxNumWorkers - 3;
   return threadsWorking < limit;
 }
 
@@ -764,7 +755,7 @@ void SupervisedScheduler::startOneThread() {
   {
     std::unique_lock<std::mutex> guard(_mutex);
 
-    if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
+    if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorkers) {
       return;  // do not add more threads than maximum allows
     }
 

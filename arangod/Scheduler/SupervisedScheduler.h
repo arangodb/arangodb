@@ -149,20 +149,10 @@ class SupervisedScheduler final : public Scheduler {
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
 
-  size_t const _minNumWorker;
-  size_t const _maxNumWorker;
+  size_t const _minNumWorkers;
+  size_t const _maxNumWorkers;
   uint64_t const _maxFifoSizes[NumberOfQueues];
   size_t const _ongoingLowPriorityLimit;
-
-  // During a queue operation there a two reasons to manually wake up a worker
-  //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
-  //      is bigger than _wakeupTime_ns.
-  //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
-  //
-  // The last submit time is a thread local variable that stores the time of the last
-  // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
-  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
