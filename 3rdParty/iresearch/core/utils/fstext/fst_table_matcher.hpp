@@ -169,7 +169,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     }
   }
 
-  virtual void SetState(StateId s) noexcept final {
+  virtual void SetState(StateId s) noexcept override final {
     assert(!error_);
     assert(s*start_labels_.size() < transitions_.size());
     state_begin_ = transitions_.data() + s*start_labels_.size();
@@ -177,7 +177,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     state_end_ = state_begin_ + start_labels_.size();
   }
 
-  virtual bool Find(Label label) noexcept final {
+  virtual bool Find(Label label) noexcept override final {
     assert(!error_);
     auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
                            ? cached_label_offsets_[size_t(label)]
@@ -198,17 +198,17 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     return arc_.nextstate != kNoStateId;
   }
 
-  virtual bool Done() const noexcept final {
+  virtual bool Done() const noexcept override final {
     assert(!error_);
     return state_ == state_end_;
   }
 
-  virtual const Arc& Value() const noexcept final {
+  virtual const Arc& Value() const noexcept override final {
     assert(!error_);
     return arc_;
   }
 
-  virtual void Next() noexcept final {
+  virtual void Next() noexcept override final {
     assert(!error_);
 
     if (Done()) {
@@ -232,11 +232,11 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     }
   }
 
-  virtual Weight Final(StateId s) const final {
+  virtual Weight Final(StateId s) const override final {
     return MatcherBase<Arc>::Final(s);
   }
 
-  virtual ssize_t Priority(StateId s) final {
+  virtual ssize_t Priority(StateId s) override final {
     return MatcherBase<Arc>::Priority(s);
   }
 

@@ -399,7 +399,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return *pos_++;
   }
 
-  virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept final {
+  virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
     if (pos > data_.end()) {

@@ -47,7 +47,7 @@ template<
       attrs_(values) {
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept final {
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }

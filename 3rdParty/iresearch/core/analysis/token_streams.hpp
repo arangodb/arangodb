@@ -37,7 +37,7 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API basic_token_stream : public token_stream {
  public:
-  virtual attribute* get_mutable(type_info::type_id type) noexcept final;
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final;
 
  protected:
   term_attribute term_;

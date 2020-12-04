@@ -714,14 +714,14 @@ class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of bytes required to store the score type (i.e. sizeof(score))
   ////////////////////////////////////////////////////////////////////////////////
-  virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
+  virtual inline std::pair<size_t, size_t> score_size() const noexcept override final {
     return std::make_pair(sizeof(score_t), alignof(score_t));
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of bytes required to store stats
   ////////////////////////////////////////////////////////////////////////////////
-  virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
+  virtual inline std::pair<size_t, size_t> stats_size() const noexcept override final {
     return std::make_pair(size_t(0), size_t(0));
   }
 }; // prepared_sort_base
