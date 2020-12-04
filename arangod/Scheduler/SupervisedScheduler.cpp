@@ -212,8 +212,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                                                                 "the scheduler"),
                            _server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_low_prio_queue_length",
                                                                                 uint64_t(0),
-                                                                                "This is current queue length of the low priority queue in "
-                                                                                "the scheduler.")} {
+                                                                                "Current queue length of the low priority queue in "
+                                                                                "the scheduler")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
