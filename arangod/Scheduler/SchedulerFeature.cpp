@@ -166,7 +166,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
 
   if (_ongoingLowPriorityMultiplier < 1.0) {
     LOG_TOPIC("0a93a", WARN, arangodb::Logger::THREADS)
-        << "--server.ongoing-multiplier (" << _ongoingLowPriorityMultiplier
+        << "--server.ongoing-low-priority-multiplier (" << _ongoingLowPriorityMultiplier
         << ") is less than 1.0, setting to default (4.0)";
     _ongoingLowPriorityMultiplier = 4.0;
   }
