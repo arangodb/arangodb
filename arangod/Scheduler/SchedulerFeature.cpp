@@ -112,7 +112,8 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      "ongoing at a given point in time, relative to the "
                      "maximum number of request handling threads",
                      new DoubleParameter(&_ongoingLowPriorityMultiplier),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800);
 
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 3 fifo", new UInt64Parameter(&_fifo3Size));
