@@ -122,78 +122,6 @@ function CommunicationSuite() {
   };
 
 
-
-
-  // TODO externalize
-
-  function getEndpointsByType(type) {
-    const isType = (d) => (d.role.toLowerCase() === type);
-    const toEndpoint = (d) => (d.endpoint);
-    const endpointToURL = (endpoint) => {
-      if (endpoint.substr(0, 6) === 'ssl://') {
-        return 'https://' + endpoint.substr(6);
-      }
-      let pos = endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + endpoint;
-      }
-      return 'http' + endpoint.substr(pos);
-    };
-
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    return instanceInfo.arangods.filter(isType)
-      .map(toEndpoint)
-      .map(endpointToURL);
-  }
-
-  return {
-
-    setUp: function () {
-      db._drop(cn);
-      db._create(cn);
-
-      db._drop("UnitTestsTemp");
-      let c = db._create("UnitTestsTemp");
-      let docs = [];
-      for (let i = 0; i < 50000; ++i) {
-        docs.push({ value: i });
-        if (docs.length === 5000) {
-          c.insert(docs);
-          docs = [];
-        }
-      }
-    },
-
-    tearDown: function () {
-      db._drop(cn);
-      db._drop("UnitTestsTemp");
-    },
-
-    testWorkInParallel: function () {
-      let tests = [
-        ['simple-1', 'db._query("FOR doc IN _users RETURN doc");'],
-        ['simple-2', 'db._query("FOR doc IN _users RETURN doc");'],
-        ['insert-remove', 'db._executeTransaction({ collections: { write: "UnitTestsTemp" }, action: function() { let db = require("internal").db; let docs = []; for (let i = 0; i < 1000; ++i) docs.push({ _key: "test" + i }); let c = db.UnitTestsTemp; c.insert(docs); c.remove(docs); } });'],
-        ['aql', 'db._query("FOR doc IN UnitTestsTemp RETURN doc._key");'],
-      ];
-
-      // add some cluster stuff
-      if (internal.isCluster()) {
-        tests.push(['cluster-health', 'if (arango.GET("/_admin/cluster/health").code !== 200) { throw "nono cluster"; }']);
-      };
-
-      // run the suite for 5 minutes
-      runTests(tests, 5 * 60);
-    },
-  };
-}
-
-function AqlSetupPathSuite() {
-  'use strict';
-  // generate a random collection name
-  const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-  const twoShardColName = "UnitTestsTwoShard";
-
   let runTests = function (tests, duration) {
     assertFalse(db[cn].exists("stop"));
     let clients = [];
@@ -287,6 +215,76 @@ function AqlSetupPathSuite() {
     }
   };
 
+  // TODO externalize
+
+  function getEndpointsByType(type) {
+    const isType = (d) => (d.role.toLowerCase() === type);
+    const toEndpoint = (d) => (d.endpoint);
+    const endpointToURL = (endpoint) => {
+      if (endpoint.substr(0, 6) === 'ssl://') {
+        return 'https://' + endpoint.substr(6);
+      }
+      let pos = endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + endpoint;
+      }
+      return 'http' + endpoint.substr(pos);
+    };
+
+    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    return instanceInfo.arangods.filter(isType)
+      .map(toEndpoint)
+      .map(endpointToURL);
+  }
+
+  return {
+
+    setUp: function () {
+      db._drop(cn);
+      db._create(cn);
+
+      db._drop("UnitTestsTemp");
+      let c = db._create("UnitTestsTemp");
+      let docs = [];
+      for (let i = 0; i < 50000; ++i) {
+        docs.push({ value: i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+      db._drop("UnitTestsTemp");
+    },
+
+    testWorkInParallel: function () {
+      let tests = [
+        ['simple-1', 'db._query("FOR doc IN _users RETURN doc");'],
+        ['simple-2', 'db._query("FOR doc IN _users RETURN doc");'],
+        ['insert-remove', 'db._executeTransaction({ collections: { write: "UnitTestsTemp" }, action: function() { let db = require("internal").db; let docs = []; for (let i = 0; i < 1000; ++i) docs.push({ _key: "test" + i }); let c = db.UnitTestsTemp; c.insert(docs); c.remove(docs); } });'],
+        ['aql', 'db._query("FOR doc IN UnitTestsTemp RETURN doc._key");'],
+      ];
+
+      // add some cluster stuff
+      if (internal.isCluster()) {
+        tests.push(['cluster-health', 'if (arango.GET("/_admin/cluster/health").code !== 200) { throw "nono cluster"; }']);
+      };
+
+      // run the suite for 5 minutes
+      runTests(tests, 5 * 60);
+    },
+  };
+}
+
+function AqlSetupPathSuite() {
+  'use strict';
+  // generate a random collection name
+  const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
+  const twoShardColName = "UnitTestsTwoShard";
+
   /// @brief set failure point
   function debugCanUseFailAt(endpoint) {
     let res = request.get({
@@ -305,6 +303,16 @@ function AqlSetupPathSuite() {
       throw "Error setting failure point";
     }
   }
+
+  function debugResetRaceControl(endpoint) {
+    let res = request.delete({
+      url: endpoint + '/_admin/debug/raceControl',
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error resetting race control.";
+    }
+  };
 
   /// @brief remove failure point
   function debugRemoveFailAt(endpoint, failAt) {
@@ -350,6 +358,7 @@ function AqlSetupPathSuite() {
     for (const [shard, servers] of Object.entries(shardList)) {
       const endpoint = getEndpointById(servers[0]);
       debugClearFailAt(endpoint);
+      debugResetRaceControl(endpoint);
     }
   };
 
@@ -474,7 +483,7 @@ function AqlSetupPathSuite() {
       deactivateTriggersAQLSetupPathTest();
       db._drop(twoShardColName);
     },
-
+/*
     testAqlSetupPathDeadLockExclusiveExclusive: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
@@ -504,7 +513,7 @@ function AqlSetupPathSuite() {
       singleRun(tests);
       assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
     },
-
+*/
     testAqlSetupPathDeadLockExclusiveRead: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
@@ -567,7 +576,7 @@ function AqlSetupPathSuite() {
   };
 }
 
-jsunity.run(CommunicationSuite);
+// jsunity.run(CommunicationSuite);
 if (internal.isCluster()) {
   jsunity.run(AqlSetupPathSuite);
 }
