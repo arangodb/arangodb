@@ -60,7 +60,7 @@ namespace {
 size_t defaultNumberOfThreads() {
   // use two times the number of hardware threads as the default
   size_t result = arangodb::NumberOfCores::getValue() * 2;
-  // but only if higher than 64. otherwise use a default minimum value of 64
+  // but only if higher than 64. otherwise use a default minimum value of 32
   if (result < 32) {
     result = 32;
   }
