@@ -117,12 +117,10 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
           "Time needed to apply replication tailing data [ms]")),
       _syncTimeTotal(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_synchronous_requests_total_time", 0,
-          "Total time needed for all synchronous replication requests "
-          "accumulated [ns]")),
+          "Total time needed for all synchronous replication requests [ns]")),
       _syncOpsTotal(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_synchronous_requests_total_number", 0,
-          "Total number of all synchronous replication requests "
-          "accumulated")) {
+          "Total number of synchronous replication requests")) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
