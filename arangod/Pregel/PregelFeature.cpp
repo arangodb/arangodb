@@ -79,8 +79,9 @@ using namespace arangodb::pregel;
 std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
-    std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
-
+    std::vector<std::string> const& edgeCollections, 
+    std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+    VPackSlice const& params) {
 
   // make sure no one removes the PregelFeature while in use
   std::shared_ptr<PregelFeature> instance = ::instance;
@@ -172,7 +173,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
             return std::make_pair(Result{TRI_ERROR_BAD_PARAMETER,
                                          "Edge collection needs to be sharded "
-                                         "after shardKeyAttribute parameter ('"
+                                         "by shardKeyAttribute parameter ('"
                                          + shardKeyAttribute
                                          + "'), or use SmartGraphs. The current shardKey is: "
                                          + (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
@@ -208,7 +209,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
   uint64_t en = instance->createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
-                                               edgeColls, algorithm, params);
+                                               edgeColls, edgeCollectionRestrictions,
+                                               algorithm, params);
   instance->addConductor(std::move(c), en);
   TRI_ASSERT(instance->conductor(en));
   instance->conductor(en)->start();
@@ -372,7 +374,7 @@ void PregelFeature::cleanupAll() {
                                                    std::string const& path,
                                                    VPackSlice const& body,
                                                    VPackBuilder& outBuilder) {
-  if (vocbase.server().isStopping()) {
+  if (vocbase.server().isStopping() && path != Utils::finalizeExecutionPath) {
     return;  // shutdown ongoing
   }
 

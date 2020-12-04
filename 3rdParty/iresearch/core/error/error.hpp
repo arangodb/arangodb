@@ -51,7 +51,7 @@ enum class ErrorCode : uint32_t {
 
 #define DECLARE_ERROR_CODE(class_name) \
   static const ErrorCode CODE = ErrorCode::class_name; \
-  virtual iresearch::ErrorCode code() const noexcept override { return CODE; }
+  virtual ::iresearch::ErrorCode code() const noexcept override { return CODE; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base

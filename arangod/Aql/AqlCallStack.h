@@ -52,7 +52,7 @@ namespace aql {
 class AqlCallStack {
  public:
   // Initial
-  explicit AqlCallStack(AqlCallList call, bool compatibilityMode3_6 = false);
+  explicit AqlCallStack(AqlCallList call);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
@@ -88,8 +88,6 @@ class AqlCallStack {
   auto subqueryLevel() const noexcept -> size_t { return _operations.size(); }
 
   void toVelocyPack(velocypack::Builder& builder) const;
-
-  auto is36Compatible() const noexcept -> bool { return _compatibilityMode3_6; }
 
   /**
    * @brief Create an equivalent call stack that does a full-produce
@@ -185,18 +183,8 @@ class AqlCallStack {
 
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from
-  // main query) NOTE: This is only mutable on 3.6 compatibility mode. We
-  // need to inject an additional call in any const operation here just to
-  // pretend we are not empty. Can be removed after 3.7.
-  mutable std::vector<AqlCallList> _operations;
-
-  // This flag will be set if and only if
-  // we are called with the 3.6 and earlier API
-  // As we only support upgrades between 3.6.* -> 3.7.*
-  // and not 3.6.* -> 3.8.* we can savely remove
-  // this flag and all it's side effects on the
-  // version after 3.7.
-  bool _compatibilityMode3_6{false};
+  // main query)
+  std::vector<AqlCallList> _operations;
 };
 
 }  // namespace aql
