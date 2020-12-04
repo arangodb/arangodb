@@ -1,7 +1,7 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
-* Fixed agency redirect in poll api.
+* Fixed agency redirect in poll API.
 
 * Updated arangosync to 1.2.1.
 
