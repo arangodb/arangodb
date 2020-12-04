@@ -23,7 +23,7 @@
 
 #include "shared.hpp"
 
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 
 #include "store_utils_simd.hpp"
 

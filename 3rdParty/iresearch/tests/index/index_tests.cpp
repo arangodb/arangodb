@@ -13774,7 +13774,7 @@ INSTANTIATE_TEST_CASE_P(
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 namespace {
-#if defined(IRESEARCH_SSE2)
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2", "1_0"},
                                                          tests::format_info{"1_2simd", "1_0"});
 #else
@@ -13798,7 +13798,7 @@ INSTANTIATE_TEST_CASE_P(
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 namespace {
-#if defined(IRESEARCH_SSE2)
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"},
                                                          tests::format_info{"1_3simd", "1_0"});
 #else
@@ -13822,7 +13822,7 @@ INSTANTIATE_TEST_CASE_P(
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 namespace {
-#if defined(IRESEARCH_SSE2)
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4", "1_0"},
                                                          tests::format_info{"1_4simd", "1_0"});
 #else
@@ -14625,7 +14625,7 @@ TEST_P(index_test_case_11, commit_payload) {
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 namespace {
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1", "1_0"},
                                                          tests::format_info{"1_2", "1_0"},
                                                          tests::format_info{"1_2simd", "1_0"});

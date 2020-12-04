@@ -108,7 +108,9 @@ target_include_directories(
 ### SIMDCOMP library
 ################################################################################
 
-add_subdirectory(simdcomp)
+if (USE_SIMDCOMP)
+  add_subdirectory(simdcomp)
+endif()
 
 ################################################################################
 ### utfcpp library

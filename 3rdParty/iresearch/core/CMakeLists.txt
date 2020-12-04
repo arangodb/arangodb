@@ -70,6 +70,13 @@ else()
   )
 endif()
 
+if (USE_SIMDCOMP)
+  # set SIMD specific sources
+  set(IResearch_core_simd_specific_sources
+    ./store/store_utils_simd.cpp
+  )
+endif()
+
 source_group("analysis" ./analysis/*)
 source_group("document" ./document/*)
 source_group("error" ./error/*)
@@ -140,7 +147,7 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
   ./store/store_utils.cpp
-  ./store/store_utils_simd.cpp
+  ${IResearch_core_simd_specific_sources}
   ./utils/async_utils.cpp
   ./utils/thread_utils.cpp
   ./utils/attributes.cpp
@@ -441,6 +448,11 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
+if (USE_SIMDCOMP)
+  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+  set(SIMD_LIBRARY_STATIC "simdcomp-static")
+endif()
+
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${BFD_SHARED_LIBS}
@@ -514,7 +526,6 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-unicorn>"
   "$<TARGET_FILE:velocypack>"
 )
@@ -523,6 +534,10 @@ if (TARGET zlibstatic)
   set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:zlibstatic>")
 else()
   set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES}  ${ZLIB_STATIC_LIBRARIES})
+endif()
+
+if (USE_SIMDCOMP)
+  list(APPEND IRESEARCH_STATIC_DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
 endif()
 
 if (MSVC)

@@ -23,7 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "store/store_utils.hpp"
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 #include "store/store_utils_simd.hpp"
 #endif
 #include "utils/bytes_utils.hpp"
@@ -384,7 +384,7 @@ void vencode_from_array(T expected_value, size_t expected_length) {
   }
 }
 
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 
 void read_write_optimized(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
   // write block
@@ -949,7 +949,7 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
   }
 }
 
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 
 TEST(store_utils_tests, read_write_block32_optimized) {
   // block_size = 128

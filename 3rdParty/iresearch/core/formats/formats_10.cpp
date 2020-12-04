@@ -67,7 +67,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/std.hpp"
 
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 #include "store/store_utils_simd.hpp"
 #endif
 
@@ -5731,7 +5731,7 @@ REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 // --SECTION--                                                      format12sse
 // ----------------------------------------------------------------------------
 
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
 
 struct format_traits_simd {
   static constexpr uint32_t BLOCK_SIZE = 128;
@@ -5887,7 +5887,7 @@ void init() {
   REGISTER_FORMAT(::format12);
   REGISTER_FORMAT(::format13);
   REGISTER_FORMAT(::format14);
-#ifdef IRESEARCH_SSE2
+#if defined(IRESEARCH_SSE2) && USE_SIMDCOMP
   REGISTER_FORMAT(::format12simd);
   REGISTER_FORMAT(::format13simd);
   REGISTER_FORMAT(::format14simd);
