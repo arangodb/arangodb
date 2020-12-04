@@ -103,7 +103,7 @@ class VertexContext {
   bool isActive() { return _vertexEntry->active(); }
 
   inline uint64_t phaseGlobalSuperstep() {
-    return globalSuperstep() - *getAggregatedValue<uint64_t>("phase-first-step");
+    return globalSuperstep() - *getAggregatedValue<uint64_t>(Utils::phaseFirstStepKey);
   }
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }

@@ -154,7 +154,7 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
     return false;
   }
   aggregate<uint32_t>("phase", static_cast<uint32_t>(iter - phases.begin()));
-  aggregate<uint64_t>("phase-first-step", globalSuperstep() + 1);
+  aggregate<uint64_t>(Utils::phaseFirstStepKey, globalSuperstep() + 1);
   userSelectedNext = ContinuationResult::ACTIVATE_ALL;
   return true;
 }
@@ -228,7 +228,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
 
     LOG_DEVEL << "no on halt program for this phase, going to next phase " << phase_index;
     aggregate<uint32_t>("phase", phase_index);
-    aggregate<uint64_t>("phase-first-step", globalSuperstep() + 1);
+    aggregate<uint64_t>(Utils::phaseFirstStepKey, globalSuperstep() + 1);
     return ContinuationResult::ACTIVATE_ALL;
   }
 }
@@ -336,8 +336,10 @@ void MasterContext::serializeValues(VPackBuilder& msg) {
     for (auto&& acc : globalAccumulators()) {
       msg.add(VPackValue(acc.first));
       if (auto result = acc.second->finalizeIntoBuilder(msg); result.fail()) {
-        LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
-                  << acc.first << " " << result.error().toString();
+        std::string err = "AIR MasterContext, error serializing global accumulator ";
+        err += acc.first;
+        err += result.error().toString();
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR, err);
       }
     }
   }

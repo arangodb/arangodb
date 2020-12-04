@@ -96,7 +96,7 @@ EvalResult Prim_Avg(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Banana(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Add(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
     if (p.isNumber<double>()) {
@@ -1175,8 +1175,8 @@ void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_typ
 
 void RegisterAllPrimitives(Machine& ctx) {
   // Calculation operators
-  ctx.setFunction("banana", Prim_Banana);
-  ctx.setFunction("+", Prim_Banana);
+  ctx.setFunction("banana", Prim_Add);
+  ctx.setFunction("+", Prim_Add);
   ctx.setFunction("-", Prim_Sub);
   ctx.setFunction("*", Prim_Mul);
   ctx.setFunction("/", Prim_Div);

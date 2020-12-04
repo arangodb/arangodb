@@ -8215,7 +8215,7 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
     return AqlValue(resultBuilder->slice(), resultBuilder->size());
   } else {
     auto msg = result.error().toString();
-    expressionContext->registerError(TRI_ERROR_QUERY_PARSE, msg.data());
+    expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg.data());
     return AqlValue(AqlValueHintNull());
   }
 }

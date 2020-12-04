@@ -48,10 +48,6 @@ class Accumulator;
 struct AccumulatorBase {
   AccumulatorBase() = default;
   virtual ~AccumulatorBase() = default;
-  template <typename T>
-  Accumulator<T>* castAccumulatorType() {
-    return dynamic_cast<Accumulator<T>*>(this);
-  }
 
   enum class UpdateResult {
     CHANGED,
@@ -82,7 +78,6 @@ struct AccumulatorBase {
   // used to aggregate states on MasterContext after receiving messages from WorkerContexts.
   virtual auto aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult = 0;
 
-  // Is this obsolete?
   virtual auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
 };
 

@@ -71,6 +71,7 @@ struct EvalError {
 
   EvalError& wrapCall(std::string function, VPackSlice parameter) {
     std::vector<std::string> parameterVec;
+    parameterVec.reserve(parameter.length());
     for (auto&& p : VPackArrayIterator(parameter)) {
       parameterVec.push_back(p.toJson());
     }

@@ -135,7 +135,7 @@ bool VertexAccumulators::getBindParameter(std::string_view name, VPackBuilder& i
 IAggregator* VertexAccumulators::aggregator(std::string const& name) const {
   if (name == "phase") {  // permanent value
     return new OverwriteAggregator<uint32_t>(0, true);
-  } else if (name == "phase-first-step") {
+  } else if (name == Utils::phaseFirstStepKey) {
     return new OverwriteAggregator<uint64_t>(0, true);
   }
   return nullptr;

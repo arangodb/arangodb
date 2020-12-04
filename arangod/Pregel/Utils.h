@@ -78,6 +78,7 @@ class Utils {
 
   /// Current global superstep
   static std::string const globalSuperstepKey;
+  static std::string const phaseFirstStepKey;
 
   /// Communicate number of loaded vertices to conductor
   static std::string const vertexCountKey;

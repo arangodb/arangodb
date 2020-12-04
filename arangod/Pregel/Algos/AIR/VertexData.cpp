@@ -45,6 +45,6 @@ void VertexData::reset(AccumulatorsDeclaration const& vertexAccumulatorsDeclarat
   }
 }
 
-std::unique_ptr<AccumulatorBase> const& VertexData::accumulatorByName(std::string_view name) {
+std::unique_ptr<AccumulatorBase> const& VertexData::accumulatorByName(std::string_view name) const {
   return _vertexAccumulators.at(std::string{name}); // FIXME C++20
 }

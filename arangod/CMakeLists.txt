@@ -801,10 +801,7 @@ add_library(arango_graph STATIC
 
 add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_SOURCES}
-)
-
-add_library(arango_pregel_air STATIC
-        ${LIB_ARANGO_PREGEL_AIR_SOURCES}
+  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
 )
 
 add_library(arango_aql STATIC
@@ -955,11 +952,11 @@ target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
 
 target_link_libraries(arango_greenspun arango)
+
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
 target_link_libraries(arango_pregel arango_greenspun)
-target_link_libraries(arango_pregel arango_pregel_air)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
@@ -1097,7 +1094,6 @@ foreach(TARGET
   arango_indexes
   arango_metrics
   arango_pregel
-  arango_pregel_air
   arango_replication
   arango_rocksdb
   arango_storage_engine

@@ -171,29 +171,25 @@ bool Conductor::_startGlobalStep() {
   VPackBuilder messagesFromWorkers;
 
   {
-    // TODO: lock?
     VPackArrayBuilder guard(&messagesFromWorkers);
     // we are explicitly expecting an response containing the aggregated
     // values as well as the count of active vertices
     int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
-    _aggregators->aggregateValues(payload);
+      _aggregators->aggregateValues(payload);
 
-    // TODO: locking necessary?
-    messagesFromWorkers.add(payload.get(Utils::workerToMasterMessagesKey));
+      messagesFromWorkers.add(payload.get(Utils::workerToMasterMessagesKey));
+      _statistics.accumulateActiveCounts(payload);
+      _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
+      _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
+    });
 
-    _statistics.accumulateActiveCounts(payload);
-    _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
-    _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
-  });
-
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC("04189", ERR, Logger::PREGEL)
-        << "Seems there is at least one worker out of order";
-    // the recovery mechanisms should take care of this
-    return false;
-  }
+    if (res != TRI_ERROR_NO_ERROR) {
+      _state = ExecutionState::IN_ERROR;
+      LOG_TOPIC("04189", ERR, Logger::PREGEL)
+          << "Seems there is at least one worker out of order";
+      // the recovery mechanisms should take care of this
+      return false;
+    }
   }
 
   // workers are done if all messages were processed and no active vertices

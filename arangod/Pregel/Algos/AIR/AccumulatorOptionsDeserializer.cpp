@@ -68,13 +68,19 @@ using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
 constexpr const char accumulatorValueType_doubles[] = "doubles";
 constexpr const char accumulatorValueType_ints[] = "ints";
 constexpr const char accumulatorValueType_strings[] = "strings";
+constexpr const char accumulatorValueType_double[] = "double";
+constexpr const char accumulatorValueType_int[] = "int";
+constexpr const char accumulatorValueType_string[] = "string";
 constexpr const char accumulatorValueType_bool[] = "bool";
 constexpr const char accumulatorValueType_slice[] = "slice";
 
 using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueType,
-    enum_member<AccumulatorValueType::DOUBLES, values::string_value<accumulatorValueType_doubles>>,
-    enum_member<AccumulatorValueType::INTS, values::string_value<accumulatorValueType_ints>>,
-    enum_member<AccumulatorValueType::STRINGS, values::string_value<accumulatorValueType_strings>>,
+    enum_member<AccumulatorValueType::DOUBLE, values::string_value<accumulatorValueType_doubles>>,
+    enum_member<AccumulatorValueType::INT, values::string_value<accumulatorValueType_ints>>,
+    enum_member<AccumulatorValueType::STRING, values::string_value<accumulatorValueType_strings>>,
+    enum_member<AccumulatorValueType::DOUBLE, values::string_value<accumulatorValueType_double>, true>,
+    enum_member<AccumulatorValueType::INT, values::string_value<accumulatorValueType_int>, true>,
+    enum_member<AccumulatorValueType::STRING, values::string_value<accumulatorValueType_string>, true>,
     enum_member<AccumulatorValueType::BOOL, values::string_value<accumulatorValueType_bool>>,
     enum_member<AccumulatorValueType::SLICE, values::string_value<accumulatorValueType_slice>>
 >;
@@ -335,13 +341,13 @@ std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {
 
 std::ostream& operator<<(std::ostream& os, AccumulatorValueType const& type) {
   switch (type) {
-    case AccumulatorValueType::DOUBLES:
+    case AccumulatorValueType::DOUBLE:
       os << accumulatorValueType_doubles;
       break;
-    case AccumulatorValueType::INTS:
+    case AccumulatorValueType::INT:
       os << accumulatorValueType_ints;
       break;
-    case AccumulatorValueType::STRINGS:
+    case AccumulatorValueType::STRING:
       os << accumulatorValueType_strings;
       break;
     case AccumulatorValueType::BOOL:

@@ -653,6 +653,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
     // bool store =
     if (auto res = _graphStore->graphFormat()->buildVertexDocumentWithResult(b, &data); res.fail()) {
       LOG_TOPIC("37fde", ERR, Logger::PREGEL) << "failed to build vertex document: " << res.error().toString();
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR, res.error().toString());
     }
     b.close();
   }

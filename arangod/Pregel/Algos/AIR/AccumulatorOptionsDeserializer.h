@@ -58,9 +58,9 @@ enum class AccumulatorType {
 std::ostream& operator<<(std::ostream&, AccumulatorType const&);
 
 enum class AccumulatorValueType {
-  DOUBLES,
-  INTS,
-  STRINGS,
+  DOUBLE,
+  INT,
+  STRING,
   BOOL,
   SLICE,
 };

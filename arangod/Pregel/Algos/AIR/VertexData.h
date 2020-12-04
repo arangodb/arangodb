@@ -48,7 +48,7 @@ class VertexData {
              DataAccessDefinitions  const& dataAccessDefinitions,
              std::string documentId, VPackSlice const& doc, std::size_t vertexId);
 
-  std::unique_ptr<AccumulatorBase> const& accumulatorByName(std::string_view name);
+  std::unique_ptr<AccumulatorBase> const& accumulatorByName(std::string_view name) const;
 
   // The vertex accumulators are *not* reset automatically
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _vertexAccumulators;

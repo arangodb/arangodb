@@ -67,6 +67,7 @@ std::string const Utils::parallelismKey = "parallelism";
 std::string const Utils::activateAllKey = "reset-all-active";
 
 std::string const Utils::globalSuperstepKey = "gss";
+std::string const Utils::phaseFirstStepKey = "phase-first-step";
 std::string const Utils::vertexCountKey = "vertexCount";
 std::string const Utils::edgeCountKey = "edgeCount";
 std::string const Utils::shardIdKey = "shrdId";

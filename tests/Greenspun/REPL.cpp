@@ -119,6 +119,8 @@ struct LispCompleter : arangodb::Completer {
         if (*ptr == '/') {
           state = NORMAL;
           --openComments;
+        } else if (*ptr != '*') {
+          state = MULTI_COMMENT;
         }
 
         ++ptr;
