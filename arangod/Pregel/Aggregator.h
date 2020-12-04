@@ -42,7 +42,7 @@ class IAggregator {
   IAggregator& operator=(const IAggregator&) = delete;
 
  public:
-  IAggregator() {}
+  IAggregator() = default;
   virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally

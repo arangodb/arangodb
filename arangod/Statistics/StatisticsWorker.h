@@ -42,7 +42,6 @@ class StatisticsWorker final : public Thread {
 
   void run() override;
   void beginShutdown() override;
-  void generateRawStatistics(std::string& result, double const& now);
 
  private:
   // removes old statistics

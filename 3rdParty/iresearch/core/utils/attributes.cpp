@@ -58,7 +58,6 @@ namespace iresearch {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an attribute instance");
-    IR_LOG_EXCEPTION();
   }
 
   return {}; // invalid type id

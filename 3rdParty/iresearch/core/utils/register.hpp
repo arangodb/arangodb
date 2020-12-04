@@ -35,18 +35,17 @@
 
 // use busywait implementation for Win32 since std::mutex cannot be used in calls going through dllmain()
 #ifdef _WIN32
-  #include "async_utils.hpp"
+#include "async_utils.hpp"
 
-  namespace {
-    typedef iresearch::async_utils::busywait_mutex mutex_t;
-  }
+namespace {
+  typedef irs::async_utils::busywait_mutex mutex_t;
+}
 #else
-  #include <mutex>
+#include <mutex>
 
-  namespace {
-    typedef std::mutex mutex_t;
-
-  }
+namespace {
+  typedef std::mutex mutex_t;
+}
 #endif
 
 namespace iresearch {
