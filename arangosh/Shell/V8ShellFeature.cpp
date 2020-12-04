@@ -551,7 +551,8 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
       console.printErrorLine(exception);
       console.log(exception);
-      if (HasShellExecutableNameInIt(i)) {
+      i = extractShellExecutableName(i);
+      if (!i.empty()){
         LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
           << "This command must be executed in a system shell and cannot be used inside of arangosh: '" << i << "'";
       }

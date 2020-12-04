@@ -22,35 +22,39 @@
 #include <string>
 #include "Utilities/IsArangoExecutable.h"
 
-
-bool HasShellExecutableNameInIt(std::string& str) {
-    bool foundShellTool = false;
-    if (str.length() > 0 && str[0] == 'a') {
-      auto pos = str.find(' ');
-      if (pos != std::string::npos) {
-        // is it a variable name assignment?
-        if (str.find('=', pos) == std::string::npos) {
-          str = str.substr(0, pos);
-        }
+std::string extractShellExecutableName(std::string const& input) {
+  if (input.length() > 0 && input[0] == 'a') {
+    std::string str;
+    auto pos = input.find(' ');
+    if (pos != std::string::npos) {
+      // is it a variable name assignment?
+      if (input.find('=', pos) == std::string::npos) {
+        str = input.substr(0, pos);
       }
-      if (str == "arangobackup" ||
-          str == "arangobench" ||
-          str == "arangod" ||
-          str == "arangodb" ||
-          str == "arangodbtests" ||
-          str == "arangodump" ||
-          str == "arangoexport" ||
-          str == "arangoimp" ||
-          str == "arangoimport" ||
-          str == "arango-init-database" ||
-          str == "arangoinspect" ||
-          str == "arangorestore" ||
-          str == "arango-secure-installation" ||
-          str == "arangosh" ||
-          str == "arangovpack"
-          ) {
-        foundShellTool = true;
+      else {
+        str = input;
       }
+    } else {
+      str = input;
     }
-    return foundShellTool;
+    if (str == "arangobackup" ||
+        str == "arangobench" ||
+        str == "arangod" ||
+        str == "arangodb" ||
+        str == "arangodbtests" ||
+        str == "arangodump" ||
+        str == "arangoexport" ||
+        str == "arangoimp" ||
+        str == "arangoimport" ||
+        str == "arango-init-database" ||
+        str == "arangoinspect" ||
+        str == "arangorestore" ||
+        str == "arango-secure-installation" ||
+        str == "arangosh" ||
+        str == "arangovpack"
+      ) {
+      return str;
+    }
+  }
+  return std::string();
 }
