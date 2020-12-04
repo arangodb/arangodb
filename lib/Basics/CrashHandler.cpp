@@ -236,6 +236,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   appendNullTerminatedString(context, p);
 
 #ifdef __linux__
+#if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || defined(_M_X64)
   {
     // AT_PHDR points to the program header, which is located after the ELF header.
     // This allows us to calculate the base address of the executable.
@@ -273,6 +274,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
     appendRegister(", r14: 0x", REG_R14);
     appendRegister(", r15: 0x", REG_R15);
   }
+#endif
 #endif
 
   return p - s;
