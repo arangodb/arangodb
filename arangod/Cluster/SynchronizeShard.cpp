@@ -357,7 +357,7 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
                  .get();
 
   if (response.ok() && response.response &&
-      response.response->statusCode() == fuerte::StatusNotFound) {
+      response.statusCode() == fuerte::StatusNotFound) {
     auto const slice = response.response->slice();
     if (slice.isObject()) {
       VPackSlice s = slice.get(StaticStrings::ErrorNum);
@@ -403,9 +403,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   // The servers (<=3.3) with lower versions hold the POST request for as long
   // as the corresponding DELETE_REQ has not been successfully submitted.
   
-  using namespace std::chrono;
-  auto const start = steady_clock::now();
-
   // nullptr only happens during controlled shutdown
   if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
@@ -413,13 +410,15 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
 
   VPackBuilder body;
-  { VPackObjectBuilder o(&body);
+  { 
+    VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); 
+  }
   auto buf = body.steal();
 
   // Try to POST the lock body. If POST fails, we should just exit and retry
@@ -448,12 +447,6 @@ arangodb::Result SynchronizeShard::getReadLock(
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       "startReadLockOnLeader: couldn't POST lock body, giving up.");
-  }
-
-  double timeLeft =
-      double(timeout) - duration<double>(steady_clock::now() - start).count();
-  if (timeLeft < 60.0) {
-    timeLeft = 60.0;
   }
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock

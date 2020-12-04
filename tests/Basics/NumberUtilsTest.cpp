@@ -70,7 +70,7 @@ TEST(NumberUtilsTest, testStrangeNumbers) {
 }
 
 TEST(NumberUtilsTest, testPredefinedConstants) {
-  test<int16_t>(INT16_MIN, std::to_string(INT16_MIN)); 
+  test<int16_t>(static_cast<int16_t>(INT16_MIN), std::to_string(INT16_MIN)); 
   test<int16_t>(INT16_MAX, std::to_string(INT16_MAX));
 
   test<int32_t>(INT32_MIN, std::to_string(INT32_MIN)); 
