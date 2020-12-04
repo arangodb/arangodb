@@ -255,13 +255,7 @@ Result TransactionState::useCollections() {
   // process collections in forward order
 
   for (TransactionCollection* trxCollection : _collections) {
-    TRI_IF_FAILURE(("WaitOnLock::" + trxCollection->collectionName()).c_str()) {
-      LOG_DEVEL << "try to get locks: " << _id.id();
-    }
     res = trxCollection->lockUsage();
-    TRI_IF_FAILURE(("WaitOnLock::" + trxCollection->collectionName()).c_str()) {
-      LOG_DEVEL << "got lock: " << _id.id();
-    }
 
     if (!res.ok()) {
       break;

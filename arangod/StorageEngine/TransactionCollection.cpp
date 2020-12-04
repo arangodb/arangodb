@@ -36,9 +36,6 @@ TransactionCollection::~TransactionCollection() {
 }
 
 std::string const& TransactionCollection::collectionName() const {
-  if (_collection == nullptr) {
-    return "piotr";
-  }
   TRI_ASSERT(_collection != nullptr);
   return _collection->name();
 }

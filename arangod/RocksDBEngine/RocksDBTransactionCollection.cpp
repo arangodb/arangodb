@@ -118,13 +118,7 @@ Result RocksDBTransactionCollection::lockUsage() {
 
   if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/!isLocked()) {
     // r/w lock the collection
-    TRI_IF_FAILURE(("WaitOnLock::" + collectionName()).c_str()) {
-      LOG_DEVEL << "try to get lock.";
-    }
     Result res = doLock(_accessType);
-    TRI_IF_FAILURE(("WaitOnLock::" + collectionName()).c_str()) {
-      LOG_DEVEL << "got lock.";
-    }
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
@@ -319,9 +313,6 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
 
   double const timeout = _transaction->lockTimeout();
 
-  TRI_IF_FAILURE(("WaitOnLock::" + collectionName()).c_str()) {
-    LOG_DEVEL << "lock timeout set to:" << timeout;
-  }
   Result res;
   LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid.id();
   if (AccessMode::isExclusive(type)) {
