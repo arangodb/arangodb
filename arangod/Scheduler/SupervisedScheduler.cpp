@@ -158,7 +158,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _jobsDone(0),
       _minNumWorker(minThreads),
       _maxNumWorker(maxThreads),
-      _maxFifoSizes{maxQueueSize, fifo1Size, fifo1Size, fifo3Size},
+      _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
       _ongoingLowPriorityLimit(static_cast<std::size_t>(ongoingMultiplier * _maxNumWorker)),
       _wakeupQueueLength(5),
       _wakeupTime_ns(1000),
