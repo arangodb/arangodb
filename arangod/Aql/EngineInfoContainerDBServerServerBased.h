@@ -39,6 +39,7 @@
 namespace arangodb {
 namespace network {
 class ConnectionPool;
+struct RequestOptions;
 }
 
 namespace velocypack {
@@ -121,7 +122,7 @@ class EngineInfoContainerDBServerServerBased {
   // the given queryid of the coordinator as data provider.
   void closeSnippet(QueryId inputSnippet);
 
-  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID server,
+  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
                                     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                                     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
@@ -140,6 +141,14 @@ class EngineInfoContainerDBServerServerBased {
   Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+
+  arangodb::futures::Future<Result> buildSetupRequest(
+      transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
+      std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
+      aql::ServerQueryIdList& serverToQueryId, network::ConnectionPool* pool,
+      network::RequestOptions const& options) const;
+
+  [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -185,7 +194,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
-                       ServerID const& server, std::string const& serverDest,
+                       ServerID const& server, std::string serverDest,
                        std::vector<bool> const& didCreateEngine,
                        QueryId& globalQueryId) const;
 

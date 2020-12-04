@@ -50,7 +50,8 @@ using namespace arangodb::aql;
 namespace {
 const double SETUP_TIMEOUT = 15.0;
 
-Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId, std::string& shardId) {
+Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
+                             std::string& shardId) {
   TRI_ASSERT(keySlice.isString());  // used as  a key in Json
   arangodb::velocypack::StringRef key(keySlice);
   size_t p = key.find(':');
@@ -191,7 +192,8 @@ void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* 
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
     auto& resolver = _query.resolver();
-    _query.collections().visit([&resolver, graphNode](std::string const& name, aql::Collection& collection) {
+    _query.collections().visit([&resolver, graphNode](std::string const& name,
+                                                      aql::Collection& collection) {
       // If resolver cannot resolve this collection
       // it has to be a view.
       if (resolver.getCollection(name)) {
@@ -249,47 +251,123 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 }
 
 std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
-    VPackBuilder& infoBuilder, ServerID server,
+    VPackBuilder& infoBuilder, ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
-        << "Building Engine Info for " << server;
+      << "Building Engine Info for " << server;
 
-    infoBuilder.clear();
-    infoBuilder.openObject();
-    addLockingPart(infoBuilder, server);
-    TRI_ASSERT(infoBuilder.isOpenObject());
+  infoBuilder.clear();
+  infoBuilder.openObject();
+  addLockingPart(infoBuilder, server);
+  TRI_ASSERT(infoBuilder.isOpenObject());
 
-    addOptionsPart(infoBuilder, server);
-    TRI_ASSERT(infoBuilder.isOpenObject());
+  addOptionsPart(infoBuilder, server);
+  TRI_ASSERT(infoBuilder.isOpenObject());
 
-    addVariablesPart(infoBuilder);
-    TRI_ASSERT(infoBuilder.isOpenObject());
+  addVariablesPart(infoBuilder);
+  TRI_ASSERT(infoBuilder.isOpenObject());
 
-    infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
-    infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
+  infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
+  infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
-    infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
+  infoBuilder.add(StaticStrings::AttrCoordinatorRebootId,
+                  VPackValue(ServerState::instance()->getRebootId().value()));
+  infoBuilder.add(StaticStrings::AttrCoordinatorId,
+                  VPackValue(ServerState::instance()->getId()));
 
-    addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
-    TRI_ASSERT(infoBuilder.isOpenObject());
-    auto shardMapping = _shardLocking.getShardMapping();
-    std::vector<bool> didCreateEngine =
-        addTraversalEnginesPart(infoBuilder, shardMapping, server);
-    TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
-    TRI_ASSERT(infoBuilder.isOpenObject());
+  addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
+  TRI_ASSERT(infoBuilder.isOpenObject());
+  auto shardMapping = _shardLocking.getShardMapping();
+  std::vector<bool> didCreateEngine =
+      addTraversalEnginesPart(infoBuilder, shardMapping, server);
+  TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
+  TRI_ASSERT(infoBuilder.isOpenObject());
 
-    infoBuilder.add(StaticStrings::SerializationFormat,
-                    VPackValue(static_cast<SerializationFormatType>(
-                        aql::SerializationFormat::SHADOWROWS)));
+  infoBuilder.add(StaticStrings::SerializationFormat,
+                  VPackValue(static_cast<SerializationFormatType>(
+                      aql::SerializationFormat::SHADOWROWS)));
 
-    transaction::Methods& trx = _query.trxForOptimization();
-    trx.state()->analyzersRevision().toVelocyPack(infoBuilder);
-    infoBuilder.close();  // Base object
-    TRI_ASSERT(infoBuilder.isClosed());
+  transaction::Methods& trx = _query.trxForOptimization();
+  trx.state()->analyzersRevision().toVelocyPack(infoBuilder);
+  infoBuilder.close();  // Base object
+  TRI_ASSERT(infoBuilder.isClosed());
 
-    return didCreateEngine;
+  return didCreateEngine;
+}
+
+arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildSetupRequest(
+    transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
+    std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
+    aql::ServerQueryIdList& serverToQueryId, network::ConnectionPool* pool,
+    network::RequestOptions const& options) const {
+  std::string serverDest = "server:" + server;
+
+  VPackBuffer<uint8_t> buffer(infoSlice.byteSize());
+  buffer.append(infoSlice.begin(), infoSlice.byteSize());
+
+  // add the transaction ID header
+  network::Headers headers;
+  ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
+
+  auto buildCallback =
+      [this, server, serverDest,
+       didCreateEngine = std::move(didCreateEngine), &serverToQueryId, &snippetIds](
+          arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
+    auto const& resolvedResponse = response.get();
+    if (resolvedResponse.fail()) {
+      int code = network::fuerteToArangoErrorCode(resolvedResponse);
+      std::string message = network::fuerteToArangoErrorMessage(resolvedResponse);
+      LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
+          << server << " responded with " << code << " -> " << message;
+      // LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson(); // TODO: Check
+      return Result{code, message};
+    }
+
+    VPackSlice responseSlice = resolvedResponse.response->slice();
+    if (responseSlice.isNone()) {
+      return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
+    }
+    QueryId globalId = 0;
+    auto result = parseResponse(responseSlice, snippetIds, server, serverDest,
+                                didCreateEngine, globalId);
+    if (!result.ok()) {
+      return result;
+    }
+    serverToQueryId.emplace_back(serverDest, globalId);
+
+    return TRI_ERROR_NO_ERROR;
+  };
+
+  return network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
+                              "/_api/aql/setup", std::move(buffer), options,
+                              std::move(headers))
+      .then([buildCallback](futures::Try<network::Response>&& resp) mutable {
+        return buildCallback(resp);
+      });
+};
+
+bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(VPackSlice infoSlice) const {
+  // Partial assertions to check if all required keys are present
+  TRI_ASSERT(infoSlice.hasKey("lockInfo"));
+  TRI_ASSERT(infoSlice.hasKey("options"));
+  TRI_ASSERT(infoSlice.hasKey("variables"));
+  // We need to have at least one: snippets (non empty) or traverserEngines
+
+  if (!((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
+         !infoSlice.get("snippets").isEmptyObject()) ||
+        infoSlice.hasKey("traverserEngines"))) {
+    // This is possible in the satellite case.
+    // The leader of a read-only satellite is potentially
+    // not part of the query.
+    return true;
+  }
+
+  TRI_ASSERT((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
+              !infoSlice.get("snippets").isEmptyObject()) ||
+             infoSlice.hasKey("traverserEngines"));
+
+  return false;
 }
 
 // Build the Engines for the DBServer
@@ -332,6 +410,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   transaction::Methods& trx = _query.trxForOptimization();
+  std::vector<arangodb::futures::Future<Result>> networkCalls{};
 
   network::RequestOptions options;
   options.database = _query.vocbase().name();
@@ -340,90 +419,51 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
   for (ServerID const& server : dbServers) {
-    std::string serverDest = "server:" + server;
-
     auto didCreateEngine = buildEngineInfo(infoBuilder, server, nodesById, nodeAliases);
     VPackSlice infoSlice = infoBuilder.slice();
-    // Partial assertions to check if all required keys are present
-    TRI_ASSERT(infoSlice.hasKey("lockInfo"));
-    TRI_ASSERT(infoSlice.hasKey("options"));
-    TRI_ASSERT(infoSlice.hasKey("variables"));
-    // We need to have at least one: snippets (non empty) or traverserEngines
 
-    if (!((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
-           !infoSlice.get("snippets").isEmptyObject()) ||
-          infoSlice.hasKey("traverserEngines"))) {
-      // This is possible in the satellite case.
-      // The leader of a read-only satellite is potentially
-      // not part of the query.
+    if (isNotSatelliteLeader(infoSlice)) {
       continue;
     }
-    TRI_ASSERT((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
-                !infoSlice.get("snippets").isEmptyObject()) ||
-               infoSlice.hasKey("traverserEngines"));
 
-    VPackBuffer<uint8_t> buffer(infoSlice.byteSize());
-    buffer.append(infoSlice.begin(), infoSlice.byteSize());
-
-    // add the transaction ID header
-    network::Headers headers;
-    ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
-
-    /*
-    auto sendNetworkRequest = [pool, serverDest, buffer, options, headers](network::FutureRes response) {
-      return network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
-                           "/_api/aql/setup", std::move(buffer),
-                           options, std::move(headers));
-    };
-
-    bool fastPath = false;
-    if (fastPath) {
-      // execute sync
-    } else {
-      // execute async
-    }*/
-
-    auto res = network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
-                                    "/_api/aql/setup", std::move(buffer),
-                                    options, std::move(headers))
-                   .get();
+    networkCalls.emplace_back(
+        buildSetupRequest(trx, server, infoSlice, std::move(didCreateEngine),
+                          snippetIds, serverToQueryId, pool, options));
     _query.incHttpRequests(unsigned(1));
-    if (res.fail()) {
-      int code = network::fuerteToArangoErrorCode(res);
-      std::string message = network::fuerteToArangoErrorMessage(res);
-      LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
-          << server << " responded with " << code << " -> " << message;
-      LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
-      return {code, message};
-    }
-
-    VPackSlice response = res.response->slice();
-    if (response.isNone()) {
-      return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
-    }
-    QueryId globalId = 0;
-    auto result = parseResponse(response, snippetIds, server, serverDest,
-                                didCreateEngine, globalId);
-    if (!result.ok()) {
-      return result;
-    }
-    serverToQueryId.emplace_back(std::move(serverDest), globalId);
   }
-  cleanupGuard.cancel();
-  return TRI_ERROR_NO_ERROR;
+
+  futures::Future<Result> fastPathResult =
+      futures::collectAll(networkCalls)
+          .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses) -> Result {
+            for (auto const& tryRes : responses) {
+              if (tryRes.get().fail()) {
+                return tryRes.get();
+              };
+            }
+            return Result();  // all good
+          });
+
+  if (fastPathResult.get().ok()) {
+    cleanupGuard.cancel();
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
-    std::string const& serverDest, std::vector<bool> const& didCreateEngine,
+    std::string serverDest, std::vector<bool> const& didCreateEngine,
     QueryId& globalQueryId) const {
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unable to deploy query on all required "
-            "servers: " + response.toJson() + ". This can happen during "
-            "failover. Please check: " +
+            "servers: " +
+                response.toJson() +
+                ". This can happen during "
+                "failover. Please check: " +
                 server};
   }
 
@@ -481,8 +521,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
                   "failover. Please check; " +
                       server};
         }
-        _graphNodes[i]->addEngine(idIter.value().getNumber<aql::EngineId>(),
-                                  server);
+        _graphNodes[i]->addEngine(idIter.value().getNumber<aql::EngineId>(), server);
         idIter.next();
       }
     }
@@ -507,9 +546,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * -> queryid.
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
-    int errorCode, std::string const& dbname,
-    MapRemoteToSnippet& snippetIds) const {
-
+    int errorCode, std::string const& dbname, MapRemoteToSnippet& snippetIds) const {
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
