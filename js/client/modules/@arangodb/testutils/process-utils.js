@@ -2109,7 +2109,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     options.encryptionAtRest = false;
   } else {
     instanceInfo.restKeyFile = fs.join(rootDir, 'openSesame.txt')
-    print(instanceInfo.restKeyFile)
     fs.makeDirectoryRecursive(rootDir);
     fs.write(instanceInfo.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
   }
