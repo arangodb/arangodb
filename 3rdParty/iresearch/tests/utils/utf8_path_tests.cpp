@@ -29,6 +29,8 @@
 #include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
 
+using namespace std::chrono_literals;
+
 namespace {
 
 class utf8_path_tests: public test_base {
@@ -869,7 +871,7 @@ TEST_F(utf8_path_tests, directory) {
             break;
           }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(1000ms);
       }
       for (auto& thread : pool) {
         thread.join();

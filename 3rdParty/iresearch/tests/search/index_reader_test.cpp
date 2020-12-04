@@ -31,6 +31,8 @@
 #include "utils/version_utils.hpp"
 #include "utils/utf8_path.hpp"
 
+using namespace std::chrono_literals;
+
 namespace {
 
 irs::format* codec0;
@@ -123,7 +125,7 @@ TEST(directory_reader_test, open_newest_index) {
 
   ASSERT_FALSE(!dir.create(codec0_file0));
   ASSERT_FALSE(!dir.create(codec1_file0));
-  irs::sleep_ms(1000); // wait 1 sec to ensure index file timestamps differ
+  std::this_thread::sleep_for(1s); // wait 1 sec to ensure index file timestamps differ
   ASSERT_FALSE(!dir.create(codec0_file1));
   ASSERT_FALSE(!dir.create(codec1_file1));
 

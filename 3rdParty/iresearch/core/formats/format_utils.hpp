@@ -29,7 +29,7 @@
 
 namespace iresearch {
 
-IRESEARCH_API void validate_footer(iresearch::index_input& in);
+IRESEARCH_API void validate_footer(index_input& in);
 
 namespace format_utils {
 

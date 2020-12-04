@@ -502,7 +502,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -569,7 +569,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
@@ -628,7 +628,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -1616,6 +1616,14 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
 }
 
 TEST_F(IResearchViewTest, test_emplace_cid) {
+  struct Link : public arangodb::iresearch::IResearchLink {
+    Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+        : IResearchLink(id, col) {
+      auto json = VPackParser::fromJson(R"({ "view": "42" })");
+      EXPECT_TRUE(init(json->slice()).ok());
+    }
+  };
+
   // emplace (already in list)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 42, \"name\": \"testCollection\" }");
@@ -1657,8 +1665,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
-      EXPECT_TRUE((false == view->link(link->self()).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() does not modify view meta if cid existed previously
+      auto lock = link->self()->lock();
+      EXPECT_FALSE(view->link(link->self()).ok());
+      EXPECT_FALSE(persisted); // emplace() does not modify view meta if cid existed previously
     }
 
     // collection in view after
@@ -1672,10 +1681,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1710,18 +1719,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((persisted)); // emplace() modifies view meta if cid did not exist previously
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_TRUE(persisted); // emplace() modifies view meta if cid did not exist previously
     }
 
     // collection in view after
@@ -1735,10 +1742,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1765,14 +1772,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1780,14 +1789,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
@@ -1801,10 +1806,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1831,10 +1836,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
@@ -1842,10 +1847,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
+      Link link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
       EXPECT_TRUE((false == view->link(asyncLinkPtr).ok()));
@@ -1862,10 +1864,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1892,14 +1894,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1907,14 +1911,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
@@ -1922,16 +1922,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{42}};
       std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
+      EXPECT_TRUE(view->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
-      })));
+      }));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // persistence fails during execution of callback
@@ -1941,7 +1941,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = []()->void { throw std::exception(); };
       auto& feature = server.getFeature<arangodb::DatabaseFeature>();
 
-      EXPECT_NO_THROW((feature.recoveryDone()));
+      EXPECT_NO_THROW(feature.recoveryDone());
     }
   }
 }
@@ -3568,6 +3568,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+        ASSERT_NE(nullptr, link);
+        auto lock = link->self()->lock();
         ASSERT_TRUE((!link->self()->get())); // check that link is unregistred from view
       }
     }
