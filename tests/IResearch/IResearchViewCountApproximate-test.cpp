@@ -204,7 +204,8 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
               "{\"_key\": \"c4\", \"value\": 4},"
               "{\"_key\": \"c5\", \"value\": 5},"
               "{\"_key\": \"c6\", \"value\": 6},"
-              "{\"_key\": \"c7\", \"value\": 7}"
+              "{\"_key\": \"c7\", \"value\": 7},"
+              "{\"_key\": \"c8\", \"value\": 10}"
             "]");
 
         auto root = builder->slice();
@@ -310,7 +311,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountExact) {
       " COLLECT WITH COUNT INTO c RETURN c ";
 
   std::vector<VPackValue> expectedValues{
-    VPackValue(16),
+    VPackValue(17),
   };
   executeAndCheck(queryString, expectedValues, -1);
 }
@@ -320,7 +321,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountCost) {
       " OPTIONS {countApproximate:'cost'} COLLECT WITH COUNT INTO c RETURN c ";
 
   std::vector<VPackValue> expectedValues{
-    VPackValue(16),
+    VPackValue(17),
   };
   executeAndCheck(queryString, expectedValues, -1);
 }
@@ -330,7 +331,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilter) {
       " SEARCH d.value >= 10 COLLECT WITH COUNT INTO c RETURN c ";
 
   std::vector<VPackValue> expectedValues{
-    VPackValue(8),
+    VPackValue(9),
   };
   executeAndCheck(queryString, expectedValues, -1);
 }
@@ -340,29 +341,29 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCost) {
       " SEARCH d.value >= 10 OPTIONS {countApproximate:'cost'} COLLECT WITH COUNT INTO c RETURN c ";
 
   std::vector<VPackValue> expectedValues{
-    VPackValue(8),
+    VPackValue(9),
   };
   executeAndCheck(queryString, expectedValues, -1);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilter) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 1, 1  RETURN  d.value ";
+      " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 2, 1  RETURN  d.value ";
 
   std::vector<VPackValue> expectedValues{
     VPackValue(11),
   };
-  executeAndCheck(queryString, expectedValues, 8);
+  executeAndCheck(queryString, expectedValues, 9);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSorted) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact'} SORT d.value ASC LIMIT 7, 1  RETURN  d.value ";
+      " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact'} SORT d.value ASC LIMIT 8, 1  RETURN  d.value ";
 
   std::vector<VPackValue> expectedValues{
     VPackValue(11),
   };
-  executeAndCheck(queryString, expectedValues, 13);
+  executeAndCheck(queryString, expectedValues, 15);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountSorted) {
@@ -372,7 +373,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(7),
   };
-  executeAndCheck(queryString, expectedValues, 16);
+  executeAndCheck (queryString, expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountSortedCost) {
@@ -382,7 +383,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(7),
   };
-  executeAndCheck(queryString, expectedValues, 16);
+  executeAndCheck(queryString, expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSorted) {
@@ -392,7 +393,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(10),
   };
-  executeAndCheck(queryString, expectedValues, 16);
+  executeAndCheck(queryString, expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSortedCost) {
@@ -402,15 +403,15 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(10),
   };
-  executeAndCheck(queryString, expectedValues, 16);
+  executeAndCheck(queryString, expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSortedCost) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost'} SORT d.value ASC LIMIT 7, 1  RETURN  d.value ";
+      " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost'} SORT d.value ASC LIMIT 8, 1  RETURN  d.value ";
 
   std::vector<VPackValue> expectedValues{
     VPackValue(11),
   };
-  executeAndCheck(queryString, expectedValues, 13);
+  executeAndCheck(queryString, expectedValues, 15);
 }
