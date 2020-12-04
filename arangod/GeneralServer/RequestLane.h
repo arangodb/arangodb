@@ -100,7 +100,9 @@ enum class RequestLane {
   // Internal tasks with low priority
   INTERNAL_LOW,
 
-  // Continuations of requests:
+  // Default continuation lane for requests (e.g. after returning from a network
+  // call). Some requests, such as CLUSTER_AQL, will have a different
+  // continuation lane for more fine-grained control.
   CONTINUATIONS,
 
   // Not yet used:
