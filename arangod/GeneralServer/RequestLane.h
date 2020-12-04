@@ -160,7 +160,7 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::HIGH;
     case RequestLane::SERVER_SYNCHRONOUS_REPLICATION:
       return RequestPriority::HIGH;
-    case RequestLane::CONTINUATIONS:
+    case RequestLane::CONTINUATION:
       return RequestPriority::MED;
   }
   return RequestPriority::LOW;
