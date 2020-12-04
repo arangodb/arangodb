@@ -57,15 +57,15 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
-std::vector<std::pair<RegisterId, RegisterId>> HashedCollectExecutorInfos::getGroupRegisters() const {
+std::vector<std::pair<RegisterId, RegisterId>> const& HashedCollectExecutorInfos::getGroupRegisters() const {
   return _groupRegisters;
 }
 
-std::vector<std::pair<RegisterId, RegisterId>> HashedCollectExecutorInfos::getAggregatedRegisters() const {
+std::vector<std::pair<RegisterId, RegisterId>> const& HashedCollectExecutorInfos::getAggregatedRegisters() const {
   return _aggregateRegisters;
 }
 
-std::vector<std::string> HashedCollectExecutorInfos::getAggregateTypes() const {
+std::vector<std::string> const& HashedCollectExecutorInfos::getAggregateTypes() const {
   return _aggregateTypes;
 }
 
@@ -190,7 +190,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
     }
   } else {
     // set group count in result register
-    TRI_ASSERT(_currentGroup->second != nullptr && !_currentGroup->second->size() == 1);
+    TRI_ASSERT(_currentGroup->second != nullptr && _currentGroup->second->size() == 1);
     AqlValue r = (*_currentGroup->second)[0].stealValue();
     AqlValueGuard guard{r, true};
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow, guard);

@@ -76,9 +76,9 @@ class HashedCollectExecutorInfos {
   ~HashedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
-  std::vector<std::string> getAggregateTypes() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
+  std::vector<std::string> const& getAggregateTypes() const;
   bool getCount() const noexcept;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
