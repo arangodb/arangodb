@@ -64,7 +64,8 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
   options->addOption("--cluster.synchronous-replication-timeout-maximum",
                      "all synchronous replication timeouts will be at most "
                      "this value (in seconds)",
-                     new DoubleParameter(&upperLimit));
+                     new DoubleParameter(&upperLimit))
+                     .setIntroducedIn(30800);
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-factor",
