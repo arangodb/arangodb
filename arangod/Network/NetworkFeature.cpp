@@ -138,7 +138,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                   "controls the number of internal requests that can be in "
                   "flight at a given point in time",
                   new options::UInt64Parameter(&_maxInFlight),
-                  options::makeDefaultFlags(options::Flags::Dynamic, options::Flags::Hidden))
+                  options::makeDefaultFlags(options::Flags::Hidden))
       .setIntroducedIn(30800);
 }
 

@@ -107,10 +107,12 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
     // max / min number of threads
 
   // Concurrency throttling:
-  options->addOption("--server.ongoing-low-priority-multiplier", std::string("controls the number of low prio requests that can be ongoing at a given point in time, relative to the maximum number of request handling threads"),
+  options->addOption("--server.ongoing-low-priority-multiplier",
+                     "controls the number of low prio requests that can be "
+                     "ongoing at a given point in time, relative to the "
+                     "maximum number of request handling threads",
                      new DoubleParameter(&_ongoingLowPriorityMultiplier),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic,
-                                                         arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 3 fifo", new UInt64Parameter(&_fifo3Size));
