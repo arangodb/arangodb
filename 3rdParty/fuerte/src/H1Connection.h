@@ -103,26 +103,6 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
   // called by the async_write handler (called from IO thread)
   void asyncWriteCallback(asio_ns::error_code const&, size_t nwrite);
 
-  fuerte::Error translateError(asio_ns::error_code const& e,
-                               fuerte::Error c) const {
-#ifdef _WIN32
-    if (this->_timeoutOnReadWrite && (c == Error::ReadError ||
-                                      c == Error::WriteError)) {
-      return Error::RequestTimeout;
-    }
-#endif
-    
-    if (e == asio_ns::error::misc_errors::eof ||
-        e == asio_ns::error::connection_reset) {
-      return fuerte::Error::ConnectionClosed;
-    } else if (e == asio_ns::error::operation_aborted) {
-      // keepalive timeout may have expired
-      return this->_timeoutOnReadWrite ? fuerte::Error::RequestTimeout :
-                                         fuerte::Error::ConnectionCanceled;
-    }
-    return c;
-  }
-
  private:
   static int on_message_begin(http_parser* p);
   static int on_status(http_parser* p, const char* at, size_t len);

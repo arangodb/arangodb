@@ -609,7 +609,6 @@ void H2Connection<T>::doWrite() {
   if (this->_writing) {
     return;
   }
-  this->_writing = true;
 
   queueHttp2Requests();
 
@@ -622,7 +621,6 @@ void H2Connection<T>::doWrite() {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
-      this->_writing = false;
       this->_active.store(false);
       FUERTE_LOG_ERROR << "http2 framing error";
       this->shutdownConnection(Error::ProtocolError, "http2 framing error");
@@ -643,16 +641,18 @@ void H2Connection<T>::doWrite() {
   outBuffers[0] = asio_ns::buffer(_outbuffer.data(), _outbuffer.size());
 
   if (asio_ns::buffer_size(outBuffers) == 0) {
-    this->_writing = false;
     this->_active.store(false);
     if (shouldStop()) {
       this->shutdownConnection(Error::CloseRequested,
                                "nothing to write and connection should stop");
-    } else if (!this->_queue.empty() && !this->_active.exchange(true)) {
-      doWrite();  // no idea if this can happen
+    } else {
+      // not waiting for any IO, but we need to start the idle timer
+      this->setIOTimeout();
     }
     return;
   }
+  
+  this->_writing = true;
 
   // Reset read timer here, because normally client is sending
   // something, it does not expect timeout while doing it.

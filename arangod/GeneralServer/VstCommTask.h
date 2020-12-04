@@ -49,7 +49,7 @@ class VstCommTask final : public GeneralCommTask<T> {
   virtual bool readCallback(asio_ns::error_code ec) override;
 
   /// set / reset connection timeout
-  virtual void setIOTimeout() override;
+  virtual void setIOTimeout(bool force = false) override;
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse

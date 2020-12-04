@@ -356,7 +356,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                        << " milliseconds\n";
     }
 
-    this->shutdownConnection(translateError(ec, Error::WriteError));
+    this->shutdownConnection(this->translateError(ec, Error::WriteError));
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -385,7 +385,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
                      << ec.message() << "' , this=" << this << "\n";
 
-    this->shutdownConnection(translateError(ec, Error::ReadError));
+    this->shutdownConnection(this->translateError(ec, Error::ReadError));
     return;
   }
   FUERTE_ASSERT(_item != nullptr);

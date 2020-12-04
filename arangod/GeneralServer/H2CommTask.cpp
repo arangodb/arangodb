@@ -410,13 +410,13 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 }
 
 template <SocketType T>
-void H2CommTask<T>::setIOTimeout() {
+void H2CommTask<T>::setIOTimeout(bool force) {
   double secs = GeneralServerFeature::keepAliveTimeout();
   if (secs <= 0) {
     return;
   }
 
-  const bool wasReading = this->_reading;
+  const bool wasReading = this->_reading || force;
   const bool wasWriting = this->_writing;
   TRI_ASSERT(wasReading || wasWriting);
   if (wasWriting) {
@@ -752,7 +752,6 @@ void H2CommTask<T>::doWrite() {
   if (this->_writing) {
     return;
   }
-  this->_writing = true;
 
   queueHttp2Responses();
 
@@ -766,7 +765,6 @@ void H2CommTask<T>::doWrite() {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
-      this->_writing = false;
       LOG_TOPIC("2b6c4", INFO, arangodb::Logger::REQUESTS)
           << "HTTP2 framing error: \"" << nghttp2_strerror((int)rv) << "\" ("
           << rv << ")";
@@ -790,12 +788,15 @@ void H2CommTask<T>::doWrite() {
   outBuffers[0] = asio_ns::buffer(_outbuffer.data(), _outbuffer.size());
 
   if (asio_ns::buffer_size(outBuffers) == 0) {
-    this->_writing = false;
     if (shouldStop()) {
       this->close();
+    } else {
+      setIOTimeout(true);
     }
     return;
   }
+  
+  this->_writing = true;
 
   // Reset read timer here, because normally client is sending
   // something, it does not expect timeout while doing it.

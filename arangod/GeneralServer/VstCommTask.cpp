@@ -137,7 +137,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 }
 
 template <SocketType T>
-void VstCommTask<T>::setIOTimeout() {
+void VstCommTask<T>::setIOTimeout(bool /*force*/) {
   double secs = GeneralServerFeature::keepAliveTimeout();
   if (secs <= 0) {
     return;
@@ -428,6 +428,7 @@ void VstCommTask<T>::doWrite() {
     // a new request item
     _writeLoopActive.store(false);
     if (_writeQueue.empty()) {
+      this->setIOTimeout();
       return;  // done, someone else may restart
     }
 

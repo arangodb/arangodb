@@ -77,7 +77,9 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
       _loop(1, "V8ClientConnection"),
       _vpackOptions(VPackOptions::Defaults),
       _forceJson(false),
-      _setCustomError(false) {
+      _setCustomError(false),
+      _connects(0),
+      _requests(0) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
 
@@ -110,12 +112,19 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
     setCustomError(400, "no endpoint specified");
     return nullptr;
   }
+
   auto newConnection = _builder.connect(_loop);
   fu::StringMap params{{"details", "true"}};
   auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
   req->header.database = _databaseName;
   req->timeout(std::chrono::seconds(30));
+  
+  // update statistics
+  ++_connects;
+
   try {
+    // update statistics
+    ++_requests; 
     auto res = newConnection->sendRequest(std::move(req));
 
     if (!res) {
@@ -596,6 +605,37 @@ static void ClientConnection_connectedUser(v8::FunctionCallbackInfo<v8::Value> c
   }
 
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "connectionStatistics"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_connectionStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  V8ClientConnection* v8connection =
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connectionStatistics() must be invoked on an arango connection object instance.");
+  }
+
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  v8::Local<v8::Object> result = v8::Object::New(isolate);
+  result->Set(context,
+              TRI_V8_ASCII_STRING(isolate, "connects"),
+              v8::Integer::New(isolate, static_cast<uint32_t>(v8connection->connects()))).FromMaybe(false);
+  
+  result->Set(context,
+              TRI_V8_ASCII_STRING(isolate, "requests"),
+              v8::Integer::New(isolate, static_cast<uint32_t>(v8connection->requests()))).FromMaybe(false);
+
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1801,6 +1841,8 @@ again:
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;
   try {
+    // update statistics
+    ++_requests; 
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;
@@ -1883,6 +1925,8 @@ again:
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;
   try {
+    // update statistics
+    ++_requests; 
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& e) {
     rc = e;
@@ -2198,6 +2242,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser,
+                                                  v8client));
+
+  connection_proto->Set(isolate, "connectionStatistics",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_connectionStatistics,
                                                   v8client));
   
   connection_proto->Set(isolate, "protocol",

@@ -49,7 +49,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
 
  protected:
   bool readCallback(asio_ns::error_code ec) override;
-  void setIOTimeout() override;
+  void setIOTimeout(bool force = false) override;
 
   void sendResponse(std::unique_ptr<GeneralResponse> response,
                     RequestStatistics::Item stat) override;
