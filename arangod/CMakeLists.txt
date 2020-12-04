@@ -195,24 +195,24 @@ set(LIB_ARANGO_AIR_SOURCES
   Pregel/Algos/AIR/Greenspun/lib/Math.cpp
   Pregel/Algos/AIR/Greenspun/lib/Strings.cpp)
 
-set(LIB_ARANGO_PREGEL_SOURCES
-  Pregel/AggregatorHandler.cpp
-  Pregel/AlgoRegistry.cpp
+set(LIB_ARANGO_PREGEL_AIR_SOURCES
   Pregel/Algos/AIR/AIR.cpp
   Pregel/Algos/AIR/AbstractAccumulator.cpp
   Pregel/Algos/AIR/AccumulatorOptionsDeserializer.cpp
   Pregel/Algos/AIR/Accumulators.cpp
   Pregel/Algos/AIR/EdgeData.cpp
-  Pregel/Algos/AIR/EdgeData.cpp
   Pregel/Algos/AIR/GraphFormat.cpp
   Pregel/Algos/AIR/MasterContext.cpp
-  Pregel/Algos/AIR/MessageData.cpp
   Pregel/Algos/AIR/MessageData.cpp
   Pregel/Algos/AIR/MessageFormat.cpp
   Pregel/Algos/AIR/VertexComputation.cpp
   Pregel/Algos/AIR/VertexData.cpp
-  Pregel/Algos/AIR/VertexData.cpp
   Pregel/Algos/AIR/WorkerContext.cpp
+)
+
+set(LIB_ARANGO_PREGEL_SOURCES
+  Pregel/AggregatorHandler.cpp
+  Pregel/AlgoRegistry.cpp
   Pregel/Algos/AsyncSCC.cpp
   Pregel/Algos/ConnectedComponents.cpp
   Pregel/Algos/DMID/DMID.cpp
@@ -244,7 +244,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/WorkerConfig.cpp
   RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestPregelHandler.cpp
-        )
+)
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
@@ -803,6 +803,10 @@ add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_SOURCES}
 )
 
+add_library(arango_pregel_air STATIC
+        ${LIB_ARANGO_PREGEL_AIR_SOURCES}
+)
+
 add_library(arango_aql STATIC
   ${LIB_ARANGO_AQL_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
@@ -955,6 +959,7 @@ target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
 target_link_libraries(arango_pregel arango_greenspun)
+target_link_libraries(arango_pregel arango_pregel_air)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
@@ -1092,6 +1097,7 @@ foreach(TARGET
   arango_indexes
   arango_metrics
   arango_pregel
+  arango_pregel_air
   arango_replication
   arango_rocksdb
   arango_storage_engine

@@ -93,8 +93,6 @@ if (USE_LOCAL_CLOCK_GETTIME)
   set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
 endif ()
 
-add_library(arango-vpack STATIC ${LIB_ARANGO_VPACK})
-
 add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}

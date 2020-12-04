@@ -81,7 +81,7 @@ class VertexContext {
     return &(_vertexEntry->data());
   }
 
-  V& vertexData() const { return _vertexEntry->data(); }
+  V const& vertexData() const { return _vertexEntry->data(); }
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 

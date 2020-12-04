@@ -94,7 +94,7 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(AccumulatorOptions const&, CustomAccumulatorDefinitions const&) = default;
+  explicit Accumulator(AccumulatorOptions const&, CustomAccumulatorDefinitions const&) {}
   ~Accumulator() override = default;
 
   auto clear() -> greenspun::EvalResult override {

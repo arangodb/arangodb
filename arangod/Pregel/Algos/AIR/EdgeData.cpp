@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EdgeData.h"
+#include <Basics/StaticStrings.h>
 
 #include "velocypack/velocypack-aliases.h"
 
