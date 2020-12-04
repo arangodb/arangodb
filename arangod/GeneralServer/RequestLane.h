@@ -103,7 +103,7 @@ enum class RequestLane {
   // Default continuation lane for requests (e.g. after returning from a network
   // call). Some requests, such as CLUSTER_AQL, will have a different
   // continuation lane for more fine-grained control.
-  CONTINUATIONS,
+  CONTINUATION,
 
   // Not yet used:
   // For requests which go from the agency back to coordinators or
