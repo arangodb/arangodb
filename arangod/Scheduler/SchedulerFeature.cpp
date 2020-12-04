@@ -131,7 +131,8 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
 
   options->addOption("--server.prio2-size", "size of the priority 2 fifo",
                      new UInt64Parameter(&_fifo2Size),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800);
 
   options->addOption("--server.prio1-size", "size of the priority 1 fifo",
                      new UInt64Parameter(&_fifo1Size),
