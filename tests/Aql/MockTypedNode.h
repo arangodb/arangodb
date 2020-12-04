@@ -37,7 +37,7 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   MockTypedNode(::arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id, NodeType);
 
   // return mocked type
-  NodeType getType() const final;
+  NodeType getType() const override final;
 
   // Necessary overrides, all not implemented:
 

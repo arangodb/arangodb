@@ -60,7 +60,7 @@ class SubqueryEndNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  void getVariablesUsedHere(VarSet& usedVars) const final {
+  void getVariablesUsedHere(VarSet& usedVars) const override final {
     if (_inVariable != nullptr) {
       usedVars.emplace(_inVariable);
     }

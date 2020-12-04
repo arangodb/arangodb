@@ -67,7 +67,7 @@ struct Comparator final : public WalkerWorker<ExecutionNode, WalkerUniqueness::N
            en->getType() == ExecutionNode::SINGLETON;
   }
 
-  bool before(ExecutionNode* en) final {
+  bool before(ExecutionNode* en) override final {
     std::set<ExecutionNodeId> depids, otherdepids;
 
     if (!isSubqueryRelated(en)) {
@@ -96,9 +96,9 @@ struct Comparator final : public WalkerWorker<ExecutionNode, WalkerUniqueness::N
     return false;
   }
 
-  void after(ExecutionNode* en) final {}
+  void after(ExecutionNode* en) override final {}
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
     EXPECT_TRUE(_expectNormalSubqueries)
         << "Optimized plan must not contain SUBQUERY nodes";
     return false;

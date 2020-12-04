@@ -82,7 +82,7 @@ class StaticComponent : public std::enable_shared_from_this<T> /* (sic) */, publ
 
   StaticComponent() = delete;
 
-  void forEach(std::function<void(char const* component)> const& callback) const final {
+  void forEach(std::function<void(char const* component)> const& callback) const override final {
     parent().forEach(callback);
     callback(child().component());
   }
@@ -126,7 +126,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
 
   DynamicComponent() = delete;
 
-  void forEach(std::function<void(char const* component)> const& callback) const final {
+  void forEach(std::function<void(char const* component)> const& callback) const override final {
     parent().forEach(callback);
     callback(child().component());
   }

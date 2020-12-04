@@ -112,8 +112,8 @@ class CloneWorker final : public WalkerWorker<ExecutionNode, WalkerUniqueness::N
   void process();
 
  private:
-  bool before(ExecutionNode* node) final;
-  bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) final;
+  bool before(ExecutionNode* node) override final;
+  bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) override final;
 
   void processAfter(ExecutionNode* node);
 
