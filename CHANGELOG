@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed agency redirect in poll api.
+
 * Added new command line options for fine-grained ArangoSearch maintenance
   control:
   - `--arangosearch.commit-threads` - max number of ArangoSearch commit
