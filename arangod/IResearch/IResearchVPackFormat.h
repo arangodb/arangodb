@@ -19,27 +19,22 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/thread_utils.hpp"
+#include "analysis/analyzers.hpp"
 
-#include "Containers.h"
-
-namespace arangodb {
 namespace iresearch {
+namespace text_format {
 
-void ResourceMutex::reset() {
-  if (get()) {
-    irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
-    auto lock = irs::make_lock_guard(mutex);
-    _resource.store(nullptr);
+struct vpack {
+  static constexpr irs::string_ref type_name() noexcept {
+    return "vpack";
   }
-}
+};
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // text_format
 
-// -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
-// -----------------------------------------------------------------------------
+#define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer) \
+  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, normalizer)
+

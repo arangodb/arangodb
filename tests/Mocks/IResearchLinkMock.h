@@ -71,8 +71,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   arangodb::Result insert(arangodb::transaction::Methods& trx,
                                   arangodb::LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice const& doc,
-                                  arangodb::Index::OperationMode mode) {
-    return IResearchLink::insert(trx, documentId, doc, mode);
+                                  arangodb::Index::OperationMode /*mode*/) {
+    return IResearchLink::insert(trx, documentId, doc);
   }
 
   bool isPersistent() const override;
@@ -96,8 +96,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   
   arangodb::Result remove(transaction::Methods& trx,
                           arangodb::LocalDocumentId const& documentId,
-                          VPackSlice const& doc, OperationMode mode) {
-    return IResearchLink::remove(trx, documentId, doc, mode);
+                          VPackSlice const& doc, OperationMode /*mode*/) {
+    return IResearchLink::remove(trx, documentId, doc);
   }
 
   ////////////////////////////////////////////////////////////////////////////////

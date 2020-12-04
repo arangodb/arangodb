@@ -19,27 +19,41 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/thread_utils.hpp"
-
-#include "Containers.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchVPackFormat.h"
 
 namespace arangodb {
 namespace iresearch {
 
-void ResourceMutex::reset() {
-  if (get()) {
-    irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
-    auto lock = irs::make_lock_guard(mutex);
-    _resource.store(nullptr);
-  }
+/*static*/ bool IdentityAnalyzer::normalize(
+    const irs::string_ref& /*args*/,
+    std::string& out) {
+  out.resize(VPackSlice::emptyObjectSlice().byteSize());
+  std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+  return true;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
+    irs::string_ref const& /*args*/) {
+  return std::make_shared<IdentityAnalyzer>();
+}
 
-// -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
-// -----------------------------------------------------------------------------
+IdentityAnalyzer::IdentityAnalyzer() noexcept
+  : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
+    _empty(true) {
+}
+
+irs::attribute* IdentityAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
+  if (type == irs::type<irs::increment>::id()) {
+    return &_inc;
+  }
+
+  return type == irs::type<irs::term_attribute>::id()
+      ? &_term
+      : nullptr;
+}
+
+} // iresearch
+} // arangodb

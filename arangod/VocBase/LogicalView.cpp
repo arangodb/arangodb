@@ -189,8 +189,7 @@ Result LogicalView::drop() {
 }
 
 /*static*/ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                           velocypack::Slice definition, uint64_t planVersion /*= 0*/
-) {
+                                           velocypack::Slice definition) {
   if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
@@ -203,7 +202,7 @@ Result LogicalView::drop() {
                                              velocypack::StringRef(nullptr, 0));
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
-  return factory.instantiate(view, vocbase, definition, planVersion);
+  return factory.instantiate(view, vocbase, definition);
 }
 
 Result LogicalView::rename(std::string&& newName) {

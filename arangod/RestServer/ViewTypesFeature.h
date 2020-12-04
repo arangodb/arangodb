@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -46,9 +47,7 @@ struct ViewFactory {
   /// @brief LogicalView factory for internal instantiation only
   //////////////////////////////////////////////////////////////////////////////
   virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition,
-                             uint64_t planVersion  // cluster plan version ('0' by default for non-cluster)
-                             ) const = 0;
+                             velocypack::Slice const& definition) const = 0;
 };
 
 class ViewTypesFeature final : public application_features::ApplicationFeature {
