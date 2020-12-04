@@ -1293,7 +1293,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(AstNode const* node,
     AqlValue leftItemValue = left.at(i, localMustDestroy, false);
     AqlValueGuard guard(leftItemValue, localMustDestroy);
 
-    bool result;
+    bool result = false;
 
     // IN and NOT IN
     if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
@@ -1308,7 +1308,6 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(AstNode const* node,
       // other operators
       int compareResult = AqlValue::Compare(&vopts, leftItemValue, right, compareUtf8);
 
-      result = false;
       switch (node->type) {
         case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
           result = (compareResult == 0);

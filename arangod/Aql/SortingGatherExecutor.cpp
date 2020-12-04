@@ -210,6 +210,8 @@ SortingGatherExecutor::~SortingGatherExecutor() = default;
 
 auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputRange,
                                        AqlCall const& clientCall) -> AqlCallSet {
+  auto callSet = AqlCallSet{};
+
   if (!_initialized) {
     // We cannot modify the number of dependencies, so we start
     // with 0 dependencies, and will increase to whatever inputRange gives us.
@@ -217,14 +219,13 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
                _numberDependencies == inputRange.numberDependencies());
     _numberDependencies = inputRange.numberDependencies();
     // If we have collected all ranges once, we can prepare the local data-structure copy
-    _inputRows.reserve(_numberDependencies);
     if (_inputRows.empty()) {
+      _inputRows.reserve(_numberDependencies);
       for (size_t dep = 0; dep < _numberDependencies; ++dep) {
         _inputRows.emplace_back(dep);
       }
     }
 
-    auto callSet = AqlCallSet{};
     for (size_t dep = 0; dep < _numberDependencies; ++dep) {
       auto const [state, row] = inputRange.peekDataRow(dep);
       _inputRows[dep] = {dep, row, state};
@@ -237,13 +238,12 @@ auto SortingGatherExecutor::initialize(typename Fetcher::DataRange const& inputR
         }
       }
     }
-    if (!callSet.empty()) {
-      return callSet;
+    if (callSet.empty()) {
+      _strategy->prepare(_inputRows);
+      _initialized = true;
     }
-    _strategy->prepare(_inputRows);
-    _initialized = true;
   }
-  return {};
+  return callSet;
 }
 
 auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const& inputRange,
@@ -306,11 +306,11 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
     // Consume the row, and set it to next input
     auto const dependency = nextVal.dependencyIndex;
     std::ignore = input.nextDataRow(dependency);
-    auto const& [state, row] = input.peekDataRow(dependency);
-    _inputRows[dependency].state = state;
-    _inputRows[dependency].row = row;
-
+    auto [state, row] = input.peekDataRow(dependency);
     auto const needMoreInput = !row && state != ExecutorState::DONE;
+    _inputRows[dependency].state = state;
+    _inputRows[dependency].row = std::move(row);
+
     if (needMoreInput) {
       _depToUpdate = dependency;
     }
@@ -336,7 +336,7 @@ auto SortingGatherExecutor::nextRow(MultiAqlItemBlockInputRange& input) -> Input
 auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
-  {
+  if (!_initialized) {
     // First initialize
     auto const callSet = initialize(input, output.getClientCall());
     if (!callSet.empty()) {
@@ -384,7 +384,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 
 auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
-  {
+  if (!_initialized) {
     // First initialize
     auto const callSet = initialize(input, call);
     if (!callSet.empty()) {

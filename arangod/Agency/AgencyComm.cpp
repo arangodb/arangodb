@@ -1336,10 +1336,6 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("FailedServers"));
       { VPackObjectBuilder dd(&builder); }
       builder.add("Lock", VPackValue("UNLOCKED"));
-      // MapLocalToID is not used for anything since 3.4. It was used in
-      // previous versions to store server ids from --cluster.my-local-info that
-      // were mapped to server UUIDs
-      addEmptyVPackObject("MapLocalToID", builder);
       addEmptyVPackObject("Failed", builder);
       addEmptyVPackObject("Finished", builder);
       addEmptyVPackObject("Pending", builder);

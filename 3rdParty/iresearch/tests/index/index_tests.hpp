@@ -36,6 +36,8 @@
 #include "utils/locale_utils.hpp"
 #include "utils/timer_utils.hpp"
 
+using namespace std::chrono_literals;
+
 namespace iresearch {
 
 struct term_attribute;
@@ -123,12 +125,12 @@ struct blocking_directory : directory_mock {
 
     if (name == blocker) {
       {
-        SCOPED_LOCK_NAMED(policy_lock, guard);
+        auto guard = irs::make_unique_lock(policy_lock);
         policy_applied.notify_all();
       }
 
       // wait for intermediate commits to be applied
-      SCOPED_LOCK_NAMED(intermediate_commits_lock, guard);
+      auto guard = irs::make_unique_lock(intermediate_commits_lock);
     }
 
     return stream;
@@ -141,8 +143,8 @@ struct blocking_directory : directory_mock {
     while (!has) {
       exists(has, blocker);
 
-      SCOPED_LOCK_NAMED(policy_lock, policy_guard);
-      policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      auto policy_guard = irs::make_unique_lock(policy_lock);
+      policy_applied.wait_for(policy_guard, 1000ms);
     }
   }
 
