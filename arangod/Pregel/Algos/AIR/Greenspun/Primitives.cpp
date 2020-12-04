@@ -288,13 +288,10 @@ EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& re
 std::list<std::string> createObjectPaths(velocypack::Slice object,
                                          std::list<std::string> currentPath) {
   for (VPackObjectIterator iter(object); iter.valid(); iter++) {
+    currentPath.emplace_back(iter.key().toString());
     if (iter.value().isObject()) {
       // recursive through all available keys
-      currentPath.emplace_back(iter.key().toString());
       return createObjectPaths(iter.value(), currentPath);
-    } else {
-      // reached end
-      currentPath.emplace_back(iter.key().toString());
     }
   }
   return currentPath;
@@ -318,16 +315,16 @@ void createPaths(std::list<std::list<std::string>>& finalPaths,
 
     if (currentValue.isObject()) {
       // path not done yet
-      currentPath.emplace_back(currentKey);
+      currentPath.emplace_back(std::move(currentKey));
 
       std::list<std::string> currentTmpPath(currentPath);
-      finalPaths.emplace_back(currentTmpPath);
+      finalPaths.emplace_back(std::move(currentTmpPath));
       createPaths(finalPaths, currentValue, currentPath);
     } else {
       // path is done
       std::list<std::string> currentTmpPath(currentPath);
-      currentTmpPath.emplace_back(currentKey);
-      finalPaths.emplace_back(currentTmpPath);
+      currentTmpPath.emplace_back(std::move(currentKey));
+      finalPaths.emplace_back(std::move(currentTmpPath));
     }
 
     if (iter.isLast()) {
@@ -795,7 +792,7 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
 
   if (list.isArray()) {
     VPackArrayBuilder ab(&result);
-    for (VPackArrayIterator iter(list); iter.valid(); iter++) {
+    for (VPackArrayIterator iter(list); iter.valid(); ++iter) {
       VPackBuilder parameter;
       {
         VPackArrayBuilder pb(&parameter);
@@ -811,7 +808,7 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
     }
   } else if (list.isObject()) {
     VPackObjectBuilder ob(&result);
-    for (VPackObjectIterator iter(list); iter.valid(); iter++) {
+    for (VPackObjectIterator iter(list); iter.valid(); ++iter) {
       VPackBuilder parameter;
       {
         VPackArrayBuilder pb(&parameter);
@@ -873,7 +870,7 @@ EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   };
 
   auto reduceArray = [&](auto& inputValue) -> EvalResult {
-    for (VPackArrayIterator iter(inputValue); iter.valid(); iter++) {
+    for (VPackArrayIterator iter(inputValue); iter.valid(); ++iter) {
       VPackBuilder parameter;
       buildLambdaParameters(parameter, iter);
 
@@ -937,7 +934,7 @@ EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
 
   if (list.isArray()) {
     VPackArrayBuilder ab(&result);
-    for (VPackArrayIterator iter(list); iter.valid(); iter++) {
+    for (VPackArrayIterator iter(list); iter.valid(); ++iter) {
       VPackBuilder parameter;
       {
         VPackArrayBuilder pb(&parameter);
@@ -958,7 +955,7 @@ EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
     }
   } else if (list.isObject()) {
     VPackObjectBuilder ob(&result);
-    for (VPackObjectIterator iter(list); iter.valid(); iter++) {
+    for (VPackObjectIterator iter(list); iter.valid(); ++iter) {
       VPackBuilder parameter;
       {
         VPackArrayBuilder pb(&parameter);
@@ -1029,11 +1026,11 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
   if (!obj.isObject()) {
     return EvalError("expected first parameter to be a dict, found: " + obj.toJson());
   }
-  iter++;
+  ++iter;
 
   {
     VPackObjectBuilder ob(&result);
-    for (; iter.valid(); iter++) {
+    for (; iter.valid(); ++iter) {
       VPackSlice key = *iter;
       if (!key.isString()) {
         return EvalError("expected string, found: " + key.toJson());

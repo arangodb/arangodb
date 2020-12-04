@@ -186,7 +186,6 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
       return ContinuationResult::ERROR_ABORT;
     }
     if (userSelectedNext == ContinuationResult::ABORT) {
-      LOG_DEVEL << "User aborted in onPostStep";
       shouldTerminateUser = true;
     }
   }
@@ -221,12 +220,9 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     // simply select next phase or end
     phase_index += 1;
     if (phase_index == _algo->options().phases.size()) {
-      LOG_DEVEL << "phase ended, no on halt program. Finish algorithm "
-                   "because it was the last phase";
       return ContinuationResult::ABORT;
     }
 
-    LOG_DEVEL << "no on halt program for this phase, going to next phase " << phase_index;
     aggregate<uint32_t>("phase", phase_index);
     aggregate<uint64_t>(Utils::phaseFirstStepKey, globalSuperstep() + 1);
     return ContinuationResult::ACTIVATE_ALL;
@@ -256,28 +252,20 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
 
 bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
   if (!workerMsgs.isArray()) {
-    LOG_DEVEL << "AIR MasterContext received invalid message from conductor: "
-              << workerMsgs.toJson() << " expecting array of objects";
     return false;
   }
 
   for (auto&& msg : VPackArrayIterator(workerMsgs)) {
     if (!msg.isObject()) {
-      LOG_DEVEL << "AIR MasterContext received invalid message from worker: "
-                << msg.toJson() << " expecting object; stopping.";
       return false;
     }
 
     auto accumulatorUpdate = msg.get("globalAccumulatorUpdates");
     if (!accumulatorUpdate.isObject()) {
-      LOG_DEVEL << "AIR MasterContext did not receive globalAccumulatorUpdates "
-                   "from worker.";
       continue;
     }
     for (auto&& upd : VPackObjectIterator(accumulatorUpdate)) {
       if (!upd.key.isString()) {
-        LOG_DEVEL << "AIR MasterContext received invalid key from worker: "
-                  << upd.key.toJson() << " expecting string.";
         return false;
       }
 
@@ -291,10 +279,6 @@ bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
               << ", " << res.error().toString();
           return false;
         }
-      } else {
-        LOG_DEVEL << "AIR MasterContext received state for unknown global "
-                     "accumulator "
-                  << accumName;
       }
     }
   }
@@ -318,11 +302,9 @@ bool MasterContext::preGlobalSuperstepWithResult() {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onPreStep program of phase `" << phase.name
           << "` returned and error: " << res.error().toString();
-      LOG_DEVEL << "error in prestep: " << res.error().toString();
       return false;
     }
     if (userSelectedNext == ContinuationResult::ABORT) {
-      LOG_DEVEL << "User aborted in onPreStep";
       return false;
     }
   }

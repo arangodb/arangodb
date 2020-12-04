@@ -27,15 +27,15 @@
 namespace arangodb::pregel::algos::accumulators {
 
 // MessageFormat
-MessageFormat::MessageFormat() {}
+MessageFormat::MessageFormat() = default;
 
 void MessageFormat::unwrapValue(VPackSlice s, message_type& message) const {
   message.fromVelocyPack(s);
-};
+}
 
 void MessageFormat::addValue(VPackBuilder& arrayBuilder,
-                                                 message_type const& message) const {
+                             message_type const& message) const {
   message.toVelocyPack(arrayBuilder);
-};
+}
 
 }  // namespace arangodb::pregel::algos::accumulators

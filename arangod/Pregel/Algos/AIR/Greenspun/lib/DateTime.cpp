@@ -43,7 +43,7 @@
     language to arangodb); These function should then be used (and usable)
     inside AQL (and elsewhere).
 
-    They could (and SHOULD!) really be implemented in the greenspun langauge (or
+    They could (and SHOULD!) really be implemented in the greenspun language (or
     one of its better syntactic representations), as its better modifiable and
     easier to read. Some extremists might want to implement some backend functions
     in C++ and they can, but should really provide better error messages than

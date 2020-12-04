@@ -59,11 +59,10 @@ void MessageData::toVelocyPack(VPackBuilder& builder) const {
 
 auto MessageData::accumulatorName() const -> std::string const& {
   return _accumulatorName;
-};
+}
 auto MessageData::sender() const -> std::string const& {
   return _sender;
 }
 auto MessageData::value() const -> VPackBuilder const& {
   return _value;
 }
-
