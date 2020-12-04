@@ -29,7 +29,7 @@
 
 #include <nmmintrin.h>
 
-NS_ROOT
+namespace iresearch {
 
 class crc32c {
  public:
@@ -77,7 +77,7 @@ class crc32c {
   uint32_t value_;
 }; // crc32c
 
-NS_END
+}
 
 #else
 
@@ -97,11 +97,11 @@ NS_END
   // NOOP
 #endif
 
-NS_ROOT
+namespace iresearch {
 
 typedef boost::crc_optimal<32, 0x1EDC6F41, 0, 0, true, true> crc32c;
 
-NS_END
+}
 
 #endif // IRESEARCH_SSE
 #endif // IRESEARCH_CRC_H

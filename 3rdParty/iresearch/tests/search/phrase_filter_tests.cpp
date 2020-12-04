@@ -30,7 +30,7 @@
 #include "search/term_query.hpp"
 #endif
 
-NS_BEGIN(tests)
+namespace tests {
 
 void analyzed_json_field_factory(
     tests::document& doc,
@@ -65,7 +65,7 @@ void analyzed_json_field_factory(
   }
 }
 
-NS_END
+}
 
 class phrase_filter_test_case : public tests::filter_test_case_base { };
 

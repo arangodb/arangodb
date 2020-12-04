@@ -21,7 +21,7 @@
 #include "formats_test_case_base.hpp"
 #include "store/directory_attributes.hpp"
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          format 13 specific tests
@@ -508,4 +508,4 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 
-NS_END
+}

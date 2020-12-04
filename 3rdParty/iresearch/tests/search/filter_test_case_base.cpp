@@ -23,8 +23,8 @@
 
 #include "filter_test_case_base.hpp"
 
-NS_BEGIN(tests)
-NS_BEGIN(sort)
+namespace tests {
+namespace sort {
 
 DEFINE_FACTORY_DEFAULT(boost)
 
@@ -32,5 +32,5 @@ DEFINE_FACTORY_DEFAULT(custom_sort)
 
 DEFINE_FACTORY_DEFAULT(frequency_sort)
 
-NS_END // NS_BEGIN(sort)
-NS_END // NS_BEGIN(tests)
+} // namespace sort {
+} // namespace tests {
