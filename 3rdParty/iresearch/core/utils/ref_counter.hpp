@@ -55,7 +55,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   }; // hash
 
   ref_t add(Key&& key) {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
 
     auto res = refs_.emplace(ref_t(), &key);
 
@@ -75,34 +75,34 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   bool remove(const Key& key) {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.erase(ref) > 0;
   }
 
   bool contains(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.find(ref) != refs_.end();
   }
 
   size_t find(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     auto itr = refs_.find(ref);
 
     return itr == refs_.end() ? 0 : (itr->use_count() - 1); // -1 for usage by refs_ itself
   }
 
   bool empty() const noexcept {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.empty();
   }
 
   template<typename Visitor>
   bool visit(const Visitor& visitor, bool remove_unused = false) {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
 
     for (auto itr = refs_.begin(), end = refs_.end(); itr != end;) {
       auto& ref = *itr;

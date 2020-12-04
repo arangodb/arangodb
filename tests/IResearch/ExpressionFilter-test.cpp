@@ -69,6 +69,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -251,12 +252,14 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC, arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
-  StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  StorageEngineMock engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
-  IResearchExpressionFilterTest() : engine(server), server(nullptr, nullptr) {
+  IResearchExpressionFilterTest()
+    : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""), nullptr),
+      engine(server) {
     arangodb::tests::init(true);
 
     // setup required application features
@@ -280,7 +283,11 @@ struct IResearchExpressionFilterTest
                           true);  // required for IResearchAnalyzerFeature
     features.emplace_back(server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
                           true);
-    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
+
+
+    auto& feature = features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true).first;
+    feature.collectOptions(server.options());
+    feature.validateOptions(server.options());
 
 #if USE_ENTERPRISE
     features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
@@ -301,7 +308,8 @@ struct IResearchExpressionFilterTest
         "_REFERENCE_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());

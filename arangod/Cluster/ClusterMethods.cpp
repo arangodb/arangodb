@@ -321,7 +321,7 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     } else {
       resultMap.try_emplace(sId, res.response->slice());
       network::errorCodesFromHeaders(res.response->header.meta(), errorCounter, true);
-      code = res.response->statusCode();
+      code = res.statusCode();
     }
   }
 
@@ -391,10 +391,10 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
 
       if (res.error == fuerte::Error::NoError) {
         // if no shard has the document, use NF answer from last shard
-        const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
+        bool const isNotFound = res.statusCode() == fuerte::StatusNotFound;
         if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
           nrok++;
-          code = res.response->statusCode();
+          code = res.statusCode();
           buffer = res.response->stealPayload();
         }
       } else {
@@ -740,7 +740,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
     // expecting two objects. everything else is an error
     return true;
   }
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (collection.vocbase().name() == "sync-replication-test") {
     return false;
   }
@@ -1413,7 +1413,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
           return OperationResult(network::fuerteToArangoErrorCode(res), options);
         }
 
-        return network::clusterResultInsert(res.response->statusCode(),
+        return network::clusterResultInsert(res.statusCode(),
                                             res.response->stealPayload(), options, {});
       };
       return std::move(futures[0]).thenValue(cb);
@@ -1519,7 +1519,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultDelete(res.response->statusCode(),
+          return network::clusterResultDelete(res.statusCode(),
                                               res.response->stealPayload(), options, {});
         };
         return std::move(futures[0]).thenValue(cb);
@@ -1773,7 +1773,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultDocument(res.response->statusCode(),
+          return network::clusterResultDocument(res.statusCode(),
                                                 res.response->stealPayload(), options, {});
         });
       }
@@ -2119,7 +2119,7 @@ void fetchVerticesFromEngines(
       // Response has invalid format
       THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
     }
-    if (r.response->statusCode() != fuerte::StatusOK) {
+    if (r.statusCode() != fuerte::StatusOK) {
       // We have an error case here. Throw it.
       THROW_ARANGO_EXCEPTION(network::resultFromBody(resSlice, TRI_ERROR_INTERNAL));
     }
@@ -2305,7 +2305,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultModify(res.response->statusCode(),
+          return network::clusterResultModify(res.statusCode(),
                                               res.response->stealPayload(), options, {});
         };
         return std::move(futures[0]).thenValue(cb);
@@ -2396,7 +2396,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    if (r.response->statusCode() != fuerte::StatusOK) {
+    if (r.statusCode() != fuerte::StatusOK) {
       int code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
@@ -2439,7 +2439,7 @@ Result compactOnAllDBServers(ClusterFeature& feature,
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
     }
-    if (r.response->statusCode() != fuerte::StatusOK) {
+    if (r.statusCode() != fuerte::StatusOK) {
       return network::resultFromBody(r.slice(), TRI_ERROR_INTERNAL);
     }
   }

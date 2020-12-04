@@ -248,7 +248,6 @@ bool get_stopwords(
     return true;
   } catch (...) {
     IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.utf8().c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -307,7 +306,7 @@ irs::analysis::analyzer::ptr construct(
   cached_options_t* options_ptr;
 
   {
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
 
     options_ptr = &(irs::map_utils::try_emplace_update_key(
       cached_state_by_key,
@@ -328,11 +327,10 @@ irs::analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr construct(
-  const std::locale& locale
-) {
+    const std::locale& locale) {
   const auto& cache_key = irs::locale_utils::name(locale);
   {
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     auto itr = cached_state_by_key.find(
       irs::make_hashed_ref(irs::string_ref(cache_key))
     );
@@ -361,7 +359,6 @@ irs::analysis::analyzer::ptr construct(
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s", 
                   cache_key.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -461,7 +458,6 @@ bool make_locale_from_name(const irs::string_ref& name,
         "Caught error while constructing locale from "
         "name: %s",
         name.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -671,7 +667,6 @@ bool parse_json_options(const irs::string_ref& args,
         "Caught error while constructing text_token_stream from jSON "
         "arguments: %s",
         args.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -830,7 +825,7 @@ bool make_json_config(
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     {
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_lock_guard(mutex);
       auto itr = cached_state_by_key.find(irs::make_hashed_ref(args));
 
       if (itr != cached_state_by_key.end()) {
@@ -855,7 +850,6 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", 
                   args.c_str());
-    IR_LOG_EXCEPTION();
   }
   return nullptr;
 }
@@ -934,7 +928,7 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
 }
 
 /*static*/ void text_token_stream::clear_cache() {
-  SCOPED_LOCK(::mutex);
+  auto lock = make_lock_guard(::mutex);
   cached_state_by_key.clear();
 }
 

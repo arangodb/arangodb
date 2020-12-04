@@ -49,7 +49,6 @@ bool make_locale_from_name(const irs::string_ref& name,
         "Caught error while constructing locale from "
         "name: %s",
         name.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -90,7 +89,6 @@ bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
         "Caught error while constructing text_token_stemming_stream from jSON "
         "arguments: %s",
         args.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -158,7 +156,6 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
       "Caught error while constructing text_token_stemming_stream TEXT arguments: %s",
       args.c_str()
     );
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;

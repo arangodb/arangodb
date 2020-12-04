@@ -289,7 +289,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   VPackBuilder builder(buffer, &options);
   builder.openObject(/*unindexed*/ true);
 
-  // Used from 3.4.0 onwards:
   builder.add("done", VPackValue(false));
 
   builder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));

@@ -170,8 +170,10 @@ void DatabaseManagerThread::run() {
             // remove apps directory for database
             std::string const& appPath = dealer.appPath();
             if (database->isOwnAppsDirectory() && !appPath.empty()) {
+              MUTEX_LOCKER(mutexLocker1, databaseFeature._databaseCreateLock);
+
               // but only if nobody re-created a database with the same name!
-              MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+              MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
               
               TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
               TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
@@ -180,7 +182,7 @@ void DatabaseManagerThread::run() {
                 std::string path = arangodb::basics::FileUtils::buildFilename(
                     arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
                     database->name());
-
+  
                 if (TRI_IsDirectory(path.c_str())) {
                   LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
                     << "removing app directory '" << path << "' of database '"
@@ -279,7 +281,8 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
-      _useOldSystemCollections(true) {
+      _useOldSystemCollections(false),
+      _started(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -416,6 +419,8 @@ void DatabaseFeature::start() {
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
   }
+
+  _started.store(true);
 }
 
 // signal to all databases that active cursors can be wiped
@@ -612,6 +617,10 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
   _pendingRecoveryCallbacks.emplace_back(std::move(callback));
 
   return Result();
+}
+
+bool DatabaseFeature::started() const noexcept {
+  return _started.load(std::memory_order_relaxed);
 }
   
 void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
@@ -1200,12 +1209,14 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
       return TRI_ERROR_NO_ERROR;
     }
 
-    LOG_TOPIC("56fc7", WARN, arangodb::Logger::FIXME)
-        << "forcefully removing existing application directory '" << path
-        << "' for database '" << name << "'";
-    // removing is best effort. if it does not succeed, we can still
-    // go on creating the it
-    TRI_RemoveDirectory(path.c_str());
+    if (!basics::FileUtils::listFiles(path).empty()) {
+      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
+          << "forcefully removing existing application directory '" << path
+          << "' for database '" << name << "'";
+      // removing is best effort. if it does not succeed, we can still
+      // go on creating the it
+      TRI_RemoveDirectory(path.c_str());
+    }
   }
 
   // directory does not yet exist - this should be the standard case
