@@ -159,7 +159,7 @@ class IRESEARCH_API Not: public filter {
 
   Not() noexcept;
 
-  const irs::filter* filter() const {
+  const irs::filter* filter() const { 
     return filter_.get(); 
   }
 

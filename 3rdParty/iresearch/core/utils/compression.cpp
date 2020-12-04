@@ -147,7 +147,6 @@ compressor::ptr get_compressor(
     return factory ? factory(opts) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -160,7 +159,6 @@ decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*=
     return factory ? factory() : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;

@@ -50,7 +50,7 @@ class IRESEARCH_API directory_cleaner {
     const removal_acceptor_t& acceptor =
       [](const std::string&)->bool { return true; }
   );
-  static iresearch::index_file_refs::counter_t& init(directory& dir);
+  static index_file_refs::counter_t& init(directory& dir);
 };
 
 }

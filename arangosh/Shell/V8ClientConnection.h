@@ -73,6 +73,8 @@ class V8ClientConnection {
   double timeout() const;
 
   void timeout(double value);
+  
+  std::string protocol() const;
 
   uint64_t connects() const { return _connects; }
   uint64_t requests() const { return _requests; }

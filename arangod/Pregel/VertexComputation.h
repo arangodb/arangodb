@@ -50,7 +50,7 @@ class VertexContext {
   GraphStore<V, E>* _graphStore = nullptr;
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
-  Vertex<V,E>* _vertexEntry = nullptr;
+  Vertex<V, E>* _vertexEntry = nullptr;
 
  public:
   virtual ~VertexContext() = default;
