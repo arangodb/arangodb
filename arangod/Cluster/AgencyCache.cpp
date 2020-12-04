@@ -341,13 +341,9 @@ void AgencyCache::run() {
               TRI_ASSERT(rs.hasKey("commitIndex"));
               TRI_ASSERT(rs.get("commitIndex").isNumber());
               index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
-              if (!rs.hasKey("firstIndex")) {
-                // Nothing happened at all, server timeout
-                return futures::makeFuture();
-              }
               VPackSlice firstIndexSlice = rs.get("firstIndex");
               if (!firstIndexSlice.isNumber()) {
-                // Should never happen, just for robustness:
+                // Nothing happened at all, server timeout
                 return futures::makeFuture();
               }
               index_t firstIndex = firstIndexSlice.getNumber<uint64_t>();
