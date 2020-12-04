@@ -331,44 +331,49 @@ void AgencyCache::run() {
                 TRI_ASSERT(rs.get("firstIndex").isNumber());
                 index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
                 index_t firstIndex = 0;
-                if (rs.hasKey("firstIndex") && rs.get("firstIndex").isNumber()) {
-                  firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
-                  if (firstIndex > 0) {
-                    TRI_ASSERT(_initialized);
-                    // Do incoming logs match our cache's index?
-                    if (firstIndex != curIndex + 1) {
-                      LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
-                        << "Logs from poll start with index " << firstIndex
-                        << " we requested logs from and including " << curIndex
-                        << " retrying.";
-                      LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
-                        << "Incoming: " << rs.toJson();
-                      increaseWaitTime();
-                    } else {
-                      TRI_ASSERT(rs.hasKey("log"));
-                      TRI_ASSERT(rs.get("log").isArray());
-                      LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
-                        "Applying to cache " << rs.get("log").toJson();
-                      std::unordered_set<std::string> pc;  // Plan changes
-                      std::unordered_set<std::string> cc;  // Current changes
-                      for (auto const& i : VPackArrayIterator(rs.get("log"))) {
-                        pc.clear();
-                        cc.clear();
-                        {
-                          std::lock_guard g(_storeLock);
-                          _readDB.applyTransaction(i); // apply logs
-                          _commitIndex = i.get("index").getNumber<uint64_t>();
-
+                // firstIndex will not be present, if the agency has no news or if the
+                // cache is asking for a higher index than known to the agency
+                if (rs.hasKey("firstIndex")) {
+                  auto const fislc = rs.get("firstIndex");
+                  if (fislc.isNumber()) {
+                    firstIndex = fislc.getNumber<uint64_t>();
+                    if (firstIndex > 0) {
+                      TRI_ASSERT(_initialized);
+                      // Do incoming logs match our cache's index?
+                      if (firstIndex != curIndex + 1) {
+                        LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
+                          << "Logs from poll start with index " << firstIndex
+                          << " we requested logs from and including " << curIndex
+                          << " retrying.";
+                        LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
+                          << "Incoming: " << rs.toJson();
+                        increaseWaitTime();
+                      } else {
+                        TRI_ASSERT(rs.hasKey("log"));
+                        TRI_ASSERT(rs.get("log").isArray());
+                        LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
+                          "Applying to cache " << rs.get("log").toJson();
+                        std::unordered_set<std::string> pc;  // Plan changes
+                        std::unordered_set<std::string> cc;  // Current changes
+                        for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                          pc.clear();
+                          cc.clear();
                           {
-                            std::lock_guard g(_callbacksLock);
-                            handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
-                          }
+                            std::lock_guard g(_storeLock);
+                            _readDB.applyTransaction(i); // apply logs
+                            _commitIndex = i.get("index").getNumber<uint64_t>();
 
-                          for (auto const& i : pc) {
-                            _planChanges.emplace(_commitIndex, i);
-                          }
-                          for (auto const& i : cc) {
-                            _currentChanges.emplace(_commitIndex, i);
+                            {
+                              std::lock_guard g(_callbacksLock);
+                              handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
+                            }
+
+                            for (auto const& i : pc) {
+                              _planChanges.emplace(_commitIndex, i);
+                            }
+                            for (auto const& i : cc) {
+                              _currentChanges.emplace(_commitIndex, i);
+                            }
                           }
                         }
                       }
