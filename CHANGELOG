@@ -13,15 +13,40 @@ devel
 
 * Essentially get rid of timeout in replication to drop followers. This
   is now entirely handled via reboot and failure tracking. The timeout
-  has now a minimum of 15 minutes but can still be configured via options.
+  has now a default minimum of 15 minutes but can still be configured via
+  options.
 
 * Additional metrics for all queue lengths and low prio ongoing work.
 
-* New metric to see RocksDB write stops after they have finished.
-
 * New metric for number and total time of replication operations.
 
-* Avoid the usage of std::regex when construction date/time string values 
+* New metrics for number of internal requests in flight, internal request
+  duration, and internal request timeouts
+
+* Avoid the usage of std::regex when construction date/time string values
+
+* Added new command line options for fine-grained ArangoSearch maintenance
+  control:
+  - `--arangosearch.commit-threads` - max number of ArangoSearch commit
+    threads
+  - `--arangosearch.commit-threads-idle` - min number of ArangoSearch
+    commit threads
+  - `--arangosearch.consolidation-threads` - max number of ArangoSearch
+    consolidation threads
+  - `--arangosearch.consolidation-threads-idle` - min number of ArangoSearch
+    consolidation threads
+
+  Deprecate the following command line options:
+  - `--arangosearch.threads`
+  - `--arangosearch.threads-limit`
+
+* Turn off `StatisticsWorker` thread on DB servers. 
+  This thread was previously only running queries on the local RocksDB 
+  instance, but using the cluster-wide collection names. So effectively it 
+  did nothing except use a bit of background CPU. In this case it is better 
+  to turn off the background thread entirely on the DB servers.
+
+* Avoid the usage of std::regex when constructing date/time string values 
   for log messages. This is a performance optimization only.
 
 * Reimplement coordshort request handler. The new implementation only runs
