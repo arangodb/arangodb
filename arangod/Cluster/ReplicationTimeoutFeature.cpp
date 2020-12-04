@@ -79,4 +79,14 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
+void ReplicationTimeoutFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (upperLimit < lowerLimit) {
+    LOG_TOPIC("8a9f3", WARN, Logger::CONFIG)
+        << "--cluster.synchronous-replication-timeout-maximum must be at least "
+        << "--cluster.synchronous-replication-timeout-minimum, setting max to "
+        << "min";
+    upperLimit = lowerLimit;
+  }
+}
+
 }  // namespace arangodb

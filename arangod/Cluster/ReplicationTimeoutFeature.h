@@ -37,6 +37,7 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
   explicit ReplicationTimeoutFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   static double timeoutFactor;
   static double timeoutPer4k;
