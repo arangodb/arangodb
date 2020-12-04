@@ -150,6 +150,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                          double ongoingMultiplier,
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
+      _nf(server.getFeature<NetworkFeature>()),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),
@@ -195,22 +196,23 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
           "This is the total number of ongoing RestHandlers coming from "
           "the low prio queue.")),
-      _metricsQueueLengths{_server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_maintenance_prio_queue_length",
-                                                                                uint64_t(0),
-                                                                                "Current queue length of the maintenance priority queue in "
-                                                                                "the scheduler"),
-                           _server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_high_prio_queue_length",
-                                                                                uint64_t(0),
-                                                                                "Current queue length of the high priority queue in "
-                                                                                "the scheduler"),
-                           _server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_medium_prio_queue_length",
-                                                                                uint64_t(0),
-                                                                                "Current queue length of the medium priority queue in "
-                                                                                "the scheduler"),
-                           _server.getFeature<arangodb::MetricsFeature>().gauge("arangodb_scheduler_low_prio_queue_length",
-                                                                                uint64_t(0),
-                                                                                "Current queue length of the low priority queue in "
-                                                                                "the scheduler")} {
+      _metricsQueueLengths{
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
+              "Current queue length of the maintenance priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_high_prio_queue_length", uint64_t(0),
+              "Current queue length of the high priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_medium_prio_queue_length", uint64_t(0),
+              "Current queue length of the medium priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
+              "Current queue length of the low priority queue in "
+              "the scheduler")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -673,8 +675,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
 
   // Because jobs may fan out to multiple servers and shards, we also limit
   // dequeuing based on the number of internal requests in flight
-  TRI_ASSERT(_server.hasFeature<NetworkFeature>());
-  if (_server.getFeature<NetworkFeature>().isSaturated()) {
+  if (_nf.isSaturated()) {
     return false;
   }
 

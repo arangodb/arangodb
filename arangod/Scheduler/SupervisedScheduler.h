@@ -34,6 +34,7 @@
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
+class NetworkFeature;
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
@@ -136,6 +137,8 @@ class SupervisedScheduler final : public Scheduler {
   void runSupervisor();
 
  private:
+  NetworkFeature& _nf;
+
   std::atomic<uint64_t> _numWorkers;
   std::atomic<bool> _stopping;
   std::atomic<bool> _acceptingNewJobs;
