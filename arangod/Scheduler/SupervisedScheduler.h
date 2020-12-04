@@ -154,7 +154,7 @@ class SupervisedScheduler final : public Scheduler {
   uint64_t const _maxFifoSizes[NumberOfQueues];
   size_t const _ongoingLowPriorityLimit;
 
-  // During a queue operation there a two reasons to manually wake up a worker
+  // During a queue operation there are two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
   //      is bigger than _wakeupTime_ns.
   //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
