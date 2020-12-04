@@ -323,10 +323,6 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC("4512c", WARN, Logger::QUERIES)
-        << "timed out after " << timeout << " s waiting for "
-        << AccessMode::typeString(type) << "-lock on collection '"
-        << _collection->name() << "'";
     char const* actor = _transaction->actorName();
     TRI_ASSERT(actor != nullptr);
     std::string message = "timed out after " + std::to_string(timeout) + " s waiting for "
