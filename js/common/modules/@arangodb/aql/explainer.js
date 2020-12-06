@@ -1193,7 +1193,7 @@ function processQuery(query, explain, planIndex) {
         }
         if (node.hasOwnProperty('options')) {
           if (node.options.hasOwnProperty('countApproximate'))
-          viewAnnotation += ' count mode is ' + node.options.countApproximate;
+          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
         }
         viewAnnotation += ' */';
         let viewVariables = '';

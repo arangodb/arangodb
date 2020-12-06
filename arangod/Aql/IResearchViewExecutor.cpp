@@ -1460,7 +1460,8 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
     }
   }
   if (this->infos().countApproximate() == CountApproximate::Exact && 
-      !filterConditionIsEmpty(&this->infos().filterCondition())) {
+      !filterConditionIsEmpty(&this->infos().filterCondition()) &&
+      _heap_it.size() > 0) {
     skipped += (_heap_it.size() - 1);
   }
   _heap_it.reset();
