@@ -1576,10 +1576,6 @@ TEST_F(IResearchFeatureTest, test_start) {
     { "LIKE", { ".,.|.", FunctionType::FILTER } },
     { "NGRAM_MATCH", { ".,.|.,.", FunctionType::FILTER } },
     { "LEVENSHTEIN_MATCH", { ".,.,.|.,.", FunctionType::FILTER } },
-    { "IN_RANGE", { ".,.,.,.,.", FunctionType::FILTER } },
-    { "GEO_IN_RANGE", { ".,.,.,.|.,.,.", FunctionType::FILTER } },
-    { "GEO_CONTAINS", { ".,.", FunctionType::FILTER } },
-    { "GEO_INTERSECTS", { ".,.", FunctionType::FILTER } },
 
     // context functions
     { "ANALYZER", { ".,.", FunctionType::FILTER } },

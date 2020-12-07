@@ -2181,6 +2181,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace>(std::make_unique<arangodb::DatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::emplace>(...)
     auto& dbPathFeature = newServer.addFeature<arangodb::DatabasePathFeature>();
     dbPathFeature.prepare();
+    auto restoreEngine = arangodb::scopeGuard(
+      [oldEngine = arangodb::EngineSelectorFeature::ENGINE](){
+        arangodb::EngineSelectorFeature::ENGINE = oldEngine;
+    });
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
     selector.setEngineTesting(&engine);
@@ -2252,6 +2258,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
+    auto restoreEngine = arangodb::scopeGuard(
+      [oldEngine = arangodb::EngineSelectorFeature::ENGINE](){
+        arangodb::EngineSelectorFeature::ENGINE = oldEngine;
+    });
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+
     StorageEngineMock engine(newServer);
     selector.setEngineTesting(&engine);
     newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
@@ -2634,6 +2646,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto& analyzers =
       newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
+  auto restoreEngine = arangodb::scopeGuard(
+    [oldEngine = arangodb::EngineSelectorFeature::ENGINE](){
+      arangodb::EngineSelectorFeature::ENGINE = oldEngine;
+  });
+  arangodb::EngineSelectorFeature::ENGINE = nullptr;
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
@@ -3536,6 +3553,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  auto restoreEngine = arangodb::scopeGuard(
+    [oldEngine = arangodb::EngineSelectorFeature::ENGINE](){
+      arangodb::EngineSelectorFeature::ENGINE = oldEngine;
+  });
+  arangodb::EngineSelectorFeature::ENGINE = nullptr;
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
@@ -3824,6 +3846,11 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  auto restoreEngine = arangodb::scopeGuard(
+    [oldEngine = arangodb::EngineSelectorFeature::ENGINE](){
+      arangodb::EngineSelectorFeature::ENGINE = oldEngine;
+  });
+  arangodb::EngineSelectorFeature::ENGINE = nullptr;
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
@@ -3947,6 +3974,11 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  auto restoreEngine = arangodb::scopeGuard(
+    [oldEngine = arangodb::EngineSelectorFeature::ENGINE](){
+      arangodb::EngineSelectorFeature::ENGINE = oldEngine;
+  });
+  arangodb::EngineSelectorFeature::ENGINE = nullptr;
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
