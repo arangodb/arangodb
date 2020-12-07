@@ -23,12 +23,13 @@
 
 #include "Aql/Query.h"
 
+#include "Basics/ScopeGuard.h"
+#include "Cluster/ServerState.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/Manager.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Status.h"
-
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -235,6 +236,11 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
+  auto beforeRole = arangodb::ServerState::instance()->getRole();
+  auto roleGuard = scopeGuard([&]() {
+    arangodb::ServerState::instance()->setRole(beforeRole);
+  });
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
   std::shared_ptr<LogicalCollection> coll;
   {
     auto json =

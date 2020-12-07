@@ -318,8 +318,8 @@ RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {
 
 void RebootTracker::queueCallback(DescriptedCallback callback) {
   queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
-      std::unordered_map<CallbackId, DescriptedCallback>{
-          std::make_pair(getNextCallbackId(), std::move(callback))})});
+      std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
+  )});
 }
 
 CallbackGuard::CallbackGuard() : _callback(nullptr) {}

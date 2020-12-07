@@ -108,8 +108,7 @@ WindowBounds::WindowBounds(Type t, VPackSlice slice)
   : WindowBounds(t, AqlValue(slice.get("following")),
                  AqlValue(slice.get("preceding"))) {}
 
-WindowBounds::~WindowBounds() {}
-
+WindowBounds::~WindowBounds() = default;
 
 int64_t WindowBounds::numPrecedingRows() const {
   TRI_ASSERT(_type == Type::Row);

@@ -227,8 +227,6 @@ void EndpointSrv::disconnect() {
   }
 }
 
-bool EndpointSrv::initIncoming(TRI_socket_t) { return false; }
-
 int EndpointSrv::domain() const {
   if (_endpoint != nullptr) {
     return _endpoint->domain();

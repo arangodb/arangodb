@@ -392,6 +392,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     state.reader = reader;
     state.states = std::move(termStates);
     state.storedField = segment.column_reader(field);
+    termStates.clear();
   }
 
   fieldStats.finish(const_cast<irs::byte_type*>(res.second.data()), index);

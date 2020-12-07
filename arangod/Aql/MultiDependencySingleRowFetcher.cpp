@@ -36,7 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-MultiDependencySingleRowFetcher::UpstreamSkipReport::UpstreamSkipReport() {}
+MultiDependencySingleRowFetcher::UpstreamSkipReport::UpstreamSkipReport() = default;
 
 auto MultiDependencySingleRowFetcher::UpstreamSkipReport::isInitialized() const -> bool {
   return _isInitialized;
