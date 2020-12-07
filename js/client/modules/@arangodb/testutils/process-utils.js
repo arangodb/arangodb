@@ -2107,7 +2107,8 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   if (options.encryptionAtRest && !isEnterpriseClient) {
     options.encryptionAtRest = false;
-  } else {
+  }
+  if (options.encryptionAtRest) {
     instanceInfo.restKeyFile = fs.join(rootDir, 'openSesame.txt');
     fs.makeDirectoryRecursive(rootDir);
     fs.write(instanceInfo.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
