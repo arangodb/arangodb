@@ -79,7 +79,7 @@ inline constexpr size_t roundup_power2(size_t v) noexcept {
   }
 #endif
 
-inline bool approx_equals(double_t lhs, double_t rhs) {
+inline bool approx_equals(double_t lhs, double_t rhs) noexcept {
   return std::fabs(rhs - lhs) < std::numeric_limits<double_t>::epsilon();
 }
 

@@ -824,6 +824,9 @@ void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
+  auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+  replicationFeature.trackInventoryRequest();
+
   std::string const& dbName = _request->databaseName();
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
@@ -1140,19 +1143,17 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
                     VPackValue(_vocbase.shardingPrototypeName()));
       }
     } else {
-      size_t numberOfShards = 1;
       // Number of shards. Will be overwritten if not existent
       VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
       if (!numberOfShardsSlice.isInteger()) {
         // The information does not contain numberOfShards. Overwrite it.
+        size_t numberOfShards = 1;
         VPackSlice const shards = parameters.get("shards");
         if (shards.isObject()) {
           numberOfShards = static_cast<uint64_t>(shards.length());
         }
         TRI_ASSERT(numberOfShards > 0);
         toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
-      } else {
-        numberOfShards = numberOfShardsSlice.getUInt();
       }
     }
 

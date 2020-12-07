@@ -89,7 +89,6 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, Execution
   // Make sure we actually have data before you call execute
   TRI_ASSERT(hasDataFor(callStack.peek()));
   if (!_executorHasMore) {
-    auto const& [block, skipResult] = _queue.front();
     // This cast is guaranteed, we create this a couple lines above and only
     // this executor is used here.
     // Unfortunately i did not get a version compiled were i could only
@@ -97,9 +96,10 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, Execution
     auto casted =
         static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
     TRI_ASSERT(casted != nullptr);
-    casted->injectConstantBlock(block, skipResult);
-    _executorHasMore = true;
+    auto& [block, skipResult] = _queue.front();
+    casted->injectConstantBlock(std::move(block), std::move(skipResult));
     _queue.pop_front();
+    _executorHasMore = true;
   }
   auto [state, skipped, result] = _executor->execute(callStack);
   // We have all data locally cannot wait here.
@@ -118,7 +118,7 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, Execution
       state = upstreamState;
     }
   }
-  return {state, skipped, result};
+  return {state, std::move(skipped), std::move(result)};
 }
 
 ScatterExecutor::ScatterExecutor(Infos const&) {}

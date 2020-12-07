@@ -79,7 +79,6 @@ std::unique_ptr<ExecutionBlock> MutexNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // simon: mchacki said this can use empty inAndOutRegs
   auto registerInfos = createRegisterInfos({}, {});
   return std::make_unique<ExecutionBlockImpl<MutexExecutor>>(&engine, this,
                                                              std::move(registerInfos), MutexExecutorInfos(_clients));

@@ -58,6 +58,18 @@
 #include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
 
+namespace {
+
+struct Link : public arangodb::iresearch::IResearchLink {
+  Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+      : IResearchLink(id, col) {
+    auto json = VPackParser::fromJson(R"({ "view": "42" })");
+    EXPECT_TRUE(init(json->slice()).ok());
+  }
+};
+
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -360,14 +372,10 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     EXPECT_NE(nullptr, impl);
 
     // ensure we have shard view in vocbase
-    struct Link : public arangodb::iresearch::IResearchLink {
-      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-          : IResearchLink(id, col) {}
-    } link(arangodb::IndexId{42}, *logicalCollection);
-    auto asyncLinkPtr =
-        std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
+    ::Link link(arangodb::IndexId{42}, *logicalCollection);
 
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    auto asyncLinkPtr = std::make_shared<arangodb::iresearch::AsyncLinkHandle>(&link);
+    auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
     EXPECT_TRUE(impl->visitCollections(visitor));
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
     EXPECT_FALSE(impl->visitCollections(visitor));
@@ -644,6 +652,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_rename) {
+
+
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // rename empty
@@ -687,10 +697,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       EXPECT_EQ(std::string("testView"), builder.slice().get("name").copyString());
     }
 
-    struct Link : public arangodb::iresearch::IResearchLink {
-      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-          : IResearchLink(id, col) {}
-    } link(arangodb::IndexId{42}, *logicalCollection);
+    ::Link link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -715,10 +722,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     EXPECT_NE(nullptr, impl);
 
     // ensure we have shard view in vocbase
-    struct Link : public arangodb::iresearch::IResearchLink {
-      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-          : IResearchLink(id, col) {}
-    } link(arangodb::IndexId{42}, *logicalCollection);
+    ::Link link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -1520,10 +1524,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     EXPECT_NE(nullptr, impl);
 
     // ensure we have shard view in vocbase
-    struct Link : public arangodb::iresearch::IResearchLink {
-      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-          : IResearchLink(id, col) {}
-    } link(arangodb::IndexId{42}, *logicalCollection);
+    ::Link link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());

@@ -249,7 +249,7 @@ struct IRESEARCH_API columnstore_writer {
 }
 
 MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // columnstore_reader::values_reader_f
-MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writer::column_output&(iresearch::doc_id_t)>;) // columnstore_writer::values_writer_f
+MSVC_ONLY(template class IRESEARCH_API std::function<irs::columnstore_writer::column_output&(irs::doc_id_t)>;) // columnstore_writer::values_writer_f
 
 namespace iresearch {
 
@@ -481,7 +481,7 @@ class IRESEARCH_API format {
 
 }
 
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>;) // format::ptr
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<irs::format>;) // format::ptr
 
 namespace iresearch {
 
