@@ -64,8 +64,8 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 }
 
 constexpr double CongestionRatio = 0.5;
-constexpr std::size_t MaxAllowedInFlight = 65536;
-constexpr std::size_t MinAllowedInFlight = 64;
+constexpr std::uint64_t MaxAllowedInFlight = 65536;
+constexpr std::uint64_t MinAllowedInFlight = 64;
 }  // namespace
 
 using namespace arangodb::basics;

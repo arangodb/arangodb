@@ -132,7 +132,7 @@ template<typename T> class Gauge : public Metric {
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
-enum ScaleType { FIXED, LINEAR, LOGARITHMIC };
+enum ScaleType { Fixed, Linear, Logarithmic };
 
 template<typename T>
 struct scale_t {
@@ -218,7 +218,7 @@ template <typename T>
 struct fixed_scale_t : public scale_t<T> {
  public:
   using value_type = T;
-  static constexpr ScaleType scale_type = FIXED;
+  static constexpr ScaleType scale_type = Fixed;
 
   fixed_scale_t(T const& low, T const& high, std::initializer_list<T> const& list)
       : scale_t<T>(low, high, list.size() + 1) {
@@ -253,7 +253,7 @@ struct log_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LOGARITHMIC;
+  static constexpr ScaleType scale_type = Logarithmic;
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
@@ -304,7 +304,7 @@ struct lin_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LINEAR;
+  static constexpr ScaleType scale_type = Linear;
 
   lin_scale_t(T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n) {
