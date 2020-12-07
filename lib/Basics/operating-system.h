@@ -731,7 +731,7 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
     auto result = translateWindowsError(::GetLastError());                    \
     errno = result.errorNumber();                                             \
     auto const& mesg = result.errorMessage();                                 \
-    memset(windowsErrorBuf, 0, sizeof(windowsErrorBuf);                       \
+    memset(windowsErrorBuf, 0, sizeof(windowsErrorBuf));                      \
     if (mesg.empty()) {                                                       \
       memcpy(&windowsErrorBuf[0], "unknown error", strlen("unknown error"));  \
     } else {                                                                  \
