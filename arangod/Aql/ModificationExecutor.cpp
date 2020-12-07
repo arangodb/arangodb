@@ -98,7 +98,6 @@ template <typename FetcherType, typename ModifierType>
 auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
                                                                 size_t maxOutputs)
     -> void {
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;
 
   // Maximum number of rows we can put into output

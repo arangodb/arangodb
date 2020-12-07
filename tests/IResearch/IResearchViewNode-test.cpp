@@ -851,7 +851,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\":123 }");
 
     try {
@@ -868,7 +868,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"foo\"}");
 
     try {
@@ -885,7 +885,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) + "\", \"primarySort\": false }");
 
@@ -903,7 +903,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
 
@@ -945,7 +945,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", \"primarySort\": [], \"primarySortBuckets\": false }");
@@ -988,7 +988,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", \"primarySort\": [], \"primarySortBuckets\": 42 }");
@@ -1031,7 +1031,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
@@ -1076,7 +1076,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) + "\" }");
@@ -1121,7 +1121,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collection\":null, \"conditionOptimization\": \"none\" }, "
         "\"viewId\": \"" +
@@ -1167,7 +1167,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collection\":null, \"conditionOptimization\": \"noneg\" }, "
         "\"viewId\": \"" +
@@ -1213,7 +1213,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collection\":null, \"conditionOptimization\": \"nodnf\" }, "
         "\"viewId\": \"" +
@@ -1308,7 +1308,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "\"false\"}, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) + "\" }");
@@ -1329,7 +1329,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "\"false\"}, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) + "\" }");
@@ -1350,7 +1350,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "{}}, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) + "\" }");
@@ -1371,7 +1371,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "{}}, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
@@ -1393,7 +1393,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { "
         "\"conditionOptimization\" : "
         "\"invalid\"}, \"viewId\": \"" +
@@ -1418,7 +1418,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmDocId\": { "
         "\"name\":\"variable100\", \"id\":100 },"
         "\"options\": { \"waitForSync\" : "
@@ -1440,7 +1440,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
         "\"name\":\"variable100\", \"id\":100 },"
         "\"options\": { \"waitForSync\" : "
@@ -1462,7 +1462,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
         "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
@@ -1487,7 +1487,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
         "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
@@ -1512,7 +1512,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
         "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
@@ -1537,7 +1537,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
         "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "

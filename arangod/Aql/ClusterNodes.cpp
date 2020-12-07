@@ -129,14 +129,7 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : DistributeConsumerNode(plan, base),
       _vocbase(&(plan->getAst()->query().vocbase())),
       _server(base.get("server").copyString()),
-      _queryId(base.get("queryId").copyString()) {
-  // Backwards compatibility (3.4.x)(3.5.0) and earlier, coordinator might send ownName.
-  arangodb::velocypack::StringRef tmpId(getDistributeId());
-  tmpId = VelocyPackHelper::getStringRef(base, "ownName", tmpId);
-  if (tmpId != getDistributeId()) {
-    setDistributeId(tmpId.toString());
-  }
-}
+      _queryId(base.get("queryId").copyString()) {}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(

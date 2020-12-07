@@ -181,7 +181,7 @@ auto DistributeClientBlock::execute(AqlCallStack callStack, ExecutionState upstr
         static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
     TRI_ASSERT(casted != nullptr);
     auto [block, skipped] = popJoinedBlock();
-    casted->injectConstantBlock(block, skipped);
+    casted->injectConstantBlock(std::move(block), std::move(skipped));
     _executorHasMore = true;
   }
   auto [state, skipped, result] = _executor->execute(callStack);
@@ -202,5 +202,5 @@ auto DistributeClientBlock::execute(AqlCallStack callStack, ExecutionState upstr
       state = upstreamState;
     }
   }
-  return {state, skipped, result};
+  return {state, std::move(skipped), std::move(result)};
 }

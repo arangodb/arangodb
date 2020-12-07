@@ -154,7 +154,12 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<arangodb::QueryRegistryFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
-  server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+  {
+    auto& feature = server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
+  }
+
   server.addFeature<arangodb::aql::AqlFunctionFeature>(true);
   server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
   server.addFeature<arangodb::AqlFeature>(true);

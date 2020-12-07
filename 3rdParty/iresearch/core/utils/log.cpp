@@ -165,7 +165,7 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
 #if defined(_MSC_VER)
   DWORD stack_trace_win32(irs::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
     static std::mutex mutex;
-    SCOPED_LOCK(mutex); // win32 stack trace API is not thread safe
+    auto lock = irs::make_lock_guard(mutex); // win32 stack trace API is not thread safe
 
     if (!ex || !ex->ContextRecord) {
       IR_LOG_FORMATED(level, "No stack_trace available");
@@ -592,13 +592,13 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
     return file_line_bfd(callback, obj, (void*)addr);
   }
 
-  bool file_line_addr2line(irs::logger::level_t level, const char* obj, unw_word_t addr) {
+  bool file_line_addr2line(irs::logger::level_t level, const char* obj, unw_word_t addr, int fd) {
     size_t addr_size = sizeof(unw_word_t)*3 + 2 + 1; // approximately 3 chars per byte +2 for 0x, +1 for \0
     char addr_buf[addr_size];
 
     snprintf(addr_buf, addr_size, "0x%lx", addr);
 
-    return file_line_addr2line(level, obj, addr_buf);
+    return file_line_addr2line(level, obj, addr_buf, fd);
   }
 
   bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe) {
@@ -636,7 +636,7 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
         static const void* static_fbase = (void*)0x400000;
         auto addr = instruction_pointer - (static_fbase == dl_info.dli_fbase ? unw_word_t(dl_info.dli_saddr) : unw_word_t(dl_info.dli_fbase));
         bool use_addr2line = false;
-        bfd_callback_type_t callback = [level, out, instruction_pointer, &addr, &dl_info, &use_addr2line](const char* file, size_t line, const char* fn)->void {
+        bfd_callback_type_t callback = [level, out, instruction_pointer, &addr, &dl_info, &use_addr2line, output_pipe](const char* file, size_t line, const char* fn)->void {
           std::fprintf(out, "%s(", dl_info.dli_fname ? dl_info.dli_fname : "\?\?");
 
           auto proc_name = proc_name_demangle(fn);
@@ -659,7 +659,7 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
             dl_info.dli_saddr ? (instruction_pointer - unw_word_t(dl_info.dli_saddr)) : addr, instruction_pointer);
 
           if (use_addr2line) {
-            if (!file_line_addr2line(level, dl_info.dli_fname, addr)) {
+            if (!file_line_addr2line(level, dl_info.dli_fname, addr, output_pipe)) {
               std::fprintf(out, "\n");
               std::fflush(out);
             }
@@ -846,7 +846,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
 
     if (frames_count > 0 && size_t(frames_count) > skip) {
       static std::mutex mtx;
-      SCOPED_LOCK(mtx);
+      auto lock = irs::make_lock_guard(mtx);
       backtrace_symbols_fd(frames_buf + skip, frames_count - skip, fd);
     }
   }

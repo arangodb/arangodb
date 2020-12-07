@@ -1144,8 +1144,12 @@ bool remove(const file_path_t path) noexcept {
         std::string utf8path;
 
         irs::locale_utils::append_external<char_t>(utf8path, path, locale);
-        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
-
+        const auto system_error = GetLastError();
+        if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
+          IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+        } else {
+          IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+        }
         return false;
       }
 
@@ -1169,7 +1173,13 @@ bool remove(const file_path_t path) noexcept {
       std::string utf8path;
 
       irs::locale_utils::append_external<char_t>(utf8path, path, locale);
-      IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
+      const auto system_error = GetLastError();
+      if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
+        IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+      }
+      else {
+        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+      }
 
       return false;
     }
@@ -1177,8 +1187,11 @@ bool remove(const file_path_t path) noexcept {
     auto res = ::remove(path);
 
     if (res) { // non-0 == error
-      IR_FRMT_ERROR("Failed to remove path: '%s', error %d", path, errno);
-
+      if (ENOENT == errno) { // file is just not here, so we are done actually
+        IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", path, errno);
+      } else {
+        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", path, errno);
+      }
       return false;
     }
   #endif
