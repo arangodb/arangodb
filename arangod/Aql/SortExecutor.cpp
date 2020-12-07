@@ -28,6 +28,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 
 #include <algorithm>
 
@@ -84,13 +85,15 @@ SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
                                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                      std::unordered_set<RegisterId> registersToClear,
                                      std::unordered_set<RegisterId> registersToKeep,
-                                     velocypack::Options const* options, bool stable)
+                                     velocypack::Options const* options, 
+                                     arangodb::ResourceMonitor* resourceMonitor, bool stable)
     : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _limit(limit),
       _manager(manager),
       _vpackOptions(options),
+      _resourceMonitor(resourceMonitor),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
@@ -106,6 +109,10 @@ velocypack::Options const* SortExecutorInfos::vpackOptions() const noexcept {
   return _vpackOptions;
 }
 
+arangodb::ResourceMonitor* SortExecutorInfos::getResourceMonitor() const {
+  return _resourceMonitor;
+}
+
 size_t SortExecutorInfos::limit() const noexcept { return _limit; }
 
 AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
@@ -113,8 +120,12 @@ AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
 }
 
 SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0) {}
-SortExecutor::~SortExecutor() = default;
+    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0),
+      _memoryUsageForRowIndexes(0) {}
+
+SortExecutor::~SortExecutor() {
+  _infos.getResourceMonitor()->decreaseMemoryUsage(_memoryUsageForRowIndexes);
+}
 
 std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
@@ -159,6 +170,11 @@ void SortExecutor::doSorting() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_ASSERT(_input != nullptr);
+
+  size_t memoryUsageForRowIndexes = _input->memoryUsageForRowIndexes();
+  // may throw
+  ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForRowIndexes);
+
   _sortedIndexes = _input->produceRowIndexes();
   // comparison function
   OurLessThan ourLessThan(_infos.vpackOptions(), *_input, _infos.sortRegisters());
@@ -167,6 +183,10 @@ void SortExecutor::doSorting() {
   } else {
     std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   }
+  
+  // now we are responsible for tracking the memory
+  guard.steal();
+  _memoryUsageForRowIndexes = memoryUsageForRowIndexes;
 }
 
 std::pair<ExecutionState, size_t> SortExecutor::expectedNumberOfRows(size_t atMost) const {

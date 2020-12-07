@@ -79,6 +79,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _context(nullptr),
+      _resultMemoryUsage(0),
       _queryString(queryString),
       _bindParameters(bindParameters),
       _options(options),
@@ -156,6 +157,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _context(nullptr),
+      _resultMemoryUsage(0),
       _queryString(),
       _queryBuilder(queryStruct),
       _options(options),
@@ -201,6 +203,9 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
 
 /// @brief destroys a query
 Query::~Query() {
+  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resultMemoryUsage = 0;
+
   if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                               << "Query::~Query queryString: "
@@ -278,6 +283,10 @@ bool Query::killed() const {
     return true;
   }
   return _killed;
+}
+  
+void Query::setKilled() {
+  _killed = true;
 }
 
 /// @brief set the query to killed
@@ -687,6 +696,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
           // cache low-level pointer to avoid repeated shared-ptr-derefs
           TRI_ASSERT(_resultBuilder != nullptr);
           auto& resultBuilder = *_resultBuilder;
+          size_t previousLength = resultBuilder.bufferRef().byteSize();
 
           size_t const n = res.second->size();
 
@@ -697,6 +707,13 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
             }
           }
+          
+          size_t newLength = resultBuilder.bufferRef().byteSize();
+          TRI_ASSERT(newLength >= previousLength);
+          size_t diff = newLength - previousLength;
+
+          resourceMonitor()->increaseMemoryUsage(diff);
+          _resultMemoryUsage += diff;
 
           if (res.first == ExecutionState::DONE) {
             break;
@@ -898,6 +915,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         if (!_queryOptions.silent) {
           size_t const n = value->size();
 
+          size_t memoryUsed = 0;
           for (size_t i = 0; i < n; ++i) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
@@ -906,6 +924,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
+              } 
+              memoryUsed += sizeof(v8::Value);
+              if (val.requiresDestruction()){
+                memoryUsed += val.memoryUsage();
               }
             }
 
@@ -913,6 +935,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
             }
           }
+          
+          resourceMonitor()->increaseMemoryUsage(memoryUsed);
+          _resultMemoryUsage += memoryUsed;
         }
 
         if (_killed) {

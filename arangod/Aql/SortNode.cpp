@@ -242,6 +242,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
                           getRegisterPlan()->nrRegs[getDepth()],
                           getRegsToClear(), calcRegsToKeep(),
                           engine.getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
+                          engine.getQuery()->resourceMonitor(),
                           _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,

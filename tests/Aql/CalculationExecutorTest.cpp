@@ -35,8 +35,8 @@
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
