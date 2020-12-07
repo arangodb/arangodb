@@ -161,28 +161,6 @@ function arangoSearchCountOptimization () {
                           {}, {fullCount:true});
       assertEqual(2002, res.getExtra().stats.fullCount);
     },
-    testCollectInClusterOptimization() {
-      if (!isCluster) {
-        return;
-      }
-      let query = "FOR d IN UnitTestViewSorted SEARCH d.value == 'test1' COLLECT WITH COUNT INTO c RETURN c";
-      let results = AQL_EXECUTE(query, null);
-      assertEqual(1001, results.json[0]);
-      let plan = AQL_EXPLAIN(query, null).plan;
-      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-    },
-    testCollectInClusterDistinct : function () {
-      let query = "FOR d IN UnitTestViewSorted SEARCH d.value == 'test1' SORT d.value RETURN DISTINCT d.value";
-
-      let results = AQL_EXECUTE(query, null);
-      assertEqual(1, results.json.length);
-      assertEqual("test1", results.json[0]);
-      let plan = AQL_EXPLAIN(query, null).plan;
-      let nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-    }
   };
 }
 
