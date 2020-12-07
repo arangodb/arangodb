@@ -1,6 +1,8 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Fix Windows directory creation error handling.
+
 * Better tracking of memory used in AQL graph traversals, COLLECT and SORT
   operations. From this version onwards, certain AQL queries can report a higher
   memory usage than in previous versions of ArangoDB. This is not because the
