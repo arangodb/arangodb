@@ -8,7 +8,17 @@ devel
 * Lowered the minimum allowed value for `--rocksdb.max-write-buffer-number` from
   9 to 4 to allow more fine-grained memory usage control.
 
-* Added new command line options for fine-grained ArangoSearch maintenance
+* Fix Windows directory creation error handling.
+
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
+
+* Fixed ES-662 by introducing refactored thread pool to make more efficient
+  consolidation and commit routines for links of ArangoSearch views.
+
+  Added new command line options for fine-grained ArangoSearch maintenance
   control:
   - `--arangosearch.commit-threads` - max number of ArangoSearch commit
     threads
@@ -19,8 +29,10 @@ devel
   - `--arangosearch.consolidation-threads-idle` - min number of ArangoSearch
     consolidation threads
 
-  Deprecate the following command line options:
-  - `--arangosearch.threads`
+  Deprecated the following command line options:
+  - `--arangosearch.threads` - will be used in --arangosearch.commit-threads`
+    and `--arangosearch.consolidation-threads` as provided value divided by 2
+    if set to non-autodetect value > 0
   - `--arangosearch.threads-limit`
 
 * Turn off `StatisticsWorker` thread on DB servers. 

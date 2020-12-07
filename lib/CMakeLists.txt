@@ -233,6 +233,7 @@ add_library(arango STATIC
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp
+  Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
