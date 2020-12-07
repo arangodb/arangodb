@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB Inc, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -301,6 +302,8 @@ void AgencyCache::run() {
   //     wait ever longer until success
   std::vector<uint64_t> toCall;
   std::unordered_set<uint64_t> uniq;
+  std::unordered_set<std::string> pc;  // Plan changes
+  std::unordered_set<std::string> cc;  // Current changes
   while (!this->isStopping()) {
     // we need to make sure that this thread keeps running, so whenever
     // an exception happens in here, we log it and go on
@@ -365,8 +368,8 @@ void AgencyCache::run() {
                 TRI_ASSERT(rs.get("log").isArray());
                 LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                   "Applying to cache " << rs.get("log").toJson();
-                std::unordered_set<std::string> pc;  // Plan changes
-                std::unordered_set<std::string> cc;  // Current changes
+                pc.clear();
+                cc.clear();
                 for (auto const& i : VPackArrayIterator(rs.get("log"))) {
                   pc.clear();
                   cc.clear();
@@ -395,7 +398,6 @@ void AgencyCache::run() {
                 LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
                   "Fresh start: overwriting agency cache with " << rs.toJson();
                 _readDB = rs;                  // overwrite
-                _initialized.store(true, std::memory_order_relaxed);
                 std::unordered_set<std::string> pc = reInitPlan();
                 for (auto const& i : pc) {
                   _planChanges.emplace(_commitIndex, i);
@@ -403,6 +405,7 @@ void AgencyCache::run() {
                 // !! Check documentation of the function before making changes here !!
                 _commitIndex = commitIndex;
                 _lastSnapshot = commitIndex;
+                _initialized.store(true, std::memory_order_relaxed);
               }
               triggerWaiting(commitIndex);
               if (firstIndex > 0) {
