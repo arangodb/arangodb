@@ -23,7 +23,10 @@ devel
 * New metrics for number of internal requests in flight, internal request
   duration, and internal request timeouts
 
-* Avoid the usage of std::regex when construction date/time string values
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
 
 * Added new command line options for fine-grained ArangoSearch maintenance
   control:
