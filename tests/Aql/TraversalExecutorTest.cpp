@@ -29,9 +29,9 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/TraversalExecutor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
@@ -48,6 +48,10 @@ using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
 namespace arangodb {
+namespace traverser {
+class EnumeratedPath;
+}
+
 namespace tests {
 
 namespace aql {
@@ -194,7 +198,8 @@ class TraverserHelper : public Traverser {
     _done = false;
   }
 
-  bool getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) override {
+  bool getVertex(VPackSlice edge, 
+                 arangodb::traverser::EnumeratedPath& path) override {
     // Implement
     return false;
   }

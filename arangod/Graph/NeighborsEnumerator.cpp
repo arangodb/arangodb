@@ -117,6 +117,9 @@ bool NeighborsEnumerator::next() {
         return false;
       }
       ++_searchDepth;
+    
+      _opts->isQueryKilledCallback();
+
     } while (_searchDepth < _opts->minDepth);
     _iterator = _currentDepth.begin();
   }

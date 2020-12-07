@@ -27,9 +27,9 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

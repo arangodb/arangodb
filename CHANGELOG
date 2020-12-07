@@ -3,6 +3,16 @@ v3.6.10 (XXXX-XX-XX)
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
 
+* Better tracking of memory used in AQL graph traversals, COLLECT and SORT
+  operations. From this version onwards, certain AQL queries can report a higher
+  memory usage than in previous versions of ArangoDB. This is not because the
+  queries use more memory than before, but because the memory usage tracking has
+  been improved.
+  A side effect of this change is that queries with a memory limit set may now
+  be aborted whereas in previous versions they ran through successfully (but
+  actually violated the limit). In this case it may be necessary to adjust (i.e.
+  raise) query memory limits accordingly.
+
 * Reimplement coordshort request handler. The new implementation only runs two
   DB queries without any additional requests to other coordinators, resulting in
   reduced load on the cluster. Previously this involved requests to all

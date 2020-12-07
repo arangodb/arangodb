@@ -105,12 +105,6 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   std::vector<NextStep> _toSearch;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Marker for the search depth. Used to abort searching.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -143,6 +137,10 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
  private:
+  constexpr size_t pathStepSize() const noexcept;
+
+  void growStorage();
+
   inline size_t getDepth(size_t index) const {
     size_t depth = 0;
     while (index != 0) {
