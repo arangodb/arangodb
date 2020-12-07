@@ -1,5 +1,6 @@
 devel
 -----
+* Fix for issue #772: Optimized document counting for ArangoSearch views
 
 * Remove a case in which followers were dropped unnecessarily in streaming
   transactions that replicated to the same follower.
