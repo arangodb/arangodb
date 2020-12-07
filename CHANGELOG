@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
 * Added new command line options for fine-grained ArangoSearch maintenance
   control:
   - `--arangosearch.commit-threads` - max number of ArangoSearch commit
