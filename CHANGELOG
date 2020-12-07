@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix Windows directory creation error handling.
+
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
 
 * Remove a case in which followers were dropped unnecessarily in streaming
