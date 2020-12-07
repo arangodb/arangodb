@@ -33,12 +33,12 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -79,7 +79,7 @@ class SortExecutorTest : public ::testing::Test {
 TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
+                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, &monitor, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), false);
   SortExecutor testee(fetcher, infos);
@@ -98,7 +98,7 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
 TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
+                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, &monitor, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), true);
   SortExecutor testee(fetcher, infos);
@@ -122,7 +122,7 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
 TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
+                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, &monitor, false);
   std::shared_ptr<VPackBuilder> input =
       VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
   AllRowsFetcherHelper fetcher(input->steal(), true);

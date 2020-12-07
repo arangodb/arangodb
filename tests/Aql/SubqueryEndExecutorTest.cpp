@@ -48,7 +48,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
   SubqueryEndExecutorTest()
       : _infos(std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
                std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
-               1, 1, {}, {}, nullptr, RegisterId{0}, RegisterId{0}) {}
+               1, 1, {}, {}, nullptr, &monitor, RegisterId{0}, RegisterId{0}) {}
 
  protected:
   ResourceMonitor monitor;
@@ -252,7 +252,7 @@ TEST_F(SubqueryEndExecutorTest, write_to_register_outside) {
   auto infos = SubqueryEndExecutorInfos(
       std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{0}),
       std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{1}), 1, 2,
-      {}, RegisterSet{0}, nullptr, RegisterId{0}, RegisterId{1});
+      {}, RegisterSet{0}, nullptr, &monitor, RegisterId{0}, RegisterId{1});
 
   ExecutionState state{ExecutionState::HASMORE};
 
@@ -279,7 +279,7 @@ TEST_F(SubqueryEndExecutorTest, no_input_register) {
   auto infos = SubqueryEndExecutorInfos(
       std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{0}),
       std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{1}), 1, 2, {},
-      RegisterSet{0}, nullptr, RegisterId{RegisterPlan::MaxRegisterId}, RegisterId{1});
+      RegisterSet{0}, nullptr, &monitor, RegisterId{RegisterPlan::MaxRegisterId}, RegisterId{1});
 
   ExecutionState state{ExecutionState::HASMORE};
 

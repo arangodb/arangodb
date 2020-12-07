@@ -33,6 +33,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 
 #include <utility>
 
@@ -50,7 +51,8 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    transaction::Methods* trxPtr, bool count)
+    transaction::Methods* trxPtr, 
+    arangodb::ResourceMonitor* resourceMonitor, bool count)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
                     nrInputRegisters, nrOutputRegisters,
@@ -60,7 +62,8 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
       _groupRegisters(groupRegisters),
       _collectRegister(collectRegister),
       _count(count),
-      _trxPtr(trxPtr) {
+      _trxPtr(trxPtr),
+      _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -84,6 +87,10 @@ transaction::Methods* HashedCollectExecutorInfos::getTransaction() const {
 
 RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
   return _collectRegister;
+}
+
+arangodb::ResourceMonitor* HashedCollectExecutorInfos::getResourceMonitor() const {
+  return _resourceMonitor;
 }
 
 std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
@@ -133,11 +140,15 @@ HashedCollectExecutor::~HashedCollectExecutor() {
 }
 
 void HashedCollectExecutor::destroyAllGroupsAqlValues() {
+  size_t memoryUsage = 0;
   for (auto& it : _allGroups) {
+    memoryUsage += memoryUsageForGroup(it.first, true);
     for (auto& it2 : it.first) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
+
+  _infos.getResourceMonitor()->decreaseMemoryUsage(memoryUsage);
 }
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
@@ -178,6 +189,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
   TRI_ASSERT(_currentGroup->second != nullptr);
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
+  size_t memoryUsage = memoryUsageForGroup(keys, false);
   size_t i = 0;
   for (auto& it : keys) {
     AqlValue& key = *const_cast<AqlValue*>(&it);
@@ -186,6 +198,9 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
                          _lastInitializedInputRow, guard);
     key.erase();  // to prevent double-freeing later
   }
+
+  _infos.getResourceMonitor()->decreaseMemoryUsage(memoryUsage);
+
 
   if (!_infos.getCount()) {
     TRI_ASSERT(_currentGroup->second->size() == _infos.getAggregatedRegisters().size());
@@ -323,14 +338,20 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   for (auto const& it : _aggregatorFactories) {
     aggregateValues->emplace_back((*it)(trx));
   }
+  
+  ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForGroup(_nextGroupValues, true));
 
   // note: aggregateValues may be a nullptr!
   auto [result, emplaced] = _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 
+  // memory now owned by _allGroups
+  guard.steal();
+
   // Moving _nextGroupValues left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
+  _nextGroupValues.clear();
   _nextGroupValues.reserve(_infos.getGroupRegisters().size());
 
   return result;
@@ -359,4 +380,21 @@ std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(si
 
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {
   return _infos;
+}
+
+size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group, bool withBase) const {
+  // track memory usage of unordered_map entry (somewhat)
+  size_t memoryUsage = 0;
+  if (withBase) {
+    memoryUsage += 4 * sizeof(void*) + /* generic overhead */
+                   group.size() * sizeof(AqlValue) + 
+                   _aggregatorFactories.size() * sizeof(void*);
+  }
+
+  for (auto const& it : group) {
+    if (it.requiresDestruction()) {
+      memoryUsage += it.memoryUsage();
+    }
+  }
+  return memoryUsage;
 }

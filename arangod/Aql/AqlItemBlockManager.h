@@ -32,6 +32,7 @@
 #include <cstddef>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
@@ -41,14 +42,13 @@ namespace aql {
 
 class AqlItemBlock;
 class SharedAqlItemBlockPtr;
-struct ResourceMonitor;
 
 class AqlItemBlockManager {
   friend class SharedAqlItemBlockPtr;
 
  public:
   /// @brief create the manager
-  explicit AqlItemBlockManager(ResourceMonitor*, SerializationFormat format);
+  explicit AqlItemBlockManager(arangodb::ResourceMonitor*, SerializationFormat format);
 
   /// @brief destroy the manager
   TEST_VIRTUAL ~AqlItemBlockManager();

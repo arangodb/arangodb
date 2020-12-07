@@ -24,8 +24,8 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Slice.h>
 
