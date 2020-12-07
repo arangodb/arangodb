@@ -26,6 +26,7 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include <any>
+#include <condition_variable>
 #include <mutex>
 #include <vector>
 
