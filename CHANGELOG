@@ -4,6 +4,18 @@ v3.6.10 (XXXX-XX-XX)
 * Fix AQL cost estimate of spliced subqueries which could lead to overly large
   numbers in the explain output of such queries.
 
+* Reimplement coordshort request handler. The new implementation only runs two
+  DB queries without any additional requests to other coordinators, resulting in
+  reduced load on the cluster. Previously this involved requests to all
+  coordinators, where each of them ran two DB queries.
+
+* Fixed bug with ArangoSearch views on SmartGraph edge collections which could
+  contain some documents twice.
+  This change removes `_to_*` local auxiliary link creation and existence within
+  a view linked with a SmartGraph edge collection.
+
+* Updated arangosync to 0.7.13.
+
 * Fix HTTP/1.1 status response header in fuerte responses
 
   This change makes fuerte return the full status header, including the numeric
@@ -91,8 +103,6 @@ v3.6.10 (XXXX-XX-XX)
   coordinators. These threads should have mostly been idle before, so saving
   them will not have a huge impact except saving a few MB of thread stack
   memory.
-
-* Updated arangosync to 0.7.12.
 
 * Added new metric `arangodb_network_forwarded_requests` to track the number
   of requests forwarded from one coordinator to another in a load-balancing
