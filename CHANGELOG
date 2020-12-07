@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fix Windows directory creation error handling.
+
 * Fixed agency redirect in poll API.
 
 * Updated arangosync to 1.2.1.
