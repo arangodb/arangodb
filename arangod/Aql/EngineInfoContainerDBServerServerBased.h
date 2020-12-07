@@ -165,7 +165,7 @@ class EngineInfoContainerDBServerServerBased {
    * -> queryid.
    */
   void cleanupEngines(int errorCode, std::string const& dbname,
-                      MapRemoteToSnippet& queryIds) const;
+                      aql::ServerQueryIdList& queryIds) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.

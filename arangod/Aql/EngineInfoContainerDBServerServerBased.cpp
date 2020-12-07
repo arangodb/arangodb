@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Aql/QuerySnippet.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
@@ -314,6 +315,7 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
       [this, server, serverDest, didCreateEngine = std::move(didCreateEngine),
        &serverToQueryId, &snippetIds](
           arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
+            
     auto const& resolvedResponse = response.get();
     if (resolvedResponse.fail()) {
       int code = network::fuerteToArangoErrorCode(resolvedResponse);
@@ -396,8 +398,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
-  auto cleanupGuard = scopeGuard([this, &snippetIds]() {
-    cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), snippetIds);
+  auto cleanupGuard = scopeGuard([this, &serverToQueryId]() {
+    cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), serverToQueryId);
   });
 
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
@@ -407,8 +409,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  // Build Lookup Infos
-  VPackBuilder infoBuilder;
   transaction::Methods& trx = _query.trxForOptimization();
   std::vector<arangodb::futures::Future<Result>> networkCalls{};
 
@@ -421,7 +421,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // decreases lock timeout manually for fast path
   auto oldLockTimeout = _query.getLockTimeout();
   _query.setLockTimeout(2);
+  std::vector<std::tuple<ServerID, std::shared_ptr<VPackBuffer<uint8_t>>, std::vector<bool>>> engineInformation;
+  engineInformation.reserve(dbServers.size());
   for (ServerID const& server : dbServers) {
+    // Build Lookup Infos
+    VPackBuilder infoBuilder;
     auto didCreateEngine = buildEngineInfo(infoBuilder, server, nodesById, nodeAliases);
     VPackSlice infoSlice = infoBuilder.slice();
 
@@ -429,9 +433,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       continue;
     }
 
-    networkCalls.emplace_back(
-        buildSetupRequest(trx, server, infoSlice, std::move(didCreateEngine),
-                          snippetIds, serverToQueryId, pool, options));
+    networkCalls.emplace_back(buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
+                                                serverToQueryId, pool, options));
+    engineInformation.emplace_back(server, infoBuilder.steal(), std::move(didCreateEngine));
     _query.incHttpRequests(unsigned(1));
   }
 
@@ -445,29 +449,32 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             }
             return Result();  // all good
           });
-
   if (fastPathResult.get().fail()) {
     if (fastPathResult.get().is(TRI_ERROR_LOCK_TIMEOUT)) {
       {
         // in case of fast path failure, we need to cleanup engines
-        cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), snippetIds);
+        cleanupEngines(fastPathResult.get().errorNumber(),
+                       _query.vocbase().name(), serverToQueryId);
         snippetIds.clear();
       }
 
       // set back to default lock timeout for slow path fallback
       _query.setLockTimeout(oldLockTimeout);
+
+      // trx.abort() => Coordinator && DBServer löschen diese Transaction
+      // trx.rerollId() => Coordintor denkt sich eine neue ID aus, und setzt diese auf den Aktuellen stand der
+      // vorber aborteten transaction.
+      // Weitermachen (request muss neu gebaut werden mit TrxId stimmt)
+
+      trx.state()->clearKnownServers();
+
       // fallback routine, use synchronous requests (slowPath)
-      for (ServerID const& server : dbServers) {
-        auto didCreateEngine = buildEngineInfo(infoBuilder, server, nodesById, nodeAliases);
-        VPackSlice infoSlice = infoBuilder.slice();
+      for (auto& [server, buffer, didCreateEngine] : engineInformation) {
+        VPackSlice infoSlice{buffer->data()};
 
-        if (isNotSatelliteLeader(infoSlice)) {
-          continue;
-        }
-
-        auto request =
-            buildSetupRequest(trx, server, infoSlice, std::move(didCreateEngine),
-                              snippetIds, serverToQueryId, pool, options);
+        auto request = buildSetupRequest(trx, std::move(server), infoSlice,
+                                         std::move(didCreateEngine), snippetIds,
+                                         serverToQueryId, pool, options);
         _query.incHttpRequests(unsigned(1));
         if (request.get().fail()) {
           return request.get();
@@ -489,6 +496,13 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
+    if (response.hasKey("errorMessage") && response.hasKey("errorNum")) {
+      int code =
+          basics::VelocyPackHelper::getNumericValue<int>(response, "errorNum", 0);
+      std::string msg =
+          basics::VelocyPackHelper::getStringValue(response, "errorMessage", "");
+      return Result{code, msg + ". Please check: " + server};
+    }
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unable to deploy query on all required "
             "servers: " +
@@ -577,7 +591,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * -> queryid.
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
-    int errorCode, std::string const& dbname, MapRemoteToSnippet& snippetIds) const {
+    int errorCode, std::string const& dbname, aql::ServerQueryIdList& serverQueryIds) const {
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
@@ -587,25 +601,19 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
   options.skipScheduler = true;              // hack to speed up future.get()
 
   // Shutdown query snippets
-  std::string url("/_api/aql/shutdown/");
+  std::string url("/_api/aql/finish/");
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
   builder.openObject();
   builder.add("code", VPackValue(std::to_string(errorCode)));
   builder.close();
-  for (auto const& it : snippetIds) {
-    // it.first == RemoteNodeId, we don't need this
-    // it.second server -> [snippets]
-    for (auto const& serToSnippets : it.second) {
-      auto server = serToSnippets.first;
-      for (auto const& shardId : serToSnippets.second) {
-        // fire and forget
-        network::sendRequest(pool, server, fuerte::RestVerb::Put, url + shardId,
-                             /*copy*/ body, options);
-      }
-      _query.incHttpRequests(static_cast<unsigned>(serToSnippets.second.size()));
-    }
+  for (auto const& [server, queryId] : serverQueryIds) {
+    // fire and forget
+    network::sendRequest(pool, server, fuerte::RestVerb::Delete,
+                         url + std::to_string(queryId),
+                         /*copy*/ body, options);
   }
+  _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
   // Shutdown traverser engines
   url = "/_internal/traverser/";
@@ -621,7 +629,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
   }
 
-  snippetIds.clear();
+  serverQueryIds.clear();
 }
 
 // Insert a GraphNode that needs to generate TraverserEngines on
