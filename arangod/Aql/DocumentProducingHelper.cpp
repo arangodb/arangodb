@@ -286,6 +286,10 @@ bool DocumentProducingFunctionContext::checkFilter(
 }
 
 bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
+  if (ADB_UNLIKELY(_numFiltered % 1000 == 0 && _query.killed())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _filter->execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
