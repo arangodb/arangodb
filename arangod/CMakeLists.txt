@@ -87,7 +87,8 @@ target_compile_definitions(arango_iresearch
 )
 
 get_target_property(IRESEARCH_INCLUDE
-  iresearch-static INCLUDE_DIRECTORIES)
+  iresearch-static INCLUDE_DIRECTORIES
+)
 
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
@@ -100,13 +101,13 @@ if (USE_ENTERPRISE)
 endif()
 
 target_link_libraries(arango_iresearch
-  ${IRESEARCH_TARGET_DEPENDENCY}
+  iresearch-static
   s2 # needed for some includes
   boost_locale # required by iResearch
 )
 
 add_dependencies(arango_iresearch
-  ${IRESEARCH_TARGET_DEPENDENCY}
+  iresearch-static
   v8_build # for ICU required by iResearch
 )
 
