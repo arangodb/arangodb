@@ -3,6 +3,8 @@ devel
 
 * Fixed agency redirect in poll api.
 
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
 * Remove a case in which followers were dropped unnecessarily in streaming
   transactions that replicated to the same follower.
 
