@@ -65,7 +65,6 @@ class AggregatorHandler {
 
   /// calls reset on every aggregator
   void resetValues();
-  void resetValues(IAggregator::ResetBy when);
 
   /// return true if there values in this aggregator which were serialized
   bool serializeValues(VPackBuilder& b, bool onlyConverging = false) const;

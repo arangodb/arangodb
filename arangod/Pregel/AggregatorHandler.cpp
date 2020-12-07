@@ -109,12 +109,8 @@ const void* AggregatorHandler::getAggregatedValue(AggregatorID const& name) {
 }
 
 void AggregatorHandler::resetValues() {
-  resetValues(IAggregator::ResetBy::Legacy);
-}
-
-void AggregatorHandler::resetValues(IAggregator::ResetBy who) {
   for (auto& it : _values) {
-    it.second->reset(who);
+    it.second->reset();
   }
 }
 
