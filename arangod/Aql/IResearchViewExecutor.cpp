@@ -1462,7 +1462,11 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
   if (this->infos().countApproximate() == CountApproximate::Exact && 
       !filterConditionIsEmpty(&this->infos().filterCondition()) &&
       _heap_it.size() > 0) {
-    skipped += (_heap_it.size() - 1);
+    // we should adjust by the heap size only if the heap was advanced at least once
+    // or we have nothing consumed from doc iterators!
+    if(this->_segments[_heap_it.value()].segmentPos) {
+      skipped += (_heap_it.size() - 1);
+    }
   }
   _heap_it.reset();
   return skipped;
