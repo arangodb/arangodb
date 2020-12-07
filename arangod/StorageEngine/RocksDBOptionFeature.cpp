@@ -40,6 +40,7 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
@@ -84,6 +85,16 @@ uint64_t defaultTotalWriteBufferSize() {
   return (static_cast<uint64_t>(256) << 20);
 }
 
+uint64_t defaultMWriteBufferNumberToMerge(uint64_t totalSize, uint64_t sizePerBuffer, uint64_t maxBuffers) {
+  RocksDBColumnFamily
+
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
+    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.4 
+    return static_cast<uint64_t>((PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.4);
+  } 
+  return rocksDBDefaults.min_write_buffer_number_to_merge;
+}
+
 }  // namespace
 
 RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServer& server)
@@ -95,7 +106,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _maxWriteBufferSizeToMaintain(0),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
-      _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
+      _minWriteBufferNumberToMerge(defaultMinWriteBufferNumberToMerge(_totalWriteBufferSize, _writeBufferSize, _maxWriteBufferNumber)),
       _numLevels(rocksDBDefaults.num_levels),
       _numUncompressedLevels(2),
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
@@ -117,9 +128,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
-      _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
-      _cacheIndexAndFilterBlocksWithHighPriority(
-        rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
+      _cacheIndexAndFilterBlocks(true),
+      _cacheIndexAndFilterBlocksWithHighPriority(true),
       _pinl0FilterAndIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
       _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),

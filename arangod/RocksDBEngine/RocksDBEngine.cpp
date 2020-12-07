@@ -663,6 +663,15 @@ void RocksDBEngine::start() {
            "to 4 because it is lower than recommended";
   }
 
+  // We provide four distinct column families types based on the properties of
+  // the keys contained and which settings and optimizations we need to maintain
+  // to ensure correct and performant behavior. We may create more than one
+  // instance of a column family type in order to ensure better separation by
+  // data type (e.g. documents and primary index entries use the same column
+  // family format, but we store them separately). If the number of column
+  // families changes in the future, some of the optimized settings in
+  // StorageEngine/RocksDBOptionFeature.cpp may need to be adjusted.
+
   // cf options for definitons (dbs, collections, views, ...)
   rocksdb::ColumnFamilyOptions definitionsCF(_options);
 

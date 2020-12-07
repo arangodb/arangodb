@@ -1,6 +1,13 @@
 devel
 -----
 
+* Changed the default values for `--rocksdb.cache-index-and-filter-blocks` and
+  `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to true to
+  improve control over memory usage.
+
+* Lowered the minimum allowed value for `--rocksdb.max-write-buffer-number` from
+  9 to 4 to allow more fine-grained memory usage control.
+
 * Added new command line options for fine-grained ArangoSearch maintenance
   control:
   - `--arangosearch.commit-threads` - max number of ArangoSearch commit
