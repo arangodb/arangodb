@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
 * Fixed agency redirect in poll API.
 
 * Updated arangosync to 1.2.1.
