@@ -48,7 +48,6 @@ using namespace arangodb;
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
-      _id(tid),
       _lastWrittenOperationTick(0),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
@@ -57,6 +56,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _hints(),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
+      _id(tid),
       _registeredTransaction(false) {}
 
 /// @brief free a transaction container
@@ -443,6 +443,16 @@ char const* TransactionState::actorName() const noexcept {
     return "coordinator";
   }
   return "single";
+}
+
+void TransactionState::coordinatorRerollTransactionId() {
+  TRI_ASSERT(isCoordinator());
+  TRI_ASSERT(isRunning())
+  auto old = _id;
+  _id = transaction::Context::makeTransactionId();
+  LOG_DEVEL << "Rerolling transaction id from " << old << " to " << _id
+            << " status " << _status;
+  clearKnownServers();
 }
 
 /// @brief return a reference to the global transaction statistics

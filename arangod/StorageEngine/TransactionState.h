@@ -245,6 +245,12 @@ class TransactionState {
   bool isInaccessibleCollection(std::string const& cname);
 #endif
 
+  /// @brief roll a new transaction ID on the coordintor. Use this method
+  /// with care, it should only be used when retrying in a synchronized
+  /// fashion after a fast-path locking detected a dead-lock situation.
+  /// Only allowed on coordinators.
+  void coordinatorRerollTransactionId();
+
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(DataSourceId cid, size_t& position) const;
@@ -260,7 +266,6 @@ class TransactionState {
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-  TransactionId const _id;  /// @brief local trx id
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick;
@@ -281,6 +286,8 @@ class TransactionState {
   transaction::Options _options;
 
  private:
+  TransactionId _id;  /// @brief local trx id
+
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
 

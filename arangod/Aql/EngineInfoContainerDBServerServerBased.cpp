@@ -460,13 +460,15 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
       // set back to default lock timeout for slow path fallback
       _query.setLockTimeout(oldLockTimeout);
+      LOG_TOPIC("f5022", INFO, Logger::AQL)
+          << "Potential dead-lock detected, using slow path for locking. This "
+             "is expected if exclusive locks are used.";
 
       // trx.abort() => Coordinator && DBServer löschen diese Transaction
       // trx.rerollId() => Coordintor denkt sich eine neue ID aus, und setzt diese auf den Aktuellen stand der
       // vorber aborteten transaction.
       // Weitermachen (request muss neu gebaut werden mit TrxId stimmt)
-
-      trx.state()->clearKnownServers();
+      trx.state()->coordinatorRerollTransactionId();
 
       // fallback routine, use synchronous requests (slowPath)
       for (auto& [server, buffer, didCreateEngine] : engineInformation) {
