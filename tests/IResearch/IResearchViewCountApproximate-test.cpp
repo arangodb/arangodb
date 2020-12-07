@@ -435,8 +435,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       EMPTY,
       EMPTY,
       EMPTY,
-      arangodb::transaction::Options()
-    );
+      arangodb::transaction::Options());
   auto* snapshot = _view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
   auto reader =  std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
       std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
@@ -507,8 +506,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       EMPTY,
       EMPTY,
       EMPTY,
-      arangodb::transaction::Options()
-    );
+      arangodb::transaction::Options());
   auto* snapshot = _view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
   auto reader =  std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
       std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
