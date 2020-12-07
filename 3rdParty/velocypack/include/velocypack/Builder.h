@@ -88,7 +88,7 @@ class Builder {
   uint8_t* _start;
   // the append position
   ValueLength _pos;
-  
+
   struct CompoundInfo {
     ValueLength startPos;
     ValueLength indexStartPos;
@@ -97,8 +97,8 @@ class Builder {
   // Start positions of open objects/arrays
   // we are using a SmallVector here, so we can stuff the first few
   // levels into the vector without making any allocations
-  SmallVector<CompoundInfo, 64>::allocator_type::arena_type _arena; 
-  SmallVector<CompoundInfo, 64> _stack; 
+  SmallVector<CompoundInfo, 64>::allocator_type::arena_type _arena;
+  SmallVector<CompoundInfo, 64> _stack;
 
   // Indices for starts of subindex
   std::vector<ValueLength> _indexes;
@@ -107,21 +107,21 @@ class Builder {
 
  public:
   Options const* options;
-  
+
   // create an empty Builder, using default Options
   Builder();
 
   // create an empty Builder, using Options
   explicit Builder(Options const* options);
-  
+
   // create an empty Builder, using an existing buffer and default Options
   explicit Builder(std::shared_ptr<Buffer<uint8_t>> buffer);
-  
+
   // create an empty Builder, using an existing buffer and Options
   explicit Builder(std::shared_ptr<Buffer<uint8_t>> buffer,
                    Options const* options);
-  
-  // create a Builder that uses an existing Buffer and default Options. 
+
+  // create a Builder that uses an existing Buffer and default Options.
   // the Builder will not claim ownership for its Buffer
   explicit Builder(Buffer<uint8_t>& buffer) noexcept;
 
@@ -143,15 +143,15 @@ class Builder {
   // get a reference to the Builder's Buffer object
   // note: this object may be a nullptr if the buffer was already stolen
   // from the Builder, or if the Builder has no ownership for the Buffer
-  std::shared_ptr<Buffer<uint8_t>> const& buffer() const { 
-    return _buffer; 
+  std::shared_ptr<Buffer<uint8_t>> const& buffer() const {
+    return _buffer;
   }
 
-  Buffer<uint8_t>& bufferRef() const { 
+  Buffer<uint8_t>& bufferRef() const {
     if (_bufferPtr == nullptr) {
       throw Exception(Exception::InternalError, "Builder has no Buffer");
     }
-    return *_bufferPtr; 
+    return *_bufferPtr;
   }
 
   // steal the Builder's Buffer object. afterwards the Builder
@@ -168,7 +168,7 @@ class Builder {
 
   uint8_t const* data() const noexcept {
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
-    return _bufferPtr->data(); 
+    return _bufferPtr->data();
   }
 
   std::string toString() const;
@@ -312,7 +312,7 @@ class Builder {
       set(ValuePair(attrName, attrLength, ValueType::String));
       return writeValue(sub);
     }
-    
+
     reportAdd();
     try {
       set(ValuePair(attrName, attrLength, ValueType::String));
@@ -662,7 +662,7 @@ class Builder {
                                  std::vector<ValueLength>::iterator indexEnd);
 
   // close for the array case:
-  Builder& closeArray(ValueLength pos, 
+  Builder& closeArray(ValueLength pos,
                       std::vector<ValueLength>::iterator indexStart,
                       std::vector<ValueLength>::iterator indexEnd);
 
@@ -715,7 +715,7 @@ class Builder {
 
   void addBCD(int8_t sign, int32_t exponent, char* mantissa, uint64_t mantissaLength) {
     if (options->disallowBCD) {
-      // BCD values explicitly disallowed 
+      // BCD values explicitly disallowed
       throw Exception(Exception::BuilderBCDDisallowed);
     }
 
@@ -792,11 +792,11 @@ class Builder {
   inline void addObject(bool unindexed = false) {
     addCompoundValue(unindexed ? 0x14 : 0x0b);
   }
- 
+
   // add without a tag
   template <typename T>
   uint8_t* addInternal(T const& sub) {
-    if (_stack.empty()) {
+    if (_stack.empty() || std::is_same<T, Serializable>::value) {
       return set(sub);
     }
 
@@ -811,7 +811,7 @@ class Builder {
       throw;
     }
   }
-  
+
   // add with a tag
   template <typename T>
   uint8_t* addInternalTagged(uint64_t tag, T const& sub) {
@@ -836,7 +836,7 @@ class Builder {
       throw;
     }
   }
-  
+
   template <typename T>
   uint8_t* addInternal(std::string const& attrName, T const& sub) {
     return addInternal<T>(attrName.data(), attrName.size(), sub);
@@ -846,7 +846,7 @@ class Builder {
   uint8_t* addInternal(StringRef const& attrName, T const& sub) {
     return addInternal<T>(attrName.data(), attrName.size(), sub);
   }
-  
+
   template <typename T>
   uint8_t* addInternal(char const* attrName, std::size_t attrLength, T const& sub) {
     bool haveReported = false;
@@ -889,17 +889,17 @@ class Builder {
       throw;
     }
   }
-  
+
   template <typename T>
   uint8_t* addInternalTagged(std::string const& attrName, uint64_t tag, T const& sub) {
     return addInternalTagged<T>(attrName.data(), attrName.size(), tag, sub);
   }
-  
+
   template <typename T>
   uint8_t* addInternalTagged(StringRef const& attrName, uint64_t tag, T const& sub) {
     return addInternalTagged<T>(attrName.data(), attrName.size(), tag, sub);
   }
-  
+
   template <typename T>
   uint8_t* addInternalTagged(char const* attrName, std::size_t attrLength, uint64_t tag, T const& sub) {
     bool haveReported = false;
@@ -942,7 +942,7 @@ class Builder {
       throw;
     }
   }
-  
+
   template <typename T>
   inline uint8_t* writeValue(T const& sub) {
     _keyWritten = true;

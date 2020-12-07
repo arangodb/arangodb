@@ -149,44 +149,68 @@ class Value {
   constexpr bool isString() const noexcept { return _valueType == ValueType::String; }
 
   constexpr bool getBool() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::Bool);
+#endif
     return _value.b;
   }
 
   constexpr double getDouble() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::Double);
+#endif
     return _value.d;
   }
 
   constexpr int64_t getInt64() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::Int64);
+#endif
     return _value.i;
   }
 
   constexpr uint64_t getUInt64() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::UInt64);
+#endif
     return _value.u;
   }
 
   constexpr std::string const* getString() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::String);
+#endif
     return _value.s;
   }
 
 #ifdef VELOCYPACK_HAS_STRING_VIEW
   constexpr std::string_view const* getStringView() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::StringView);
+#endif
     return _value.sv;
   }
 #endif
 
   constexpr void const* getExternal() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::VoidPtr);
+#endif
     return _value.e;
   }
 
   constexpr char const* getCharPtr() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::CharPtr);
+#endif
     return _value.c;
   }
 };
