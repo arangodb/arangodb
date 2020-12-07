@@ -50,6 +50,8 @@ using namespace arangodb::aql;
 
 namespace {
 const double SETUP_TIMEOUT = 15.0;
+// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
+const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
                              std::string& shardId) {
@@ -420,7 +422,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   // decreases lock timeout manually for fast path
   auto oldLockTimeout = _query.getLockTimeout();
-  _query.setLockTimeout(2);
+  _query.setLockTimeout(FAST_PATH_LOCK_TIMEOUT);
   std::vector<std::tuple<ServerID, std::shared_ptr<VPackBuffer<uint8_t>>, std::vector<bool>>> engineInformation;
   engineInformation.reserve(dbServers.size());
   for (ServerID const& server : dbServers) {
