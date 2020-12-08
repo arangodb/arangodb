@@ -363,6 +363,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<arangodb::QueryRegistryFeature>(false);
+  addFeature<arangodb::NetworkFeature>(false);
   if (start) {
     startFeatures();
   }
