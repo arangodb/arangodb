@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,38 +17,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_SRV_H
-#define ARANGODB_ENDPOINT_ENDPOINT_SRV_H 1
+#ifndef ARANGODB_UTILITIES_IS_EXECUTABLE_H
+#define ARANGODB_UTILITIES_IS_EXECUTABLE_H 1
 
-#include <memory>
-#include <string>
-
-#include "Basics/socket-utils.h"
-#include "Endpoint/Endpoint.h"
-
-namespace arangodb {
-class EndpointSrv final : public Endpoint {
- public:
-  explicit EndpointSrv(std::string const&);
-
-  ~EndpointSrv();
-
- public:
-  bool isConnected() const override;
-  TRI_socket_t connect(double, double) override;
-  void disconnect() override;
-  int domain() const override;
-  int port() const override;
-  std::string host() const override;
-  std::string hostAndPort() const override;
-
- private:
-  std::unique_ptr<Endpoint> _endpoint;
-};
-}  // namespace arangodb
+//////////////////////////////////////////////////////////////////////////////
+/// @brief tell whether str contains a string matching one of our executables
+//////////////////////////////////////////////////////////////////////////////
+std::string extractShellExecutableName(std::string const& input);
 
 #endif
