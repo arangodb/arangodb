@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed an endless busy loop which could happen if a coordinator tries to 
+  roll back a database creation, but the database has already been dropped 
+  by other means.
+
 * Make all Pregel HTTP and JavaScript APIs also accept stringified execution
   number values, in addition to numeric ones.
 
