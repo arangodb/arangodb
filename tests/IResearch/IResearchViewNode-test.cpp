@@ -2448,7 +2448,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     {
       arangodb::iresearch::IResearchViewNode const deserialized(*query.plan(), nodeSlice);
       EXPECT_EQ(node.empty(), deserialized.empty());
-      EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Cost);
+      EXPECT_EQ(deserialized.options().countApproximate, arangodb::iresearch::CountApproximate::Cost);
     }
 
     // factory method
@@ -2457,7 +2457,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
           arangodb::aql::ExecutionNode::fromVPackFactory(query.plan(), nodeSlice));
       auto& deserialized =
           dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
-      EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Cost);
+      EXPECT_EQ(deserialized.options().countApproximate, arangodb::iresearch::CountApproximate::Cost);
     }
   }
     // with countApproximate exact
