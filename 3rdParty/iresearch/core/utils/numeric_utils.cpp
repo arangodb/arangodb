@@ -40,7 +40,7 @@
   #define ntohll be64toh
 #endif // _WIN32
 
-NS_LOCAL
+namespace {
 
 // ----------------------------------------------------------------------------
 // static buffers
@@ -54,10 +54,10 @@ iresearch::bstring& static_buf() {
   return buf;
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(numeric_utils)
+namespace iresearch {
+namespace numeric_utils {
 
 using iresearch::integer_traits;
 
@@ -337,5 +337,5 @@ const bytes_ref& maxd64(){
   return data; 
 }
 
-NS_END // numeric_utils
-NS_END // ROOT
+} // numeric_utils
+} // ROOT

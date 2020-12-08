@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -51,7 +52,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
@@ -408,7 +408,10 @@ TEST_F(IResearchViewTest, test_defaults) {
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice()).ok()));
     ASSERT_TRUE((false == !logicalView));
     std::set<TRI_voc_cid_t> cids;
-    logicalView->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    logicalView->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
     EXPECT_TRUE((1 == cids.size()));
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
 
@@ -460,7 +463,10 @@ TEST_F(IResearchViewTest, test_properties) {
   EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice()).ok());
   ASSERT_TRUE(logicalView);
   std::set<TRI_voc_cid_t> cids;
-  logicalView->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+  logicalView->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+    cids.emplace(cid);
+    return true;
+  });
   EXPECT_EQ(1, cids.size());
   EXPECT_FALSE(logicalCollection->getIndexes().empty());
 
@@ -496,7 +502,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -563,7 +569,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
@@ -622,7 +628,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -708,7 +714,10 @@ TEST_F(IResearchViewTest, test_vocbase_inventory) {
   EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice()).ok());
   ASSERT_TRUE(logicalView);
   std::set<TRI_voc_cid_t> cids;
-  logicalView->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+  logicalView->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+    cids.emplace(cid);
+    return true;
+  });
   EXPECT_EQ(1, cids.size());
   EXPECT_FALSE(logicalCollection->getIndexes().empty());
 
@@ -784,7 +793,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -802,7 +811,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -899,9 +908,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_" +
         std::to_string(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view)
-                           ->id()
-                           .id())))
-          .utf8();
+                           ->id().id()))).utf8();
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
@@ -956,10 +963,12 @@ TEST_F(IResearchViewTest, test_drop_collection) {
   ASSERT_TRUE((false == !view));
 
   EXPECT_TRUE((true == logicalView->properties(viewUpdateJson->slice(), true).ok()));
-  EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+  EXPECT_TRUE((false == logicalView->visitCollections(
+                            [](TRI_voc_cid_t) -> bool { return false; })));
 
   EXPECT_TRUE((true == logicalCollection->drop().ok()));
-  EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+  EXPECT_TRUE((true == logicalView->visitCollections(
+                           [](TRI_voc_cid_t) -> bool { return false; })));
 
   EXPECT_TRUE((true == logicalView->drop().ok()));
 }
@@ -998,7 +1007,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1071,7 +1080,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1144,7 +1153,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1194,7 +1203,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       std::unordered_set<TRI_voc_cid_t> expected;
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -1234,7 +1246,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1276,10 +1288,13 @@ TEST_F(IResearchViewTest, test_drop_cid) {
 
     // collection in view after drop failure
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { logicalCollection->id() };
+      std::unordered_set<TRI_voc_cid_t> expected = {logicalCollection->id()};
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -1319,7 +1334,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1369,7 +1384,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       std::unordered_set<TRI_voc_cid_t> expected;
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -1421,7 +1439,7 @@ TEST_F(IResearchViewTest, test_instantiate) {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 1 }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok()));
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice()).ok()));
     EXPECT_TRUE((false == !view));
   }
 
@@ -1430,7 +1448,7 @@ TEST_F(IResearchViewTest, test_instantiate) {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok());
+    EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice()).ok());
     EXPECT_TRUE(nullptr != view);
   }
 
@@ -1439,7 +1457,7 @@ TEST_F(IResearchViewTest, test_instantiate) {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 123456789 }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((!arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok()));
+    EXPECT_TRUE((!arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice()).ok()));
     EXPECT_TRUE((true == !view));
   }
 }
@@ -1477,7 +1495,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
        arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1550,7 +1568,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
        arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1595,6 +1613,14 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
 }
 
 TEST_F(IResearchViewTest, test_emplace_cid) {
+  struct Link : public arangodb::iresearch::IResearchLink {
+    Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+        : IResearchLink(id, col) {
+      auto json = VPackParser::fromJson(R"({ "view": "42" })");
+      EXPECT_TRUE(init(json->slice()).ok());
+    }
+  };
+
   // emplace (already in list)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 42, \"name\": \"testCollection\" }");
@@ -1614,10 +1640,13 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // collection in view before
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 42 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{42}};
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -1633,22 +1662,26 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
-      EXPECT_TRUE((false == view->link(link->self()).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() does not modify view meta if cid existed previously
+      auto lock = link->self()->lock();
+      EXPECT_FALSE(view->link(link->self()).ok());
+      EXPECT_FALSE(persisted); // emplace() does not modify view meta if cid existed previously
     }
 
     // collection in view after
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 42 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{42}};
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1669,7 +1702,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<TRI_voc_cid_t> expected;
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -1680,32 +1716,33 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((persisted)); // emplace() modifies view meta if cid did not exist previously
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_TRUE(persisted); // emplace() modifies view meta if cid did not exist previously
     }
 
     // collection in view after
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 42 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{42}};
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1726,17 +1763,22 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<TRI_voc_cid_t> expected;
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1744,28 +1786,27 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 42 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{42}};
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1786,13 +1827,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<TRI_voc_cid_t> expected;
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
@@ -1800,10 +1844,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
+      Link link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
       EXPECT_TRUE((false == view->link(asyncLinkPtr).ok()));
@@ -1814,13 +1855,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<TRI_voc_cid_t> expected;
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1841,17 +1885,22 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<TRI_voc_cid_t> expected;
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1859,28 +1908,27 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 42 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{42}};
       std::set<TRI_voc_cid_t> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; })));
+      EXPECT_TRUE(view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      }));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // persistence fails during execution of callback
@@ -1890,7 +1938,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = []()->void { throw std::exception(); };
       auto& feature = server.getFeature<arangodb::DatabaseFeature>();
 
-      EXPECT_NO_THROW((feature.recoveryDone()));
+      EXPECT_NO_THROW(feature.recoveryDone());
     }
   }
 }
@@ -1947,14 +1995,14 @@ TEST_F(IResearchViewTest, test_insert) {
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok());
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());
@@ -2002,8 +2050,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2019,13 +2065,18 @@ TEST_F(IResearchViewTest, test_insert) {
       EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2067,10 +2118,10 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2116,10 +2167,10 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2165,7 +2216,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2197,8 +2248,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2214,9 +2263,12 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2249,8 +2301,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
@@ -2267,9 +2317,12 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2337,19 +2390,19 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice()).ok());
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), VPackSlice::noneSlice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), VPackSlice::noneSlice()).ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), VPackSlice::noneSlice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), VPackSlice::noneSlice()).ok());
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), VPackSlice::noneSlice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), VPackSlice::noneSlice()).ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());
@@ -2396,8 +2449,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2413,13 +2464,18 @@ TEST_F(IResearchViewTest, test_remove) {
       EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2461,10 +2517,10 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2510,10 +2566,10 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2559,7 +2615,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2591,8 +2647,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2608,9 +2662,12 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2643,8 +2700,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
@@ -2661,9 +2716,12 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2688,7 +2746,7 @@ TEST_F(IResearchViewTest, test_open) {
 
     EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
     arangodb::LogicalView::ptr view;
-    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok()));
+    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice()).ok()));
     EXPECT_TRUE((false == !view));
     EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
@@ -2757,7 +2815,7 @@ TEST_F(IResearchViewTest, test_query) {
       EXPECT_TRUE((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+        EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(i), doc->slice()).ok()));
       }
 
       EXPECT_TRUE((trx.commit().ok()));
@@ -2961,7 +3019,10 @@ TEST_F(IResearchViewTest, test_register_link) {
 
     {
       std::set<TRI_voc_cid_t> cids;
-      view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+      view->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+        cids.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((0 == cids.size()));
     }
 
@@ -2977,9 +3038,12 @@ TEST_F(IResearchViewTest, test_register_link) {
 
     // link addition does modify view meta
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
       std::set<TRI_voc_cid_t> actual;
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -3036,7 +3100,10 @@ TEST_F(IResearchViewTest, test_register_link) {
 
     {
       std::set<TRI_voc_cid_t> actual;
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((actual.empty()));
     }
 
@@ -3057,9 +3124,12 @@ TEST_F(IResearchViewTest, test_register_link) {
 
     // link addition does modify view meta
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
       std::set<TRI_voc_cid_t> actual;
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -3096,9 +3166,13 @@ TEST_F(IResearchViewTest, test_register_link) {
     }
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
-      std::set<TRI_voc_cid_t> actual = { 123 };
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100},
+                                                             TRI_voc_cid_t{123}};
+      std::set<TRI_voc_cid_t> actual = {TRI_voc_cid_t{123}};
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -3126,9 +3200,13 @@ TEST_F(IResearchViewTest, test_register_link) {
     }
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
-      std::set<TRI_voc_cid_t> actual = { 123 };
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100},
+                                                             TRI_voc_cid_t{123}};
+      std::set<TRI_voc_cid_t> actual = {TRI_voc_cid_t{123}};
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -3161,9 +3239,13 @@ TEST_F(IResearchViewTest, test_register_link) {
     EXPECT_TRUE((0 == snapshot->docs_count())); // link addition does trigger collection load
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
-      std::set<TRI_voc_cid_t> actual = { 123 };
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100},
+                                                             TRI_voc_cid_t{123}};
+      std::set<TRI_voc_cid_t> actual = {TRI_voc_cid_t{123}};
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -3216,7 +3298,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((link->commit().ok()));
     }
@@ -3245,9 +3327,12 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     }
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
-      std::set<TRI_voc_cid_t> actual = { };
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
+      std::set<TRI_voc_cid_t> actual = {};
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -3281,7 +3366,10 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     {
       std::set<TRI_voc_cid_t> actual;
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((actual.empty())); // collection removal does modify view meta
     }
 
@@ -3321,7 +3409,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((link->commit().ok()));
     }
@@ -3350,9 +3438,12 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     }
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
+      std::unordered_set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
       std::set<TRI_voc_cid_t> actual;
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: expected) {
         EXPECT_TRUE((1 == actual.erase(cid)));
@@ -3382,7 +3473,10 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     {
       std::set<TRI_voc_cid_t> actual;
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      view->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((actual.empty())); // collection removal does modify view meta
     }
 
@@ -3412,7 +3506,10 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
 
     std::set<TRI_voc_cid_t> cids;
-    view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    view->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
     EXPECT_TRUE((1 == cids.size()));
     EXPECT_TRUE((false == !vocbase.lookupView("testView")));
     EXPECT_TRUE((true == view->drop().ok()));
@@ -3440,7 +3537,10 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       std::set<TRI_voc_cid_t> cids;
-      viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+      viewImpl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+        cids.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((1 == cids.size()));
       logicalCollection->getIndexes()[0]->unload(); // release view reference to prevent deadlock due to ~IResearchView() waiting for IResearchLink::unload()
       EXPECT_TRUE((true == vocbase.dropView(logicalView->id(), false).ok()));
@@ -3452,16 +3552,21 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     {
       auto json = arangodb::velocypack::Parser::fromJson("{}");
       arangodb::LogicalView::ptr view;
-      ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, viewJson->slice(), 0).ok()));
+      ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, viewJson->slice()).ok()));
       ASSERT_TRUE((false == !view));
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
       ASSERT_TRUE((nullptr != viewImpl));
       std::set<TRI_voc_cid_t> cids;
-      viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+      viewImpl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+        cids.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((0 == cids.size()));
 
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+        ASSERT_NE(nullptr, link);
+        auto lock = link->self()->lock();
         ASSERT_TRUE((!link->self()->get())); // check that link is unregistred from view
       }
     }
@@ -3485,7 +3590,10 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     ASSERT_TRUE((nullptr != viewImpl));
 
     std::set<TRI_voc_cid_t> actual;
-    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      actual.emplace(cid);
+      return true;
+    });
     EXPECT_TRUE((actual.empty()));
   }
 
@@ -3499,7 +3607,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(logicalView, vocbase, viewJson->slice(), 0).ok()));
+    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(logicalView, vocbase, viewJson->slice()).ok()));
     ASSERT_TRUE((false == !logicalView));
     engine.createView(vocbase, logicalView->id(), *logicalView); // ensure link can find view
     StorageEngineMock(server.server()).registerView(vocbase, logicalView);  // ensure link can find view
@@ -3509,8 +3617,11 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     EXPECT_TRUE((viewImpl->properties(updateJson->slice(), false).ok()));
 
     std::set<TRI_voc_cid_t> actual;
-    std::set<TRI_voc_cid_t> expected = { 100 };
-    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+    std::set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      actual.emplace(cid);
+      return true;
+    });
 
     for (auto& cid: actual) {
       EXPECT_TRUE((1 == expected.erase(cid)));
@@ -3531,7 +3642,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(logicalView, vocbase, viewJson->slice(), 0).ok()));
+    ASSERT_TRUE((arangodb::iresearch::IResearchView::factory().instantiate(logicalView, vocbase, viewJson->slice()).ok()));
     ASSERT_TRUE((false == !logicalView));
     engine.createView(vocbase, logicalView->id(), *logicalView); // ensure link can find view
     StorageEngineMock(server.server()).registerView(vocbase, logicalView);  // ensure link can find view
@@ -3543,8 +3654,11 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
       EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
-      std::set<TRI_voc_cid_t> expected = { 100 };
-      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      std::set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: actual) {
         EXPECT_TRUE((1 == expected.erase(cid)));
@@ -3558,7 +3672,10 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
       EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
-      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((actual.empty()));
     }
   }
@@ -3596,9 +3713,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
                                      EMPTY, EMPTY, EMPTY,
                                      arangodb::transaction::Options());
   EXPECT_TRUE((trx.begin().ok()));
-  EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(),
-                            arangodb::Index::OperationMode::normal)
-                   .ok()));
+  EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
   EXPECT_TRUE((trx.commit().ok()));
   EXPECT_TRUE((link->commit().ok()));  // commit to persisted store
     }
@@ -3616,7 +3731,10 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
       ASSERT_TRUE((nullptr != viewImpl));
 
       std::set<TRI_voc_cid_t> actual;
-      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((actual.empty())); // persisted cids do not modify view meta
     }
   }
@@ -3638,8 +3756,11 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     EXPECT_TRUE((viewImpl->properties(updateJson->slice(), false).ok()));
 
     std::set<TRI_voc_cid_t> actual;
-    std::set<TRI_voc_cid_t> expected = { 100 };
-    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+    std::set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      actual.emplace(cid);
+      return true;
+    });
 
     for (auto& cid: actual) {
       EXPECT_TRUE((1 == expected.erase(cid)));
@@ -3668,8 +3789,11 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
       EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
-      std::set<TRI_voc_cid_t> expected = { 100 };
-      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      std::set<TRI_voc_cid_t> expected = {TRI_voc_cid_t{100}};
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
 
       for (auto& cid: actual) {
         EXPECT_TRUE((1 == expected.erase(cid)));
@@ -3683,7 +3807,10 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
       EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
-      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
       EXPECT_TRUE((actual.empty()));
     }
   }
@@ -4163,7 +4290,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
   }
 
@@ -4243,7 +4370,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
   }
 
@@ -4532,7 +4659,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     expectedMeta._cleanupIntervalStep = 52;
     EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), false).errorNumber()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // not for persistence
     {
@@ -4599,7 +4727,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     expectedMeta._cleanupIntervalStep = 52;
     EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), false).errorNumber()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // not for persistence
     {
@@ -5093,14 +5222,17 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -5172,7 +5304,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
@@ -5187,7 +5320,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
   }
 
   // drop link (collection not authorized)
@@ -5203,14 +5337,17 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -5232,7 +5369,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5244,7 +5383,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -5265,7 +5406,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
@@ -5273,7 +5415,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -5285,7 +5429,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto* userManager = authFeature->userManager();
     
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -5297,7 +5440,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5311,7 +5456,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -5332,7 +5479,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
@@ -5340,7 +5488,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -5364,7 +5514,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5378,7 +5530,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -5395,14 +5549,17 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -5424,7 +5581,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5436,7 +5595,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -5457,7 +5618,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
@@ -5465,7 +5627,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -5489,7 +5653,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5503,7 +5669,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -5524,7 +5692,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
@@ -5532,7 +5701,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -5556,7 +5727,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5570,7 +5743,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 }
@@ -5725,7 +5900,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     expectedMeta._cleanupIntervalStep = 52;
     EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), true).errorNumber()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // not for persistence
     {
@@ -5792,7 +5968,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     expectedMeta._cleanupIntervalStep = 52;
     EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true).errorNumber()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // not for persistence
     {
@@ -6909,14 +7086,17 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -6988,7 +7168,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
@@ -7003,7 +7184,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
   }
 
   // drop link (collection not authorized)
@@ -7019,14 +7201,17 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -7048,7 +7233,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -7060,7 +7247,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -7081,7 +7270,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
@@ -7089,7 +7279,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -7113,7 +7305,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -7127,7 +7321,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -7148,7 +7344,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    EXPECT_TRUE((true == logicalView->visitCollections(
+                             [](TRI_voc_cid_t) -> bool { return false; })));
 
     // initial link creation
     {
@@ -7156,7 +7353,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext: public arangodb::ExecContext {
@@ -7180,7 +7379,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -7194,7 +7395,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](TRI_voc_cid_t) -> bool {
+        return false;
+      })));
     }
   }
 }

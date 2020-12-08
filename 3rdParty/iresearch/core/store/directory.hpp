@@ -32,7 +32,7 @@
 #include <ctime>
 #include <vector>
 
-NS_ROOT
+namespace iresearch {
 
 class attribute_store;
 
@@ -234,6 +234,6 @@ struct IRESEARCH_API directory : private util::noncopyable {
   }
 }; // directory
 
-NS_END
+}
 
 #endif

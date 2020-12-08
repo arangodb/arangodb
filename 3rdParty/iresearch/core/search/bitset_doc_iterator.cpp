@@ -25,7 +25,7 @@
 #include "utils/bitset.hpp"
 #include "utils/math_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
                                          const order::prepared& ord)
@@ -101,4 +101,4 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   return doc_.value;
 }
 
-NS_END // ROOT
+} // ROOT

@@ -27,7 +27,7 @@
 #include "search/filter_visitor.hpp"
 #include "search/phrase_iterator.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -183,9 +183,9 @@ struct prepare : util::noncopyable {
   const boost_t boost;
 }; // prepare
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class phrase_term_visitor
@@ -254,9 +254,9 @@ class phrase_term_visitor final : public filter_visitor,
   bool volatile_boost_ = false;
 };
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class phrase_query
@@ -725,4 +725,4 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     this->boost() * boost);
 }
 
-NS_END // ROOT
+} // ROOT

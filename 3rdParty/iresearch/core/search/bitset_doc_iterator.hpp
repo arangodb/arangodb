@@ -30,7 +30,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/bitset.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class bitset_doc_iterator final
   : public frozen_attributes<3, doc_iterator>,
@@ -66,6 +66,6 @@ class bitset_doc_iterator final
   doc_id_t base_{doc_limits::invalid() - bits_required<word_t>()}; // before the first word
 }; // bitset_doc_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_BITSET_DOC_ITERATOR_H
