@@ -100,20 +100,39 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
   Gauge<T>& operator+=(T const& t) {
-    _g.store(_g + t);
+    if constexpr(std::is_integral_v<T>) {
+      _g.fetch_add(t);
+    } else {
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp + t));
+    }
     return *this;
   }
   Gauge<T>& operator-=(T const& t) {
-    _g.store(_g - t);
+    if constexpr(std::is_integral_v<T>) {
+      _g.fetch_sub(t);
+    } else {
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp - t));
+    }
     return *this;
   }
   Gauge<T>& operator*=(T const& t) {
-    _g.store(_g * t);
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp * t));
     return *this;
   }
   Gauge<T>& operator/=(T const& t) {
     TRI_ASSERT(t != T(0));
-    _g.store(_g / t);
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(tmp, tmp / t));
     return *this;
   }
   Gauge<T>& operator=(T const& t) {
