@@ -136,10 +136,10 @@ template<typename T> class Gauge : public Metric {
     return *this;
   }
   Gauge<T>& operator=(T const& t) {
-    _g.store(t, std::memory_order_release);
+    _g.store(t);
     return *this;
   }
-  T load() const { return _g.load(std::memory_order_acquire); }
+  T load() const { return _g.load(); }
   virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";

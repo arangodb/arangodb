@@ -1,6 +1,10 @@
 devel
 -----
 
+* The scheduler will now run a minimum of 4 threads at all times, and the
+  default and minimal value for `--server.maximal-threads` has been lowered from
+  64 to the greater of 32 and twice the number of detected cores.
+
 * Throttle work coming from low priority queue, according to a constant
   and to an estimate taking into account fanout for multi-shard operations.
 

@@ -862,8 +862,18 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("direct-exec", VPackValue(0)); // obsolete
 }
 
-Gauge<uint64_t>& SupervisedScheduler::ongoingLowPriorityTasks() {
-  return _ongoingLowPriorityGauge;
+void SupervisedScheduler::trackBeginOngoingLowPriorityTask() {
+  if (_server.isStopping()) {
+    return;
+  }
+  _ongoingLowPriorityGauge += 1;
+}
+
+void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
+  if (_server.isStopping()) {
+    return;
+  }
+  _ongoingLowPriorityGauge -= 1;
 }
 
 double SupervisedScheduler::approximateQueueFillGrade() const {
