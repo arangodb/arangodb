@@ -1,6 +1,8 @@
 v3.5.7 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.14.15-1.
+
 * Updated arangosync to 0.7.13.
 
 * Updated OpenSSL to 1.1.1h.
