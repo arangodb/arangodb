@@ -27,7 +27,9 @@ devel
 * New metrics for number of internal requests in flight, internal request
   duration, and internal request timeouts
 
-* Fix Gauge class' assignment operators.
+* Fix `Gauge` assignment operators.
+
+* Updated ArangoDB Starter to 0.14.15-1.
 
 * Fix Windows directory creation error handling.
 
