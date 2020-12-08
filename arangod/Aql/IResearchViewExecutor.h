@@ -148,7 +148,7 @@ class IResearchViewStats {
   void operator+= (IResearchViewStats const& stats) {
     _scannedIndex += stats._scannedIndex;
   }
-  
+
   size_t getScanned() const noexcept;
 
  private:

@@ -64,24 +64,26 @@ namespace {
 
 constexpr irs::payload NoPayload;
 
-
-size_t calculateSkipAllCount(size_t currentPos, bool filterIsEmpty,
-                             std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const> reader,
-                             irs::filter::prepared::ptr filter) {
-
-  // 3 cases:
-  // 1. empty filter conditon -> live_docs_count (exact) - DONE
-  // 2. by_term filter. 
-  //    2.1 - segments without deletions  -> docs_count on term reader, field seeked (exact)
-  //    2.2 - segments with deletions -> docs_count on term reader, field seeked (approx) / next (exact)
-  // 3. All other cases
-  //     cost (unexact)/next(exact)
-
-  // Use functor for lazy cost evaluation
-
-  // add counter for tracking current position in segment
-  return 0;
-  
+size_t calculateSkipAllCount(CountApproximate approximation,
+                             size_t currentPos,
+                             irs::doc_iterator* docs) {
+  TRI_ASSERT(docs);
+  size_t skipped{0};
+  switch (approximation) {
+    case CountApproximate::Cost:
+      skipped =  irs::cost::extract(*docs, 0);
+      skipped -= std::min(skipped, currentPos);
+      break;
+    default:
+      // check for unknown approximation
+      // fallback to exact anyway
+      TRI_ASSERT(CountApproximate::Exact == approximation);
+      while (docs->next()) {
+        skipped++;
+      }
+      break;
+  }
+  return skipped;
 }
 
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
@@ -1071,43 +1073,23 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
 
   size_t skipped = 0;
 
-  if (filterConditionIsEmpty(&this->infos().filterCondition()) || 
-      _totalPos == this->_reader->live_docs_count()) {
-    skipped =  this->_reader->live_docs_count() -_totalPos;
-    _readerOffset = this->_reader->size();
-  } else {
-    if (this->infos().countApproximate() == CountApproximate::Cost) {
-      if (_itr) { // we already have open segment. Account it properly.
-        skipped += irs::cost::extract(*_itr, 0);
-        if (skipped < _currentSegmentPos) {
-          skipped = 0;
-        } else {
-          skipped -= _currentSegmentPos;
-        }
-        ++_readerOffset;
-        _itr.reset();
-      }
-      for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
-        if (!resetIterator()) {
-          continue;
-        }
-        skipped += irs::cost::extract(*_itr, 0);
-        _itr.reset();
-      }
+  if (_readerOffset < this->_reader->size()) {
+    if (filterConditionIsEmpty(&this->infos().filterCondition())) {
+      skipped =  this->_reader->live_docs_count();
+      TRI_ASSERT(_totalPos <= skipped);
+      skipped -= std::min(skipped, _totalPos);
+      _readerOffset = this->_reader->size();
     } else {
-      for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
+      for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset, _currentSegmentPos = 0) {
         if (!_itr && !resetIterator()) {
           continue;
         }
-        while (_itr->next()) {
-          skipped++;
-        }
+        skipped += calculateSkipAllCount(this->infos().countApproximate(), _currentSegmentPos, _itr.get());
         _itr.reset();
         _doc = nullptr;
       }
     }
   }
-  _totalPos = this->_reader->live_docs_count(); // mark node as exhausted so future skips will return 0 immediately
   return skipped;
 }
 
@@ -1433,43 +1415,30 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t skipped = 0;
-
-  for (auto& segment : _segments) {
-    TRI_ASSERT(segment.docs);
-    if (filterConditionIsEmpty(&this->infos().filterCondition())) {
-      TRI_ASSERT(segment.currentSegmentIndex < this->_reader->size());
-      auto const live_docs_count =  (*this->_reader)[segment.currentSegmentIndex].live_docs_count();
-      TRI_ASSERT(segment.segmentPos <= live_docs_count);
-      skipped += live_docs_count - segment.segmentPos;
-      segment.segmentPos = live_docs_count;
-    } else {
-      if (this->infos().countApproximate() == CountApproximate::Cost) {
-        auto cost = irs::cost::extract(*segment.docs, 0);
-        if (cost > segment.segmentPos) {
-          skipped += (cost - segment.segmentPos);
-          segment.segmentPos = cost;
-        } 
+  if (_heap_it.size()) {
+    for (auto& segment : _segments) {
+      TRI_ASSERT(segment.docs);
+      if (filterConditionIsEmpty(&this->infos().filterCondition())) {
+        TRI_ASSERT(segment.currentSegmentIndex < this->_reader->size());
+        auto const live_docs_count =  (*this->_reader)[segment.currentSegmentIndex].live_docs_count();
+        TRI_ASSERT(segment.segmentPos <= live_docs_count);
+        skipped += live_docs_count - segment.segmentPos;
+        segment.segmentPos = live_docs_count;
       } else {
-        while (segment.docs->next()) {
-          auto doc = segment.docs->value();
-          if (doc == segment.sortReaderRef->seek(doc)) {
-            ++skipped;
-          }
-        }
+       skipped +=  calculateSkipAllCount(this->infos().countApproximate(),
+                                         segment.segmentPos, segment.docs.get());
       }
     }
-  }
-  if (this->infos().countApproximate() == CountApproximate::Exact && 
-      !filterConditionIsEmpty(&this->infos().filterCondition()) &&
-      _heap_it.size() > 0) {
     // Adjusting by count of docs already consumed by heap but not consumed by executor.
     // But we should adjust by the heap size only if the heap was advanced at least once
     // or we have nothing consumed from doc iterators!
-    if(this->_segments[_heap_it.value()].segmentPos) {
-      skipped += (_heap_it.size() - 1);
+    if (!_segments.empty() && this->infos().countApproximate() == CountApproximate::Exact &&
+        !filterConditionIsEmpty(&this->infos().filterCondition()) &&
+        _heap_it.size() && this->_segments[_heap_it.value()].segmentPos) {
+       skipped += (_heap_it.size() - 1);
     }
+    _heap_it.reset();
   }
-  _heap_it.reset();
   return skipped;
 }
 
