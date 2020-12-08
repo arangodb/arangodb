@@ -134,6 +134,7 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<arangodb::application_features::ClusterFeaturePhase>(false);
   server.addFeature<arangodb::ClusterFeature>(false);
+  server.addFeature<arangodb::NetworkFeature>(false);
 }
 
 static void SetupCommunicationFeaturePhase(MockServer& server) {
@@ -363,7 +364,6 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<arangodb::QueryRegistryFeature>(false);
-  addFeature<arangodb::NetworkFeature>(false);
   if (start) {
     startFeatures();
   }
