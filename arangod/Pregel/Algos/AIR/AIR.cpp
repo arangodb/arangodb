@@ -107,7 +107,6 @@ void VertexAccumulators::parseUserParams(VPackSlice userParams) {
     // What do we do on error? std::terminate()
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, result.error().as_string());
   }
-  LOG_DEVEL << "done constructing";
 }
 
 VertexAccumulatorOptions const& VertexAccumulators::options() const {
