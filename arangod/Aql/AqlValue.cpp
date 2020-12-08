@@ -1022,7 +1022,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
                                     )
                     ).FromMaybe(true);
 
-        if (i % 1000 == 0) {
+        if (i % 1024 == 0) {
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
