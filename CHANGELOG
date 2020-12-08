@@ -21,6 +21,10 @@ v3.7.5 (XXXX-XX-XX)
     if set to non-autodetect value > 0
   - `--arangosearch.threads-limit`
 
+* Updated ArangoDB Starter to 0.14.15-1.
+
+* Fixed agency redirect in poll API.
+
 * Updated arangosync to 1.2.1.
 
 * Added support for fetching the list of currently running and slow AQL queries
