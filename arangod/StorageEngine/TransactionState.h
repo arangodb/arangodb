@@ -259,6 +259,12 @@ class TransactionState {
   /// the transaction
   void clearQueryCache();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // reset the internal Transaction ID to none.
+  // Only used in the Transaction Mock for internal reasons.
+  void resetTransactionId();
+#endif
+
  private:
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string const& cname,

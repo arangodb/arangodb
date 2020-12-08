@@ -406,6 +406,15 @@ void TransactionState::clearQueryCache() {
   }
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// reset the internal Transaction ID to none.
+// Only used in the Transaction Mock for internal reasons.
+void TransactionState::resetTransactionId() {
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  _id = arangodb::TransactionId::none();
+}
+#endif
+
 /// @brief update the status of a transaction
 void TransactionState::updateStatus(transaction::Status status) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
