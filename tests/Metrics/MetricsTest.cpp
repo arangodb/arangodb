@@ -257,9 +257,7 @@ TEST_F(MetricsTest, test_counter) {
 
 template<typename T> void gauge_test() {
 
-  T zdo = static_cast<T>(.1);
-  T zero = static_cast<T>(0.);
-  T one = static_cast<T>(1.);
+  T zdo = .1, zero = 0., one = 1.;
   Gauge g(zero, "gauge_1", "Gauge 1");
 
   using namespace std;
@@ -268,16 +266,16 @@ template<typename T> void gauge_test() {
   random_device rnd_device;
   mt19937 mersenne_engine {rnd_device()};  // Generates random integers
   uniform_real_distribution<T> dist {T(1), T(100)};
-  vector<T> vr(100);
+  vector<T> vr(1000);
   auto gen = [&dist, &mersenne_engine](){
                return dist(mersenne_engine);
              };
   generate(vr.begin(), vr.end(), gen);
 
-  //auto start = high_resolution_clock::now();
   size_t const p = 10;
   size_t const part = vr.size()/p;
   std::vector<std::future<void>> f;
+  f.reserve(p);
 
   g = one;
   for (size_t i = 0; i < p; ++i) {
@@ -293,9 +291,9 @@ template<typename T> void gauge_test() {
     i.wait();
   }
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-3f);
   } else {
-    ASSERT_DOUBLE_EQ(1., g.load());
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-10f);
   }
 
   g = one;
@@ -312,9 +310,9 @@ template<typename T> void gauge_test() {
     i.wait();
   }
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-3f);
   } else {
-    ASSERT_DOUBLE_EQ(1., g.load());
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-10f);
   }
 
   g = zero;
@@ -330,7 +328,6 @@ template<typename T> void gauge_test() {
   ASSERT_DOUBLE_EQ(g.load(),  one);
   g -= g.load();
   ASSERT_DOUBLE_EQ(g.load(),  zero);
-
 
 }
 
