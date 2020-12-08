@@ -51,6 +51,7 @@ using namespace arangodb;
 using namespace arangodb::methods;
 
 namespace {
+enum class QueriesMode { Current, Slow }; 
 
 network::Headers buildHeaders() {
   auto auth = AuthenticationFeature::instance();
@@ -85,7 +86,7 @@ arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
 /// @brief return the list of currently running or slow queries
 arangodb::Result getQueries(TRI_vocbase_t& vocbase,
                             velocypack::Builder& out, 
-                            arangodb::velocypack::StringRef action, 
+                            QueriesMode mode,
                             bool allDatabases, 
                             bool fanout) {
   Result res = checkAuthorization(vocbase, allDatabases);
@@ -94,12 +95,15 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
     return res;
   }
 
+  TRI_ASSERT(mode == QueriesMode::Slow || mode == QueriesMode::Current);
+
   arangodb::DatabaseFeature& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
 
   std::vector<arangodb::aql::QueryEntryCopy> queries;
   
   // local case
-  if (action == "slow") {
+  if (mode == QueriesMode::Slow) {
+    // slow queries
     if (allDatabases) {
       databaseFeature.enumerate([&queries](TRI_vocbase_t* vocbase) {
         auto forDatabase = vocbase->queryList()->listSlow();
@@ -110,6 +114,9 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
       queries = vocbase.queryList()->listSlow();
     }
   } else {
+    // currently running queries
+    TRI_ASSERT(mode == QueriesMode::Current);
+
     if (allDatabases) {
       databaseFeature.enumerate([&queries](TRI_vocbase_t* vocbase) {
         auto forDatabase = vocbase->queryList()->listCurrent();
@@ -144,7 +151,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
     options.param("local", "true");
     options.param("all", allDatabases ? "true" : "false");
     
-    std::string const url = std::string("/_api/query/") + action.toString();
+    std::string const url = std::string("/_api/query/") + (mode == QueriesMode::Slow ? "slow" : "current");
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -188,12 +195,12 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
   
 /// @brief return the list of slow queries
 Result Queries::listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout) {
-  return getQueries(vocbase, out, arangodb::velocypack::StringRef("slow"), allDatabases, fanout);
+  return getQueries(vocbase, out, QueriesMode::Slow, allDatabases, fanout);
 }
 
 /// @brief return the list of current queries
 Result Queries::listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout) {
-  return getQueries(vocbase, out, arangodb::velocypack::StringRef("current"), allDatabases, fanout);
+  return getQueries(vocbase, out, QueriesMode::Current, allDatabases, fanout);
 }
   
 /// @brief clears the list of slow queries
