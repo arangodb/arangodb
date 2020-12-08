@@ -1745,6 +1745,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       primaryArgs['cluster.my-role'] = 'PRIMARY';
       primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
       primaryArgs['javascript.enabled'] = 'false';
+      primaryArgs['cluster.min-replication-factor'] = '2';
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
     }
