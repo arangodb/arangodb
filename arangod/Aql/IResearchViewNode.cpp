@@ -816,7 +816,6 @@ const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
 const char* NODE_VIEW_NO_MATERIALIZATION = "noMaterialization";
-const char* NODE_VIEW_COUNT_APPROX = "countApproximate";
 
 void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
@@ -1267,7 +1266,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
 std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::collections() const {
   TRI_ASSERT(_plan && _plan->getAst());
- auto const& collections = _plan->getAst()->query().collections();
+  auto const& collections = _plan->getAst()->query().collections();
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
