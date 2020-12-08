@@ -235,7 +235,6 @@ TEST_F(MetricsTest, test_histogram_simple) {
 
 
 TEST_F(MetricsTest, test_counter) {
-
   Counter c(0, "counter_1", "Counter 1");
 
   ASSERT_EQ(c.load(),  0);
@@ -256,8 +255,9 @@ TEST_F(MetricsTest, test_counter) {
 }
 
 template<typename T> void gauge_test() {
-
-  T zdo = .1, zero = 0., one = 1.;
+  T zdo = T(.1);
+  T zero = T(0.);
+  T one = T(1.);
   Gauge g(zero, "gauge_1", "Gauge 1");
 
   using namespace std;
