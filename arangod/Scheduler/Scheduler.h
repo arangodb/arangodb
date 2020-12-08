@@ -66,7 +66,7 @@ class Scheduler {
   typedef std::shared_ptr<DelayedWorkItem> WorkHandle;
 
 
-  template<typename F, std::enable_if_t<std::is_class_v<F>, int> = 0>
+  template<typename F, std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
   bool queue(RequestLane lane, F&& fn) ADB_WARN_UNUSED_RESULT {
     auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(std::forward<F>(fn));
     return queueItem(lane, std::move(item));
