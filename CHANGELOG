@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.14.15-1.
+
 * Fixed agency redirect in poll API.
 
 * Updated arangosync to 1.2.1.
