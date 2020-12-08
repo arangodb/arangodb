@@ -342,7 +342,7 @@ TEST_F(MetricsTest, test_gauge_float) {
 template<typename Scale> void histogram_test(Scale const& scale) {
 
   using T = typename Scale::value_type;
-  bool constexpr linear = (Scale::scale_type == ScaleType::LINEAR);
+  bool constexpr linear = (Scale::scale_type == ScaleType::Linear);
 
   int buckets = static_cast<int>(scale.n());
   T mx = scale.high(), mn = scale.low(), d;
