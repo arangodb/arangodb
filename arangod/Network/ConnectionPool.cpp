@@ -201,15 +201,20 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
                                                ConnectionPool::Bucket& bucket) {
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
+  LOG_DEVEL << "selectConnection: Looking through " << bucket.list.size() << " connections in pool.";
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
     if (state == fuerte::Connection::State::Failed) {
+      LOG_DEVEL << "selectConnection: Found Failed connection in pool." << (uint64_t) c->fuerte.get();
       continue;
     }
 
     if (!c->fuerte->lease()) {
+      LOG_DEVEL << "selectConnection: cannot lease connection in pool." << (uint64_t) c->fuerte.get();
       continue;
     }
+
+    LOG_DEVEL << "selectConnection: have leased connection: " << (uint64_t) c->fuerte.get();
 
     TRI_ASSERT(_config.protocol != fuerte::ProtocolType::Undefined);
 
@@ -231,6 +236,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         // next check against the number of requests in flight
         if (c->fuerte->requestsLeft() <= limit) {
           c->lastLeased = std::chrono::steady_clock::now();
+          LOG_DEVEL << "selectConnection: successfully leased connection: " << (uint64_t) c->fuerte.get();
           return {c};
         } else {
           --(c->leases);
@@ -240,6 +246,8 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     }
   }
   
+  LOG_DEVEL << "selectConnection: Did not find open connection.";
+
   // no free connection found, so we add one
   LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "
     << endpoint << " bucket size  " << bucket.list.size();
