@@ -1,6 +1,8 @@
 devel
 -----
-* Fix for issue #772: Optimized document counting for ArangoSearch views
+* Fix for issue #772: Optimized document counting for ArangoSearch views.
+  Added new ArangoSearch view option 'countApproximate' for customizing 
+  view count strategy.
 
 * Fix Windows directory creation error handling.
 
