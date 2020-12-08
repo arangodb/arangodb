@@ -67,7 +67,7 @@ class Scheduler {
 
 
   template<typename F, std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
-  bool queue(RequestLane lane, F&& fn) ADB_WARN_UNUSED_RESULT {
+  [[nodiscard]] bool queue(RequestLane lane, F&& fn) {
     auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(std::forward<F>(fn));
     return queueItem(lane, std::move(item));
   }
@@ -227,7 +227,7 @@ class Scheduler {
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   virtual double approximateQueueFillGrade() const = 0;
-  
+
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
   virtual double unavailabilityQueueFillGrade() const = 0;
