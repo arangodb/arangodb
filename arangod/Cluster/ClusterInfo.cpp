@@ -1781,6 +1781,11 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
     if (tries == 1) {
       events::CreateDatabase(database.getName(), res.errorCode());
     }
+
+    if (_server.isStopping()) {
+      return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+
     if (tries >= 5) {
       nextTimeout = 5.0;
     }
