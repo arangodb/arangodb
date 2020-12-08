@@ -257,7 +257,7 @@ TEST_F(MetricsTest, test_counter) {
 
 template<typename T> void gauge_test() {
 
-  T zdo = .1, zero = 0., one = 1.;
+  T zdo = T(.1), zero = T(0.), one = T(1.);
   Gauge g(zero, "gauge_1", "Gauge 1");
 
   using namespace std;
