@@ -7866,7 +7866,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   static char const* AFN = "PREGEL_RESULT";
 
   AqlValue arg1 = extractFunctionParameterValue(parameters, 0);
-  if (!arg1.isNumber()) {
+  if (!arg1.isNumber() && !arg1.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
   bool withId = false;
