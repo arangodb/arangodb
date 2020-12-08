@@ -25,10 +25,13 @@
 #ifndef ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H 1
 
-#include <boost/lockfree/queue.hpp>
+#include <array>
 #include <condition_variable>
+#include <functional>
 #include <list>
 #include <mutex>
+
+#include <boost/lockfree/queue.hpp>
 
 #include "RestServer/Metrics.h"
 #include "Scheduler/Scheduler.h"
