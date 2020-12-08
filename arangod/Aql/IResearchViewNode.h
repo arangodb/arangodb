@@ -274,9 +274,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   OptimizationState& state() noexcept { return _optState; }
 
-  bool hasNonMaterializedVariables() const noexcept {
-    return !_outNonMaterializedViewVars.empty();
-  }
 
  private:
   /// @brief the database

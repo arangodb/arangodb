@@ -626,7 +626,6 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       _order = order.prepare();
     }
 
-    // TODO: fucntor for lazy cost evaluation
     // compile filter
     _filter = root.prepare(*_reader, _order, irs::no_boost(), &_filterCtx);
 
@@ -1080,7 +1079,8 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
       skipped -= std::min(skipped, _totalPos);
       _readerOffset = this->_reader->size();
     } else {
-      for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset, _currentSegmentPos = 0) {
+      for (size_t count = this->_reader->size(); _readerOffset < count;
+           ++_readerOffset, _currentSegmentPos = 0) {
         if (!_itr && !resetIterator()) {
           continue;
         }
@@ -1155,7 +1155,7 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     irs::score const& score, size_t numScores,
     LogicalCollection const& collection,
     irs::doc_iterator::ptr&& pkReader,
-    size_t segmentIndex,
+    size_t index,
     irs::doc_iterator* sortReaderRef,
     irs::payload const* sortReaderValue,
     irs::doc_iterator::ptr&& sortReader) noexcept
@@ -1164,7 +1164,7 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     score(&score),
     numScores(numScores),
     collection(&collection),
-    currentSegmentIndex(segmentIndex),
+    segmentIndex(index),
     sortReaderRef(sortReaderRef),
     sortValue(sortReaderValue),
     sortReader(std::move(sortReader)) {
@@ -1382,7 +1382,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(segment.doc);
-      this->pushStoredValues(*segment.doc, segment.currentSegmentIndex);
+      this->pushStoredValues(*segment.doc, segment.segmentIndex);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
@@ -1419,8 +1419,8 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
     for (auto& segment : _segments) {
       TRI_ASSERT(segment.docs);
       if (filterConditionIsEmpty(&this->infos().filterCondition())) {
-        TRI_ASSERT(segment.currentSegmentIndex < this->_reader->size());
-        auto const live_docs_count =  (*this->_reader)[segment.currentSegmentIndex].live_docs_count();
+        TRI_ASSERT(segment.segmentIndex < this->_reader->size());
+        auto const live_docs_count =  (*this->_reader)[segment.segmentIndex].live_docs_count();
         TRI_ASSERT(segment.segmentPos <= live_docs_count);
         skipped += live_docs_count - segment.segmentPos;
         segment.segmentPos = live_docs_count;
@@ -1430,8 +1430,9 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
       }
     }
     // Adjusting by count of docs already consumed by heap but not consumed by executor.
+    // This count is heap size minus 1 already consumed by executor after heap.next.
     // But we should adjust by the heap size only if the heap was advanced at least once
-    // or we have nothing consumed from doc iterators!
+    // (heap is actually filled on first next) or we have nothing consumed from doc iterators!
     if (!_segments.empty() && this->infos().countApproximate() == CountApproximate::Exact &&
         !filterConditionIsEmpty(&this->infos().filterCondition()) &&
         _heap_it.size() && this->_segments[_heap_it.value()].segmentPos) {

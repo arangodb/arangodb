@@ -241,13 +241,6 @@ class IResearchViewExecutorBase {
       return documentOutReg;
     }
 
-    template <iresearch::MaterializeType t = iresearch::MaterializeType::EmitCount,
-              typename E = enabled_for_materialize_type_t<t>>
-    [[nodiscard]] auto getCountReg() const noexcept
-        -> aql::RegisterId {
-      return documentOutReg;
-    }
-
     template <iresearch::MaterializeType t = iresearch::MaterializeType::Materialize,
               typename E = enabled_for_materialize_type_t<t>>
     auto getDocumentCallback() const noexcept -> IndexIterator::DocumentCallback const& {
@@ -450,7 +443,7 @@ class IResearchViewExecutor
   irs::document const* _doc{};
   size_t _readerOffset;
   size_t _currentSegmentPos; // current document iterator position in segment
-  size_t _totalPos;
+  size_t _totalPos; // total position for full snapshot
   LogicalCollection const* _collection{};
 
   // case ordered only:
@@ -489,7 +482,7 @@ class IResearchViewMergeExecutor
             irs::score const& score, size_t numScores,
             LogicalCollection const& collection,
             irs::doc_iterator::ptr&& pkReader,
-            size_t segmentIndex,
+            size_t index,
             irs::doc_iterator* sortReaderRef,
             irs::payload const* sortReaderValue,
             irs::doc_iterator::ptr&& sortReader) noexcept;
@@ -504,7 +497,7 @@ class IResearchViewMergeExecutor
     size_t numScores{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
     ColumnIterator pkReader;    // primary key reader
-    size_t currentSegmentIndex;  // first stored values index
+    size_t segmentIndex;  // first stored values index
     irs::doc_iterator* sortReaderRef; // pointer to sort column reader
     irs::payload const* sortValue;    // sort column value
     irs::doc_iterator::ptr sortReader; // sort column reader

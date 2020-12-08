@@ -26,7 +26,6 @@
 
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/ClusterNodes.h"
-#include "Aql/CollectNode.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"

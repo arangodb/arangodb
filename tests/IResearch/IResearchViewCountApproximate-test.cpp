@@ -315,12 +315,32 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilter) {
   executeAndCheck(queryString, expectedValues, -1);
 }
 
+TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterEmpty) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SEARCH d.value >= 10000 COLLECT WITH COUNT INTO c RETURN c ";
+
+  std::vector<VPackValue> expectedValues{
+    VPackValue(0),
+  };
+  executeAndCheck(queryString, expectedValues, -1);
+}
+
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCost) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 10 OPTIONS {countApproximate:'cost'} COLLECT WITH COUNT INTO c RETURN c ";
 
   std::vector<VPackValue> expectedValues{
     VPackValue(9),
+  };
+  executeAndCheck(queryString, expectedValues, -1);
+}
+
+TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCostEmpty) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SEARCH d.value >= 10000 OPTIONS {countApproximate:'cost'} COLLECT WITH COUNT INTO c RETURN c ";
+
+  std::vector<VPackValue> expectedValues{
+    VPackValue(0),
   };
   executeAndCheck(queryString, expectedValues, -1);
 }
@@ -411,7 +431,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSorte
 // and the skippAll method should still be correct (as it is correct call)
 TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC  COLLECT WITH COUNT INTO c   RETURN c ";
+      " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
+      " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                arangodb::aql::QueryString(queryString), nullptr,
                                arangodb::velocypack::Parser::fromJson("{}"));
@@ -477,12 +498,82 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   ASSERT_EQ(15, skipAllCall.getSkipCount());
 }
 
+TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpty) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SEARCH d.value >= 1000000 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
+      " COLLECT WITH COUNT INTO c   RETURN c ";
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+                               arangodb::aql::QueryString(queryString), nullptr,
+                               arangodb::velocypack::Parser::fromJson("{}"));
+  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  ASSERT_TRUE(query.ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+  plan->planRegisters();
+
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(1, nodes.size());
+  auto& viewNode = *arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+  
+  static std::vector<std::string> const EMPTY;
+  arangodb::aql::RegIdSetStack regsToKeep{1}; // we need at least one register to keep
+  arangodb::aql::RegisterInfos registerInfos = arangodb::aql::RegisterInfos{
+      {}, {}, 0, 0, viewNode.getRegsToClear(), regsToKeep}; // completely dummy. But we will not execute pipeline anyway. Just make ctor happy.
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase()),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options());
+  auto* snapshot = _view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+  auto reader =  std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
+      std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
+  arangodb::iresearch::IResearchViewSort sort;
+  sort.emplace_back({{"value", false}}, true);
+  arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
+                                                arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
+                                                {},
+                                                query,
+                                                {},
+                                                {&sort, 1U},
+                                                _view->storedValues(),
+                                                *plan,
+                                                viewNode.outVariable(),
+                                                viewNode.filterCondition(),
+                                                {false, false},
+                                                viewNode.getRegisterPlan()->varInfo,
+                                                0,
+                                                arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
+                                                arangodb::iresearch::CountApproximate::Exact);
+
+  std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
+  arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
+  arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
+  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
+  size_t skippedLocal = 0;
+  arangodb::aql::AqlCall call{};
+  arangodb::aql::IResearchViewStats stats;
+  arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
+  arangodb::aql::ResourceMonitor monitor;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::SharedAqlItemBlockPtr inputBlock{new arangodb::aql::AqlItemBlock(itemBlockManager, 1, 1)};
+  inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
+  arangodb::aql::AqlCall skipAllCall{0, 0, 0, true};
+  arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
+  std::tie(state, stats, skippedLocal, call) =
+           mergeExecutor.skipRowsRange(inputRange, skipAllCall);
+    
+  ASSERT_EQ(0, skipAllCall.getSkipCount());
+}
+
 // This corner-case is currently impossible as there are no way to get skipAll
 // without prior call to skip for MergeExecutor. But in future this might happen
 // and the skippAll method should still be correct (as it is correct call)
 TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC  COLLECT WITH COUNT INTO c   RETURN c ";
+      " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC "
+      " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                arangodb::aql::QueryString(queryString), nullptr,
                                arangodb::velocypack::Parser::fromJson("{}"));
