@@ -1,7 +1,7 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
-* Updated ArangoDB Starter to 0.14.15-1
+* Updated ArangoDB Starter to 0.14.15-1.
 
 * Better tracking of memory used in AQL graph traversals, COLLECT and SORT
   operations. From this version onwards, certain AQL queries can report a higher
