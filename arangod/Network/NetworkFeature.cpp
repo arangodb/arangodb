@@ -154,7 +154,13 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
     _idleTtlMilli = 10000;
   }
 
-  _maxInFlight = std::clamp(_maxInFlight, ::MinAllowedInFlight, ::MaxAllowedInFlight);
+  uint64_t clamped = std::clamp(_maxInFlight, ::MinAllowedInFlight, ::MaxAllowedInFlight);
+  if (clamped != _maxInFlight) {
+    LOG_TOPIC("38cd1", WARN, Logger::CONFIG)
+        << "Must set --network.max-requests-in-flight between " << ::MinAllowedInFlight
+        << " and " << ::MaxAllowedInFlight << ", clamping value";
+    _maxInFlight = clamped;
+  }
 }
 
 void NetworkFeature::prepare() {

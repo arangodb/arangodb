@@ -315,20 +315,38 @@ template<typename T> void gauge_test() {
     ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-10f);
   }
 
-  g = zero;
-  ASSERT_DOUBLE_EQ(g.load(),  zero);
-  g += zdo;
-  ASSERT_DOUBLE_EQ(g.load(),  zdo);
-  g -= zdo;
-  ASSERT_DOUBLE_EQ(g.load(),  zero);
-  g += zdo;
-  g *= g.load();
-  ASSERT_DOUBLE_EQ(g.load(),  zdo*zdo);
-  g /= g.load();
-  ASSERT_DOUBLE_EQ(g.load(),  one);
-  g -= g.load();
-  ASSERT_DOUBLE_EQ(g.load(),  zero);
-
+  if constexpr (std::is_same<T, float>::value) {
+    g = zero;
+    ASSERT_FLOAT_EQ(g.load(), zero);
+    g += zdo;
+    ASSERT_FLOAT_EQ(g.load(), zdo);
+    g -= zdo;
+    ASSERT_FLOAT_EQ(g.load(), zero);
+    g += zdo;
+    g *= g.load();
+    ASSERT_FLOAT_EQ(g.load(), zdo * zdo);
+    g /= g.load();
+    ASSERT_FLOAT_EQ(g.load(), one);
+    g -= g.load();
+    ASSERT_FLOAT_EQ(g.load(), zero);
+  } else if constexpr (std::is_same<T, double>::value) {
+    g = zero;
+    ASSERT_DOUBLE_EQ(g.load(), zero);
+    g += zdo;
+    ASSERT_DOUBLE_EQ(g.load(), zdo);
+    g -= zdo;
+    ASSERT_DOUBLE_EQ(g.load(), zero);
+    g += zdo;
+    g *= g.load();
+    ASSERT_DOUBLE_EQ(g.load(), zdo * zdo);
+    g /= g.load();
+    ASSERT_DOUBLE_EQ(g.load(), one);
+    g -= g.load();
+    ASSERT_DOUBLE_EQ(g.load(), zero);
+  } else {
+    // should only be instantiating this class with double or float
+    ASSERT_TRUE(false);
+  }
 }
 
 TEST_F(MetricsTest, test_gauge_double) {
