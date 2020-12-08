@@ -65,7 +65,7 @@ template <typename T>
 inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
-    result = (result * 10) + *(p++) - '0';
+    result = (result * 10) + (*(p++) - '0');
   }
 
   return result;
