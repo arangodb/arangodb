@@ -30,7 +30,7 @@
 
 #include <lz4.h>
 
-NS_LOCAL
+namespace {
 
 // can reuse stateless instances
 irs::compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
@@ -43,16 +43,16 @@ inline int acceleration(const irs::compression::options::Hint hint) noexcept {
   return FACTORS[static_cast<size_t>(hint)];
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 static_assert(
   sizeof(char) == sizeof(byte_type),
   "sizeof(char) != sizeof(byte_type)"
 );
 
-NS_BEGIN(compression)
+namespace compression {
 
 void LZ4_streamDecode_deleter::operator()(void *p) noexcept {
   if (p) {
@@ -137,5 +137,5 @@ void lz4::init() {
 
 REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 
-NS_END // compression
-NS_END
+} // compression
+}

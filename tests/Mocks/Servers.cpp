@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -153,7 +154,12 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<arangodb::QueryRegistryFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
-  server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+  {
+    auto& feature = server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
+  }
+
   server.addFeature<arangodb::aql::AqlFunctionFeature>(true);
   server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
   server.addFeature<arangodb::AqlFeature>(true);
@@ -412,7 +418,6 @@ MockClusterServer::MockClusterServer() : MockServer() {
 
   arangodb::network::ConnectionPool::Config config;
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
   addFeature<arangodb::NetworkFeature>(true, config);
@@ -430,7 +435,6 @@ void MockClusterServer::startFeatures() {
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
-  poolConfig.minOpenConnections = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 

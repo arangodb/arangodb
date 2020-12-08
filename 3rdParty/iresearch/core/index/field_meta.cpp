@@ -24,7 +24,7 @@
 #include "shared.hpp"
 #include "field_meta.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         field_meta implementation
@@ -90,4 +90,4 @@ bool column_meta::operator==(const column_meta& rhs) const {
   return name == rhs.name;
 }
 
-NS_END
+}

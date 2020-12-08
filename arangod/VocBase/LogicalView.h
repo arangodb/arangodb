@@ -149,9 +149,7 @@ class LogicalView : public LogicalDataSource {
   /// @return view instance or nullptr on error
   //////////////////////////////////////////////////////////////////////////////
   static Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                            velocypack::Slice definition,
-                            uint64_t planVersion = 0  // '0' by default for non-cluster
-  );
+                            velocypack::Slice definition);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted

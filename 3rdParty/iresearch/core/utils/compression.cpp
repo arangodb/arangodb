@@ -30,7 +30,7 @@
   #include "delta_compression.hpp"
 #endif
 
-NS_LOCAL
+namespace {
 
 struct value{
   explicit value(
@@ -82,10 +82,10 @@ class compression_register
   }
 };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(compression)
+namespace iresearch {
+namespace compression {
 
 compression_registrar::compression_registrar(
     const type_info& type,
@@ -147,7 +147,6 @@ compressor::ptr get_compressor(
     return factory ? factory(opts) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -160,7 +159,6 @@ decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*=
     return factory ? factory() : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -199,5 +197,5 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
-NS_END // compression
-NS_END
+} // compression
+}

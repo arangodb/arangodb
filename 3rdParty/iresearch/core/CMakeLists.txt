@@ -133,6 +133,7 @@ set(IResearch_core_sources
   ./store/store_utils.cpp
   ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
+  ./utils/thread_utils.cpp
   ./utils/attributes.cpp
   ./utils/attribute_store.cpp
   ./utils/automaton_utils.cpp
@@ -228,7 +229,6 @@ set(IResearch_core_headers
   ./utils/compression.hpp
   ./utils/lz4compression.hpp
   ./utils/file_utils.hpp
-  ./utils/fst_utils.hpp
   ./utils/fstext/fst_builder.hpp
   ./utils/fstext/fst_decl.hpp
   ./utils/fstext/fst_table_matcher.hpp
@@ -297,26 +297,6 @@ add_library(${IResearch_TARGET_NAME}-static
 )
 
 set_ipo(${IResearch_TARGET_NAME}-static)
-
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-shared-scrt
-    SHARED
-    ${IResearch_core_sources} ${IResearch_core_headers}
-    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
-    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt>
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-static-scrt
-    STATIC
-    ${IResearch_core_sources} ${IResearch_core_headers}
-    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-static-scrt)
-endif()
 
 add_sanitizers(${IResearch_TARGET_NAME}-shared)
 
@@ -391,32 +371,11 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
-
-# setup CRT
-if(MSVC)
-  add_dependencies(${IResearch_TARGET_NAME}-shared-scrt
-    ${IResearch_TARGET_NAME}-build_identifier
-    ${IResearch_TARGET_NAME}-build_version
-  )
-
-  add_dependencies(${IResearch_TARGET_NAME}-static-scrt
-    ${IResearch_TARGET_NAME}-build_identifier
-    ${IResearch_TARGET_NAME}-build_version
-    ${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    ${IResearch_TARGET_NAME}-format-1_0-static-scrt
-    ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-    ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
- )
-endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
@@ -430,43 +389,15 @@ target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    PRIVATE ${ICU_INCLUDE_DIR}
-    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
-  )
-
-  target_include_directories(${IResearch_TARGET_NAME}-static-scrt
-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    PRIVATE ${ICU_INCLUDE_DIR}
-    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
-  )
-endif()
 
 # setup MSVC specific compiler flags
 if(MSVC)
   target_compile_options(${IResearch_TARGET_NAME}-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    PRIVATE "/EHa"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    PRIVATE "/EHa"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
@@ -491,26 +422,6 @@ set_target_properties(${IResearch_TARGET_NAME}-static
 
 if (USE_IWYU)
   set_property(TARGET ${IResearch_TARGET_NAME}-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
-endif()
-
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME iresearch-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME iresearch-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
- )
 endif()
 
 if (MSVC)
@@ -543,6 +454,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -564,41 +476,6 @@ if (CLANG_TIDY_EXE)
   )
 endif()
 
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-shared-scrt
-    ${GCOV_LIBRARY}
-    ${BFD_SHARED_LIBS}
-    ${Boost_SHARED_sharedRT_LIBRARIES}
-    ${Lz4_SHARED_LIB}
-    ${ICU_SHARED_LIBS}
-    ${Unwind_SHARED_LIBS}
-    ${DL_LIBRARY}
-    ${MSVC_ONLY_LIBRARIES}
-    ${SIMD_LIBRARY_SHARED}
-  )
-
-  target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    ${IResearch_TARGET_NAME}-format-1_0-static-scrt
-    ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-    ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-    ${GCOV_LIBRARY}
-    ${BFD_STATIC_LIBS}
-    ${Lz4_STATIC_LIB}
-    ${ICU_STATIC_LIBS}
-    ${Unwind_STATIC_LIBS}
-    ${DL_LIBRARY}
-    ${MSVC_ONLY_LIBRARIES}
-    ${SIMD_LIBRARY_STATIC}
-  )
-endif()
-
 unset(IResearch_STATIC_LIBRARIES)
 
 set(IRESEARCH_STATIC_DEPENDENCIES
@@ -613,6 +490,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-pipeline-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
@@ -663,50 +541,6 @@ if (MSVC)
     ${IResearch_TARGET_NAME}-static-allinone-build
   )
 
-  unset(IResearch_STATIC_SCRT_LIBRARIES)
-
-  foreach(ELEMENT
-      "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
-      "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
-      ${IRESEARCH_STATIC_DEPENDENCIES})
-    set(IResearch_STATIC_SCRT_LIBRARIES "${IResearch_STATIC_SCRT_LIBRARIES} \"${ELEMENT}\"")
-  endforeach()
-
-  set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
-  set(IResearch_STATIC_SCRT_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_SCRT_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static-scrt>\" ${IResearch_STATIC_SCRT_LIBRARIES}")
-  string(REPLACE " " ";" IResearch_STATIC_SCRT_LIBRARIES_CMD "${IResearch_STATIC_SCRT_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC, cannot use VERBATIM)
-  add_custom_command(
-    OUTPUT "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
-    DEPENDS ${IResearch_TARGET_NAME}-static-scrt
-    COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
-    #VERBATIM - this causes error: "The input line is too long."
-  )
-
-  add_library(${IResearch_TARGET_NAME}-static-scrt-allinone
-    STATIC IMPORTED GLOBAL
-  )
-
-  add_custom_target(${IResearch_TARGET_NAME}-static-scrt-allinone-build
-    DEPENDS "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
-    PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-scrt,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
-  )
-
-  set_property(TARGET ${IResearch_TARGET_NAME}-static-scrt-allinone
-    PROPERTY
-    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
-    ${ATOMIC_LIBRARY} # non-static library
-    ${DL_LIBRARY} # non-static library
-    ${MSVC_ONLY_LIBRARIES} # non-static library
-  )
-
-  add_dependencies(${IResearch_TARGET_NAME}-static-scrt-allinone
-    ${IResearch_TARGET_NAME}-static-scrt-allinone-build
-  )
 elseif (APPLE)
   foreach(ELEMENT
       "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
@@ -814,42 +648,6 @@ add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-static
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt
-    SHARED
-    ./analysis/delimited_token_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    STATIC
-    ./analysis/delimited_token_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt)
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimiter-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
-
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   PROPERTIES
   PREFIX lib
@@ -868,25 +666,6 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimiter-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-delimiter-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-delimiter-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ${IResearch_TARGET_NAME}-shared
@@ -895,17 +674,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-static
   ${IResearch_TARGET_NAME}-static
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-  )
-
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    ${IResearch_TARGET_NAME}-static-scrt
-  )
-endif()
 
 ################################################################################
 ### analysis plugin : text
@@ -926,23 +694,6 @@ add_library(${IResearch_TARGET_NAME}-analyzer-text-static
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    SHARED
-    ./analysis/text_token_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    STATIC
-    ./analysis/text_token_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static-scrt)
-endif()
-
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
@@ -952,38 +703,6 @@ target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
 )
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-    PRIVATE ${Snowball_INCLUDE_DIR}
-  )
-
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-    PRIVATE ${Snowball_INCLUDE_DIR}
-  )
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-text-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-text-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-shared
   PROPERTIES
@@ -1003,26 +722,6 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-text-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-text-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-shared
   stemmer-shared
@@ -1032,19 +731,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-static
   stemmer-static
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-    stemmer-shared
-  )
-
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    ${IResearch_TARGET_NAME}-static-scrt
-    stemmer-static
-  )
-endif()
 
 ################################################################################
 ### analysis plugin : text token normalizing
@@ -1065,23 +751,6 @@ add_library(${IResearch_TARGET_NAME}-analyzer-norm-static
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt
-    SHARED
-    ./analysis/text_token_normalizing_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    STATIC
-    ./analysis/text_token_normalizing_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt)
-endif()
-
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
 )
@@ -1089,36 +758,6 @@ target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-static
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
 )
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt
-    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-  )
-
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-  )
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-norm-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-norm-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-norm-shared
   PROPERTIES
@@ -1138,26 +777,6 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-norm-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-norm-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-norm-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-shared
 )
@@ -1165,17 +784,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-norm-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-static
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-  )
-
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    ${IResearch_TARGET_NAME}-static-scrt
-  )
-endif()
 
 ################################################################################
 ### analysis plugin : text token stemming
@@ -1196,23 +804,6 @@ add_library(${IResearch_TARGET_NAME}-analyzer-stem-static
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt
-    SHARED
-    ./analysis/text_token_stemming_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    STATIC
-    ./analysis/text_token_stemming_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt)
-endif()
-
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared
   PRIVATE ${Snowball_INCLUDE_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
@@ -1222,38 +813,6 @@ target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-static
   PRIVATE ${Snowball_INCLUDE_DIR}
   PRIVATE ${ICU_INCLUDE_DIR} 
 )
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt
-    PRIVATE ${Snowball_INCLUDE_DIR}
-    PRIVATE ${ICU_INCLUDE_DIR}
-  )
-
-  target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    PRIVATE ${Snowball_INCLUDE_DIR}
-    PRIVATE ${ICU_INCLUDE_DIR} 
-  )
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-stem-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-stem-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-stem-shared
   PROPERTIES
@@ -1273,26 +832,6 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-stem-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-stem-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-stem-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stem-shared
   ${IResearch_TARGET_NAME}-shared
   stemmer-shared
@@ -1302,19 +841,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-static
   stemmer-static
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-    stemmer-shared
-  )
-
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    ${IResearch_TARGET_NAME}-static-scrt
-    stemmer-static
-  )
-endif()
 
 ################################################################################
 ### analysis plugin : token masking
@@ -1352,25 +878,6 @@ if(MSVC)
   set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt)
 endif()
 
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-mask-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-mask-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
-
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-mask-shared
   PROPERTIES
   PREFIX lib
@@ -1389,26 +896,6 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-mask-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-mask-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-mask-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-shared
 )
@@ -1416,17 +903,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-static
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-  )
-
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    ${IResearch_TARGET_NAME}-static-scrt
-  )
-endif()
 
 ################################################################################
 ### analysis plugin : ngram
@@ -1447,41 +923,6 @@ add_library(${IResearch_TARGET_NAME}-analyzer-ngram-static
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt
-    SHARED
-    ./analysis/ngram_token_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    STATIC
-    ./analysis/ngram_token_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt)
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-ngram-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-ngram-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-ngram-shared
   PROPERTIES
@@ -1501,26 +942,6 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-ngram-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-ngram-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME analyzer-ngram-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-shared
 )
@@ -1529,16 +950,51 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-static
   ${IResearch_TARGET_NAME}-static
 )
 
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-  )
+################################################################################
+### analysis plugin : pipeline
+################################################################################
 
-  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    ${IResearch_TARGET_NAME}-static-scrt
-  )
-endif()
+add_library(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  SHARED
+  ./analysis/pipeline_token_stream.cpp
+  ./analysis/pipeline_token_stream.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-pipeline-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  STATIC
+  ./analysis/pipeline_token_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-pipeline-static)
+
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-pipeline
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-pipeline-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### format plugin: format-1_0
@@ -1572,44 +1028,6 @@ add_library(${static_format_library_name}
 
 set_ipo(${static_format_library_name})
 
-# setup CRT
-if(MSVC)
-  add_library(${shared_format_library_name}-scrt
-    SHARED
-    ${IResearch_format-1_0_source}
-    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
-  )
-
-  set_ipo(${shared_format_library_name}-scrt)
-
-  add_library(${static_format_library_name}-scrt
-    STATIC
-    ${IResearch_format-1_0_source}
-    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
-  )
-
-  set_ipo(${static_format_library_name}-scrt)
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${shared_format_library_name}
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${static_format_library_name}
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${shared_format_library_name}-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${static_format_library_name}-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
-
 set_target_properties(${shared_format_library_name}
   PROPERTIES
   PREFIX lib
@@ -1628,26 +1046,6 @@ set_target_properties(${static_format_library_name}
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${shared_format_library_name}-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME format-1_0-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${static_format_library_name}-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME format-1_0-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
-  )
-endif()
-
 target_include_directories(${shared_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
@@ -1657,19 +1055,6 @@ target_include_directories(${static_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
 )
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${shared_format_library_name}-scrt
-    SYSTEM
-    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
-  )
-
-  target_include_directories(${static_format_library_name}-scrt
-    SYSTEM
-    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
-  )
-endif()
 
 target_link_libraries(${shared_format_library_name}
   ${IResearch_TARGET_NAME}-shared
@@ -1682,17 +1067,6 @@ target_link_libraries(${static_format_library_name}
   ${ATOMIC_LIBRARY}
   ${FORMAT_10_EXTRA_LIBS_STATIC}
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${shared_format_library_name}-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-  )
-
-  target_link_libraries(${static_format_library_name}-scrt
-    ${IResearch_TARGET_NAME}-static-scrt
-  )
-endif()
 
 ################################################################################
 ### scorer plugin : TF-IDF
@@ -1717,42 +1091,6 @@ add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static
 
 set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt
-    SHARED
-    ${IResearch_tfidf_source}
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-    STATIC
-    ${IResearch_tfidf_source}
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt)
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-tfidf-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-tfidf-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
-
 set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   PROPERTIES
   PREFIX lib
@@ -1771,36 +1109,9 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME scorer-tfidf-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME scorer-tfidf-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-shared
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-  )
-endif()
 
 ################################################################################
 ### scorer plugin : BM25
@@ -1825,42 +1136,6 @@ add_library(${IResearch_TARGET_NAME}-scorer-bm25-static
 
 set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt
-    SHARED
-    ${IResearch_bm25_source}
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-    STATIC
-    ${IResearch_bm25_source}
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt)
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-bm25-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-bm25-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-  )
-endif()
-
 set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-shared
   PROPERTIES
   PREFIX lib
@@ -1879,36 +1154,9 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME scorer-bm25-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
-    CXX_VISIBILITY_PRESET hidden
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-    PROPERTIES
-    PREFIX lib
-    IMPORT_PREFIX lib
-    OUTPUT_NAME scorer-bm25-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-endif()
-
 target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-shared
   ${IResearch_TARGET_NAME}-shared
 )
-
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt
-    ${IResearch_TARGET_NAME}-shared-scrt
-  )
-endif()
 
 ################################################################################
 ### installation

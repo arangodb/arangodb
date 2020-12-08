@@ -25,7 +25,7 @@
 
 #include "shared.hpp"
 
-NS_BEGIN(fst)
+namespace fst {
 
 // This class discards any implicit matches (e.g., the implicit epsilon
 // self-loops in the SortedMatcher). Matchers are most often used in
@@ -120,6 +120,6 @@ class explicit_matcher final : public MatcherBase<typename MatcherImpl::FST::Arc
   MatchType match_type_;  // Type of match requested.
 }; // explicit_matcher
 
-NS_END // fst
+} // fst
 
 #endif  // IRESEARCH_FST_MATHCER_H
