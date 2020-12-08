@@ -38,12 +38,12 @@ namespace {
 inline size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
   size_t levels = 0;
   if (skip_0 < count) {
-    levels = 1 + iresearch::math::log(count/skip_0, skip_n);
+    levels = 1 + irs::math::log(count/skip_0, skip_n);
   }
   return levels;
 }
 
-const size_t UNDEFINED = iresearch::integer_traits<size_t>::const_max;
+const size_t UNDEFINED = irs::integer_traits<size_t>::const_max;
 
 } // LOCAL
 

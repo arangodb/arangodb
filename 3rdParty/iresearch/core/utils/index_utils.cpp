@@ -465,10 +465,9 @@ index_writer::consolidation_policy_t consolidation_policy(
 }
 
 void read_document_mask(
-  iresearch::document_mask& docs_mask,
-  const iresearch::directory& dir,
-  const iresearch::segment_meta& meta
-) {
+    irs::document_mask& docs_mask,
+    const irs::directory& dir,
+    const irs::segment_meta& meta) {
   if (!segment_reader::has<document_mask_reader>(meta)) {
     return; // nothing to read
   }
