@@ -41,7 +41,7 @@ function arangoSearchCountOptimization () {
       db._dropView("UnitTestView");
       db._dropView("UnitTestViewSorted");
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection", { numberOfShards: 3 });
+      let c = db._create("UnitTestsCollection", { numberOfShards: 3 });
 
       for (let i = 0; i < 10010; ++i) {
         c.save({ value: "test" + (i % 10), count: i });
