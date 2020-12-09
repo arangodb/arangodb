@@ -24,6 +24,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
@@ -40,25 +41,22 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config),
       _loop(config.numIOThreads, config.name),
       _bucket_list_size(
-        _server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_connection_bucket_list_size", uint64_t(0), "Connection pool Bucket list size")) {
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_connection_bucket_list_size", uint64_t(0), "Connection pool Bucket list size")),
       _found_failed(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_connection_pool_found_faile", 0, "Found failed connection")),
       _cannot_lease(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_connection_pool_cannot_lease", 0, "Cannot lease connection")),
-      _cannot_lease(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_cannot_lease", 0, "Cannot lease connection")),
-      _have_lease(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
+      _have_leased(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_connection_pool_have_lease", 0, "Have connection lease")),
       _success_select(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_connection_pool_success_select", 0, "Success select lease")),
       _no_success_select(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_connection_pool_no_success_select", 0, "No success select lease")) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
