@@ -53,7 +53,7 @@ size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
 void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice,
-                        arangodb::velocypack::Slice& document) {
+                        arangodb::velocypack::Slice const& document) {
   for (auto&& key : VPackArrayIterator(arraySlice)) {
     if (key.isString()) {
       VPackBuilder tmp;
@@ -119,17 +119,25 @@ void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr, uint64_t& vertexIdRange) {
+  // HACK HACK HACK - we want to eliminate all custom types and work with
+  // the actual json document
+  VPackBuilder doc;
+  {
+    VPackParser parser(doc);
+    parser.parse(vertexDocument.toJson());
+  }
+
   // TODO: change GraphFormat interface here. Work with builder instead of Slice
   if (_dataAccess.readVertex && _dataAccess.readVertex->slice().isArray()) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, _dataAccess.readVertex->slice(), vertexDocument);
+    filterDocumentData(tmpBuilder, _dataAccess.readVertex->slice(), doc.slice());
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
                     _dataAccess, documentId, tmpBuilder.slice(), _vertexIdRange++);
   } else {
     // copy all
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
-                    _dataAccess, documentId, vertexDocument, _vertexIdRange++);
+                    _dataAccess, documentId, doc.slice(), _vertexIdRange++);
   }
 }
 
