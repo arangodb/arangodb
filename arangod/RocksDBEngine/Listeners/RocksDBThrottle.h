@@ -33,8 +33,8 @@
 //   http://www.apache.org/licenses/LICENSE-2.0
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_THROTTLE_H
-#define ARANGO_ROCKSDB_ROCKSDB_THROTTLE_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_THROTTLE_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_THROTTLE_H 1
 
 #include <chrono>
 #include <future>
@@ -88,7 +88,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
 
   void StopThread();
 
-  uint64_t GetThrottle() const {return _throttleBps;};
+  uint64_t GetThrottle() const { return _throttleBps; };
 
  protected:
   void Startup(rocksdb::DB* db);

@@ -55,13 +55,14 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
+#include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
-#include "RocksDBEngine/RocksDBEventListener.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
@@ -75,7 +76,6 @@
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
-#include "RocksDBEngine/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -228,8 +228,8 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
   }
 
   // turn off RocksDBThrottle, and release our pointers to it
-  if (nullptr != _listener.get()) {
-    _listener->StopThread();
+  if (nullptr != _throttleListener.get()) {
+    _throttleListener->StopThread();
   }  // if
 
   for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
@@ -629,12 +629,12 @@ void RocksDBEngine::start() {
   _options.bloom_locality = 1;
 
   if (_useThrottle) {
-    _listener.reset(new RocksDBThrottle);
-    _options.listeners.push_back(_listener);
+    _throttleListener.reset(new RocksDBThrottle);
+    _options.listeners.push_back(_throttleListener);
   }  // if
 
   if (_createShaFiles) {
-    _shaListener.reset(new RocksDBEventListener(server()));
+    _shaListener.reset(new RocksDBShaCalculator(server()));
     _options.listeners.push_back(_shaListener);
   }  // if
 
@@ -805,7 +805,7 @@ void RocksDBEngine::start() {
 
   // give throttle access to families
   if (_useThrottle) {
-    _listener->SetFamilies(cfHandles);
+    _throttleListener->SetFamilies(cfHandles);
   }
 
   // set our column families
@@ -2375,8 +2375,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf("fulltext", RocksDBColumnFamily::fulltext());
   builder.close();
 
-  if (_listener) {
-    builder.add("rocksdbengine.throttle.bps", VPackValue(_listener->GetThrottle()));
+  if (_throttleListener) {
+    builder.add("rocksdbengine.throttle.bps",
+                VPackValue(_throttleListener->GetThrottle()));
   }  // if
   
   {
