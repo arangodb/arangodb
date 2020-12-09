@@ -221,7 +221,6 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   using namespace std::chrono;
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
-  LOG_DEVEL << "selectConnection: Looking through " << bucket.list.size() << " connections in pool.";
   auto start = high_resolution_clock::now();
 
   for (std::shared_ptr<Context>& c : bucket.list) {
