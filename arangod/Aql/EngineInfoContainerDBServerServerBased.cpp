@@ -695,7 +695,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       auto allEngines = gn->engines();
       for (auto const& engine : *allEngines) {
         // fire and forget
-        network::sendRequest(pool, engine.first, fuerte::RestVerb::Delete,
+        network::sendRequest(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                              url + basics::StringUtils::itoa(engine.second),
                              noBody, options);
       }
