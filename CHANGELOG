@@ -3,6 +3,8 @@ v3.6.10 (XXXX-XX-XX)
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
 
+* Updated ArangoDB Starter to 0.14.15-1.
+
 * Better tracking of memory used in AQL graph traversals, COLLECT and SORT
   operations. From this version onwards, certain AQL queries can report a higher
   memory usage than in previous versions of ArangoDB. This is not because the
