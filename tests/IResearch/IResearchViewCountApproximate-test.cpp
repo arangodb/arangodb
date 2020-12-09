@@ -97,6 +97,8 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       auto createJson = VPackParser::fromJson(
           std::string("{") +
           "\"name\": \"" + viewName + "\", \
+           \"commitIntervalMsec\":0,\
+           \"consolidationIntervalMsec\":0,\
            \"type\": \"arangosearch\", \
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}], \
            \"storedValues\": [] \
