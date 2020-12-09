@@ -54,8 +54,8 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
           std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of connections created")),
       _leaseHistMSec(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_connection_pool_lease_time_hist", log_scale_t(2.f, 0.f, 100.f, 10),
-          std::string("Time to lease a connection from pool ") + _config.name + " [ms]")) {
+          "arangodb_connection_pool_lease_time_hist", log_scale_t(2.f, 0.f, 1000.f, 10),
+          std::string("Time to lease a connection from pool ") + _config.name + " [us]")) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
 }
@@ -255,7 +255,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
           c->lastLeased = std::chrono::steady_clock::now();
           _successSelect++;
           _leaseHistMSec.count(
-            duration<float,std::milli>(high_resolution_clock::now()-start).count());
+            duration<float,std::micro>(high_resolution_clock::now()-start).count());
           return {c};
         } else {
           --(c->leases);
