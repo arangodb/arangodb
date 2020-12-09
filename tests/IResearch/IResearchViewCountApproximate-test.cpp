@@ -234,7 +234,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
   }
 
   void executeAndCheck(std::string const& queryString,
-                       std::vector<VPackValue> const& expectedValues,
+                       std::vector<VPackValue> const* expectedValues,
                        int64_t expectedFullCount) {
     SCOPED_TRACE(testing::Message("Query:") << queryString);
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
@@ -255,30 +255,31 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       ASSERT_EQ(expectedFullCount, fullCountSlice.getInt());
     }
    
+    if (expectedValues) {
+      auto result = queryResult.data->slice();
+      EXPECT_TRUE(result.isArray());
 
-    auto result = queryResult.data->slice();
-    EXPECT_TRUE(result.isArray());
+      arangodb::velocypack::ArrayIterator resultIt(result);
 
-    arangodb::velocypack::ArrayIterator resultIt(result);
+      ASSERT_EQ(expectedValues->size(), resultIt.size());
+      // Check values
+      auto expectedValue = expectedValues->begin();
+      for (; resultIt.valid(); resultIt.next(), ++expectedValue) {
+        auto const actualDoc = resultIt.value();
+        auto const resolved = actualDoc.resolveExternals();
 
-    ASSERT_EQ(expectedValues.size(), resultIt.size());
-    // Check values
-    auto expectedValue = expectedValues.begin();
-    for (; resultIt.valid(); resultIt.next(), ++expectedValue) {
-      auto const actualDoc = resultIt.value();
-      auto const resolved = actualDoc.resolveExternals();
-
-      if (resolved.isString()) {
-        ASSERT_TRUE(expectedValue->isString());
-        arangodb::velocypack::ValueLength length = 0;
-        auto resStr = resolved.getString(length);
-        EXPECT_TRUE(memcmp(expectedValue->getCharPtr(), resStr, length) == 0);
-      } else {
-        ASSERT_TRUE(resolved.isNumber());
-        EXPECT_EQ(expectedValue->getInt64(), resolved.getInt());
+        if (resolved.isString()) {
+          ASSERT_TRUE(expectedValue->isString());
+          arangodb::velocypack::ValueLength length = 0;
+          auto resStr = resolved.getString(length);
+          EXPECT_TRUE(memcmp(expectedValue->getCharPtr(), resStr, length) == 0);
+        } else {
+          ASSERT_TRUE(resolved.isNumber());
+          EXPECT_EQ(expectedValue->getInt64(), resolved.getInt());
+        }
       }
+      EXPECT_EQ(expectedValue, expectedValues->end());
     }
-    EXPECT_EQ(expectedValue, expectedValues.end());
   }
 };
 }
@@ -290,7 +291,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountExact) {
   std::vector<VPackValue> expectedValues{
     VPackValue(17),
   };
-  executeAndCheck(queryString, expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountCost) {
@@ -300,7 +301,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(17),
   };
-  executeAndCheck(queryString, expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilter) {
@@ -310,7 +311,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilter) {
   std::vector<VPackValue> expectedValues{
     VPackValue(9),
   };
-  executeAndCheck(queryString, expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterEmpty) {
@@ -320,7 +321,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterEmpty) {
   std::vector<VPackValue> expectedValues{
     VPackValue(0),
   };
-  executeAndCheck(queryString, expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCost) {
@@ -330,7 +331,7 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(9),
   };
-  executeAndCheck(queryString, expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCostEmpty) {
@@ -340,17 +341,13 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCostEmpty) {
   std::vector<VPackValue> expectedValues{
     VPackValue(0),
   };
-  executeAndCheck(queryString, expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilter) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 2, 2 RETURN  d.value ";
-
-  std::vector<VPackValue> expectedValues{
-   VPackValue(11),  VPackValue(12) // we cannot sort here so could not predict what value will be read
-  };              // as 
-  executeAndCheck(queryString, expectedValues, 9);
+  executeAndCheck(queryString, nullptr, 9);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSorted) {
@@ -360,7 +357,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(2),
   };
-  executeAndCheck(queryString, expectedValues, 15);
+  executeAndCheck(queryString, &expectedValues, 15);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountSorted) {
@@ -370,7 +367,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(7),
   };
-  executeAndCheck (queryString, expectedValues, 17);
+  executeAndCheck (queryString, &expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountSortedCost) {
@@ -380,7 +377,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(7),
   };
-  executeAndCheck(queryString, expectedValues, 17);
+  executeAndCheck(queryString, &expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSorted) {
@@ -390,7 +387,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(10),
   };
-  executeAndCheck(queryString, expectedValues, 17);
+  executeAndCheck(queryString, &expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSortedCost) {
@@ -400,7 +397,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(10),
   };
-  executeAndCheck(queryString, expectedValues, 17);
+  executeAndCheck(queryString, &expectedValues, 17);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSortedCost) {
@@ -410,7 +407,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(11),
   };
-  executeAndCheck(queryString, expectedValues, 15);
+  executeAndCheck(queryString, &expectedValues, 15);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSortedCost) {
@@ -421,7 +418,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSorte
     VPackValue(2),
     VPackValue(3),
   };
-  executeAndCheck(queryString, expectedValues, 15);
+  executeAndCheck(queryString, &expectedValues, 15);
 }
 
 // This corner-case is currently impossible as there are no way to get skipAll
