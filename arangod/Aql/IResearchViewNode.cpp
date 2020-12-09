@@ -269,7 +269,7 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
   {
     auto const countApproximateSlice =
         optionsSlice.get("countApproximate");
-    if (!countApproximateSlice.isNone() && !countApproximateSlice.isNull()) {
+    if (!countApproximateSlice.isNone()) {
       if (!countApproximateSlice.isString()) {
         return false;
       }
