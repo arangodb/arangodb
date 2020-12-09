@@ -25,7 +25,7 @@
 
 #include "utils/string.hpp"
 
-NS_LOCAL
+namespace {
 
 // MSVC < v14.0 (Visual Studio >2015) does not support explicit initializer for arrays: error C2536
 // GCC < v4.9 does not initialize the union array member with the specified value (initializes with {0,0})
@@ -58,10 +58,10 @@ struct equal_size_type<unsigned long, 4> { typedef uint32_t type; };
 template<>
 struct equal_size_type<unsigned long, 8> { typedef uint64_t type; };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(numeric_utils)
+namespace iresearch {
+namespace numeric_utils {
 
 
 #if defined(__APPLE__) \
@@ -236,7 +236,7 @@ template<>
 struct numeric_traits<long double> {
 }; // numeric_traits
 
-NS_END // numeric_utils
-NS_END // ROOT
+} // numeric_utils
+} // ROOT
 
 #endif // IRESEARCH_NUMERIC_UTILS_H

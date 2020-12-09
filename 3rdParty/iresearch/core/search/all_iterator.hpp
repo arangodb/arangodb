@@ -31,7 +31,7 @@
 #include "search/score.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class all_iterator final
     : public frozen_attributes<3, doc_iterator> {
@@ -66,6 +66,6 @@ class all_iterator final
   cost cost_;
 }; // all_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_ALL_ITERATOR_H

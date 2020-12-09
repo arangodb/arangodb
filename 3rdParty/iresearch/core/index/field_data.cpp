@@ -50,7 +50,7 @@
 #include <algorithm>
 #include <cassert>
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -241,9 +241,9 @@ class pos_iterator final
   uint32_t pos_{}; // current position
 }; // pos_iterator
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 bool memcmp_less(
     const byte_type* lhs, size_t lhs_size,
@@ -260,7 +260,7 @@ bool memcmp_less(
   return res < 0;
 }
 
-NS_BEGIN(detail)
+namespace detail {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
@@ -732,7 +732,7 @@ class term_reader final : public irs::basic_term_reader,
   const irs::bytes_ref* max_{ &irs::bytes_ref::NIL };
 }; // term_reader
 
-NS_END // detail
+} // detail
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         field_data implementation
@@ -1227,4 +1227,4 @@ void fields_data::reset() noexcept {
 template<typename Reader>
 struct type<::pos_iterator<Reader>> : type<irs::position> { };
 
-NS_END // ROOT
+} // ROOT

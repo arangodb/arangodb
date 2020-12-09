@@ -35,7 +35,7 @@
 
 #include <iterator>
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum BufferHint
@@ -146,6 +146,8 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 
   operator index_input&() { return *in_; }
 
+  index_input* internal() const { return in_; }
+
  private:
   index_input* in_;
 }; // input_buf
@@ -222,6 +224,6 @@ class IRESEARCH_API buffered_index_input : public index_input {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_input
 
-NS_END
+}
 
 #endif // IRESEARCH_DATAINPUT_H
