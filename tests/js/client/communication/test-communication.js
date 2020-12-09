@@ -348,15 +348,6 @@ function GenericAqlSetupPathSuite(type) {
     }
   };
 
-  const activateTriggersAQLSetupSlowPathTest = () => {
-    let endpoint = endpointToURL(arango.getEndpoint());
-    debugSetFailAt(endpoint, `AqlSetupSlowPath::${twoShardColName}`);
-  };
-
-  const activateTriggersAQLSetupNoSlowPathTest = () => {
-    let endpoint = endpointToURL(arango.getEndpoint());
-    debugSetFailAt(endpoint, `AqlSetupNoSlowPath::${twoShardColName}`);
-  };
 
   const deactivateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
@@ -365,11 +356,6 @@ function GenericAqlSetupPathSuite(type) {
       debugClearFailAt(endpoint);
       debugResetRaceControl(endpoint);
     }
-  };
-
-  const deactivateTriggersAQLSetupPathTest = () => {
-    let endpoint = endpointToURL(arango.getEndpoint());
-    debugClearFailAt(endpoint);
   };
 
   const selectExclusiveQuery = () => {
@@ -419,7 +405,7 @@ function GenericAqlSetupPathSuite(type) {
       case "View":
         return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -546,10 +532,12 @@ function GenericAqlSetupPathSuite(type) {
         case "View": {
           db._create(vertexName, { numberOfShards: 3 });
           db._createView(viewName, "arangosearch", { links: { [vertexName]: { includeAllFields: true } } });
+          db[vertexName].save({ _key: "a" });
           break;
         }
         case "Satellite": {
           db._create(vertexName, { replicationFactor: "satellite" });
+          db[vertexName].save({ _key: "a" });
           break;
         }
       }
@@ -557,7 +545,6 @@ function GenericAqlSetupPathSuite(type) {
 
     tearDown: function () {
       deactivateShardLockingFailure();
-      deactivateTriggersAQLSetupPathTest();
       switch (type) {
         case "Graph":
         case "NamedGraph": {
@@ -585,8 +572,6 @@ function GenericAqlSetupPathSuite(type) {
         ["exclusive-2", exclusiveQuery]
       ];
       activateShardLockingFailure();
-      // We enforce a deadlock -> go slowpath
-      activateTriggersAQLSetupSlowPathTest();
 
       // run both queries in parallel
       singleRun(tests);
@@ -600,9 +585,6 @@ function GenericAqlSetupPathSuite(type) {
         ["write-2", writeQuery]
       ];
       activateShardLockingFailure();
-      // We enforce a deadlock -> go slowpath
-      activateTriggersAQLSetupSlowPathTest();
-
       // run both queries in parallel
       singleRun(tests);
       assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
@@ -615,8 +597,6 @@ function GenericAqlSetupPathSuite(type) {
         ["read-2", readQuery]
       ];
       activateShardLockingFailure();
-      // Read cannot deadlock -> do not go slow path
-      activateTriggersAQLSetupNoSlowPathTest();
 
       // run both queries in parallel
       singleRun(tests);
@@ -630,8 +610,6 @@ function GenericAqlSetupPathSuite(type) {
         ["write-2", writeQuery]
       ];
       activateShardLockingFailure();
-      // Write / Write cannot dead lock -> do not go slow path
-      activateTriggersAQLSetupNoSlowPathTest();
 
       // run both queries in parallel
       singleRun(tests);
@@ -645,8 +623,6 @@ function GenericAqlSetupPathSuite(type) {
         ["read-2", readQuery]
       ];
       activateShardLockingFailure();
-      // Read cannot deadlock -> do not go slow path
-      activateTriggersAQLSetupNoSlowPathTest();
 
       // run both queries in parallel
       singleRun(tests);
@@ -660,8 +636,6 @@ function GenericAqlSetupPathSuite(type) {
         ["read-2", readQuery]
       ];
       activateShardLockingFailure();
-      // Read cannot deadlock -> do not go slow path
-      activateTriggersAQLSetupNoSlowPathTest();
 
       // run both queries in parallel
       singleRun(tests);

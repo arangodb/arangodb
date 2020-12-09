@@ -475,34 +475,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // Will contain any other of the errors else.
             return res;
           });
-#if ARANGODB_ENABLE_FAILURE_TESTS
-  if (TRI_HasSetFailurePointsDebugging()) {
-    // Failure point to test if a controlled query ends up
-    // into the slow-path, because we enforced the dead-lock.
-    for (auto const& col : _query.collectionNames()) {
-      TRI_IF_FAILURE(("AqlSetupSlowPath::" + col).c_str()) {
-        // This query should NOT enter the slow path.
-        TRI_ASSERT(fastPathResult.get().fail());
-        TRI_ASSERT(fastPathResult.get().is(TRI_ERROR_LOCK_TIMEOUT));
-      }
-    }
-  }
-#endif
   if (fastPathResult.get().fail()) {
     if (fastPathResult.get().is(TRI_ERROR_LOCK_TIMEOUT)) {
-#if ARANGODB_ENABLE_FAILURE_TESTS
-      if (TRI_HasSetFailurePointsDebugging()) {
-        // Failure point to test if a controlled query does not end up
-        // into the slow-path, because we do know there is no dead-lock
-        for (auto const& col : _query.collectionNames()) {
-          TRI_IF_FAILURE(("AqlSetupNoSlowPath::" + col).c_str()) {
-            // This query should NOT enter the slow path.
-            TRI_ASSERT(false);
-          }
-        }
-      }
-#endif
-
       {
         // in case of fast path failure, we need to cleanup engines
         cleanupEngines(fastPathResult.get().errorNumber(),
@@ -691,7 +665,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     url = "/_internal/traverser/";
     VPackBuffer<uint8_t> noBody;
 
-    for (auto const& gn : _graphNodes) {
+    for (auto& gn : _graphNodes) {
       auto allEngines = gn->engines();
       for (auto const& engine : *allEngines) {
         // fire and forget
@@ -700,6 +674,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                              noBody, options);
       }
       _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
+      gn->clearEngines();
     }
 
     serverQueryIds.clear();
