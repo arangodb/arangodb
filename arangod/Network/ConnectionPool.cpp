@@ -37,8 +37,29 @@ namespace network {
 using namespace arangodb::fuerte::v1;
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _config(config), 
-      _loop(config.numIOThreads, config.name) {
+    : _config(config),
+      _loop(config.numIOThreads, config.name),
+      _bucket_list_size(
+        _server.getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_connection_bucket_list_size", uint64_t(0), "Connection pool Bucket list size")) {
+      _found_failed(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_found_faile", 0, "Found failed connection")),
+      _cannot_lease(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_cannot_lease", 0, "Cannot lease connection")),
+      _cannot_lease(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_cannot_lease", 0, "Cannot lease connection")),
+      _have_lease(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_have_lease", 0, "Have connection lease")),
+      _success_select(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_success_select", 0, "Success select lease")),
+      _no_success_select(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_no_success_select", 0, "No success select lease")) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
 }
@@ -55,7 +76,7 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
     guard.unlock();
 
     auto tmp = std::make_unique<Bucket>(); //get memory outside lock
-    
+
     WRITE_LOCKER(wguard, _lock);
     auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
     it = it2;
@@ -130,8 +151,8 @@ void ConnectionPool::pruneConnections() {
       } else {
         ++aliveCount;
         ++it;
-        
-        if (aliveCount == _config.maxOpenConnections && 
+
+        if (aliveCount == _config.maxOpenConnections &&
             it != buck.list.end()) {
           LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
             << "pruning extra connections to '" << pair.first
@@ -182,7 +203,7 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
   builder.verifyHost(_config.verifyHosts);
   builder.protocolType(_config.protocol); // always overwrite protocol
   TRI_ASSERT(builder.socketType() != SocketType::Undefined);
-    
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
@@ -202,6 +223,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
   LOG_DEVEL << "selectConnection: Looking through " << bucket.list.size() << " connections in pool.";
+
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
     if (state == fuerte::Connection::State::Failed) {
@@ -245,7 +267,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
       }
     }
   }
-  
+
   LOG_DEVEL << "selectConnection: Did not find open connection.";
 
   // no free connection found, so we add one
