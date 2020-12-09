@@ -538,7 +538,8 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         (idle <= max_idle_ || (!queue_.empty() && threads_ == 1))) {
       if (const auto run_state = state_.load();
           !queue_.empty() && State::ABORT != run_state) {
-        shared_state->cond.wait_until(lock, queue_.top().at);
+        const auto at = queue_.top().at; // queue_ might be modified
+        shared_state->cond.wait_until(lock, at);
       } else if (State::RUN == run_state) {
         assert(queue_.empty());
         shared_state->cond.wait(lock);
