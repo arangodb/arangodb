@@ -1,6 +1,9 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* When querying the list of currently running or slow AQL queries, ignore not-yet
+  created databases on other coordinators.
+
 * Fixed ES-662 by introducing refactored thread pool to make more efficient
   consolidation and commit routines for links of ArangoSearch views.
 
