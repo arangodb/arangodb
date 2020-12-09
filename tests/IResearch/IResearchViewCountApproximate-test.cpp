@@ -347,9 +347,10 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCostEmpty) {
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilter) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 2, 1  RETURN  d.value ";
+      " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 2, 2  SORT d.value DESC RETURN  d.value ";
 
   std::vector<VPackValue> expectedValues{
+    VPackValue(12),
     VPackValue(11),
   };
   executeAndCheck(queryString, expectedValues, 9);

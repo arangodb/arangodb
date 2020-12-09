@@ -2513,7 +2513,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
           arangodb::aql::ExecutionNode::fromVPackFactory(query.plan(), nodeSlice));
       auto& deserialized =
           dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
-      EXPECT_EQ(node.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
+      EXPECT_EQ(deserialized.options().countApproximate, arangodb::iresearch::CountApproximate::Exact);
     }
   }
 }
