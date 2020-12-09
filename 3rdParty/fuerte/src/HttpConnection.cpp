@@ -667,6 +667,17 @@ bool HttpConnection<ST>::lease() {
   return true;   // this is a noop, derived classes can override
 }
 
+// Unlease this connection, has to be done if no sendRequest was called
+// on it after the lease.
+template <SocketType ST>
+void HttpConnection<ST>::unlease() {
+  int exp = 1;
+  // Undo the lease, we do not care if this has not worked.
+  this->_leased.compare_exchange_strong(exp, 0);
+  FUERTE_LOG_TRACE << "Connection un leased: this=" << this;
+}
+
+
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Tcp>;
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Ssl>;
 #ifdef ASIO_HAS_LOCAL_SOCKETS

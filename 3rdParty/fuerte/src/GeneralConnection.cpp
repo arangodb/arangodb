@@ -56,6 +56,12 @@ bool GeneralConnection<ST>::lease() {
   return true;   // this is a noop, derived classes can override
 }
 
+// Unlease this connection (give lease back), necessary if no sendRequest was called
+template <SocketType ST>
+void GeneralConnection<ST>::unlease() {
+  // this is a noop, derived classes can override
+}
+
 // Activate this connection.
 template <SocketType ST>
 void GeneralConnection<ST>::startConnection() {

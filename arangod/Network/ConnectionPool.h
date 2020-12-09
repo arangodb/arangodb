@@ -26,6 +26,7 @@
 #include "Basics/ReadWriteSpinLock.h"
 #include "Containers/SmallVector.h"
 #include "Network/types.h"
+#include "RestServer/MetricsFeature.h"
 #include "VocBase/voc-types.h"
 
 #include <fuerte/loop.h>
@@ -80,7 +81,7 @@ class ConnectionPool final {
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
-  
+
   /// @brief shutdown all connections
   void drainConnections();
 
@@ -89,7 +90,7 @@ class ConnectionPool final {
 
   /// @brief automatically prune connections
   void pruneConnections();
-  
+
   /// @brief cancel connections to this endpoint
   size_t cancelConnections(std::string const& endpoint);
 
@@ -119,7 +120,7 @@ class ConnectionPool final {
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
   ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
-  
+
  private:
   Config const _config;
 
@@ -128,6 +129,14 @@ class ConnectionPool final {
 
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
+
+  Gauge<uint64_t>& _totalConnectionsInPool;
+  Counter& _successSelect;
+  Counter& _noSuccessSelect;
+  Counter& _connectionsCreated;
+
+  Histogram<log_scale_t<float>>& _leaseHistMSec;
+
 };
 
 class ConnectionPtr {

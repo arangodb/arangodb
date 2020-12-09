@@ -24,6 +24,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
@@ -54,7 +55,7 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
     guard.unlock();
 
     auto tmp = std::make_unique<Bucket>(); //get memory outside lock
-    
+
     WRITE_LOCKER(wguard, _lock);
     auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
     it = it2;
@@ -128,11 +129,12 @@ void ConnectionPool::pruneConnections() {
 
       if (remove) {
         it = buck.list.erase(it);
+        _totalConnectionsInPool -= 1;
       } else {
         ++aliveCount;
         ++it;
-        
-        if (aliveCount == _config.maxOpenConnections && 
+
+        if (aliveCount == _config.maxOpenConnections &&
             it != buck.list.end()) {
           LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
             << "pruning extra connections to '" << pair.first
@@ -244,6 +246,10 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   auto c = std::make_shared<Context>(fuerte, std::chrono::steady_clock::now(), 1 /* leases*/);
   bucket.list.push_back(c);
+  _totalConnectionsInPool += 1;
+  
+  _leaseHistMSec.count(
+    duration<float, std::milli>(high_resolution_clock::now() - start).count());
   return {c};
 }
 

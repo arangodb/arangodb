@@ -65,6 +65,7 @@ struct DummyConnection final : public fuerte::Connection {
   bool lease() override {
     return true;
   }
+  void unlease() override {}
 
   void cancel() override {}
   void startConnection() override {}
