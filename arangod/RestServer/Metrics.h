@@ -25,19 +25,18 @@
 #define ARANGODB_REST_SERVER_METRICS_H 1
 
 #include <atomic>
-#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <limits>
-#include <map>
-#include <memory>
 #include <string>
-#include <unordered_map>
-#include <variant>
 #include <vector>
 
-#include "Basics/VelocyPackHelper.h"
-#include "Logger/LogMacros.h"
+#include "Basics/debugging.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "counter.h"
 
 class Metric {
@@ -356,19 +355,6 @@ struct lin_scale_t : public scale_t<T> {
  private:
   T _base, _div;
 };
-
-
-template<typename ... Args>
-std::string strfmt (std::string const& format, Args ... args) {
-  size_t size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1;
-  if( size <= 0 ) {
-    throw std::runtime_error( "Error during formatting." );
-  }
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args ...);
-  return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
-}
-
 
 
 /**
