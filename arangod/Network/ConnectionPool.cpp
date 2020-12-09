@@ -265,6 +265,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
           return {c};
         } else {
           --(c->leases);
+          c->fuerte->unlease();
           _no_success_select++;
           break;
         }

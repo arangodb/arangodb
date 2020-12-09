@@ -127,6 +127,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
     bool lease() override {
       return true;
     }
+    void unlease() override {}
 
     AsyncAgencyCommPoolMock* _mock;
     std::string _endpoint;
