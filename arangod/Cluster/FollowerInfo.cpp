@@ -316,7 +316,7 @@ bool FollowerInfo::updateFailoverCandidates() {
   }
   TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
-  _failoverCandidates = std::make_shared<std::vector<ServerID>>(*_followers);
+  _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
