@@ -146,6 +146,7 @@ void ConnectionPool::pruneConnections() {
 
       if (remove) {
         it = buck.list.erase(it);
+        _bucket_list_size-=1;
       } else {
         ++aliveCount;
         ++it;
@@ -226,15 +227,18 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     const fuerte::Connection::State state = c->fuerte->state();
     if (state == fuerte::Connection::State::Failed) {
       LOG_DEVEL << "selectConnection: Found Failed connection in pool." << (uint64_t) c->fuerte.get();
+      _found_failed++;
       continue;
     }
 
     if (!c->fuerte->lease()) {
       LOG_DEVEL << "selectConnection: cannot lease connection in pool." << (uint64_t) c->fuerte.get();
+      _cannot_lease++;
       continue;
     }
 
     LOG_DEVEL << "selectConnection: have leased connection: " << (uint64_t) c->fuerte.get();
+    _have_leased++;
 
     TRI_ASSERT(_config.protocol != fuerte::ProtocolType::Undefined);
 
@@ -257,9 +261,11 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         if (c->fuerte->requestsLeft() <= limit) {
           c->lastLeased = std::chrono::steady_clock::now();
           LOG_DEVEL << "selectConnection: successfully leased connection: " << (uint64_t) c->fuerte.get();
+          _success_select++;
           return {c};
         } else {
           --(c->leases);
+          _no_success_select++;
           break;
         }
       }
@@ -278,6 +284,8 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   auto c = std::make_shared<Context>(fuerte, std::chrono::steady_clock::now(), 1 /* leases*/);
   bucket.list.push_back(c);
+  _bucket_list_size+=1;
+  
   return {c};
 }
 
