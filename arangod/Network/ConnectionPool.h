@@ -140,6 +140,9 @@ class ConnectionPool final {
   Counter& _successSelect;
   Counter& _noSuccessSelect;
   Counter& _connectionsCreated;
+
+  Histogram<log_scale_t<float>>& _leaseHistMSec;
+
 };
 
 class ConnectionPtr {

@@ -51,7 +51,11 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
           std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "No success select lease")),
       _connectionsCreated(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of collections created")) {
+          std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of connections created")),
+      _leaseHistMSec(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_connection_pool_lease_time_hist", log_scale_t(2.f, 0.f, 100.f, 10),
+          std::string("Time to lease a connection from pool ") + _config.name + " [ms]")) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
 }
@@ -213,9 +217,12 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
 
 ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
                                                ConnectionPool::Bucket& bucket) {
+
+  using namespace std::chrono;
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
   LOG_DEVEL << "selectConnection: Looking through " << bucket.list.size() << " connections in pool.";
+  auto start = high_resolution_clock::now();
 
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
@@ -248,6 +255,8 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         if (c->fuerte->requestsLeft() <= limit) {
           c->lastLeased = std::chrono::steady_clock::now();
           _successSelect++;
+          _leaseHistMSec.count(
+            duration<float,std::milli>(high_resolution_clock::now()-start).count());
           return {c};
         } else {
           --(c->leases);
@@ -273,6 +282,8 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   bucket.list.push_back(c);
   _totalConnectionsInPool += 1;
   
+  _leaseHistMSec.count(
+    duration<float,std::milli>(high_resolution_clock::now()-start).count());
   return {c};
 }
 
