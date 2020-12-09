@@ -1,6 +1,9 @@
 devel
 -----
 
+* When querying the list of currently running or slow AQL queries, ignore not-yet
+  created databases on other coordinators.
+
 * Added support for fetching the list of currently running and slow AQL queries
   from all databases at once, by adding an `all` parameter to the following
   query APIs:
