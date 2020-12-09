@@ -126,14 +126,11 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
-    LOG_DEVEL << "Locking " << cname << " with " << (int)accessType
-              << " Server: " << _id.serverId() << " id: " << _id.id();
     auto& raceController = basics::DebugRaceController::sharedInstance();
     if (!raceController.didTrigger()) {
       raceController.waitForOthers(2, _id);
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
-      LOG_DEVEL << "Testing: " << shardNum << " on id " << _id.id();
       if (shardNum % 2 == 0) {
         std::vector<std::any> const& data = raceController.data();
         auto min = *std::min_element(data.begin(), data.end(),
@@ -142,7 +139,6 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
                                               std::any_cast<TransactionId>(b);
                                      });
         if (_id == std::any_cast<TransactionId>(min)) {
-          LOG_DEVEL << "We sleep on " << _id.id();
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
       } else {
@@ -153,7 +149,6 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
                                               std::any_cast<TransactionId>(b);
                                      });
         if (_id == std::any_cast<TransactionId>(max)) {
-          LOG_DEVEL << "We sleep on " << _id.id();
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
       }
