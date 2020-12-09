@@ -1,3 +1,10 @@
+v3.7.6 (XXXX-XX-XX)
+-------------------
+
+* Fixed bug in the connection pool which could prevent connection reusage
+  under high load and lead to lots of new connection creations, in particular
+  with TLS.
+
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
