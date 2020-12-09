@@ -2071,14 +2071,14 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   void replaceInView(ExecutionNode* en) {
     auto view = ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(en);
-    if (view->filterConditionIsEmpty()) {
+    AstNode const& search = view->filterCondition();
+    if (filterConditionIsEmpty(&search)) {
       // nothing to do
       return;
     }
-    AstNode const& search = view->filterCondition();
+
     VarSet variables;
     Ast::getReferencedVariables(&search, variables);
-
     // check if the search condition uses any of the variables that we want to
     // replace
     AstNode* cloned = nullptr;

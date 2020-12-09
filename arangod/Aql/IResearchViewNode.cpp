@@ -1465,10 +1465,6 @@ void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
   _filterCondition = !node ? &ALL : node;
 }
 
-bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
-  return ::filterConditionIsEmpty(_filterCondition);
-}
-
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"

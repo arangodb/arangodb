@@ -147,9 +147,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief set the filter condition to pass to the view
   void filterCondition(aql::AstNode const* node) noexcept;
 
-  /// @brief return true if the filter condition is empty
-  bool filterConditionIsEmpty() const noexcept;
-
   /// @brief return list of shards related to the view (cluster only)
   std::vector<std::string> const& shards() const noexcept { return _shards; }
 

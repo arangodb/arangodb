@@ -104,8 +104,9 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
   // build search condition
   Condition searchCondition(plan.getAst());
 
-  if (!viewNode.filterConditionIsEmpty()) {
-    searchCondition.andCombine(&viewNode.filterCondition());
+  auto nodeFilter = viewNode.filterCondition();
+  if (!filterConditionIsEmpty(&nodeFilter)) {
+    searchCondition.andCombine(&nodeFilter);
     searchCondition.normalize(
         &plan, true, viewNode.options().conditionOptimization);
 
