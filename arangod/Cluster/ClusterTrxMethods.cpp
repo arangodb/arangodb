@@ -159,9 +159,9 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
     return Result(commError);
   }
 
-  VPackSlice answer = resp.response->slice();
-  if ((resp.response->statusCode() == fuerte::StatusOK ||
-       resp.response->statusCode() == fuerte::StatusCreated) &&
+  VPackSlice answer = resp.slice();
+  if ((resp.statusCode() == fuerte::StatusOK ||
+       resp.statusCode() == fuerte::StatusCreated) &&
       answer.isObject()) {
     VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
     VPackSlice statusSlice =

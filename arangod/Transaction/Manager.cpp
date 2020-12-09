@@ -1028,7 +1028,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
         }
         auto& res = it.get();
-        if (res.response && res.response->statusCode() == fuerte::StatusOK) {
+        if (res.statusCode() == fuerte::StatusOK) {
           VPackSlice slice = res.slice();
           if (slice.isObject()) {
             slice = slice.get("transactions");

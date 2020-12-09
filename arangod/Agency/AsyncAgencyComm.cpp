@@ -195,28 +195,27 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
     return std::move(future).thenValue(
         [meta = std::move(meta), endpoint = std::move(endpoint), &man,
          body = std::move(body)](network::Response&& result) mutable {
-          auto& resp = result.response;
-
-          switch (result.error) {
+          
+           switch (result.error) {
             case Error::NoError:
               // handle inquiry response
-              if (resp->statusCode() == fuerte::StatusNotFound) {
+              if (result.statusCode() == fuerte::StatusNotFound) {
                 return ::agencyAsyncSend(man, std::move(meta), std::move(body));
               }
 
-              if (resp->statusCode() == fuerte::StatusTemporaryRedirect) {
+              if (result.statusCode() == fuerte::StatusTemporaryRedirect) {
                 // get the Location header
                 std::string const& location =
-                    resp->header.metaByKey(arangodb::StaticStrings::Location);
+                    result.response().header.metaByKey(arangodb::StaticStrings::Location);
                 redirectOrError(man, endpoint, location);
                 return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
               }
-              return futures::makeFuture(AsyncAgencyCommResult{result.error,
-                                                               std::move(resp)});  // otherwise return error as is
+              // otherwise return error as is
+              return futures::makeFuture(AsyncAgencyCommResult{result.error, result.stealResponse()});
             case Error::ConnectionCanceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
-                  AsyncAgencyCommResult{result.error, std::move(resp)});
+                  AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
               [[fallthrough]];
             case Error::CouldNotConnect:
@@ -236,8 +235,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
               return agencyAsyncInquiry(man, std::move(meta), std::move(body));
 
             case Error::VstUnauthorized:
+              // unrecoverable error
               return futures::makeFuture(AsyncAgencyCommResult{result.error,
-                                                               std::move(resp)});  // unrecoverable error
+                                                               result.stealResponse()});
           }
 
           ADB_UNREACHABLE;
@@ -295,55 +295,51 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               << "agencyAsyncSend [" << meta.requestId
               << "] request done, result: " << to_string(result.error);
 
-          auto& req = result.request;
-          auto& resp = result.response;
-
           switch (result.error) {
             case Error::NoError: { 
-              TRI_ASSERT(req != nullptr);
+              TRI_ASSERT(result.hasRequest());
 
               LOG_TOPIC("aac88", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend [" << meta.requestId
-                  << "] communication successful, statusCode: " << resp->statusCode();
+                  << "] communication successful, statusCode: " << result.statusCode();
 
               // success
-              if ((resp->statusCode() >= 200 && resp->statusCode() <= 299)) {
+              if ((result.statusCode() >= 200 && result.statusCode() <= 299)) {
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
               // user error
-              if ((400 <= resp->statusCode() && resp->statusCode() <= 499)) {
+              if ((400 <= result.statusCode() && result.statusCode() <= 499)) {
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
 
               // 503 redirect
-              if (resp->statusCode() == StatusTemporaryRedirect) {
+              if (result.statusCode() == StatusTemporaryRedirect) {
                 // get the Location header
                 std::string const& location =
-                    resp->header.metaByKey(arangodb::StaticStrings::Location);
+                    result.response().header.metaByKey(arangodb::StaticStrings::Location);
                 redirectOrError(man, endpoint, location);
 
                 // send again
-                auto& body = *req;
-                return ::agencyAsyncSend(man, std::move(meta), std::move(body).moveBuffer());
+                return ::agencyAsyncSend(man, std::move(meta), std::move(result.request()).moveBuffer());
               }
 
               // if we only did reads return here
               if (meta.type == RequestType::READ) {
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
             }
             [[fallthrough]];
             
             case Error::ConnectionCanceled: {
-              if (man.server().isStopping() || req == nullptr) {
+              if (man.server().isStopping() || !result.hasRequest()) {
                 return futures::makeFuture(
-                  AsyncAgencyCommResult{result.error, std::move(resp)});
+                  AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
 
-              TRI_ASSERT(req != nullptr);
+              TRI_ASSERT(result.hasRequest());
             }
             [[fallthrough]];
             
@@ -353,20 +349,18 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
             case Error::WriteError:
             case Error::ReadError:
             case Error::CloseRequested: {
-              TRI_ASSERT(req != nullptr);
+              TRI_ASSERT(result.hasRequest());
 
               // inquire the request
               man.reportError(endpoint);
               // in case of a write transaction we have to do inquiry
               if (meta.isInquiryOnNoResponse()) {
-                TRI_ASSERT(req != nullptr);
-                auto& body = *req;
                 return ::agencyAsyncInquiry(man, std::move(meta),
-                                            std::move(body).moveBuffer());
+                                            std::move(result.request()).moveBuffer());
               } else if (!meta.isRetryOnNoResponse()) {
                 // return error
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
             }
             // otherwise just send again
@@ -381,16 +375,16 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
             [[fallthrough]];
 
             case Error::QueueCapacityExceeded: {
-              TRI_ASSERT(req != nullptr);
-              auto& body = *req;
+              TRI_ASSERT(result.hasRequest());
               return ::agencyAsyncSend(man, std::move(meta),
-                                       std::move(body).moveBuffer());  // retry always
+                                       std::move(result.request()).moveBuffer());  // retry always
             }
 
             case Error::VstUnauthorized: {
+              // unrecoverable error
               return futures::makeFuture(
                 AsyncAgencyCommResult{result.error,
-                                      std::move(resp)});  // unrecoverable error
+                                      result.stealResponse()});  
             }
           }
 

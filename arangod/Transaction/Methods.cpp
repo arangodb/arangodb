@@ -2365,7 +2365,7 @@ Future<Result> Methods::replicateOperations(
                             resp.statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
-          resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
+          resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         } else {
           auto r = resp.combinedResult();

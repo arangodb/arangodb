@@ -35,18 +35,48 @@
 #include <velocypack/Buffer.h>
 #include <chrono>
 
+#include <memory>
+
 namespace arangodb {
-class ClusterInfo;
 
 namespace network {
 class ConnectionPool;
 
 /// Response data structure
 struct Response {
-  DestinationId destination;
-  fuerte::Error error = fuerte::Error::ConnectionCanceled;
-  std::unique_ptr<arangodb::fuerte::Request> request;
-  std::unique_ptr<arangodb::fuerte::Response> response;
+  // create an empty (failed) response
+  Response() noexcept;
+
+  Response(DestinationId&& destination, fuerte::Error error,
+           std::unique_ptr<arangodb::fuerte::Request>&& request,
+           std::unique_ptr<arangodb::fuerte::Response>&& response) noexcept;
+
+  ~Response() = default;
+
+  Response(Response&& other) noexcept = default;
+  Response& operator=(Response&& other) noexcept = default;
+  Response(Response const& other) = delete;
+  Response& operator=(Response const& other) = delete;
+ 
+  bool hasRequest() const noexcept { return _request != nullptr; }
+  bool hasResponse() const noexcept { return _response != nullptr; }
+  
+  /// @brief return a reference to the request object. will throw an exception if
+  /// there is no valid request!
+  arangodb::fuerte::Request& request() const;
+  
+  /// @brief return a reference to the response object. will throw an exception if
+  /// there is no valid response!
+  arangodb::fuerte::Response& response() const;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /// @brief inject a different response - only use this from tests!
+  void setResponse(std::unique_ptr<arangodb::fuerte::Response> response);
+#endif
+
+  /// @brief steal the response from here. this may return a unique_ptr
+  /// containing a nullptr. it is the caller's responsibility to check that.
+  [[nodiscard]] std::unique_ptr<arangodb::fuerte::Response> stealResponse() noexcept;
 
   [[nodiscard]] bool ok() const {
     return fuerte::Error::NoError == this->error;
@@ -55,19 +85,11 @@ struct Response {
   [[nodiscard]] bool fail() const { return !ok(); }
 
   // returns a slice of the payload if there was no error
-  [[nodiscard]] velocypack::Slice slice() const {
-    if (error == fuerte::Error::NoError && response) {
-      return response->slice();
-    }
-    return velocypack::Slice();  // none slice
-  }
+  [[nodiscard]] velocypack::Slice slice() const;
+  
+  [[nodiscard]] std::size_t payloadSize() const noexcept;
 
-  fuerte::StatusCode statusCode() const {
-    if (error == fuerte::Error::NoError && response) {
-      return response->statusCode();
-    }
-    return fuerte::StatusUndefined;
-  }
+  fuerte::StatusCode statusCode() const;
 
   /// @brief Build a Result that contains
   ///   - no error if everything went well, otherwise
@@ -76,9 +98,16 @@ struct Response {
   ///   - the fuerte error, if there was a connectivity error.
   [[nodiscard]] Result combinedResult() const;
 
- public:
   [[nodiscard]] std::string destinationShard() const;  /// @brief shardId or empty
   [[nodiscard]] std::string serverId() const;          /// @brief server ID
+  
+ public:
+  DestinationId destination;
+  fuerte::Error error;
+
+ private:
+  std::unique_ptr<arangodb::fuerte::Request> _request;
+  std::unique_ptr<arangodb::fuerte::Response> _response;
 };
 
 static_assert(std::is_nothrow_move_constructible<Response>::value, "");
