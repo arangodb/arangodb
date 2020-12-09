@@ -7,6 +7,8 @@ devel
 
 * Lowered the minimum allowed value for `--rocksdb.max-write-buffer-number` from
   9 to 4 to allow more fine-grained memory usage control.
+  
+* Updated ArangoDB Starter to 0.14.15-1.
 
 * Fix Windows directory creation error handling.
 

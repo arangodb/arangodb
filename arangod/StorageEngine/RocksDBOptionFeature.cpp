@@ -85,14 +85,27 @@ uint64_t defaultTotalWriteBufferSize() {
   return (static_cast<uint64_t>(256) << 20);
 }
 
-uint64_t defaultMWriteBufferNumberToMerge(uint64_t totalSize, uint64_t sizePerBuffer, uint64_t maxBuffers) {
-  RocksDBColumnFamily
+uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize, uint64_t sizePerBuffer, uint64_t maxBuffers) {
+  uint64_t const base = rocksDBDefaults.min_write_buffer_number_to_merge;
+  uint64_t const increased = 4;
+  
+  // first check that we would have any positive effect
+  if (increased <= base) {
+    return base;
+  }
 
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
-    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.4 
-    return static_cast<uint64_t>((PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.4);
-  } 
-  return rocksDBDefaults.min_write_buffer_number_to_merge;
+  // next make sure we have enough buffers for it to matter
+  uint64_t minBuffers = 1 + (2 * increased);
+  if (maxBuffers < minBuffers) {
+    return base;
+  }
+
+  // next make sure we have enough space for all the buffers
+  if (minBuffers * sizePerBuffer * RocksDBColumnFamily::numberOfColumnFamilies < totalSize) {
+    return base;
+  }
+  
+  return increased;
 }
 
 }  // namespace
