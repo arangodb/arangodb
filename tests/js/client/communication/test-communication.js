@@ -288,6 +288,7 @@ function GenericAqlSetupPathSuite(type) {
   const graphName = "UnitTestGraph";
   const vertexName = "UnitTestVertices";
   const edgeName = "UnitTestEdges";
+  const viewName = "UnitTestView";
 
   /// @brief set failure point
   function debugCanUseFailAt(endpoint) {
@@ -377,6 +378,12 @@ function GenericAqlSetupPathSuite(type) {
         return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Graph":
         return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "NamedGraph":
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "View":
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "Satellite":
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -389,6 +396,12 @@ function GenericAqlSetupPathSuite(type) {
         return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Graph":
         return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      case "NamedGraph":
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      case "View":
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      case "Satellite":
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
         default:
         // Illegal Test
         assertEqual(true, false);
@@ -401,6 +414,12 @@ function GenericAqlSetupPathSuite(type) {
         return `db._query("FOR x IN ${twoShardColName} RETURN x")`;
       case "Graph":
         return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN ${twoShardColName} RETURN x")`;
+      case "NamedGraph":
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN ${twoShardColName} RETURN x")`;
+      case "View":
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
+      case "Satellite":
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -516,11 +535,21 @@ function GenericAqlSetupPathSuite(type) {
       db._drop(twoShardColName);
       db._create(twoShardColName, { numberOfShards: 2 });
       switch (type) {
-        case "Graph": {
+        case "Graph":
+        case "NamedGraph": {
           // We create a graph with a single vertex that has a self reference.
           const g = graphModule._create(graphName, [graphModule._relation(edgeName, vertexName, vertexName)], [], { numberOfShards: 3 });
           const v = g[vertexName].save({ _key: "a" });
           g[edgeName].save({ _from: v._id, _to: v._id });
+          break;
+        }
+        case "View": {
+          db._create(vertexName, { numberOfShards: 3 });
+          db._createView(viewName, "arangosearch", { links: { [vertexName]: { includeAllFields: true } } });
+          break;
+        }
+        case "Satellite": {
+          db._create(vertexName, { replicationFactor: "satellite" });
           break;
         }
       }
@@ -530,8 +559,18 @@ function GenericAqlSetupPathSuite(type) {
       deactivateShardLockingFailure();
       deactivateTriggersAQLSetupPathTest();
       switch (type) {
-        case "Graph": {
+        case "Graph":
+        case "NamedGraph": {
           graphModule._drop(graphName, true);
+          break;
+        }
+        case "View": {
+          db._dropView(viewName);
+          db._drop(vertexName);
+          break;
+        }
+        case "Satellite": {
+          db._drop(vertexName);
           break;
         }
       }
@@ -638,11 +677,25 @@ function AqlSetupPathSuite() {
 function AqlGraphSetupPathSuite() {
   return GenericAqlSetupPathSuite("Graph");
 }
+function AqlNamedGraphSetupPathSuite() {
+  return GenericAqlSetupPathSuite("NamedGraph");
+}
+
+function AqlViewSetupPathSuite() {
+  return GenericAqlSetupPathSuite("View");
+}
+
+function AqlSatelliteSetupPathSuite() {
+  return GenericAqlSetupPathSuite("Satellite");
+}
 
 // jsunity.run(CommunicationSuite);
 if (internal.isCluster()) {
   jsunity.run(AqlSetupPathSuite);
   jsunity.run(AqlGraphSetupPathSuite);
+  jsunity.run(AqlNamedGraphSetupPathSuite);
+  jsunity.run(AqlViewSetupPathSuite);
+  jsunity.run(AqlSatelliteSetupPathSuite);
 }
 
 return jsunity.done();
