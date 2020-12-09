@@ -71,8 +71,15 @@ size_t calculateSkipAllCount(CountApproximate approximation,
   size_t skipped{0};
   switch (approximation) {
     case CountApproximate::Cost:
-      skipped =  irs::cost::extract(*docs, 0);
-      skipped -= std::min(skipped, currentPos);
+      if (ADB_LIKELY(irs::get<irs::cost>(*docs))) {
+        skipped =  irs::cost::extract(*docs, 0);
+        skipped -= std::min(skipped, currentPos);
+      } else {
+        TRI_ASSERT(FALSE); // we have forgotten to add a cost attribute!
+        while (docs->next()) {
+          skipped++;
+        }
+      }
       break;
     default:
       // check for unknown approximation
