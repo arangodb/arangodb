@@ -20,8 +20,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB3_PREGEL_REPORTS_H
-#define ARANGODB3_PREGEL_REPORTS_H
+#ifndef ARANGODB_PREGEL_REPORTS_H
+#define ARANGODB_PREGEL_REPORTS_H
 #include <sstream>
 
 #include <velocypack/Builder.h>

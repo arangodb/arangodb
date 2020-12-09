@@ -53,7 +53,7 @@ private:
     std::unique_ptr<AccumulatorBase> accum;
     mutable std::mutex mutex;
 
-    MutexAccumPair(std::unique_ptr<AccumulatorBase> accum) : accum(std::move(accum)) {}
+    explicit MutexAccumPair(std::unique_ptr<AccumulatorBase> accum) : accum(std::move(accum)) {}
   };
 
   std::unordered_map<std::string, MutexAccumPair> const& globalAccumulatorsUpdates();
