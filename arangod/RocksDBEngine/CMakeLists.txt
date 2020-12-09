@@ -39,9 +39,10 @@ endif()
 
 # add sources for rocksdb engine
 set(ROCKSDB_SOURCES
+  RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.cpp
+  RocksDBEngine/Listeners/RocksDBMetricsListener.cpp
   RocksDBEngine/Listeners/RocksDBShaCalculator.cpp
   RocksDBEngine/Listeners/RocksDBThrottle.cpp
-  RocksDBEngine/RocksDBBackgroundErrorListener.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp
   RocksDBEngine/RocksDBCollection.cpp

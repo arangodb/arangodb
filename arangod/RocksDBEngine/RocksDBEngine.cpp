@@ -55,9 +55,10 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
+#include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
-#include "RocksDBEngine/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -639,6 +640,7 @@ void RocksDBEngine::start() {
   }  // if
 
   _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
+  _options.listeners.push_back(std::make_shared<RocksDBMetricsListener>(server()));
 
   if (opts._totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts._totalWriteBufferSize;
