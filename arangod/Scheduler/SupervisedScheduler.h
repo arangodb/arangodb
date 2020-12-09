@@ -43,9 +43,7 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size,
                       double unavailabilityQueueFillGrade);
-  virtual ~SupervisedScheduler();
-
-  bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
+  ~SupervisedScheduler() final;
 
   bool start() override;
   void shutdown() override;
@@ -104,18 +102,8 @@ class SupervisedScheduler final : public Scheduler {
     // cppcheck-suppress missingOverride
     bool start();
   };
-  
-  struct WorkItem final {
-    fu2::unique_function<void()> _handler;
 
-    explicit WorkItem(fu2::unique_function<void()>&& handler)
-        : _handler(std::move(handler)) {}
-    ~WorkItem() = default;
-
-    void operator()() { _handler(); }
-  };
- 
-  std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
+  std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
   void startOneThread();
   void stopOneThread();
 
@@ -131,6 +119,8 @@ class SupervisedScheduler final : public Scheduler {
   void runWorker();
   void runSupervisor();
 
+  bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override ADB_WARN_UNUSED_RESULT;
+
  private:
   std::atomic<uint64_t> _numWorkers;
   std::atomic<bool> _stopping;
@@ -138,7 +128,7 @@ class SupervisedScheduler final : public Scheduler {
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queues[3];
+  boost::lockfree::queue<WorkItemBase*> _queues[3];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
