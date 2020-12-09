@@ -222,12 +222,10 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> handler) {
+bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> work) {
   if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
     return false;
   }
-
-  auto work = std::make_unique<WorkItem>(std::move(handler));
 
   // use memory order acquire to make sure, pushed item is visible
   uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
@@ -257,7 +255,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
 
   _metricsQueueLengths[queueNo].get() += 1;
 
-  // queue now has ownership for the WorkItem
+  // queue now has ownership for the WorkItemBase
   (void)work.release();  // intentionally ignore return value
 
   if (approxQueueLength > _maxFifoSizes[3] / 2) {
@@ -450,7 +448,7 @@ void SupervisedScheduler::runWorker() {
   _numAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
     try {
-      std::unique_ptr<WorkItem> work = getWork(state);
+      std::unique_ptr<WorkItemBase> work = getWork(state);
       if (work == nullptr) {
         break;
       }
@@ -461,7 +459,7 @@ void SupervisedScheduler::runWorker() {
       state->_working = true;
       _numWorking.fetch_add(1, std::memory_order_relaxed);
       try {
-        work->_handler();
+        work->invoke();
         state->_working = false;
         _numWorking.fetch_sub(1, std::memory_order_relaxed);
       } catch (...) {
@@ -684,10 +682,10 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   return threadsWorking < limit;
 }
 
-std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
+std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
-  auto checkAllQueues = [this]() -> WorkItem* {
-    WorkItem* res = nullptr;
+  auto checkAllQueues = [this]() -> WorkItemBase* {
+    WorkItemBase* res = nullptr;
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
         _metricsQueueLengths[i].get() -= 1;
@@ -708,9 +706,9 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       timeOutForNow = 0;
     }
     do {
-      WorkItem* work = checkAllQueues();
+      WorkItemBase* work = checkAllQueues();
       if (work != nullptr) {
-        return std::unique_ptr<WorkItem>(work);
+        return std::unique_ptr<WorkItemBase>(work);
       }
       cpu_relax();
     } while ((std::chrono::steady_clock::now() - loopStart) <
@@ -731,12 +729,12 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     state->_sleeping = true;
     _numAwake.fetch_sub(1, std::memory_order_relaxed);
 
-    WorkItem* work = checkAllQueues();
+    WorkItemBase* work = checkAllQueues();
     if (work != nullptr) {
       // Fix the sleep indicators:
       state->_sleeping = false;
       _numAwake.fetch_add(1, std::memory_order_relaxed);
-      return std::unique_ptr<WorkItem>(work);
+      return std::unique_ptr<WorkItemBase>(work);
     }
 
     if (state->_sleepTimeout_ms == 0) {

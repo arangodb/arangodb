@@ -237,7 +237,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   RequestOptions const _options;
   ConnectionPool* _pool;
 
-  std::shared_ptr<arangodb::Scheduler::WorkItem> _workItem;
+  std::shared_ptr<arangodb::Scheduler::DelayedWorkItem> _workItem;
   std::unique_ptr<fuerte::Request> _tmp_req;
   std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
 
