@@ -215,8 +215,6 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
                                                ConnectionPool::Bucket& bucket) {
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
-  LOG_DEVEL << "selectConnection: Looking through " << bucket.list.size() << " connections in pool.";
-
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
     if (state == fuerte::Connection::State::Failed) {
