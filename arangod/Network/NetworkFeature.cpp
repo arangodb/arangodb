@@ -289,6 +289,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                  std::string const& endpoint,
                                  std::unique_ptr<fuerte::Request>&& req,
                                  RequestCallback&& cb) {
+  TRI_ASSERT(req != nullptr);
   prepareRequest(pool, req);
   auto conn = pool.leaseConnection(endpoint);
   conn->sendRequest(std::move(req),
@@ -296,7 +297,9 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                      cb = std::move(cb)](fuerte::Error err,
                                          std::unique_ptr<fuerte::Request> req,
                                          std::unique_ptr<fuerte::Response> res) {
+                      TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
+                      TRI_ASSERT(req != nullptr);
                       cb(err, std::move(req), std::move(res));
                     });
 }
@@ -320,6 +323,7 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
         std::chrono::duration_cast<std::chrono::milliseconds>(res->timestamp() -
                                                               req->timestamp());
     std::chrono::milliseconds timeout = req->timeout();
+    TRI_ASSERT(timeout.count() > 0);
     double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
                                        static_cast<double>(timeout.count()),
                                    0.0, 100.0);
