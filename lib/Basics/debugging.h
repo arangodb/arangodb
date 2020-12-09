@@ -88,6 +88,13 @@ void TRI_ClearFailurePointsDebugging();
 inline void TRI_ClearFailurePointsDebugging() {}
 #endif
 
+/// @brief test if we have a failure point active
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+bool TRI_HasSetFailurePointsDebugging();
+#else
+inline bool TRI_HasSetFailurePointsDebugging() { return false; }
+#endif
+
 /// @brief returns whether failure point debugging can be used
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 inline constexpr bool TRI_CanUseFailurePointsDebugging() { return true; }

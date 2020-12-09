@@ -172,6 +172,13 @@ void TRI_ClearFailurePointsDebugging() {
   ::failurePoints.clear();
 }
 
+/// @brief test if we have a failure point active
+bool TRI_HasSetFailurePointsDebugging() {
+  READ_LOCKER(readLocker, ::failurePointsLock);
+
+  return !::failurePoints.empty();
+}
+
 #endif
 
 /// @brief appends a backtrace to the string provided
