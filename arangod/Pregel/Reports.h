@@ -89,6 +89,7 @@ struct ReportManager {
   auto report(ReportLevel level) -> ReportBuilder;
 
   void append(ReportManager other);
+  void append(Report report);
   void clear();
 
   void appendFromSlice(VPackSlice slice);
@@ -96,12 +97,10 @@ struct ReportManager {
   std::size_t getNumErrors() const { return _numErrors; }
 
  private:
-  void append(Report report) noexcept;
   friend struct ReportBuilder;
 
   std::size_t _numErrors = 0;
   std::vector<Report> _reports;
-  std::size_t _numBuilder = 0;
 };
 }  // namespace arangodb::pregel
 

@@ -20,13 +20,18 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Logger/LogMacros.h"
 #include "Reports.h"
 
 using namespace arangodb::pregel;
 
-ReportBuilder::~ReportBuilder() {
+ReportBuilder::~ReportBuilder() try {
   // this can not throw because we have allocate memory
   manager.append(Report{ss.str(), level, std::move(annotations)});
+} catch(std::exception const& ex) {
+  LOG_TOPIC("a6348", ERR, Logger::PREGEL) << "failed to create report: " << ex.what();
+} catch(...) {
+  LOG_TOPIC("b2359", ERR, Logger::PREGEL) << "failed to create report - unknown exception";
 }
 
 ReportBuilder::ReportBuilder(ReportManager& manager, ReportLevel lvl)
@@ -85,19 +90,16 @@ void Report::intoBuilder(VPackBuilder& builder) const {
 }
 
 auto ReportManager::report(ReportLevel level) -> ReportBuilder {
-  _reports.reserve(_numBuilder += 1);
   return ReportBuilder{*this, level};
 }
 
-void ReportManager::append(Report report) noexcept {
+void ReportManager::append(Report report) {
   if (report.isError()) {
     if (_numErrors >= 20) {
       return;
     }
     _numErrors += 1;
   }
-  TRI_ASSERT(_reports.capacity() > _reports.size() + _numBuilder);
-  _numBuilder -= 1;
   _reports.emplace_back(std::move(report));
 }
 
@@ -122,6 +124,5 @@ void ReportManager::intoBuilder(VPackBuilder& builder) const {
 void ReportManager::append(ReportManager other) {
   std::move(std::begin(other._reports), std::end(other._reports),
             std::back_inserter(_reports));
-  _reports.reserve(_numBuilder);
   _numErrors += other._numErrors;
 }
