@@ -48,7 +48,7 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
           std::string("arangodb_connection_pool_success_select_") + _config.name, 0, "Total number of successful connection leases")),
       _noSuccessSelect(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "No success select lease")),
+          std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "Total number of failed connection leases")),
       _connectionsCreated(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of connections created")),
@@ -255,7 +255,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
           c->lastLeased = std::chrono::steady_clock::now();
           _successSelect++;
           _leaseHistMSec.count(
-            duration<float,std::micro>(high_resolution_clock::now()-start).count());
+            duration<float, std::micro>(high_resolution_clock::now() - start).count());
           return {c};
         } else {
           --(c->leases);
@@ -282,7 +282,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   _totalConnectionsInPool += 1;
   
   _leaseHistMSec.count(
-    duration<float,std::milli>(high_resolution_clock::now()-start).count());
+    duration<float, std::milli>(high_resolution_clock::now() - start).count());
   return {c};
 }
 
