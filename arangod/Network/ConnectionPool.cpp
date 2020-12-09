@@ -54,7 +54,7 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
           std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of connections created")),
       _leaseHistMSec(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_connection_pool_lease_time_hist", log_scale_t(2.f, 0.f, 1000.f, 10),
+          std::string("arangodb_connection_pool_lease_time_hist")+ _config.name, log_scale_t(2.f, 0.f, 1000.f, 10),
           std::string("Time to lease a connection from pool ") + _config.name + " [us]")) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
