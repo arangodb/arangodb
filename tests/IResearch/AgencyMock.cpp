@@ -116,8 +116,6 @@ void GeneralClientConnectionAgencyMock::handleRead(
     resp.setContentType(arangodb::ContentType::VPACK);
     resp.headResponse(body.size());
   }
-  void unlease() override {
-  }
 
   resp.writeHeader(&buffer);
 

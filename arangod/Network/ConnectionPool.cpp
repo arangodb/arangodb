@@ -38,7 +38,23 @@ namespace network {
 using namespace arangodb::fuerte::v1;
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _config(config), _loop(config.numIOThreads) {
+    : _config(config), _loop(config.numIOThreads),
+      _totalConnectionsInPool(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_connection_pool_nr_conns", uint64_t(0), "Current number of connections in pool")),
+      _successSelect(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_success_select", 0, "Total number of successful connection leases")),
+      _noSuccessSelect(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_no_success_select", 0, "Total number of failed connection leases")),
+      _connectionsCreated(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_connection_pool_conns_created", 0, "Number of connections created")),
+      _leaseHistMSec(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_connection_pool_lease_time_hist", log_scale_t(2.f, 0.f, 1000.f, 10),
+          "Time to lease a connection from pool [us]")) {
       TRI_ASSERT(config.numIOThreads > 0);
       TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
     }
@@ -198,6 +214,10 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
 
 ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
                                                ConnectionPool::Bucket& bucket) {
+  using namespace std::chrono;
+
+  auto start = high_resolution_clock::now();
+
   std::size_t limit = 0;
   if (_config.protocol == fuerte::ProtocolType::Vst) {
     // VST allows up to 5 parallel threads to use the same connection,
@@ -226,14 +246,21 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         // next check against the number of requests in flight
         if (c->fuerte->requestsLeft() <= limit) {
           c->lastLeased = std::chrono::steady_clock::now();
+          _successSelect++;
+          _leaseHistMSec.count(
+              duration<float, std::micro>(high_resolution_clock::now() - start).count());
           return {c};
         } else {
           --(c->leases);
+          c->fuerte->unlease();
+          _noSuccessSelect++;
           break;
         }
       }
     }
   }
+
+  _connectionsCreated++;
 
   // no free connection found, so we add one
 
@@ -249,7 +276,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   _totalConnectionsInPool += 1;
   
   _leaseHistMSec.count(
-    duration<float, std::milli>(high_resolution_clock::now() - start).count());
+    duration<float, std::milli>(std::chrono::high_resolution_clock::now() - start).count());
   return {c};
 }
 
