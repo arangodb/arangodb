@@ -145,8 +145,8 @@ class EngineInfoContainerDBServerServerBased {
   arangodb::futures::Future<Result> buildSetupRequest(
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
       std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
-      aql::ServerQueryIdList& serverToQueryId, network::ConnectionPool* pool,
-      network::RequestOptions const& options) const;
+      aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
+      network::ConnectionPool* pool, network::RequestOptions const& options) const;
 
   [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
 

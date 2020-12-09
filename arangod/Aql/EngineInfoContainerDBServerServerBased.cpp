@@ -302,8 +302,8 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
 arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildSetupRequest(
     transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
     std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
-    aql::ServerQueryIdList& serverToQueryId, network::ConnectionPool* pool,
-    network::RequestOptions const& options) const {
+    aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
+    network::ConnectionPool* pool, network::RequestOptions const& options) const {
   std::string serverDest = "server:" + server;
 
   VPackBuffer<uint8_t> buffer(infoSlice.byteSize());
@@ -315,7 +315,7 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
 
   auto buildCallback =
       [this, server, serverDest, didCreateEngine = std::move(didCreateEngine),
-       &serverToQueryId, &snippetIds](
+       &serverToQueryId, &serverToQueryIdLock, &snippetIds](
           arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
             
     auto const& resolvedResponse = response.get();
@@ -332,13 +332,17 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
     if (responseSlice.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
-    QueryId globalId = 0;
-    auto result = parseResponse(responseSlice, snippetIds, server, serverDest,
-                                didCreateEngine, globalId);
-    if (!result.ok()) {
-      return result;
+    {
+      std::unique_lock<std::mutex> guard{serverToQueryIdLock};
+      QueryId globalId = 0;
+      auto result = parseResponse(responseSlice, snippetIds, server, serverDest,
+                                  didCreateEngine, globalId);
+      if (!result.ok()) {
+        return result;
+      }
+
+      serverToQueryId.emplace_back(serverDest, globalId);
     }
-    serverToQueryId.emplace_back(serverDest, globalId);
 
     return TRI_ERROR_NO_ERROR;
   };
@@ -423,6 +427,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // decreases lock timeout manually for fast path
   auto oldLockTimeout = _query.getLockTimeout();
   _query.setLockTimeout(FAST_PATH_LOCK_TIMEOUT);
+  std::mutex serverToQueryIdLock{};
   std::vector<std::tuple<ServerID, std::shared_ptr<VPackBuffer<uint8_t>>, std::vector<bool>>> engineInformation;
   engineInformation.reserve(dbServers.size());
   for (ServerID const& server : dbServers) {
@@ -435,8 +440,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       continue;
     }
 
-    networkCalls.emplace_back(buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
-                                                serverToQueryId, pool, options));
+    networkCalls.emplace_back(
+        buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
+                          serverToQueryId, serverToQueryIdLock, pool, options));
     engineInformation.emplace_back(server, infoBuilder.steal(), std::move(didCreateEngine));
     _query.incHttpRequests(unsigned(1));
   }
@@ -444,12 +450,30 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   futures::Future<Result> fastPathResult =
       futures::collectAll(networkCalls)
           .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses) -> Result {
+            // We need to make sure to get() all responses.
+            // Otherwise they will eventually resolve and trigger the .then() callback
+            // which might be after we left this function.
+            // Especially if one response errors with "non-repairable" code so
+            // we actually abort here and cannot revert to slow path execution.
+            Result res{TRI_ERROR_NO_ERROR};
             for (auto const& tryRes : responses) {
               if (tryRes.get().fail()) {
-                return tryRes.get();
+                // keep the first error.
+                // value other erros above lock timeout
+                // as we can only continue iff we do only get timeout
+                // here, if we get something else we have no chance
+                // to succeed on slow path either.
+                if (!res.fail() || res.is(TRI_ERROR_LOCK_TIMEOUT)) {
+                  res = tryRes.get();
+                }
               };
             }
-            return Result();  // all good
+            // Return what we have, this will be ok() if and only
+            // if none of the requests failed.
+            // If will be LOCK_TIMEOUT if and only if the only error
+            // we see was LOCK_TIMEOUT.
+            // Will contain any other of the errors else.
+            return res;
           });
   if (fastPathResult.get().fail()) {
     if (fastPathResult.get().is(TRI_ERROR_LOCK_TIMEOUT)) {
@@ -477,8 +501,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         VPackSlice infoSlice{buffer->data()};
 
         auto request = buildSetupRequest(trx, std::move(server), infoSlice,
-                                         std::move(didCreateEngine), snippetIds,
-                                         serverToQueryId, pool, options);
+                                         std::move(didCreateEngine), snippetIds, serverToQueryId,
+                                         serverToQueryIdLock, pool, options);
         _query.incHttpRequests(unsigned(1));
         if (request.get().fail()) {
           return request.get();
