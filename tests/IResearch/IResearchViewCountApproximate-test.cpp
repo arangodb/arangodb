@@ -37,13 +37,18 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
+#include "frozen/map.h"
 
 namespace {
 
 static const char* collectionName1 = "collection_1";
 static const char* collectionName2 = "collection_2";
-
 static const char* viewName = "view";
+
+static constexpr frozen::map<irs::string_ref, arangodb::iresearch::CountApproximate, 2> countApproximationTypeMap = {
+    {"exact", arangodb::iresearch::CountApproximate::Exact},
+    {"cost", arangodb::iresearch::CountApproximate::Cost}};
+} // namespace
 
 class IResearchViewCountApproximateTest : public IResearchQueryTest {
  protected:
@@ -73,8 +78,8 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       auto createJson = VPackParser::fromJson(
           std::string("{") +
           "\"name\": \"" + viewName + "\", \
-           \"commitIntervalMsec\":0,\
-           \"consolidationIntervalMsec\":0,\
+           \"commitIntervalMsec\":0, \
+           \"consolidationIntervalMsec\":0, \
            \"type\": \"arangosearch\", \
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}], \
            \"storedValues\": [] \
@@ -235,10 +240,35 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
 
   void executeAndCheck(std::string const& queryString,
                        std::vector<VPackValue> const* expectedValues,
-                       int64_t expectedFullCount) {
+                       int64_t expectedFullCount,
+                       arangodb::iresearch::CountApproximate expectedApproximation ) {
     SCOPED_TRACE(testing::Message("Query:") << queryString);
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
-      {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+
+    auto explain = arangodb::tests::explainQuery(vocbase(), queryString, nullptr, expectedFullCount >= 0 ? "{\"fullCount\":true}" : "{}");
+    ASSERT_TRUE(explain.data);
+    auto const explanation = explain.data->slice();
+
+    arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
+
+    bool viewFound{false};
+    arangodb::iresearch::CountApproximate actualApproximate{arangodb::iresearch::CountApproximate::Exact};
+    for (auto const& node : nodes) {
+      if (node.get("type").stringRef() == "EnumerateViewNode") {
+        viewFound = true;
+        auto optionsSlice = node.get("options");
+        ASSERT_TRUE(optionsSlice.isObject());
+        auto approximationSlice = optionsSlice.get("countApproximate");
+        if (!approximationSlice.isNone()) {
+          ASSERT_TRUE(approximationSlice.isString());
+          auto it = countApproximationTypeMap.find(approximationSlice.stringView());
+          ASSERT_NE(it, countApproximationTypeMap.end());
+          actualApproximate = it->second;
+        }
+        break;
+      }
+    }
+    ASSERT_TRUE(viewFound);
+    ASSERT_EQ(expectedApproximation, actualApproximate);
 
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                arangodb::aql::QueryString(queryString), nullptr,
@@ -254,7 +284,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       ASSERT_TRUE(fullCountSlice.isInteger());
       ASSERT_EQ(expectedFullCount, fullCountSlice.getInt());
     }
-   
+
     if (expectedValues) {
       auto result = queryResult.data->slice();
       EXPECT_TRUE(result.isArray());
@@ -272,7 +302,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
           ASSERT_TRUE(expectedValue->isString());
           arangodb::velocypack::ValueLength length = 0;
           auto resStr = resolved.getString(length);
-          EXPECT_TRUE(memcmp(expectedValue->getCharPtr(), resStr, length) == 0);
+          EXPECT_EQ(memcmp(expectedValue->getCharPtr(), resStr, length), 0);
         } else {
           ASSERT_TRUE(resolved.isNumber());
           EXPECT_EQ(expectedValue->getInt64(), resolved.getInt());
@@ -282,7 +312,6 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     }
   }
 };
-}
 
 TEST_F(IResearchViewCountApproximateTest, fullCountExact) {
   auto const queryString = std::string("FOR d IN ") + viewName +
@@ -291,7 +320,8 @@ TEST_F(IResearchViewCountApproximateTest, fullCountExact) {
   std::vector<VPackValue> expectedValues{
     VPackValue(17),
   };
-  executeAndCheck(queryString, &expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1,
+                  arangodb::iresearch::CountApproximate::Exact);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountCost) {
@@ -301,7 +331,8 @@ TEST_F(IResearchViewCountApproximateTest, fullCountCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(17),
   };
-  executeAndCheck(queryString, &expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1,
+                  arangodb::iresearch::CountApproximate::Cost);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilter) {
@@ -311,7 +342,8 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilter) {
   std::vector<VPackValue> expectedValues{
     VPackValue(9),
   };
-  executeAndCheck(queryString, &expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1,
+                  arangodb::iresearch::CountApproximate::Exact);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterEmpty) {
@@ -321,7 +353,8 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterEmpty) {
   std::vector<VPackValue> expectedValues{
     VPackValue(0),
   };
-  executeAndCheck(queryString, &expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1,
+                  arangodb::iresearch::CountApproximate::Exact);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCost) {
@@ -331,7 +364,8 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(9),
   };
-  executeAndCheck(queryString, &expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1,
+                  arangodb::iresearch::CountApproximate::Cost);
 }
 
 TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCostEmpty) {
@@ -341,13 +375,15 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCostEmpty) {
   std::vector<VPackValue> expectedValues{
     VPackValue(0),
   };
-  executeAndCheck(queryString, &expectedValues, -1);
+  executeAndCheck(queryString, &expectedValues, -1,
+                  arangodb::iresearch::CountApproximate::Cost);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilter) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 2, 2 RETURN  d.value ";
-  executeAndCheck(queryString, nullptr, 9);
+  executeAndCheck(queryString, nullptr, 9,
+                  arangodb::iresearch::CountApproximate::Exact);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSorted) {
@@ -357,7 +393,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(2),
   };
-  executeAndCheck(queryString, &expectedValues, 15);
+  executeAndCheck(queryString, &expectedValues, 15,
+                  arangodb::iresearch::CountApproximate::Exact);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountSorted) {
@@ -367,7 +404,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(7),
   };
-  executeAndCheck (queryString, &expectedValues, 17);
+  executeAndCheck(queryString, &expectedValues, 17,
+                   arangodb::iresearch::CountApproximate::Exact);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountSortedCost) {
@@ -377,7 +415,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(7),
   };
-  executeAndCheck(queryString, &expectedValues, 17);
+  executeAndCheck(queryString, &expectedValues, 17,
+                  arangodb::iresearch::CountApproximate::Cost);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSorted) {
@@ -387,7 +426,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSorted) {
   std::vector<VPackValue> expectedValues{
     VPackValue(10),
   };
-  executeAndCheck(queryString, &expectedValues, 17);
+  executeAndCheck(queryString, &expectedValues, 17,
+                  arangodb::iresearch::CountApproximate::Exact);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSortedCost) {
@@ -397,7 +437,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountNotSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(10),
   };
-  executeAndCheck(queryString, &expectedValues, 17);
+  executeAndCheck(queryString, &expectedValues, 17,
+                  arangodb::iresearch::CountApproximate::Cost);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSortedCost) {
@@ -407,7 +448,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterSortedCost) {
   std::vector<VPackValue> expectedValues{
     VPackValue(11),
   };
-  executeAndCheck(queryString, &expectedValues, 15);
+  executeAndCheck(queryString, &expectedValues, 15,
+                  arangodb::iresearch::CountApproximate::Cost);
 }
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSortedCost) {
@@ -418,7 +460,8 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSorte
     VPackValue(2),
     VPackValue(3),
   };
-  executeAndCheck(queryString, &expectedValues, 15);
+  executeAndCheck(queryString, &expectedValues, 15,
+                  arangodb::iresearch::CountApproximate::Cost);
 }
 
 // This corner-case is currently impossible as there are no way to get skipAll
@@ -441,7 +484,6 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(1, nodes.size());
   auto& viewNode = *arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
-  
   static std::vector<std::string> const EMPTY;
   arangodb::aql::RegIdSetStack regsToKeep{1}; // we need at least one register to keep
   arangodb::aql::RegisterInfos registerInfos = arangodb::aql::RegisterInfos{
@@ -489,7 +531,6 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
            mergeExecutor.skipRowsRange(inputRange, skipAllCall);
-    
   ASSERT_EQ(15, skipAllCall.getSkipCount());
 }
 
@@ -510,7 +551,6 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(1, nodes.size());
   auto& viewNode = *arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
-  
   static std::vector<std::string> const EMPTY;
   arangodb::aql::RegIdSetStack regsToKeep{1}; // we need at least one register to keep
   arangodb::aql::RegisterInfos registerInfos = arangodb::aql::RegisterInfos{
@@ -558,7 +598,6 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
            mergeExecutor.skipRowsRange(inputRange, skipAllCall);
-    
   ASSERT_EQ(0, skipAllCall.getSkipCount());
 }
 
@@ -582,7 +621,6 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(1, nodes.size());
   auto& viewNode = *arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
-  
   static std::vector<std::string> const EMPTY;
   arangodb::aql::RegIdSetStack regsToKeep{1}; // we need at least one register to keep
   arangodb::aql::RegisterInfos registerInfos = arangodb::aql::RegisterInfos{
@@ -630,6 +668,5 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
               mergeExecutor.skipRowsRange(inputRange, skipAllCall);
-    
   ASSERT_EQ(15, skipAllCall.getSkipCount());
 }

@@ -158,7 +158,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _varInfoMap(varInfoMap),
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
-      _countApproximate(countApproximate) {
+      _countApproximate(countApproximate),
+      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
@@ -1073,7 +1074,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
   size_t skipped = 0;
 
   if (_readerOffset < this->_reader->size()) {
-    if (filterConditionIsEmpty(&this->infos().filterCondition())) {
+    if (this->infos().filterConditionIsEmpty()) {
       skipped =  this->_reader->live_docs_count();
       TRI_ASSERT(_totalPos <= skipped);
       skipped -= std::min(skipped, _totalPos);
@@ -1418,7 +1419,7 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
   if (_heap_it.size()) {
     for (auto& segment : _segments) {
       TRI_ASSERT(segment.docs);
-      if (filterConditionIsEmpty(&this->infos().filterCondition())) {
+      if (this->infos().filterConditionIsEmpty()) {
         TRI_ASSERT(segment.segmentIndex < this->_reader->size());
         auto const live_docs_count =  (*this->_reader)[segment.segmentIndex].live_docs_count();
         TRI_ASSERT(segment.segmentPos <= live_docs_count);
@@ -1434,7 +1435,7 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
     // But we should adjust by the heap size only if the heap was advanced at least once
     // (heap is actually filled on first next) or we have nothing consumed from doc iterators!
     if (!_segments.empty() && this->infos().countApproximate() == CountApproximate::Exact &&
-        !filterConditionIsEmpty(&this->infos().filterCondition()) &&
+        !this->infos().filterConditionIsEmpty() &&
         _heap_it.size() && this->_segments[_heap_it.value()].segmentPos) {
        skipped += (_heap_it.size() - 1);
     }

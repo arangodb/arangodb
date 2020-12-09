@@ -51,7 +51,7 @@ struct VarInfo;
 
 namespace iresearch {
 
-bool filterConditionIsEmpty(aql::AstNode const* filterCondition);
+bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept;
 
 enum class MaterializeType {
   Undefined = 0,        // an undefined initial value

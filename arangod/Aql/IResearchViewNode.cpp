@@ -55,6 +55,7 @@
 #include "types.h"
 
 #include <velocypack/Iterator.h>
+#include "frozen/map.h"
 
 namespace {
 
@@ -132,13 +133,13 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 namespace {
-std::map<std::string, arangodb::aql::ConditionOptimization> const conditionOptimizationTypeMap = {
+static constexpr frozen::map<irs::string_ref, arangodb::aql::ConditionOptimization, 4> conditionOptimizationTypeMap = {
     {"auto", arangodb::aql::ConditionOptimization::Auto},
     {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
     {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
     {"none", arangodb::aql::ConditionOptimization::None}};
 
-std::map<std::string, arangodb::iresearch::CountApproximate> const countApproximationTypeMap = {
+static constexpr frozen::map<irs::string_ref, arangodb::iresearch::CountApproximate, 2> countApproximationTypeMap = {
     {"exact", arangodb::iresearch::CountApproximate::Exact},
     {"cost", arangodb::iresearch::CountApproximate::Cost}};
 }
@@ -896,7 +897,7 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
 namespace arangodb {
 namespace iresearch {
 
-bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
+bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &ALL;
 }
 // -----------------------------------------------------------------------------

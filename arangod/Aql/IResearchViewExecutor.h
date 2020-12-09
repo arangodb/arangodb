@@ -106,6 +106,7 @@ class IResearchViewExecutorInfos {
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
+  bool filterConditionIsEmpty() const noexcept { return _filterConditionIsEmpty; }
   VarInfoMap const& varInfoMap() const noexcept;
   int getDepth() const noexcept;
   bool volatileSort() const noexcept;
@@ -136,6 +137,7 @@ class IResearchViewExecutorInfos {
   int const _depth;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
+  bool _filterConditionIsEmpty;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
