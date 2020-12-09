@@ -307,9 +307,9 @@ bool FollowerInfo::updateFailoverCandidates() {
     auto failoverCandidates = *_failoverCandidates;
     std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::greater<std::string>());
     std::sort(followers.begin(), followers.end(), std::greater<std::string>());
-    std::set_symmetric_difference(_failoverCandidates.begin(),
-                                  _failoverCandidates.end(), _followers.begin(),
-                                  _followers.end(), std::back_inserter(diff));
+    std::set_symmetric_difference(failoverCandidates.begin(),
+                                  failoverCandidates.end(), followers.begin(),
+                                  followers.end(), std::back_inserter(diff));
     TRI_ASSERT(diff.empty());
 #endif
     return _canWrite;
@@ -326,9 +326,9 @@ bool FollowerInfo::updateFailoverCandidates() {
   auto failoverCandidates = *_failoverCandidates;
   std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::greater<std::string>());
   std::sort(followers.begin(), followers.end(), std::greater<std::string>());
-  std::set_symmetric_difference(_failoverCandidates.begin(),
-                                _failoverCandidates.end(), _followers.begin(),
-                                _followers.end(), std::back_inserter(diff));
+  std::set_symmetric_difference(failoverCandidates.begin(),
+                                failoverCandidates.end(), followers.begin(),
+                                followers.end(), std::back_inserter(diff));
   TRI_ASSERT(diff.empty());
 #endif
   Result res = persistInAgency(true);
