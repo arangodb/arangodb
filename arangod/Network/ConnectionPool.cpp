@@ -42,7 +42,7 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
       _loop(config.numIOThreads, config.name),
       _totalConnectionsInPool(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
-          std::string("arangodb_connection_pool_nr_conns_") + _config.name, uint64_t(0), "Total number of connection in pool")),
+          std::string("arangodb_connection_pool_nr_conns_") + _config.name, uint64_t(0), "Current number of connections in pool")),
       _successSelect(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           std::string("arangodb_connection_pool_success_select_") + _config.name, 0, "Total number of successful connection leases")),
