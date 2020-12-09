@@ -50,38 +50,14 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
   std::shared_ptr<arangodb::iresearch::IResearchView> _view;
 
-  void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
-    auto updateJson = VPackParser::fromJson(
-      std::string("{") +
-        "\"links\": {"
-        "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"},"
-        "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"}"
-      "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
-    auto tmpSlice = slice.get("links");
-    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
-  }
-
-  void SetUp() override {
+  IResearchViewCountApproximateTest() {
     // add collection_1
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
     {
       auto collectionJson =
           VPackParser::fromJson(std::string("{\"name\": \"") + collectionName1 + "\"}");
       logicalCollection1 = vocbase().createCollection(collectionJson->slice());
-      ASSERT_NE(nullptr, logicalCollection1);
+      EXPECT_NE(nullptr, logicalCollection1);
     }
 
     // add collection_2
@@ -90,7 +66,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       auto collectionJson =
           VPackParser::fromJson(std::string("{\"name\": \"") + collectionName2 + "\"}");
       logicalCollection2 = vocbase().createCollection(collectionJson->slice());
-      ASSERT_NE(nullptr, logicalCollection2);
+      EXPECT_NE(nullptr, logicalCollection2);
     }
     // create view
     {
@@ -105,7 +81,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
         }");
       _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
           vocbase().createView(createJson->slice()));
-      ASSERT_FALSE(!_view);
+      EXPECT_TRUE(_view);
 
       // add links to collections
       addLinkToCollection(_view);
@@ -131,7 +107,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
             "]");
 
         auto root = builder->slice();
-        ASSERT_TRUE(root.isArray());
+        EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
@@ -152,7 +128,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
             "]");
 
         auto root = builder->slice();
-        ASSERT_TRUE(root.isArray());
+        EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
@@ -192,7 +168,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
             "]");
 
         auto root = builder->slice();
-        ASSERT_TRUE(root.isArray());
+        EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
@@ -213,7 +189,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
             "]");
 
         auto root = builder->slice();
-        ASSERT_TRUE(root.isArray());
+        EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
@@ -233,8 +209,28 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     }
   }
 
-  void TearDown() override {
-    _view.reset();
+  void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+    auto updateJson = VPackParser::fromJson(
+      std::string("{") +
+        "\"links\": {"
+        "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"},"
+        "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"}"
+      "}}");
+    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_TRUE(slice.get("type").copyString() ==
+                arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+    auto tmpSlice = slice.get("links");
+    EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
   void executeAndCheck(std::string const& queryString,
@@ -349,12 +345,11 @@ TEST_F(IResearchViewCountApproximateTest, fullCountWithFilterCostEmpty) {
 
 TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilter) {
   auto const queryString = std::string("FOR d IN ") + viewName +
-      " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 2, 2  SORT d.value DESC RETURN  d.value ";
+      " SEARCH d.value >= 10 OPTIONS {countApproximate:'exact'} LIMIT 2, 2 RETURN  d.value ";
 
   std::vector<VPackValue> expectedValues{
-    VPackValue(12),
-    VPackValue(11),
-  };
+   VPackValue(11),  VPackValue(12) // we cannot sort here so could not predict what value will be read
+  };              // as 
   executeAndCheck(queryString, expectedValues, 9);
 }
 
