@@ -485,7 +485,7 @@ class Slice {
       ValueLength firstSubOffset = findDataOffset(h);
       Slice first(start() + firstSubOffset);
       ValueLength s = first.byteSize();
-      if (s == 0) {
+      if (VELOCYPACK_UNLIKELY(s == 0)) {
         throw Exception(Exception::InternalError, "Invalid data for Array");
       }
       return (end - firstSubOffset) / s;
@@ -1005,7 +1005,7 @@ class Slice {
       return false;
     }
 
-    return (memcmp(start(), other.start(), checkOverflow(size)) == 0);
+    return (std::memcmp(start(), other.start(), checkOverflow(size)) == 0);
   }
  
   static bool binaryEquals(uint8_t const* left, uint8_t const* right) {
@@ -1125,8 +1125,8 @@ class Slice {
     return readIntegerNonEmpty<ValueLength>(start() + end - offsetSize, offsetSize);
   }
 
-  // get the total byte size for a String slice, including the head byte
-  // not check is done if the type of the slice is actually String 
+  // get the total byte size for a String slice, including the head byte.
+  // no check is done if the type of the slice is actually String 
   ValueLength stringSliceLength() const noexcept {
     // check if the type has a fixed length first
     auto const h = head();
@@ -1188,7 +1188,7 @@ class Slice {
       char const* value;
       char binary[sizeof(char const*)];
     };
-    memcpy(&binary[0], start() + 1, sizeof(char const*));
+    std::memcpy(&binary[0], start() + 1, sizeof(char const*));
     return value;
   }
 
@@ -1229,7 +1229,7 @@ class Slice {
         }
 
         VELOCYPACK_ASSERT(h > 0x01 && h <= 0x0e && h != 0x0a);
-        if (h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0])) {
+        if (VELOCYPACK_UNLIKELY(h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0]))) {
           throw Exception(Exception::InternalError, "invalid Array/Object type");
         }
         return readIntegerNonEmpty<ValueLength>(start + 1,
@@ -1239,7 +1239,7 @@ class Slice {
       case ValueType::String: {
         VELOCYPACK_ASSERT(h == 0xbf);
 
-        if (h < 0xbf) {
+        if (VELOCYPACK_UNLIKELY(h < 0xbf)) {
           // we cannot get here, because the FixedTypeLengths lookup
           // above will have kicked in already. however, the compiler
           // claims we'll be reading across the bounds of the input
