@@ -40,24 +40,18 @@ using namespace arangodb::fuerte::v1;
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config),
       _loop(config.numIOThreads, config.name),
-      _bucket_list_size(
+      _totalConnectionsInPool(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
-          std::string("arangodb_connection_bucket_list_size_") + _config.name, uint64_t(0), "Connection pool Bucket list size")),
-      _found_failed(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_found_failed_") + _config.name, 0, "Found failed connection")),
-      _cannot_lease(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_cannot_lease_") + _config.name, 0, "Cannot lease connection")),
-      _have_leased(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_have_lease_") + _config.name, 0, "Have connection lease")),
-      _success_select(
+          std::string("arangodb_connection_pool_nr_conns_") + _config.name, uint64_t(0), "Total number of connection in pool")),
+      _successSelect(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
           std::string("arangodb_connection_pool_success_select_") + _config.name, 0, "Success select lease")),
-      _no_success_select(
+      _noSuccessSelect(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "No success select lease")) {
+          std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "No success select lease")),
+      _connectionsCreated(
+        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
+          std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of collections created")) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
 }
@@ -146,7 +140,7 @@ void ConnectionPool::pruneConnections() {
 
       if (remove) {
         it = buck.list.erase(it);
-        _bucket_list_size-=1;
+        _totalConnectionsInPool -= 1;
       } else {
         ++aliveCount;
         ++it;
@@ -226,19 +220,12 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
     if (state == fuerte::Connection::State::Failed) {
-      LOG_DEVEL << "selectConnection: Found Failed connection in pool." << (uint64_t) c->fuerte.get();
-      _found_failed++;
       continue;
     }
 
     if (!c->fuerte->lease()) {
-      LOG_DEVEL << "selectConnection: cannot lease connection in pool." << (uint64_t) c->fuerte.get();
-      _cannot_lease++;
       continue;
     }
-
-    LOG_DEVEL << "selectConnection: have leased connection: " << (uint64_t) c->fuerte.get();
-    _have_leased++;
 
     TRI_ASSERT(_config.protocol != fuerte::ProtocolType::Undefined);
 
@@ -260,20 +247,19 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         // next check against the number of requests in flight
         if (c->fuerte->requestsLeft() <= limit) {
           c->lastLeased = std::chrono::steady_clock::now();
-          LOG_DEVEL << "selectConnection: successfully leased connection: " << (uint64_t) c->fuerte.get();
-          _success_select++;
+          _successSelect++;
           return {c};
         } else {
           --(c->leases);
           c->fuerte->unlease();
-          _no_success_select++;
+          _noSuccessSelect++;
           break;
         }
       }
     }
   }
 
-  LOG_DEVEL << "selectConnection: Did not find open connection.";
+  _connectionsCreated++;
 
   // no free connection found, so we add one
   LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "
@@ -285,7 +271,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   auto c = std::make_shared<Context>(fuerte, std::chrono::steady_clock::now(), 1 /* leases*/);
   bucket.list.push_back(c);
-  _bucket_list_size+=1;
+  _totalConnectionsInPool += 1;
   
   return {c};
 }

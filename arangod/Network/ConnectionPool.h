@@ -136,8 +136,10 @@ class ConnectionPool final {
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
 
-  Gauge<uint64_t>& _bucket_list_size;
-  Counter &_found_failed, &_cannot_lease, &_have_leased, &_success_select, &_no_success_select;
+  Gauge<uint64_t>& _totalConnectionsInPool;
+  Counter& _successSelect;
+  Counter& _noSuccessSelect;
+  Counter& _connectionsCreated;
 };
 
 class ConnectionPtr {
