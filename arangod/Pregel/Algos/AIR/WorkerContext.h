@@ -38,7 +38,7 @@ namespace algos {
 namespace accumulators {
 
 struct WorkerContext : public ::arangodb::pregel::WorkerContext {
-  WorkerContext(VertexAccumulators const* algorithm);
+  explicit WorkerContext(VertexAccumulators const* algorithm);
 
   void preGlobalSuperstep(uint64_t gss) override;
   void preGlobalSuperstepMasterMessage(VPackSlice msg) override;
@@ -61,13 +61,18 @@ private:
 
   VertexAccumulators const* _algo;
 
+  // This map contains the values of the global accumulators
+  // from the last GSS
+  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> _globalAccumulators;
+
+
   // This only holds the *deltas* for the global accumulators, i.e.
   // these accumulators are reset before every GSS, and their contents
   // are sent back to the conductor at the end of every GSS
-  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> _globalAccumulators;
 
-  // This map contains the values of the global accumulators
-  // from the last GSS
+  // This unordered_map is never changed during a superstep. Only the accumulators
+  // are accessed by multiple different threads. They are guarded using an individual mutex.
+  // See MutexAccumPair::mutex.
   std::unordered_map<std::string, MutexAccumPair> _globalAccumulatorsUpdates;
 };
 

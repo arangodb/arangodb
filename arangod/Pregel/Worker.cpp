@@ -385,7 +385,6 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   double start = TRI_microtime();
 
   // thread local caches
-  ReportManager reports;
   InCache<M>* inCache = _inCaches[threadId];
   OutCache<M>* outCache = _outCaches[threadId];
   outCache->setBatchSize(_messageBatchSize);
@@ -404,7 +403,6 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_writeAggregators = &workerAggregator;
   vertexComputation->_cache = outCache;
-  vertexComputation->_reports = &reports;
   if (!_config.asynchronousMode()) {
     // Should cause enterNextGlobalSuperstep to do nothing
     vertexComputation->_enterNextGSS = true;
@@ -459,7 +457,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
-    _reports.append(std::move(reports));
+    _reports.append(std::move(vertexComputation->_reports));
     lastThread = _runningThreads == 0;  // should work like a join operation
   }
   return lastThread;

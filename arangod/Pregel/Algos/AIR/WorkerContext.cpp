@@ -113,6 +113,7 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
 
 greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId,
                                                              VPackSlice msg) const {
+  // For more information about the looking here, read the comment at _globalAccumulatorsUpdates.
   if (auto iter = _globalAccumulatorsUpdates.find(accumId);
       iter != std::end(_globalAccumulatorsUpdates)) {
     std::unique_lock guard(iter->second.mutex);
@@ -123,6 +124,7 @@ greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId
 
 greenspun::EvalResult WorkerContext::getGlobalAccumulator(std::string accumId,
                                                           VPackBuilder result) const {
+  // For more information about the looking here, read the comment at _globalAccumulatorsUpdates.
   if (auto iter = _globalAccumulatorsUpdates.find(accumId);
       iter != std::end(_globalAccumulatorsUpdates)) {
     std::unique_lock guard(iter->second.mutex);

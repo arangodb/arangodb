@@ -118,7 +118,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache = nullptr;
   bool _enterNextGSS = false;
-  ReportManager* _reports = nullptr;
+  ReportManager _reports;
 
  public:
   virtual ~VertexComputation() = default;
@@ -154,7 +154,7 @@ class VertexComputation : public VertexContext<V, E, M> {
 
   virtual void compute(MessageIterator<M> const& messages) = 0;
 
-  ReportManager& getReportManager() { return *_reports; }
+  ReportManager& getReportManager() { return _reports; }
 };
 
 template <typename V, typename E, typename M>
