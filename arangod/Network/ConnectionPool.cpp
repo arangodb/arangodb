@@ -42,22 +42,22 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
       _loop(config.numIOThreads, config.name),
       _bucket_list_size(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_connection_bucket_list_size", uint64_t(0), "Connection pool Bucket list size")),
+          std::string("arangodb_connection_bucket_list_size_") + _config.name, uint64_t(0), "Connection pool Bucket list size")),
       _found_failed(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_found_faile", 0, "Found failed connection")),
+          std::string("arangodb_connection_pool_found_failed_") + _config.name, 0, "Found failed connection")),
       _cannot_lease(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_cannot_lease", 0, "Cannot lease connection")),
+          std::string("arangodb_connection_pool_cannot_lease_") + _config.name, 0, "Cannot lease connection")),
       _have_leased(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_have_lease", 0, "Have connection lease")),
+          std::string("arangodb_connection_pool_have_lease_") + _config.name, 0, "Have connection lease")),
       _success_select(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_success_select", 0, "Success select lease")),
+          std::string("arangodb_connection_pool_success_select_") + _config.name, 0, "Success select lease")),
       _no_success_select(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_no_success_select", 0, "No success select lease")) {
+          std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "No success select lease")) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
 }
