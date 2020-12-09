@@ -279,7 +279,7 @@ function CommunicationSuite() {
   };
 }
 
-function AqlSetupPathSuite() {
+function GenericAqlSetupPathSuite(type) {
   'use strict';
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
@@ -367,10 +367,40 @@ function AqlSetupPathSuite() {
     debugClearFailAt(endpoint);
   };
 
+  const selectExclusiveQuery = () => {
+    switch (type) {
+      case "Plain":
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      default:
+        // Illegal Test
+        assertEqual(true, false);
+    }
+  };
+
+  const selectWriteQuery = () => {
+    switch (type) {
+      case "Plain":
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      default:
+        // Illegal Test
+        assertEqual(true, false);
+    }
+  };
+
+  const selectReadQuery = () => {
+    switch (type) {
+      case "Plain":
+        return `db._query("FOR x IN ${twoShardColName} RETURN x")`;
+      default:
+        // Illegal Test
+        assertEqual(true, false);
+    }
+  };
+
   const docsPerWrite = 10;
-  const exclusiveQuery = `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
-  const writeQuery = `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
-  const readQuery = `db._query("FOR x IN ${twoShardColName} RETURN x")`;
+  const exclusiveQuery = selectExclusiveQuery();
+  const writeQuery = selectWriteQuery();
+  const readQuery = selectReadQuery();
 
 
   const buildSingleRunCode = (key, command) => {
@@ -484,7 +514,7 @@ function AqlSetupPathSuite() {
       db._drop(twoShardColName);
     },
 
-    testAqlSetupPathDeadLockExclusiveExclusive: function () {
+    [`testAqlSetupPathDeadLockExclusiveExclusive${type}`]: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
         ["exclusive-1", exclusiveQuery],
@@ -499,7 +529,7 @@ function AqlSetupPathSuite() {
       assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
     },
 
-    testAqlSetupPathDeadLockExclusiveWrite: function () {
+    [`testAqlSetupPathDeadLockExclusiveWrite${type}`]: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
         ["exclusive-1", exclusiveQuery],
@@ -514,7 +544,7 @@ function AqlSetupPathSuite() {
       assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
     },
 
-    testAqlSetupPathDeadLockExclusiveRead: function () {
+    [`testAqlSetupPathDeadLockExclusiveRead${type}`]: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
         ["exclusive-1", exclusiveQuery],
@@ -529,7 +559,7 @@ function AqlSetupPathSuite() {
       assertEqual(db[twoShardColName].count(), docsPerWrite);
     },
 
-    testAqlSetupPathDeadLockWriteWrite: function () {
+    [`testAqlSetupPathDeadLockWriteWrite${type}`]: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
         ["write-1", writeQuery],
@@ -544,7 +574,7 @@ function AqlSetupPathSuite() {
       assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
     },
 
-    testAqlSetupPathDeadLockWriteRead: function () {
+    [`testAqlSetupPathDeadLockWriteRead${type}`]: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
         ["write-1", writeQuery],
@@ -559,7 +589,7 @@ function AqlSetupPathSuite() {
       assertEqual(db[twoShardColName].count(), docsPerWrite);
     },
 
-    testAqlSetupPathDeadLockReadRead: function () {
+    [`testAqlSetupPathDeadLockReadRead${type}`]: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
         ["read-1", readQuery],
@@ -574,6 +604,10 @@ function AqlSetupPathSuite() {
       assertEqual(db[twoShardColName].count(), 0);
     },
   };
+}
+
+function AqlSetupPathSuite() {
+  return GenericAqlSetupPathSuite("Plain");
 }
 
 // jsunity.run(CommunicationSuite);
