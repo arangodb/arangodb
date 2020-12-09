@@ -125,7 +125,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
   size_t numShards = SIZE_MAX;
 
   auto poster = [](std::function<void()> fn) -> bool {
-    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
+    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, std::move(fn));
   };
   auto queue =
       std::make_shared<basics::LocalTaskQueue>(_vocbaseGuard.database().server(), poster);

@@ -1,7 +1,28 @@
 devel
 -----
 
-* Added new command line options for fine-grained ArangoSearch maintenance
+* Make all Pregel HTTP and JavaScript APIs also accept stringified execution
+  number values, in addition to numeric ones.
+
+  This allows passing larger execution numbers as strings, so that any data
+  loss due to numeric data type conversion (uint32 => double) can be avoided.
+
+  The change also makes the Pregel HTTP and JavaScript APIs for starting a
+  run return a stringified execution number, e.g. "12345" instead of 12345.
+
+* Updated ArangoDB Starter to 0.14.15-1.
+
+* Fix Windows directory creation error handling.
+
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
+
+* Fixed ES-662 by introducing refactored thread pool to make more efficient
+  consolidation and commit routines for links of ArangoSearch views.
+
+  Added new command line options for fine-grained ArangoSearch maintenance
   control:
   - `--arangosearch.commit-threads` - max number of ArangoSearch commit
     threads
@@ -12,8 +33,10 @@ devel
   - `--arangosearch.consolidation-threads-idle` - min number of ArangoSearch
     consolidation threads
 
-  Deprecate the following command line options:
-  - `--arangosearch.threads`
+  Deprecated the following command line options:
+  - `--arangosearch.threads` - will be used in --arangosearch.commit-threads`
+    and `--arangosearch.consolidation-threads` as provided value divided by 2
+    if set to non-autodetect value > 0
   - `--arangosearch.threads-limit`
 
 * Turn off `StatisticsWorker` thread on DB servers. 
