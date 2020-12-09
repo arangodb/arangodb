@@ -5,6 +5,13 @@ devel
   which should be more accurate than existing metrics related to the underlying
   conditions.
 
+* Increased the default value of `--rocksdb.min-write-buffer-number-to-merge` in
+  some cases when we have allocated a sufficient amount of memory to the write
+  buffers for this to make sense. The increased value should help prevent
+  compaction-induced write stalls/stops, and should only be enabled when under
+  conditions such that it shouldn't greatly increase the chance of flush-induced
+  write stalls/stops.
+
 * Changed the default values for `--rocksdb.cache-index-and-filter-blocks` and
   `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to true to
   improve control over memory usage.
