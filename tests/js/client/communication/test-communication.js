@@ -30,6 +30,7 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 const request = require('@arangodb/request');
+const graphModule = require('@arangodb/general-graph');
 
 const endpointToURL = (endpoint) => {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -284,6 +285,9 @@ function GenericAqlSetupPathSuite(type) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const twoShardColName = "UnitTestsTwoShard";
+  const graphName = "UnitTestGraph";
+  const vertexName = "UnitTestVertices";
+  const edgeName = "UnitTestEdges";
 
   /// @brief set failure point
   function debugCanUseFailAt(endpoint) {
@@ -371,6 +375,8 @@ function GenericAqlSetupPathSuite(type) {
     switch (type) {
       case "Plain":
         return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "Graph":
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -381,7 +387,9 @@ function GenericAqlSetupPathSuite(type) {
     switch (type) {
       case "Plain":
         return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
-      default:
+      case "Graph":
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        default:
         // Illegal Test
         assertEqual(true, false);
     }
@@ -391,6 +399,8 @@ function GenericAqlSetupPathSuite(type) {
     switch (type) {
       case "Plain":
         return `db._query("FOR x IN ${twoShardColName} RETURN x")`;
+      case "Graph":
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN ${twoShardColName} RETURN x")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -505,13 +515,28 @@ function GenericAqlSetupPathSuite(type) {
 
       db._drop(twoShardColName);
       db._create(twoShardColName, { numberOfShards: 2 });
+      switch (type) {
+        case "Graph": {
+          // We create a graph with a single vertex that has a self reference.
+          const g = graphModule._create(graphName, [graphModule._relation(edgeName, vertexName, vertexName)], [], { numberOfShards: 3 });
+          const v = g[vertexName].save({ _key: "a" });
+          g[edgeName].save({ _from: v._id, _to: v._id });
+          break;
+        }
+      }
     },
 
     tearDown: function () {
-      db._drop(cn);
       deactivateShardLockingFailure();
       deactivateTriggersAQLSetupPathTest();
+      switch (type) {
+        case "Graph": {
+          graphModule._drop(graphName, true);
+          break;
+        }
+      }
       db._drop(twoShardColName);
+      db._drop(cn);
     },
 
     [`testAqlSetupPathDeadLockExclusiveExclusive${type}`]: function () {
@@ -610,9 +635,14 @@ function AqlSetupPathSuite() {
   return GenericAqlSetupPathSuite("Plain");
 }
 
+function AqlGraphSetupPathSuite() {
+  return GenericAqlSetupPathSuite("Graph");
+}
+
 // jsunity.run(CommunicationSuite);
 if (internal.isCluster()) {
   jsunity.run(AqlSetupPathSuite);
+  jsunity.run(AqlGraphSetupPathSuite);
 }
 
 return jsunity.done();
