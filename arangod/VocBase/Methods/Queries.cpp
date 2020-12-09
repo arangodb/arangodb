@@ -165,6 +165,11 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
       for (auto const& it : responses) {
         auto& resp = it.get();
         res.reset(resp.combinedResult());
+        if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+          // it is expected in a multi-coordinator setup that a coordinator is not
+          // aware of a database that was created very recently.
+          res.reset();
+        }
         if (res.fail()) {
           break;
         }
@@ -258,6 +263,11 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
       for (auto const& it : responses) {
         auto& resp = it.get();
         res.reset(resp.combinedResult());
+        if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+          // it is expected in a multi-coordinator setup that a coordinator is not
+          // aware of a database that was created very recently.
+          res.reset();
+        }
         if (res.fail()) {
           break;
         }
