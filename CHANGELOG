@@ -5,6 +5,9 @@ v3.7.6 (XXXX-XX-XX)
   under high load and lead to lots of new connection creations, in particular
   with TLS.
 
+* Added more metrics around connection pool.
+
+
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
