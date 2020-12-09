@@ -73,7 +73,7 @@ bool NormalizedCompare::equalsStrings(Slice lhs, Slice rhs) {
   ValueLength nr;
   char const* right = rhs.getString(nr);
   VELOCYPACK_ASSERT(right != nullptr);
-  return (nl == nr && (memcmp(left, right, nl) == 0));
+  return (nl == nr && (std::memcmp(left, right, nl) == 0));
 }
 
 bool NormalizedCompare::equals(Slice lhs, Slice rhs) {

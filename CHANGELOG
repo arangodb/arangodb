@@ -4,6 +4,17 @@ devel
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.
 
+* Make all Pregel HTTP and JavaScript APIs also accept stringified execution
+  number values, in addition to numeric ones.
+
+  This allows passing larger execution numbers as strings, so that any data
+  loss due to numeric data type conversion (uint32 => double) can be avoided.
+
+  The change also makes the Pregel HTTP and JavaScript APIs for starting a
+  run return a stringified execution number, e.g. "12345" instead of 12345.
+
+* Updated ArangoDB Starter to 0.14.15-1.
+
 * Fix Windows directory creation error handling.
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
