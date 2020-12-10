@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improve performance and memory efficiency of agency restart from persisted
+  database directory.
+
 * Fix AQL cost estimate of spliced subqueries which could lead to overly large
   numbers in the explain output of such queries.
 
