@@ -267,7 +267,7 @@ class Buffer {
 
   // If true, uses memory inside the buffer (_local).
   // Otherwise, uses memory on the heap.
-  bool usesLocalMemory() const noexcept {
+  inline bool usesLocalMemory() const noexcept {
     return _buffer == _local;
   }
  
@@ -295,7 +295,7 @@ class Buffer {
 
     // need reallocation
     ValueLength newLen = _size + len;
-    constexpr double growthFactor = 1.25;
+    constexpr double growthFactor = 1.5;
     if (newLen < growthFactor * _size) {
       // ensure the buffer grows sensibly and not by 1 byte only
       newLen = static_cast<ValueLength>(growthFactor * _size);

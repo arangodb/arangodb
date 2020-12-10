@@ -35,10 +35,9 @@ namespace {
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 irs::index_file_refs::ref_t load_newest_index_meta(
-  irs::index_meta& meta,
-  const irs::directory& dir,
-  const irs::format* codec
-) noexcept {
+    irs::index_meta& meta,
+    const irs::directory& dir,
+    const irs::format* codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -69,8 +68,15 @@ irs::index_file_refs::ref_t load_newest_index_meta(
       }
 
       return ref;
+    } catch (const std::exception& e) {
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s', error '%s'",
+        codec->type().name().c_str(),
+        e.what());
     } catch (...) {
-      IR_LOG_EXCEPTION();
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s'",
+        codec->type().name().c_str());
 
       return nullptr;
     }
@@ -141,8 +147,11 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     newest.reader->read(dir, meta, *(newest.ref));
 
     return newest.ref;
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta, error '%s'",
+                  e.what());
   } catch (...) {
-    IR_LOG_EXCEPTION();
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta");
   }
 
   return nullptr;
