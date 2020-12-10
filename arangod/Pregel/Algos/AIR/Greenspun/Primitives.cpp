@@ -682,7 +682,6 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& r
     MergeObjectSlice(result, obj, tmp.slice());
   } else if (key.isArray()) {
     VPackBuilder tmp;
-    std::vector<VPackStringRef> path;
     uint64_t length = key.length();
     uint64_t iterationStep = 0;
 
@@ -692,9 +691,9 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& r
         return EvalError("expected string in key arrays");
       }
       if (iterationStep < (length - 1)) {
-        tmp.add(pathStep.copyString(), VPackValue(VPackValueType::Object));
+        tmp.add(pathStep.stringRef(), VPackValue(VPackValueType::Object));
       } else {
-        tmp.add(pathStep.copyString(), val);
+        tmp.add(pathStep.stringRef(), val);
       }
       iterationStep++;
     }
