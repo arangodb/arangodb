@@ -29,7 +29,7 @@
 #include "utils/crc.hpp"
 #include "utils/encryption.hpp"
 
-NS_LOCAL
+namespace {
 
 using irs::bstring;
 
@@ -175,8 +175,9 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
 // -----------------------------------------------------------------------------
 
 TEST(ctr_encryption_test, static_consts) {
-  ASSERT_EQ(4096, size_t(irs::ctr_encryption::DEFAULT_HEADER_LENGTH));
-  ASSERT_EQ(sizeof(uint64_t), size_t(irs::ctr_encryption::MIN_HEADER_LENGTH));
+  static_assert("encryption" == irs::type<irs::encryption>::name());
+  static_assert(4096 == irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  static_assert(sizeof(uint64_t) == irs::ctr_encryption::MIN_HEADER_LENGTH);
 }
 
 TEST(ctr_encryption_test, create_header_stream) {
@@ -540,4 +541,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::directory_test_case_base::to_string
 );
 
-NS_END
+}

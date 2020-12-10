@@ -27,13 +27,13 @@
 #include "integer.hpp"
 #include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // type identifiers for use with type_limits
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(type_t)
+namespace type_t {
 
 struct address_t {};
 struct doc_id_t {};
@@ -41,7 +41,7 @@ struct field_id_t {};
 struct index_gen_t {};
 struct pos_t {};
 
-NS_END // type_t
+} // type_t
 
 // ----------------------------------------------------------------------------
 // type limits/boundaries
@@ -110,6 +110,6 @@ template<> struct type_limits<type_t::pos_t> {
 
 typedef irs::type_limits<irs::type_t::pos_t> pos_limits;
 
-NS_END
+}
 
 #endif

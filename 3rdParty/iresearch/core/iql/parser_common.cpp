@@ -23,7 +23,7 @@
 
 #include "parser_common.hpp"
 
-NS_LOCAL
+namespace {
 
 static const iresearch::iql::function_arg::fn_value_t NOT_IMPLEMENTED_VALUE = [](
   iresearch::bstring&,
@@ -34,7 +34,7 @@ static const iresearch::iql::function_arg::fn_value_t NOT_IMPLEMENTED_VALUE = []
   return false;
 };
 
-NS_END
+}
 
 using namespace iresearch::iql;
 

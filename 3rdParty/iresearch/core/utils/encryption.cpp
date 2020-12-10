@@ -29,7 +29,7 @@
 #include "utils/bytes_utils.hpp"
 #include "utils/crc.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
@@ -380,4 +380,4 @@ size_t encrypted_input::read_internal(byte_type* b, size_t count) {
   return read;
 }
 
-NS_END
+}

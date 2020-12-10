@@ -28,7 +28,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/numeric_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename T, size_t N = sizeof(T)>
 struct bytes_io;
@@ -358,6 +358,6 @@ inline void zvwrite(Iterator& out, T value) {
   bytes_io<T, sizeof(T)>::zvwrite(out, value);
 }
 
-NS_END
+}
 
 #endif // IRESEARCH_BYTES_UTILS_H

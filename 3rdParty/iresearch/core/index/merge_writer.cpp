@@ -43,7 +43,7 @@
 
 #include <boost/iterator/filter_iterator.hpp>
 
-NS_LOCAL
+namespace {
 
 const irs::column_info NORM_COLUMN{
   irs::type<irs::compression::lz4>::get(),
@@ -1348,9 +1348,9 @@ irs::doc_id_t compute_doc_ids(
 
 const irs::merge_writer::flush_progress_t PROGRESS_NOOP = [](){ return true; };
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 merge_writer::reader_ctx::reader_ctx(irs::sub_reader::ptr reader) noexcept
   : reader(reader),
@@ -1682,4 +1682,4 @@ bool merge_writer::flush(
   return result;
 }
 
-NS_END // ROOT
+} // ROOT

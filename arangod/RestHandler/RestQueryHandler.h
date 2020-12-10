@@ -45,13 +45,13 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
  protected:
   /// @brief returns the list of properties
-  bool readQueryProperties();
+  void readQueryProperties();
 
   /// @brief returns the list of slow queries
-  bool readQuery(bool slow);
+  void readQuery(bool slow);
 
   /// @brief returns AQL query tracking
-  bool readQuery();
+  void readQuery();
 
   /// @brief removes the slow log
   void deleteQuerySlow();
@@ -60,7 +60,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   void deleteQuery();
 
   /// @brief changes the settings
-  bool replaceProperties();
+  void replaceProperties();
 
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
   
@@ -69,7 +69,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   void killQuery(std::string const& id);
   
   /// @brief parses a query
-  bool parseQuery();
+  void parseQuery();
 };
 }  // namespace arangodb
 
