@@ -518,20 +518,22 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
+  arangodb::aql::ResourceMonitor monitor;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
-  arangodb::aql::ResourceMonitor monitor;
-  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
-  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
-  inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
-  arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
-  arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
-  std::tie(state, stats, skippedLocal, call) =
-           mergeExecutor.skipRowsRange(inputRange, skipAllCall);
-  ASSERT_EQ(15, skipAllCall.getSkipCount());
+  {
+    arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
+    inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
+    arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
+    arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
+    std::tie(state, stats, skippedLocal, call) =
+             mergeExecutor.skipRowsRange(inputRange, skipAllCall);
+    ASSERT_EQ(15, skipAllCall.getSkipCount());
+  }
 }
 
 TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpty) {
@@ -585,14 +587,14 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
+  arangodb::aql::ResourceMonitor monitor;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
-  arangodb::aql::ResourceMonitor monitor;
-  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
-  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
@@ -655,15 +657,15 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
+  arangodb::aql::ResourceMonitor monitor;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
-  arangodb::aql::ResourceMonitor monitor;
-  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
-  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
