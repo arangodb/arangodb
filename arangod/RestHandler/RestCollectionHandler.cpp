@@ -143,12 +143,9 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   TRI_ASSERT(coll);
   if (sub == "checksum") {
     // /_api/collection/<identifier>/checksum
-    if (ServerState::instance()->isCoordinator()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-
     bool withRevisions = _request->parsedValue("withRevisions", false);
     bool withData = _request->parsedValue("withData", false);
+    bool raw = _request->parsedValue("raw", false);
 
     uint64_t checksum;
     RevisionId revId;
@@ -159,8 +156,13 @@ RestStatus RestCollectionHandler::handleCommandGet() {
       {
         VPackObjectBuilder obj(&_builder, true);
 
-        obj->add("checksum", VPackValue(std::to_string(checksum)));
-        obj->add("revision", VPackValue(revId.toString()));
+        if (raw) {
+          obj->add("checksum", VPackValue(checksum));
+          obj->add("revision", VPackValue(revId.id()));
+        } else {
+          obj->add("checksum", VPackValue(std::to_string(checksum)));
+          obj->add("revision", VPackValue(revId.toString()));
+        }
 
         // We do not need a transaction here
         methods::Collections::Context ctxt(coll);

@@ -982,6 +982,85 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
+futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
+                                                       std::string const& dbname,
+                                                       std::string const& collname,
+                                                       OperationOptions const& options,
+                                                       bool withRevisions,
+                                                       bool withData) {
+  // Set a few variables needed for our work:
+  ClusterInfo& ci = feature.clusterInfo();
+
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+
+  network::RequestOptions reqOpts;
+  reqOpts.database = dbname;
+  reqOpts.timeout = network::Timeout(300.0);
+  reqOpts.param("withRevisions", withRevisions ? "true" : "false");
+  reqOpts.param("withData", withData ? "true" : "false");
+  reqOpts.param("raw", "true");
+
+  // If we get here, the sharding attributes are not only _key, therefore
+  // we have to contact everybody:
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(shards->size());
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+  for (auto const& p : *shards) {
+    auto future =
+        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+                             "/_api/collection/" + StringUtils::urlEncode(p.first) + "/checksum",
+                             VPackBuffer<uint8_t>(), reqOpts);
+    futures.emplace_back(std::move(future));
+  }
+
+  auto cb = [options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto pre = [](Result&, VPackBuilder& builder) -> void {
+      VPackObjectBuilder b(&builder);
+      builder.add("checksum", VPackValue(0));
+      builder.add("revision", VPackValue(RevisionId::none().id()));
+    };
+    auto handler = [](Result& result, VPackBuilder& builder, ShardID const&,
+                             VPackSlice answer) mutable -> void {
+      if (answer.isObject()) {
+        VPackSlice r = answer.get("revision");
+        VPackSlice c = answer.get("checksum");
+        if (r.isInteger() && c.isInteger()) {
+          // xor is commutative, so it doesn't matter in which order we combine document
+          // checksums or partial results from different shards.
+          auto checksum = builder.slice().get("checksum").getUInt() ^ c.getUInt();
+
+          RevisionId cmp = RevisionId::fromSlice(r);
+          RevisionId rid = RevisionId::fromSlice(builder.slice().get("revision"));
+          if (cmp != RevisionId::max() && cmp > rid) {
+            // get the maximum value
+            rid = cmp;
+          }
+          
+          builder.clear();
+          VPackObjectBuilder b(&builder);
+          builder.add("checksum", VPackValue(checksum));
+          builder.add("revision", VPackValue(rid.id()));
+        } else {
+          // didn't get the expected response
+          result.reset(TRI_ERROR_INTERNAL);
+        }
+      } else {
+        // didn't get the expected response
+        result.reset(TRI_ERROR_INTERNAL);
+      }
+    };
+    return handleResponsesFromAllShards(options, results, handler, pre);
+  };
+  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+}
+
 futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
                                             std::string const& dbname,
                                             std::string const& cid,
