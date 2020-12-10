@@ -221,7 +221,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   using namespace std::chrono;
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
-  auto start = high_resolution_clock::now();
+  auto start = steady_clock::now();
 
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
@@ -255,7 +255,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
           c->lastLeased = std::chrono::steady_clock::now();
           _successSelect++;
           _leaseHistMSec.count(
-            duration<float, std::micro>(high_resolution_clock::now() - start).count());
+            duration<float, std::micro>(c->lastLeased - start).count());
           return {c};
         } else {
           --(c->leases);
@@ -277,12 +277,12 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   builder.endpoint(endpoint); // picks the socket type
 
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
-  auto c = std::make_shared<Context>(fuerte, std::chrono::steady_clock::now(), 1 /* leases*/);
+  auto now = steady_clock::now();
+  auto c = std::make_shared<Context>(fuerte, now, 1 /* leases*/);
   bucket.list.push_back(c);
   _totalConnectionsInPool += 1;
   
-  _leaseHistMSec.count(
-    duration<float, std::milli>(high_resolution_clock::now() - start).count());
+  _leaseHistMSec.count(duration<float, std::micro>(now - start).count());
   return {c};
 }
 
