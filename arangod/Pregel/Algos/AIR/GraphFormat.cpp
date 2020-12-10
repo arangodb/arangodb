@@ -32,6 +32,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 namespace arangodb {
 namespace pregel {
 namespace algos {
@@ -39,17 +41,17 @@ namespace accumulators {
 
 // Graph Format
 GraphFormat::GraphFormat(application_features::ApplicationServer& server,
-                         std::string const& resultField,
-                         AccumulatorsDeclaration const& globalAccumulatorDeclarations,
-                         AccumulatorsDeclaration const& vertexAccumulatorDeclarations,
+                         std::string  resultField,
+                         AccumulatorsDeclaration  globalAccumulatorDeclarations,
+                         AccumulatorsDeclaration  vertexAccumulatorDeclarations,
                          CustomAccumulatorDefinitions customDefinitions,
-                         DataAccessDefinition const& dataAccess)
+                         DataAccessDefinition  dataAccess)
     : graph_format(server),
-      _resultField(resultField),
-      _globalAccumulatorDeclarations(globalAccumulatorDeclarations),
-      _vertexAccumulatorDeclarations(vertexAccumulatorDeclarations),
+      _resultField(std::move(resultField)),
+      _globalAccumulatorDeclarations(std::move(globalAccumulatorDeclarations)),
+      _vertexAccumulatorDeclarations(std::move(vertexAccumulatorDeclarations)),
       _customDefinitions(std::move(customDefinitions)),
-      _dataAccess(dataAccess) {}
+      _dataAccess(std::move(dataAccess)) {}
 
 size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
