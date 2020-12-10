@@ -73,10 +73,14 @@ struct AccumulatorOptions {
   std::optional<VPackBuilder> parameters;
 };
 
+using KeyPath = std::vector<std::string>;
+using KeyOrPath = std::variant<KeyPath, std::string>;
+using PathList = std::vector<KeyOrPath>;
+
 struct DataAccessDefinition {
   std::optional<VPackBuilder> writeVertex;
-  std::optional<VPackBuilder> readVertex;
-  std::optional<VPackBuilder> readEdge;
+  std::optional<PathList> readVertex;
+  std::optional<PathList> readEdge;
 };
 
 struct CustomAccumulatorDefinition {

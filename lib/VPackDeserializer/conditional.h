@@ -100,6 +100,22 @@ struct is_object_condition {
   }
 };
 
+struct is_array_condition {
+  using forward_hints = hints::hint_list<hints::is_array>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.isArray();
+  }
+};
+
+struct is_string_condition {
+  using forward_hints = hints::hint_list<hints::is_string>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.isString();
+  }
+};
+
 template<const char K[]>
 struct has_key_condition {
   using forward_hints = hints::hint_list<hints::has_field<K>>;

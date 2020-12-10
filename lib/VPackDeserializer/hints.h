@@ -58,6 +58,7 @@ struct empty_hint {
 };
 
 struct is_object : public empty_hint {};
+struct is_array : public empty_hint {};
 struct is_string : public empty_hint {};
 struct ignore_unknown : public empty_hint {};
 
@@ -74,6 +75,8 @@ constexpr const bool hint_list_contains_v = hint_list_contains<H, Hs...>::value;
 
 template <typename H>
 constexpr const bool hint_is_object = hint_list_contains_v<is_object, H>;
+template <typename H>
+constexpr const bool hint_is_array = hint_list_contains_v<is_array, H>;
 template <typename H>
 constexpr const bool hint_is_string = hint_list_contains_v<is_string, H>;
 

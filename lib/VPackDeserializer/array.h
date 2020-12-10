@@ -84,8 +84,10 @@ struct deserialize_plan_executor<array_deserializer<D, C, F>, H> {
 
   template <typename ctx>
   static auto unpack(slice_type slice, typename H::state_type, ctx&& c) -> result_type {
-    if (!slice.isArray()) {
-      return result_type{deserialize_error{"array expected"}};
+    if constexpr (!hints::hint_is_array<H>) {
+      if (!slice.isArray()) {
+        return result_type{deserialize_error{"array expected"}};
+      }
     }
 
     using namespace std::string_literals;

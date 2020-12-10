@@ -34,6 +34,11 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
+
+template<typename D, template <typename> typename C>
+using non_empty_array_deserializer = validate<
+    array_deserializer<D, C>, utilities::not_empty_validator>;
+
 template <typename K, typename V>
 using my_map = std::unordered_map<K, V>;
 template <typename V>
@@ -102,9 +107,6 @@ using accumulator_options_plan = parameter_list<
 using accumulator_options_deserializer_base =
     utilities::constructing_deserializer<AccumulatorOptions, accumulator_options_plan>;
 
-using data_access_options_deserializer_base =
-    utilities::constructing_deserializer<DataAccessDefinition, accumulator_options_plan>;
-
 /* clang-format on */
 
 struct accumulator_options_validator {
@@ -161,11 +163,21 @@ constexpr const char writeVertex[] = "writeVertex";
 constexpr const char readVertex[] = "readVertex";
 constexpr const char readEdge[] = "readEdge";
 
-using data_access_options_plan = parameter_list<
-    factory_builder_parameter<writeVertex, false>,
-    factory_builder_parameter<readVertex, false>,
-    factory_builder_parameter<readEdge, false>
+using path_deserializer = non_empty_array_deserializer<values::value_deserializer<std::string>, my_vector>;
+
+using key_or_path_deserializer = conditional_deserializer<
+    condition_deserializer_pair<is_array_condition, path_deserializer>,
+    conditional_default<values::value_deserializer<std::string>>
 >;
+
+using key_path_list = non_empty_array_deserializer<key_or_path_deserializer, my_vector>;
+
+using data_access_options_plan = parameter_list<
+    factory_optional_builder_parameter<writeVertex>,
+    factory_optional_deserialized_parameter<readVertex, key_path_list>,
+    factory_optional_deserialized_parameter<readEdge, key_path_list>
+>;
+
 using data_access_options_deserializer = utilities::constructing_deserializer<DataAccessDefinition, data_access_options_plan>;
 
 /* Algorithm Phase */
@@ -235,9 +247,6 @@ constexpr const char phases[] = "phases";
 constexpr const char debug[] = "debug";
 
 
-template<typename D, template <typename> typename C>
-using non_empty_array_deserializer = validate<
-    array_deserializer<D, C>, utilities::not_empty_validator>;
 
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
 using custom_accumulators_map_deserializer = map_deserializer<custom_accumulator_definition_deserializer, my_map>;

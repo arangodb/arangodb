@@ -27,6 +27,8 @@
 #include "Pregel/Algos/AIR/Greenspun/Extractor.h"
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 
+#include "Basics/overload.h"
+
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -52,66 +54,63 @@ GraphFormat::GraphFormat(application_features::ApplicationServer& server,
 size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
-void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice,
+void filterDocumentData(VPackBuilder& finalBuilder, PathList paths,
                         arangodb::velocypack::Slice const& document) {
-  for (auto&& key : VPackArrayIterator(arraySlice)) {
-    if (key.isString()) {
-      VPackBuilder tmp;
-      VPackBuilder innerBuilder;
-      innerBuilder.openObject();
-      innerBuilder.add(key.copyString(), document.get(key.stringRef()));
-      innerBuilder.close();
+  for (auto&& path : paths) {
+    std::visit(overload{[&](std::string const& key) {
+                          VPackBuilder tmp;
+                          VPackBuilder innerBuilder;
+                          innerBuilder.openObject();
+                          innerBuilder.add(key, document.get(key));
+                          innerBuilder.close();
 
-      if (!finalBuilder.slice().isObject()) {
-        finalBuilder.openObject();
-        finalBuilder.close();
-      }
-      VPackCollection::merge(tmp, finalBuilder.slice(), innerBuilder.slice(), true, false);
-      finalBuilder.clear();
-      finalBuilder.add(tmp.slice());
-    } else if (key.isArray()) {
-      std::vector<VPackStringRef> path;
-      size_t pathLength = key.length();
-      size_t iterationStep = 0;
+                          if (!finalBuilder.slice().isObject()) {
+                            finalBuilder.openObject();
+                            finalBuilder.close();
+                          }
+                          VPackCollection::merge(tmp, finalBuilder.slice(),
+                                                 innerBuilder.slice(), true, false);
+                          finalBuilder.clear();
+                          finalBuilder.add(tmp.slice());
+                        },
+                        [&](KeyPath const& path) {
+                          TRI_ASSERT(!path.empty());  // deserializer ensures this
+                          size_t pathLength = path.size();
+                          size_t iterationStep = 0;
 
-      VPackBuilder innerArrayBuilder;
-      innerArrayBuilder.openObject();  // open outer object
+                          std::vector<VPackStringRef> pathInner;
 
-      for (auto&& innerKey : VPackArrayIterator(key)) {
-        // TODO: optimize in the future - right now complicated to build a fresh object via key-path strings
+                          VPackBuilder innerArrayBuilder;
+                          innerArrayBuilder.openObject();  // open outer object
 
-        if (!innerKey.isString()) {
-          TRI_ASSERT(false);  // TODO: Add type checking in deserializer
-        }
-        // build up path - will change in every iteration step
-        path.emplace_back(innerKey.stringRef());
+                          for (auto&& innerKey : path) {
+                            // build up path - will change in every iteration step
+                            pathInner.emplace_back(innerKey);
 
-        if (iterationStep < (pathLength - 1)) {
-          innerArrayBuilder.add(innerKey);  //, VPackValue(VPackValueType::Object));
-          innerArrayBuilder.openObject();
-        } else {
-          innerArrayBuilder.add(innerKey.copyString(), document.get(path));
-        }
+                            if (iterationStep < (pathLength - 1)) {
+                              innerArrayBuilder.add(VPackValue(innerKey));
+                              innerArrayBuilder.openObject();
+                            } else {
+                              innerArrayBuilder.add(innerKey, document.get(path));
+                            }
 
-        // get slice of each document depth
-        iterationStep++;
-      }
+                            // get slice of each document depth
+                            iterationStep++;
+                          }
 
-      // now close all inner opened objects
-      for (size_t step = 0; step < (pathLength - 1); step++) {
-        innerArrayBuilder.close();
-      }
+                          // now close all inner opened objects
+                          for (size_t step = 0; step < (pathLength - 1); step++) {
+                            innerArrayBuilder.close();
+                          }
 
-      innerArrayBuilder.close();  // close outer object
-      VPackBuilder tmp;
-      VPackCollection::merge(tmp, finalBuilder.slice(),
-                             innerArrayBuilder.slice(), true, false);
-      finalBuilder.clear();
-      finalBuilder.add(tmp.slice());
-    } else {
-      // TODO: this cannot happen anymore if we introduce type checking within the deserializer
-      TRI_ASSERT(false);
-    }
+                          innerArrayBuilder.close();  // close outer object
+                          VPackBuilder tmp;
+                          VPackCollection::merge(tmp, finalBuilder.slice(),
+                                                 innerArrayBuilder.slice(), true, false);
+                          finalBuilder.clear();
+                          finalBuilder.add(tmp.slice());
+                        }},
+               path);
   }
 }
 
@@ -128,10 +127,10 @@ void GraphFormat::copyVertexData(std::string const& documentId,
   }
 
   // TODO: change GraphFormat interface here. Work with builder instead of Slice
-  if (_dataAccess.readVertex && _dataAccess.readVertex->slice().isArray()) {
+  if (_dataAccess.readVertex) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, _dataAccess.readVertex->slice(), doc.slice());
+    filterDocumentData(tmpBuilder, *_dataAccess.readVertex, doc.slice());
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
                     _dataAccess, documentId, tmpBuilder.slice(), _vertexIdRange++);
   } else {
@@ -143,10 +142,10 @@ void GraphFormat::copyVertexData(std::string const& documentId,
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
   // TODO: change GraphFormat interface here. Work with builder instead of Slice
-  if (_dataAccess.readEdge && _dataAccess.readEdge->slice().isArray()) {
+  if (_dataAccess.readEdge) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, _dataAccess.readEdge->slice(), edgeDocument);
+    filterDocumentData(tmpBuilder, *_dataAccess.readEdge, edgeDocument);
     targetPtr.reset(tmpBuilder.slice());
   } else {
     // copy all
