@@ -357,20 +357,17 @@ TEST(CStringBufferTest, tst_replace) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST(CStringBufferTest, tst_smpl_utils) {
-  char const* a23412 = "23412";
-  char const* a2341212125 = "23412-12.125";
-
   // these are built on prev. tested building blocks...
   TRI_string_buffer_t sb;
   TRI_InitStringBuffer(&sb);
   
   TRI_AppendDoubleStringBuffer(&sb, 12.0);
 
-  EXPECT_TRUE(std::string(a23412, STRLEN(a23412)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE("12" == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_AppendDoubleStringBuffer(&sb, -12.125);
 
-  EXPECT_TRUE(std::string(a2341212125, STRLEN(a2341212125)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE("12-12.125" == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_DestroyStringBuffer(&sb);
 }
