@@ -25,13 +25,16 @@
 
 using namespace arangodb::pregel;
 
-ReportBuilder::~ReportBuilder() try {
-  // this can not throw because we have allocate memory
-  manager.append(Report{ss.str(), level, std::move(annotations)});
-} catch(std::exception const& ex) {
-  LOG_TOPIC("a6348", ERR, Logger::PREGEL) << "failed to create report: " << ex.what();
-} catch(...) {
-  LOG_TOPIC("b2359", ERR, Logger::PREGEL) << "failed to create report - unknown exception";
+ReportBuilder::~ReportBuilder() {
+  try {
+    // this can not throw because we have allocate memory
+    manager.append(Report{ss.str(), level, std::move(annotations)});
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("a6348", ERR, Logger::PREGEL) << "failed to create report: " << ex.what();
+  } catch (...) {
+    LOG_TOPIC("b2359", ERR, Logger::PREGEL)
+        << "failed to create report - unknown exception";
+  }
 }
 
 ReportBuilder::ReportBuilder(ReportManager& manager, ReportLevel lvl)
