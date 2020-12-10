@@ -5534,7 +5534,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
 
     size_t i = 0;
     while (TRI_microtime() < until) {
-      if (++i % 1000 == 0) {
+      if (++i % 1024 == 0) {
         // garbage collection only every x iterations, otherwise we'll use too
         // much CPU
         if (++gcTries > gcAttempts || SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
