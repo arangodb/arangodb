@@ -43,9 +43,11 @@ function arangoSearchCountOptimization () {
       db._drop("UnitTestsCollection");
       let c = db._create("UnitTestsCollection", { numberOfShards: 3 });
 
+      let docs = [];
       for (let i = 0; i < 10010; ++i) {
-        c.save({ value: "test" + (i % 10), count: i });
+        docs.push({ value: "test" + (i % 10), count: i });
       }
+      c.insert(docs);
       
       db._createView("UnitTestView", "arangosearch", {links:{
                                                        UnitTestsCollection:{
@@ -167,5 +169,4 @@ function arangoSearchCountOptimization () {
 jsunity.run(arangoSearchCountOptimization);
 
 return jsunity.done();
-
 
