@@ -193,6 +193,7 @@ struct AsyncAgencyCommTest
     config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "AsyncAgencyComm";
     return config;
   }
 
