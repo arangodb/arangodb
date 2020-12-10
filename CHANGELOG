@@ -1,3 +1,10 @@
+v3.7.6 (XXXX-XX-XX)
+-------------------
+
+* Improve performance and memory efficiency of agency restart from persisted
+  database directory.
+
+
 v3.7.5 (XXXX-XX-XX)
 -------------------
 

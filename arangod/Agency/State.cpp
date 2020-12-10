@@ -944,7 +944,6 @@ bool State::loadCompacted() {
   if (result.isArray() && result.length()) {
     // Result can only have length 0 or 1.
     VPackSlice ii = result[0].resolveExternals();
-    buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     _agent->setPersistedState(ii);
     try {
       _cur = StringUtils::uint64(ii.get("_key").copyString());
@@ -1002,7 +1001,7 @@ bool State::loadOrPersistConfiguration() {
       _agent->mergeConfiguration(resolved);
 
     } catch (std::exception const& e) {
-      LOG_TOPIC("6acd2", ERR, Logger::AGENCY)
+      LOG_TOPIC("6acd2", FATAL, Logger::AGENCY)
           << "Failed to merge persisted configuration into runtime "
              "configuration: "
           << e.what();
@@ -1053,7 +1052,7 @@ bool State::loadOrPersistConfiguration() {
     try {
       result = trx.insert("configuration", doc.slice(), _options);
     } catch (std::exception const& e) {
-      LOG_TOPIC("4384a", ERR, Logger::AGENCY)
+      LOG_TOPIC("4384a", FATAL, Logger::AGENCY)
           << "Failed to persist configuration entry:" << e.what();
       FATAL_ERROR_EXIT();
     }
@@ -1071,11 +1070,29 @@ bool State::loadOrPersistConfiguration() {
 
 /// Load beyond last compaction
 bool State::loadRemaining() {
+  index_t lastIndex;
+  {
+    // read current index initially, which should be the last compacted
+    // state. we can this as the lower bound of log entries we will be
+    // interested in, because we will skip anything with a lower index
+    // value anyway.
+    // note that further down below we will fetch _cur once again, and
+    // that it may have moved forward then. this does not matter, because
+    // we are using the initial _cur value only as a lower bound in the
+    // AQL query, but use the second _cur value for the actual, per-log
+    // entry filtering.
+    MUTEX_LOCKER(logLock, _logLock);
+    lastIndex = _cur;
+  }
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
+  // in case lastIndex is still 0, we need to compare against and include
+  // key "0", which sorts lower than the full-padded key "00000000000000000000".
+  bindVars->add("key", VPackValue(lastIndex == 0 ? "0" : stringify(lastIndex)));
   bindVars->close();
 
-  std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
+  std::string const aql("FOR l IN log FILTER l._key >= @key SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
@@ -1095,33 +1112,11 @@ bool State::loadRemaining() {
     std::string clientId, tstamp;
     // We know that _cur has been set in loadCompacted to the index of the
     // snapshot that was loaded or to 0 if there is no snapshot.
-    index_t lastIndex = _cur;
+    lastIndex = _cur;
 
     for (auto const& i : VPackArrayIterator(result)) {
-      buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
 
       auto ii = i.resolveExternals();
-      auto req = ii.get("request");
-      tmp->append(req.startAs<char const>(), req.byteSize());
-
-      clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
-                                        : std::string();
-
-      uint64_t millis = 0;
-      if (ii.hasKey("epoch_millis")) {
-        if (ii.get("epoch_millis").isInteger()) {
-          try {
-            millis = ii.get("epoch_millis").getNumber<uint64_t>();
-          } catch (std::exception const& e) {
-            LOG_TOPIC("2ee75", ERR, Logger::AGENCY)
-              << "Failed to parse integer value for epoch_millis " << e.what();
-            FATAL_ERROR_EXIT();
-          }
-        } else {
-          LOG_TOPIC("52ee7", ERR, Logger::AGENCY) << "epoch_millis is not an integer type";
-          FATAL_ERROR_EXIT();
-        }
-      }
 
       // Dummy fill missing entries (Not good at all.)
       index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
@@ -1147,6 +1142,30 @@ bool State::loadRemaining() {
 
         if (index == lastIndex + 1 || (index == lastIndex && _log.empty())) {
           // Real entries
+          //
+          auto req = ii.get("request");
+          buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+          tmp->append(req.startAs<char const>(), req.byteSize());
+
+          clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
+                                            : std::string();
+
+          uint64_t millis = 0;
+          if (ii.hasKey("epoch_millis")) {
+            if (ii.get("epoch_millis").isInteger()) {
+              try {
+                millis = ii.get("epoch_millis").getNumber<uint64_t>();
+              } catch (std::exception const& e) {
+                LOG_TOPIC("2ee75", FATAL, Logger::AGENCY)
+                  << "Failed to parse integer value for epoch_millis " << e.what();
+                FATAL_ERROR_EXIT();
+              }
+            } else {
+              LOG_TOPIC("52ee7", FATAL, Logger::AGENCY) << "epoch_millis is not an integer type";
+              FATAL_ERROR_EXIT();
+            }
+          }
+
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
                   ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
@@ -1342,7 +1361,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
         VPackArrayBuilder a(&store);
         snapshot.dumpToBuilder(store);
       }
-      store.add("term", VPackValue(static_cast<double>(term)));
+      store.add("term", VPackValue(term));
       store.add("_key", VPackValue(i_str.str()));
       store.add("version", VPackValue(2));
     }
@@ -1591,7 +1610,6 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   if (result.isArray() && result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice ii = result[0].resolveExternals();
-    buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     store = ii;
     index = StringUtils::uint64(ii.get("_key").copyString());
     term = ii.get("term").getNumber<uint64_t>();
