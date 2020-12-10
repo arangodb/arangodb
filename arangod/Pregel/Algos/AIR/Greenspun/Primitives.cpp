@@ -22,6 +22,8 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/range/adaptor/transformed.hpp>
+
 #include <Basics/VelocyPackHelper.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -568,15 +570,22 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
   if (key.isString()) {
     return slice.get(key.stringRef());
   } else if (key.isArray()) {
-    std::vector<VPackStringRef> path;
-    for (auto&& pathStep : VPackArrayIterator(key)) {
-      if (!pathStep.isString()) {
-        return EvalError("expected string in key arrays");
-      }
-      path.emplace_back(pathStep.stringRef());
-    }
 
-    return slice.get(path);
+    struct Iter : VPackArrayIterator {
+
+      using VPackArrayIterator ::difference_type;
+      using value_type = VPackStringRef;
+      using VPackArrayIterator ::reference;
+      using VPackArrayIterator ::pointer;
+      using VPackArrayIterator::iterator_category;
+
+      value_type operator*() const { return VPackArrayIterator::operator*().stringRef(); }
+      Iter begin() const { return Iter{VPackArrayIterator::begin()}; }
+      Iter end() const { return Iter{VPackArrayIterator::end()}; }
+    };
+
+    Iter i{VPackArrayIterator (key)};
+    return slice.get(i);
   } else {
     return EvalError("key is neither array nor string");
   }
