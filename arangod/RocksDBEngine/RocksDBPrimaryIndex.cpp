@@ -293,7 +293,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _cmp(index->comparator()),
         _mustSeek(true),
         _bounds(std::move(bounds)) {
-    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
+    TRI_ASSERT(index->columnFamily() ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
@@ -458,13 +459,15 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection
           IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
           std::vector<std::vector<arangodb::basics::AttributeName>>(
               {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
-          true, false, RocksDBColumnFamily::primary(),
+          true, false,
+          RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
           static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
                       {AttributeName(StaticStrings::IdString, false)}}),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
-  TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
+                        RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
 }
 

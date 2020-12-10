@@ -61,7 +61,7 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
@@ -70,7 +70,6 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
-#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -119,17 +118,6 @@ namespace arangodb {
 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
-
-// static variables for all existing column families
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_default(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_definitions(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpack(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
-std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // minimum value for --rocksdb.sync-interval (in ms)
 // a value of 0 however means turning off the syncing altogether!
@@ -190,7 +178,6 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _createShaFiles(false),
 #endif
       _db(nullptr),
-      _vpackCmp(new RocksDBVPackComparator()),
       _walAccess(new RocksDBWalAccess(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
       _intermediateCommitSize(transaction::Options::defaultIntermediateCommitSize),
@@ -233,7 +220,7 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     _throttleListener->StopThread();
   }  // if
 
-  for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+  for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamilyManager::allHandles()) {
     _db->DestroyColumnFamilyHandle(h);
   }
 
@@ -665,54 +652,26 @@ void RocksDBEngine::start() {
            "to 4 because it is lower than recommended";
   }
 
-  // We provide four distinct column families types based on the properties of
-  // the keys contained and which settings and optimizations we need to maintain
-  // to ensure correct and performant behavior. We may create more than one
-  // instance of a column family type in order to ensure better separation by
-  // data type (e.g. documents and primary index entries use the same column
-  // family format, but we store them separately). If the number of column
-  // families changes in the future, some of the optimized settings in
-  // StorageEngine/RocksDBOptionFeature.cpp may need to be adjusted.
-
-  // cf options for definitons (dbs, collections, views, ...)
-  rocksdb::ColumnFamilyOptions definitionsCF(_options);
-
-  // cf options with fixed 8 byte object id prefix for documents
-  rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
-  fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
-      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
-
-  // construct column family options with prefix containing indexed value
-  rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
-  dynamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
-  // also use hash-search based SST file format
-  rocksdb::BlockBasedTableOptions tblo(tableOptions);
-  tblo.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
-  dynamicPrefCF.table_factory =
-      std::shared_ptr<rocksdb::TableFactory>(rocksdb::NewBlockBasedTableFactory(tblo));
-
-  // velocypack based index variants with custom comparator
-  rocksdb::ColumnFamilyOptions vpackFixedPrefCF(fixedPrefCF);
-  rocksdb::BlockBasedTableOptions tblo2(tableOptions);
-  tblo2.filter_policy.reset();  // intentionally no bloom filter here
-  vpackFixedPrefCF.table_factory =
-      std::shared_ptr<rocksdb::TableFactory>(rocksdb::NewBlockBasedTableFactory(tblo2));
-  vpackFixedPrefCF.comparator = _vpackCmp.get();
-
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
+  auto addFamily = [this, &opts, &tableOptions,
+                    &cfFamilies](RocksDBColumnFamilyManager::Family family) {
+    rocksdb::ColumnFamilyOptions specialized =
+        opts.columnFamilyOptions(family, _options, tableOptions);
+    std::string name = RocksDBColumnFamilyManager::name(family);
+    cfFamilies.emplace_back(name, specialized);
+  };
   // no prefix families for default column family (Has to be there)
-  cfFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName,
-                          definitionsCF);                   // 0
-  cfFamilies.emplace_back("Documents", fixedPrefCF);        // 1
-  cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);     // 2
-  cfFamilies.emplace_back("EdgeIndex", dynamicPrefCF);      // 3
-  cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);  // 4
-  cfFamilies.emplace_back("GeoIndex", fixedPrefCF);         // 5
-  cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
+  addFamily(RocksDBColumnFamilyManager::Family::Definitions);
+  addFamily(RocksDBColumnFamilyManager::Family::Documents);
+  addFamily(RocksDBColumnFamilyManager::Family::PrimaryIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::EdgeIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-  size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
+  size_t const numberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
   bool dbExisted = false;
   {
     rocksdb::Options testOptions;
@@ -811,16 +770,22 @@ void RocksDBEngine::start() {
   }
 
   // set our column families
-  RocksDBColumnFamily::_default = _db->DefaultColumnFamily();
-  RocksDBColumnFamily::_definitions = cfHandles[0];
-  RocksDBColumnFamily::_documents = cfHandles[1];
-  RocksDBColumnFamily::_primary = cfHandles[2];
-  RocksDBColumnFamily::_edge = cfHandles[3];
-  RocksDBColumnFamily::_vpack = cfHandles[4];
-  RocksDBColumnFamily::_geo = cfHandles[5];
-  RocksDBColumnFamily::_fulltext = cfHandles[6];
-  RocksDBColumnFamily::_allHandles = cfHandles;
-  TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Definitions,
+                                  cfHandles[0]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Documents,
+                                  cfHandles[1]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::PrimaryIndex,
+                                  cfHandles[2]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::EdgeIndex,
+                                  cfHandles[3]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::VPackIndex,
+                                  cfHandles[4]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::GeoIndex,
+                                  cfHandles[5]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::FulltextIndex,
+                                  cfHandles[6]);
+  TRI_ASSERT(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+                 ->GetID() == 0);
 
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
@@ -973,7 +938,8 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, RocksDBColumnFamilyManager::get(
+                                        RocksDBColumnFamilyManager::Family::Definitions)));
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice); iter->Next()) {
@@ -1029,7 +995,9 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
   rocksdb::PinnableSlice value;
   rocksdb::ReadOptions options;
   rocksdb::Status res =
-      _db->Get(options, RocksDBColumnFamily::definitions(), key.string(), &value);
+      _db->Get(options,
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+               key.string(), &value);
   auto result = rocksutils::convertStatus(res);
 
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
@@ -1070,7 +1038,8 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
                                             bool wasCleanShutdown, bool isUpgrade) {
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, RocksDBColumnFamilyManager::get(
+                                        RocksDBColumnFamilyManager::Family::Definitions)));
 
   result.openArray();
 
@@ -1099,7 +1068,8 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
 int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
   rocksdb::Slice upper = bounds.end();
-  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::definitions();
+  rocksdb::ColumnFamilyHandle* cf =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
 
   rocksdb::ReadOptions ro;
   ro.iterate_upper_bound = &upper;
@@ -1155,7 +1125,8 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(RocksDBKey const&
   rocksdb::PinnableSlice value;
 
   auto opts = rocksdb::ReadOptions();
-  auto s = _db->Get(opts, RocksDBColumnFamily::definitions(), key.string(), &value);
+  auto s = _db->Get(opts, RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                    key.string(), &value);
   if (!s.ok()) {
     status = TRI_ERROR_FILE_NOT_FOUND;
     return arangodb::velocypack::Builder();
@@ -1183,7 +1154,9 @@ int RocksDBEngine::removeReplicationApplierConfiguration() {
 
 int RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) {
   auto status = rocksutils::convertStatus(
-      _db->Delete(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(), key.string()));
+      _db->Delete(rocksdb::WriteOptions(),
+                  RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                  key.string()));
   if (!status.ok()) {
     return status.errorNumber();
   }
@@ -1213,7 +1186,8 @@ int RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key,
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
   auto status = rocksutils::convertStatus(
-      _db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
+      _db->Put(rocksdb::WriteOptions(),
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
                key.string(), value.string()));
   if (!status.ok()) {
     return status.errorNumber();
@@ -1251,7 +1225,8 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+            key.string(), value.string());
   rocksdb::Status res = _db->GetRootDB()->Write(wo, &batch);
   return rocksutils::convertStatus(res);
 }
@@ -1271,7 +1246,8 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   if (logValue.slice().size() > 0) {
     batch.PutLogData(logValue.slice());
   }
-  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+            key.string(), value.string());
   rocksdb::Status res = db->Write(wo, &batch);
 
   auto result = rocksutils::convertStatus(res);
@@ -1373,7 +1349,8 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   RocksDBKey key;
   key.constructCollection(vocbase.id(), coll.id());
-  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
+  batch.Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+               key.string());
 
   rocksdb::WriteOptions wo;
   rocksdb::Status s = db->Write(wo, &batch);
@@ -1513,7 +1490,8 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
 
   // Write marker + key into RocksDB inside one batch
   batch.PutLogData(logValue.slice());
-  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+            key.string(), value.string());
 
   auto res = _db->Write(wo, &batch);
 
@@ -1542,7 +1520,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
 
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
+  batch.Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+               key.string());
 
   rocksdb::WriteOptions wo;
   auto res = _db->GetRootDB()->Write(wo, &batch);
@@ -1587,7 +1566,8 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
     return rocksutils::convertStatus(s);
   }
 
-  s = batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  s = batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                key.string(), value.string());
 
   if (!s.ok()) {
     LOG_TOPIC("ebb58", TRACE, Logger::VIEWS)
@@ -1743,7 +1723,7 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector) {
     rocksdb::FlushOptions flushOptions;
     flushOptions.wait = waitForSync;
 
-    for (auto cf : RocksDBColumnFamily::_allHandles) {
+    for (auto cf : RocksDBColumnFamilyManager::allHandles()) {
       rocksdb::Status status = _db->GetBaseDB()->Flush(flushOptions, cf);
       if (!status.ok()) {
         res.reset(rocksutils::convertStatus(status));
@@ -2035,7 +2015,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
     // remove collection entry
     rocksdb::Status s =
-        db->Delete(wo, RocksDBColumnFamily::definitions(), value.string());
+        db->Delete(wo, RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                   value.string());
     if (!s.ok()) {
       LOG_TOPIC("64b4e", WARN, Logger::ENGINES)
           << "error deleting collection definition: " << s.ToString();
@@ -2055,7 +2036,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // remove database meta-data
   RocksDBKey key;
   key.constructDatabase(id);
-  rocksdb::Status s = db->Delete(wo, RocksDBColumnFamily::definitions(), key.string());
+  rocksdb::Status s =
+      db->Delete(wo, RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                 key.string());
   if (!s.ok()) {
     LOG_TOPIC("9948c", WARN, Logger::ENGINES)
         << "error deleting database definition: " << s.ToString();
@@ -2250,7 +2233,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // get string property from each column family and return sum;
   auto addIntAllCf = [&](std::string const& s) {
     int64_t sum = 0;
-    for (auto cfh : RocksDBColumnFamily::_allHandles) {
+    for (auto cfh : RocksDBColumnFamilyManager::allHandles()) {
       std::string v;
       if (_db->GetProperty(cfh, s, &v)) {
         int64_t temp = basics::StringUtils::int64(v);
@@ -2265,7 +2248,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   // add column family properties
-  auto addCf = [&](std::string const& name, rocksdb::ColumnFamilyHandle* c) {
+  auto addCf = [&](RocksDBColumnFamilyManager::Family family) {
+    std::string name =
+        RocksDBColumnFamilyManager::name(family, RocksDBColumnFamilyManager::NameMode::External);
+    rocksdb::ColumnFamilyHandle* c = RocksDBColumnFamilyManager::get(family);
     std::string v;
     builder.add(name, VPackValue(VPackValueType::Object));
     if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
@@ -2368,13 +2354,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // print column family statistics
   //  warning: output format limits numbers to 3 digits of precision or less.
   builder.add("columnFamilies", VPackValue(VPackValueType::Object));
-  addCf("definitions", RocksDBColumnFamily::definitions());
-  addCf("documents", RocksDBColumnFamily::documents());
-  addCf("primary", RocksDBColumnFamily::primary());
-  addCf("edge", RocksDBColumnFamily::edge());
-  addCf("vpack", RocksDBColumnFamily::vpack());
-  addCf("geo", RocksDBColumnFamily::geo());
-  addCf("fulltext", RocksDBColumnFamily::fulltext());
+  addCf(RocksDBColumnFamilyManager::Family::Definitions);
+  addCf(RocksDBColumnFamilyManager::Family::Documents);
+  addCf(RocksDBColumnFamilyManager::Family::PrimaryIndex);
+  addCf(RocksDBColumnFamilyManager::Family::EdgeIndex);
+  addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
+  addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
+  addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
   builder.close();
 
   if (_throttleListener) {

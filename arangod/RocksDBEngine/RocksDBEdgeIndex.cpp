@@ -422,7 +422,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                    ((attr == StaticStrings::FromString) ? StaticStrings::IndexNameEdgeFrom
                                                         : StaticStrings::IndexNameEdgeTo),
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
-                   false, false, RocksDBColumnFamily::edge(),
+                   false, false,
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex),
                    basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
                    !ServerState::instance()->isCoordinator() &&
                        collection.vocbase()
@@ -436,7 +437,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString : StaticStrings::FromString),
                                      false)}}) {
-  TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex));
 
   if (!ServerState::instance()->isCoordinator()) {
     // We activate the estimator only on DBServers

@@ -581,7 +581,9 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
 
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(_objectId.load());
-  rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+  rocksdb::Comparator const* cmp =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+          ->GetComparator();
   rocksdb::ReadOptions ro;
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;

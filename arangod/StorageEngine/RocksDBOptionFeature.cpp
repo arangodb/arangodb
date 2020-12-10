@@ -40,9 +40,11 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/options.h>
+#include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -101,7 +103,7 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize, uint64_t sizePer
   }
 
   // next make sure we have enough space for all the buffers
-  if (minBuffers * sizePerBuffer * RocksDBColumnFamily::numberOfColumnFamilies < totalSize) {
+  if (minBuffers * sizePerBuffer * RocksDBColumnFamilyManager::numberOfColumnFamilies < totalSize) {
     return base;
   }
   
@@ -119,7 +121,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _maxWriteBufferSizeToMaintain(0),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
-      _minWriteBufferNumberToMerge(defaultMinWriteBufferNumberToMerge(_totalWriteBufferSize, _writeBufferSize, _maxWriteBufferNumber)),
+      _minWriteBufferNumberToMerge(
+          defaultMinWriteBufferNumberToMerge(_totalWriteBufferSize, _writeBufferSize,
+                                             _maxWriteBufferNumber)),
       _numLevels(rocksDBDefaults.num_levels),
       _numUncompressedLevels(2),
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
@@ -143,7 +147,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(true),
-      _pinl0FilterAndIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
+      _pinl0FilterAndIndexBlocksInCache(
+          rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
       _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
@@ -157,7 +162,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _useFileLogging(false),
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
-      _exclusiveWrites(false) {
+      _exclusiveWrites(false),
+      _vpackCmp(new RocksDBVPackComparator()) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<size_t>(2), std::min(NumberOfCores::getValue(), static_cast<size_t>(8))));
@@ -563,4 +569,47 @@ void RocksDBOptionFeature::start() {
       << _useFSync << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
       << ", max_open_files limit: " << std::boolalpha << _limitOpenFilesAtStartup
       << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
+}
+
+rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
+    RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
+    rocksdb::BlockBasedTableOptions const& tableBase) const {
+  rocksdb::ColumnFamilyOptions options(base);
+
+  switch (family) {
+    case RocksDBColumnFamilyManager::Family::Definitions:
+    case RocksDBColumnFamilyManager::Family::Invalid:
+      break;
+
+    case RocksDBColumnFamilyManager::Family::Documents:
+    case RocksDBColumnFamilyManager::Family::PrimaryIndex:
+    case RocksDBColumnFamilyManager::Family::GeoIndex:
+    case RocksDBColumnFamilyManager::Family::FulltextIndex: {
+      // fixed 8 byte object id prefix
+      options.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      break;
+    }
+
+    case RocksDBColumnFamilyManager::Family::EdgeIndex: {
+      options.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
+      // also use hash-search based SST file format
+      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
+      tableOptions.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
+      options.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+          rocksdb::NewBlockBasedTableFactory(tableOptions));
+      break;
+    }
+    case RocksDBColumnFamilyManager::Family::VPackIndex: {
+      // velocypack based index variants with custom comparator
+      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
+      tableOptions.filter_policy.reset();  // intentionally no bloom filter here
+      options.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+          rocksdb::NewBlockBasedTableFactory(tableOptions));
+      options.comparator = _vpackCmp.get();
+      break;
+    }
+  }
+
+  return options;
 }
