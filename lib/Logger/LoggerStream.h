@@ -63,7 +63,7 @@ class LoggerStreamBase {
   LoggerStreamBase& operator<<(Logger::LOGID const& logid) noexcept;
 
   template <typename T>
-  LoggerStreamBase& operator<<(T const& obj) {
+  LoggerStreamBase& operator<<(T const& obj) noexcept {
     try {
       _out << obj;
     } catch (...) {
