@@ -1431,12 +1431,9 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
         auto const live_docs_count =  (*this->_reader)[segment.segmentIndex].live_docs_count();
         TRI_ASSERT(segment.segmentPos <= live_docs_count);
         skipped += live_docs_count - segment.segmentPos;
-        segment.segmentPos = live_docs_count;
       } else {
-       auto const segmentSkipped =  calculateSkipAllCount(this->infos().countApproximate(),
-                                                    segment.segmentPos, segment.docs.get());
-       segment.segmentPos += segmentSkipped;
-       skipped += segmentSkipped;
+       skipped +=  calculateSkipAllCount(this->infos().countApproximate(),
+                                         segment.segmentPos, segment.docs.get());
       }
     }
     // Adjusting by count of docs already consumed by heap but not consumed by executor.

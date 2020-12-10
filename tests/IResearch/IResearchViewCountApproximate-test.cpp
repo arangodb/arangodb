@@ -525,7 +525,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
   arangodb::aql::ResourceMonitor monitor;
   arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
-  arangodb::aql::SharedAqlItemBlockPtr inputBlock{new arangodb::aql::AqlItemBlock(itemBlockManager, 1, 1)};
+  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
@@ -592,7 +592,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
   arangodb::aql::ResourceMonitor monitor;
   arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
-  arangodb::aql::SharedAqlItemBlockPtr inputBlock{new arangodb::aql::AqlItemBlock(itemBlockManager, 1, 1)};
+  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
@@ -663,7 +663,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
   arangodb::aql::ResourceMonitor monitor;
   arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
-  arangodb::aql::SharedAqlItemBlockPtr inputBlock{new arangodb::aql::AqlItemBlock(itemBlockManager, 1, 1)};
+  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
