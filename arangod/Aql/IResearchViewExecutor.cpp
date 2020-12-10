@@ -1021,9 +1021,9 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
     if (!_scr) {
       _scr = &irs::score::no_score();
       _numScores = 0;
+    } else {
+      _numScores = this->infos().scorers().size();
     }
-
-    _numScores = this->infos().scorers().size();
   }
 
   _itr = segmentReader.mask(std::move(_itr));
@@ -1085,6 +1085,7 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
       TRI_ASSERT(_totalPos <= skipped);
       skipped -= std::min(skipped, _totalPos);
       _readerOffset = this->_reader->size();
+      _currentSegmentPos = 0;
     } else {
       for (size_t count = this->_reader->size(); _readerOffset < count;
            ++_readerOffset, _currentSegmentPos = 0) {
@@ -1432,8 +1433,10 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
         skipped += live_docs_count - segment.segmentPos;
         segment.segmentPos = live_docs_count;
       } else {
-       skipped +=  calculateSkipAllCount(this->infos().countApproximate(),
-                                         segment.segmentPos, segment.docs.get());
+       auto const segmentSkipped =  calculateSkipAllCount(this->infos().countApproximate(),
+                                                    segment.segmentPos, segment.docs.get());
+       segment.segmentPos += segmentSkipped;
+       skipped += segmentSkipped;
       }
     }
     // Adjusting by count of docs already consumed by heap but not consumed by executor.
