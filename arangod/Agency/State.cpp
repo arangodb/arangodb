@@ -1071,7 +1071,9 @@ bool State::loadRemaining() {
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("key", VPackValue(stringify(lastIndex)));
+  // in case lastIndex is still 0, we need to compare against and include
+  // key "0", which sorts lower than the full-padded key "00000000000000000000".
+  bindVars->add("key", VPackValue(lastIndex == 0 ? "0" : stringify(lastIndex)));
   bindVars->close();
 
   std::string const aql("FOR l IN log FILTER l._key >= @key SORT l._key RETURN l");
