@@ -677,7 +677,7 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& r
     VPackBuilder tmp;
     {
       VPackObjectBuilder ob(&tmp);
-      tmp.add(key.copyString(), val);
+      tmp.add(key.stringRef(), val);
     }
     MergeObjectSlice(result, obj, tmp.slice());
   } else if (key.isArray()) {
