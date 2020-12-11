@@ -467,7 +467,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSorte
 // This corner-case is currently impossible as there are no way to get skipAll
 // without prior call to skip for MergeExecutor. But in future this might happen
 // and the skippAll method should still be correct (as it is correct call)
-TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
+TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutorExact) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
@@ -536,7 +536,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   }
 }
 
-TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpty) {
+TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutorExactEmpty) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 1000000 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
@@ -606,7 +606,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
 // This corner-case is currently impossible as there are no way to get skipAll
 // without prior call to skip for MergeExecutor. But in future this might happen
 // and the skippAll method should still be correct (as it is correct call)
-TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
+TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutorCost) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
