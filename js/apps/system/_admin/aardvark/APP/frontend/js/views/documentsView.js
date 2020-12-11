@@ -840,14 +840,7 @@
         window.modalView.hide();
         data = data.split('/');
 
-        var url;
-        try {
-          url = 'collection/' + data[0] + '/' + data[1];
-          decodeURI(url);
-        } catch (ex) {
-          url = 'collection/' + data[0] + '/' + encodeURIComponent(data[1]);
-        }
-
+        var url = 'collection/' + data[0] + '/' + encodeURIComponent(data[1]);
         window.location.hash = url;
       }
     },
