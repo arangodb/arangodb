@@ -402,13 +402,6 @@ class VelocyPackHelper {
     return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
   }
 
-  /// @brief Transforms any VelocyPack to a double value. The second parameter
-  ///        indicates if the transformation was successful.
-  static double toDouble(VPackSlice const&, bool&);
-
-  // modify a VPack double value in place
-  static void patchDouble(VPackSlice slice, double value);
-
   static bool hasNonClientTypes(arangodb::velocypack::Slice,
                                 bool checkExternals, bool checkCustom);
 
