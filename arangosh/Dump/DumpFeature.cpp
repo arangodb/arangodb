@@ -791,7 +791,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   for (size_t i = 0; i < _options.collections.size(); ++i) {
     auto const& name = _options.collections[i];
     if (!name.empty() && name[0] == '_') {
-      // if the user explictly asked for dumping certain collections, toggle the system collection flag automatically
+      // if the user explicitly asked for dumping certain collections, toggle the system collection flag automatically
       _options.includeSystemCollections = true;
     }
     
