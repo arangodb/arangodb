@@ -3,6 +3,123 @@ devel
 
 * Clean up agency change log, cluster info caches
 
+* Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
+  section of a foxx app.
+
+* The scheduler will now run a minimum of 4 threads at all times, and the
+  default and minimal value for `--server.maximal-threads` has been lowered from
+  64 to the greater of 32 and twice the number of detected cores.
+
+* Throttle work coming from low priority queue, according to a constant
+  and to an estimate taking into account fanout for multi-shard operations.
+
+* Move to 4 priority levels "low", "medium", "high" and "maintenance" in
+  scheduler to ensure that maintenance work and diagnostics is always
+  possible, even in the case of RocksDB throttles. Do not allow any
+  RocksDB work on "maintenance".
+
+* Commit replications on high priority queue.
+
+* Essentially get rid of timeout in replication to drop followers. This
+  is now entirely handled via reboot and failure tracking. The timeout
+  has now a default minimum of 15 minutes but can still be configured via
+  options.
+
+* Additional metrics for all queue lengths and low prio ongoing work.
+
+* New metric for number and total time of replication operations.
+
+* New metrics for number of internal requests in flight, internal request
+  duration, and internal request timeouts
+
+* Fix `Gauge` assignment operators.
+
+* Fixed and extended LDAP log messages.
+
+* Added LDAP_OFF if referrals and restart are false.
+
+* If LDAP search fails, also retry (update to given number of retries).
+
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
+* Make all Pregel HTTP and JavaScript APIs also accept stringified execution
+  number values, in addition to numeric ones.
+
+  This allows passing larger execution numbers as strings, so that any data
+  loss due to numeric data type conversion (uint32 => double) can be avoided.
+
+  The change also makes the Pregel HTTP and JavaScript APIs for starting a
+  run return a stringified execution number, e.g. "12345" instead of 12345.
+
+* Updated ArangoDB Starter to 0.14.15-1.
+
+* Fix Windows directory creation error handling.
+
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
+
+* Fixed ES-662 by introducing refactored thread pool to make more efficient
+  consolidation and commit routines for links of ArangoSearch views.
+
+  Added new command line options for fine-grained ArangoSearch maintenance
+  control:
+  - `--arangosearch.commit-threads` - max number of ArangoSearch commit
+    threads
+  - `--arangosearch.commit-threads-idle` - min number of ArangoSearch
+    commit threads
+  - `--arangosearch.consolidation-threads` - max number of ArangoSearch
+    consolidation threads
+  - `--arangosearch.consolidation-threads-idle` - min number of ArangoSearch
+    consolidation threads
+
+  Deprecated the following command line options:
+  - `--arangosearch.threads` - will be used in --arangosearch.commit-threads`
+    and `--arangosearch.consolidation-threads` as provided value divided by 2
+    if set to non-autodetect value > 0
+  - `--arangosearch.threads-limit`
+
+* Turn off `StatisticsWorker` thread on DB servers. 
+  This thread was previously only running queries on the local RocksDB 
+  instance, but using the cluster-wide collection names. So effectively it 
+  did nothing except use a bit of background CPU. In this case it is better 
+  to turn off the background thread entirely on the DB servers.
+
+* Avoid the usage of std::regex when constructing date/time string values 
+  for log messages. This is a performance optimization only.
+
+* Reimplement coordshort request handler. The new implementation only runs
+  two DB queries without any additional requests to other coordinators,
+  resulting in reduced load on the cluster. Previously this involved
+  requests to all coordinators, where each of them ran two DB queries.
+
+* Fixed initial population of local AgencyCache values after a server restart.
+  Previously the local cache was populated from the agency using a commit index
+  value of 1, whereas it should have been 0 to get the full agency snapshot.
+
+* Increase background garbage-collection interval for cluster transactions
+  from 1 second to 2 seconds. This change should reduce the amount of
+  background task activity a tiny bit (though hardly measurable on an 
+  otherwise idle server).
+
+* Make the audit log honor the configured logging date/time output format
+  (i.e. `--log.time-format` option). Previously the audit logging always
+  created a time value in the server's local time, and logged it in 
+  format YYYY-MM-DDTHH:MM:SS. 
+
+  From 3.8 onwards, the audit logger will honor the date/time format
+  specified via the `--log.time-format` option, which defaults to 
+  `utc-datestring`. The means the audit logging will by default log all
+  dates/times in UTC time. To restore the pre-3.8 behavior, please set
+  the option `--log.time-format` to `local-datestring`, which will make
+  the audit logger (and all other server log messages) use the server's
+  local time.
+
 * Fix the activation of the agency supervision maintenance via the REST API
   `/_admin/cluster/maintenance`. This API stored a boolean value instead of
   an (expected) maintenance period end date/time string.
@@ -48,11 +165,11 @@ devel
 * Added metrics for the system CPU usage:
   - `arangodb_server_statistics_user_percent`: Percentage of time that the
     system CPUs have spent in user mode
-  - `arangodb_server_statistics_system_percent`: Percentage of time that 
+  - `arangodb_server_statistics_system_percent`: Percentage of time that
     the system CPUs have spent in kernel mode
-  - `arangodb_server_statistics_idle_percent`: Percentage of time that the 
+  - `arangodb_server_statistics_idle_percent`: Percentage of time that the
     system CPUs have been idle
-  - `arangodb_server_statistics_iowait_percent`: Percentage of time that 
+  - `arangodb_server_statistics_iowait_percent`: Percentage of time that
     the system CPUs have been waiting for I/O
 
   These metrics resemble the overall CPU usage metrics in `top`.
@@ -66,19 +183,19 @@ devel
   configured value was effectively clamped to a value of `1`.
 
 * Improvements for the Pregel distributed graph processing feature:
-  - during the loading/startup phase, the in-memory edge cache is now 
-    intentionally bypassed. The reason for this is that any edges are 
+  - during the loading/startup phase, the in-memory edge cache is now
+    intentionally bypassed. The reason for this is that any edges are
     looked up exactly once, so caching them is not beneficial, but would
     only lead to cache pollution.
   - the loading/startup phase can now load multiple collections in parallel,
     whereas previously it was only loading multiple shards of the same
     collection in parallel. This change helps to reduce load times in case
     there are many collections with few shards, and on single server.
-  - the loading and result storage phases code has been overhauled so that 
+  - the loading and result storage phases code has been overhauled so that
     it runs slightly faster.
   - for Pregel runs that are based on named graphs (in contrast to explicit
     naming of the to-be-used vertex and edge collections), only those edge
-    collections are considered that, according to the graph definition, can 
+    collections are considered that, according to the graph definition, can
     have connections with the vertex. This change can reduce the loading
     time substantially in case the graph contains many edge definitions.
   - the number of executed rounds for the underlying Pregel algorithm now
@@ -113,6 +230,8 @@ devel
 
 * Automatically add "www-authenticate" headers to server HTTP 401 responses,
   as required by the HTTP specification.
+
+* Fixed an AQL bug that ignored PRUNE statements in OneShard setups.
 
 * Make the DOCUMENT AQL function eligible for running on DB servers in
   OneShard deployment mode. This allows pushing more query parts to DB servers
@@ -328,6 +447,9 @@ devel
   Client applications and tests that rely on the behavior that setting
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
+
+* Added a --continue options to arango restore. arangorestore now keeps track of the progress
+  and can continue the restore operation when some error occured.
 
 * Added the following metrics for synchronous replication in the cluster:
 

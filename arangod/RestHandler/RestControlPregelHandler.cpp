@@ -182,7 +182,7 @@ void RestControlPregelHandler::startExecution() {
   }
 
   VPackBuilder builder;
-  builder.add(VPackValue(res.second));
+  builder.add(VPackValue(std::to_string(res.second)));
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 

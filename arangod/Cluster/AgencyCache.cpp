@@ -37,9 +37,8 @@ using namespace arangodb::consensus;
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
   AgencyCallbackRegistry& callbackRegistry)
-  : Thread(server, "AgencyCache"), _commitIndex(0),
-    _readDB(server, nullptr, "readDB"), _callbackRegistry(callbackRegistry),
-    _lastSnapshot(0) {}
+  : Thread(server, "AgencyCache"), _commitIndex(0), _readDB(server, nullptr, "readDB"),
+    _initialized(false), _callbackRegistry(callbackRegistry), _lastSnapshot(0) {}
 
 
 AgencyCache::~AgencyCache() {
@@ -250,8 +249,17 @@ void AgencyCache::run() {
   using namespace std::chrono;
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
-  _commitIndex = 0;
-  _readDB.clear();
+  {
+    std::shared_lock g(_storeLock);
+    // technically it is not necessary to acquire the lock here,
+    // as there shouldn't be any concurrency when we get here.
+    // however, the code may change later, so let's play nice
+    // and always access _commitIndex and _readDB under the lock,
+    // as all other places in this file do.
+    _commitIndex = 0;
+    _readDB.clear();
+  }
+
   double wait = 0.0;
 
   auto increaseWaitTime = [&wait]() noexcept {
@@ -266,13 +274,38 @@ void AgencyCache::run() {
       index_t commitIndex = 0;
       {
         std::shared_lock g(_storeLock);
-        commitIndex = _commitIndex + 1;
+        if (_commitIndex > 0) {
+          // in the normal case, we will already have a commitIndex != 0.
+          // however, on the first call, we need to call with commitIndex 0
+          // and not 1 in order to get a full snapshot from the agency.
+          // if we poll with a commitIndex value of 1, we will not get a
+          // snapshot but only the changes since commitIndex 1, so we may
+          // be missing data!
+          commitIndex = _commitIndex + 1;
+        }
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
           << "AgencyCache: poll polls: waiting for commitIndex " << commitIndex;
       return AsyncAgencyComm().poll(60s, commitIndex);
     };
 
+  // the following variables are recycled for each run, so that we can save
+  // a few memory allocations in the lifetime of the process
+  
+  // ids of callbacks to call
+  std::vector<uint64_t> toCall;
+
+  // we pass the uniq variable to handleCallbacksNoLocks, but we don't
+  // need it ourselves
+  std::unordered_set<uint64_t> uniq;
+
+  // Plan changes
+  std::unordered_set<std::string> pc;  
+  
+  // Current changes
+  std::unordered_set<std::string> cc;  
+
+  
   // while not stopping
   //   poll agency
   //   if result
@@ -282,15 +315,14 @@ void AgencyCache::run() {
   //       apply logs to local cache
   //   else
   //     wait ever longer until success
-  std::vector<uint64_t> toCall;
-  std::unordered_set<uint64_t> uniq;
+  
   while (!this->isStopping()) {
     // we need to make sure that this thread keeps running, so whenever
     // an exception happens in here, we log it and go on
     try {
-      uniq.clear();
-      toCall.clear();
-      std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+      if (wait > 0.0) {
+        std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+      }
 
       // rb holds receives either
       // * A complete overwrite (firstIndex == 0)
@@ -304,6 +336,9 @@ void AgencyCache::run() {
             [&](AsyncAgencyCommResult&& rb) {
 
               if (rb.ok() && rb.statusCode() == arangodb::fuerte::StatusOK) {
+                uniq.clear();
+                toCall.clear();
+
                 index_t curIndex = 0;
                 {
                   std::lock_guard g(_storeLock);
@@ -321,6 +356,7 @@ void AgencyCache::run() {
                 index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
 
                 if (firstIndex > 0) {
+                  TRI_ASSERT(_initialized);
                   // Do incoming logs match our cache's index?
                   if (firstIndex != curIndex + 1) {
                     LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
@@ -335,8 +371,6 @@ void AgencyCache::run() {
                     TRI_ASSERT(rs.get("log").isArray());
                     LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                       "Applying to cache " << rs.get("log").toJson();
-                    std::unordered_set<std::string> pc;  // Plan changes
-                    std::unordered_set<std::string> cc;  // Current changes
                     for (auto const& i : VPackArrayIterator(rs.get("log"))) {
                       pc.clear();
                       cc.clear();
@@ -350,10 +384,10 @@ void AgencyCache::run() {
                           handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
                         }
                         for (auto const& i : pc) {
-                          _planChanges.emplace(_commitIndex, i);
+                          _planChanges.emplace(_commitIndex, std::move(i));
                         }
                         for (auto const& i : cc) {
-                          _currentChanges.emplace(_commitIndex, i);
+                          _currentChanges.emplace(_commitIndex, std::move(i));
                         }
                       }
                     }
@@ -364,9 +398,10 @@ void AgencyCache::run() {
                   LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
                     "Fresh start: overwriting agency cache with " << rs.toJson();
                   _readDB = rs;                  // overwrite
-                  std::unordered_set<std::string> pc = reInitPlan();
+                  pc = reInitPlan();
+                  _initialized.store(true, std::memory_order_relaxed);
                   for (auto const& i : pc) {
-                    _planChanges.emplace(_commitIndex, i);
+                    _planChanges.emplace(_commitIndex, std::move(i));
                   }
                   // !! Check documentation of the function before making changes here !!
                   _commitIndex = commitIndex;
@@ -598,16 +633,23 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   std::unordered_map<std::string, query_t> db_res;
   query_t rest_res = nullptr;
 
-  decltype(_planChanges) const& changes = (what == PLAN) ? _planChanges : _currentChanges;
   std::vector<std::string> const& goodies = (what == PLAN) ? planGoodies : currentGoodies;
   
   std::unordered_set<std::string> databases;
+
   std::shared_lock g(_storeLock);
+  
+  decltype(_planChanges) const& changes = (what == PLAN) ? _planChanges : _currentChanges;
   
   auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" + VERSION);
   uint64_t version = tmp.second ? tmp.first : 0;
 
-  if (last < _lastSnapshot) {
+  if (last < _lastSnapshot || last == 0) {
+    // we will get here when we call this with a "last" index value that is less than
+    // the index of the last snapshot we got. in this case our changeset needs to 
+    // contain all databases.
+    // in addition, in case the "last" value is 0, this is the initial call, 
+    // and we need to handle this in a special way, too.
     get_rest = true;
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
     databases.reserve(keys.size());
@@ -615,7 +657,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       databases.emplace(std::move(i));
     }
   } else {
-    auto it = changes.lower_bound(last+1); 
+    TRI_ASSERT(last != 0);
+    auto it = changes.lower_bound(last + 1);
     if (it != changes.end()) {
       for (; it != changes.end(); ++it) {
         if (it->second.empty()) { // Need to get rest

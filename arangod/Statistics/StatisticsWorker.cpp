@@ -95,6 +95,11 @@ using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
     : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
+
+  // statistics queries don't work on DB servers, so we should not 
+  // run the StatisticsWorker on DB servers! 
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
+
   _bytesSentDistribution.openArray();
 
   for (auto const& val : BytesSentDistributionCuts) {
@@ -1013,6 +1018,10 @@ void StatisticsWorker::beginShutdown() {
 }
 
 void StatisticsWorker::run() {
+  // statistics queries don't work on DB servers, so we should not 
+  // run the StatisticsWorker on DB servers! 
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
+  
   while (ServerState::isMaintenance()) {
     if (isStopping()) {
       // startup aborted
@@ -1040,11 +1049,12 @@ void StatisticsWorker::run() {
       }
 
       if (seconds % GC_INTERVAL == 0) {
+        // runs every 8 minutes
         collectGarbage();
       }
 
-      // process every 15 seconds
       if (seconds % HISTORY_INTERVAL == 0) {
+        // process every 15 minutes
         historianAverage();
       }
     } catch (std::exception const& ex) {

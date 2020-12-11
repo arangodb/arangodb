@@ -154,7 +154,12 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<arangodb::QueryRegistryFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
-  server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+  {
+    auto& feature = server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
+  }
+
   server.addFeature<arangodb::aql::AqlFunctionFeature>(true);
   server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
   server.addFeature<arangodb::AqlFeature>(true);
@@ -300,6 +305,7 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
+  addFeature<arangodb::NetworkFeature>(false);
 
   if (start) {
     startFeatures();
@@ -358,6 +364,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<arangodb::QueryRegistryFeature>(false);
+  addFeature<arangodb::NetworkFeature>(false);
   if (start) {
     startFeatures();
   }

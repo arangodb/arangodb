@@ -231,6 +231,103 @@ class directory_test_case : public tests::directory_test_case_base {
   }
 };
 
+TEST_P(directory_test_case, rename) {
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "foo"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "bar"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    auto stream0 = dir_->create("foo");
+    ASSERT_NE(nullptr, stream0);
+    stream0->write_byte(0);
+    stream0->flush();
+    auto stream1 = dir_->create("bar");
+    ASSERT_NE(nullptr, stream1);
+    stream1->write_int(2);
+    stream1->flush();
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "foo"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "bar"));
+    ASSERT_TRUE(res);
+  }
+
+  ASSERT_TRUE(dir_->rename("foo", "foo1"));
+  ASSERT_TRUE(dir_->rename("bar", "bar1"));
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "foo"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "bar"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "foo1"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "bar1"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    auto stream0 = dir_->open("foo1", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream0);
+    ASSERT_EQ(1, stream0->length());
+    ASSERT_EQ(0, stream0->read_byte());
+    auto stream1 = dir_->open("bar1", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream1);
+    ASSERT_EQ(4, stream1->length());
+    ASSERT_EQ(2, stream1->read_int());
+  }
+
+  ASSERT_FALSE(dir_->rename("invalid", "foo1"));
+  ASSERT_TRUE(dir_->rename("bar1", "foo1"));
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "foo1"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "bar1"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    auto stream1 = dir_->open("foo1", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream1);
+    ASSERT_EQ(4, stream1->length());
+    ASSERT_EQ(2, stream1->read_int());
+  }
+}
+
 TEST_P(directory_test_case, lock_obtain_release) {
   {
     // single lock

@@ -116,7 +116,6 @@ namespace iresearch {
     return factory ? factory(args) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting a scorer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
