@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix AR-113. Add a check in the AQL geo-index-optimizer rule that vars
+  referenced by a candidate index expression are actually available at the
+  candidate index node.
+
 * Make all Pregel HTTP and JavaScript APIs also accept stringified execution
   number values, in addition to numeric ones.
 
