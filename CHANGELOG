@@ -1,3 +1,10 @@
+v3.6.11 (XXXX-XX-XX)
+--------------------
+
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
+
 v3.6.10 (XXXX-XX-XX)
 --------------------
 

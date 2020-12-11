@@ -3180,7 +3180,7 @@ Future<Result> Methods::replicateOperations(
     url.push_back('/');
     VPackValueLength len;
     const char* ptr = value.get(StaticStrings::KeyString).getString(len);
-    url.append(ptr, len);
+    basics::StringUtils::encodeURIComponent(url, ptr, len);
   }
 
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
