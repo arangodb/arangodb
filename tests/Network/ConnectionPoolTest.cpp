@@ -27,7 +27,7 @@
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "RestServer/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
 
@@ -50,11 +50,9 @@ struct ConfigMock {
     _po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path")),
     _as(_po, nullptr) {
     _as.addFeature<arangodb::MetricsFeature>();
-    _as.addFeature<arangodb::ClusterFeature>();
-    _as.getFeature<arangodb::ClusterFeature>().allocateMembers();
   }
   void operator()(ConnectionPool::Config& config) {
-    config.clusterInfo = &_as.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    config.clusterInfo = new ClusterInfo(_as, nullptr);
   }
   std::shared_ptr<arangodb::options::ProgramOptions> _po;
   arangodb::application_features::ApplicationServer _as;
