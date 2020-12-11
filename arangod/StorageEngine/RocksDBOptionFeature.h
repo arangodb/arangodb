@@ -113,7 +113,10 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   /// arangodb comparator - required because of vpack in keys
   std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
 
+  /// per column family write buffer limits
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies> _maxWriteBufferNumberCf;
+
+  bool _minWriteBufferNumberToMergeTouched;
 };
 
 }  // namespace arangodb

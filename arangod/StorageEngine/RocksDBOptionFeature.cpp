@@ -88,26 +88,26 @@ uint64_t defaultTotalWriteBufferSize() {
 }
 
 uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize, uint64_t sizePerBuffer, uint64_t maxBuffers) {
-  uint64_t const base = rocksDBDefaults.min_write_buffer_number_to_merge;
-  uint64_t const increased = 4;
-  
-  // first check that we would have any positive effect
-  if (increased <= base) {
-    return base;
+  uint64_t safe = rocksDBDefaults.min_write_buffer_number_to_merge;
+  uint64_t test = safe + 1;
+
+  // increase it to as much as 4 if it makes sense
+  for (; test <= 4; ++test) {
+    // next make sure we have enough buffers for it to matter
+    uint64_t minBuffers = 1 + (2 * test);
+    if (maxBuffers < minBuffers) {
+      break;
+    }
+
+    // next make sure we have enough space for all the buffers
+    if (minBuffers * sizePerBuffer * RocksDBColumnFamilyManager::numberOfColumnFamilies > totalSize) {
+      break;
+    }
+
+    safe = test;
   }
 
-  // next make sure we have enough buffers for it to matter
-  uint64_t minBuffers = 1 + (2 * increased);
-  if (maxBuffers < minBuffers) {
-    return base;
-  }
-
-  // next make sure we have enough space for all the buffers
-  if (minBuffers * sizePerBuffer * RocksDBColumnFamilyManager::numberOfColumnFamilies < totalSize) {
-    return base;
-  }
-  
-  return increased;
+  return safe;
 }
 
 }  // namespace
@@ -164,7 +164,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _allowFAllocate(true),
       _exclusiveWrites(false),
       _vpackCmp(new RocksDBVPackComparator()),
-      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0} {
+      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0},
+      _minWriteBufferNumberToMergeTouched(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<size_t>(2), std::min(NumberOfCores::getValue(), static_cast<size_t>(8))));
@@ -266,9 +267,9 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "minimum number of write buffers that will be merged "
-                     "together before writing "
-                     "to storage",
-                     new UInt64Parameter(&_minWriteBufferNumberToMerge));
+                     "together before writing to storage",
+                     new UInt64Parameter(&_minWriteBufferNumberToMerge),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.num-levels", "number of levels for the database",
                      new UInt64Parameter(&_numLevels));
@@ -480,11 +481,12 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       RocksDBColumnFamilyManager::Family::FulltextIndex};
 
   auto addMaxWriteBufferNumberCf = [this, &options](RocksDBColumnFamilyManager::Family family) {
-    std::string name = RocksDBColumnFamilyManager::name(family);
+    std::string name =
+        RocksDBColumnFamilyManager::name(family, RocksDBColumnFamilyManager::NameMode::External);
     std::size_t index =
         static_cast<std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
     options->addOption("--rocksdb.max-write-buffer-number-" + name,
-                       "if set, overrides the value of "
+                       "if non-zero, overrides the value of "
                        "--rocksdb.max-write-buffer-number for the " +
                            name + " column family",
                        new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
@@ -546,6 +548,9 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
         << "invalid value for '--rocksdb.block-cache-shard-bits'";
     FATAL_ERROR_EXIT();
   }
+
+  _minWriteBufferNumberToMergeTouched = options->processingResult().touched(
+      "--rocksdb.min-write-buffer-number-to-merge");
 }
 
 void RocksDBOptionFeature::start() {
@@ -645,6 +650,11 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
   TRI_ASSERT(index < _maxWriteBufferNumberCf.size());
   if (_maxWriteBufferNumberCf[index] > 0) {
     options.max_write_buffer_number = _maxWriteBufferNumberCf[index];
+  }
+  if (!_minWriteBufferNumberToMergeTouched) {
+    options.min_write_buffer_number_to_merge =
+        defaultMinWriteBufferNumberToMerge(_totalWriteBufferSize, _writeBufferSize,
+                                           options.max_write_buffer_number);
   }
 
   return options;
