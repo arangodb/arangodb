@@ -163,7 +163,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
       _exclusiveWrites(false),
-      _vpackCmp(new RocksDBVPackComparator()) {
+      _vpackCmp(new RocksDBVPackComparator()),
+      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0} {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<size_t>(2), std::min(NumberOfCores::getValue(), static_cast<size_t>(8))));
@@ -465,6 +466,33 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   new BooleanParameter(&_exclusiveWrites),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30504);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// add column family-specific options now
+  //////////////////////////////////////////////////////////////////////////////
+  std::initializer_list<RocksDBColumnFamilyManager::Family> families = {
+      RocksDBColumnFamilyManager::Family::Definitions,
+      RocksDBColumnFamilyManager::Family::Documents,
+      RocksDBColumnFamilyManager::Family::PrimaryIndex,
+      RocksDBColumnFamilyManager::Family::EdgeIndex,
+      RocksDBColumnFamilyManager::Family::VPackIndex,
+      RocksDBColumnFamilyManager::Family::GeoIndex,
+      RocksDBColumnFamilyManager::Family::FulltextIndex};
+
+  auto addMaxWriteBufferNumberCf = [this, &options](RocksDBColumnFamilyManager::Family family) {
+    std::string name = RocksDBColumnFamilyManager::name(family);
+    std::size_t index =
+        static_cast<std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
+    options->addOption("--rocksdb.max-write-buffer-number-" + name,
+                       "if set, overrides the value of "
+                       "--rocksdb.max-write-buffer-number for the " +
+                           name + " column family",
+                       new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  };
+  for (auto family : families) {
+    addMaxWriteBufferNumberCf(family);
+  }
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -609,6 +637,14 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
       options.comparator = _vpackCmp.get();
       break;
     }
+  }
+
+  // override
+  std::size_t index =
+      static_cast<std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
+  TRI_ASSERT(index < _maxWriteBufferNumberCf.size());
+  if (_maxWriteBufferNumberCf[index] > 0) {
+    options.max_write_buffer_number = _maxWriteBufferNumberCf[index];
   }
 
   return options;

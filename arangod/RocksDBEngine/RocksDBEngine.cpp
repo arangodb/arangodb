@@ -770,6 +770,8 @@ void RocksDBEngine::start() {
   }
 
   // set our column families
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Invalid,
+                                  _db->DefaultColumnFamily());
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Definitions,
                                   cfHandles[0]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Documents,

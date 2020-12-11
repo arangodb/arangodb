@@ -59,6 +59,8 @@ struct RocksDBColumnFamilyManager {
   static constexpr size_t minNumberOfColumnFamilies = 7;
   static constexpr size_t numberOfColumnFamilies = 7;
 
+  static void initialize();
+
   static rocksdb::ColumnFamilyHandle* get(Family family);
   static void set(Family family, rocksdb::ColumnFamilyHandle* handle);
 
@@ -69,7 +71,10 @@ struct RocksDBColumnFamilyManager {
   static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const& allHandles();
 
  private:
+  static std::array<char const*, numberOfColumnFamilies> _internalNames;
+  static std::array<char const*, numberOfColumnFamilies> _externalNames;
   static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> _handles;
+  static rocksdb::ColumnFamilyHandle* _defaultHandle;
 };
 
 }  // namespace arangodb

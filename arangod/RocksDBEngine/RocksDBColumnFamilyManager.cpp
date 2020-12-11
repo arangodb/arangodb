@@ -28,32 +28,32 @@
 
 #include "Basics/debugging.h"
 
-namespace {
-std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies> const
-    internalNames = {rocksdb::kDefaultColumnFamilyName.c_str(),
-                     "Documents",
-                     "PrimaryIndex",
-                     "EdgeIndex",
-                     "VPackIndex",
-                     "GeoIndex",
-                     "FulltextIndex"};
-std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies> const externalNames = {
-    "definitions", "documents", "primary", "edge", "vpack", "geo", "fulltext"};
-
-static_assert(internalNames.size() == externalNames.size());
-static_assert(internalNames.size() == arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies);
-}  // namespace
-
 namespace arangodb {
+
+std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
+    RocksDBColumnFamilyManager::_internalNames = {"default",      "Documents",
+                                                  "PrimaryIndex", "EdgeIndex",
+                                                  "VPackIndex",   "GeoIndex",
+                                                  "FulltextIndex"};
+std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies> RocksDBColumnFamilyManager::_externalNames =
+    {"definitions", "documents", "primary", "edge", "vpack", "geo", "fulltext"};
 
 std::array<rocksdb::ColumnFamilyHandle*, RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
                                             nullptr, nullptr, nullptr};
 
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::_defaultHandle = nullptr;
+
+void RocksDBColumnFamilyManager::initialize() {
+  std::size_t index =
+      static_cast<std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(
+          Family::Definitions);
+  _internalNames[index] = rocksdb::kDefaultColumnFamilyName.c_str();
+}
+
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::get(Family family) {
   if (family == Family::Invalid) {
-    // use the default
-    family = Family::Definitions;
+    return _defaultHandle;
   }
 
   std::size_t index = static_cast<std::underlying_type<Family>::type>(family);
@@ -64,8 +64,8 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::get(Family family) {
 
 void RocksDBColumnFamilyManager::set(Family family, rocksdb::ColumnFamilyHandle* handle) {
   if (family == Family::Invalid) {
-    // use the default
-    family = Family::Definitions;
+    _defaultHandle = handle;
+    return;
   }
 
   std::size_t index = static_cast<std::underlying_type<Family>::type>(family);
@@ -76,17 +76,16 @@ void RocksDBColumnFamilyManager::set(Family family, rocksdb::ColumnFamilyHandle*
 
 char const* RocksDBColumnFamilyManager::name(Family family, NameMode mode) {
   if (family == Family::Invalid) {
-    // use the default
-    family = Family::Definitions;
+    return rocksdb::kDefaultColumnFamilyName.c_str();
   }
 
   std::size_t index = static_cast<std::underlying_type<Family>::type>(family);
-  TRI_ASSERT(index < ::internalNames.size());
+  TRI_ASSERT(index < _internalNames.size());
 
   if (mode == NameMode::Internal) {
-    return ::internalNames[index];
+    return _internalNames[index];
   }
-  return ::externalNames[index];
+  return _externalNames[index];
 }
 
 char const* RocksDBColumnFamilyManager::name(rocksdb::ColumnFamilyHandle* handle,
@@ -94,9 +93,9 @@ char const* RocksDBColumnFamilyManager::name(rocksdb::ColumnFamilyHandle* handle
   for (std::size_t i = 0; i < _handles.size(); ++i) {
     if (_handles[i] == handle) {
       if (mode == NameMode::Internal) {
-        return ::internalNames[i];
+        return _internalNames[i];
       }
-      return ::externalNames[i];
+      return _externalNames[i];
     }
   }
 
