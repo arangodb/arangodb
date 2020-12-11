@@ -57,7 +57,7 @@ TEST_P(format_11_test_case, read_zero_block_encryption) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // replace encryption
@@ -218,7 +218,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // can't open encrypted index with wrong encryption
@@ -249,7 +249,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // remove encryption
@@ -281,7 +281,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // add cipher
@@ -341,7 +341,7 @@ TEST_P(format_11_test_case, open_10_with_11) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check index
@@ -401,7 +401,7 @@ TEST_P(format_11_test_case, formats_10_11) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // write segment with format11
@@ -416,7 +416,7 @@ TEST_P(format_11_test_case, formats_10_11) {
       doc2->stored.begin(), doc2->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check index

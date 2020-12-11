@@ -27,8 +27,10 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
+#include <list>
 #include <optional>
 #include <variant>
+#include <vector>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ResultT.h"

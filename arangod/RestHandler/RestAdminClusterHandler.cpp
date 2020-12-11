@@ -922,7 +922,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
           .thenValue([this](network::Response&& result) {
             if (result.ok()) {
               resetResponse(ResponseCode(result.statusCode()));  // I quit if the values are not the HTTP Status Codes
-              auto payload = result.response->stealPayload();
+              auto payload = result.response().stealPayload();
               response()->setPayload(std::move(*payload));
             } else {
               switch (result.error) {
