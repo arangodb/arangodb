@@ -1037,7 +1037,7 @@ futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
         return;
       }
 
-      ValueLength len;
+      VPackValueLength len;
       auto p = c.getString(len);
       bool valid = true;
       auto checksum = NumberUtils::atoi<std::uint64_t>(p, p + len, valid);
