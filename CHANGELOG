@@ -24,6 +24,9 @@ devel
   Using the `all` parameter is only allowed when making the call inside the
   `_system` database and with superuser privileges.
   
+* Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
+  section of a foxx app.
+
 * The scheduler will now run a minimum of 4 threads at all times, and the
   default and minimal value for `--server.maximal-threads` has been lowered from
   64 to the greater of 32 and twice the number of detected cores.

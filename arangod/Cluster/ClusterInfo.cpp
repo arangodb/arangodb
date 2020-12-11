@@ -3392,11 +3392,11 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
           // Dump agency plan
           logAgencyDump();
 
-          return Result(
-              TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-              "finish modifying analyzer precondition for database " + databaseID + ": Revision " +
-                revisionBuilder.toString() + (restore ? " - 1" : " + 1") + " is not equal to BuildingRevision " +
-                "or incorrect coordinator or rebootID. Cannot modify an analyzer.");
+          return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                    std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                        " HTTP code: " + std::to_string(res.httpCode()) +
+                        " error message: " + std::string(res.errorMessage()) +
+                        " error details: " + res.errorDetails() + " body: " + res.body());
         }
 
         if (_server.isStopping()) {
@@ -3406,13 +3406,14 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         continue;
       } else if (restore) {
         break; // failed precondition means our revert is indirectly successful!
-      }
-
+      } 
       return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                    std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-                        " HTTP code: " + std::to_string(res.httpCode()) +
-                        " error message: " + std::string(res.errorMessage()) +
-                        " error details: " + res.errorDetails() + " body: " + res.body());
+                    "finish modifying analyzer precondition for database " +
+                    databaseID + ": Revision " + revisionBuilder.toString() +
+                    " is not equal to BuildingRevision " +
+                    " or " + serverIDBuilder.toString() + " is not equal to coordinator or " +
+                    rebootIDBuilder.toString() + " is not equal to coordinatorRebootId. Cannot finish modify "
+                    "an analyzer.");
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
@@ -5813,10 +5814,10 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(std::shared_ptr<cluster::paths
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    arangodb::agency::envelope<VPackBuilder>::create(builder)
+    arangodb::agency::envelope::into_builder(builder)
         .read()
         .key(path->str())
-        .done()
+        .end()
         .done();
   }
 
