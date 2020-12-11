@@ -89,8 +89,8 @@
     "workbox-webpack-plugin": "3.6.3"
   },
   "scripts": {
-    "start": "sh -ac '. ./.env.devel; node scripts/start.js'",
-    "build": "sh -ac '. ./.env.build; node scripts/build.js'",
+    "start": "env-cmd -e devel node scripts/start.js",
+    "build": "env-cmd -e build node scripts/build.js",
     "test": "node scripts/test.js"
   },
   "eslintConfig": {
@@ -104,6 +104,7 @@
   ],
   "devDependencies": {
     "arangojs": "^6.14.1",
+    "env-cmd": "^10.1.0",
     "imports-loader": "^0.8.0",
     "jquery": "^3.5.1",
     "raw-loader": "^4.0.1",
