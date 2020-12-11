@@ -45,7 +45,7 @@ namespace arangodb {
 
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
-                          std::string portType, VPackBuilder& builder) {
+                          std::string const& portType, VPackBuilder& builder) {
   // YOU NEED A TRY CATCH BLOCK like:
   //    TRI_V8_TRY_CATCH_BEGIN(isolate);
   //    TRI_V8_TRY_CATCH_END
@@ -68,7 +68,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
   v8::Handle<v8::Value> jsPortTypeKey =
       TRI_V8_ASCII_STRING(isolate, "portType");
-  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(isolate, portType.c_str());
+  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STD_STRING(isolate, portType);
   if (!request->Set(context, jsPortTypeKey, jsPortTypeValue).FromMaybe(false)) {
     rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
     return rv;

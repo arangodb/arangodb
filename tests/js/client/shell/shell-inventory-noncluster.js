@@ -325,7 +325,7 @@ function inventorySuite () {
         assertEqual("UnitTestsDumpViewEmpty", view.name);
         assertEqual(2, view.cleanupIntervalStep);
         assertEqual(1000, view.commitIntervalMsec);
-        assertEqual(10000, view.consolidationIntervalMsec);
+        assertEqual(1000, view.consolidationIntervalMsec);
         assertEqual("tier", view.consolidationPolicy.type);
         assertEqual([], view.primarySort);
       } finally {

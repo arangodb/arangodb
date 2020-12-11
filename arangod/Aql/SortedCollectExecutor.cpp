@@ -321,7 +321,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   AqlCall clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.offset == 0);
 
-  size_t rowsProduces = 0;
   bool pendingGroup = false;
 
   while (!output.isFull()) {
@@ -336,7 +335,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       if (_infos.getGroupRegisters().empty()) {
         // by definition we need to emit one collect row
         _currentGroup.writeToOutput(output, InputAqlItemRow{CreateInvalidInputRowHint{}});
-        rowsProduces += 1;
       }
       break;
     }
@@ -368,7 +366,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         INTERNAL_LOG_SC << "input is new group, writing old group";
         // Write the current group.
         // Start a new group from input
-        rowsProduces += 1;
         _currentGroup.writeToOutput(output, input);
 
         if (output.isFull()) {
@@ -395,7 +392,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
 
     if (state == ExecutorState::DONE) {
-      rowsProduces += 1;
       _currentGroup.writeToOutput(output, input);
       _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
       break;

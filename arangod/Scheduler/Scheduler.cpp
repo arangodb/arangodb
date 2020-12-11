@@ -122,7 +122,7 @@ void Scheduler::runCronThread() {
         guard.unlock();
 
         // It is time to schedule this task, try to get the lock and obtain a shared_ptr
-        // If this fails a default WorkItem is constructed which has disabled == true
+        // If this fails a default DelayedWorkItem is constructed which has disabled == true
         try {
           auto item = top.second.lock();
           if (item) {
@@ -158,7 +158,7 @@ std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
     return std::make_pair(queued, nullptr);
   }
 
-  auto item = std::make_shared<WorkItem>(std::move(handler), lane, this);
+  auto item = std::make_shared<DelayedWorkItem>(std::move(handler), lane, this);
   {
     std::unique_lock<std::mutex> guard(_cronQueueMutex);
     _cronQueue.emplace(clock::now() + delay, item);

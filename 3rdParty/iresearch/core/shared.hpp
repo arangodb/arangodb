@@ -179,6 +179,13 @@
   #undef FLOAT_T_IS_DOUBLE_T
 #endif
 
+// Windows uses wchar_t for unicode handling
+#if defined(_WIN32)
+  #define IR_NATIVE_STRING(s) L##s
+#else
+  #define IR_NATIVE_STRING(s) s
+#endif
+
 // IRESEARCH_API is used for the public API symbols. It either DLL imports or DLL exports (or does nothing for static build)
 // IRESEARCH_LOCAL is used for non-api symbols.
 // IRESEARCH_PLUGIN is used for public API symbols of plugin modules

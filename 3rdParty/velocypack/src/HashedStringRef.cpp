@@ -115,7 +115,7 @@ std::size_t HashedStringRef::rfind(char c, std::size_t offset) const noexcept {
 }
   
 int HashedStringRef::compare(HashedStringRef const& other) const noexcept {
-  int res = memcmp(_data, other._data, (std::min)(_length, other._length));
+  int res = std::memcmp(_data, other._data, (std::min)(_length, other._length));
 
   if (res != 0) {
     return res;
@@ -124,15 +124,38 @@ int HashedStringRef::compare(HashedStringRef const& other) const noexcept {
   return static_cast<int>(_length) - static_cast<int>(other._length);
 }
 
+int HashedStringRef::compare(char const* data, std::size_t length) const noexcept {
+  int res = std::memcmp(_data, data, (std::min)(static_cast<std::size_t>(_length), length));
+
+  if (res != 0) {
+    return res;
+  }
+
+  if (VELOCYPACK_UNLIKELY(length > std::numeric_limits<uint32_t>::max())) {
+    return -1;
+  }
+  return static_cast<int>(_length) - static_cast<int>(length);
+}
+
 bool HashedStringRef::equals(HashedStringRef const& other) const noexcept {
-  return (size() == other.size() &&
-          hash() == other.hash() &&
-          (memcmp(data(), other.data(), size()) == 0));
+  // if the tag is equal, then the size is equal too!
+  return (tag() == other.tag() && std::memcmp(data(), other.data(), size()) == 0);
+}
+  
+bool HashedStringRef::equals(char const* data, std::size_t length) const noexcept {
+  // it does not matter that the std::string can be longer in size here,
+  // as we are upcasting our own size to size_t and compare. only for
+  // equal lengths we do the memory comparison
+  return (static_cast<std::size_t>(size()) == length && std::memcmp(_data, data, length) == 0);
 }
 
 StringRef HashedStringRef::stringRef() const noexcept {
   return StringRef(data(), size());
 }
+
+#ifdef VELOCYPACK_64BIT
+static_assert(sizeof(HashedStringRef) == 16, "unexpected size of HashedStringRef");
+#endif
 
 namespace arangodb {
 namespace velocypack {

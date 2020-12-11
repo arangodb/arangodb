@@ -319,9 +319,9 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     if (commError != TRI_ERROR_NO_ERROR) {
       shardError.try_emplace(sId, commError);
     } else {
-      resultMap.try_emplace(sId, res.response->slice());
-      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter, true);
-      code = res.response->statusCode();
+      resultMap.try_emplace(sId, res.slice());
+      network::errorCodesFromHeaders(res.response().header.meta(), errorCounter, true);
+      code = res.statusCode();
     }
   }
 
@@ -391,11 +391,11 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
 
       if (res.error == fuerte::Error::NoError) {
         // if no shard has the document, use NF answer from last shard
-        const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
+        bool const isNotFound = res.statusCode() == fuerte::StatusNotFound;
         if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
           nrok++;
-          code = res.response->statusCode();
-          buffer = res.response->stealPayload();
+          code = res.statusCode();
+          buffer = res.response().stealPayload();
         }
       } else {
         commError = network::fuerteToArangoErrorCode(res);
@@ -424,8 +424,8 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
       return OperationResult(network::fuerteToArangoErrorCode(res), options);
     }
 
-    allResults.push_back(res.response->slice());
-    network::errorCodesFromHeaders(res.response->header.meta(), errorCounter,
+    allResults.push_back(res.slice());
+    network::errorCodesFromHeaders(res.response().header.meta(), errorCounter,
                                    /*includeNotFound*/ false);
   }
   VPackBuilder resultBody;
@@ -1423,8 +1423,8 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
           return OperationResult(network::fuerteToArangoErrorCode(res), options);
         }
 
-        return network::clusterResultInsert(res.response->statusCode(),
-                                            res.response->stealPayload(), options, {});
+        return network::clusterResultInsert(res.statusCode(),
+                                            res.response().stealPayload(), options, {});
       };
       return std::move(futures[0]).thenValue(cb);
     }
@@ -1529,8 +1529,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultDelete(res.response->statusCode(),
-                                              res.response->stealPayload(), options, {});
+          return network::clusterResultDelete(res.statusCode(),
+                                              res.response().stealPayload(), options, {});
         };
         return std::move(futures[0]).thenValue(cb);
       }
@@ -1783,8 +1783,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultDocument(res.response->statusCode(),
-                                                res.response->stealPayload(), options, {});
+          return network::clusterResultDocument(res.statusCode(),
+                                                res.response().stealPayload(), options, {});
         });
       }
 
@@ -1912,7 +1912,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       return network::fuerteToArangoErrorCode(r);
     }
 
-    auto payload = r.response->stealPayload();
+    auto payload = r.response().stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -2020,7 +2020,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       return network::fuerteToArangoErrorCode(r);
     }
 
-    auto payload = r.response->stealPayload();
+    auto payload = r.response().stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -2123,13 +2123,13 @@ void fetchVerticesFromEngines(
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
     }
 
-    auto payload = r.response->stealPayload();
+    auto payload = r.response().stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
       THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
     }
-    if (r.response->statusCode() != fuerte::StatusOK) {
+    if (r.statusCode() != fuerte::StatusOK) {
       // We have an error case here. Throw it.
       THROW_ARANGO_EXCEPTION(network::resultFromBody(resSlice, TRI_ERROR_INTERNAL));
     }
@@ -2315,8 +2315,8 @@ Future<OperationResult> modifyDocumentOnCoordinator(
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultModify(res.response->statusCode(),
-                                              res.response->stealPayload(), options, {});
+          return network::clusterResultModify(res.statusCode(),
+                                              res.response().stealPayload(), options, {});
         };
         return std::move(futures[0]).thenValue(cb);
       }
@@ -2406,7 +2406,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    if (r.response->statusCode() != fuerte::StatusOK) {
+    if (r.statusCode() != fuerte::StatusOK) {
       int code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
@@ -2449,7 +2449,7 @@ Result compactOnAllDBServers(ClusterFeature& feature,
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
     }
-    if (r.response->statusCode() != fuerte::StatusOK) {
+    if (r.statusCode() != fuerte::StatusOK) {
       return network::resultFromBody(r.slice(), TRI_ERROR_INTERNAL);
     }
   }
@@ -2714,17 +2714,17 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     if (!r.ok()) {
       continue;
     }
-    if (r.response->checkStatus({fuerte::StatusOK,
-                                 fuerte::StatusCreated,
-                                 fuerte::StatusAccepted,
-                                 fuerte::StatusNoContent})) {
+    if (r.response().checkStatus({fuerte::StatusOK,
+                                  fuerte::StatusCreated,
+                                  fuerte::StatusAccepted,
+                                  fuerte::StatusNoContent})) {
       nrGood++;
     }
   }
 
 
   LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Got " << nrGood << " of "
-  << futures.size() << " lists of local backups";
+    << futures.size() << " lists of local backups";
 
   // Any error if no id presented
   if (idSlice.isNone() && nrGood < futures.size()) {
@@ -2933,7 +2933,6 @@ arangodb::Result controlMaintenanceFeature(network::ConnectionPool* pool,
                                   "Communication error while executing " + command + " maintenance on ") +
                                   r.destination);
     }
-    TRI_ASSERT(r.response != nullptr);
 
     VPackSlice resSlice = r.slice();
     if (!resSlice.isObject() || !resSlice.hasKey(StaticStrings::Error) ||
@@ -2994,7 +2993,6 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
       return arangodb::Result(network::fuerteToArangoErrorCode(r),
                               std::string("Communication error list backups on ") + r.destination);
     }
-    TRI_ASSERT(r.response != nullptr);
 
     VPackSlice resSlice = r.slice();
     if (!resSlice.isObject()) {
@@ -3330,7 +3328,6 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
                   + r.destination);
       continue;
     }
-    TRI_ASSERT(r.response != nullptr);
     VPackSlice slc = r.slice();
 
     if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) || !slc.get(StaticStrings::Error).isBoolean()) {
@@ -3472,7 +3469,6 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
       return arangodb::Result(network::fuerteToArangoErrorCode(r),
           std::string("Communication error list backups on ") + r.destination);
     }
-    TRI_ASSERT(r.response != nullptr);
 
     VPackSlice resSlice = r.slice();
     if (!resSlice.isObject() || !resSlice.hasKey("result")) {
@@ -3584,7 +3580,6 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
                                   "Communication error while deleting backup") +
                                   backupId + " on " + r.destination);
     }
-    TRI_ASSERT(r.response != nullptr);
 
     VPackSlice resSlice = r.slice();
     if (!resSlice.isObject()) {
@@ -3675,7 +3670,6 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
                   std::string("Communication error locking transactions on ")
                   + r.destination);
     }
-    TRI_ASSERT(r.response != nullptr);
 
     if (r.statusCode() != 202) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3684,7 +3678,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
     }
 
     bool hasJobID;
-    std::string jobId = r.response->header.metaByKey(StaticStrings::AsyncId, hasJobID);
+    std::string jobId = r.response().header.metaByKey(StaticStrings::AsyncId, hasJobID);
     if (!hasJobID) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("lock was denied from ") + r.destination +
@@ -3729,8 +3723,6 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
                   std::string("Communication error locking transactions on ")
                   + r.destination);
     }
-    TRI_ASSERT(r.response != nullptr);
-
     // continue on 204 No Content
     if (r.statusCode() == 204) {
       continue;

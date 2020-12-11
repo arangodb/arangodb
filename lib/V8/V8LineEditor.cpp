@@ -197,6 +197,10 @@ class V8Completer : public Completer {
         if (*ptr == '/') {
           state = NORMAL;
           --openComments;
+        } else if (*ptr == '*') {
+          // state stays at MULTI_COMMENT_1
+        } else {
+          state = MULTI_COMMENT;
         }
 
         ++ptr;

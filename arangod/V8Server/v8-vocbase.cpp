@@ -2202,8 +2202,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
                           v8::Boolean::New(isolate,
-                                           StatisticsFeature::enabled()))
-      .FromMaybe(false);  // ignore result  //, v8::ReadOnly);
+                                           vocbase.server().getFeature<StatisticsFeature>().isEnabled()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result  
 
   // replication factors
   context->Global()

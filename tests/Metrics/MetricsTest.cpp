@@ -27,7 +27,13 @@
 
 #include "RestServer/Metrics.h"
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
+#include <functional>
+#include <future>
+#include <iterator>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -53,7 +59,7 @@ TEST_F(MetricsTest, test_counter_concurrency) {
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
-        // wait until all threads are created, so they can 
+        // wait until all threads are created, so they can
         // start at the approximate same time
       }
       for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
@@ -63,11 +69,11 @@ TEST_F(MetricsTest, test_counter_concurrency) {
   }
 
   go.store(true);
-  
+
   for (auto& thread : threads) {
     thread.join();
   }
-  
+
   ASSERT_EQ(c.load(), ::numThreads * ::numOpsPerThread);
 }
 
@@ -79,7 +85,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_same) {
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   std::atomic<bool> go = false;
 
   std::vector<std::thread> threads;
@@ -87,7 +93,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_same) {
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
-        // wait until all threads are created, so they can 
+        // wait until all threads are created, so they can
         // start at the approximate same time
       }
       for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
@@ -95,13 +101,13 @@ TEST_F(MetricsTest, test_histogram_concurrency_same) {
       }
     });
   }
-  
+
   go.store(true);
-  
+
   for (auto& thread : threads) {
     thread.join();
   }
-  
+
   ASSERT_EQ(h.load(0), ::numThreads * ::numOpsPerThread);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
@@ -116,7 +122,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   std::atomic<bool> go = false;
 
   std::vector<std::thread> threads;
@@ -124,21 +130,21 @@ TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&](uint64_t value) {
       while (!go.load()) {
-        // wait until all threads are created, so they can 
+        // wait until all threads are created, so they can
         // start at the approximate same time
       }
       for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
-        h.count(value);
+        h.count(static_cast<int>(value));
       }
     }, i * 30);
   }
-  
+
   go.store(true);
-  
+
   for (auto& thread : threads) {
     thread.join();
   }
-  
+
   ASSERT_EQ(h.load(0), ::numOpsPerThread);
   ASSERT_EQ(h.load(1), (::numThreads > 1 ? 1 : 0) * ::numOpsPerThread);
   ASSERT_EQ(h.load(2), (::numThreads > 2 ? 1 : 0) * ::numOpsPerThread);
@@ -159,67 +165,67 @@ TEST_F(MetricsTest, test_histogram_simple) {
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(0);
   ASSERT_EQ(h.load(0), 2);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(1);
   ASSERT_EQ(h.load(0), 3);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(1);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 0);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(30);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 1);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(30);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 0);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(60);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 1);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(60);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 0);
-  
+
   h.count(90);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 1);
-  
+
   h.count(90);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 2);
-  
+
   h.count(10000);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
   ASSERT_EQ(h.load(2), 2);
   ASSERT_EQ(h.load(3), 3);
-  
+
   h.count(10000000);
   ASSERT_EQ(h.load(0), 4);
   ASSERT_EQ(h.load(1), 2);
@@ -229,7 +235,6 @@ TEST_F(MetricsTest, test_histogram_simple) {
 
 
 TEST_F(MetricsTest, test_counter) {
-
   Counter c(0, "counter_1", "Counter 1");
 
   ASSERT_EQ(c.load(),  0);
@@ -250,23 +255,98 @@ TEST_F(MetricsTest, test_counter) {
 }
 
 template<typename T> void gauge_test() {
-
-  T zdo = .1, zero = 0., one = 1.;
+  T zdo = T(.1);
+  T zero = T(0.);
+  T one = T(1.);
   Gauge g(zero, "gauge_1", "Gauge 1");
 
-  ASSERT_DOUBLE_EQ(g.load(),  zero);
-  g += zdo;
-  ASSERT_DOUBLE_EQ(g.load(),  zdo);
-  g -= zdo;
-  ASSERT_DOUBLE_EQ(g.load(),  zero);
-  g += zdo;
-  g *= g.load();
-  ASSERT_DOUBLE_EQ(g.load(),  zdo*zdo);
-  g /= g.load();
-  ASSERT_DOUBLE_EQ(g.load(),  one);
-  g -= g.load();
-  ASSERT_DOUBLE_EQ(g.load(),  zero);
+  using namespace std;
+  using namespace std::chrono;
 
+  random_device rnd_device;
+  mt19937 mersenne_engine {rnd_device()};  // Generates random integers
+  uniform_real_distribution<T> dist {T(1), T(100)};
+  vector<T> vr(1000);
+  auto gen = [&dist, &mersenne_engine](){
+               return dist(mersenne_engine);
+             };
+  generate(vr.begin(), vr.end(), gen);
+
+  size_t const p = 10;
+  size_t const part = vr.size()/p;
+  std::vector<std::future<void>> f;
+  f.reserve(p);
+
+  g = one;
+  for (size_t i = 0; i < p; ++i) {
+    f.push_back(
+      async(launch::async,
+            [&] {
+              for (size_t j = 0; j < part; ++j) {
+                g += vr.at(j);
+                g -= vr.at(j);
+              }}));
+  }
+  for (auto& i : f) {
+    i.wait();
+  }
+  if constexpr (std::is_same<T,float>::value) {
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-3f);
+  } else {
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-10f);
+  }
+
+  g = one;
+  for (size_t i = 0; i < p; ++i) {
+    f.push_back(
+      async(launch::async,
+            [&] {
+              for (size_t j = 0; j < part; ++j) {
+                g *= vr.at(j);
+                g /= vr.at(j);
+              }}));
+  }
+  for (auto& i : f) {
+    i.wait();
+  }
+  if constexpr (std::is_same<T,float>::value) {
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-3f);
+  } else {
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-10f);
+  }
+
+  if constexpr (std::is_same<T, float>::value) {
+    g = zero;
+    ASSERT_FLOAT_EQ(g.load(), zero);
+    g += zdo;
+    ASSERT_FLOAT_EQ(g.load(), zdo);
+    g -= zdo;
+    ASSERT_FLOAT_EQ(g.load(), zero);
+    g += zdo;
+    g *= g.load();
+    ASSERT_FLOAT_EQ(g.load(), zdo * zdo);
+    g /= g.load();
+    ASSERT_FLOAT_EQ(g.load(), one);
+    g -= g.load();
+    ASSERT_FLOAT_EQ(g.load(), zero);
+  } else if constexpr (std::is_same<T, double>::value) {
+    g = zero;
+    ASSERT_DOUBLE_EQ(g.load(), zero);
+    g += zdo;
+    ASSERT_DOUBLE_EQ(g.load(), zdo);
+    g -= zdo;
+    ASSERT_DOUBLE_EQ(g.load(), zero);
+    g += zdo;
+    g *= g.load();
+    ASSERT_DOUBLE_EQ(g.load(), zdo * zdo);
+    g /= g.load();
+    ASSERT_DOUBLE_EQ(g.load(), one);
+    g -= g.load();
+    ASSERT_DOUBLE_EQ(g.load(), zero);
+  } else {
+    // should only be instantiating this class with double or float
+    ASSERT_TRUE(false);
+  }
 }
 
 TEST_F(MetricsTest, test_gauge_double) {
@@ -280,11 +360,11 @@ TEST_F(MetricsTest, test_gauge_float) {
 template<typename Scale> void histogram_test(Scale const& scale) {
 
   using T = typename Scale::value_type;
-  bool constexpr linear = (Scale::scale_type == ScaleType::LINEAR);
+  bool constexpr linear = (Scale::scale_type == ScaleType::Linear);
 
   int buckets = static_cast<int>(scale.n());
   T mx = scale.high(), mn = scale.low(), d;
-  ADB_IGNORE_UNUSED T base = 0.;
+  ADB_IGNORE_UNUSED T base = static_cast<T>(0.);
   T span = mx - mn;
   ADB_IGNORE_UNUSED T step = span / static_cast<T>(buckets);
   T mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1), one(1), ten(10);
@@ -299,7 +379,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
     if constexpr (linear) {
       d = mn + step*i + mmin;
     } else {
-      d = mn + (mx-mn) * pow(base, i-buckets) + mmin;
+      d = mn + (mx-mn) * static_cast<T>(pow(base, i-buckets)) + mmin;
     }
     h.count(d);
 //    ASSERT_DOUBLE_EQ(h.load(i), 1);
@@ -310,7 +390,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
     if constexpr (linear) {
       d = mn + step*(i+1) - mmin;
     } else {
-      d = mn + (mx-mn) * pow(base, i-buckets+1) - mmin;
+      d = mn + (mx-mn) * static_cast<T>(pow(base, i-buckets+1)) - mmin;
     }
     h.count(d);
 //    ASSERT_DOUBLE_EQ(h.load(i), 2);
@@ -388,5 +468,5 @@ TEST_F(MetricsTest, test_int64_log_bin_histogram) {
   histogram_test(log_scale_t<int64_t>(2, 50,  8000,  10));
 }
 TEST_F(MetricsTest, test_uint64_log_bin_histogram) {
-  histogram_test(log_scale_t<uint64_t>(2, 50., 8.0e3, 10));
+  histogram_test(log_scale_t<uint64_t>(2, 50, 8000, 10));
 }

@@ -41,10 +41,6 @@
 
 namespace arangodb {
 class TransactionState;
-// to be derived by storage engines
-struct TransactionData {
-  virtual ~TransactionData() = default;
-};
 
 namespace velocypack {
 class Builder;
@@ -99,8 +95,6 @@ class Manager final {
   };
 
  public:
-  typedef std::function<void(TransactionId, TransactionData const*)> TrxCallback;
-
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 

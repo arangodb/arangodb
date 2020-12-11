@@ -152,7 +152,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     key = tmp;
   }
 
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   return irs::map_utils::try_emplace_update_key(
     encodings,
@@ -3560,7 +3560,7 @@ const std::locale& get_locale(
   static std::map<locale_info_facet*, std::locale, less_t> locales_u;
   auto& locales = unicodeSystem ? locales_u : locales_s;
   static std::mutex mutex;
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
   auto itr = locales.find(&info);
 
   if (itr != locales.end()) {

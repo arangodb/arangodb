@@ -420,32 +420,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   VPackSlice varsUsedLaterStackSlice = slice.get("varsUsedLaterStack");
 
-  if (varsUsedLaterStackSlice.isNone()) {
-    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
-    VPackSlice varsUsedLaterSlice = slice.get("varsUsedLater");
-    if (!varsUsedLaterSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "\"varsUsedLater\" needs to be an array");
-    }
-    auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
-    varsUsedLater.reserve(varsUsedLaterSlice.length());
-    for (VPackSlice it : VPackArrayIterator(varsUsedLaterSlice)) {
-      Variable oneVarUsedLater(it);
-      Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
-
-      if (oneVariable == nullptr) {
-        std::string errmsg = "varsUsedLater: ID not found in all-array: " +
-                             StringUtils::itoa(oneVarUsedLater.id);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
-      }
-      varsUsedLater.insert(oneVariable);
-    }
-  } else {
-    if (!varsUsedLaterStackSlice.isArray() || varsUsedLaterStackSlice.length() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-          "\"varsUsedLaterStack\" needs to be a non-empty array");
-    }
-
+  if (varsUsedLaterStackSlice.isArray()) {
     _varsUsedLaterStack.reserve(varsUsedLaterStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
       if (!stackEntrySlice.isArray()) {
@@ -467,39 +442,14 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         varsUsedLater.insert(oneVariable);
       }
     }
+  } else if (!varsUsedLaterStackSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+        "\"varsUsedLaterStack\" needs to be a non-empty array");
   }
 
   VPackSlice varsValidStackSlice = slice.get("varsValidStack");
 
-  if (varsValidStackSlice.isNone()) {
-    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
-    VPackSlice varsValidSlice = slice.get("varsValid");
-
-    if (!varsValidSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "\"varsValid\" needs to be an array");
-    }
-    auto& varsValid = _varsValidStack.emplace_back();
-
-    varsValid.reserve(varsValidSlice.length());
-    for (VPackSlice it : VPackArrayIterator(varsValidSlice)) {
-      Variable oneVarValid(it);
-      Variable* oneVariable = allVars->getVariable(oneVarValid.id);
-
-      if (oneVariable == nullptr) {
-        std::string errmsg = "varsValid: ID not found in all-array: " +
-                             StringUtils::itoa(oneVarValid.id);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
-      }
-      varsValid.insert(oneVariable);
-    }
-  } else {
-    if (!varsValidStackSlice.isArray() || varsValidStackSlice.length() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          "\"varsValidStack\" needs to be a non-empty array");
-    }
-
+  if (varsValidStackSlice.isArray()) {
     _varsValidStack.reserve(varsValidStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
       if (!stackEntrySlice.isArray()) {
@@ -522,16 +472,16 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         varsValid.insert(oneVariable);
       }
     }
+  } else if (!varsValidStackSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        "\"varsValidStack\" needs to be a non-empty array");
   }
 
   VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
-  if (!regsToKeepStackSlice.isNone()) {
-    if (!regsToKeepStackSlice.isArray() || regsToKeepStackSlice.length() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          "\"regsToKeepStack\" needs to be a non-empty array");
-    }
-
+  
+  if (regsToKeepStackSlice.isArray()) {
+    // || regsToKeepStackSlice.length() == 0) {
     _regsToKeepStack.reserve(regsToKeepStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(regsToKeepStackSlice)) {
       if (!stackEntrySlice.isArray()) {
@@ -546,12 +496,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         regsToKeep.insert(it.getNumericValue<RegisterId>());
       }
     }
-  } else {
-    // otherwise this is lazily computed in getRegsToKeep.
-    // This is 3.6 compatibility and can be uncommented in 3.7
-    //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-    //                               "\"regsToKeepStack\" needs to be an array");
+  } else if (!regsToKeepStackSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        "\"regsToKeepStack\" needs to be a non-empty array");
   }
+
 
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
@@ -898,7 +848,6 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("regsToKeepStack"));
     {
       VPackArrayBuilder guard(&nodes);
-      //TRI_ASSERT(!_regsToKeepStack.empty()); -- can be empty in 3.6
       for (auto const& stackEntry : getRegsToKeepStack()) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& reg : stackEntry) {
@@ -1149,15 +1098,15 @@ RegisterInfos ExecutionNode::createRegisterInfos(RegIdSet readableInputRegisters
   auto const nrOutRegs = getNrOutputRegisters();
   auto const nrInRegs = getNrInputRegisters();
 
-  auto const& regsToKeep = getRegsToKeepStack();
-  auto const& regsToClear = getRegsToClear();
+  auto regsToKeep = getRegsToKeepStack();
+  auto regsToClear = getRegsToClear();
 
   return RegisterInfos{std::move(readableInputRegisters),
                        std::move(writableOutputRegisters),
                        nrInRegs,
                        nrOutRegs,
-                       regsToClear,
-                       regsToKeep};
+                       std::move(regsToClear),
+                       std::move(regsToKeep)};
 }
 
 RegisterCount ExecutionNode::getNrInputRegisters() const {
@@ -1168,8 +1117,6 @@ RegisterCount ExecutionNode::getNrInputRegisters() const {
 
 auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
   if (_regsToKeepStack.empty()) {
-    // This is 3.6 compatibility code. It can be removed in 3.8.
-    // The function should then become const noexcept and should return a const& instead
     return _registerPlan->calcRegsToKeep(_varsUsedLaterStack, _varsValidStack,
                                          getVariablesSetHere());
   }
@@ -1874,10 +1821,17 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic",
                       VPackValue(func->hasFlag(Function::Flags::Deterministic)));
-            nodes.add("canRunOnDBServer",
-                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServer)));
+            nodes.add("canAccessDocuments", 
+                      VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
+            nodes.add("canRunOnDBServerCluster",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
+            nodes.add("canRunOnDBServerOneShard",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)));
             nodes.add("cacheable", VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-            nodes.add("usesV8", VPackValue(func->implementation == nullptr));
+            nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+            // deprecated
+            nodes.add("canRunOnDBServer",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
@@ -2199,8 +2153,6 @@ struct SubqueryVarUsageFinder final
   VarSet _usedLater;
   VarSet _valid;
 
-  SubqueryVarUsageFinder() {}
-
   ~SubqueryVarUsageFinder() = default;
 
   bool before(ExecutionNode* en) override final {
@@ -2323,7 +2275,6 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
   auto registerInfos = createRegisterInfos(RegIdSet{inputRegister}, {});
-
   auto executorInfos = FilterExecutorInfos(inputRegister);
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
                                                               std::move(registerInfos),

@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,22 +17,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Matthew Von-Maszewski
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CriticalThread.h"
-#include "HeartbeatThread.h"
+#ifndef ARANGODB_UTILITIES_IS_EXECUTABLE_H
+#define ARANGODB_UTILITIES_IS_EXECUTABLE_H 1
 
-using namespace arangodb;
+//////////////////////////////////////////////////////////////////////////////
+/// @brief tell whether str contains a string matching one of our executables
+//////////////////////////////////////////////////////////////////////////////
+std::string extractShellExecutableName(std::string const& input);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static object to record thread crashes.  it is static so that
-///        it can contain information about threads that crash before
-///        HeartbeatThread starts (i.e. HeartbeatThread starts late).  this list
-///        is intentionally NEVER PURGED so that it can be reposted to logs
-///        regularly
-////////////////////////////////////////////////////////////////////////////////
-
-void CriticalThread::crashNotification(std::exception const& ex) {
-  HeartbeatThread::recordThreadDeath(name());
-}
+#endif

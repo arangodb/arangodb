@@ -465,7 +465,7 @@ class phrase_iterator final : public doc_iterator {
     }
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept {
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
     return attrs_.get_mutable(type);
   }
 

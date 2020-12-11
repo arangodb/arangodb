@@ -49,9 +49,6 @@
 
 namespace {
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
-
 void ensureImmutableProperties(
     arangodb::iresearch::IResearchViewMeta& dst,
     arangodb::iresearch::IResearchViewMeta const& src) {
@@ -69,6 +66,8 @@ void ensureImmutableProperties(
 
 namespace arangodb {
 namespace iresearch {
+
+using irs::async_utils::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
@@ -118,19 +117,16 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
             << impl->name() << "': " << res.errorNumber() << " " << res.errorMessage();
       }
     } catch (basics::Exception const& e) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("09bb9", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("6b99b", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.what();
     } catch (...) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("61ae6", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
@@ -221,8 +217,9 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
     VPackBuilder tmp;
 
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+    read_write_mutex::read_mutex mutex(_mutex);
+    // '_collections' can be asynchronously modified
+    auto lock = irs::make_lock_guard(mutex);
 
     builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     for (auto& entry : _collections) {
@@ -313,8 +310,8 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   sanitizedBuilder.close();
 
-  WriteMutex mutex(_mutex); // '_collections' can be asynchronously read
-  SCOPED_LOCK(mutex);
+  read_write_mutex::write_mutex mutex(_mutex); // '_collections' can be asynchronously read
+  auto lock = irs::make_lock_guard(mutex);
   auto [it, emplaced] = _collections.try_emplace(
     cid,
     link.collection().name(), std::move(sanitizedBuilder));
@@ -346,8 +343,9 @@ IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
 }
 
 bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor) const {
-  ReadMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+  read_write_mutex::read_mutex mutex(_mutex);
+  // '_collections' can be asynchronously modified
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry : _collections) {
     if (!visitor(entry.first)) {
@@ -446,8 +444,9 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     std::unordered_set<DataSourceId> currentCids;
 
     {
-      ReadMutex mutex(_mutex);
-      SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+      read_write_mutex::read_mutex mutex(_mutex);
+      // '_collections' can be asynchronously modified
+      auto lock = irs::make_lock_guard(mutex);
 
       currentLinks.openObject();
 
@@ -472,7 +471,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
 
     return Result(
         e.code(),
@@ -482,7 +480,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("86a5c", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
 
     return Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -492,7 +489,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("17b66", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "'";
-    IR_LOG_EXCEPTION();
 
     return Result(
         TRI_ERROR_BAD_PARAMETER,
