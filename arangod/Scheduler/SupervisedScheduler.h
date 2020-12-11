@@ -25,15 +25,19 @@
 #ifndef ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H 1
 
-#include <boost/lockfree/queue.hpp>
+#include <array>
 #include <condition_variable>
+#include <functional>
 #include <list>
 #include <mutex>
+
+#include <boost/lockfree/queue.hpp>
 
 #include "RestServer/Metrics.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
+class NetworkFeature;
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
@@ -41,8 +45,8 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size,
-                      double unavailabilityQueueFillGrade);
+                      uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
+                      double ongoingMultiplier, double unavailabilityQueueFillGrade);
   ~SupervisedScheduler() final;
 
   bool start() override;
@@ -50,6 +54,11 @@ class SupervisedScheduler final : public Scheduler {
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
+
+  void trackBeginOngoingLowPriorityTask();
+  void trackEndOngoingLowPriorityTask();
+
+  constexpr static uint64_t const NumberOfQueues = 4;
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   double approximateQueueFillGrade() const override;
@@ -64,7 +73,7 @@ class SupervisedScheduler final : public Scheduler {
  private:
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
-  
+
   // each worker thread has a state block which contains configuration values.
   // _queueRetryTime_us is the number of microseconds this particular
   // thread should spin before going to sleep. Note that this spinning is only
@@ -103,6 +112,16 @@ class SupervisedScheduler final : public Scheduler {
     bool start();
   };
 
+  struct WorkItem final {
+    fu2::unique_function<void()> _handler;
+
+    explicit WorkItem(fu2::unique_function<void()>&& handler)
+        : _handler(std::move(handler)) {}
+    ~WorkItem() = default;
+
+    void operator()() { _handler(); }
+  };
+
   std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
   void startOneThread();
   void stopOneThread();
@@ -122,24 +141,25 @@ class SupervisedScheduler final : public Scheduler {
   bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override ADB_WARN_UNUSED_RESULT;
 
  private:
+  NetworkFeature& _nf;
+
   std::atomic<uint64_t> _numWorkers;
   std::atomic<bool> _stopping;
   std::atomic<bool> _acceptingNewJobs;
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItemBase*> _queues[3];
+  boost::lockfree::queue<WorkItemBase*> _queues[NumberOfQueues];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
 
-  uint64_t const _minNumWorkers;
-  uint64_t const _maxNumWorkers;
-  uint64_t const _maxFifoSize;
-  uint64_t const _fifo1Size;
-  uint64_t const _fifo2Size;
+  size_t const _minNumWorkers;
+  size_t const _maxNumWorkers;
+  uint64_t const _maxFifoSizes[NumberOfQueues];
+  size_t const _ongoingLowPriorityLimit;
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
@@ -174,6 +194,8 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
+  Gauge<uint64_t>& _ongoingLowPriorityGauge;
+  std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
 };
 
 }  // namespace arangodb

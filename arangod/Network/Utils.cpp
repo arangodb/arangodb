@@ -282,19 +282,14 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
 }
 
 std::string fuerteToArangoErrorMessage(network::Response const& res) {
-  if (res.response && res.response->payloadSize() > 0) {
-    try {
-      // check "errorMessage" attribute first
-      velocypack::Slice s = res.response->slice();
-      if (s.isObject()) {
-        s = s.get(StaticStrings::ErrorMessage);
-        if (s.isString() && s.getStringLength() > 0) {
-          return s.copyString();
-        }
+  if (res.payloadSize() > 0) {
+    // check "errorMessage" attribute first
+    velocypack::Slice s = res.slice();
+    if (s.isObject()) {
+      s = s.get(StaticStrings::ErrorMessage);
+      if (s.isString() && s.getStringLength() > 0) {
+        return s.copyString();
       }
-    } catch (VPackException const& e) {
-      return std::string("caught exception whilst parsing response: '")
-                        .append(e.what()).append("'");
     }
   }
   return TRI_errno_string(fuerteToArangoErrorCode(res));
