@@ -728,7 +728,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       .thenValue([&nrGood](auto const& results) {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();  // throws exceptions upwards
-          if (r.ok() && r.response->statusCode() < 400) {
+          if (r.ok() && r.statusCode() < 400) {
             nrGood++;
           } else {
             LOG_TOPIC("6ae67", ERR, Logger::PREGEL)
@@ -942,6 +942,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   }
 
   size_t nrGood = 0;
+<<<<<<< HEAD
   futures::collectAll(responses)
       .thenValue([&](auto results) {
         for (auto const& tryRes : results) {
@@ -952,6 +953,15 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
               handle(res.response->slice());
             }
           }
+=======
+  futures::collectAll(responses).thenValue([&](auto results) {
+    for (auto const& tryRes : results) {
+       network::Response const& res = tryRes.get();  // throws exceptions upwards
+      if (res.ok() && res.statusCode() < 400) {
+        nrGood++;
+        if (handle) {
+          handle(res.slice());
+>>>>>>> origin/devel
         }
       })
       .wait();

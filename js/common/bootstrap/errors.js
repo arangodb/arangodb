@@ -244,6 +244,7 @@
     "ERROR_LDAP_FOUND_NO_OBJECTS"  : { "code" : 1806, "message" : "LDAP didn't found any objects" },
     "ERROR_LDAP_NOT_ONE_USER_FOUND" : { "code" : 1807, "message" : "LDAP found zero ore more than one user" },
     "ERROR_LDAP_USER_NOT_IDENTIFIED" : { "code" : 1808, "message" : "LDAP found a user, but its not the desired one" },
+    "ERROR_LDAP_OPERATIONS_ERROR"  : { "code" : 1809, "message" : "LDAP returned an operations error" },
     "ERROR_LDAP_INVALID_MODE"      : { "code" : 1820, "message" : "invalid ldap mode" },
     "ERROR_TASK_INVALID_ID"        : { "code" : 1850, "message" : "invalid task id" },
     "ERROR_TASK_DUPLICATE_ID"      : { "code" : 1851, "message" : "duplicate task id" },
