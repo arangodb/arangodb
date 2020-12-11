@@ -189,12 +189,6 @@
         return;
       }
       var navigateTo = $(e.target).attr('documentLink');
-      var test = (navigateTo.split('%').length - 1) % 3;
-
-      if (decodeURIComponent(navigateTo) !== navigateTo && test !== 0) {
-        navigateTo = decodeURIComponent(navigateTo);
-      }
-
       if (navigateTo) {
         window.App.navigate(navigateTo, {trigger: true});
       }

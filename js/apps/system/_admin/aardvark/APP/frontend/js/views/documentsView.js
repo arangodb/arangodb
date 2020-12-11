@@ -1084,13 +1084,7 @@
 
       var url;
       var doc = $(self).attr('id').substr(4);
-
-      try {
-        url = 'collection/' + this.collection.collectionID + '/' + doc;
-        decodeURI(doc);
-      } catch (ex) {
-        url = 'collection/' + this.collection.collectionID + '/' + encodeURIComponent(doc);
-      }
+      url = 'collection/' + this.collection.collectionID + '/' + encodeURIComponent(doc);
       window.location.hash = url;
     },
 
