@@ -735,26 +735,22 @@ void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::Program
                      "upper limit to the allowed number of consolidation threads "
                      "(0 == autodetect)",
                      new options::UInt32Parameter(&_consolidationThreads))
-                     .setIntroducedIn(30705)
-                     .setIntroducedIn(30800);
+                     .setIntroducedIn(30705);
   options->addOption(CONSOLIDATION_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for consolidation tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_consolidationThreadsIdle))
-                     .setIntroducedIn(30705)
-                     .setIntroducedIn(30800);
+                     .setIntroducedIn(30705);
   options->addOption(COMMIT_THREADS_PARAM,
                      "upper limit to the allowed number of commit threads "
                      "(0 == autodetect)",
                      new options::UInt32Parameter(&_commitThreads))
-                     .setIntroducedIn(30705)
-                     .setIntroducedIn(30800);
+                     .setIntroducedIn(30705);
   options->addOption(COMMIT_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for commit tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_commitThreadsIdle))
-                     .setIntroducedIn(30705)
-                     .setIntroducedIn(30800);
+                     .setIntroducedIn(30705);
 }
 
 void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
