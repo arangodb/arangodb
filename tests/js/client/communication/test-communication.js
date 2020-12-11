@@ -344,7 +344,7 @@ function GenericAqlSetupPathSuite(type) {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
       const endpoint = getEndpointById(servers[0]);
-      debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
+      // debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
     }
   };
 
@@ -357,6 +357,8 @@ function GenericAqlSetupPathSuite(type) {
       debugResetRaceControl(endpoint);
     }
   };
+
+  const docsPerWrite = 10;
 
   const selectExclusiveQuery = () => {
     switch (type) {
@@ -412,11 +414,77 @@ function GenericAqlSetupPathSuite(type) {
     }
   };
 
-  const docsPerWrite = 10;
   const exclusiveQuery = selectExclusiveQuery();
   const writeQuery = selectWriteQuery();
   const readQuery = selectReadQuery();
+  const jsWriteAction = `
+    function() {
+      const db = require("@arangodb").db;
+      const col = db.${twoShardColName};
+      for (let i = 0; i < ${docsPerWrite}; ++i) {
+        col.save({});
+      }
+    }
+  `;
+  const jsReadAction = `
+  function() {
+    const db = require("@arangodb").db;
+    const col = db.${twoShardColName};
+    let result = col.toArray();
+    return result;
+  }
+`;
+  const jsExclusive = `
+    db._executeTransaction({
+      collections: {
+        exclusive: "${twoShardColName}"
+      },
+      action: ${jsWriteAction}
+    });
+  `;
+  const jsWrite = `
+    db._executeTransaction({
+      collections: {
+        write: "${twoShardColName}"
+      },
+      action: ${jsWriteAction}
+    });
+  `;
+  const jsRead = `
+    db._executeTransaction({
+      collections: {
+       read: "${twoShardColName}"
+      },
+      action: ${jsReadAction}
+    });
+  `;
 
+
+  // TODO:
+  const apiExclusive = `
+  db._executeTransaction({
+    collections: {
+      exclusive: "${twoShardColName}"
+    },
+    action: ${jsWriteAction}
+  });
+`;
+  const apiWrite = `
+  db._executeTransaction({
+    collections: {
+      write: "${twoShardColName}"
+    },
+    action: ${jsWriteAction}
+  });
+`;
+  const apiRead = `
+  db._executeTransaction({
+    collections: {
+     read: "${twoShardColName}"
+    },
+    action: ${jsReadAction}
+  });
+`;
 
   const buildSingleRunCode = (key, command) => {
     const cmd = `
@@ -512,9 +580,46 @@ function GenericAqlSetupPathSuite(type) {
     }
   };
 
-  return {
+  // This is list of pairs [name, arnagosh-code, writesData]
+  // We need to run all non-duplicate permutations of these pairs
+  const testCases = [
+    ["Exclusive", exclusiveQuery, true],
+    ["Write", writeQuery, true],
+    ["Read", readQuery, false],
+    ["JSExclusive", jsExclusive, true],
+    ["JSWrite", jsWrite, true],
+    ["JSRead", jsRead, false],
+    ["APIExclusive", apiExclusive, true],
+    ["APIWrite", apiWrite, true],
+    ["APIRead", apiRead, false],
+  ];
 
-    setUp: function () {
+  const addTestCase = (suite, first, second) => {
+    const [fName, fCode, fWrites] = first;
+    const [sName, sCode, sWrites] = second;
+    suite[`testAqlSetupPathDeadLock${fName}${sName}${type}`] = function () {
+      assertEqual(db[twoShardColName].count(), 0);
+      let tests = [
+        [`${fName}-1`, fCode],
+        [`${sName}-2`, sCode]
+      ];
+      activateShardLockingFailure();
+      let numWriters = 0;
+      if (fWrites) {
+        numWriters++;
+      }
+      if (sWrites) {
+        numWriters++;
+      }
+
+      // run both queries in parallel
+      singleRun(tests);
+      assertEqual(db[twoShardColName].count(), numWriters * docsPerWrite);
+    };
+  }
+
+  const testSuite = {
+    setUpAll: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -545,6 +650,11 @@ function GenericAqlSetupPathSuite(type) {
 
     tearDown: function () {
       deactivateShardLockingFailure();
+      db[twoShardColName].truncate();
+      db[cn].truncate();
+    },
+
+    tearDownAll: function () {
       switch (type) {
         case "Graph":
         case "NamedGraph": {
@@ -565,11 +675,12 @@ function GenericAqlSetupPathSuite(type) {
       db._drop(cn);
     },
 
-    [`testAqlSetupPathDeadLockExclusiveExclusive${type}`]: function () {
+    /*
+    [`testAqlSetupPathDeadLockExclusiveJSExclusive${type}`]: function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
         ["exclusive-1", exclusiveQuery],
-        ["exclusive-2", exclusiveQuery]
+        ["exclusive-2", jsExclusive]
       ];
       activateShardLockingFailure();
 
@@ -577,71 +688,25 @@ function GenericAqlSetupPathSuite(type) {
       singleRun(tests);
       assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
     },
-
-    [`testAqlSetupPathDeadLockExclusiveWrite${type}`]: function () {
-      assertEqual(db[twoShardColName].count(), 0);
-      let tests = [
-        ["exclusive-1", exclusiveQuery],
-        ["write-2", writeQuery]
-      ];
-      activateShardLockingFailure();
-      // run both queries in parallel
-      singleRun(tests);
-      assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
-    },
-
-    [`testAqlSetupPathDeadLockExclusiveRead${type}`]: function () {
-      assertEqual(db[twoShardColName].count(), 0);
-      let tests = [
-        ["exclusive-1", exclusiveQuery],
-        ["read-2", readQuery]
-      ];
-      activateShardLockingFailure();
-
-      // run both queries in parallel
-      singleRun(tests);
-      assertEqual(db[twoShardColName].count(), docsPerWrite);
-    },
-
-    [`testAqlSetupPathDeadLockWriteWrite${type}`]: function () {
-      assertEqual(db[twoShardColName].count(), 0);
-      let tests = [
-        ["write-1", writeQuery],
-        ["write-2", writeQuery]
-      ];
-      activateShardLockingFailure();
-
-      // run both queries in parallel
-      singleRun(tests);
-      assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
-    },
-
-    [`testAqlSetupPathDeadLockWriteRead${type}`]: function () {
-      assertEqual(db[twoShardColName].count(), 0);
-      let tests = [
-        ["write-1", writeQuery],
-        ["read-2", readQuery]
-      ];
-      activateShardLockingFailure();
-
-      // run both queries in parallel
-      singleRun(tests);
-      assertEqual(db[twoShardColName].count(), docsPerWrite);
-    },
-
-    [`testAqlSetupPathDeadLockReadRead${type}`]: function () {
-      assertEqual(db[twoShardColName].count(), 0);
-      let tests = [
-        ["read-1", readQuery],
-        ["read-2", readQuery]
-      ];
-      activateShardLockingFailure();
-
-      // run both queries in parallel
-      singleRun(tests);
-      assertEqual(db[twoShardColName].count(), 0);
-    },
+    */
   };
+
+  // We only need to permuate JS and API based tests for a
+  // single tye, as they do not distinguish the different types
+  const lastTypeTestCase = type === "Plain" ? testCases.length : 3;
+
+  // Permutate all testCases.
+  // We Iterate once over all.
+  // And for each we iterate over all
+  // that follow after the current case (including the current)
+  // this way we get all permutations without duplicates.
+  for (let i = 0; i < lastTypeTestCase; ++i) {
+    for (let j = i; j < testCases.length; ++j) {
+      addTestCase(testSuite, testCases[i], testCases[j]);
+    }
+  }
+
+  return testSuite;
 }
 
 function AqlSetupPathSuite() {
