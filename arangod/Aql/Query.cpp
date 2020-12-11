@@ -1179,7 +1179,8 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
-//  options.skipScheduler = true;
+  options.continuationLane = RequestLane::CLUSTER_AQL_CONTINUATION;
+  //  options.skipScheduler = true;
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
