@@ -1000,7 +1000,7 @@ futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
 
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
-  reqOpts.timeout = network::Timeout(300.0);
+  reqOpts.timeout = network::Timeout(600.0);
   reqOpts.param("withRevisions", withRevisions ? "true" : "false");
   reqOpts.param("withData", withData ? "true" : "false");
 
@@ -1032,7 +1032,7 @@ futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
 
       VPackSlice r = answer.get("revision");
       VPackSlice c = answer.get("checksum");
-      if (r.isString() && c.isString()) {
+      if (!r.isString() || !c.isString()) {
         result.reset(TRI_ERROR_INTERNAL, "invalid data received for checksum calculation");
         return;
       }
