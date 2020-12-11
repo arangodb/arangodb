@@ -49,7 +49,7 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
     std::tie(queued, workItem) =
         arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
             [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(1);
+              auto off = std::chrono::seconds(2);
               // The RequestLane needs to be something which is `HIGH` priority, otherwise
               // all threads executing this might be blocking, waiting for a lock to be
               // released.

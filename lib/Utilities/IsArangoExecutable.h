@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,34 +17,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_NON_ACTION_H
-#define ARANGODB_MAINTENANCE_NON_ACTION_H
+#ifndef ARANGODB_UTILITIES_IS_EXECUTABLE_H
+#define ARANGODB_UTILITIES_IS_EXECUTABLE_H 1
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
-
-#include <chrono>
-
-namespace arangodb {
-namespace maintenance {
-
-/**
- * @brief  Dummy action for failure to find action
- */
-class NonAction : public ActionBase {
- public:
-  NonAction(MaintenanceFeature&, ActionDescription const& d);
-
-  virtual ~NonAction();
-
-  virtual bool first() override final;
-};
-
-}  // namespace maintenance
-}  // namespace arangodb
+//////////////////////////////////////////////////////////////////////////////
+/// @brief tell whether str contains a string matching one of our executables
+//////////////////////////////////////////////////////////////////////////////
+std::string extractShellExecutableName(std::string const& input);
 
 #endif

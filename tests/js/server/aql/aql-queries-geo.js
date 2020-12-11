@@ -558,13 +558,13 @@ function pointsTestSuite() {
       db._drop("UnitTestsPointsTestSuite");
 
       locations = db._create("UnitTestsPointsTestSuite");
+      locations.ensureIndex({ type: "geo", fields: ["lat", "lng"]});
+
       for (lat = -40; lat <= 40; ++lat) {
         for (lon = -40; lon <= 40; ++lon) {
           locations.save({ "lat": lat, "lng": lon });
         }
       }
-
-      locations.ensureIndex({ type: "geo", fields: ["lat", "lng"]});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -573,6 +573,27 @@ function pointsTestSuite() {
 
     tearDownAll: function () {
       db._drop("UnitTestsPointsTestSuite");
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test empty circly
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsEmptyCircle: function () {
+      // run on a few test samples
+      for (let lat = -40; lat <= 40; lat += 8) {
+        for (let lon = -40; lon <= 40; lon += 8) {
+          runQuery({
+            string: "FOR x IN @@cc FILTER DISTANCE(@lat, @lng, x.lat, x.lng) <= 0 RETURN x",
+            bindVars: {
+              "@cc": locations.name(),
+              lat: lat,
+              lng: lon
+            },
+            expected: [{ "lat": lat, "lng": lon }]
+          });
+        }
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////

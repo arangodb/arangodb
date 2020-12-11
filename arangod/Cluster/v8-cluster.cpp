@@ -1465,9 +1465,9 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
         TRI_GET_GLOBAL_STRING(StatusKey);
         r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED")).FromMaybe(false);
 
-        auto headers = response.response->header.meta();
-        headers[StaticStrings::ContentLength] = StringUtils::itoa(response.response->payloadSize());
-        for (auto& it : headers) {
+        auto headers = response.response().header.meta();
+        headers[StaticStrings::ContentLength] = StringUtils::itoa(response.payloadSize());
+        for (auto const& it : headers) {
           h->Set(context, TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
         }
         r->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), h).FromMaybe(false);
@@ -1476,10 +1476,10 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
       r->Set(context, CodeKey, v8::Number::New(isolate, response.statusCode())).FromMaybe(false);
     
       std::string json;
-      if (response.response->isContentTypeVPack()) {
-        json = response.response->slice().toJson();
-      } else if (response.response->isContentTypeJSON()) {
-        auto raw = response.response->payload();
+      if (response.response().isContentTypeVPack()) {
+        json = response.slice().toJson();
+      } else if (response.response().isContentTypeJSON()) {
+        auto raw = response.response().payload();
         json.append(reinterpret_cast<const char*>(raw.data()), raw.size());
       }
       if (json.size() > 0) {
@@ -1584,48 +1584,6 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("cea85", DEBUG, Logger::CLUSTER)
       << "JS_AsyncRequest: request has been submitted";
 
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enquire information about an asynchronous request
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  auto context = TRI_IGETC;
-  onlyInCluster();
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("enquire(operationID)");
-  }
-
-  OperationID operationID = TRI_ObjectToUInt64(isolate, args[0], true);
-
-  LOG_TOPIC("77dbd", DEBUG, Logger::CLUSTER)
-      << "JS_Enquire: calling ClusterComm::enquire()";
-  
-  {
-    std::lock_guard<std::mutex> guard(::_requestMutex);
-    auto it = ::_requests.begin();
-    while (it != _requests.end()) {
-      std::shared_ptr<::AsyncRequest> req = *it;
-      if (req->operationID == operationID) {
-        Return_PrepareClusterCommResultForJS(args, *req);
-        return;
-      }
-      it++;
-    }
-  }
-
-  v8::Handle<v8::Object> r = v8::Object::New(isolate);
-  TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-  r->Set(context,
-         ErrorMessageKey,
-         TRI_V8_ASCII_STRING(isolate, "operation was dropped")).FromMaybe(false);
-  TRI_V8_RETURN(r);
-  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2079,7 +2037,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "asyncRequest"), JS_AsyncRequest);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enquire"), JS_Enquire);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "wait"), JS_Wait);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_Drop);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getId"), JS_GetId);

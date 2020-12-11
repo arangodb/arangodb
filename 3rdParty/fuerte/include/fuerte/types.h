@@ -171,6 +171,18 @@ ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   ContentEncoding
+// -----------------------------------------------------------------------------
+
+enum class ContentEncoding : uint8_t {
+  Identity = 0,
+  Deflate = 1,
+  Gzip = 2
+};
+ContentEncoding to_ContentEncoding(std::string const& val);
+std::string to_string(ContentEncoding type);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                AuthenticationType
 // -----------------------------------------------------------------------------
 
