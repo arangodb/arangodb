@@ -4,6 +4,9 @@ devel
 * Add cluster support for collection.checksum() method to calculate CRC
   checksums for collections.
 
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
 * Fix AQL cost estimate of spliced subqueries which could lead to overly large
   numbers in the explain output of such queries.
 
