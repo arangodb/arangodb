@@ -344,7 +344,7 @@ function GenericAqlSetupPathSuite(type) {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
       const endpoint = getEndpointById(servers[0]);
-      // debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
+      debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
     }
   };
 
@@ -459,32 +459,98 @@ function GenericAqlSetupPathSuite(type) {
     });
   `;
 
+  const apiLibs = `
+    const request = require("@arangodb/request");
+    arango.getEndpoint()
+    function sendRequest(method, endpoint, body, headers) {
 
-  // TODO:
+      const endpointToURL = (endpoint) => {
+        if (endpoint.substr(0, 6) === 'ssl://') {
+          return 'https://' + endpoint.substr(6);
+        }
+        var pos = endpoint.indexOf('://');
+        if (pos === -1) {
+          return 'http://' + endpoint;
+        }
+        return 'http' + endpoint.substr(pos);
+      };
+
+      let res;
+      try {
+        const envelope = {
+          json: true,
+          method,
+          url: endpointToURL(arango.getEndpoint()) + endpoint,
+          headers,
+        };
+        if (method !== 'GET') {
+          envelope.body = body;
+        }
+        res = request(envelope);
+      } catch (err) {
+        require("console").log(err);
+        return {};
+      }
+      require("console").log("GOT " + res.body);
+      if (typeof res.body === "string") {
+        if (res.body === "") {
+          res.body = {};
+        } else {
+          res.body = JSON.parse(res.body);
+        }
+      }
+      return res;
+    }
+  `;
+  // Note: A different test checks that the API works this way
   const apiExclusive = `
-  db._executeTransaction({
-    collections: {
-      exclusive: "${twoShardColName}"
-    },
-    action: ${jsWriteAction}
-  });
-`;
+    ${apiLibs}
+    let trx;
+    const obj = { collections: { exclusive: "${twoShardColName}" } };
+    let result = sendRequest('POST', "/_api/transaction/begin", obj, {}, true);
+    try {
+      trx = result.body.result.id;
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      // Commit
+      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+    } catch {
+      // Abort
+      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+    }
+  `;
   const apiWrite = `
-  db._executeTransaction({
-    collections: {
-      write: "${twoShardColName}"
-    },
-    action: ${jsWriteAction}
-  });
-`;
+    ${apiLibs}
+    let trx;
+    const obj = { collections: { write: "${twoShardColName}" } };
+    let result = sendRequest('POST', "/_api/transaction/begin", obj, {});
+    try {
+      trx = result.body.result.id;
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      // Commit
+      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+    } catch {
+      // Abort
+      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+    }
+  `;
   const apiRead = `
-  db._executeTransaction({
-    collections: {
-     read: "${twoShardColName}"
-    },
-    action: ${jsReadAction}
-  });
-`;
+    ${apiLibs}
+    let trx;
+    const obj = { collections: { read: "${twoShardColName}" } };
+    let result = sendRequest('POST', "/_api/transaction/begin", obj, {}, true);
+    try {
+      trx = result.body.result.id;
+      const query = "FOR x IN ${twoShardColName} RETURN x";
+      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      // Commit
+      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+    } catch {
+      // Abort
+      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+    }
+  `;
 
   const buildSingleRunCode = (key, command) => {
     const cmd = `
@@ -673,22 +739,7 @@ function GenericAqlSetupPathSuite(type) {
       }
       db._drop(twoShardColName);
       db._drop(cn);
-    },
-
-    /*
-    [`testAqlSetupPathDeadLockExclusiveJSExclusive${type}`]: function () {
-      assertEqual(db[twoShardColName].count(), 0);
-      let tests = [
-        ["exclusive-1", exclusiveQuery],
-        ["exclusive-2", jsExclusive]
-      ];
-      activateShardLockingFailure();
-
-      // run both queries in parallel
-      singleRun(tests);
-      assertEqual(db[twoShardColName].count(), 2 * docsPerWrite);
-    },
-    */
+    }
   };
 
   // We only need to permuate JS and API based tests for a
