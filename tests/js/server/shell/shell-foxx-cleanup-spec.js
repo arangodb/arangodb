@@ -7,6 +7,8 @@ const path = require('path');
 const expect = require('chai').expect;
 const fixtureRoot = path.resolve(require('internal').pathForTesting('common'), 'test-data');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx self-heal cleanup', () => {
   let mount = null;
   afterEach(() => {

@@ -362,7 +362,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-            vocbase.isShardingSingle()) {
+            vocbase.isOneShard()) {
           auto const isSatellite =
               Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
                                    velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -471,7 +471,6 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
             // do not grant rights on system collections
             if (!col->system()) {
               entry.grantCollection(vocbase.name(), col->name(), auth::Level::RW);
-              events::CreateCollection(vocbase.name(), col->name(), TRI_ERROR_NO_ERROR);
             }
           }
           return TRI_ERROR_NO_ERROR;
@@ -511,7 +510,11 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
   for (auto const& info : infos) {
-    events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    if (!ServerState::instance()->isSingleServer()) {
+      // don't log here (again) for single servers, because on the single
+      // server we will log the creation of each collection inside vocbase::createCollectionWorker
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    }
     velocypack::Builder builder(info.properties);
     OperationResult result(Result(), builder.steal(), options);
     events::PropertyUpdateCollection(vocbase.name(), info.name, result);
@@ -871,7 +874,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail() && res.isNot(TRI_ERROR_FORBIDDEN))
+  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES, 
+               res.fail() && 
+               res.isNot(TRI_ERROR_FORBIDDEN) && 
+               res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+               res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 
@@ -926,7 +933,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
 
   queue->dispatchAndWait();
 
-  if (queue->status() == TRI_ERROR_NO_ERROR) {
+  if (queue->status().ok()) {
     res = trx.commit();
   } else {
     return futures::makeFuture(Result(queue->status()));
@@ -1057,12 +1064,9 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
 arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Slice properties) {
   return velocypack::Collection::keep(properties,
-      std::unordered_set<std::string>{StaticStrings::DoCompact,
+      std::unordered_set<std::string>{
                                       StaticStrings::DataSourceSystem,
                                       StaticStrings::DataSourceId,
-                                      "isVolatile",
-                                      StaticStrings::JournalSize,
-                                      StaticStrings::IndexBuckets,
                                       "keyOptions",
                                       StaticStrings::WaitForSyncString,
                                       StaticStrings::CacheEnabled,

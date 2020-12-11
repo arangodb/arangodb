@@ -9,6 +9,8 @@ const internal = require('internal');
 const crypto = require('@arangodb/crypto');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('SyntheticResponse', function () {
   describe('write', function () {
     describe('when the native response has no body', function () {

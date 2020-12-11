@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Endpoint/Endpoint.h"
 #include "FeaturePhases/FoxxFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
@@ -40,7 +41,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -267,7 +268,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       {std::type_index(typeid(iresearch::IResearchFeature)),
        std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
        std::type_index(typeid(ActionFeature)),
-       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),
+       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxFeature)),
        std::type_index(typeid(FrontendFeature))});
 
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {

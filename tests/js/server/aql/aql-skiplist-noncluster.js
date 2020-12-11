@@ -1058,13 +1058,15 @@ function ahuacatlSkiplistTestSuite () {
       skiplist.ensureSkiplist("c");
       skiplist.ensureSkiplist("d");
 
-      skiplist.truncate();
+      skiplist.truncate({ compact: false });
 
+      let docs = [];
       for (var i = 1; i <= 5; ++i) {
         for (var j = 1; j <= 5; ++j) {
-          skiplist.save({ "c" : i, "d": j });
+          docs.push({ "c" : i, "d": j });
         }
       }
+      skiplist.save(docs);
 
       var query = "FOR a IN " + skiplist.name() + " FILTER a.c == a.d SORT a.c RETURN [ a.c, a.d ]";
       var expected = [ [ 1, 1 ], [ 2, 2 ], [ 3, 3 ], [ 4, 4 ], [ 5, 5 ] ];

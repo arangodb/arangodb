@@ -67,6 +67,7 @@ std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
+std::string const StaticStrings::Compact("compact");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -229,18 +230,16 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // accept-encodings
+std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
 
 // collection attributes
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
-std::string const StaticStrings::DoCompact("doCompact");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
-std::string const StaticStrings::IndexBuckets("indexBuckets");
-std::string const StaticStrings::JournalSize("journalSize");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::MinRevision("minRevision");
 std::string const StaticStrings::ObjectId("objectId");
@@ -289,6 +288,7 @@ std::string const StaticStrings::GraphQueryOrder("order");
 std::string const StaticStrings::GraphQueryOrderBFS("bfs");
 std::string const StaticStrings::GraphQueryOrderDFS("dfs");
 std::string const StaticStrings::GraphQueryOrderWeighted("weighted");
+std::string const StaticStrings::GraphQueryShortestPathType("shortestPathType");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
@@ -352,6 +352,9 @@ std::string const StaticStrings::AqlCallListDefault("default");
 std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzersRevision");
 std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision("current");
 std::string const StaticStrings::ArangoSearchSystemAnalyzersRevision("system");
+
+// aql http headers
+std::string const StaticStrings::AqlShardIdHeader("x-shard-id");
 
 // validation
 std::string const StaticStrings::ValidationLevelNone("none");

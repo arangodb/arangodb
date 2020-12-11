@@ -33,8 +33,8 @@
 #include "object_pool.hpp"
 #include "noncopyable.hpp"
 
-NS_ROOT
-NS_BEGIN(container_utils)
+namespace iresearch {
+namespace container_utils {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class array
@@ -192,7 +192,7 @@ class bucket_meta {
 };
 MSVC_ONLY(__pragma(warning(pop)))
 
-NS_BEGIN(memory)
+namespace memory {
 
 template<typename BucketFactory, size_t Size>
 class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // noncopyable because of 'pools_' (declaration required by MSVC2017)
@@ -230,7 +230,7 @@ struct default_allocator {
   }
 }; // default_allocator
 
-NS_END // memory
+} // memory
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a function to calculate the bucket offset of the reqested position
@@ -390,7 +390,7 @@ template<size_t NumBuckets, size_t SkipBits, typename Allocator>
 raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER_ID
   = bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
 
-NS_END // container_utils
-NS_END // NS_ROOT
+} // container_utils
+} // namespace iresearch {
 
 #endif

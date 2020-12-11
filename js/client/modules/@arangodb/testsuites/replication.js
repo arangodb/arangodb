@@ -43,8 +43,8 @@ const optionsDocumentation = [
 ];
 
 const _ = require('lodash');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'shell_replication': [tu.pathForTesting('common/replication')],
@@ -529,7 +529,7 @@ function replicationSync (options) {
       let shutdownState = true;
       let res = true;
       print("starting replication slave: ");
-      let slave = pu.startInstance('tcp', options, {"log.level" : "replication=trace", "--log.level": "replication=trace"}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
       let state = (typeof slave === 'object');
 
       if (state) {

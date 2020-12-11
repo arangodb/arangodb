@@ -28,7 +28,7 @@
 
 // server is started in unicode directory
 
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const _ = require('lodash');
 

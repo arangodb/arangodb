@@ -60,7 +60,9 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
-      _manager(globalRocksEngine()->replicationManager()) {}
+      _manager(
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()) {
+}
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
   // extract the request type
@@ -88,7 +90,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto* ctx = _manager->createContext(ttl, syncerId, clientId);
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    auto* ctx = _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -250,7 +253,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   auto data = builder.slice();
 
-  uint64_t const latest = latestSequenceNumber();
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  uint64_t const latest = engine.db()->GetLatestSequenceNumber();
 
   if (result.fail()) {
     generateError(GeneralResponse::responseCode(result.errorNumber()),
@@ -411,6 +415,8 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
   // to is ignored because the snapshot time is the latest point in time
+  
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   RocksDBReplicationContext* ctx = nullptr;
   // get batchId from url parameters
@@ -640,9 +646,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   bool found = false;
   uint64_t contextId = 0;
-
-  // contains dump options that might need to be inspected
-  // VPackSlice options = _request->payload();
 
   // get collection Name
   std::string const& cname = _request->value("collection");

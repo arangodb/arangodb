@@ -73,7 +73,7 @@ static std::string const UNKNOWN = "UNKNOWN";
 std::string const LogThreadName("Logging");
 
 class DefaultLogGroup : public LogGroup {
-  std::size_t id() const { return 0; }
+  std::size_t id() const override { return 0; }
 };
 DefaultLogGroup defaultLogGroupInstance;
 
@@ -367,7 +367,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         out.push_back('"');
       }
       // value of date/time is always safe to print
-      LogTimeFormats::writeTime(out, _timeFormat);
+      LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
       if (LogTimeFormats::isStringFormat(_timeFormat)) {
         out.push_back('"');
       }
@@ -466,7 +466,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     out.push_back('}');
   } else {
     // human readable format
-    LogTimeFormats::writeTime(out, _timeFormat);
+    LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
     out.push_back(' ');
 
     // output prefix

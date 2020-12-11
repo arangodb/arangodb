@@ -77,7 +77,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  EngineSelectorFeature::ENGINE->flushWal(waitForSync, waitForCollector);
+  TRI_GET_GLOBALS();
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().flushWal(waitForSync, waitForCollector);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
@@ -187,7 +188,9 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  EngineSelectorFeature::ENGINE->waitForEstimatorSync(std::chrono::seconds(10));
+  TRI_GET_GLOBALS();
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().waitForEstimatorSync(
+      std::chrono::seconds(10));
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

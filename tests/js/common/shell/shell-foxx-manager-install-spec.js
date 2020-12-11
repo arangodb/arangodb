@@ -38,6 +38,8 @@ const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const expect = require('chai').expect;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx Manager install', function () {
   beforeEach(function () {
     try {

@@ -593,6 +593,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_WITH:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW:
       break;
   }
 
@@ -711,7 +712,8 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_WITH:
-    case NODE_TYPE_FOR_VIEW: { 
+    case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -895,8 +897,7 @@ void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
 VPackSlice AstNode::computeValue(VPackBuilder* builder) const {
-  TRI_ASSERT(isConstant());
-
+  TRI_ASSERT(isConstant() || isStringValue()); // only strings could be mutabe
   if (_computedValue == nullptr) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
 
@@ -1610,7 +1611,8 @@ bool AstNode::willUseV8() const {
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
     
-    if (func->implementation == nullptr) {
+    if (func->hasV8Implementation()) {
+      TRI_ASSERT(!func->hasCxxImplementation());
       // a function without a C++ implementation
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
@@ -1687,9 +1689,7 @@ bool AstNode::isConstant() const {
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto value = member->getMember(0);
-
-        if (!value->isConstant()) {
+        if (!member->getMember(0)->isConstant()) {
           setFlag(DETERMINED_CONSTANT);
           return false;
         }
@@ -1748,7 +1748,7 @@ bool AstNode::isArrayComparisonOperator() const {
 
 /// @brief whether or not a node (and its subnodes) can safely be executed on
 /// a DB server
-bool AstNode::canRunOnDBServer() const {
+bool AstNode::canRunOnDBServer(bool isOneShard) const {
   if (hasFlag(DETERMINED_RUNONDBSERVER)) {
     // fast track exit
     return hasFlag(VALUE_RUNONDBSERVER);
@@ -1758,7 +1758,7 @@ bool AstNode::canRunOnDBServer() const {
   size_t const n = numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = getMember(i);
-    if (!member->canRunOnDBServer()) {
+    if (!member->canRunOnDBServer(isOneShard)) {
       // if any sub-node cannot run on a DB server, we can't either
       setFlag(DETERMINED_RUNONDBSERVER);
       return false;
@@ -1769,7 +1769,14 @@ bool AstNode::canRunOnDBServer() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in function
     auto func = static_cast<Function*>(getData());
-    if (func->hasFlag(Function::Flags::CanRunOnDBServer)) {
+  
+    // currently being able to run on a DB server in cluster always includes being able to run
+    // on a DB server in OneShard mode. this may change at some point in the future.
+    TRI_ASSERT(!func->hasFlag(Function::Flags::CanRunOnDBServerCluster) || 
+               func->hasFlag(Function::Flags::CanRunOnDBServerOneShard));
+
+    if ((isOneShard && func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)) ||
+        (!isOneShard && func->hasFlag(Function::Flags::CanRunOnDBServerCluster))) {
       setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
       return true;
     }
@@ -2408,6 +2415,7 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW:
       break;
   }
 
@@ -2584,6 +2592,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW:
       break;
   }
   return ret;

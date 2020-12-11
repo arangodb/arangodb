@@ -389,22 +389,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     TRI_ASSERT(_config.leader.majorVersion != 0);
 
     LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION) << "client: got leader state";
-    if (incremental) {
-      if (_config.leader.majorVersion == 1 ||
-          (_config.leader.majorVersion == 2 && _config.leader.minorVersion <= 6)) {
-        LOG_TOPIC("15183", WARN, Logger::REPLICATION) << "incremental replication is "
-                                                "not supported with a leader < "
-                                                "ArangoDB 2.7";
-        incremental = false;
-      }
-    }
-
 
     if (!_config.isChild()) {
-
       // enable patching of collection count for ShardSynchronization Job
       std::string patchCount = StaticStrings::Empty;
-      if (incremental && _config.applier._skipCreateDrop &&
+      if (_config.applier._skipCreateDrop &&
           _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
           _config.applier._restrictCollections.size() == 1) {
         patchCount = *_config.applier._restrictCollections.begin();
@@ -697,8 +686,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     }
 
     auto headers = replutils::createHeaders();
-    int vv = _config.leader.majorVersion * 1000000 + _config.leader.minorVersion * 1000;
-    if (vv >= 3008000) {
+    if (_config.leader.version() >= 30800) {
       // from 3.8 onwards, it is safe and also faster to retrieve vpack-encoded dumps.
       // in previous versions there may be vpack encoding issues for the /_api/replication/dump
       // responses.
@@ -947,9 +935,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
-  if (coll->syncByRevision() &&
-      (_config.leader.majorVersion > 3 ||
-       (_config.leader.majorVersion == 3 && _config.leader.minorVersion >= 7))) {
+  if (coll->syncByRevision() && _config.leader.version() >= 30700) {
     // local collection should support revisions, and leader is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if leader collection
@@ -1013,6 +999,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   }
 
   double const startTime = TRI_microtime();
+    
+  headers = replutils::createHeaders();
 
   while (true) {
     if (!_config.isChild()) {
@@ -1021,7 +1009,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
     std::string const jobUrl = "/_api/job/" + jobId;
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0, headers));
     });
     
     double waitTime = TRI_microtime() - startTime;
@@ -1103,11 +1091,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
         "deleting remote collection keys object for collection '" +
         coll->name() + "' from " + url;
     _config.progress.set(msg);
-
+    
     // now delete the keys we ordered
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+      auto headers = replutils::createHeaders();
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
     });
   };
 
@@ -1157,7 +1146,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
   // now we can fetch the complete chunk information from the leader
   try {
-    return EngineSelectorFeature::ENGINE->handleSyncKeys(*this, *coll, keysId.copyString());
+    return coll->vocbase().server().getFeature<EngineSelectorFeature>().engine().handleSyncKeys(
+        *this, *coll, keysId.copyString());
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -1594,30 +1584,9 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
   return guard.collection()->properties(slice, false);  // always a full-update
 }
 
-/// @brief determine the number of documents in a collection
-int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
-                                  col, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return -1;
-  }
-
-  OperationOptions options(ExecContext::current());
-  auto result = trx.count(col.name(), transaction::CountType::Normal, options);
-
-  if (result.result.fail()) {
-    return -1;
-  }
-
-  VPackSlice s = result.slice();
-
-  if (!s.isNumber()) {
-    return -1;
-  }
-
-  return s.getNumber<int64_t>();
+/// @brief whether or not the collection has documents
+bool DatabaseInitialSyncer::hasDocuments(arangodb::LogicalCollection const& col) {
+  return col.getPhysical()->hasDocuments();
 }
 
 /// @brief handle the information about a collection
@@ -1814,7 +1783,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     std::string const& leaderColl =
         !leaderUuid.empty() ? leaderUuid : itoa(leaderCid.id());
-    auto res = incremental && getSize(*col) > 0
+    auto res = incremental && hasDocuments(*col)
                    ? fetchCollectionSync(col, leaderColl, _config.leader.lastLogTick)
                    : fetchCollectionDump(col, leaderColl, _config.leader.lastLogTick);
 
@@ -1895,7 +1864,8 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   _config.progress.set("fetching leader inventory from " + url);
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+    auto headers = replutils::createHeaders();
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
   });
 
   if (replutils::hasFailed(response.get())) {

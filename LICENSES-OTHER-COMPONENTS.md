@@ -74,6 +74,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### fastvalidate-utf8
+
+* Name: fastvalidate-utf8
+* Version: (none)
+* Date: 2017-02-28 13:11:35Z 
+* Project Home: https://github.com/lemire/fastvalidate-utf-8
+* License: https://raw.githubusercontent.com/lemire/fastvalidate-utf-8/master/LICENSE-APACHE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
 ### fpconv_dtoa
 
 * Name: fpconv
@@ -457,8 +467,8 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.7
-* Date: 2017-08-25 00:37:10Z
+* Version: 1.1.8
+* Date: 2020-10-29 23:00:50Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License

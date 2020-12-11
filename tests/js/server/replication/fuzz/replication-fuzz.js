@@ -38,7 +38,7 @@ let compareTicks = replication.compareTicks;
 var console = require("console");
 var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -436,7 +436,7 @@ function ReplicationSuite() {
           let truncateCollection = function() {
             let collection = pickCollection();
             emit("truncateCollection " + db._name() + " " + collection.name());
-            collection.truncate();
+            collection.truncate({ compact: false });
           };
 
           let createIndex = function () {

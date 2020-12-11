@@ -1,6 +1,5 @@
 include_directories(.)
 
-
 # ----------------------------------------
 # Fuerte tests
 # ----------------------------------------
@@ -47,14 +46,26 @@ foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
-################################################################################
-## IResearch
-################################################################################
 if (WINDOWS)
   set(RCFILE Maintenance/json.rc)
 endif ()
 
+set(ARANGODB_TESTS_COMMON_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/AgencyMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
+)
+
+add_subdirectory(IResearch)
+
 set(ARANGODB_TESTS_SOURCES
+  ${ARANGODB_TESTS_COMMON_SOURCES}
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -132,6 +143,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
+  Aql/WindowExecutorTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Basics/conversions-test.cpp
@@ -140,7 +152,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/files-test.cpp
   Basics/fpconv-test.cpp
   Basics/hashes-test.cpp
-  Basics/icu-helper.cpp
   Basics/json-test.cpp
   Basics/overload-test.cpp
   Basics/priorityqueue-test.cpp
@@ -151,11 +162,12 @@ set(ARANGODB_TESTS_SOURCES
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
-  Basics/CompileTimeStrlenTest.cpp
+  Basics/CpuUsageSnapshotTest.cpp
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
+  Basics/NumberUtilsTest.cpp
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/SpinLockTest.cpp
@@ -196,80 +208,16 @@ set(ARANGODB_TESTS_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/GraphTestTools.cpp
+  Graph/KPathFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
-  IResearch/common.cpp
-  IResearch/AgencyMock.cpp
-  IResearch/Containers-test.cpp
-  IResearch/ExpressionContextMock.cpp
-  IResearch/ExpressionFilter-test.cpp
-  IResearch/GeoAnalyzer-test.cpp
-  IResearch/GeoFilter-test.cpp
-  IResearch/GeoDistanceFilter-test.cpp
-  IResearch/IResearchAnalyzerFeature-test.cpp
-  IResearch/IResearchComparer-test.cpp
-  IResearch/IResearchDocument-test.cpp
-  IResearch/IResearchFeature-test.cpp
-  IResearch/IResearchFilterArrayIn-test.cpp
-  IResearch/IResearchFilterArrayInterval-test.cpp
-  IResearch/IResearchFilterBoolean-test.cpp
-  IResearch/IResearchFilterCompare-test.cpp
-  IResearch/IResearchFilterFunction-test.cpp
-  IResearch/IResearchFilterIn-test.cpp
-  IResearch/IResearchIndex-test.cpp
-  IResearch/IResearchLink-test.cpp
-  IResearch/IResearchLinkCoordinator-test.cpp
-  IResearch/IResearchLinkHelper-test.cpp
-  IResearch/IResearchLinkMeta-test.cpp
-  IResearch/IResearchOrder-test.cpp
-  IResearch/IResearchQueryAggregate-test.cpp
-  IResearch/IResearchQueryAnd-test.cpp
-  IResearch/IResearchQueryBooleanTerm-test.cpp
-  IResearch/IResearchQueryComplexBoolean-test.cpp
-  IResearch/IResearchQueryExists-test.cpp
-  IResearch/IResearchQueryFilter-test.cpp
-  IResearch/IResearchQueryIn-test.cpp
-  IResearch/IResearchQueryInRange-test.cpp
-  IResearch/IResearchQueryJoin-test.cpp
-  IResearch/IResearchQueryLateMaterialization-test.cpp
-  IResearch/IResearchQueryMinMatch-test.cpp
-  IResearch/IResearchQueryNGramMatch-test.cpp
-  IResearch/IResearchQueryNoMaterialization-test.cpp
-  IResearch/IResearchQueryNullTerm-test.cpp
-  IResearch/IResearchQueryNumericTerm-test.cpp
-  IResearch/IResearchQueryOptimization-test.cpp
-  IResearch/IResearchQueryOptions-test.cpp
-  IResearch/IResearchQueryOr-test.cpp
-  IResearch/IResearchQueryPhrase-test.cpp
-  IResearch/IResearchQueryLevenshteinMatch-test.cpp
-  IResearch/IResearchQueryWildcard-test.cpp
-  IResearch/IResearchQueryScorer-test.cpp
-  IResearch/IResearchQuerySelectAll-test.cpp
-  IResearch/IResearchQueryStartsWith-test.cpp
-  IResearch/IResearchQueryStringTerm-test.cpp
-  IResearch/IResearchQueryTokens-test.cpp
-  IResearch/IResearchQueryValue-test.cpp
-  IResearch/IResearchQueryTraversal-test.cpp
-  IResearch/IResearchPrimaryKeyReuse-test.cpp
-  IResearch/IResearchView-test.cpp
-  IResearch/IResearchViewCoordinator-test.cpp
-  IResearch/IResearchViewDBServer-test.cpp
-  IResearch/IResearchViewMeta-test.cpp
-  IResearch/IResearchViewNode-test.cpp
-  IResearch/IResearchViewSort-test.cpp
-  IResearch/IResearchViewSorted-test.cpp
-  IResearch/RestHandlerMock.cpp
-  IResearch/VelocyPackHelper-test.cpp
+  ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
   Metrics/MetricsTest.cpp
   Metrics/MetricsFeatureTest.cpp
-  Mocks/IResearchLinkMock.cpp
-  Mocks/LogLevels.cpp
-  Mocks/StorageEngineMock.cpp
-  Mocks/Servers.cpp
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
@@ -283,6 +231,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
+  RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
@@ -322,7 +271,7 @@ add_executable(
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+  target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
 endif()
 
 target_link_libraries(arangodbtests
@@ -346,11 +295,11 @@ target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
 )
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
 endif()

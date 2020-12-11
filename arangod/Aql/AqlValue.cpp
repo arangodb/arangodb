@@ -1022,7 +1022,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
                                     )
                     ).FromMaybe(true);
 
-        if (i % 1000 == 0) {
+        if (i % 1024 == 0) {
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
@@ -1319,10 +1319,6 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
   return 0;
 }
 
-int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
-                      AqlValue const& right, bool compareUtf8) {
-  return Compare(trx->transactionContextPtr()->getVPackOptions(), left, right, compareUtf8);
-}
 
 AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {
   TRI_ASSERT(docvec != nullptr);

@@ -186,14 +186,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   // Add `moreDirt` to `dirty` but remove from `moreDirt`, if already dirty anyway.
   // Then we can reasonably be surprised if we find anything in a database in `moreDirt`.
   for (auto it = moreDirt.begin(); it != moreDirt.end();) {
-    if (dirty.find(*it) != dirty.end()) {
+    if (dirty.find(*it) == dirty.end()) {
       dirty.insert(*it);
       it++;
     } else {
       it = moreDirt.erase(it);
     }
   }
-
 
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)

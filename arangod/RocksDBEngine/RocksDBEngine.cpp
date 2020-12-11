@@ -120,6 +120,7 @@ std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // static variables for all existing column families
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_default(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_definitions(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
@@ -189,7 +190,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _db(nullptr),
       _vpackCmp(new RocksDBVPackComparator()),
-      _walAccess(new RocksDBWalAccess()),
+      _walAccess(new RocksDBWalAccess(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
       _intermediateCommitSize(transaction::Options::defaultIntermediateCommitSize),
       _intermediateCommitCount(transaction::Options::defaultIntermediateCommitCount),
@@ -800,6 +801,7 @@ void RocksDBEngine::start() {
   }
 
   // set our column families
+  RocksDBColumnFamily::_default = _db->DefaultColumnFamily();
   RocksDBColumnFamily::_definitions = cfHandles[0];
   RocksDBColumnFamily::_documents = cfHandles[1];
   RocksDBColumnFamily::_primary = cfHandles[2];
@@ -847,8 +849,8 @@ void RocksDBEngine::start() {
   }
 
   TRI_ASSERT(_db != nullptr);
-  _settingsManager.reset(new RocksDBSettingsManager(_db));
-  _replicationManager.reset(new RocksDBReplicationManager());
+  _settingsManager.reset(new RocksDBSettingsManager(*this));
+  _replicationManager.reset(new RocksDBReplicationManager(*this));
 
   _settingsManager->retrieveInitialValues();
 
@@ -1142,9 +1144,8 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(RocksDBKey const&
                                                                int& status) {
   rocksdb::PinnableSlice value;
 
-  auto db = rocksutils::globalRocksDB();
   auto opts = rocksdb::ReadOptions();
-  auto s = db->Get(opts, RocksDBColumnFamily::definitions(), key.string(), &value);
+  auto s = _db->Get(opts, RocksDBColumnFamily::definitions(), key.string(), &value);
   if (!s.ok()) {
     status = TRI_ERROR_FILE_NOT_FOUND;
     return arangodb::velocypack::Builder();
@@ -1171,8 +1172,8 @@ int RocksDBEngine::removeReplicationApplierConfiguration() {
 }
 
 int RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) {
-  auto status = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
-                                                key.string());
+  auto status = rocksutils::convertStatus(
+      _db->Delete(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(), key.string()));
   if (!status.ok()) {
     return status.errorNumber();
   }
@@ -1201,8 +1202,9 @@ int RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key,
                                                        bool doSync) {
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
-  auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
-                                             key.string(), value.string());
+  auto status = rocksutils::convertStatus(
+      _db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
+               key.string(), value.string()));
   if (!status.ok()) {
     return status.errorNumber();
   }
@@ -1434,7 +1436,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
+  size_t numDocs = rocksutils::countKeyRange(_db, bounds, true);
 
   if (numDocs > 0) {
     std::string errorMsg(
@@ -1582,8 +1584,7 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
         << "failed to write change view marker " << s.ToString();
     return rocksutils::convertStatus(s);
   }
-  auto db = rocksutils::globalRocksDB();
-  auto res = db->Write(wo, &batch);
+  auto res = _db->Write(wo, &batch);
   LOG_TOPIC_IF("6ee8a", TRACE, Logger::VIEWS, !res.ok())
       << "could not change view: " << res.ToString();
   return rocksutils::convertStatus(res);
@@ -1895,7 +1896,7 @@ void RocksDBEngine::pruneWalFiles() {
   // are in here. If there are already other threads in WAL tailing while we
   // get here, we go on and only remove the WAL files that are really safe
   // to remove
-  RocksDBFilePurgeEnabler purgeEnabler(rocksutils::globalRocksEngine()->startPurging());
+  RocksDBFilePurgeEnabler purgeEnabler(startPurging());
 
   WRITE_LOCKER(lock, _walFileLock);
 
@@ -1964,7 +1965,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
   // remove collections
   auto dbBounds = RocksDBKeyBounds::DatabaseCollections(id);
-  iterateBounds(dbBounds, [&](rocksdb::Iterator* it) {
+  iterateBounds(_db, dbBounds, [&](rocksdb::Iterator* it) {
     RocksDBKey key(it->key());
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
 
@@ -2442,9 +2443,8 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 }
 
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
-  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
   rocksdb::VectorLogPtr walFiles;
-  rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+  rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
   Result res = rocksutils::convertStatus(s);
   if (res.fail()) {
     return res;
@@ -2467,7 +2467,7 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
     if (std::next(lfile) != walFiles.end()) {
       max = (*std::next(lfile))->StartSequence();
     } else {
-      max = tdb->GetLatestSequenceNumber();
+      max = _db->GetLatestSequenceNumber();
     }
     builder.add("tickMax", VPackValue(std::to_string(max)));
     builder.close();
@@ -2478,9 +2478,8 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
 
 Result RocksDBEngine::firstTick(uint64_t& tick) {
   Result res{};
-  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
   rocksdb::VectorLogPtr walFiles;
-  rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
+  rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
 
   if (!s.ok()) {
     res = rocksutils::convertStatus(s);

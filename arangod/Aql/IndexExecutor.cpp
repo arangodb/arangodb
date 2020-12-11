@@ -599,7 +599,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
     AqlValue a = exp->execute(&ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
-    AqlValueMaterializer materializer(&_trx);
+    AqlValueMaterializer materializer(&_trx.vpackOptions());
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 

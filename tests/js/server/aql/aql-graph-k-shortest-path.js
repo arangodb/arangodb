@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -533,7 +533,7 @@ function kShortestPathsSyntaxTestSuite() {
         db._query(query);
         fail();
       } catch (e) {
-        assertEqual(e.errorMessage, "AQL: k Shortest Paths only has one return variable near 'RETURN a' at position 2:68 (while parsing)");
+        assertMatch(/K_SHORTEST_PATHS only has one return variable/, e.errorMessage);
       }
     }
   };

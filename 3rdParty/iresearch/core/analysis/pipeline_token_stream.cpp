@@ -27,7 +27,7 @@
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
-NS_LOCAL
+namespace {
 
 constexpr irs::string_ref PIPELINE_PARAM_NAME = "pipeline";
 constexpr irs::string_ref TYPE_PARAM_NAME = "type";
@@ -35,11 +35,11 @@ constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
 
 const irs::offset NO_OFFSET;
 
-class empty_analyzer
+class empty_analyzer final
   : public irs::analysis::analyzer, private irs::util::noncopyable {
  public:
   empty_analyzer() : analyzer(irs::type<empty_analyzer>::get()) {}
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) { return nullptr;  }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) override { return nullptr;  }
   static constexpr irs::string_ref type_name() noexcept { return "empty_analyzer"; }
   virtual bool next() override { return false; }
   virtual bool reset(const irs::string_ref&) override { return false; }
@@ -222,19 +222,17 @@ irs::attribute* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pi
 }
 
 bool all_have_offset(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
-  for (auto it = pipeline.begin(); it != pipeline.end(); ++it) {
-    auto offset = irs::get<irs::offset>(*it->get());
-    if (!offset) {
-      return false;
-    }
-  }
-  return true;
+  return std::all_of(
+      pipeline.begin(), pipeline.end(),
+      [](const irs::analysis::analyzer::ptr& v) {
+    return nullptr != irs::get<irs::offset>(*v);
+  });
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
   : attributes{ {
@@ -245,14 +243,15 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
                                          nullptr
                                          : irs::get_mutable<term_attribute>(options.back().get())}},
     irs::type<pipeline_token_stream>::get()} {
-  pipeline_.reserve(options.size());
   const auto track_offset = irs::get<offset>(*this) != nullptr;
+  pipeline_.reserve(options.size());
   for (const auto& p : options) {
     assert(p);
-    pipeline_.emplace_back(p, track_offset);
+    pipeline_.emplace_back(std::move(p), track_offset);
   }
+  options.clear(); // mimic move semantic
   if (pipeline_.empty()) {
-    pipeline_.push_back(sub_analyzer_t());
+    pipeline_.emplace_back();
   }
   top_ = pipeline_.begin();
   bottom_ = --pipeline_.end();
@@ -328,11 +327,13 @@ bool pipeline_token_stream::reset(const string_ref& data) {
     normalize_json_config);  // match registration above
 }
 
-pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(const irs::analysis::analyzer::ptr& a, bool track_offset)
+pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(
+    const irs::analysis::analyzer::ptr& a,
+    bool track_offset)
   : term(irs::get<irs::term_attribute>(*a)),
-  inc(irs::get<irs::increment>(*a)),
-  offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
-  analyzer(a) {
+    inc(irs::get<irs::increment>(*a)),
+    offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
+    analyzer(a) {
   assert(inc);
   assert(term);
 }
@@ -341,5 +342,5 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
   : term(nullptr), inc(nullptr), offs(nullptr),
     analyzer(irs::analysis::analyzer::ptr(), &EMPTY_ANALYZER) { }
 
-NS_END
-NS_END
+}
+}

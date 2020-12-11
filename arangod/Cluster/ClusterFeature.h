@@ -90,8 +90,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
-
-  Counter& getDroppedFollowerCounter() { return _dropped_follower_counter->get(); }
+  
+  Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
+  Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
+  Counter& followersWrongChecksumCounter() { return _followersWrongChecksumCounter->get(); }
 
   /**
    * @brief Add databases to dirty list
@@ -112,6 +114,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
    * @brief Check database for dirtyness
    */
   bool isDirty(std::string const& database) const;
+
+  /// @brief hand out async agency comm connection pool pruning:
+  void pruneAsyncAgencyConnectionPool() {
+    _asyncAgencyCommPool->pruneConnections();
+  }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -149,13 +156,14 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
-  std::optional<std::reference_wrapper<Counter>> _dropped_follower_counter;
+  std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
   std::unordered_set<std::string> _dirtyDatabases;
-
 };
 
 }  // namespace arangodb

@@ -30,7 +30,7 @@
 #include "Agency/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Cluster/CriticalThread.h"
+#include "Basics/Thread.h"
 #include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
@@ -44,7 +44,7 @@ struct check_t {
   check_t(std::string const& n, bool g) : good(g), name(n) {}
 };
 
-class Supervision : public arangodb::CriticalThread {
+class Supervision : public arangodb::Thread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;
@@ -132,7 +132,7 @@ class Supervision : public arangodb::CriticalThread {
  private:
 
   /// @brief get reference to the spearhead snapshot
-  Node const& snapshot() const ;
+  Node const& snapshot() const;
 
   /// @brief decide, if we can start supervision ahead of armageddon delay
   bool earlyBird() const;

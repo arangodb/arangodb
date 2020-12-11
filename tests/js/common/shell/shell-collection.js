@@ -168,49 +168,6 @@ function CollectionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with properties (isVolatile is only a valid mmfiles attr)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingVolatile: function () {
-      var cn = "example";
-
-      db._drop(cn);
-      try {
-        db._create(cn, {isVolatile: true});
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with properties (journalSize is only a valid mmfiles attr)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingJournalSize: function () {
-      var cn = "example";
-
-      db._drop(cn);
-      let c1 = db._create(cn, {journalSize: 4 * 1024 * 1024});
-      assertUndefined(c1.journalSize);
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with properties (journalSize is only a valid mmfiles attr)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingIndexBuckets: function () {
-      var cn = "example";
-
-      db._drop(cn);
-      let c1 = db._create(cn, {indexBuckets: 4});
-      assertUndefined(c1.indexBuckets);
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test revision id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -236,7 +193,7 @@ function CollectionSuite () {
       var r4 = c1.revision();
       assertEqual(1, testHelper.compareStringIds(r4, r3));
 
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r5 = c1.revision();
       assertEqual(1, testHelper.compareStringIds(r5, r4));
 
@@ -266,7 +223,7 @@ function CollectionSuite () {
       var r7 = c1.revision();
       assertEqual(0, testHelper.compareStringIds(r7, r6));
 
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r8 = c1.revision();
 
       // unload

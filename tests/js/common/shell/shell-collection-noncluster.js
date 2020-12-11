@@ -53,7 +53,7 @@ function CollectionSuite () {
         c.shards();
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err.errorNum);
       }
       db._drop(cn);
     },
@@ -211,7 +211,7 @@ function CollectionSuite () {
       assertNotEqual(r4.checksum, r5.checksum);
 
       // test after truncation
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r6 = c1.checksum(true);
       assertTypeOf("string", r6.revision);
       assertTypeOf("string", r6.checksum);
@@ -273,7 +273,7 @@ function CollectionSuite () {
       assertNotEqual(r4.checksum, r5.checksum);
 
       // test after truncation
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r6 = c1.checksum(true);
       assertTypeOf("string", r6.revision);
       assertTypeOf("string", r6.checksum);

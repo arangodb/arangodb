@@ -214,7 +214,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
-      _consolidationIntervalMsec(10 * 1000),
+      _consolidationIntervalMsec(1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
       _writebufferActive(0),
@@ -718,7 +718,7 @@ size_t IResearchViewMeta::memory() const {
 IResearchViewMetaState::Mask::Mask(bool mask /*=false*/) noexcept
     : _collections(mask) {}
 
-IResearchViewMetaState::IResearchViewMetaState() {}
+IResearchViewMetaState::IResearchViewMetaState() = default;
 
 IResearchViewMetaState::IResearchViewMetaState(IResearchViewMetaState const& defaults) {
   *this = defaults;

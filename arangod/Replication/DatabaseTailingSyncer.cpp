@@ -115,6 +115,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
   auto clock = std::chrono::steady_clock();
   auto startTime = clock.now();
+    
+  auto headers = replutils::createHeaders();
 
   while (true) {
     if (vocbase()->server().isStopping()) {
@@ -133,7 +135,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
       ++_stats.numTailingRequests;
-      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0, headers));
     });
 
     _stats.waitedForTailing += TRI_microtime() - start;
@@ -148,7 +150,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       TRI_ASSERT(r.ok());
       if (hard) {
         // now do a final sync-to-disk call. note that this can fail
-        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+        auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+        r = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
       }
       until = fromTick;
       return r;
@@ -245,7 +248,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       TRI_ASSERT(r.ok());
       if (hard) {
         // now do a final sync-to-disk call. note that this can fail
-        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+        auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+        r = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
       }
       until = fromTick;
       return r;
@@ -268,8 +272,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }

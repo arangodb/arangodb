@@ -59,6 +59,7 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
+#include "IResearchAqlAnalyzer.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
@@ -106,6 +107,8 @@ static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZ
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack, AqlAnalyzer::normalize_vpack);
+REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json, AqlAnalyzer::normalize_json);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -462,8 +465,8 @@ REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_bui
   pipeline_vpack_normalizer);
 } // namespace pipeline_vpack
 
-arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
-                                    arangodb::transaction::Methods* trx,
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
+                                    arangodb::aql::AstNode const&,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
@@ -486,12 +489,13 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
     arangodb::iresearch::getStringRef(args[1].slice()) :
     irs::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
-  TRI_ASSERT(trx);
-  auto& server = trx->vocbase().server();
+  TRI_ASSERT(expressionContext);
+  auto& trx = expressionContext->trx();
+  auto& server = expressionContext->vocbase().server();
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    pool = analyzers.get(name, trx->vocbase(),
-                         trx->state()->analyzersRevision());
+    pool = analyzers.get(name, trx.vocbase(),
+                         trx.state()->analyzersRevision());
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   }
@@ -658,7 +662,8 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
           // used to calculate values for constant expressions)
           arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                              arangodb::aql::Function::Flags::Cacheable,
-                                             arangodb::aql::Function::Flags::CanRunOnDBServer),
+                                             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
           &aqlFnTokens  // function implementation
       });
 }
@@ -770,7 +775,7 @@ arangodb::Result visitAnalyzers(
     if (!coords.empty() &&
         !vocbase.isSystem() && // System database could be on other server so OneShard optimization will not work
         (vocbase.server().getFeature<arangodb::ClusterFeature>().forceOneShard() ||
-          vocbase.isShardingSingle())) {
+          vocbase.isOneShard())) {
       auto& clusterInfo = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
       if (!collection) {
@@ -834,7 +839,6 @@ arangodb::Result visitAnalyzers(
       builder.close();
     }
 
-
     for (auto const& coord : coords) {
       auto f = arangodb::network::sendRequest(
             pool,
@@ -854,12 +858,12 @@ arangodb::Result visitAnalyzers(
         return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
-      if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
+      if (response.statusCode() == arangodb::fuerte::StatusNotFound) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
       }
 
-      std::vector<VPackSlice> slices = response.response->slices();
-      if (slices.empty() || !slices[0].isObject()) {
+      VPackSlice answer = response.slice();
+      if (!answer.isObject()) {
         return {
           TRI_ERROR_INTERNAL,
           "got misformed result while visiting Analyzer collection'" +
@@ -868,7 +872,6 @@ arangodb::Result visitAnalyzers(
         };
       }
 
-      VPackSlice answer = slices[0];
       auto result = arangodb::network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
       if (result.fail()) {
         return result;
@@ -1062,8 +1065,7 @@ bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
   return false;
 }
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+using irs::async_utils::read_write_mutex;
 
 arangodb::AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
   arangodb::application_features::ApplicationServer& server,
@@ -1105,9 +1107,13 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
 getAnalyzerMeta(irs::type_info::type_id type) noexcept {
   if (type == irs::type<GeoJSONAnalyzer>::id()) {
-    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoJSONAnalyzer::store };
+    return { AnalyzerValueType::Object | AnalyzerValueType::Array,
+             AnalyzerValueType::String,
+             &GeoJSONAnalyzer::store };
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
-    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoPointAnalyzer::store };
+    return { AnalyzerValueType::Object | AnalyzerValueType::Array,
+             AnalyzerValueType::String,
+             &GeoPointAnalyzer::store };
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -1268,17 +1274,14 @@ bool AnalyzerPool::init(
     LOG_TOPIC("62062", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '" << _type
         << "' properties '" << _properties << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC("a9196", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "': " << e.what();
-    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC("7524a", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "'";
-    IR_LOG_EXCEPTION();
   }
 
   _config.clear();                        // set as uninitialized
@@ -1333,19 +1336,16 @@ irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
            "'"
         << _type << "' properties '" << _properties << "': " << e.code() << " "
         << e.what();
-    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC("93baf", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "': " << e.what();
-    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC("08db9", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "'";
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -1660,8 +1660,7 @@ Result IResearchAnalyzerFeature::emplace(
       }
     }
 
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    WRITE_LOCKER(lock, _mutex);
 
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
@@ -1672,7 +1671,7 @@ Result IResearchAnalyzerFeature::emplace(
       return res;
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -1692,9 +1691,9 @@ Result IResearchAnalyzerFeature::emplace(
       }
 
       // persist only on coordinator and single-server while not in recovery
-      if ((!engine || !engine->inRecovery()) // do not persist during recovery
-          && (ServerState::instance()->isCoordinator() // coordinator
-              || ServerState::instance()->isSingleServer())) {// single-server
+      if ((!engine.inRecovery())  // do not persist during recovery
+          && (ServerState::instance()->isCoordinator()          // coordinator
+              || ServerState::instance()->isSingleServer())) {  // single-server
         res = storeAnalyzer(*pool);
       }
 
@@ -1754,8 +1753,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       return cleanupResult;
     }
   }
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine && !engine->inRecovery());
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  TRI_ASSERT(!engine.inRecovery());
   if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
     auto ctx = transaction::StandaloneContext::Create(vocbase);
@@ -1855,11 +1854,10 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
       return res;
     }
 
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    WRITE_LOCKER(lock, _mutex);
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine && !engine->inRecovery());
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
     auto cleanup = irs::make_finally([&erase, &inserted, this]()->void {
@@ -1917,7 +1915,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
             "' type '" + std::string(type) +
             "' properties '" + properties.toString() + "'" };
         }
-        TRI_ASSERT(engine && !engine->inRecovery());
+        TRI_ASSERT(!engine.inRecovery());
         // persist only on coordinator and single-server while not in recovery
         if (ServerState::instance()->isCoordinator() // coordinator
           || ServerState::instance()->isSingleServer()) {// single-server
@@ -1992,8 +1990,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             break; // we don`t care about specific revision.
           }
           {
-            ReadMutex mutex(_mutex);
-            SCOPED_LOCK(mutex);
+            READ_LOCKER(lock, _mutex);
             auto itr = _lastLoad.find(name.first);
             if (itr != _lastLoad.end() && itr->second >= revision) {
               break; // expected or later revision is loaded
@@ -2012,8 +2009,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       }
     }
 
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    READ_LOCKER(lock, _mutex);
     auto itr = _analyzers.find(irs::make_hashed_ref(normalizedName, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
@@ -2188,10 +2184,10 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     }
 
     auto& dbFeature = server().getFeature<DatabaseFeature>();
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto* vocbase = dbFeature.lookupDatabase(database);
     if (!vocbase) {
-      if (engine && engine->inRecovery()) {
+      if (engine.inRecovery()) {
         return {}; // database might not have come up yet
       }
       return {
@@ -2289,8 +2285,8 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   auto& dbFeature = server().getFeature<DatabaseFeature>();
 
   try {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_analyzers'/'_lastLoad' can be asynchronously read
+    // '_analyzers'/'_lastLoad' can be asynchronously read
+    WRITE_LOCKER(lock, _mutex);
 
     // load all databases
     if (database.null()) {
@@ -2356,13 +2352,13 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
     auto databaseKey = // database key used in '_lastLoad'
       irs::make_hashed_ref(database, std::hash<irs::string_ref>());
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto itr = _lastLoad.find(databaseKey); // find last update timestamp
 
     auto* vocbase = dbFeature.lookupDatabase(database);
 
     if (!vocbase) {
-      if (engine && engine->inRecovery()) {
+      if (engine.inRecovery()) {
         return {}; // database might not have come up yet
       }
       if (itr != _lastLoad.end()) {
@@ -2378,7 +2374,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
     AnalyzersRevision::Revision loadingRevision{getAnalyzersRevision(*vocbase, true)->getRevision()};
 
-    if (!engine || engine->inRecovery()) {
+    if (engine.inRecovery()) {
       // always load if inRecovery since collection contents might have changed
       // unless on db-server which does not store analyzer definitions in collections
       if (ServerState::instance()->isDBServer()) {
@@ -2462,7 +2458,10 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
 
       if (!res.ok()) {
-        return res; // caught error emplacing analyzer (abort further processing)
+        LOG_TOPIC("7cc7f", ERR, arangodb::iresearch::TOPIC)
+            << "analyzer '" << name
+            << "' ignored as emplace failed with reason:" << res.errorMessage();
+        return {};  // caught error emplacing analyzer  - skip it
       }
 
       if (result.second && result.first->second) {
@@ -2749,8 +2748,7 @@ Result IResearchAnalyzerFeature::remove(
     //  }
     //}
 
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    WRITE_LOCKER(lock, _mutex);
 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
@@ -2813,10 +2811,10 @@ Result IResearchAnalyzerFeature::remove(
         "' while removing arangosearch analyzer '" + std::string(name)+ "'" };
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
     // do not allow persistence while in recovery
-    if (engine && engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return { TRI_ERROR_INTERNAL,
                "failure to remove arangosearch analyzer '" + std::string(name) +
                "' configuration while storage engine in recovery" };
@@ -2920,7 +2918,6 @@ void IResearchAnalyzerFeature::start() {
   if (!isEnabled()) {
     return;
   }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we rely on having a system database
   if (server().hasFeature<SystemDatabaseFeature>()) {
@@ -2954,8 +2951,8 @@ void IResearchAnalyzerFeature::stop() {
   }
 
   {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously read
+    // '_analyzers' can be asynchronously read
+    WRITE_LOCKER(lock, _mutex);
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
@@ -2981,10 +2978,10 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
                pool.name() + "' configuration with 'null' type" };
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
     // do not allow persistence while in recovery
-    if (engine && engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return { TRI_ERROR_INTERNAL,
                "failure to persist arangosearch analyzer '" + pool.name() +
                "' configuration while storage engine in recovery" };
@@ -3071,8 +3068,7 @@ bool IResearchAnalyzerFeature::visit(
   Analyzers analyzers;
 
   {
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    READ_LOCKER(lock, _mutex);
     analyzers = _analyzers;
   }
 
@@ -3112,8 +3108,7 @@ bool IResearchAnalyzerFeature::visit(
   Analyzers analyzers;
 
   {
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    READ_LOCKER(lock, _mutex);
     analyzers = _analyzers;
   }
 
@@ -3145,8 +3140,7 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref const& database)
 }
 
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
-  WriteMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);
+  WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
   auto itr = _lastLoad.find(
       irs::make_hashed_ref(database, std::hash<irs::string_ref>()));

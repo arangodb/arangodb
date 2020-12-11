@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "velocypack/velocypack-common.h"
@@ -53,24 +51,21 @@ ValueLength Parser::parseInternal(bool multi) {
   do {
     bool haveReported = false;
     if (!_builderPtr->_stack.empty()) {
-      ValueLength const tos = _builderPtr->_stack.back();
+      ValueLength const tos = _builderPtr->_stack.back().startPos;
       if (_builderPtr->_start[tos] == 0x0b || _builderPtr->_start[tos] == 0x14) {
         if (!_builderPtr->_keyWritten) {
           throw Exception(Exception::BuilderKeyMustBeString);
-        }
-        else {
+        } else {
           _builderPtr->_keyWritten = false;
         }
-      }
-      else {
+      } else {
         _builderPtr->reportAdd();
         haveReported = true;
       }
     }
     try {
       parseJson();
-    }
-    catch (...) {
+    } catch (...) {
       if (haveReported) {
         _builderPtr->cleanupAdd();
       }

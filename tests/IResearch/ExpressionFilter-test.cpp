@@ -69,6 +69,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -251,14 +252,14 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC, arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
-  StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  StorageEngineMock engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
-  IResearchExpressionFilterTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
+  IResearchExpressionFilterTest()
+    : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""), nullptr),
+      engine(server) {
     arangodb::tests::init(true);
 
     // setup required application features
@@ -266,6 +267,8 @@ struct IResearchExpressionFilterTest
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(), false);
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -280,7 +283,11 @@ struct IResearchExpressionFilterTest
                           true);  // required for IResearchAnalyzerFeature
     features.emplace_back(server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
                           true);
-    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
+
+
+    auto& feature = features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true).first;
+    feature.collectOptions(server.options());
+    feature.validateOptions(server.options());
 
 #if USE_ENTERPRISE
     features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
@@ -301,8 +308,9 @@ struct IResearchExpressionFilterTest
         "_REFERENCE_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -315,7 +323,7 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {
@@ -335,7 +343,7 @@ struct FilterCtx : irs::attribute_provider {
     : _execCtx(&ctx) {
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<arangodb::iresearch::ExpressionExecutionContext>::id() == type
       ? _execCtx
       : nullptr;

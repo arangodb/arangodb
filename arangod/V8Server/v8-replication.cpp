@@ -68,12 +68,13 @@ static void JS_StateLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_vocbase_t& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  auto res = engine->createLoggerState(&vocbase, builder);
+  auto res = engine.createLoggerState(&vocbase, builder);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -94,7 +95,9 @@ static void JS_TickRangesLoggerReplication(v8::FunctionCallbackInfo<v8::Value> c
   v8::Handle<v8::Array> result;
 
   VPackBuilder builder;
-  Result res = EngineSelectorFeature::ENGINE->createTickRanges(builder);
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.createTickRanges(builder);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -115,7 +118,9 @@ static void JS_FirstTickLoggerReplication(v8::FunctionCallbackInfo<v8::Value> co
   v8::HandleScope scope(isolate);
 
   TRI_voc_tick_t tick = UINT64_MAX;
-  Result res = EngineSelectorFeature::ENGINE->firstTick(tick);
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.firstTick(tick);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -151,7 +156,9 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
 
   auto transactionContext = transaction::V8Context::Create(vocbase, true);
   VPackBuilder builder(transactionContext->getVPackOptions());
-  Result res = EngineSelectorFeature::ENGINE->lastLogger(vocbase, tickStart, tickEnd, builder);
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.lastLogger(vocbase, tickStart, tickEnd, builder);
   v8::Handle<v8::Value> result;
 
   if (res.fail()) {

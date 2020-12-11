@@ -87,8 +87,8 @@
 #include "shared.hpp"
 #include "string.hpp"
 
-NS_ROOT
-NS_BEGIN(file_utils)
+namespace iresearch {
+namespace file_utils {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         lock file
@@ -189,7 +189,7 @@ bool visit_directory(
 bool file_sync(const file_path_t name) noexcept;
 bool file_sync(int fd) noexcept;
 
-NS_END
-NS_END
+}
+}
 
 #endif

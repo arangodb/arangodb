@@ -34,6 +34,9 @@ using namespace arangodb::aql;
 
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
     : _finalState{state}, _aqlItemMatrix{nullptr} {
+  // TODO As we only allow HASMORE, just use the default constructor and remove
+  //      this one.
+  TRI_ASSERT(state == ExecutorState::HASMORE);
   TRI_ASSERT(_aqlItemMatrix == nullptr);
   TRI_ASSERT(!hasDataRow());
 }
@@ -65,7 +68,7 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   if (_aqlItemMatrix->numberOfBlocks() == 0) {
     _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   } else {
-    auto const [blockPtr, start] =  _aqlItemMatrix->getBlock(_currentBlockRowIndex);
+    auto [blockPtr, start] =  _aqlItemMatrix->getBlock(_currentBlockRowIndex);
     ExecutorState state = incrBlockIndex();
     _lastRange = {state, 0, std::move(blockPtr), start};
   }
@@ -88,10 +91,8 @@ std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatri
 }
 
 ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
-  if (_aqlItemMatrix == nullptr) {
-    return _finalState;
-  }
-  if (hasShadowRow() || _aqlItemMatrix->stoppedOnShadowRow()) {
+  if (_aqlItemMatrix != nullptr &&
+      (hasShadowRow() || _aqlItemMatrix->stoppedOnShadowRow())) {
     return ExecutorState::DONE;
   }
   return _finalState;
@@ -107,10 +108,9 @@ bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
 }
 
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
-  if (_aqlItemMatrix == nullptr) {
-    return false;
-  }
-  return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
+  return _aqlItemMatrix != nullptr && !hasShadowRow() &&
+         ((_aqlItemMatrix->stoppedOnShadowRow()) ||
+          (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {

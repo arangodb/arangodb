@@ -32,7 +32,7 @@ namespace arangodb {
 /// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
 class RocksDBWalAccess final : public WalAccess {
  public:
-  RocksDBWalAccess() {}
+  explicit RocksDBWalAccess(RocksDBEngine&);
   virtual ~RocksDBWalAccess() = default;
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
@@ -55,6 +55,9 @@ class RocksDBWalAccess final : public WalAccess {
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
                        MarkerCallback const&) const override;
+
+ private:
+  RocksDBEngine& _engine;
 };
 }  // namespace arangodb
 

@@ -1665,19 +1665,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return FailedServers::make_shared(shared_from_this());
       }
 
-      class MapLocalToId : public StaticComponent<MapLocalToId, Target> {
-       public:
-        constexpr char const* component() const noexcept {
-          return "MapLocalToID";
-        }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<MapLocalToId const> mapLocalToID() const {
-        return MapLocalToId::make_shared(shared_from_this());
-      }
-
       class NumberOfCoordinators : public StaticComponent<NumberOfCoordinators, Target> {
        public:
         constexpr char const* component() const noexcept {

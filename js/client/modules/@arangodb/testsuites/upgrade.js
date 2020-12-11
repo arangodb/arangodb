@@ -34,7 +34,7 @@ const optionsDocumentation = [
 const toArgv = require('internal').toArgv;
 
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 
 const testPaths = {
   'upgrade': []
