@@ -29,6 +29,18 @@ devel
 
 * Fix `Gauge` assignment operators.
 
+* Fixed and extended LDAP log messages.
+
+* Added LDAP_OFF if referrals and restart are false.
+
+* If LDAP search fails, also retry (update to given number of retries).
+
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
 * Make all Pregel HTTP and JavaScript APIs also accept stringified execution
   number values, in addition to numeric ones.
 
