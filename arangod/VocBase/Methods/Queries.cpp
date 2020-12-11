@@ -178,13 +178,11 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
         if (res.fail()) {
           break;
         }
-        if (resp.statusCode() == fuerte::StatusOK) {
-          auto slice = resp.response->slice();
-          // copy results from other coordinators
-          if (slice.isArray()) {
-            for (auto const& entry : VPackArrayIterator(slice)) {
-              out.add(entry);
-            }
+        auto slice = resp.slice();
+        // copy results from other coordinators
+        if (slice.isArray()) {
+          for (auto const& entry : VPackArrayIterator(slice)) {
+            out.add(entry);
           }
         }
       }
