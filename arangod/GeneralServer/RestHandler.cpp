@@ -203,8 +203,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       return Result(res);
     }
 
-    resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
-    _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
+    resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
+    _response->setContentType(fuerte::v1::to_string(response.response().contentType()));
     
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -212,13 +212,13 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "invalid response type");
       }
-      httpResponse->body() = response.response->payloadAsString();
+      httpResponse->body() = response.response().payloadAsString();
     } else {
-      _response->setPayload(std::move(*response.response->stealPayload()));
+      _response->setPayload(std::move(*response.response().stealPayload()));
     }
     
 
-    auto const& resultHeaders = response.response->messageHeader().meta();
+    auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
       if (it.first == "http/1.1") {
         // never forward this header, as the HTTP response code was already set
@@ -466,7 +466,7 @@ void RestHandler::executeEngine(bool isContinue) {
 }
 
 void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
-                                std::string_view const message) {
+                                std::string_view const errorMessage) {
   resetResponse(code);
 
   if (_request->requestType() != rest::RequestType::HEAD) {
@@ -476,7 +476,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       builder.add(VPackValue(VPackValueType::Object));
       builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
       builder.add(StaticStrings::Error, VPackValue(true));
-      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
       builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
       builder.close();
 
@@ -511,13 +511,13 @@ void RestHandler::compressResponse() {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandler::generateError(rest::ResponseCode code, int errorCode) {
-  char const* message = TRI_errno_string(errorCode);
+void RestHandler::generateError(rest::ResponseCode code, int errorNumber) {
+  char const* message = TRI_errno_string(errorNumber);
 
   if (message != nullptr) {
-    generateError(code, errorCode, std::string(message));
+    generateError(code, errorNumber, std::string_view(message));
   } else {
-    generateError(code, errorCode, std::string("unknown error"));
+    generateError(code, errorNumber, std::string_view("unknown error"));
   }
 }
 

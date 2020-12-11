@@ -38,8 +38,8 @@
 #include <cassert>
 #include <cmath>
 
-NS_ROOT
-NS_BEGIN(math)
+namespace iresearch {
+namespace math {
 
 /// @brief sum two unsigned integral values with overflow check
 /// @returns false if sum is overflowed, true - otherwise
@@ -78,6 +78,10 @@ inline constexpr size_t roundup_power2(size_t v) noexcept {
     return !(v & (v-1));
   }
 #endif
+
+inline bool approx_equals(double_t lhs, double_t rhs) noexcept {
+  return std::fabs(rhs - lhs) < std::numeric_limits<double_t>::epsilon();
+}
 
 /// @brief rounds the result of division (num/den) to
 ///        the next greater integer value
@@ -336,7 +340,7 @@ template<
   output_type table_[Size];
 }; // sqrt
 
-NS_END // math
-NS_END // root
+} // math
+} // root
 
 #endif

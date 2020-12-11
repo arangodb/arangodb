@@ -58,7 +58,7 @@
 
 #include "locale_utils.hpp"
 
-NS_BEGIN(std)
+namespace std {
 
 // GCC < v5 does not explicitly define
 // std::codecvt<char16_t, char, mbstate_t>::id or std::codecvt<char32_t, char, mbstate_t>::id
@@ -69,9 +69,9 @@ NS_BEGIN(std)
   /*static*/ template<> locale::id codecvt<char32_t, char, mbstate_t>::id;
 #endif
 
-NS_END // std
+} // std
 
-NS_LOCAL
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of internal buffers, arbitrary size
@@ -152,7 +152,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     key = tmp;
   }
 
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   return irs::map_utils::try_emplace_update_key(
     encodings,
@@ -3560,7 +3560,7 @@ const std::locale& get_locale(
   static std::map<locale_info_facet*, std::locale, less_t> locales_u;
   auto& locales = unicodeSystem ? locales_u : locales_s;
   static std::mutex mutex;
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
   auto itr = locales.find(&info);
 
   if (itr != locales.end()) {
@@ -3649,10 +3649,10 @@ const std::locale& get_locale(
   return locales.emplace(locale_info_ptr, locale).first->second;
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN( locale_utils )
+namespace iresearch {
+namespace locale_utils {
 
 #if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
   // MSVC2013 does not properly export
@@ -3760,5 +3760,5 @@ const std::string& name(std::locale const& locale) {
   return std::use_facet<locale_info_facet>(*loc).name();
 }
 
-NS_END // locale_utils
-NS_END
+} // locale_utils
+}

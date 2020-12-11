@@ -212,17 +212,15 @@ class StaticStrings {
   static std::string const MultiPartContentType;
 
   // encodings
+  static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
 
   // collection attributes
   static std::string const CacheEnabled;
   static std::string const DistributeShardsLike;
-  static std::string const DoCompact;
-  static std::string const IndexBuckets;
   static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
-  static std::string const JournalSize;
   static std::string const MinReplicationFactor;
   static std::string const MinRevision;
   static std::string const NumberOfShards;
@@ -274,6 +272,7 @@ class StaticStrings {
   static std::string const GraphQueryOrderBFS;
   static std::string const GraphQueryOrderDFS;
   static std::string const GraphQueryOrderWeighted;
+  static std::string const GraphQueryShortestPathType;
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
@@ -327,6 +326,9 @@ class StaticStrings {
   static std::string const ArangoSearchAnalyzersRevision;
   static std::string const ArangoSearchCurrentAnalyzersRevision;
   static std::string const ArangoSearchSystemAnalyzersRevision;
+
+  // aql http headers
+  static std::string const AqlShardIdHeader;
 
   // validation
   static std::string const ValidationLevelNone;

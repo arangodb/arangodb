@@ -32,7 +32,7 @@
 #include "noncopyable.hpp"
 #include "memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename Alloc>
 class dynamic_bitset_base : irs::compact<0, Alloc> {
@@ -244,6 +244,6 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
 
 typedef dynamic_bitset<std::allocator<size_t>> bitset;
 
-NS_END
+}
 
 #endif

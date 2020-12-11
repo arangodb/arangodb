@@ -52,6 +52,18 @@
 
 using namespace arangodb;
 
+namespace {
+
+rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
+  auto* sm = engine.settingsManager();
+  if (sm) {
+    sm->sync(true);  // force
+  }
+  return engine.db()->GetLatestSequenceNumber();
+}
+
+}  // namespace
+
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
     : PhysicalCollection(collection, info),
@@ -199,7 +211,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     TRI_ASSERT(snapshot);
   }
 
-  auto seq = snapshot->GetSequenceNumber();
+  auto snapSeq = snapshot->GetSequenceNumber();
 
   auto bounds = RocksDBKeyBounds::Empty();
   bool set = false;
@@ -252,7 +264,12 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       << "inconsistent collection count detected for "
       << vocbase.name() << "/" << _logicalCollection.name()
       << ", an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(seq, RevisionId::none(), adjustment);
+    auto adjustSeq = engine.db()->GetLatestSequenceNumber();
+    if (adjustSeq <= snapSeq) {
+      adjustSeq = ::forceWrite(engine);
+      TRI_ASSERT(adjustSeq > snapSeq);
+    }
+    _meta.adjustNumberDocuments(adjustSeq, RevisionId::none(), adjustment);
   }
   
   return _meta.numberDocuments();
@@ -850,6 +867,11 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
 int RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   uint64_t waitTime = 0;  // indicates that time is uninitialized
   double startTime = 0.0;
+
+  // user read operations don't require any lock in RocksDB, so we won't get here.
+  // user write operations will acquire the R/W lock in read mode, and
+  // user exclusive operations will acquire the R/W lock in write mode.
+  TRI_ASSERT(mode == AccessMode::Type::READ || mode == AccessMode::Type::WRITE);
   
   while (true) {
     bool gotLock = false;
@@ -862,13 +884,13 @@ int RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       TRI_ASSERT(false);
       return TRI_ERROR_INTERNAL;
     }
+
     if (gotLock) {
-      // keep lock and exit loop
+      // keep the lock and exit the loop
       return TRI_ERROR_NO_ERROR;
     }
-    
+
     double now = TRI_microtime();
-    
     if (waitTime == 0) {  // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
@@ -877,15 +899,17 @@ int RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       
       startTime = now;
       waitTime = 1;
-    }
+    } else {
+      TRI_ASSERT(startTime > 0.0);
     
-    if (now > startTime + timeout) {
-      LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
-      << "timed out after " << timeout << " s waiting for " 
-      << AccessMode::typeString(mode) << " lock on collection '"
-      << _logicalCollection.name() << "'";
+      if (now > startTime + timeout) {
+        LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
+          << "timed out after " << timeout << " s waiting for " 
+          << AccessMode::typeString(mode) << " lock on collection '"
+          << _logicalCollection.name() << "'";
       
-      return TRI_ERROR_LOCK_TIMEOUT;
+        return TRI_ERROR_LOCK_TIMEOUT;
+      }
     }
     
     if (now - startTime < 0.001) {

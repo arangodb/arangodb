@@ -505,6 +505,11 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
 
   if (key == StaticStrings::Accept) {
     _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
+    if (value.find(',') != std::string::npos) {
+      _contentTypeResponsePlain = value;
+    } else {
+      _contentTypeResponsePlain.clear();
+    }
     return;
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
@@ -828,7 +833,7 @@ void HttpRequest::parseCookies(char const* buffer, size_t length) {
 
     // check for missing value phase
     if (valueBegin == nullptr) {
-      valueBegin = value = key;
+      valueBegin = key;
     } else {
       *value = '\0';
     }
@@ -867,11 +872,14 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
   if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
+        TRI_ASSERT(!_validatedPayload);
         VPackOptions const* options = validationOptions(strictValidation);
         VPackParser parser(options);
         parser.parse(_payload.data(), _payload.size());
         _vpackBuilder = parser.steal();
+        _validatedPayload = true;
       }
+      TRI_ASSERT(_validatedPayload);
       return VPackSlice(_vpackBuilder->slice());
     }
     return VPackSlice::noneSlice();  // no body
@@ -881,6 +889,7 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
       VPackValidator validator(options);
       _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
     }
+    TRI_ASSERT(_validatedPayload);
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
   }
   return VPackSlice::noneSlice();

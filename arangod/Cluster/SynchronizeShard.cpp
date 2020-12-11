@@ -158,7 +158,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   auto res = response.combinedResult();
 
   if (res.ok()) {
-    auto const idSlice = response.response->slice();
+    auto const idSlice = response.slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
@@ -356,22 +356,11 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
                                   std::move(*body.steal()), options)
                  .get();
 
-  if (response.ok() && response.response &&
-      response.response->statusCode() == fuerte::StatusNotFound) {
-    auto const slice = response.response->slice();
-    if (slice.isObject()) {
-      VPackSlice s = slice.get(StaticStrings::ErrorNum);
-      if (s.isNumber()) {
-        int errorNum = s.getNumber<int>();
-        if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-          // database is gone. that means our lock is also gone
-          return arangodb::Result();
-        }
-      }
-    }
-  }
-
   auto res = response.combinedResult();
+  if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+    // database is gone. that means our lock is also gone
+    return arangodb::Result();
+  }
 
   if (res.fail()) {
     // rebuild body since we stole it earlier
@@ -403,9 +392,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   // The servers (<=3.3) with lower versions hold the POST request for as long
   // as the corresponding DELETE_REQ has not been successfully submitted.
   
-  using namespace std::chrono;
-  auto const start = steady_clock::now();
-
   // nullptr only happens during controlled shutdown
   if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
@@ -413,13 +399,15 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
 
   VPackBuilder body;
-  { VPackObjectBuilder o(&body);
+  { 
+    VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); 
+  }
   auto buf = body.steal();
 
   // Try to POST the lock body. If POST fails, we should just exit and retry
@@ -448,12 +436,6 @@ arangodb::Result SynchronizeShard::getReadLock(
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       "startReadLockOnLeader: couldn't POST lock body, giving up.");
-  }
-
-  double timeLeft =
-      double(timeout) - duration<double>(steady_clock::now() - start).count();
-  if (timeLeft < 60.0) {
-    timeLeft = 60.0;
   }
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
@@ -487,11 +469,11 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
       getReadLockId(pool, endpoint, database, clientId, timeout, rlid);
   if (!result.ok()) {
     LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE) << result.errorMessage();
-    return result;
-  }
-  LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
+  } else {
+    LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
 
-  result = getReadLock(pool, endpoint, database, collection, clientId, rlid, soft, timeout);
+    result.reset(getReadLock(pool, endpoint, database, collection, clientId, rlid, soft, timeout));
+  }
 
   return result;
 }
@@ -909,7 +891,7 @@ bool SynchronizeShard::first() {
         catchupWithReadLock(ep, database, *collection, clientId, shard,
                             leader, lastTick, builder);
       if (!tickResult.ok()) {
-        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << syncRes.errorMessage();
+        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << tickResult.errorMessage();
         _result.reset(std::move(tickResult).result());
         return false;
       }

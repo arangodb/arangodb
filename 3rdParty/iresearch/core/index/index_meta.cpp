@@ -26,7 +26,7 @@
 #include "utils/type_limits.hpp"
 #include "index_meta.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 /* -------------------------------------------------------------------
  * segment_meta
@@ -202,4 +202,4 @@ bool index_meta::index_segment_t::operator!=(
   return filename != other.filename || meta != other.meta;
 }
 
-NS_END
+}

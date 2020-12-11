@@ -46,7 +46,7 @@ class CallbackGuardTest : public ::testing::Test {
   std::function<void(void)> incrCounterA;
   std::function<void(void)> incrCounterB;
 
-  void SetUp() {
+  void SetUp() override {
     counterA = 0;
     counterB = 0;
     incrCounterA = [& counterA = this->counterA]() { ++counterA; };
@@ -143,7 +143,7 @@ class RebootTrackerTest : public ::testing::Test,
   RebootTrackerTest()
       : mockApplicationServer(),
         scheduler(std::make_unique<SupervisedScheduler>(mockApplicationServer.server(),
-                                                        2, 64, 128, 1024 * 1024, 4096)) {}
+                                                        2, 64, 128, 1024 * 1024, 4096, 4096, 4.0, 0.0)) {}
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
@@ -156,8 +156,8 @@ class RebootTrackerTest : public ::testing::Test,
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
 
-  void SetUp() { scheduler->start(); }
-  void TearDown() { scheduler->shutdown(); }
+  void SetUp() override { scheduler->start(); }
+  void TearDown() override { scheduler->shutdown(); }
 
   bool schedulerEmpty() const {
     auto stats = scheduler->queueStatistics();

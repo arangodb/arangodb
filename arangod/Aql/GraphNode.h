@@ -58,6 +58,21 @@ namespace aql {
 class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
+ public:
+  struct InputVertex {
+    enum class Type { CONSTANT, REGISTER };
+    Type type;
+    // TODO make the following two a union instead
+    RegisterId reg;
+    std::string value;
+
+    // cppcheck-suppress passedByValue
+    explicit InputVertex(std::string value)
+        : type(Type::CONSTANT), reg(0), value(std::move(value)) {}
+    explicit InputVertex(RegisterId reg)
+        : type(Type::REGISTER), reg(reg), value("") {}
+  };
+
  protected:
   /// @brief constructor with a vocbase and a collection name
   GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
@@ -115,7 +130,7 @@ class GraphNode : public ExecutionNode {
   Variable const* vertexOutVariable() const;
 
   /// @brief checks if the vertex out variable is used
-  bool usesVertexOutVariable() const;
+  bool isVertexOutVariableUsedLater() const;
 
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
@@ -124,7 +139,7 @@ class GraphNode : public ExecutionNode {
   Variable const* edgeOutVariable() const;
 
   /// @brief checks if the edge out variable is used
-  bool usesEdgeOutVariable() const;
+  bool isEdgeOutVariableUsedLater() const;
 
   /// @brief set the edge out variable
   void setEdgeOutput(Variable const* outVar);
@@ -225,24 +240,24 @@ class GraphNode : public ExecutionNode {
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;
 
-  /// @brief The directions edges are followed
-  std::vector<TRI_edge_direction_e> _directions;
-
-  /// @brief Options for traversals
-  std::unique_ptr<graph::BaseOptions> _options;
-
   /// @brief Flag if the options have been built.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuilt;
-
-  /// @brief The list of traverser engines grouped by server.
-  std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief flag, if graph is smart (Enterprise Edition only!)
   bool _isSmart;
 
   /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
+
+  /// @brief The directions edges are followed
+  std::vector<TRI_edge_direction_e> _directions;
+
+  /// @brief Options for traversals
+  std::unique_ptr<graph::BaseOptions> _options;
+
+  /// @brief The list of traverser engines grouped by server.
+  std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;

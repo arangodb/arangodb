@@ -304,8 +304,8 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         // merge both values
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          VPackBuilder sub = VPackCollection::merge(current.value, value, true, !keepNull);
-          b.addUnchecked(key.data(), key.size(), sub.slice());
+          b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+          VPackCollection::merge(b, current.value, value, true, !keepNull);
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -331,7 +331,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.addUnchecked(it.first.data(), it.first.size(), s);
+    if (!keepNull && s.isObject()) {
+      b.add(VPackValuePair(it.first.data(), it.first.size(), VPackValueType::String));
+      VPackCollection::merge(b, VPackSlice::emptyObjectSlice(), s, true, true);
+    } else {
+      b.addUnchecked(it.first.data(), it.first.size(), s);
+    }
   }
 
   b.close();

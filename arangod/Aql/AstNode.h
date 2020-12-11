@@ -209,6 +209,7 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_VIEW = 77,
   NODE_TYPE_PARAMETER_DATASOURCE = 78,
   NODE_TYPE_FOR_VIEW = 79,
+  NODE_TYPE_WINDOW = 80,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -412,7 +413,7 @@ struct AstNode {
 
   /// @brief whether or not a node (and its subnodes) can safely be executed on
   /// a DB server
-  bool canRunOnDBServer() const;
+  bool canRunOnDBServer(bool isOneShard) const;
 
   /// @brief whether or not an object's keys must be checked for uniqueness
   bool mustCheckUniqueness() const;

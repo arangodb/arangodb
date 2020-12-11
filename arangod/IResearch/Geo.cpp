@@ -26,6 +26,7 @@
 #include "Geo/ShapeContainer.h"
 #include "Logger/LogMacros.h"
 #include "IResearch/IResearchCommon.h"
+#include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -94,6 +95,13 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   }
 
   return true;
+}
+
+void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point) {
+  builder.openArray();
+  builder.add(VPackValue(point.lng().degrees()));
+  builder.add(VPackValue(point.lat().degrees()));
+  builder.close();
 }
 
 } // iresearch

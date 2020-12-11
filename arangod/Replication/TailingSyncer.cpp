@@ -1694,7 +1694,8 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+    auto headers = replutils::createHeaders();
+    response.reset(client->request(rest::RequestType::GET, url, nullptr, 0, headers));
   });
 
   if (replutils::hasFailed(response.get())) {
@@ -1826,8 +1827,9 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     double time = TRI_microtime();
 
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      auto headers = replutils::createHeaders();
       response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
-                                     body.size()));
+                                     body.size(), headers));
     });
 
     time = TRI_microtime() - time;

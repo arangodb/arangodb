@@ -25,19 +25,18 @@
 #define ARANGODB_REST_SERVER_METRICS_H 1
 
 #include <atomic>
-#include <map>
-#include <iostream>
-#include <string>
-#include <memory>
-#include <variant>
-#include <vector>
-#include <unordered_map>
-#include <cassert>
 #include <cmath>
+#include <iostream>
 #include <limits>
+#include <string>
+#include <vector>
 
-#include "Basics/VelocyPackHelper.h"
-#include "Logger/LogMacros.h"
+#include "Basics/debugging.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "counter.h"
 
 class Metric {
@@ -100,29 +99,46 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
   Gauge<T>& operator+=(T const& t) {
-    _g.store(_g + t);
+    if constexpr(std::is_integral_v<T>) {
+      _g.fetch_add(t);
+    } else {
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp + t));
+    }
     return *this;
   }
   Gauge<T>& operator-=(T const& t) {
-    _g.store(_g - t);
+    if constexpr(std::is_integral_v<T>) {
+      _g.fetch_sub(t);
+    } else {
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp - t));
+    }
     return *this;
   }
   Gauge<T>& operator*=(T const& t) {
-    _g.store(_g * t);
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp * t));
     return *this;
   }
   Gauge<T>& operator/=(T const& t) {
     TRI_ASSERT(t != T(0));
-    _g.store(_g / t);
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(tmp, tmp / t));
     return *this;
   }
   Gauge<T>& operator=(T const& t) {
     _g.store(t);
     return *this;
   }
-  T load() const {
-    return _g.load();
-  }
+  T load() const { return _g.load(); }
   virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
@@ -134,7 +150,7 @@ template<typename T> class Gauge : public Metric {
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
-enum ScaleType {LINEAR, LOGARITHMIC};
+enum ScaleType { Fixed, Linear, Logarithmic };
 
 template<typename T>
 struct scale_t {
@@ -216,12 +232,46 @@ std::ostream& operator<< (std::ostream& o, scale_t<T> const& s) {
   return s.print(o);
 }
 
+template <typename T>
+struct fixed_scale_t : public scale_t<T> {
+ public:
+  using value_type = T;
+  static constexpr ScaleType scale_type = Fixed;
+
+  fixed_scale_t(T const& low, T const& high, std::initializer_list<T> const& list)
+      : scale_t<T>(low, high, list.size() + 1) {
+    this->_delim = list;
+  }
+  virtual ~fixed_scale_t() = default;
+  /**
+   * @brief index for val
+   * @param val value
+   * @return    index
+   */
+  size_t pos(T const& val) const {
+    for (std::size_t i = 0; i < this->_delim.size(); ++i) {
+      if (val <= this->_delim[i]) {
+        return i;
+      }
+    }
+    return this->_delim.size();
+  }
+
+  virtual void toVelocyPack(VPackBuilder& b) const override {
+    b.add("scale-type", VPackValue("fixed"));
+    scale_t<T>::toVelocyPack(b);
+  }
+
+ private:
+  T _base, _div;
+};
+
 template<typename T>
 struct log_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LOGARITHMIC;
+  static constexpr ScaleType scale_type = Logarithmic;
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
@@ -249,7 +299,7 @@ struct log_scale_t : public scale_t<T> {
    * @brief Dump to builder
    * @param b Envelope
    */
-  virtual void toVelocyPack(VPackBuilder& b) const {
+  virtual void toVelocyPack(VPackBuilder& b) const override {
     b.add("scale-type", VPackValue("logarithmic"));
     b.add("base", VPackValue(_base));
     scale_t<T>::toVelocyPack(b);
@@ -272,7 +322,7 @@ struct lin_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LINEAR;
+  static constexpr ScaleType scale_type = Linear;
 
   lin_scale_t(T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n) {
@@ -297,7 +347,7 @@ struct lin_scale_t : public scale_t<T> {
     return static_cast<size_t>(std::floor((val - this->_low)/ _div));
   }
 
-  virtual void toVelocyPack(VPackBuilder& b) const {
+  virtual void toVelocyPack(VPackBuilder& b) const override {
     b.add("scale-type", VPackValue("linear"));
     scale_t<T>::toVelocyPack(b);
   }
@@ -305,19 +355,6 @@ struct lin_scale_t : public scale_t<T> {
  private:
   T _base, _div;
 };
-
-
-template<typename ... Args>
-std::string strfmt (std::string const& format, Args ... args) {
-  size_t size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1;
-  if( size <= 0 ) {
-    throw std::runtime_error( "Error during formatting." );
-  }
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args ...);
-  return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
-}
-
 
 
 /**

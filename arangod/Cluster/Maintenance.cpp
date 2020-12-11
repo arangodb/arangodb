@@ -248,28 +248,36 @@ void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const
       if (shards.isObject()) {
         VPackSlice planServers = shards.get(shname);
         if (planServers.isArray()) {
-          VPackSlice inSyncFollowers = lcol.get(SERVERS);
-          if (inSyncFollowers.isArray()) {
-            // Now we have two server lists, we are looking for a server
-            // which does not occur in the plan, but is in the followers
-            // at an index > 0:
-            std::unordered_set<std::string> followersToDrop;
-            for (auto const& q : VPackArrayIterator(inSyncFollowers)) {
+          std::unordered_set<std::string> followersToDrop;
+          // Now we have two server lists (servers and
+          // failoverCandidates, we are looking for a server which
+          // occurs in either of them but not in the plan
+          VPackSlice serverList = lcol.get(SERVERS);
+          if (serverList.isArray()) {
+            for (auto const& q : VPackArrayIterator(serverList)) {
               followersToDrop.insert(q.copyString());
             }
-            for (auto const& p : VPackArrayIterator(planServers)) {
-              if (p.isString()) {
-                followersToDrop.erase(p.copyString());
-              }
+          }
+          serverList = lcol.get(StaticStrings::FailoverCandidates);
+          if (serverList.isArray()) {
+            // And again for the failoverCandidates:
+            for (auto const& q : VPackArrayIterator(serverList)) {
+              followersToDrop.insert(q.copyString());
             }
-            // Everything remaining in followersToDrop is something we
-            // need to act on
-            for (auto const& r : followersToDrop) {
-              if (!followersToDropString.empty()) {
-                followersToDropString.push_back(',');
-              }
-              followersToDropString += r;
+          }
+          // Remove those in Plan:
+          for (auto const& p : VPackArrayIterator(planServers)) {
+            if (p.isString()) {
+              followersToDrop.erase(p.copyString());
             }
+          }
+          // Everything remaining in followersToDrop is something we
+          // need to act on
+          for (auto const& r : followersToDrop) {
+            if (!followersToDropString.empty()) {
+              followersToDropString.push_back(',');
+            }
+            followersToDropString += r;
           }
         }
       }
@@ -516,7 +524,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
-  for (auto p : plan) {
+  for (auto const& p : plan) {
     auto const& dbname = p.first;
     auto pb = p.second->slice()[0];
     auto const& pdb = pb.get(
@@ -702,7 +710,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
             std::string const& id = p.first;
             bool found = false;
             for (auto const& ind : VPackArrayIterator(indexes)) {
-              if (ind.get(ID).copyString() == id) {
+              if (ind.get(ID).stringView() == id) {
                 found = true;
                 break;
               }
@@ -1344,8 +1352,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             continue;            // thus no shardMap exists for it
           }
           if (servers.isArray() && servers.length() > 0  // servers in current
-              && servers[0].copyString() == serverId     // we are leading
-              && !ldb.hasKey(std::vector<std::string>{shName})  // no local collection
+              && servers[0].stringRef() == serverId     // we are leading
+              && !ldb.hasKey(shName)  // no local collection
               && !shardMap.slice().hasKey(shName)) {  // no such shard in plan
             report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
             {

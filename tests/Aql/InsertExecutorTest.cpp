@@ -337,7 +337,7 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
 
     VPackBuilder builder;
     builder.openArray();
-    for (int i = -nDocs; i <= -1; i++) {
+    for (int i = -static_cast<int>(nDocs); i <= -1; i++) {
       builder.add(VPackValue(i));
     }
     builder.close();

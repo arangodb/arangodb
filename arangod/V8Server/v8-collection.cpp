@@ -1645,14 +1645,33 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
   }
 
+  std::unordered_map<std::string, std::vector<std::string>> paramEdgeCollectionRestrictions;
+  if (paramBuilder.slice().isObject()) {
+    VPackSlice s = paramBuilder.slice().get("edgeCollectionRestrictions");
+    if (s.isObject()) {
+      for (auto const& it : VPackObjectIterator(s)) {
+        if (!it.value.isArray()) {
+          continue;
+        }
+        auto& restrictions = paramEdgeCollectionRestrictions[it.key.copyString()];
+        for (auto const& it2 : VPackArrayIterator(it.value)) {
+          restrictions.emplace_back(it2.copyString());
+        }
+      }
+    }
+  }
+
   auto& vocbase = GetContextVocBase(isolate);
   auto res = pregel::PregelFeature::startExecution(vocbase, algorithm, paramVertices,
-                                                   paramEdges, paramBuilder.slice());
+                                                   paramEdges, paramEdgeCollectionRestrictions,
+                                                   paramBuilder.slice());
   if (res.first.fail()) {
     TRI_V8_THROW_EXCEPTION(res.first);
   }
+    
+  auto result = TRI_V8UInt64String<uint64_t>(isolate, res.second);
+  TRI_V8_RETURN(result);
 
-  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(res.second)));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1692,7 +1711,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelCancel(<executionNum>)");
   }
 
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
