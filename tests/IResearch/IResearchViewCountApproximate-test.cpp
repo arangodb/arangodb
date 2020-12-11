@@ -467,7 +467,7 @@ TEST_F(IResearchViewCountApproximateTest, forcedFullCountWithFilterNoOffsetSorte
 // This corner-case is currently impossible as there are no way to get skipAll
 // without prior call to skip for MergeExecutor. But in future this might happen
 // and the skippAll method should still be correct (as it is correct call)
-TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutorExact) {
+TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
@@ -520,12 +520,12 @@ TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutor
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
   arangodb::aql::ResourceMonitor monitor;
   arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
-  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
   {
+    arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
     arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
     inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
     arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
