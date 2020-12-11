@@ -1003,10 +1003,7 @@ futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
   reqOpts.timeout = network::Timeout(300.0);
   reqOpts.param("withRevisions", withRevisions ? "true" : "false");
   reqOpts.param("withData", withData ? "true" : "false");
-  reqOpts.param("raw", "true");
 
-  // If we get here, the sharding attributes are not only _key, therefore
-  // we have to contact everybody:
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
@@ -1028,33 +1025,43 @@ futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
     };
     auto handler = [](Result& result, VPackBuilder& builder, ShardID const&,
                              VPackSlice answer) mutable -> void {
-      if (answer.isObject()) {
-        VPackSlice r = answer.get("revision");
-        VPackSlice c = answer.get("checksum");
-        if (r.isInteger() && c.isInteger()) {
-          // xor is commutative, so it doesn't matter in which order we combine document
-          // checksums or partial results from different shards.
-          auto checksum = builder.slice().get("checksum").getUInt() ^ c.getUInt();
-
-          RevisionId cmp = RevisionId::fromSlice(r);
-          RevisionId rid = RevisionId::fromSlice(builder.slice().get("revision"));
-          if (cmp != RevisionId::max() && cmp > rid) {
-            // get the maximum value
-            rid = cmp;
-          }
-          
-          builder.clear();
-          VPackObjectBuilder b(&builder);
-          builder.add("checksum", VPackValue(checksum));
-          builder.add("revision", VPackValue(rid.id()));
-        } else {
-          // didn't get the expected response
-          result.reset(TRI_ERROR_INTERNAL);
-        }
-      } else {
-        // didn't get the expected response
-        result.reset(TRI_ERROR_INTERNAL);
+      if (!answer.isObject()) {
+        result.reset(TRI_ERROR_INTERNAL, "invalid data received for checksum calculation");
+        return;
       }
+
+      VPackSlice r = answer.get("revision");
+      VPackSlice c = answer.get("checksum");
+      if (r.isString() && c.isString()) {
+        result.reset(TRI_ERROR_INTERNAL, "invalid data received for checksum calculation");
+        return;
+      }
+
+      ValueLength len;
+      auto p = c.getString(len);
+      bool valid = true;
+      auto checksum = NumberUtils::atoi<std::uint64_t>(p, p + len, valid);
+      if (!valid) {
+        result.reset(TRI_ERROR_INTERNAL, "invalid data received for checksum calculation");
+        return;
+      }
+
+      // xor is commutative, so it doesn't matter in which order we combine document
+      // checksums or partial results from different shards.
+      checksum ^= builder.slice().get("checksum").getUInt();
+
+      RevisionId cmp = RevisionId::fromSlice(r);
+      RevisionId rid = RevisionId::fromSlice(builder.slice().get("revision"));
+      if (cmp != RevisionId::max() && cmp > rid) {
+        // get the maximum value
+        rid = cmp;
+      }
+
+      builder.clear();
+      VPackObjectBuilder b(&builder);
+      builder.add("checksum", VPackValue(checksum));
+      builder.add("revision", VPackValue(rid.id()));
+    
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };
