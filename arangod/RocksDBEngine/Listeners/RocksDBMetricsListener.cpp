@@ -58,7 +58,7 @@ void RocksDBMetricsListener::OnStallConditionsChanged(const rocksdb::WriteStallI
         << info.cf_name << "' to let background writes catch up";
   } else {
     TRI_ASSERT(info.condition.cur == rocksdb::WriteStallCondition::kNormal);
-    LOG_TOPIC("9123d", WARN, Logger::ENGINES)
+    LOG_TOPIC("9123e", WARN, Logger::ENGINES)
         << "rocksdb is resuming normal writes for column family '"
         << info.cf_name << "'";
   }
