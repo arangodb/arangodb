@@ -873,20 +873,6 @@ endfunction()
 # CREATE_FLAGS(IMPLICIT_CXX_INCLUDES "${CMAKE_CXX_SYSROOT_FLAG} " ${CMAKE_OSX_SYSROOT})
 
 # ------------------------------------------------------------------------------
-# JEMALLOC
-# ------------------------------------------------------------------------------
-
-option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
-
-if (USE_JEMALLOC)
-  add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-endif ()
-
-if (USE_JEMALLOC_PROF)
-  add_definitions("-DUSE_MEMORY_PROFILE=1")
-endif ()
-
-# ------------------------------------------------------------------------------
 # NDEBUG
 # ------------------------------------------------------------------------------
 
@@ -1171,6 +1157,21 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKS
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+
+# ------------------------------------------------------------------------------
+# JEMALLOC
+# ------------------------------------------------------------------------------
+
+option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+
+if (USE_JEMALLOC)
+  add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+  include_directories(SYSTEM ${JEMALLOC_INCLUDE_DIR})
+endif ()
+
+if (USE_JEMALLOC_PROF)
+  add_definitions("-DUSE_MEMORY_PROFILE=1")
+endif ()
 
 # ------------------------------------------------------------------------------
 # RocksDB
