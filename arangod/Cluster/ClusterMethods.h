@@ -90,6 +90,17 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature&,
                                                        OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns checksum for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
+                                                       std::string const& dbname,
+                                                       std::string const& collname,
+                                                       OperationOptions const& options,
+                                                       bool withRevisions,
+                                                       bool withData);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
 ////////////////////////////////////////////////////////////////////////////////
 
