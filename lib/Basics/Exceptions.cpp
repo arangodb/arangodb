@@ -105,7 +105,7 @@ void Exception::appendLocation() noexcept try {
     _errorMessage += std::string(" (exception location: ") + _file + ":" +
                      std::to_string(_line) +
                      "). Please report this error to arangodb.com";
-  } else if (_code == TRI_ERROR_OUT_OF_MEMORY || _code == TRI_ERROR_NOT_IMPLEMENTED || _code == TRI_ERROR_BAD_PARAMETER) {
+  } else if (_code == TRI_ERROR_OUT_OF_MEMORY || _code == TRI_ERROR_NOT_IMPLEMENTED) {
     _errorMessage += std::string(" (exception location: ") + _file + ":" +
                      std::to_string(_line) + ")";
   }
