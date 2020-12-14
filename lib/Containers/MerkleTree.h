@@ -39,7 +39,19 @@
 namespace arangodb {
 namespace containers {
 
-template <std::uint64_t const BranchingBits = 3,  // 8 children per internal node,
+class HashProvider {
+ public:
+  virtual ~HashProvider() = default;
+  virtual std::uint64_t hash(std::uint64_t input) const = 0;
+};
+
+class FnvHasher : public HashProvider {
+ public:
+  std::uint64_t hash(std::uint64_t input) const override;
+};
+
+template <typename Hasher,
+          std::uint64_t const BranchingBits = 3,  // 8 children per internal node,
           std::uint64_t const LockStripes = 64  // number number of buckets that can be accessed simultaneously
           >
 class MerkleTree {
@@ -102,7 +114,7 @@ class MerkleTree {
    * @param buffer      A buffer containing a serialized tree
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> fromBuffer(std::string_view buffer);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>> fromBuffer(std::string_view buffer);
 
   /**
    * @brief Construct a tree from a portable serialized tree
@@ -110,7 +122,7 @@ class MerkleTree {
    * @param slice A slice containing a serialized tree
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> deserialize(velocypack::Slice slice);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>> deserialize(velocypack::Slice slice);
 
   /**
    * @brief Construct a Merkle tree of a given depth with a given minimum key
@@ -139,7 +151,7 @@ class MerkleTree {
    *
    * @param other Input tree, intended assignment
    */
-  MerkleTree& operator=(std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>&& other);
+  MerkleTree& operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>&& other);
 
   /**
    * @brief Returns the number of hashed keys contained in the tree
@@ -212,7 +224,7 @@ class MerkleTree {
   /**
    * @brief Clone the tree.
    */
-  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> clone();
+  std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>> clone();
 
   /**
    * @brief Clone the tree with the given depth
@@ -225,7 +237,7 @@ class MerkleTree {
    *
    * @param newDepth  Max depth to use for new tree
    */
-  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> cloneWithDepth(std::uint64_t newDepth) const;
+  std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>> cloneWithDepth(std::uint64_t newDepth) const;
 
   /**
    * @brief Find the ranges of keys over which two trees differ.
@@ -234,7 +246,8 @@ class MerkleTree {
    * @return  Vector of (inclusive) ranges of keys over which trees differ
    * @throws std::invalid_argument  If trees different rangeMin
    */
-  std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(MerkleTree<BranchingBits, LockStripes>& other);
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(
+      MerkleTree<Hasher, BranchingBits, LockStripes>& other);
 
   /**
    * @brief Convert to a human-readable string for printing
@@ -262,7 +275,7 @@ class MerkleTree {
 
  protected:
   explicit MerkleTree(std::string_view buffer);
-  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes> const& other);
+  explicit MerkleTree(MerkleTree<Hasher, BranchingBits, LockStripes> const& other);
 
   Meta& meta() const;
   Node& node(std::uint64_t index) const;
@@ -273,7 +286,7 @@ class MerkleTree {
   void modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert, bool doLock);
   void grow(std::uint64_t key);
-  bool equalAtIndex(MerkleTree<BranchingBits, LockStripes> const& other,
+  bool equalAtIndex(MerkleTree<Hasher, BranchingBits, LockStripes> const& other,
                     std::uint64_t index) const;
   bool childrenAreLeaves(std::uint64_t index);
   std::pair<std::uint64_t, std::uint64_t> chunkRange(std::uint64_t chunk, std::uint64_t depth);
@@ -284,11 +297,11 @@ class MerkleTree {
   mutable std::mutex _nodeLocks[LockStripes];
 };
 
-template <std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
+template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
 std::ostream& operator<<(std::ostream& stream,
-                         MerkleTree<BranchingBits, LockStripes> const& tree);
+                         MerkleTree<Hasher, BranchingBits, LockStripes> const& tree);
 
-using RevisionTree = MerkleTree<3, 64>;
+using RevisionTree = MerkleTree<FnvHasher, 3, 64>;
 
 }  // namespace containers
 }  // namespace arangodb

@@ -47,9 +47,10 @@ std::vector<std::uint64_t> permutation(std::uint64_t n) {
   return v;
 }
 
-bool diffAsExpected(arangodb::containers::MerkleTree<3, 64>& t1,
-                    arangodb::containers::MerkleTree<3, 64>& t2,
-                    std::vector<std::pair<std::uint64_t, std::uint64_t>>& expected) {
+bool diffAsExpected(
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64>& t1,
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64>& t2,
+    std::vector<std::pair<std::uint64_t, std::uint64_t>>& expected) {
   std::vector<std::pair<std::uint64_t, std::uint64_t>> d1 = t1.diff(t2);
   std::vector<std::pair<std::uint64_t, std::uint64_t>> d2 = t2.diff(t1);
 
@@ -73,7 +74,8 @@ bool diffAsExpected(arangodb::containers::MerkleTree<3, 64>& t1,
 }
 }  // namespace
 
-class TestNodeCountAtDepth : public arangodb::containers::MerkleTree<3, 64> {
+class TestNodeCountAtDepth
+    : public arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> {
   static_assert(nodeCountAtDepth(0) == 1);
   static_assert(nodeCountAtDepth(1) == 8);
   static_assert(nodeCountAtDepth(2) == 64);
@@ -82,10 +84,12 @@ class TestNodeCountAtDepth : public arangodb::containers::MerkleTree<3, 64> {
   static_assert(nodeCountAtDepth(10) == 1073741824);
 };
 
-class InternalMerkleTreeTest : public ::arangodb::containers::MerkleTree<3, 64>,
-                               public ::testing::Test {
+class InternalMerkleTreeTest
+    : public ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64>,
+      public ::testing::Test {
  public:
-  InternalMerkleTreeTest() : MerkleTree<3, 64>(2, 0, 64) {}
+  InternalMerkleTreeTest()
+      : MerkleTree<::arangodb::containers::FnvHasher, 3, 64>(2, 0, 64) {}
 };
 
 TEST_F(InternalMerkleTreeTest, test_childrenAreLeaves) {
@@ -350,8 +354,8 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
 }
 
 TEST(MerkleTreeTest, test_diff_equal) {
-  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;  // empty
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -372,8 +376,8 @@ TEST(MerkleTreeTest, test_diff_equal) {
 }
 
 TEST(MerkleTreeTest, test_diff_one_empty) {
-  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -411,8 +415,8 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
 }
 
 TEST(MerkleTreeTest, test_diff_misc) {
-  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -440,7 +444,7 @@ TEST(MerkleTreeTest, test_diff_misc) {
 }
 
 TEST(MerkleTreeTest, test_serializeBinary) {
-  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t1(2, 0, 64);
 
   for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i);
@@ -448,15 +452,15 @@ TEST(MerkleTreeTest, test_serializeBinary) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  std::unique_ptr<::arangodb::containers::MerkleTree<3, 64>> t2 =
-      ::arangodb::containers::MerkleTree<3, 64>::fromBuffer(t1s);
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64>::fromBuffer(t1s);
   ASSERT_NE(t2, nullptr);
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 
 TEST(MerkleTreeTest, test_serializePortable) {
-  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t1(2, 0, 64);
 
   for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i);
@@ -464,16 +468,17 @@ TEST(MerkleTreeTest, test_serializePortable) {
 
   ::arangodb::velocypack::Builder t1s;
   t1.serialize(t1s);
-  std::unique_ptr<::arangodb::containers::MerkleTree<3, 64>> t2 =
-      ::arangodb::containers::MerkleTree<3, 64>::deserialize(t1s.slice());
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64>::deserialize(
+          t1s.slice());
   ASSERT_NE(t2, nullptr);
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 
 TEST(MerkleTreeTest, test_deepen) {
-  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHasher, 3, 64> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;  // empty
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
