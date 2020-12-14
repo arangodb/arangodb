@@ -649,12 +649,12 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
       static_cast<std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
   TRI_ASSERT(index < _maxWriteBufferNumberCf.size());
   if (_maxWriteBufferNumberCf[index] > 0) {
-    options.max_write_buffer_number = _maxWriteBufferNumberCf[index];
+    options.max_write_buffer_number = static_cast<int>(_maxWriteBufferNumberCf[index]);
   }
   if (!_minWriteBufferNumberToMergeTouched) {
-    options.min_write_buffer_number_to_merge =
+    options.min_write_buffer_number_to_merge = static_cast<int>(
         defaultMinWriteBufferNumberToMerge(_totalWriteBufferSize, _writeBufferSize,
-                                           options.max_write_buffer_number);
+                                           options.max_write_buffer_number));
   }
 
   return options;
