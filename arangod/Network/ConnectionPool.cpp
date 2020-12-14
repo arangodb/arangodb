@@ -41,19 +41,19 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config), _loop(config.numIOThreads),
       _totalConnectionsInPool(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_connection_pool_nr_conns", uint64_t(0), "Current number of connections in pool")),
+          std::string("arangodb_connection_pool_nr_conns_") + _config.name, uint64_t(0), "Current number of connections in pool")),
       _successSelect(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_success_select", 0, "Total number of successful connection leases")),
+          std::string("arangodb_connection_pool_success_select_") + _config.name, 0, "Total number of successful connection leases")),
       _noSuccessSelect(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_no_success_select", 0, "Total number of failed connection leases")),
+          std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "Total number of failed connection leases")),
       _connectionsCreated(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_connection_pool_conns_created", 0, "Number of connections created")),
+          std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of connections created")),
       _leaseHistMSec(
         _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_connection_pool_lease_time_hist", log_scale_t(2.f, 0.f, 1000.f, 10),
+          std::string("arangodb_connection_pool_lease_time_hist_") + _config.name, log_scale_t(2.f, 0.f, 1000.f, 10),
           "Time to lease a connection from pool [us]")) {
       TRI_ASSERT(config.numIOThreads > 0);
       TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
