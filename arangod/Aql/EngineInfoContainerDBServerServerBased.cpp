@@ -481,6 +481,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         cleanupEngines(fastPathResult.get().errorNumber(),
                        _query.vocbase().name(), serverToQueryId);
         snippetIds.clear();
+        // TODO what if a cleanup job fails?
       }
 
       // set back to default lock timeout for slow path fallback
