@@ -37,8 +37,7 @@
 
 #include "EvalResult.h"
 
-namespace arangodb {
-namespace greenspun {
+namespace arangodb::greenspun {
 
 struct StackFrame {
   std::unordered_map<std::string, VPackSlice> bindings;
@@ -49,7 +48,7 @@ struct StackFrame {
 };
 
 struct Machine {
-  Machine() noexcept;
+  Machine();
   virtual ~Machine() = default;
   // Variables go here.
   void pushStack(bool noParentScope = false);
@@ -59,16 +58,16 @@ struct Machine {
   EvalResult getVariable(std::string const& name, VPackBuilder& result);
 
   using function_type =
-      std::function<EvalResult(Machine& ctx, VPackSlice const slice, VPackBuilder& result)>;
+      std::function<EvalResult(Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
 
   EvalResult setFunction(std::string_view name, function_type&& f);
   EvalResult unsetFunction(std::string_view name);
 
-  EvalResult applyFunction(std::string name, VPackSlice const slice, VPackBuilder& result);
+  EvalResult applyFunction(std::string name, VPackSlice slice, VPackBuilder& result);
 
   template<typename T>
   using member_function_type =
-    std::function<EvalResult(T*, Machine& ctx, VPackSlice const slice, VPackBuilder& result)>;
+    std::function<EvalResult(T*, Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
 
   template<typename T, typename F>
   EvalResult setFunctionMember(std::string_view name, F&& f, T* ptr) {
@@ -90,7 +89,7 @@ struct Machine {
   std::vector<StackFrame> variables;
   std::unordered_map<std::string, function_type> functions;
 
-  std::function<void(std::string)> printCallback;
+  print_callback_type printCallback;
 };
 
 template <bool isNewScope, bool noParentScope = false>
@@ -115,16 +114,15 @@ struct StackFrameGuard {
   Machine& _ctx;
 };
 
-bool ValueConsideredTrue(VPackSlice const value);
-bool ValueConsideredFalse(VPackSlice const value);
+bool ValueConsideredTrue(VPackSlice value);
+bool ValueConsideredFalse(VPackSlice value);
 
 EvalResult Evaluate(Machine& ctx, VPackSlice slice, VPackBuilder& result);
 void InitMachine(Machine& ctx);
 
-std::string paramsToString(const VPackArrayIterator iter);
-std::string paramsToString(VPackSlice const params);
+std::string paramsToString(VPackArrayIterator iter);
+std::string paramsToString(VPackSlice params);
 
-}  // namespace greenspun
-}  // namespace arangodb
+}  // namespace arangodb::greenspun
 
 #endif

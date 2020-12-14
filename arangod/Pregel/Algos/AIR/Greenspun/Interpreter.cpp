@@ -22,7 +22,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-// #include "Basics/debugging.h"
 #include "Interpreter.h"
 #include "Primitives.h"
 #include "lib/DateTime.h"
@@ -57,14 +56,14 @@ EvalResult Apply(Machine& ctx, std::string const& function,
 }
 
 EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  for (auto iter = paramIterator; iter.valid(); iter++) {
+  for (auto iter = paramIterator; iter.valid(); ++iter) {
     auto pair = *iter;
     if (!pair.isArray() || pair.length() != 2) {
       return EvalError("in case " + std::to_string(iter.index()) +
                        ", expected pair, found: " + pair.toJson());
     }
 
-    auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(*iter);
+    auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder condResult;
     {
       StackFrameGuard<false> guard(ctx);
@@ -213,8 +212,8 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
     return EvalError("expected numeric expression in pattern");
   }
   auto pattern = proto.slice().getNumber<double>();
-  paramIterator++;
-  for (; paramIterator.valid(); paramIterator++) {
+  ++paramIterator;
+  for (; paramIterator.valid(); ++paramIterator) {
     auto pair = *paramIterator;
     if (!pair.isArray() || pair.length() != 2) {
       return EvalError("in case " + std::to_string(paramIterator.index()) +
@@ -245,7 +244,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
 }
 
 EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  // ["for-each", ["a", ["A", "B", "C"]], ["d", ["1", "2", "3"]], ["print", ["var-ref", "a"], ["var-ref", "d"]]]
+  // ["for-each", ["a", ["list", "A", "B", "C"]], ["d", ["list", "1", "2", "3"]], ["print", ["var-ref", "a"], ["var-ref", "d"]]]
 
   if (!paramIterator.valid()) {
     return EvalError("Expected at least one argument");
@@ -271,7 +270,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
       return EvalError("Expected string as first entry, found: " + var.toJson());
     }
     if (!array.isArray()) {
-      return EvalError("Expected array os second entry, found: " + array.toJson());
+      return EvalError("Expected array as second entry, found: " + array.toJson());
     }
     VPackBuilder listResult;
     if (auto res = Evaluate(ctx, array, listResult); res.fail()) {
@@ -605,7 +604,7 @@ EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) 
   return {};
 }
 
-Machine::Machine() noexcept {
+Machine::Machine() {
   // Top level variables
   pushStack();
 }
