@@ -124,10 +124,6 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
  public:
-  static constexpr size_t DEFAULT_BUFFER_SIZE = 1024;
-
-  buffered_index_output(size_t buf_size = DEFAULT_BUFFER_SIZE);
-
   virtual void flush() override;
 
   virtual void close() override;
@@ -147,6 +143,14 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   virtual void write_long(int64_t v) override final;
 
  protected:
+  void reset(byte_type* buf, size_t size) noexcept {
+    buf_ = buf;
+    pos_ = buf;
+    end_ = buf + size;
+    buf_size_ = size;
+    start_ = 0;
+  }
+
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
   // returns number of reamining bytes in the buffer
@@ -156,11 +160,11 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::unique_ptr<byte_type[]> buf_;
-  size_t start_; // position of buffer in a file
-  byte_type* pos_;   // position in buffer
-  byte_type* end_;
-  const size_t buf_size_;
+  byte_type* buf_{};
+  byte_type* pos_{}; // position in buffer
+  byte_type* end_{};
+  size_t start_{};   // position of buffer in a file
+  size_t buf_size_{};
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_output
 

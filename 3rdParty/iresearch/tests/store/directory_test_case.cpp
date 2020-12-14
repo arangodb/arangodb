@@ -124,12 +124,39 @@ class directory_test_case : public tests::directory_test_case_base {
       EXPECT_EQ(0, file->file_pointer());
       EXPECT_EQ(file->length(), it->size());
 
+      auto dup_file = file->dup();
+      ASSERT_FALSE(!dup_file);
+      ASSERT_EQ(0, dup_file->file_pointer());
+      EXPECT_FALSE(dup_file->eof());
+      EXPECT_EQ(dup_file->length(), it->size());
+      auto reopened_file = file->reopen();
+      ASSERT_FALSE(!reopened_file);
+      ASSERT_EQ(0, reopened_file->file_pointer());
+      EXPECT_FALSE(reopened_file->eof());
+      EXPECT_EQ(reopened_file->length(), it->size());
+
       const auto checksum = file->checksum(file->length());
 
       buf.resize(it->size());
       const auto read = file->read_bytes(&(buf[0]), it->size());
       ASSERT_EQ(read, it->size());
       ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+      {
+        buf.clear();
+        buf.resize(it->size());
+        const auto read = dup_file->read_bytes(&(buf[0]), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+      }
+
+      {
+        buf.clear();
+        buf.resize(it->size());
+        const auto read = reopened_file->read_bytes(&(buf[0]), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+      }
 
       crc.process_bytes(buf.c_str(), buf.size());
 
