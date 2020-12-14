@@ -27,6 +27,7 @@
 #include "Aql/QueryCache.h"
 #include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -41,6 +42,8 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+
+#include <any>
 
 using namespace arangodb;
 
@@ -119,13 +122,10 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
   return std::move(cookie);
 }
 
-#include <any>
-#include "Basics/StringUtils.h"
-
 /// @brief add a collection to a transaction
 Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
-#if ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     if (!raceController.didTrigger()) {
