@@ -526,7 +526,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
     arangodb::aql::IResearchViewStats stats;
     arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
     {
-      SCOPED_TRACE(testing::Message("Scorers size:") << executorInfos.scorers().size());
+      ASSERT_TRUE(executorInfos.scorers().empty());
       arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
       arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
       inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
