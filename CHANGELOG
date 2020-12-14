@@ -1,6 +1,10 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fix for issue #772: Optimized document counting for ArangoSearch views.
+  Added new ArangoSearch view option 'countApproximate' for customizing 
+  view count strategy.
+
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
 * Added SNI support for arangosh.
