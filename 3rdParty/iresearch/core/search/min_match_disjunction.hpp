@@ -337,10 +337,10 @@ class min_match_disjunction
           return false;
         }
 
-//#ifdef _MSC_VER
+#ifdef _MSC_VER
         // Microsoft invalidates iterator
         it = lead();
-//#endif
+#endif
 
         // update end
         end = heap_.end();
