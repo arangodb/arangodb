@@ -3,6 +3,60 @@ devel
 
 * Fix Gauge class' assignment operators.
 
+* Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
+  section of a foxx app.
+
+* The scheduler will now run a minimum of 4 threads at all times, and the
+  default and minimal value for `--server.maximal-threads` has been lowered from
+  64 to the greater of 32 and twice the number of detected cores.
+
+* Throttle work coming from low priority queue, according to a constant
+  and to an estimate taking into account fanout for multi-shard operations.
+
+* Move to 4 priority levels "low", "medium", "high" and "maintenance" in
+  scheduler to ensure that maintenance work and diagnostics is always
+  possible, even in the case of RocksDB throttles. Do not allow any
+  RocksDB work on "maintenance".
+
+* Commit replications on high priority queue.
+
+* Essentially get rid of timeout in replication to drop followers. This
+  is now entirely handled via reboot and failure tracking. The timeout
+  has now a default minimum of 15 minutes but can still be configured via
+  options.
+
+* Additional metrics for all queue lengths and low prio ongoing work.
+
+* New metric for number and total time of replication operations.
+
+* New metrics for number of internal requests in flight, internal request
+  duration, and internal request timeouts
+
+* Fix `Gauge` assignment operators.
+
+* Fixed and extended LDAP log messages.
+
+* Added LDAP_OFF if referrals and restart are false.
+
+* If LDAP search fails, also retry (update to given number of retries).
+
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
+* Make all Pregel HTTP and JavaScript APIs also accept stringified execution
+  number values, in addition to numeric ones.
+
+  This allows passing larger execution numbers as strings, so that any data
+  loss due to numeric data type conversion (uint32 => double) can be avoided.
+
+  The change also makes the Pregel HTTP and JavaScript APIs for starting a
+  run return a stringified execution number, e.g. "12345" instead of 12345.
+
+* Updated ArangoDB Starter to 0.14.15-1.
+
 * Fix Windows directory creation error handling.
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
