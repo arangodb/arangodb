@@ -56,10 +56,9 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-const char* arangodb::pregel::ExecutionStateNames[8] = {"none",      "running",
-                                                        "storing",   "done",
-                                                        "canceled",  "in error",
-                                                        "recovering", "fatal error"};
+const char* arangodb::pregel::ExecutionStateNames[8] = {
+    "none",     "running",  "storing",    "done",
+    "canceled", "in error", "recovering", "fatal error"};
 
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
@@ -108,8 +107,8 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_asyncMode) {
     LOG_TOPIC("1b1c2", DEBUG, Logger::PREGEL) << "Running in async mode";
   }
-  _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
-                                                      Utils::useMemoryMapsKey, _useMemoryMaps);
+  _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(), Utils::useMemoryMapsKey,
+                                                     _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -462,9 +461,8 @@ void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
   bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool {
-        return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL);
-      }, Logger::PREGEL, "cancel worker execution");
+      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
+      Logger::PREGEL, "cancel worker execution");
   if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
         << "Failed to cancel worker execution for five minutes, giving up.";
@@ -648,7 +646,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::edgeCollectionRestrictionsKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : _edgeCollectionRestrictions) {
       b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard: pair.second) {
+      for (ShardID const& shard : pair.second) {
         b.add(VPackValue(shard));
       }
       b.close();
@@ -942,26 +940,17 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   }
 
   size_t nrGood = 0;
-<<<<<<< HEAD
+
   futures::collectAll(responses)
       .thenValue([&](auto results) {
         for (auto const& tryRes : results) {
           network::Response const& res = tryRes.get();  // throws exceptions upwards
-          if (res.ok() && res.response->statusCode() < 400) {
+          if (res.ok() && res.statusCode() < 400) {
             nrGood++;
             if (handle) {
-              handle(res.response->slice());
+              handle(res.slice());
             }
           }
-=======
-  futures::collectAll(responses).thenValue([&](auto results) {
-    for (auto const& tryRes : results) {
-       network::Response const& res = tryRes.get();  // throws exceptions upwards
-      if (res.ok() && res.statusCode() < 400) {
-        nrGood++;
-        if (handle) {
-          handle(res.slice());
->>>>>>> origin/devel
         }
       })
       .wait();
@@ -988,7 +977,8 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   std::vector<ShardID> result;
   try {
     std::shared_ptr<LogicalCollection> lc = ci.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs = ci.getShardList(std::to_string(lc->id().id()));
+    std::shared_ptr<std::vector<ShardID>> shardIDs =
+        ci.getShardList(std::to_string(lc->id().id()));
     result.reserve(shardIDs->size());
     for (auto const& it : *shardIDs) {
       result.emplace_back(it);
