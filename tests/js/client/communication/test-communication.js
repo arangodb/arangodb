@@ -552,6 +552,14 @@ function GenericAqlSetupPathSuite(type) {
     }
   `;
 
+  const documentWrite = `
+    const docs = [];
+    for (let i = 0; i < ${docsPerWrite}; ++i) {
+      docs.push({});
+    }
+    db[${twoShardColName}].save(docs);
+  `;
+
   const buildSingleRunCode = (key, command) => {
     const cmd = `
     (function() {
@@ -658,6 +666,7 @@ function GenericAqlSetupPathSuite(type) {
     ["APIExclusive", apiExclusive, true],
     ["APIWrite", apiWrite, true],
     ["APIRead", apiRead, false],
+    ["DocumentWrite", documentWrite, true]
   ];
 
   const addTestCase = (suite, first, second) => {
