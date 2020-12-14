@@ -1,6 +1,8 @@
 devel
 -----
 
+* Views on SmartGraph Edge collections do not contain some documents
+  twice.
 
 * Fixed agency redirect in poll api.
 
