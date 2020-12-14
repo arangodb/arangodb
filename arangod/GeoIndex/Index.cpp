@@ -251,6 +251,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     case aql::NODE_TYPE_OPERATOR_BINARY_LE:
       qp.maxInclusive = true;
       // intentional fallthrough
+      [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
@@ -271,6 +272,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     case aql::NODE_TYPE_OPERATOR_BINARY_GE:
       qp.minInclusive = true;
       // intentional fallthrough
+      [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
@@ -280,6 +282,9 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 
       aql::AstNode const* min = node->getMemberUnchecked(1);
       TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);
+      if (min->type != aql::NODE_TYPE_VALUE) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
+      }
       qp.minDistance = min->getDoubleValue();
       break;
     }
