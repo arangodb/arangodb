@@ -67,7 +67,6 @@ inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
   while (p != e) {
     result = (result * 10) + (*(p++) - '0');
   }
-
   return result;
 }
 
