@@ -385,24 +385,26 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     } else if (!canRevertToSlowPath && fastPathResult.fail()) {
       return fastPathResult;
     } else {
-      // slowpath
+      // slowPath entry point
+      LOG_DEVEL << "Starting slowpath";
       TRI_ASSERT(fastPathResult.fail());
 
       // in case of fast path failure, we need to cleanup engines
       timeoutToUse = SETUP_TIMEOUT;
 
       // abortTransaction on knownServers() and wait for them
-      Result resetRes =
-          commitAbortTransaction(&state, transaction::Status::ABORTED).get();
-      if (resetRes.fail()) {
-        LOG_DEVEL << "failed to clean up servers"; // TODO: remove or add debug output
-        // return here if cleanup failed - this needs to be a success
-        return resetRes;
+      if (!state.knownServers().empty()) {
+        Result resetRes =
+            commitAbortTransaction(&state, transaction::Status::ABORTED).get();
+        if (resetRes.fail()) {
+          LOG_DEVEL << "failed to clean up servers" << resetRes.errorMessage();  // TODO: remove or add debug output
+          // return here if cleanup failed - this needs to be a success
+          return resetRes;
+        }
       }
 
-      // rerollTrxId()
+      // rerollTrxId() - this also clears _knownServers (!)
       state.coordinatorRerollTransactionId();
-      state.clearKnownServers(); // TODO: Check!
 
       // Run slowPath
       requests.clear();
