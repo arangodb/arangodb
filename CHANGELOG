@@ -1,5 +1,8 @@
 devel
 -----
+* Fix for issue #772: Optimized document counting for ArangoSearch views.
+  Added new ArangoSearch view option 'countApproximate' for customizing 
+  view count strategy.
 
 * Views on SmartGraph Edge collections do not contain some documents
   twice.

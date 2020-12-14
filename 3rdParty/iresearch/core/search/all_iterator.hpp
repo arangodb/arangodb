@@ -44,7 +44,13 @@ class all_iterator final
     boost_t boost);
 
   virtual bool next() noexcept override {
-    return !doc_limits::eof(seek(doc_.value + 1));
+    if (doc_.value >= max_doc_) {
+      doc_.value = doc_limits::eof();
+      return false;
+    } else {
+      doc_.value++;
+      return true;
+    }
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
