@@ -260,6 +260,9 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 
       aql::AstNode const* max = node->getMemberUnchecked(1);
       TRI_ASSERT(max->type == aql::NODE_TYPE_VALUE);
+      if (max->type != aql::NODE_TYPE_VALUE) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
+      }
       if (!max->isValueType(aql::VALUE_TYPE_STRING)) {
         qp.maxDistance = max->getDoubleValue();
       }  // else assert(max->getStringValue() == "unlimited")
@@ -274,7 +277,6 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       if (!qp.origin.is_valid()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
-      // LOG_TOPIC("a9633", ERR, Logger::FIXME) << "Found center: " << c.toString();
 
       aql::AstNode const* min = node->getMemberUnchecked(1);
       TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);
@@ -283,7 +285,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     }
     default:
       TRI_ASSERT(false);
-      break;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
   }
 }
 

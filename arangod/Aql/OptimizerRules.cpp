@@ -6801,16 +6801,16 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, VarSet const& validVars,
   // checks @first `smaller` @second
   // note: this only modifies "info" if the function returns true
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool {
-    if (isValueOrAccessibleReference(validVars, second) &&       // no attribute access
-        info.maxDistanceExpr == nullptr &&  // max distance is not yet set
+    if (isValueOrAccessibleReference(validVars, second) && // no attribute access
+        info.maxDistanceExpr == nullptr && // max distance is not yet set
         checkDistanceFunc(plan, first, /*legacy*/ true, info)) {
       TRI_ASSERT(info.index);
       info.maxDistanceExpr = second;
       info.maxInclusive = info.maxInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
-    } else if (isValueOrAccessibleReference(validVars, first) &&        // no attribute access
-               info.minDistanceExpr == nullptr &&  // min distance is not yet set
+    } else if (isValueOrAccessibleReference(validVars, first) && // no attribute access
+               info.minDistanceExpr == nullptr && // min distance is not yet set
                checkDistanceFunc(plan, second, /*legacy*/ true, info)) {
       info.minDistanceExpr = first;
       info.minInclusive = info.minInclusive && lessequal;
