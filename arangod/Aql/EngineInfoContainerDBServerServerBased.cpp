@@ -372,7 +372,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       return {code, message};
     }
 
-    VPackSlice response = res.response->slice();
+    VPackSlice response = res.slice();
     if (response.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
