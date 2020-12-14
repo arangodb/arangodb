@@ -46,7 +46,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
   std::string newLocation;
 
   if (r.ok()) {
-    velocypack::Slice payload = r.response->slice();
+    velocypack::Slice payload = r.slice();
 
     switch (r.statusCode()) {
       case 200:  // Digest other configuration
@@ -58,7 +58,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
       case 307:  // Add new endpoint to gossip peers
         bool found;
-        newLocation = r.response->header.metaByKey("location", found);
+        newLocation = r.response().header.metaByKey("location", found);
 
         if (found) {
           if (newLocation.compare(0, 5, "https") == 0) {

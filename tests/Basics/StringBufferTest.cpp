@@ -66,8 +66,4 @@ TEST(StringBufferTest, test_StringBuffer2) {
   buffer.appendText("Hallo World");
   EXPECT_EQ(buffer.length(), (size_t) 11);
   EXPECT_EQ(std::string(buffer.c_str()), "Hallo World");
-  
-  buffer.appendInteger4(1234);
-  EXPECT_EQ(buffer.length(), (size_t) 15);
-  EXPECT_EQ(std::string(buffer.c_str()), "Hallo World1234");
 }

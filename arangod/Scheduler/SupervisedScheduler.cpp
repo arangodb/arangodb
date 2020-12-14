@@ -22,26 +22,26 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
+
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Basics/StaticStrings.h>
-#include <memory>
-
-#include "Scheduler.h"
 #include "SupervisedScheduler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
-#include "Statistics/RequestStatistics.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/MetricsFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -57,9 +57,9 @@ time_point lastWarningQueue = std::chrono::steady_clock::now();
 int64_t queueWarningEvents = 0;
 std::mutex queueWarningMutex;
 
-time_point lastQueueFullWarning[3];
-int64_t fullQueueEvents[3] = {0, 0, 0};
-std::mutex fullQueueWarningMutex[3];
+time_point lastQueueFullWarning[SupervisedScheduler::NumberOfQueues];
+int64_t fullQueueEvents[SupervisedScheduler::NumberOfQueues] = {0};
+std::mutex fullQueueWarningMutex[SupervisedScheduler::NumberOfQueues];
 
 void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize, uint64_t approxQueueLength) {
   auto const now = std::chrono::steady_clock::now();
@@ -145,10 +145,12 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
-                                         uint64_t maxQueueSize,
-                                         uint64_t fifo1Size, uint64_t fifo2Size,
+                                         uint64_t maxQueueSize, uint64_t fifo1Size,
+                                         uint64_t fifo2Size, uint64_t fifo3Size,
+                                         double ongoingMultiplier,
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
+      _nf(server.getFeature<NetworkFeature>()),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),
@@ -157,9 +159,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _jobsDone(0),
       _minNumWorkers(minThreads),
       _maxNumWorkers(maxThreads),
-      _maxFifoSize(maxQueueSize),
-      _fifo1Size(fifo1Size),
-      _fifo2Size(fifo2Size),
+      _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
+      _ongoingLowPriorityLimit(static_cast<std::size_t>(ongoingMultiplier * _maxNumWorkers)),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
@@ -169,17 +170,19 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           "arangodb_scheduler_jobs_done", 0, "Total number of queue jobs done")),
       _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_submitted", 0, "Total number of jobs submitted to the queue")),
+          "arangodb_scheduler_jobs_submitted", 0,
+          "Total number of jobs submitted to the queue")),
       _metricsJobsDequeued(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_dequeued", 0, "Total number of jobs dequeued")),
+          "arangodb_scheduler_jobs_dequeued", 0,
+          "Total number of jobs dequeued")),
       _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerAwakeWorkers, 0,
           "Number of awake worker threads")),
       _metricsNumWorkingThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_num_working_threads", 0, "Number of working threads")),
+          "arangodb_scheduler_num_working_threads", 0,
+          "Number of working threads")),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerNumWorker, 0,
-          "Number of worker threads")),
+          StaticStrings::SchedulerNumWorker, 0, "Number of worker threads")),
       _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_scheduler_threads_started", 0,
           "Number of scheduler threads started")),
@@ -187,22 +190,42 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "arangodb_scheduler_threads_stopped", 0,
           "Number of scheduler threads stopped")),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
+          "arangodb_scheduler_queue_full_failures", 0,
+          "Tasks dropped and not added to internal queue")),
+      _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
+          "Total number of ongoing RestHandlers coming from "
+          "the low prio queue")),
+      _metricsQueueLengths{
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
+              "Current queue length of the maintenance priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_high_prio_queue_length", uint64_t(0),
+              "Current queue length of the high priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_medium_prio_queue_length", uint64_t(0),
+              "Current queue length of the medium priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
+              "Current queue length of the low priority queue in "
+              "the scheduler")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
-
-  TRI_ASSERT(_maxFifoSize > 0);
+  _queues[3].reserve(fifo3Size);
+  TRI_ASSERT(fifo3Size > 0);
 }
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> handler) {
+bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> work) {
   if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
     return false;
   }
-
-  auto work = std::make_unique<WorkItem>(std::move(handler));
 
   // use memory order acquire to make sure, pushed item is visible
   uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
@@ -215,18 +238,14 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
 
   auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
 
-  TRI_ASSERT(queueNo <= 2);
+  TRI_ASSERT(queueNo < NumberOfQueues);
   TRI_ASSERT(isStopping() == false);
 
   if (!_queues[queueNo].bounded_push(work.get())) {
     _jobsSubmitted.fetch_sub(1, std::memory_order_release);
 
-    uint64_t maxSize = _maxFifoSize;
-    if (queueNo == 1) {
-      maxSize = _fifo1Size;
-    } else if (queueNo == 2) {
-      maxSize = _fifo2Size;
-    }
+    uint64_t maxSize = _maxFifoSizes[queueNo];
+
     LOG_TOPIC("98d94", DEBUG, Logger::THREADS)
         << "unable to push job to scheduler queue: queue is full";
     logQueueFullEveryNowAndThen(queueNo, maxSize);
@@ -234,17 +253,19 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     return false;
   }
 
-  // queue now has ownership for the WorkItem
+  _metricsQueueLengths[queueNo].get() += 1;
+
+  // queue now has ownership for the WorkItemBase
   (void)work.release();  // intentionally ignore return value
 
-  if (approxQueueLength > _maxFifoSize / 2) {
+  if (approxQueueLength > _maxFifoSizes[3] / 2) {
     if ((::queueWarningTick++ & 0xFFu) == 0) {
       auto const& now = std::chrono::steady_clock::now();
       if (::conditionQueueFullSince == time_point{}) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSizes[3], approxQueueLength);
         ::conditionQueueFullSince = now;
       } else if (now - ::conditionQueueFullSince > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSizes[3], approxQueueLength);
         ::queueWarningTick = 0;
         ::conditionQueueFullSince = now;
       }
@@ -427,7 +448,7 @@ void SupervisedScheduler::runWorker() {
   _numAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
     try {
-      std::unique_ptr<WorkItem> work = getWork(state);
+      std::unique_ptr<WorkItemBase> work = getWork(state);
       if (work == nullptr) {
         break;
       }
@@ -438,7 +459,7 @@ void SupervisedScheduler::runWorker() {
       state->_working = true;
       _numWorking.fetch_add(1, std::memory_order_relaxed);
       try {
-        work->_handler();
+        work->invoke();
         state->_working = false;
         _numWorking.fetch_sub(1, std::memory_order_relaxed);
       } catch (...) {
@@ -610,15 +631,16 @@ bool SupervisedScheduler::sortoutLongRunningThreads() {
 
 bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   if (queueIndex == 0) {
-    // We can always! pull from high priority
+    // We can always! pull from maintenance priority
     return true;
   }
 
   // This function should ensure the following thread reservation:
-  // 25% reserved for FastLane only
-  // upto 75% of work can go on MedLane and FastLane
-  // uptop 50% of work can go on Slow, Med and FastLane
-  TRI_ASSERT(_maxNumWorkers >= 2);
+  // 12.5% (but at least 1) reserved for MAINTENANCE prio
+  // 25% (but at least 2) reserved for HIGH and MAINTENANCE only
+  // upto 75% of work can do MEDIUM and LOW
+  // uptop 50% of work can do LOW
+  TRI_ASSERT(_maxNumWorkers >= 4);
 
   // The ordering of Done and dequeued is important, hence acquire.
   // Otherwise we might have the unlucky case that we first check dequeued,
@@ -627,22 +649,46 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   TRI_ASSERT(jobsDequeued >= jobsDone);
+  uint64_t threadsWorking = jobsDequeued - jobsDone;
 
   if (queueIndex == 1) {
+    // We can work on high if less than 87.5% of the workers are busy
+    size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers * 7 / 8) : _maxNumWorkers - 1;
+    return threadsWorking < limit;
+  }
+
+  if (queueIndex == 2) {
     // We can work on med if less than 75% of the workers are busy
-    return (jobsDequeued - jobsDone) < (_maxNumWorkers * 3 / 4);
+    size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers * 3 / 4) : _maxNumWorkers - 2;
+
+    return threadsWorking < limit;
+  }
+
+  // We limit the number of ongoing low priority jobs to prevent a cluster
+  // from getting overwhelmed
+  std::size_t const ongoing = _ongoingLowPriorityGauge.load();
+  if (ongoing >= _ongoingLowPriorityLimit) {
+    return false;
+  }
+
+  // Because jobs may fan out to multiple servers and shards, we also limit
+  // dequeuing based on the number of internal requests in flight
+  if (_nf.isSaturated()) {
+    return false;
   }
 
   // We can work on low if less than 50% of the workers are busy
-  return (jobsDequeued - jobsDone) < (_maxNumWorkers / 2);
+  size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers / 2) : _maxNumWorkers - 3;
+  return threadsWorking < limit;
 }
 
-std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
+std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
-  auto checkAllQueues = [this]() -> WorkItem* {
-    WorkItem* res = nullptr;
-    for (uint64_t i = 0; i < 3; ++i) {
+  auto checkAllQueues = [this]() -> WorkItemBase* {
+    WorkItemBase* res = nullptr;
+    for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
+        _metricsQueueLengths[i].get() -= 1;
         return res;
       }
     }
@@ -660,9 +706,9 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       timeOutForNow = 0;
     }
     do {
-      WorkItem* work = checkAllQueues();
+      WorkItemBase* work = checkAllQueues();
       if (work != nullptr) {
-        return std::unique_ptr<WorkItem>(work);
+        return std::unique_ptr<WorkItemBase>(work);
       }
       cpu_relax();
     } while ((std::chrono::steady_clock::now() - loopStart) <
@@ -683,12 +729,12 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     state->_sleeping = true;
     _numAwake.fetch_sub(1, std::memory_order_relaxed);
 
-    WorkItem* work = checkAllQueues();
+    WorkItemBase* work = checkAllQueues();
     if (work != nullptr) {
       // Fix the sleep indicators:
       state->_sleeping = false;
       _numAwake.fetch_add(1, std::memory_order_relaxed);
-      return std::unique_ptr<WorkItem>(work);
+      return std::unique_ptr<WorkItemBase>(work);
     }
 
     if (state->_sleepTimeout_ms == 0) {
@@ -814,8 +860,22 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("direct-exec", VPackValue(0)); // obsolete
 }
 
+void SupervisedScheduler::trackBeginOngoingLowPriorityTask() {
+  if (_server.isStopping()) {
+    return;
+  }
+  _ongoingLowPriorityGauge += 1;
+}
+
+void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
+  if (_server.isStopping()) {
+    return;
+  }
+  _ongoingLowPriorityGauge -= 1;
+}
+
 double SupervisedScheduler::approximateQueueFillGrade() const {
-  uint64_t const maxLength = _maxFifoSize;
+  uint64_t const maxLength = _maxFifoSizes[3];
   uint64_t const qLength = std::min<uint64_t>(maxLength, _metricsQueueLength.load());
   return static_cast<double>(qLength) / static_cast<double>(maxLength);
 }
