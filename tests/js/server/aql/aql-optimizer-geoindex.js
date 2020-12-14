@@ -1088,6 +1088,28 @@ function optimizerRuleTestSuite() {
       hasFilterNode(result, query);
     },
 
+    // See testSelfReference1
+    // Note that currently, the optimizer rule does not work with `dist2` being
+    // not a value (but a variable reference) in the filter expression. When
+    // this changes in the future, the expectations in this test can simply be
+    // changed.
+    testInaccessibleReference: function () {
+      const query = {
+        string: `
+          FOR doc IN @@col
+            LET dist = GEO_DISTANCE(doc.geo, [16, 53])
+            LET dist2 = NOEVAL(7)
+            FILTER dist < dist2
+            RETURN {doc, dist, dist2}
+        `,
+        bindVars: {'@col': colName},
+      };
+
+      const result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasNoIndexNode(result, query);
+      hasFilterNode(result, query);
+    },
+
   }; // test dictionary (return)
 } // optimizerRuleTestSuite
 
