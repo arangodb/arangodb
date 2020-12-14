@@ -39,38 +39,39 @@
 namespace arangodb {
 namespace containers {
 
-template <std::size_t const BranchingBits = 3,  // 8 children per internal node,
-          std::size_t const LockStripes = 64  // number number of buckets that can be accessed simultaneously
+template <std::uint64_t const BranchingBits = 3,  // 8 children per internal node,
+          std::uint64_t const LockStripes = 64  // number number of buckets that can be accessed simultaneously
           >
 class MerkleTree {
  protected:
-  static constexpr std::size_t CacheLineSize =
+  static constexpr std::uint64_t CacheLineSize =
       64;  // TODO replace with std::hardware_constructive_interference_size
            // once supported by all necessary compilers
-  static constexpr std::size_t BranchingFactor = static_cast<std::size_t>(1) << BranchingBits;
+  static constexpr std::uint64_t BranchingFactor = static_cast<std::uint64_t>(1)
+                                                   << BranchingBits;
 
   struct Node {
     std::uint64_t hash;
-    std::size_t count;
+    std::uint64_t count;
 
     bool operator==(Node const& other);
   };
   static_assert(sizeof(Node) == 16, "Node size assumptions invalid.");
   static_assert(CacheLineSize % sizeof(Node) == 0,
                 "Node size assumptions invalid.");
-  static constexpr std::size_t NodeSize = sizeof(Node);
+  static constexpr std::uint64_t NodeSize = sizeof(Node);
 
   struct Meta {
     std::uint64_t rangeMin;
     std::uint64_t rangeMax;
-    std::size_t maxDepth;
+    std::uint64_t maxDepth;
   };
   static_assert(sizeof(Meta) == 24, "Meta size assumptions invalid.");
-  static constexpr std::size_t MetaSize =
+  static constexpr std::uint64_t MetaSize =
       (CacheLineSize * ((sizeof(Meta) + (CacheLineSize - 1)) / CacheLineSize));
 
-  static constexpr std::size_t nodeCountUpToDepth(std::size_t maxDepth);
-  static constexpr std::size_t allocationSize(std::size_t maxDepth);
+  static constexpr std::uint64_t nodeCountUpToDepth(std::uint64_t maxDepth);
+  static constexpr std::uint64_t allocationSize(std::uint64_t maxDepth);
   static constexpr std::uint64_t log2ceil(std::uint64_t n);
   static constexpr std::uint64_t minimumFactorFor(std::uint64_t current, std::uint64_t target);
 
@@ -80,8 +81,8 @@ class MerkleTree {
    *
    * @param maxDepth The same depth value used for the calculation
    */
-  static constexpr std::size_t nodeCountAtDepth(std::size_t maxDepth) {
-    return static_cast<std::size_t>(1) << (BranchingBits * maxDepth);
+  static constexpr std::uint64_t nodeCountAtDepth(std::uint64_t maxDepth) {
+    return static_cast<std::uint64_t>(1) << (BranchingBits * maxDepth);
   }
 
   /**
@@ -93,7 +94,7 @@ class MerkleTree {
    *
    * @param maxDepth The same depth value passed to the constructor
    */
-  static std::uint64_t defaultRange(std::size_t maxDepth);
+  static std::uint64_t defaultRange(std::uint64_t maxDepth);
 
   /**
    * @brief Construct a tree from a buffer containing a serialized tree
@@ -129,7 +130,7 @@ class MerkleTree {
    *                 merged as necessary.
    * @throws std::invalid_argument  If maxDepth is less than 2
    */
-  MerkleTree(std::size_t maxDepth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0);
+  MerkleTree(std::uint64_t maxDepth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0);
 
   ~MerkleTree();
 
@@ -143,7 +144,7 @@ class MerkleTree {
   /**
    * @brief Returns the number of hashed keys contained in the tree
    */
-  std::size_t count() const;
+  std::uint64_t count() const;
 
   /**
    * @brief Returns the hash of all values in the tree, equivalently the root
@@ -159,7 +160,7 @@ class MerkleTree {
   /**
    * @brief Returns the maximum depth of the tree
    */
-  std::size_t maxDepth() const;
+  std::uint64_t maxDepth() const;
 
   /**
    * @brief Insert a value into the tree. May trigger a resize.
@@ -168,10 +169,9 @@ class MerkleTree {
    *              at construction, then it will trigger an exception. If it is
    *              greater than the current max, it will trigger a (potentially
    *              expensive) growth operation to ensure the key can be inserted.
-   * @param value The hashed value associated with the key
    * @throws std::out_of_range  If key is less than rangeMin
    */
-  void insert(std::uint64_t key, std::uint64_t value);
+  void insert(std::uint64_t key);
 
   /**
    * @brief Insert a batch of keys (as values) into the tree. May trigger a
@@ -189,11 +189,10 @@ class MerkleTree {
    *
    * @param key   The key for the item. If it is outside the current tree range,
    *              then it will trigger an exception.
-   * @param value The hashed value associated with the key
    * @throws std::out_of_range  If key is outside current range
    * @throws std::invalid_argument  If remove hits a node with 0 count
    */
-  void remove(std::uint64_t key, std::uint64_t value);
+  void remove(std::uint64_t key);
 
   /**
    * @brief Remove a batch of keys (as values) from the tree.
@@ -226,7 +225,7 @@ class MerkleTree {
    *
    * @param newDepth  Max depth to use for new tree
    */
-  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> cloneWithDepth(std::size_t newDepth) const;
+  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> cloneWithDepth(std::uint64_t newDepth) const;
 
   /**
    * @brief Find the ranges of keys over which two trees differ.
@@ -251,7 +250,7 @@ class MerkleTree {
    * @param depth     Maximum depth to serialize
    */
   void serialize(velocypack::Builder& output,
-                 std::size_t maxDepth = std::numeric_limits<std::size_t>::max()) const;
+                 std::uint64_t maxDepth = std::numeric_limits<std::uint64_t>::max()) const;
 
   /**
    * @brief Serialize the tree for transport or storage in binary format
@@ -266,18 +265,18 @@ class MerkleTree {
   explicit MerkleTree(MerkleTree<BranchingBits, LockStripes> const& other);
 
   Meta& meta() const;
-  Node& node(std::size_t index) const;
-  std::mutex& lock(std::size_t index) const;
-  std::size_t index(std::uint64_t key, std::size_t depth) const;
-  void modify(std::uint64_t key, std::uint64_t value, bool isInsert);
+  Node& node(std::uint64_t index) const;
+  std::mutex& lock(std::uint64_t index) const;
+  std::uint64_t index(std::uint64_t key, std::uint64_t depth) const;
+  void modify(std::uint64_t key, bool isInsert);
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
-  void modifyLocal(std::size_t depth, std::uint64_t key, std::uint64_t value,
+  void modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert, bool doLock);
   void grow(std::uint64_t key);
   bool equalAtIndex(MerkleTree<BranchingBits, LockStripes> const& other,
-                    std::size_t index) const;
-  bool childrenAreLeaves(std::size_t index);
-  std::pair<std::uint64_t, std::uint64_t> chunkRange(std::size_t chunk, std::size_t depth);
+                    std::uint64_t index) const;
+  bool childrenAreLeaves(std::uint64_t index);
+  std::pair<std::uint64_t, std::uint64_t> chunkRange(std::uint64_t chunk, std::uint64_t depth);
 
  private:
   std::unique_ptr<std::uint8_t[]> _buffer;
@@ -285,7 +284,7 @@ class MerkleTree {
   mutable std::mutex _nodeLocks[LockStripes];
 };
 
-template <std::size_t const BranchingBits, std::size_t const LockStripes>
+template <std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
 std::ostream& operator<<(std::ostream& stream,
                          MerkleTree<BranchingBits, LockStripes> const& tree);
 
