@@ -30,11 +30,43 @@
 
 #include <iostream>
 #include <sstream>
+#include <numeric>
 
 #include <Basics/VelocyPackHelper.h>
 #include <velocypack/Iterator.h>
 
-int TRI_Levenshtein(std::string const& lhs, std::string const& rhs);
+namespace {
+int calc_levenshtein(std::string const& lhs, std::string const& rhs) {
+  int const lhsLength = static_cast<int>(lhs.size());
+  int const rhsLength = static_cast<int>(rhs.size());
+
+  int* col = new int[lhsLength + 1];
+  int start = 1;
+  // fill with initial values
+  std::iota(col + start, col + lhsLength + 1, start);
+
+  for (int x = start; x <= rhsLength; ++x) {
+    col[0] = x;
+    int last = x - start;
+    for (int y = start; y <= lhsLength; ++y) {
+      int const save = col[y];
+      col[y] = (std::min)({
+          col[y] + 1,                                // deletion
+          col[y - 1] + 1,                            // insertion
+          last + (lhs[y - 1] == rhs[x - 1] ? 0 : 1)  // substitution
+      });
+      last = save;
+    }
+  }
+
+  // fetch final value
+  int result = col[lhsLength];
+  // free memory
+  delete[] col;
+
+  return result;
+}
+}
 
 using namespace arangodb::velocypack;
 
@@ -45,7 +77,7 @@ void InitMachine(Machine& m) {
   // FIXME: Demo hack. better provide real libraries!
   // Also adds a dependency on Basics which is just a whole lot of pain I don't
   // want right now.
-  // RegisterAllDateTimeFunctions(m);
+  RegisterAllDateTimeFunctions(m);
   RegisterAllMathFunctions(m);
   RegisterAllStringFunctions(m);
 }
@@ -136,7 +168,7 @@ EvalResult SpecialCons(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& 
 }
 
 EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  for (; paramIterator.valid(); paramIterator++) {
+  for (; paramIterator.valid(); ++paramIterator) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
       return res.mapError([&](EvalError& err) {
@@ -155,7 +187,7 @@ EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
 }
 
 EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  for (; paramIterator.valid(); paramIterator++) {
+  for (; paramIterator.valid(); ++paramIterator) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
       return res.mapError([&](EvalError& err) {
@@ -180,7 +212,7 @@ EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
     return {};
   }
 
-  for (; paramIterator.valid(); paramIterator++) {
+  for (; paramIterator.valid(); ++paramIterator) {
     auto& usedBuilder = std::invoke([&]() -> VPackBuilder& {
       if (paramIterator.isLast()) {
         return result;
@@ -283,7 +315,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
 
   while (!paramIterator.isLast()) {
     VPackSlice pair = *paramIterator;
-    paramIterator++;
+    ++paramIterator;
     if (auto res = readIteratorPair(pair); res.fail()) {
       return res.mapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index() - 1));
@@ -372,7 +404,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
     }
 
     ctx.setVariable(paramName.copyString(), *builderIter);
-    builderIter++;
+    ++builderIter;
   }
   return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
     VPackBuilder foo;
@@ -398,7 +430,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
 
   StackFrame frame;
 
-  for (VPackArrayIterator iter(bindings); iter.valid(); iter++) {
+  for (VPackArrayIterator iter(bindings); iter.valid(); ++iter) {
     auto&& pair = *iter;
     if (pair.isArray() && pair.length() == 2) {
       auto nameSlice = pair.at(0);
@@ -439,13 +471,13 @@ EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBui
   if (other.valid()) {
     Slice first = *other;
     if (first.isString() && first.isEqualString("unquote")) {
-      other++;
+      ++other;
       if (!other.valid() || !other.isLast()) {
         return EvalError("expected one parameter for unquote");
       }
       return Evaluate(ctx, *other, result);
     } else if (first.isString() && first.isEqualString("unquote-splice")) {
-      other++;
+      ++other;
       if (!other.valid() || !other.isLast()) {
         return EvalError("expected one parameter for unquote");
       }
@@ -466,7 +498,7 @@ EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBui
   {
     VPackArrayBuilder ab(&result);
 
-    for (; other.valid(); other++) {
+    for (; other.valid(); ++other) {
       auto&& part = *other;
       if (part.isArray()) {
         if (auto res = SpecialQuasiQuoteInternal(ctx, VPackArrayIterator(part), result);
@@ -502,7 +534,7 @@ EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator paramIterator, VPackBui
 EvalResult SpecialStr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   std::stringstream ss;
 
-  for (; paramIterator.valid(); paramIterator++) {
+  for (; paramIterator.valid(); ++paramIterator) {
     if ((*paramIterator).isString()) {
       ss << (*paramIterator).copyString();
     } else {
@@ -697,7 +729,7 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
   int minDistance = std::numeric_limits<int>::max();
 
   for (auto&& [key, value] : functions) {
-    int distance = TRI_Levenshtein(function, key);
+    int distance = calc_levenshtein(function, key);
     if (distance < minDistance) {
       minFunctionName = key;
       minDistance = distance;
