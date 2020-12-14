@@ -61,9 +61,9 @@ void GreetingsFeature::prepare() {
   // cppcheck-suppress knownConditionTrueFalse
   if (warn) {
     LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
-      << "This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION!";
+      << "🥑 This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION! 🔥";
     LOG_TOPIC("bd666", WARN, arangodb::Logger::FIXME)
-      << "==============================================================================";
+      << "===================================================================================";
 
   }
 }

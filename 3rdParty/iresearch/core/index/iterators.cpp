@@ -120,15 +120,15 @@ empty_seek_term_iterator EMPTY_SEEK_TERM_ITERATOR;
 /// @brief represents a reader with no terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_reader {
-  virtual iresearch::seek_term_iterator::ptr iterator() const override {
+  virtual irs::seek_term_iterator::ptr iterator() const override {
     return irs::seek_term_iterator::empty(); // no terms in reader
   }
 
-  virtual iresearch::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const override {
+  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const override {
     return irs::seek_term_iterator::empty(); // no terms in reader
   }
 
-  virtual const iresearch::field_meta& meta() const override {
+  virtual const irs::field_meta& meta() const override {
     return irs::field_meta::EMPTY;
   }
 
@@ -143,13 +143,13 @@ struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_re
   virtual uint64_t docs_count() const override { return 0; }
 
   // less significant term
-  virtual const iresearch::bytes_ref& (min)() const override {
-    return iresearch::bytes_ref::NIL;
+  virtual const irs::bytes_ref& (min)() const override {
+    return irs::bytes_ref::NIL;
   }
 
   // most significant term
-  virtual const iresearch::bytes_ref& (max)() const override {
-    return iresearch::bytes_ref::NIL;
+  virtual const irs::bytes_ref& (max)() const override {
+    return irs::bytes_ref::NIL;
   }
 }; // empty_term_reader
 

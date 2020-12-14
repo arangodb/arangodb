@@ -148,7 +148,6 @@ namespace analysis {
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments", name.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -175,8 +174,6 @@ namespace analysis {
       "Caught exception while getting an analyzer instance",
       e.what());
   } catch (...) {
-    IR_LOG_EXCEPTION();
-
     return result::make<result::INVALID_ARGUMENT>(
       "Caught exception while getting an analyzer instance");
   }
@@ -198,7 +195,6 @@ namespace analysis {
     return factory ? factory(args) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;

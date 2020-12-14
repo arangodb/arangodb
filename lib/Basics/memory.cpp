@@ -31,10 +31,6 @@
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 /// @brief basic memory management for allocate
 void* TRI_Allocate(size_t n) {
   void* m = ::malloc(n);
@@ -70,17 +66,3 @@ void* TRI_Reallocate(void* m, size_t n) {
 
 /// @brief basic memory management for deallocate
 void TRI_Free(void* m) { ::free(m); }
-
-/// @brief securely zero memory
-void TRI_ZeroMemory(void* m, size_t size) {
-#ifdef _WIN32
-  SecureZeroMemory(m, size);
-#else
-  // use volatile in order to not optimize away the zeroing
-  volatile char* ptr = reinterpret_cast<volatile char*>(m);
-  volatile char* end = ptr + size;
-  while (ptr < end) {
-    *ptr++ = '\0';
-  }
-#endif
-}

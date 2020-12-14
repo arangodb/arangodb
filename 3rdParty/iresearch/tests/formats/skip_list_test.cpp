@@ -27,6 +27,8 @@
 #include "index/iterators.hpp"
 #include "index/index_tests.hpp"
 
+using namespace std::chrono_literals;
+
 namespace {
 
 class skip_writer_test : public test_base {

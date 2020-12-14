@@ -92,12 +92,12 @@ class WalAccess {
   WalAccess& operator=(WalAccess const&) = delete;
 
  protected:
-  WalAccess() {}
+  WalAccess() = default;
   virtual ~WalAccess() = default;
 
  public:
   struct Filter {
-    Filter() {}
+    Filter() = default;
 
     /// tick last scanned by the last iteration
     /// is used to find batches in rocksdb

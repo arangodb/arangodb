@@ -6,6 +6,9 @@ const router = createRouter();
 router.get('/header-echo', function (req, res) {
   res.json(req.headers);
 });
+router.post('/header-echo', function (req, res) {
+  res.json(req.headers);
+});
 
 router.all('/header-empty', function (req, res) {
   // do nothing

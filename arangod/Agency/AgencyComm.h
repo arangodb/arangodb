@@ -25,8 +25,6 @@
 #ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
 #define ARANGOD_CLUSTER_AGENCY_COMM_H 1
 
-#include <deque>
-#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -47,6 +45,10 @@
 
 namespace arangodb {
 class Endpoint;
+
+namespace application_features {
+class ApplicationServer;
+}
 
 namespace velocypack {
 class Builder;

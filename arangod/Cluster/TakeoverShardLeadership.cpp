@@ -160,7 +160,7 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   for (auto const& res : responses) {
     if (res.hasValue() && res.get().ok()) {
       auto& result = res.get();
-      if (result.response && result.response->statusCode() == fuerte::StatusOK) {
+      if (result.statusCode() == fuerte::StatusOK) {
         realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
       }
     }

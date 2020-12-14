@@ -281,10 +281,10 @@ utf8_path& utf8_path::operator/=(const string_ref& utf8_name) {
 }
 
 utf8_path& utf8_path::operator/=(const wchar_t* ucs2_name) {
-  return (*this) /= iresearch::basic_string_ref<wchar_t>(ucs2_name);
+  return (*this) /= basic_string_ref<wchar_t>(ucs2_name);
 }
 
-utf8_path& utf8_path::operator/=(const iresearch::basic_string_ref<wchar_t>& ucs2_name) {
+utf8_path& utf8_path::operator/=(const basic_string_ref<wchar_t>& ucs2_name) {
   if (!path_.empty()) {
     path_.append(1, file_path_delimiter);
   }

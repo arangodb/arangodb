@@ -29,7 +29,7 @@
 
 namespace iresearch {
 
-void validate_footer(iresearch::index_input& in) {
+void validate_footer(index_input& in) {
   const int64_t remain = in.length() - in.file_pointer();
 
   if (remain != format_utils::FOOTER_LEN) {

@@ -173,7 +173,7 @@ class FakePathFinder : public ShortestPathFinder {
     return _calledWith[index];
   }
 
-  [[nodiscard]] auto getCalledWith() -> std::vector<std::pair<std::string, std::string>> {
+  [[nodiscard]] auto getCalledWith() -> std::vector<std::pair<std::string, std::string>> const& {
     return _calledWith;
   };
 
@@ -311,36 +311,33 @@ class ShortestPathExecutorTest
   // We only verify that the shortest path executor was called with
   // correct inputs
   void ValidateCalledWith() {
-    auto pathsQueriedBetween = finder.getCalledWith();
+    auto const& pathsQueriedBetween = finder.getCalledWith();
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
     ASSERT_LE(pathsQueriedBetween.size(), block->numRows());
 
+    auto source = std::string{};
+    auto target = std::string{};
     auto blockIndex = size_t{0};
     for (auto const& input : pathsQueriedBetween) {
-      auto source = std::string{};
-      auto target = std::string{};
-
       if (executorInfos.useRegisterForSourceInput()) {
         AqlValue value =
             block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
-        source = value.slice().copyString();
+        ASSERT_TRUE(value.slice().isEqualString(input.first));
       } else {
-        source = executorInfos.getSourceInputValue();
+        ASSERT_EQ(executorInfos.getSourceInputValue(), input.first);
       }
 
       if (executorInfos.useRegisterForTargetInput()) {
         AqlValue value =
             block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
-        target = value.slice().copyString();
+        ASSERT_TRUE(value.slice().isEqualString(input.second));
       } else {
-        target = executorInfos.getTargetInputValue();
+        ASSERT_EQ(executorInfos.getTargetInputValue(), input.second);
       }
-      ASSERT_EQ(source, input.first);
-      ASSERT_EQ(target, input.second);
       blockIndex++;
     }
   }
@@ -348,7 +345,7 @@ class ShortestPathExecutorTest
   // TODO: check fullcount correctness.
   void ValidateResult(std::vector<SharedAqlItemBlockPtr>& results,
                       size_t skippedInitial, size_t skippedFullCount) {
-    auto pathsQueriedBetween = finder.getCalledWith();
+    auto const& pathsQueriedBetween = finder.getCalledWith();
 
     FakePathFinder& finder = static_cast<FakePathFinder&>(executorInfos.finder());
     TokenTranslator& translator =
@@ -356,7 +353,7 @@ class ShortestPathExecutorTest
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
-    for (auto&& p : pathsQueriedBetween) {
+    for (auto const& p : pathsQueriedBetween) {
       auto& f = finder.findPath(p);
       expectedPathStarts.insert(expectedRowsFound.size());
       expectedRowsFound.insert(expectedRowsFound.end(), f.begin(), f.end());
@@ -514,9 +511,10 @@ MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
 
 auto pathBetween(std::string const& start, std::string const& end, size_t n) -> Path {
   auto path = std::vector<std::string>{};
+  path.reserve(2 + n);
   path.push_back(start);
   for (size_t i = 0; i < n; ++i) {
-    path.push_back(std::to_string(i));
+    path.emplace_back(std::to_string(i));
   }
   path.push_back(end);
   return {path};
