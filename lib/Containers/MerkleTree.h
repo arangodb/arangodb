@@ -202,7 +202,6 @@ class MerkleTree {
    * @param key   The key for the item. If it is outside the current tree range,
    *              then it will trigger an exception.
    * @throws std::out_of_range  If key is outside current range
-   * @throws std::invalid_argument  If remove hits a node with 0 count
    */
   void remove(std::uint64_t key);
 
@@ -283,7 +282,7 @@ class MerkleTree {
   std::uint64_t index(std::uint64_t key, std::uint64_t depth) const;
   void modify(std::uint64_t key, bool isInsert);
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
-  void modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
+  bool modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert, bool doLock);
   void grow(std::uint64_t key);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits, LockStripes> const& other,

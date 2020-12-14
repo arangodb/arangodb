@@ -722,8 +722,16 @@ template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t cons
 void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::uint64_t key, bool isInsert) {
   // not thread-safe, shared-lock buffer from outside
   Hasher h;
+  std::uint64_t value = h.hash(key);
   for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
-    modifyLocal(depth, key, h.hash(key), isInsert, true);
+    bool success = modifyLocal(depth, key, value, isInsert, true);
+    if (!success) {
+      // roll back the changes we already made, using best effort
+      for (std::uint64_t d = 0; d < depth; ++d) {
+        [[maybe_unused]] bool rolledBack = modifyLocal(d, key, value, !isInsert, true);
+      }
+      break;
+    }
   }
 }
 
@@ -732,15 +740,30 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::vector<std::uin
                                                             bool isInsert) {
   // not thread-safe, unique-lock buffer from outside
   Hasher h;
-  for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
+  bool success = true;
+  for (std::uint64_t depth = 0; depth <= meta().maxDepth && success; ++depth) {
     for (std::uint64_t key : keys) {
-      modifyLocal(depth, key, h.hash(key), isInsert, false);
+      success = modifyLocal(depth, key, h.hash(key), isInsert, false);
+      if (!success) {
+        // roll back the changes we already made, using best effort
+        for (std::uint64_t d = 0; d <= depth; ++d) {
+          for (std::uint64_t k : keys) {
+            if (d == depth && k == key) {
+              // we didn't make it all the way through at depth d, done
+              break;
+            }
+            [[maybe_unused]] bool rolledBack =
+                modifyLocal(d, k, h.hash(k), !isInsert, false);
+          }
+        }
+        break;
+      }
     }
   }
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::modifyLocal(
+bool MerkleTree<Hasher, BranchingBits, LockStripes>::modifyLocal(
     std::uint64_t depth, std::uint64_t key, std::uint64_t value, bool isInsert, bool doLock) {
   // only use via modify
   std::uint64_t index = this->index(key, depth);
@@ -753,11 +776,13 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::modifyLocal(
     ++node.count;
   } else {
     if (node.count == 0) {
-      throw std::invalid_argument("Tried to remove key that is not present.");
+      return false;
     }
     --node.count;
   }
   node.hash ^= value;
+
+  return true;
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
