@@ -520,22 +520,19 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
-  {
-    arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>
-        mergeExecutor(fetcher, executorInfos);
-    arangodb::aql::SharedAqlItemBlockPtr inputBlock =
-        itemBlockManager.requestBlock(1, 1);
-    inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
-    arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
-    arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE,
-                                                     0, inputBlock, 0);
-    std::tie(state, stats, skippedLocal, call) =
-        mergeExecutor.skipRowsRange(inputRange, skipAllCall);
-    ASSERT_EQ(15, skipAllCall.getSkipCount());
-  }
+  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(
+      fetcher, executorInfos);
+  arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
+  inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
+  arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
+  arangodb::aql::AqlItemBlockInputRange inputRange(arangodb::aql::ExecutorState::DONE,
+                                                   0, inputBlock, 0);
+  std::tie(state, stats, skippedLocal, call) =
+      mergeExecutor.skipRowsRange(inputRange, skipAllCall);
+  ASSERT_EQ(15, skipAllCall.getSkipCount());
 }
 
-TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutorExactEmpty) {
+TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpty) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 1000000 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
@@ -567,11 +564,12 @@ TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutor
       std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{"value", false}}, true);
+  std::vector<arangodb::iresearch::Scorer> emptyScorers;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
                                                 {},
                                                 query,
-                                                {},
+                                                emptyScorers,
                                                 {&sort, 1U},
                                                 _view->storedValues(),
                                                 *plan,
@@ -605,7 +603,7 @@ TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutor
 // This corner-case is currently impossible as there are no way to get skipAll
 // without prior call to skip for MergeExecutor. But in future this might happen
 // and the skippAll method should still be correct (as it is correct call)
-TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutorCost) {
+TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
@@ -637,11 +635,12 @@ TEST_F(IResearchViewCountApproximateTest, DISABLED_directSkipAllForMergeExecutor
       std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{"value", false}}, true);
+  std::vector<arangodb::iresearch::Scorer> emptyScorers;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
                                                 {},
                                                 query,
-                                                {},
+                                                emptyScorers,
                                                 {&sort, 1U},
                                                 _view->storedValues(),
                                                 *plan,
