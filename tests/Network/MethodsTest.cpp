@@ -105,6 +105,7 @@ struct NetworkMethodsTest
     config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "NetworkMethodsTest";
     return config;
   }
 
