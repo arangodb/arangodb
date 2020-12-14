@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -126,7 +125,7 @@ public:
    */
   change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
-  
+
 private:
 
   /// @brief invoke all callbacks
@@ -174,13 +173,13 @@ private:
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
 
-  /// @ brief changes of index to plan and current 
+  /// @ brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;
   std::multimap<consensus::index_t, std::string> _currentChanges;
 
-  /// @brief snapshot note for client 
+  /// @brief snapshot note for client
   consensus::index_t _lastSnapshot;
-  
+
 };
 
 } // namespace
