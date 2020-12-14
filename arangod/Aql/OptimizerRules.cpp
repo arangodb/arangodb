@@ -6484,19 +6484,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool isValueOrAccessibleReference(VarSet const& validVars, AstNode const* node) {
-  switch (node->type) {
-    case NODE_TYPE_VALUE:
-      return true;
-    case NODE_TYPE_REFERENCE: {
-      auto const* const variable = static_cast<Variable const*>(node->getData());
-      return validVars.contains(variable);
-    }
-    default:
-      return false;
-  }
-}
-
 /// Essentially mirrors the geo::QueryParams struct, but with
 /// abstracts AstNode value objects
 struct GeoIndexInfo {
@@ -6796,21 +6783,20 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
 
 // checks if a node contanis a geo index function a valid operator
 // to use within a filter condition
-bool checkGeoFilterExpression(ExecutionPlan* plan, VarSet const& validVars,
-                              AstNode const* node, GeoIndexInfo& info) {
+bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndexInfo& info) {
   // checks @first `smaller` @second
   // note: this only modifies "info" if the function returns true
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool {
-    if (isValueOrAccessibleReference(validVars, second) && // no attribute access
-        info.maxDistanceExpr == nullptr && // max distance is not yet set
+    if (second->type == NODE_TYPE_VALUE &&  // only constants allowed
+        info.maxDistanceExpr == nullptr &&  // max distance is not yet set
         checkDistanceFunc(plan, first, /*legacy*/ true, info)) {
       TRI_ASSERT(info.index);
       info.maxDistanceExpr = second;
       info.maxInclusive = info.maxInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
-    } else if (isValueOrAccessibleReference(validVars, first) && // no attribute access
-               info.minDistanceExpr == nullptr && // min distance is not yet set
+    } else if (first->type == NODE_TYPE_VALUE &&   // only constants allowed
+               info.minDistanceExpr == nullptr &&  // min distance is not yet set
                checkDistanceFunc(plan, second, /*legacy*/ true, info)) {
       info.minDistanceExpr = first;
       info.minInclusive = info.minInclusive && lessequal;
@@ -6889,8 +6875,7 @@ static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort, GeoIndexInfo& 
 }
 
 // checks a single sort or filter node
-static void optimizeFilterNode(ExecutionPlan* plan, VarSet const& validVars,
-                               FilterNode* fn, GeoIndexInfo& info) {
+static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn, GeoIndexInfo& info) {
   TRI_ASSERT(fn->getType() == EN::FILTER);
 
   // filter nodes always have one input variable
@@ -6920,7 +6905,7 @@ static void optimizeFilterNode(ExecutionPlan* plan, VarSet const& validVars,
         if (!node->isSimpleComparisonOperator() && node->type != arangodb::aql::NODE_TYPE_FCALL) {
           return;
         }
-        if (checkGeoFilterExpression(plan, validVars, node, info)) {
+        if (checkGeoFilterExpression(plan, node, info)) {
           info.exesToModify.try_emplace(fn, expr);
         }
       });
@@ -7121,13 +7106,11 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
     bool canUseSortLimit = true;
-    auto const& validVars = node->getVarsValid();
 
     while (current) {
       if (current->getType() == EN::FILTER) {
         // picking up filter conditions is always allowed
-        optimizeFilterNode(plan.get(), validVars,
-                           ExecutionNode::castTo<FilterNode*>(current), info);
+        optimizeFilterNode(plan.get(), ExecutionNode::castTo<FilterNode*>(current), info);
       } else if (current->getType() == EN::SORT && canUseSortLimit) {
         // only pick up a sort clause if we haven't seen another loop yet
         if (!optimizeSortNode(plan.get(), ExecutionNode::castTo<SortNode*>(current), info)) {
