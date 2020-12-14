@@ -27,8 +27,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Futures/Utilities.h"
@@ -40,11 +38,8 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/Buffer.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -53,10 +48,12 @@ using namespace arangodb::basics;
 using namespace arangodb::futures;
 
 namespace {
+// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
+const double FAST_PATH_LOCK_TIMEOUT = 2.0;
+const double SETUP_TIMEOUT = 15.0;
 
 void buildTransactionBody(TransactionState& state, ServerID const& server,
                           VPackBuilder& builder) {
-  // std::vector<ServerID> DBservers = ci->getCurrentDBServers();
   builder.openObject();
   state.options().toVelocyPack(builder);
   builder.add("collections", VPackValue(VPackValueType::Object));
@@ -131,23 +128,26 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 
 /// @brief lazy begin a transaction on subordinate servers
 Future<network::Response> beginTransactionRequest(TransactionState& state,
-                                                  ServerID const& server) {
+                                                  ServerID const& server,
+                                                  double timeout = 120.0) {
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   buildTransactionBody(state, server, builder);
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = state.vocbase().name();
+  reqOpts.timeout = arangodb::network::Timeout(timeout);
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
   headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid.id()));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                              "/_api/transaction/begin", std::move(buffer), reqOpts, std::move(headers));
+                              "/_api/transaction/begin", std::move(buffer),
+                              reqOpts, std::move(headers));
 }
 
 /// check the transaction cluster response with desited TID and status
@@ -160,8 +160,7 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
   }
 
   VPackSlice answer = resp.slice();
-  if ((resp.statusCode() == fuerte::StatusOK ||
-       resp.statusCode() == fuerte::StatusCreated) &&
+  if ((resp.statusCode() == fuerte::StatusOK || resp.statusCode() == fuerte::StatusCreated) &&
       answer.isObject()) {
     VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
     VPackSlice statusSlice =
@@ -194,12 +193,6 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
       << "failed to begin transaction on " << resp.destination;
 
   return Result(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
-}
-
-Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
-  arangodb::TransactionState* state = trx.state();
-  TRI_ASSERT(trx.isMainTransaction());
-  return commitAbortTransaction(state, status);
 }
 
 Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
@@ -239,7 +232,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     TRI_ASSERT(false);
   }
 
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+  auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
@@ -307,6 +300,13 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
         return Result();  // succeed even if some followers did not commit
       });
 }
+
+Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
+  arangodb::TransactionState* state = trx.state();
+  TRI_ASSERT(trx.isMainTransaction());
+  return commitAbortTransaction(state, status);
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -328,9 +328,11 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
   // We cannot write-lock after we already write-locked something.
   bool canRevertToSlowPath = state.knownServers().empty();
 
+  double timeoutToUse = SETUP_TIMEOUT;
   {
     if (canRevertToSlowPath) {
       // TODO set lock timeout to 2.0s
+      timeoutToUse = FAST_PATH_LOCK_TIMEOUT;
     }
     // Run fastPath
     std::vector<Future<network::Response>> requests;
@@ -339,40 +341,99 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
         continue;  // already send a begin transaction there
       }
       state.addKnownServer(leader);
-      requests.emplace_back(::beginTransactionRequest(state, leader));
+      requests.emplace_back(::beginTransactionRequest(state, leader, timeoutToUse));
     }
 
     if (requests.empty()) {
       return res;
     }
 
-// TODO Wie in AQL. Wenn es einen anderen error gibt dann aussteigen.
-// Wenn es nur LockTimeout gibt dann slowpath.
-// Wichtig: Wir dürfen nicht früh returnen, erst einmal durch alle responses
-// durch gehen.
     const TransactionId tid = state.id().child();
-    Result fastPathResult = futures::collectAll(requests).thenValue(
-        [=](std::vector<Try<network::Response>>&& responses) -> Result {
-          for (Try<arangodb::network::Response> const& tryRes : responses) {
-            network::Response const& resp = tryRes.get();  // throws exceptions upwards
-            Result res = ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
-            if (res.fail()) {  // remove follower from all collections
-              return res;
-            }
-          }
-          return Result();  // all good
-        }).get();
+    Result fastPathResult =
+        futures::collectAll(requests)
+            .thenValue([=](std::vector<Try<network::Response>>&& responses) -> Result {
+              std::vector<Result> innerFastPathResults{};
+              for (Try<arangodb::network::Response> const& tryRes : responses) {
+                network::Response const& resp = tryRes.get();  // throws exceptions upwards
+                Result res =
+                    ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
+                if (res.fail()) {
+                  innerFastPathResults.push_back(res);
+                }
+              }
+
+              if (innerFastPathResults.empty()) {
+                return Result();  // all good
+              } else {
+                // remove follower from all collections
+                for (auto const& res : innerFastPathResults) {
+                  // LockTimeout check (if different error found here, we need to abort)
+                  if (res.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+                    return res;
+                  }
+                }
+              }
+              // We might return here if:
+              // 1.) No error appeared
+              // 2.) Only lock timeout errors appeared (and we want to try the slowPath variant)
+              return TRI_ERROR_NO_ERROR;
+            })
+            .get();
+
+    if (fastPathResult.ok()) {
+      return fastPathResult;
+    } else if (!canRevertToSlowPath && fastPathResult.fail()) {
+      return fastPathResult;
+    } else {
+      // slowpath
+      TRI_ASSERT(fastPathResult.fail());
+
+      // in case of fast path failure, we need to cleanup engines
+      timeoutToUse = SETUP_TIMEOUT;
+
+      // abortTransaction on knownServers() and wait for them
+      Result resetRes =
+          commitAbortTransaction(&state, transaction::Status::ABORTED).get();
+      if (resetRes.fail()) {
+        LOG_DEVEL << "failed to clean up servers"; // TODO: remove or add debug output
+        // return here if cleanup failed - this needs to be a success
+        return resetRes;
+      }
+
+      // rerollTrxId()
+      state.coordinatorRerollTransactionId();
+      state.clearKnownServers(); // TODO: Check!
+
+      // Run slowPath
+      requests.clear();
+
+      for (ServerID const& leader : leaders) {
+        if (state.knowsServer(leader)) {
+          continue;  // already send a begin transaction there
+        }
+        state.addKnownServer(leader);
+        // use default setup timeout here
+        requests.emplace_back(::beginTransactionRequest(state, leader, SETUP_TIMEOUT));
+      }
+
+      if (requests.empty()) {
+        return res;
+      }
+
+      // sync and blocking calls
+      for (auto const& resp : requests) {
+        auto const& resolvedResponse = resp.result().get();
+        if (resolvedResponse.fail()) {
+          int code = network::fuerteToArangoErrorCode(resolvedResponse);
+          std::string message = network::fuerteToArangoErrorMessage(resolvedResponse);
+          return Result{code, message};
+        }
+      }
+    }
   }
 
-  if (!canRevertToSlowPath && error) {
-    return;
-  } else {
-    // slowpath
-    commitAbortTransaction(&state, transaction::Status::ABORTED);
-    // abortTransaction on knownServers() and waitForit
-    // rerollTrxId()
-    // Code we im fastPath, aber statt collectAll, direkt get() machen.
-  }
+  TRI_ASSERT(false);
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief commit a transaction on a subordinate
@@ -453,7 +514,8 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     bool canHaveUDF = trx.transactionContext()->isV8Context();
     TRI_ASSERT(canHaveUDF);
     if (!canHaveUDF) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "illegal AQL transaction state");
     }
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
