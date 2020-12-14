@@ -198,8 +198,13 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
 
 Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
   arangodb::TransactionState* state = trx.state();
-  TRI_ASSERT(state->isRunning());
   TRI_ASSERT(trx.isMainTransaction());
+  return commitAbortTransaction(state, status);
+}
+
+Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
+                                      transaction::Status status) {
+  TRI_ASSERT(state->isRunning());
 
   if (state->knownServers().empty()) {
     return Result();
@@ -221,7 +226,8 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
     // This is a leader replicating the transaction commit or abort and
     // we should tell the follower that this is a replication operation.
     // It will then execute the request with a higher priority.
-    reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
+    reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                  ServerState::instance()->getId());
   }
 
   fuerte::RestVerb verb;
@@ -237,8 +243,8 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
-    requests.emplace_back(network::sendRequest(pool, "server:" + server, verb,
-                                               path, VPackBuffer<uint8_t>(), reqOpts));
+    requests.emplace_back(network::sendRequest(pool, "server:" + server, verb, path,
+                                               VPackBuffer<uint8_t>(), reqOpts));
   }
 
   return futures::collectAll(requests).thenValue(
@@ -267,21 +273,21 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
           Result res = ::checkTransactionResult(tidPlus, status, resp);
           if (res.fail()) {  // remove follower from all collections
             ServerID follower = resp.serverId();
-            LOG_TOPIC("230c3", INFO, Logger::REPLICATION) 
-                << "synchronous replication: dropping follower " 
-                << follower << " for all participating shards in"
-                << " transaction " << state->id().id() << " (status " 
-                << arangodb::transaction::statusString(status) 
-                << "), status code: " << static_cast<int>(resp.statusCode()) 
+            LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
+                << "synchronous replication: dropping follower " << follower
+                << " for all participating shards in"
+                << " transaction " << state->id().id() << " (status "
+                << arangodb::transaction::statusString(status)
+                << "), status code: " << static_cast<int>(resp.statusCode())
                 << ", message: " << resp.combinedResult().errorMessage();
             state->allCollections([&](TransactionCollection& tc) {
               auto cc = tc.collection();
               if (cc) {
                 LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                    << "synchronous replication: dropping follower "
-                    << follower << " for shard " << tc.collectionName()
-                    << " in database " << cc->vocbase().name() 
-                    << ": " << resp.combinedResult().errorMessage();
+                    << "synchronous replication: dropping follower " << follower
+                    << " for shard " << tc.collectionName() << " in database "
+                    << cc->vocbase().name() << ": "
+                    << resp.combinedResult().errorMessage();
 
                 Result r = cc->followers()->remove(follower);
                 if (r.fail()) {
@@ -317,31 +323,56 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     return res;
   }
 
-  std::vector<Future<network::Response>> requests;
-  for (ServerID const& leader : leaders) {
-    if (state.knowsServer(leader)) {
-      continue;  // already send a begin transaction there
+  // If !state.knownServers.empty() => We have already locked something.
+  //   We cannot revert fastPath locking and continue over slowpath. (Trx may be used)
+  // We cannot write-lock after we already write-locked something.
+  bool canRevertToSlowPath = state.knownServers().empty();
+
+  {
+    if (canRevertToSlowPath) {
+      // TODO set lock timeout to 2.0s
     }
-    state.addKnownServer(leader);
-    requests.emplace_back(::beginTransactionRequest(state, leader));
-  }
+    // Run fastPath
+    std::vector<Future<network::Response>> requests;
+    for (ServerID const& leader : leaders) {
+      if (state.knowsServer(leader)) {
+        continue;  // already send a begin transaction there
+      }
+      state.addKnownServer(leader);
+      requests.emplace_back(::beginTransactionRequest(state, leader));
+    }
 
-  if (requests.empty()) {
-    return res;
-  }
+    if (requests.empty()) {
+      return res;
+    }
 
-  const TransactionId tid = state.id().child();
-  return futures::collectAll(requests).thenValue(
-      [=](std::vector<Try<network::Response>>&& responses) -> Result {
-        for (Try<arangodb::network::Response> const& tryRes : responses) {
-          network::Response const& resp = tryRes.get();  // throws exceptions upwards
-          Result res = ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
-          if (res.fail()) {  // remove follower from all collections
-            return res;
+// TODO Wie in AQL. Wenn es einen anderen error gibt dann aussteigen.
+// Wenn es nur LockTimeout gibt dann slowpath.
+// Wichtig: Wir dürfen nicht früh returnen, erst einmal durch alle responses
+// durch gehen.
+    const TransactionId tid = state.id().child();
+    Result fastPathResult = futures::collectAll(requests).thenValue(
+        [=](std::vector<Try<network::Response>>&& responses) -> Result {
+          for (Try<arangodb::network::Response> const& tryRes : responses) {
+            network::Response const& resp = tryRes.get();  // throws exceptions upwards
+            Result res = ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
+            if (res.fail()) {  // remove follower from all collections
+              return res;
+            }
           }
-        }
-        return Result();  // all good
-      });
+          return Result();  // all good
+        }).get();
+  }
+
+  if (!canRevertToSlowPath && error) {
+    return;
+  } else {
+    // slowpath
+    commitAbortTransaction(&state, transaction::Status::ABORTED);
+    // abortTransaction on knownServers() and waitForit
+    // rerollTrxId()
+    // Code we im fastPath, aber statt collectAll, direkt get() machen.
+  }
 }
 
 /// @brief commit a transaction on a subordinate
