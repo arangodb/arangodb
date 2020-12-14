@@ -234,7 +234,8 @@ std::map<std::string, std::vector<std::string>> statStrings{
 std::initializer_list<double> const BytesReceivedDistributionCuts{250, 1000, 2000, 5000, 10000};
 std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000, 5000, 10000};
 std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0, 60.0};
-std::initializer_list<double> const RequestTimeDistributionCuts{0.01, 0.05, 0.1, 0.2, 0.5, 1.0};
+std::initializer_list<double> const RequestTimeDistributionCuts{
+    0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
 
 Counter AsyncRequests;
 Counter HttpConnections;
@@ -531,10 +532,18 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
     appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
-    appendHistogram(result, requestStats.totalTime, "totalTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.requestTime, "requestTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.queueTime, "queueTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.ioTime, "ioTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
+  appendHistogram(result, requestStats.totalTime, "totalTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.requestTime, "requestTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.queueTime, "queueTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.ioTime, "ioTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
     appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"});
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"});
 
