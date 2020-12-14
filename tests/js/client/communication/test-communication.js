@@ -557,7 +557,7 @@ function GenericAqlSetupPathSuite(type) {
     for (let i = 0; i < ${docsPerWrite}; ++i) {
       docs.push({});
     }
-    db[${twoShardColName}].save(docs);
+    db["${twoShardColName}"].save(docs);
   `;
 
   const buildSingleRunCode = (key, command) => {
