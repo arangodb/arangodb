@@ -136,12 +136,12 @@ class ConnectionPool final {
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
 
-  Gauge<uint64_t>& _totalConnectionsInPool;
-  Counter& _successSelect;
-  Counter& _noSuccessSelect;
-  Counter& _connectionsCreated;
+  Gauge<uint64_t>* _totalConnectionsInPool;
+  Counter* _successSelect;
+  Counter* _noSuccessSelect;
+  Counter* _connectionsCreated;
 
-  Histogram<log_scale_t<float>>& _leaseHistMSec;
+  Histogram<log_scale_t<float>>* _leaseHistMSec;
 
 };
 

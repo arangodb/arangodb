@@ -40,24 +40,31 @@ using namespace arangodb::fuerte::v1;
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config),
       _loop(config.numIOThreads, config.name),
-      _totalConnectionsInPool(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
-          std::string("arangodb_connection_pool_nr_conns_") + _config.name, uint64_t(0), "Current number of connections in pool")),
-      _successSelect(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_success_select_") + _config.name, 0, "Total number of successful connection leases")),
-      _noSuccessSelect(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "Total number of failed connection leases")),
-      _connectionsCreated(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
-          std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of connections created")),
-      _leaseHistMSec(
-        _config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().histogram(
-          std::string("arangodb_connection_pool_lease_time_hist_")+ _config.name, log_scale_t(2.f, 0.f, 1000.f, 10),
-          std::string("Time to lease a connection from pool ") + _config.name + " [us]")) {
+      _totalConnectionsInPool(nullptr),
+      _successSelect(nullptr),
+      _noSuccessSelect(nullptr),
+      _connectionsCreated(nullptr),
+      _leaseHistMSec(nullptr) {
   TRI_ASSERT(config.numIOThreads > 0);
   TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
+  if (_config.clusterInfo != nullptr) {
+    _totalConnectionsInPool =
+      &_config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().gauge(
+        std::string("arangodb_connection_pool_nr_conns_") + _config.name, uint64_t(0), "Current number of connections in pool");
+    _successSelect =
+      &_config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
+        std::string("arangodb_connection_pool_success_select_") + _config.name, 0, "Total number of successful connection leases");
+    _noSuccessSelect =
+      &_config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
+        std::string("arangodb_connection_pool_no_success_select_") + _config.name, 0, "Total number of failed connection leases");
+    _connectionsCreated =
+      &_config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().counter(
+        std::string("arangodb_connection_pool_conns_created_") + _config.name, 0, "Number of connections created");
+    _leaseHistMSec =
+      &_config.clusterInfo->server().getFeature<arangodb::MetricsFeature>().histogram(
+        std::string("arangodb_connection_pool_lease_time_hist_")+ _config.name, log_scale_t(2.f, 0.f, 1000.f, 10),
+        std::string("Time to lease a connection from pool ") + _config.name + " [us]");
+  }
 }
 
 ConnectionPool::~ConnectionPool() { shutdownConnections(); }
@@ -144,7 +151,9 @@ void ConnectionPool::pruneConnections() {
 
       if (remove) {
         it = buck.list.erase(it);
-        _totalConnectionsInPool -= 1;
+        if (_totalConnectionsInPool) {
+          _totalConnectionsInPool -= 1;
+        }
       } else {
         ++aliveCount;
         ++it;
@@ -253,21 +262,29 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         // next check against the number of requests in flight
         if (c->fuerte->requestsLeft() <= limit) {
           c->lastLeased = std::chrono::steady_clock::now();
-          _successSelect++;
-          _leaseHistMSec.count(
-            duration<float, std::micro>(c->lastLeased - start).count());
+          if (_successSelect) {
+            _successSelect++;
+          }
+          if (_leaseHistMSec) {
+            _leaseHistMSec->count(
+              duration<float, std::micro>(c->lastLeased - start).count());
+          }
           return {c};
         } else {
           --(c->leases);
           c->fuerte->unlease();
-          _noSuccessSelect++;
+          if (_noSuccessSelect) {
+            _noSuccessSelect++;
+          }
           break;
         }
       }
     }
   }
 
-  _connectionsCreated++;
+  if (_connectionsCreated) {
+    _connectionsCreated++;
+  }
 
   // no free connection found, so we add one
   LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "
@@ -280,9 +297,13 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   auto now = steady_clock::now();
   auto c = std::make_shared<Context>(fuerte, now, 1 /* leases*/);
   bucket.list.push_back(c);
-  _totalConnectionsInPool += 1;
+  if (_totalConnectionsInPool) {
+    _totalConnectionsInPool += 1;
+  }
   
-  _leaseHistMSec.count(duration<float, std::micro>(now - start).count());
+  if (_leaseHistMSec) {
+    _leaseHistMSec->count(duration<float, std::micro>(now - start).count());
+  }
   return {c};
 }
 
