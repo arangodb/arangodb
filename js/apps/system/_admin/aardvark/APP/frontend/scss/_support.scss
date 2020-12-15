@@ -1,0 +1,57 @@
+#community,
+#documentation {
+  padding-bottom: 40px;
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-top: 20px;
+
+  h4 {
+    font-weight: 400;
+    margin-bottom: 10px;
+  }
+
+  a {
+    color: $c-info;
+  }
+
+  .pure-u-1-1 {
+    font-weight: 100;
+  }
+
+  .center {
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  ul {
+    list-style-type: none;
+    margin: 0 0 10px 10px;
+  }
+
+  .menu {
+    li:first-child {
+      padding-top: 10px;
+    }
+
+    li:last-child {
+      padding-top: 20px;
+    }
+
+    li:before {
+      content: '– ';
+    }
+
+    li:last-child:before {
+      content: '';
+    }
+
+    line-height: 24px;
+    margin: 0 0 20px 10px;
+  }
+}
+
+#documentation {
+  h4 {
+    margin-bottom: 30px;
+  }
+}

@@ -1,0 +1,41 @@
+
+  <div class="arangoToolbar arangoToolbarTop arangoFoxxToolbarTop">
+    <div class="pull-left">
+    </div>
+
+    <div class="pull-right">
+    </div>
+  </div>
+
+  <div class="contentDiv createModalDialog">
+    <div id="uploadFoxxes" class="foxxesInner modal-body">
+        <div>
+          <p>
+  Upload a Foxx service bundle. The Foxx service bundle should be a zip archive containing all service files as a directory structure, including the manifest and any required <code style="padding: 0px 2px; font-weight: 10pt;">node_modules</code> dependencies. If your service doesn't have any dependencies, configuration or scripts you can also upload a single JavaScript file that will act as the service's entry point or "main" file.
+          </p>
+          <table>
+            <tr class="tableRow" style="display: none">
+              <th class="collectionInfoTh">
+                Enable Legacy Mode:
+              </th>
+              <th class="collectionInfoTh">
+                <input type="checkbox" id="zip-app-islegacy" value="true">
+              </th>
+            <th>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
+              </span>
+            </th>
+            </tr>
+          </table>
+        </div>
+        <div id="upload-foxx-zip">Upload File</div>
+      </div>
+      <div class="modal-footer">
+        <% if (upgrade) { %>
+          <button id="installUploadService" class="button-success" style="float:right" disabled>Replace</button>
+        <% } else { %>
+          <button id="installUploadService" class="button-success" style="float:right" disabled>Install</button>
+        <% } %>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,36 @@
+[
+  { 
+    "name" : "FOR .. FILTER .. RETURN template", 
+    "value": "/* Please insert some values for the @@collection and @value bind parameters */\nFOR doc IN @@collection\n  FILTER doc.`attribute` == @value\n  RETURN doc",
+    "parameter": {"@collection": "my_collection", "value": "my_value"}
+  },
+  { 
+    "name" : "Limit", 
+    "value": "/* Please insert some values for the @@collection, @offset and @count bind parameters */\nFOR doc IN @@collection\n  LIMIT @offset, @count\n  RETURN doc",
+    "parameter": {"@collection": "my_collection", "offset": 0, "count": 10}
+  },
+  { 
+    "name" : "Inner join", 
+    "value": "/* Please insert some values for the @@collection1 and @@collection2 bind parameters */\nFOR doc1 IN @@collection1\n  FOR doc2 IN @@collection2\n    FILTER doc1.`attribute` == doc2.`attribute`\n    RETURN { doc1, doc2 }",
+    "parameter": {"@collection1": "collection1", "@collection2": "collection2"}
+  },
+  { 
+    "name" : "Random document", 
+    "value": "/* Please insert some value for the @@collection bind parameter */\nFOR doc IN @@collection\n  SORT RAND()\n  LIMIT 1\n  RETURN doc",
+    "parameter": {"@collection": "my_collection"}
+  },
+  { 
+    "name" : "Subquery example",
+    "value": "/* Please insert some values for the @@collection, @value and @count bind parameters */\nFOR doc IN @@collection\n  LET values = (\n    FOR s IN doc.`attribute`\n      FILTER s.`attribute` == @value\n      RETURN s\n  )\n  FILTER LENGTH(values) > @count\n  RETURN {\n    doc,\n    values\n  }",
+    "parameter": {"@collection": "my_collection", "value": "my_value", "count": 10}
+  },
+  { 
+    "name" : "Sequences", 
+    "value": "/* Returns the sequence of integers between 2010 and 2015 (including) */\nFOR year IN 2010..2015\n  RETURN year" 
+  },
+  { 
+    "name" : "Bind parameters", 
+    "value": "/* There are two types of bind parameters:\n   - bind parameter names starting with a single @ character, e.g. @count, @value, @test:\n     These can be used to ship any JSON-encodable data to the server.\n   - bind parameter names starting with two @ characters always refer to collections, e.g. @@collections, @@c:\n     These can be used as placeholders for collection names.\n */\nFOR doc IN @@collection\n  FILTER doc.value == @value\n  RETURN doc",
+    "parameter": {"@collection": "my_collection", "value": "my_value"}
+  }
+]

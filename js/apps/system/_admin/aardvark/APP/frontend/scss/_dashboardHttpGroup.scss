@@ -1,0 +1,65 @@
+#dashboardHttpGroup {
+  border: 6px solid $c-black;
+  height: 100%;
+  width: 100%;
+}
+
+#dashboardDetailedChart {
+  border: 1px solid $c-black;
+  height: 300px;
+  width: 100%;
+
+  .dygraph-axis-label-y {
+    text-align: left;
+  }
+}
+
+.innerDashboardChart {
+  bottom: 5px;
+  left: 5px;
+  position: absolute;
+  right: 5px;
+  top: 5px;
+
+  .dygraph-axis-label-y {
+    text-align: left;
+  }
+}
+
+.dashboardDetailChart {
+  .dygraph-axis-label-y {
+    text-align: left;
+  }
+}
+
+#distributionChartDiv {
+  @extend %clear-float;
+}
+
+.lineChartDiv {
+  @extend %clear-float;
+}
+
+.dashboardChart {
+  background-color: $c-white;
+  border: 1px solid $c-semi-transp;
+  float: left;
+  height: 210px;
+  margin: 1.05%;
+  position: relative;
+  width: 31%;
+}
+
+.dygraph-label.dygraph-title {
+  @extend %font-family;
+  color: $c-black;
+  font: {
+    size: 15px;
+    weight: 400;
+  }
+  text-align: left;
+}
+
+#dashboardDetailedLineChart {
+  padding-top: 10px;
+}

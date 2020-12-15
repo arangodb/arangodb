@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "none",
+    "noEmitOnError": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "declaration": true,
+    "noImplicitUseStrict": true,
+    "outDir": "dist"
+  },
+  "exclude": [ "node_modules", "dist" ]
+}

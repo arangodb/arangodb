@@ -1,0 +1,188 @@
+.pure-table-body {
+  overflow-x: none;
+  overflow-y: auto;
+
+  .selected-row {
+    background-color: rgba(46, 204, 113, .2);
+  }
+
+  .dataTables_empty {
+    padding-left: 10px;
+  }
+
+  .heading {
+    font-weight: 600;
+    height: 40px;
+    padding-bottom: 10px;
+    padding-top: 10px;
+  }
+
+  select,
+  input {
+    @extend %inputs;
+  }
+
+  .fa {
+    @extend %animated;
+
+    &.fa-info-circle {
+      cursor: pointer;
+      margin-right: 3px;
+      opacity: .4;
+    }
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+}
+
+.pure-table {
+  border: 0;
+  display: block;
+
+  &.pure-table-header {
+    // min-width: 100%;
+  }
+
+  padding: {
+    left: 20px;
+    right: 20px;
+  }
+
+  &.no-padding {
+    padding: {
+      left: 0;
+      right: 0;
+    }
+
+    .pure-table-row div {
+      div {
+        padding-left: 2.5px;
+      }
+    }
+
+    &.pure-table-header {
+      .pure-table-row > div:first-child {
+        .title {
+          padding-left: 10px;
+        }
+      }
+    }
+
+  }
+
+  &.pure-title {
+    .pure-table-row {
+      color: $c-pure-title;
+      font-weight: 600;
+
+      &:hover {
+        background-color: $c-white;
+        cursor: default;
+      }
+    }
+
+    .pure-table-row:last-child {
+      border-bottom: 1px solid $c-content-border;
+      margin-bottom: 0;
+    }
+
+  }
+
+  .pure-table-row {
+    border-bottom: 1px solid $c-content-border;
+    color: $c-pure-text;
+    display: inline-block;
+    font-weight: 100;
+    line-height: 40px;
+    width: 100%;
+
+    .bold {
+      font-weight: 600;
+    }
+
+    .padding-left {
+      padding-left: 30px;
+    }
+
+    .padding-right {
+      padding-right: 30px;
+    }
+
+    .actions {
+      i {
+        margin-left: 5px;
+        margin-right: 5px;
+      }
+    }
+
+    &:hover {
+      background-color: rgb(239, 240, 235);
+      cursor: pointer;
+    }
+
+    &.disabled {
+      &:hover {
+        background-color: $c-white;
+        cursor: not-allowed;
+      }
+    }
+
+    &.noHover {
+      &:hover {
+        background-color: $c-white;
+        cursor: default;
+      }
+    }
+
+    &.underline {
+      &:hover {
+        > div {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .left {
+      text-align: left;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .mid {
+      text-align: center;
+    }
+
+    .positive {
+      color: $c-positive;
+    }
+
+    .negative {
+      color: $c-negative;
+    }
+
+    .warning {
+      color: $c-warning;
+    }
+
+    .fa {
+      &.fa-check-circle {
+        color: $c-positive;
+      }
+
+      &.fa-exclamation-circle {
+        color: $c-negative;
+      }
+    }
+  }
+
+  .pure-table-row:last-child {
+    border-bottom: 0;
+    margin-bottom: 10px;
+  }
+
+}

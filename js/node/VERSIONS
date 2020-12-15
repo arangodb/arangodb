@@ -1,0 +1,40 @@
+NODE
+----
+
+_stream_duplex:       0.10.25
+_stream_passthrough:  0.10.25
+_stream_readable:     0.10.25
+_stream_transform:    0.10.25
+_stream_writable:     0.10.25
+assert:               0.11.0 (see bootstrap/modules/assert)
+buffer:               0.11.0 (SlowBuffer)
+child_process:        not supported
+cluster:              not supported
+console:              compatibility (see bootstrap/modules/console)
+constants:            not supported
+crypto:               not supported (see @arangodb/crypto)
+dgram:                not supported
+dns:                  not supported
+domain:               not supported
+events:               4.1.0
+fs:                   compatibility (see bootstrap/modules/fs)
+http:                 not supported
+https:                not supported
+module:               4.1.0 (see bootstrap/modules)
+net:                  compatibility
+os:                   not supported
+path:                 4.1.0 (see bootstrap/modules/path)
+process:              compatibility
+punycode:             4.1.0
+querystring:          4.1.0
+stream:               0.10.25
+string_decoder:       4.1.0
+sys:                  not supported
+timers:               compatibility
+tls:                  not supported
+tty:                  compatibility
+url:                  4.1.0
+util:                 4.1.0 (modified)
+v8:                   not supported
+vm:                   compatibility (see bootstrap/modules/vm)
+zlib:                 not supported

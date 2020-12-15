@@ -1,0 +1,16 @@
+  <div class="paddingBox">
+    <div class="foxxDesc">
+      <p><span class="foxxName"><%=model.name%></span></p>
+      <p><span class="foxxCategory"><%=model.categories%></span></p>
+      <!--<p><i class="fa fa-star"></i><span class="foxxStars">23</span></p>-->
+    </div>
+    <div class="foxxActions">
+      <% if (upgrade) { %>
+        <button class="installFoxx button-success" appId="<%=model.name %>" appVersion="<%=model.latestVersion%>" >Replace</button>
+      <% } else { %>
+        <button class="installFoxx button-success" appId="<%=model.name %>" appVersion="<%=model.latestVersion%>" >Install</button>
+      <% } %>
+    </div>
+    <div class="borderBox"></div>
+    <img src="<%= thumbnail %>" height="50" width="50" alt="Icon for Service" class="icon">
+  </div>

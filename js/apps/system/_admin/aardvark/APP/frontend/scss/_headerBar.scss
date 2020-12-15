@@ -1,0 +1,437 @@
+input.search-input {
+  @extend %inputs;
+  border: 1px solid $c-white;
+  font-weight: 100;
+  height: 20px;
+  line-height: 20px;
+  margin-right: -4px;
+  margin-top: 3px;
+  width: 120px;
+}
+
+.search-field {
+  @extend %pull-right;
+  margin-left: 10px;
+  margin-right: 3px;
+
+  .fa-search {
+    color: $c-c2grey;
+    font-size: 12pt;
+    margin-left: -20px;
+    opacity: .5;
+    position: absolute;
+    right: 9px;
+    top: 9px;
+
+    &:hover {
+      cursor: pointer;
+      opacity: 1;
+    }
+  }
+}
+
+.pull-right .search-field {
+  .search-input {
+    height: 18px;
+    margin-right: 0;
+    margin-top: 0;
+  }
+
+  .fa-search {
+    float: right;
+    position: relative;
+    right: 0;
+    top: 5px;
+  }
+}
+
+%search-submit-icon {
+  @extend %clickable;
+  background-image: url('../img/enter_icon.png');
+  background-size: 14px;
+  height: 14px;
+  margin-left: -18px;
+  opacity: .2;
+  position: absolute;
+  width: 14px;
+
+  &:hover {
+    opacity: .8;
+  }
+}
+
+.search-submit-icon {
+  @extend %search-submit-icon;
+  margin-top: 11px;
+}
+
+.gv-search-submit-icon {
+  @extend %search-submit-icon;
+  margin-top: 6px;
+}
+
+// To be cleaned up from here on!
+
+// The bar on top of each page
+div.headerBar {
+  background-color: none;
+  border-radius: 2px;
+  color: $c-black;
+  float: right;
+  font-size: 16px;
+  height: 36px;
+  margin-top: -55px;
+  padding-left: 5px;
+  padding-right: 5px;
+  right: 0;
+
+  &.marginTop5 {
+    margin-top: -60px;
+  }
+
+  select {
+    &:focus {
+      outline: none;
+    }
+  }
+
+  .infoField {
+    background-color: $c-white;
+    border: 1px solid rgba(140, 138, 137, .25);
+    border-radius: 3px !important;
+    color: $c-black;
+    float: right;
+    font-size: 12px;
+    margin-right: 7px;
+    margin-top: 7px;
+    padding-left: 5px;
+    padding-right: 5px;
+
+    .fa {
+      cursor: pointer;
+      margin-left: 5px;
+    }
+
+  }
+
+  input[type=checkbox].css-checkbox {
+    display: none;
+
+    label.css-label {
+      background-position: 0 0;
+      background-repeat: no-repeat;
+      cursor: pointer;
+      display: inline-block;
+      font-size: 15px;
+      height: 15px;
+      margin-top: 0;
+      padding-left: 20px;
+      vertical-align: middle;
+    }
+  }
+
+  input[type=checkbox].css-checkbox:checked + label.css-label {
+    background-position: 0 -15px;
+  }
+
+  input[type="radio"] {
+    display: none;
+
+    label span {
+      background: url('../img/check_radio_sheet.png') -38px top no-repeat;
+      cursor: pointer;
+      display: inline-block;
+      height: 19px;
+      margin: -1px 4px 0 0;
+      vertical-align: middle;
+      width: 19px;
+    }
+  }
+
+  input[type="radio"]:checked + label span {
+    background: url('../img/check_radio_sheet.png') -57px top no-repeat;
+  }
+}
+
+
+.headerButtonList {
+  a {
+
+    span {
+      .fa-top {
+        color: $c-white;
+        font-size: 7pt;
+        position: absolute;
+
+        &:hover {
+          color: $c-positive;
+        }
+      }
+    }
+
+    &.error {
+      color: $c-negative;
+
+      &:hover {
+        background-color: $c-negative;
+        border-color: $c-negative;
+        color: $c-white;
+      }
+    }
+  }
+}
+
+// The title of the page
+
+.headerBar a.arangoHeader {
+  color: $c-black;
+  font-size: 11.5pt;
+  font-weight: 100;
+  left: 0;
+  position: relative;
+  top: 7px;
+}
+
+// The buttons on the right side
+
+.headerBar > div.headerButtonBar {
+  @extend %clear-float;
+  @extend %pull-right;
+  margin: 4px 0;
+  margin-bottom: 0 !important;
+}
+
+.breadcrumb {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: $c-white;
+  font-size: 12pt;
+  font-weight: 100;
+  line-height: 45px;
+  margin: 0;
+  margin-left: -4px;
+  padding: {
+    bottom: 0;
+    left: 10px;
+    right: 0;
+    top: 0;
+  };
+
+  .fa {
+    margin-left: 10px;
+    margin-right: 8px;
+  }
+
+  .fa-ellipsis-v {
+    font-size: 10pt;
+    opacity: 0;
+  }
+
+  // Disabled breadcrumb
+  .disabledBread {
+    color: $c-white;
+    float: left;
+    font-size: 12pt;
+    font-weight: 100;
+    padding-right: 5px;
+    position: relative;
+
+    i {
+      font-size: 10pt;
+      margin-left: 10px;
+    }
+
+    &:hover {
+      cursor: default;
+    }
+
+  }
+
+  .activeBread {
+    color: $c-white;
+    float: left;
+    font-size: 11pt;
+    font-weight: 100;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
+    transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
+
+    &:hover {
+      opacity: .65;
+    }
+  }
+
+  a {
+    color: $c-white !important;
+    opacity: .8;
+    -moz-transition: all .2s ease-in;
+    -o-transition: all .2s ease-in;
+    -webkit-transition: all .2s ease-in;
+    transition: all .2s ease-in;
+
+    &:hover {
+      opacity: 1;
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in;
+    }
+  }
+
+  #app-development-path {
+    background-color: $c-white;
+    border-bottom: 1px solid $c-content-border;
+    border-left: 1px solid $c-content-border;
+    border-radius: 3px;
+    border-right: 1px solid $c-content-border;
+    height: 24px;
+    margin-left: -6px;
+    margin-top: -10px;
+    padding-left: 5px;
+    width: 100%;
+  }
+}
+
+// arangoHeader
+.arangoHeader {
+  font-weight: 400;
+}
+
+#transparentHeader input[type=checkbox].css-checkbox {
+  display: none;
+}
+
+.sectionHeader {
+  background-color: $c-bluegrey-dark;
+  margin-bottom: 10px;
+  padding-bottom: 2px;
+  padding-top: 10px;
+  width: 100%;
+
+  .title {
+    color: $c-white;
+    font-size: 12pt;
+    font-weight: 100;
+    line-height: 20pt;
+    margin-left: 10px;
+    white-space: nowrap;
+  }
+
+  .information {
+    float: right;
+    font-size: 12.5pt;
+    font-weight: 100;
+
+    .fa {
+      font-size: 17pt;
+    }
+
+    span:first-child {
+      margin-left: 10px;
+    }
+
+    span {
+
+      span {
+        position: relative;
+        top: -2px;
+      }
+
+      &.positive {
+        color: $c-positive;
+      }
+
+      &.warning {
+        color: $c-warning;
+      }
+
+      &.negative {
+        color: $c-negative;
+      }
+    }
+
+    i {
+      margin-left: 5px;
+      margin-right: 10px;
+    }
+  }
+
+  .scaleGroup {
+    float: right;
+    margin-right: 10px;
+    position: inherit;
+    width: 80px;
+
+    span {
+      border-radius: 30px;
+      color: $c-white;
+      padding: 3px 5px;
+      position: relative;
+      top: -4px;
+
+      &.left {
+        background: $c-negative;
+        margin-right: -19px;
+      }
+
+      &.right {
+        background: $c-positive;
+        margin-left: -16px;
+      }
+
+      &.left:hover,
+      &.right:hover {
+        cursor: pointer;
+      }
+    }
+
+    input {
+      @extend %inputs;
+      background: rgba(255, 255, 255, .9) !important;
+      border-color: rgba(239, 240, 241, .5);
+      color: $c-black;
+      font-weight: 100;
+      height: 10px;
+      text-align: center;
+      width: 40px;
+
+      &:hover {
+        cursor: pointer;
+      }
+
+      &:focus {
+        background: rgba(255, 255, 255, 1) !important;
+        border-color: rgba(239, 240, 241, 1);
+      }
+    }
+
+    &.no-hover {
+      cursor: not-allowed;
+
+      *,
+      span,
+      div,
+      .fa,
+      input {
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+.categoryBar {
+  background: $c-bluegrey-dark;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+  clear: both;
+  width: 100%;
+
+  h4 {
+    font-weight: 100;
+    color: $c-white;
+    padding-left: 15px;
+    padding-top: 10px;
+    padding-bottom: 10px; 
+  }
+}

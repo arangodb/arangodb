@@ -1,0 +1,158 @@
+'use strict';
+const dd = require('dedent');
+const joi = require('joi');
+const httpError = require('http-errors');
+const status = require('statuses');
+const errors = require('@arangodb').errors;
+const createRouter = require('@arangodb/foxx/router');
+const <%= model %> = require('../models/<%= modelFile %>');
+
+const <%= documents %> = module.context.collection('<%= collection %>');
+const keySchema = joi.string().required()
+.description('The key of the <%= document %>');
+
+const ARANGO_NOT_FOUND = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+const ARANGO_DUPLICATE = errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
+const ARANGO_CONFLICT = errors.ERROR_ARANGO_CONFLICT.code;
+const HTTP_NOT_FOUND = status('not found');
+const HTTP_CONFLICT = status('conflict');
+
+const router = createRouter();
+module.exports = router;
+
+
+router.tag('<%= document %>');
+
+
+router.get(function (req, res) {
+  res.send(<%= documents %>.all());
+}, 'list')
+.response([<%= model %>], 'A list of <%= documents %>.')
+.summary('List all <%= documents %>')
+.description(dd`
+  Retrieves a list of all <%= documents %>.
+`);
+
+
+router.post(function (req, res) {
+  const <%= document %> = req.body;
+  let meta;
+  try {
+    meta = <%= documents %>.save(<%= document %>);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+  Object.assign(<%= document %>, meta);
+  res.status(201);
+  res.set('location', req.makeAbsolute(
+    req.reverse('detail', {key: <%= document %>._key})
+  ));
+  res.send(<%= document %>);
+}, 'create')
+.body(<%= model %>, 'The <%= document %> to create.')
+.response(201, <%= model %>, 'The created <%= document %>.')
+.error(HTTP_CONFLICT, 'The <%= document %> already exists.')
+.summary('Create a new <%= document %>')
+.description(dd`
+  Creates a new <%= document %> from the request body and
+  returns the saved document.
+`);
+
+
+router.get(':key', function (req, res) {
+  const key = req.pathParams.key;
+  let <%= document %>
+  try {
+    <%= document %> = <%= documents %>.document(key);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    throw e;
+  }
+  res.send(<%= document %>);
+}, 'detail')
+.pathParam('key', keySchema)
+.response(<%= model %>, 'The <%= document %>.')
+.summary('Fetch a <%= document %>')
+.description(dd`
+  Retrieves a <%= document %> by its key.
+`);
+
+
+router.put(':key', function (req, res) {
+  const key = req.pathParams.key;
+  const <%= document %> = req.body;
+  let meta;
+  try {
+    meta = <%= documents %>.replace(key, <%= document %>);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+  Object.assign(<%= document %>, meta);
+  res.send(<%= document %>);
+}, 'replace')
+.pathParam('key', keySchema)
+.body(<%= model %>, 'The data to replace the <%= document %> with.')
+.response(<%= model %>, 'The new <%= document %>.')
+.summary('Replace a <%= document %>')
+.description(dd`
+  Replaces an existing <%= document %> with the request body and
+  returns the new document.
+`);
+
+
+router.patch(':key', function (req, res) {
+  const key = req.pathParams.key;
+  const patchData = req.body;
+  let <%= document %>;
+  try {
+    <%= documents %>.update(key, patchData);
+    <%= document %> = <%= documents %>.document(key);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+  res.send(<%= document %>);
+}, 'update')
+.pathParam('key', keySchema)
+.body(joi.object().description('The data to update the <%= document %> with.'))
+.response(<%= model %>, 'The updated <%= document %>.')
+.summary('Update a <%= document %>')
+.description(dd`
+  Patches a <%= document %> with the request body and
+  returns the updated document.
+`);
+
+
+router.delete(':key', function (req, res) {
+  const key = req.pathParams.key;
+  try {
+    <%= documents %>.remove(key);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    throw e;
+  }
+}, 'delete')
+.pathParam('key', keySchema)
+.response(null)
+.summary('Remove a <%= document %>')
+.description(dd`
+  Deletes a <%= document %> from the database.
+`);

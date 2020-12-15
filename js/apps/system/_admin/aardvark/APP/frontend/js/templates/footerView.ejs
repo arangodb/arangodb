@@ -1,0 +1,25 @@
+<%
+  var n,v,db;
+  if (name) {
+    n = name || "";
+    v = version || "";
+  }
+%>
+<div class="footer-left">
+<!--
+  <div class="social-icons">
+    <p><a href="https://twitter.com/arangodb" target="_blank"><i class="fa fa-twitter"></i></a></p>
+    <p><a href="https://www.arangodb.com/community" target="_blank"></a><i class="fa fa-envelope"></i></a></p>
+    <p><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank"></a><i class="fa fa-stack-overflow"></i></a></p>
+    <p><a href="https://groups.google.com/group/arangodb" target="_blank"></a><i class="fa fa-google"></i></a></p>
+  </div>
+-->
+</div>
+
+<div class="footer-center">
+  <p>Help <i class="fa fa-keyboard-o"></i></p>
+</div>
+
+<div class="footer-right">
+  <p><% if(n) { %><a><%=n%> <%=v%> <% } %></a></p>
+</div>

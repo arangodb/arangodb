@@ -1,0 +1,114 @@
+%toolbarspan {
+  padding: 5px 8px;
+  position: relative;
+  top: 5px;
+
+  &.action {
+    &:hover {
+      background-color: $c-positive;
+      border-radius: 3px;
+      color: $c-white;
+      cursor: pointer;
+    }
+  }
+}
+
+.arangoToolbar {
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  height: 45px;
+  width: 100%;
+
+  .pull-right,
+  .pull-left {
+    height: 30px;
+    margin-top: 8px;
+
+    i {
+      &.positive {
+        color: $c-positive;
+      }
+
+      &.warning {
+        color: $c-warning;
+      }
+    }
+  }
+
+  .pull-left {
+    button {
+      margin-left: 8px;
+    }
+  }
+
+  .pull-right {
+    select:first-child,
+    button:first-child {
+      margin-right: 6px;
+    }
+  }
+
+  span {
+    @extend %toolbarspan;
+    font-weight: 100;
+    margin-left: 10px;
+
+    &.toolbarText {
+      top: 1px;
+    }
+
+    &.clickable {
+      cursor: pointer;
+      margin-left: 0;
+      opacity: .5;
+      top: 1px;
+
+      &:hover {
+        @extend %animated;
+        opacity: 1;
+      }
+    }
+  }
+
+  i {
+    font-size: 11pt;
+    font-style: normal;
+
+    &.fa {
+      font-size: 12pt;
+      margin-right: 5px;
+    }
+  }
+
+  .toolbarType {
+    background: $c-info-blue;
+    border-radius: 3px;
+    color: $c-white;
+    margin-left: 8px;
+  }
+
+  .styled-select {
+    width: auto;
+  }
+}
+
+.arangoToolbarTop {
+  //border-top-left-radius: 3px;
+  //border-top-right-radius: 3px;
+}
+
+.arangoToolbarBottom {
+  //border-bottom-left-radius: 3px;
+  //border-bottom-right-radius: 3px;
+  clear: both;
+
+  #executeQuery {
+    margin-right: 8px;
+  }
+
+  .button-close {
+    &:last-child {
+      margin-right: 10px;
+    }
+  }
+}

@@ -1,0 +1,116 @@
+#indexHeaderContent {
+  padding: 0;
+
+  .figuresHeader {
+
+    th {
+      padding-left: 10px;
+    }
+  }
+
+  #collectionEditIndexTable {
+    th {
+      padding-left: 10px;
+    }
+  }
+}
+
+.new-index-view {
+  padding: 20px;
+}
+
+.centralContent {
+
+  .createModalDialog {
+    background-color: $c-white;
+    outline: none;
+  }
+
+  .contentIn {
+    background: $c-white;
+    border: 1px solid $c-bluegrey-border;
+    border-radius: 2px;
+    padding: 20px;
+
+    table {
+      border: 0;
+
+      select {
+        margin-top: -10px;
+      }
+
+      tr {
+        height: 40px;
+      }
+    }
+  }
+
+  .modal-body {
+    border: 1px solid $c-bluegrey-border;
+    color: $c-black;
+    max-height: none;
+    padding: 0;
+
+    .arango-table,
+    table {
+      tr {
+        height: 40px;
+
+        th {
+          padding-left: 10px;
+        }
+      }
+    }
+
+    .figuresHeader {
+      background-color: $c-bluegrey-dark;
+      color: $c-white;
+    }
+
+    .icon_arangodb_info {
+      margin-left: 10px;
+      right: inherit;
+    }
+
+    .modalSelect {
+      margin-top: 0;
+    }
+
+    .tab-pane {
+      padding-top: 0 !important;
+    }
+  }
+
+  .modal-footer {
+    background-color: rgba(0, 0, 0, 0);
+    border-bottom: 1px solid $c-bluegrey-border;
+    border-left: 1px solid $c-bluegrey-border;
+    border-radius: 0;
+    border-right: 1px solid $c-bluegrey-border;
+    border-top: 0;
+    box-shadow: none;
+    padding: 8px;
+  }
+
+  .figures1,
+  .figures2,
+  .figures3 {
+    margin-left: 0 !important;
+    margin-top: 40px;
+    table-layout: fixed;
+    width: 100%;
+
+    .icon_arangodb_info {
+      position: relative;
+      text-align: center;
+    }
+  }
+
+  .figures2 {
+    margin-top: -20px;
+  }
+
+  .figures3 {
+    margin-bottom: 40px;
+  }
+}

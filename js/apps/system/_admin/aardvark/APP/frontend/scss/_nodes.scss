@@ -1,0 +1,43 @@
+.coords-dbs {
+
+  .pure-table-row {
+    &.noHover {
+      cursor: not-allowed !important;
+    }
+
+    &.noHover:hover {
+      cursor: not-allowed !important;
+    }
+  }
+}
+
+#nodesContent {
+  padding-top: 0;
+
+  .pure-table {
+    padding-left: 20px;
+    padding-right: 20px;
+    width: auto !important;
+
+    .fa {
+      margin-left: 5px;
+
+      &.fa-bar-chart {
+        color: rgb(64, 74, 83);
+      }
+    }
+  }
+
+  .sectionHeader .title {
+    margin-left: 20px;
+  }
+
+  .pure-table-body {
+    .fa-check-circle,
+    .fa-info-circle,
+    .fa-exclamation-circle {
+      font-size: 13pt;
+    }
+  }
+
+}

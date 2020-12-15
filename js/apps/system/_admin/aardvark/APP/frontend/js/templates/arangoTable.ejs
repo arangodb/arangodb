@@ -1,0 +1,41 @@
+  <div class="tableWrapper">
+    <% var type = type; %>
+    <table class="arango-table" id="<%=content.id%>">
+      <thead>
+        <tr>
+          <% var hcounter = 0; %>
+          <% _.each(content.titles, function(y) {%>
+            <th class="arango-table-th table-cell<%=hcounter%>"><%=y%></th>
+          <% hcounter++; });%>
+        </tr>
+      </thead>
+      <tbody>
+        <% _.each(content.rows, function(k) { var counter=0;%>
+          <tr>
+            <% _.each(k, function(x) { %>
+              <% if (type && type[counter] === 'pre') { %>
+                <td class="arango-table-td table-cell<%=counter%>">
+                  <pre class="tablePre"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></pre>
+                </td>
+              <% } else { %>
+                <td class="arango-table-td table-cell<%=counter%>"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></td>
+              <% } %>
+            <% counter++;});%>
+          </tr>
+        <%});%>
+
+        <% if (content.rows.length === 0) { %>
+          <tr>
+            <% var xcounter = 0; %>
+            <% _.each(content.titles, function(y) {%>
+              <% if (xcounter === 0) { %>
+                <td>No content.</td>
+              <% } else { %>
+                <td></td>
+              <% } %>
+            <% xcounter++; });%>
+          </tr>
+        <% }; %>
+      </tbody>
+    </table>
+  </div>

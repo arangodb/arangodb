@@ -1,0 +1,51 @@
+.arango-tab {
+  @extend %clear-float;
+
+  border-bottom: 1px solid $c-tab-bottom-border;
+  list-style: none;
+  margin-left: 0;
+  padding-bottom: 0;
+  padding-right: 10px;
+
+  a {
+    @extend %clickable;
+    @include border-radius(0);
+
+    background-color: $c-new-grey;
+    border: 1px solid $c-transp;
+    border-bottom-color: $c-tab-border;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    color: $c-white;
+    display: block;
+    font-size: 13px;
+    line-height: 20px;
+    margin-right: 2px;
+    min-width: 50px;
+    padding: 2px 15px;
+    text-align: center;
+  }
+
+  li {
+    @extend %clickable;
+    @extend %pull-right;
+    background-color: $c-transp;
+    border: 0;
+    margin-bottom: -1px;
+    margin-left: 2px;
+    position: relative;
+    z-index: 900;
+
+    &.active a {
+      background: $c-tab-active;
+      border-bottom-color: $c-tab-active !important; // <-- is important
+      border-left-color: $c-c2grey;
+      border-right-color: $c-c2grey;
+      border-top-color: $c-c2grey;
+      color: $c-black;
+      height: 21px;
+      margin-top: -1px;
+    }
+
+  }
+}

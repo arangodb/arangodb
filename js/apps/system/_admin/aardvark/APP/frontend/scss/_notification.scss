@@ -1,0 +1,34 @@
+.noty_buttons {
+
+  button {
+    @extend %btn;
+    margin-top: -35px;
+    margin-right: 5px;
+  }
+
+  .btn-error { /* noty */
+    @extend %negative;
+    background-image: none;
+    border: 1px solid $c-white;
+    float: right;
+  }
+
+  .btn-warning { /* noty */
+    @extend %warning;
+    background-image: none;
+    border: 1px solid $c-white;
+    float: right;
+    margin-right: 145px;
+  }
+
+  padding: 0 !important;
+}
+
+.noty_theme__sunset.noty_type__success {
+  background-color: $c-positive !important;
+
+  .noty_progressbar {
+    background-color: $c-bluegrey-dark !important;
+    opacity: 0.5 !important;
+  }
+}

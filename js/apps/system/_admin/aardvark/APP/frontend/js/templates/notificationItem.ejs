@@ -1,0 +1,14 @@
+<% notifications.forEach(function(n) { %>
+  <li class="dropdown-item">
+    <div class="notificationItem">
+      <% if (n.get("info")) { %>
+      <i title="<%=n.get("info")%>" class="notificationInfoIcon fa fa-info-circle"></i>
+      <% } %>
+
+      <i id="<%=n.cid%>" class="fa fa-times-circle-o"></i>
+      <a class="notificationItemTitle"><%=n.get("title")%></a>
+      <div class="notificationItemContent"><%=n.get("content")%></div>
+
+    </div>
+  </li>
+<%  }); %>

@@ -1,0 +1,125 @@
+//colorScheme
+@import 'colors';
+//THE body
+@import 'body';
+//shared
+@import 'shared';
+// All Abstract classes
+// Navbar
+@import 'statisticBar';
+// Notifications
+@import 'notification';
+//contentTables
+@import 'contentTables';
+// Dropdown menu
+@import 'userMenu';
+// Tooltips
+@import 'tooltips';
+// dbSelection
+@import 'toolbar';
+// dbSelection
+@import 'dbSelection';
+// new dashboard, will be the highlander
+@import 'newDashboard';
+// dashboard http group
+@import 'dashboard';
+// dashboard http group
+@import 'dashboardHttpGroup';
+// dashboard distribution charts
+@import 'dashboardDistribution';
+// dbSelection
+@import 'searchBar';
+// shortcuts info boxes
+@import 'shortcuts';
+// login view
+@import 'login';
+// query view
+@import 'queryView';
+// some general stuff
+@import 'general';
+// The views containing tabs
+@import 'tabViews';
+// The json editor overwrites
+@import 'jsonEditor';
+// Pagination
+@import 'pagination';
+// Permissions
+@import 'permissions';
+// accordion
+@import 'accordion';
+// api docs
+@import 'api';
+// alerts
+@import 'alert';
+// logs
+@import 'logs';
+// Graph Viewer
+@import 'graphViewer';
+// Graph Viewer 2
+@import 'graphViewer2';
+// General Dialogs
+@import 'dialogs';
+// Collections
+@import 'collection';
+// Snippet coloring (docs view)
+@import 'snippet';
+// screen sizes
+@import 'screenSizes';
+// document view
+@import 'documentView';
+// progress view
+@import 'progressView';
+// spotlight view
+@import 'spotlightView';
+// cluster view
+@import 'clusterView';
+// application detail view
+@import 'applicationDetailView';
+// new modal alternative (modal -> subview)
+@import 'subViewModal';
+// pure responsive components
+@import 'pure';
+// screen hotkeys
+@import 'hotkeys';
+// screen nodes
+@import 'nodes';
+// screen shards
+@import 'shards';
+
+// input type range
+@import 'range';
+// state
+@import 'state';
+
+//arangoTable Template
+@import 'arangoTable';
+//arangoTabbar Template
+@import 'arangoTabbar';
+//Sub Navigation
+@import 'subNavbar';
+//Help View
+@import 'help';
+//LoggerView
+@import 'logger';
+//LoggerView
+@import 'foxxInstall';
+//FilterSelect
+@import 'filterSelect';
+//Support View
+@import 'support';
+//Replication View
+@import 'replication';
+
+// Extra CSS for internet explorer :)
+@import 'ie';
+
+// Data Tables, TODO: might all be superflous
+@import 'dataTables';
+
+
+// Temporary:
+@import 'documentsView';
+
+// Plugin
+@import 'uploadfile';
+@import 'animate';

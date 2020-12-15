@@ -1,0 +1,560 @@
+%toolbar {
+  background-color: $c-toolbar-bg;
+  border-bottom: 0;
+  border-style: solid;
+  border-width: 1px;
+  font-size: 20px;
+  height: 27px;
+  margin-left: 0;
+  margin-right: 0;
+
+  span:hover {
+    background-color: $c-negative;
+    color: $c-white;
+  }
+
+}
+
+#queryManagementContent,
+#arangoQueryManagementTable {
+  .table-cell1 {
+    word-break: break-all;
+  }
+}
+
+.queryBottomActions {
+  border-top: 1px solid $c-content-border;
+  padding: 10px;
+}
+
+.queryExecutionTime {
+  margin-left: 10px;
+  margin-top: 15px;
+}
+
+.queryManagementBottomActions {
+  background-color: $c-white;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+  border-top: 1px solid $c-c2grey;
+  height: 40px;
+  margin-top: -2px;
+  padding-top: 10px;
+
+  button {
+    margin-right: 10px;
+  }
+}
+
+.query-button {
+  @extend %pull-right;
+}
+
+.query-toolbar {
+  @extend %toolbar;
+}
+
+.styled-select {
+  float: right;
+  height: 30px;
+  overflow: hidden;
+  width: 220px;
+
+  select {
+    background: $c-white;
+    border: 1px solid $c-c2grey !important;
+    border-radius: 0 !important;
+    font-size: 14px;
+    font-weight: 300;
+    height: 30px;
+    line-height: 1;
+    outline: none;
+    padding: 5px;
+    padding-left: 5px !important;
+    padding-top: 3px !important;
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+.querySizeDiv {
+  height: 30px !important;
+  margin-right: 10px;
+  width: 130px !important;
+
+  select {
+    height: 30px !important;
+  }
+}
+
+.inputEditorWrapper {
+  border-bottom: 3px solid $c-content-border !important;
+  border-left: 1px solid $c-content-border;
+  border-right: 1px solid $c-content-border;
+  clear: both;
+  height: 300px;
+  min-height: 300px;
+  width: 100%;
+
+  .aqlEditorWrapper {
+    border: 0 !important;
+    border-right: 3px solid $c-content-border !important;
+    float: left;
+    height: 100% !important;
+    max-width: 85%;
+    min-width: 20%;
+    width: 70%;
+  }
+
+  #arangoMyQueriesTable {
+    tbody {
+      tr {
+        cursor: copy;
+      }
+    }
+  }
+
+  .bindParamEditorWrapper,
+  .aqlEditorWrapper {
+
+    background-color: $c-white;
+    overflow: hidden;
+
+    .stringtype {
+      color: $c-sh-string;
+    }
+
+    .objecttype {
+      color: $c-sh-object;
+    }
+
+    .arraytype {
+      color: $c-sh-array;
+    }
+
+    .numbertype {
+      color: $c-sh-number;
+    }
+
+    .booleantype {
+      color: $c-sh-keyword;
+    }
+
+    table {
+      @extend %font-family;
+      border-top: 0;
+
+      tbody {
+        display: block;
+        overflow-y: auto;
+      }
+
+      .truncate {
+        opacity: .8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 30%;
+      }
+
+      tr {
+        &.noBgColor {
+          background-color: rgba(0, 0, 0, 0) !important;
+        }
+
+        &.selected {
+          background-color: rgba(125, 188, 66, .64);
+          color: $c-white;
+
+          .spanWrapper {
+            background-color: rgba(255, 255, 255, .65);
+          }
+
+          .fa-copy,
+          .fa-comments {
+            color: $c-black;
+          }
+
+        }
+      }
+
+      thead {
+        display: block;
+      }
+
+      td {
+        height: 33px;
+        padding: 0 5px;
+        width: 50%;
+
+        .spanWrapper {
+          border-radius: 3px;
+          cursor: auto;
+          float: right;
+
+          &:hover {
+            cursor: auto;
+          }
+
+          .fa {
+            cursor: pointer;
+            font-size: 16pt;
+            margin-left: 5px;
+            margin-right: 5px;
+          }
+
+          .fa-minus-circle {
+            margin-left: 20px;
+          }
+
+          .fa-play-circle-o {
+            color: $c-positive;
+          }
+        }
+
+        input {
+          @extend %font-family;
+          @extend %inputs;
+          clear: both;
+          float: right;
+          height: 17px;
+          margin-bottom: 3px;
+          margin-top: 3px;
+          width: auto !important;
+        }
+      }
+
+      th {
+        @extend %font-family;
+        font-weight: 400;
+        height: 34px;
+        padding: 0;
+        width: 50%;
+      }
+    }
+  }
+
+  .aqlEditorWrapper,
+  .bindParamEditorWrapper {
+    height: 100%;
+
+    table {
+      thead {
+        tr {
+          th {
+            text-align: left;
+          }
+
+          th:first-child {
+            padding-left: 10px;
+          }
+
+        }
+      }
+
+      tbody {
+        input {
+          width: 100% !important;
+        }
+      }
+    }
+
+    .selectError {
+      background: $c-negative;
+    }
+
+    .aceAction {
+      background-color: $c-bluegrey-dark;
+      border-radius: 3px;
+      color: $c-white;
+      cursor: pointer;
+      font-size: 13pt;
+      height: 23px;
+      line-height: 23px;
+      opacity: .8;
+      position: absolute;
+      right: 20px;
+      text-align: center;
+      top: 175px;
+      width: 33px;
+      z-index: 10;
+
+      &.type {
+        font-size: 8pt;
+      }
+
+      i {
+        margin-bottom: 3px;
+      }
+
+      &:hover {
+        cursor: pointer;
+        opacity: 1;
+      }
+    }
+
+    .previewWrapper {
+      background-color: $c-white;
+
+      .previewBar {
+        @extend %font-family;
+        background-color: $c-white;
+        border-bottom: 1px solid $c-content-border;
+        height: 34px;
+
+        span {
+          margin-left: 5px;
+          padding-top: 8px;
+          position: absolute;
+        }
+      }
+
+      #queryPreview {
+        height: 100%;
+      }
+    }
+
+    > div {
+      height: 100%;
+    }
+  }
+
+  .ui-resizable-s {
+    cursor: ns-resize;
+  }
+
+  .ui-resizable-e {
+    cursor: ew-resize;
+  }
+}
+
+.queryContent {
+  clear: both;
+  margin-top: 0;
+  width: 100%;
+
+  .arangoToolbar {
+    .fa {
+      &.fa-star,
+      &.fa-star-o {
+        color: $c-yellow;
+      }
+    }
+  }
+}
+
+.outputEditors {
+  margin-bottom: 60px;
+}
+
+.outputEditorWrapper {
+  clear: both;
+  height: 100px;
+  padding-top: 20px;
+  position: relative;
+  width: 100%;
+
+  .tableWrapper {
+    max-width: 100%;
+    overflow-x: scroll;
+
+    .arango-table {
+      border-left: 1px solid $c-content-border;
+      border-right: 1px solid $c-content-border;
+    }
+  }
+
+  .outputTable {
+    margin-right: -2px;
+  }
+
+  .fa-caret-down {
+    &:hover {
+      cursor: pointer;
+    }
+  }
+
+  .graphContent {
+    border-left: 1px solid $c-content-border;
+    border-right: 1px solid $c-content-border;
+    margin-right: -2px;
+    margin-top: 0;
+  }
+
+  .geoContainer {
+    border-left: 1px solid $c-content-border;
+    border-right: 1px solid $c-content-border;
+    margin-right: -2px;
+  }
+
+  .switchAce {
+    background-color: $c-bluegrey-dark;
+    border-radius: 3px;
+    color: $c-white;
+    cursor: pointer;
+    padding: 4px 3px;
+    position: relative;
+    right: -6px;
+    top: 0;
+    z-index: 10;
+
+    span {
+      margin-left: 0;
+      padding: 0 8px;
+      top: 0;
+
+      &.active {
+        color: $c-positive;
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .ace_editor {
+    border-left: 1px solid $c-content-border;
+    border-right: 1px solid $c-content-border;
+    height: 280px;
+    width: 100%;
+
+    .ace_active-line {
+      background: $c-white !important;
+    }
+  }
+
+  .sentWrapper {
+
+    .pull-right,
+    .pull-left {
+      width: 50%;
+    }
+  }
+
+}
+
+#queryManagementContent {
+  border: 1px solid $c-content-border;
+  padding-top: 0;
+
+  .arango-table {
+    border: 0;
+
+    tr {
+      th:nth-child(1) {
+        width: 10%;
+
+        td {
+          text-align: center;
+        }
+      }
+
+      th:nth-child(2) {
+        width: 50%;
+      }
+
+      th:nth-child(3) {
+        width: 20%;
+      }
+
+      th:nth-child(4) {
+        width: 20%;
+      }
+    }
+  }
+}
+
+#clearQuery {
+  display: none;
+}
+
+.queryProfile {
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 1px 2px rgba(0, 0, 0, .24);
+  padding-top: 20px;
+  // transition: all .3s cubic-bezier(.25, .8, .25, 1);
+  z-index: 500;
+
+  .pure-table {
+    margin-top: 15px;
+
+    p {
+      border-radius: 50%;
+      color: $c-white;
+      height: 20px;
+      line-height: 20px;
+      margin-left: -2px;
+      margin-top: 10px;
+      text-align: center;
+      width: 20px;
+    }
+  }
+
+  .profileHeader {
+    color: $c-pure-title;
+    left: 10px;
+    position: absolute;
+    top: 10px;
+  }
+
+  .pure-table-row {
+    font-weight: 10pt;
+  }
+
+  .fa-close {
+    color: $c-content-border;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+
+    &:hover {
+      color: $c-black;
+      cursor: pointer;
+    }
+  }
+
+  .prof-progress,
+  .prof-progress-label {
+    padding-left: 10px;
+    padding-right: 10px;
+
+    div {
+      border: 1px solid $c-white;
+      box-sizing: border-box;
+      float: left;
+      height: 40px;
+      min-width: 1%;
+    }
+  }
+
+  .prof-progress-label {
+    clear: both;
+
+    div {
+      height: 15px;
+      text-align: center;
+    }
+  }
+
+  .clear {
+    clear: both;
+    height: 10px;
+  }
+}
+
+.leaflet-pane {
+  svg {
+    width: auto;
+    height: auto;
+  }
+}
+
+.leaflet-popup-content {
+  pre {
+    max-height: 250px;
+  }
+}

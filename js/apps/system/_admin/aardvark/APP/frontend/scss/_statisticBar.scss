@@ -1,0 +1,29 @@
+.navlogo {
+  .stat_cpu {
+    height: 26px;
+    margin-top: 1px;
+    width: 26px;
+
+    path {
+      fill: $c-state-ok;
+    }
+  }
+
+  .stat_ram {
+    height: 26px;
+    width: 26px;
+
+    path {
+      fill: $c-state-warning;
+    }
+  }
+
+  .stat_req {
+    height: 22px;
+    width: 22px;
+
+    path {
+      fill: $c-state-ok;
+    }
+  }
+}

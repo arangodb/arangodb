@@ -1,0 +1,13 @@
+.dashboardModal {
+  $width: 90%;
+  @extend %pull-left;
+  @include border-radius(8px !important); //.modal has it
+
+  height: 80%;
+  margin-left: -$width / 2;
+  min-width: 780px;
+  overflow: auto;
+  padding: 10px;
+  top: 10%;
+  width: $width !important;
+}

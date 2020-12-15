@@ -1,0 +1,112 @@
+#spotlightPlaceholder {
+  background-color: $c-spotlight-transp-bg;
+  bottom: 0;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 2000;
+}
+
+.spotlightWrapper {
+  height: 50px;
+  left: 25%;
+  position: absolute;
+  top: 115px;
+  width: 50%;
+
+  .twitter-typeahead {
+    width: 100%;
+  }
+
+  .tt-highlight {
+    color: $c-progress-bar;
+    font-weight: 400;
+  }
+
+  input {
+    box-sizing: border-box;
+    height: 40px !important;
+  }
+
+  .tt-dataset {
+    clear: both;
+  }
+
+  .tt-menu {
+    background: $c-spotlight-bg;
+    border-radius: 3px;
+    color: $c-white;
+    height: 300px;
+    overflow: auto;
+    width: 100%;
+
+    .tt-suggestion:hover {
+      background-color: $c-bluegrey-dark;
+      cursor: pointer;
+    }
+
+    .header-type {
+      background: $c-spotlight-header-bg;
+      clear: both;
+      color: $c-white;
+      height: 30px;
+      padding-left: 5px;
+
+      h4 {
+        float: left;
+        margin: 4px 0 0;
+        padding: 0;
+      }
+
+      .fa {
+        font-size: 12pt;
+        margin-left: 6px;
+        margin-top: 6px;
+      }
+
+      .type {
+        background-color: $c-progress-bar;
+        border-radius: 3px;
+        float: right;
+        margin: 4px;
+        padding: 0 5px;
+      }
+    }
+
+    .tt-cursor {
+      background-color: $c-white;
+      color: $c-black;
+    }
+
+    .tt-selectable {
+      padding-left: 10px;
+    }
+  }
+
+
+  .typeahead {
+    background: $c-spotlight-bg;
+    background-color: $c-spotlight-bg;
+    border: 0 solid $c-spotlight-bg;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+    color: $c-white;
+    font-size: 22px;
+    height: 30px;
+    line-height: 30px;
+    outline: none;
+    outline-color: transparent;
+    outline-style: none;
+    padding: 8px 12px;
+    width: 100%;
+  }
+
+  .typeahead:focus {
+    outline: none;
+    outline-color: transparent;
+    outline-style: none;
+  }
+
+}

@@ -1,0 +1,173 @@
+#!/bin/bash
+
+MODULES=`find . -name "node_modules" | while read dir; do ls -1 $dir | awk "{print \"$dir/\" \\$1}"; done`
+MISSING=""
+
+for module in $MODULES; do
+  NAME=""
+  PROJECT_HOME="* Project Home: MISSING"
+  LICENSE="* License: MISSING"
+
+  if test -d "$module"; then
+    BASE="`basename $module`"
+    NAME="#### $BASE"
+
+    index="$module/index.js"
+    package="$module/package.json"
+    package_path=`echo $package | sed -e 's:^\\./::'`
+
+    if test -f "$index" && fgrep -q "not support" "$index"; then
+      NAME=""
+    else
+      if test -f "$package"; then
+        homepage=`jq .homepage < $package`
+
+        if test "$homepage" == "null"; then
+          homepage=`jq .repository.url < $package`
+        fi
+
+        if test "$homepage" != "null"; then
+          homepage=`echo $homepage | tr -d '"'`
+          PROJECT_HOME="* Project Home: $homepage"
+        fi
+      fi
+    fi
+
+    if test "$NAME" != ""; then
+      license_type=`jq .license < $package`
+      license_source="MISSING"
+
+      case $BASE in
+        xmldom)
+          license_type="MIT"
+          license_source="https://github.com/jindw/xmldom/blob/master/LICENSE"
+          ;;
+
+        expect.js)
+          license_type="MIT"
+          license_source="https://github.com/Automattic/expect.js/blob/master/README.md"
+          ;;
+
+        esutils)
+          license_type="free-as-is"
+          license_source="https://github.com/estools/esutils/blob/master/README.md"
+          ;;
+
+        stackframe)
+          license_type="free-as-is"
+          license_source="https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE"
+          ;;
+
+        deep-is)
+          license_type="MIT"
+          license_source="https://github.com/thlorenz/deep-is/blob/master/LICENSE"
+          ;;
+
+        doctrine)
+          license_type="free-as-is free-as-is Apache2"
+          license_source="https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/doctrine/LICENSE.BSD https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/doctrine/LICENSE.esprima https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/doctrine/LICENSE.closure-compiler"
+          ;;
+
+        i)
+          license_type="MIT"
+          license_source="https://github.com/pksunkara/inflect/raw/master/LICENSE"
+          ;;
+
+        diff|formatio|samsam)
+          license_type="BSD-3-Clause"
+          license_source="https://github.com/arangodb/arangodb/blob/devel/js/node/$package_path"
+          ;;
+
+        tv4)
+          license_type="free-as-is"
+          license_source="https://github.com/arangodb/arangodb/blob/devel/js/node/$package_path"
+          ;;
+
+        rx-lite)
+          license_type="Apache2"
+          license_source="https://github.com/arangodb/arangodb/blob/devel/js/node/$package_path"
+          ;;
+
+        ms|progress|commander|jade)
+          license_type="MIT"
+          license_source="https://github.com/arangodb/arangodb/blob/devel/js/node/$package_path"
+          ;;
+
+        prelude-ls)
+          license_type="free-as-is"
+          license_source="https://github.com/arangodb/arangodb/blob/devel/js/node/$package_path"
+          ;;
+
+        *)
+          license_type=`echo $license_type | tr -d '"'`
+          license_source="https://github.com/arangodb/arangodb/blob/devel/js/node/$package_path"
+
+          if test "$license_type" == "Public Domain"; then
+              license_type="Public-Domain"
+          fi
+          ;;
+      esac
+
+      lt=($license_type)
+      ls=($license_source)
+      count=${#lt[@]}
+
+      if test $count -gt 0; then
+        LICENSE=""
+        SEP=""
+
+        for i in `seq 1 $count`; do
+          license_type="${lt[$i-1]}"
+          license_source="${ls[$i-1]}"
+
+          case "$license_type" in
+            MIT|MIT/X11)
+              LICENSE="$LICENSE$SEP* License: [MIT License]($license_source)"
+              ;;
+
+            free-as-is|Public-Domain)
+              LICENSE="$LICENSE$SEP* License: [free-as-is License]($license_source)"
+              ;;
+
+            Apache-2.0|APACHE-2.0|Apache2)
+              LICENSE="$LICENSE$SEP* License: [Apache 2 License]($license_source)"
+              ;;
+
+            Unlicense)
+              LICENSE="$LICENSE$SEP* License: [Unlicense]($license_source)"
+              ;;
+
+            ISC)
+              LICENSE="$LICENSE$SEP* License: [ISC]($license_source)"
+              ;;
+
+            WTFPL)
+              LICENSE="$LICENSE$SEP* License: [WTFPL]($license_source)"
+              ;;
+
+            BSD-2-Clause)
+              LICENSE="$LICENSE$SEP* License: [BSD-style 2-Clause License]($license_source)"
+              ;;
+
+            BSD-3-Clause)
+              LICENSE="$LICENSE$SEP* License: [BSD-style 3-Clause License]($license_source)"
+              ;;
+
+            *)
+              echo "UNKNOWN LICENSE TYPE: $module has $license_type"
+              ;;
+          esac
+
+          SEP="\n"
+        done
+      fi
+    fi
+  fi
+
+  if test "$NAME" != ""; then
+    echo "$NAME"
+    echo     
+    echo "$PROJECT_HOME"
+    echo -e "$LICENSE"
+  fi | tr "\n" "~" && echo
+done | sort | tr "~" "\n"

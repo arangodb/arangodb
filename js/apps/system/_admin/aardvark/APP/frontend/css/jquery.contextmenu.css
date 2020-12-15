@@ -1,0 +1,41 @@
+/* OSX Theme */
+/* ========= */
+.context-menu-theme-osx {
+  background-color:white;
+  opacity: .93;
+  filter: alpha(opacity=93);
+  zoom:1.0;
+  border:1px solid #b2b2b2;
+  padding: 3px 0px;
+  border-radius: 4px;
+}
+.context-menu-theme-osx .context-menu-item {
+  text-align:left;
+  cursor:pointer;
+  color:black;
+  font-family:Lucida Grande,Arial;
+  font-weight:700;
+  font-size:12px;
+  opacity: 1.0;
+  filter: alpha(opacity=100);
+  z-index:1;
+}
+.context-menu-theme-osx .context-menu-separator {
+  margin:5px 1px 4px 1px;
+  font-size:0px;
+  border-top:1px solid #e4e4e4;
+}
+.context-menu-theme-osx .context-menu-item:hover {
+  background-color:#1C44F2;
+  color:white;
+}
+.context-menu-theme-osx .context-menu-item .context-menu-item-inner {
+  padding:2px 10px 2px 22px;
+  background-color:none;
+  background-repeat:no-repeat;
+  background-position:4px center;
+  background-image:none;
+}
+.context-menu-theme-osx .context-menu-item-disabled {
+  color:#939393;
+}

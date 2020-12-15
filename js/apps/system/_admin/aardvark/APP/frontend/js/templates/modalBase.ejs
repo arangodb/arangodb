@@ -1,0 +1,66 @@
+  <div id="modal-dialog" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
+       aria-labelledby="myModalLabel" aria-hidden="true">
+   <% if (title !== null) { %>
+   <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader"><%=title%></a>
+   </div>
+   <%}%>
+
+    <% if (tabBar) { %>
+      <div class="modal-tabbar">
+        <ul id="infoTab" class="nav nav-tabs">
+          <% var counter = 0; %>
+          <% _.each(tabBar, function(value) { %>
+            <% if (counter === 0) { %>
+              <li class="active"><a href="#<%=value%>" data-toggle="tab"><%=value%></a></li>
+            <%} else {%>
+              <li><a href="#<%=value%>" data-toggle="tab"><%=value%></a></li>
+            <% } %>
+            <% counter++; %>
+          <% }); %>
+        </ul>
+      </div>
+    <%}%>
+
+    <div class="modal-body">
+
+      <% if (tabBar) { %>
+        <div class="tab-content">
+          <% var counter = 0; %>
+          <% _.each(tabBar, function(value) { %>
+            <% if (counter === 0) { %>
+              <div class="tab-pane tab-pane-modal active" id="<%=value%>">
+              </div>
+            <%} else {%>
+              <div class="tab-pane tab-pane-modal" id="<%=value%>">
+              </div>
+            <% } %>
+            <% counter++; %>
+          <% }); %>
+        </div>
+      <%}%>
+
+    </div>
+
+    <% if (!hideFooter) { %>
+    <div class="modal-footer">
+      <%
+      _.each(buttons, function(value, key){
+        var type = value.type,
+          title = value.title,
+          disabled = '';
+          if (value.disabled) {
+            disabled = 'disabled';
+          }
+        %>
+      <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
+      <%});%>
+    </div>
+    <% } %>
+    <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
+      <strong><%=confirm||'Really delete?'%></strong>
+      <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
+      <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
+    </div>
+  </div>

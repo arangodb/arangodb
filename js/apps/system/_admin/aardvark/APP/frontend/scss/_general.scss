@@ -1,0 +1,104 @@
+.display-none {
+  display: none;
+}
+
+.contentBar {
+  font-size: 12pt;
+  line-height: 30px;
+}
+
+.noContent {
+  background-color: $c-white;
+  padding: 50px;
+
+  p {
+    font-size: 12pt;
+    font-weight: 100;
+    text-align: center;
+
+    i {
+      margin-left: 10px;
+    }
+  }
+}
+
+.row {
+  margin-bottom: 20px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+}
+
+.innerContent {
+  background-color: $c-white;
+  border: 1px solid rgba(140, 138, 137, .25);
+  border-radius: 2px;
+  min-height: 200px;
+  padding-top: 13px;
+}
+
+.arangoFrame {
+  background-color: rgba(0, 0, 0, .5);
+  bottom: 0;
+  display: none;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 8888888888;
+
+  .outerDiv {
+    min-height: 100%;
+    padding: 20px 40px 40px;
+    z-index: 88888;
+  }
+
+  .innerDiv {
+    margin-top: 25px;
+    z-index: 99999;
+  }
+
+  .fa-times {
+    color: $c-white;
+    float: right;
+    font-size: 12pt;
+  }
+
+  .fa-times:hover {
+    color: $c-c2grey;
+    cursor: pointer;
+  }
+
+  .document-info-div,
+  .document-content-div {
+    left: 40px;
+    position: absolute;
+    right: 40px;
+  }
+
+  .document-content-div {
+    bottom: 80px;
+    top: 130px;
+  }
+
+  .document-editor {
+    height: 100%;
+  }
+
+  .bottomButtonBar {
+    left: -1px;
+    position: absolute;
+    right: -1px;
+  }
+}
+
+.defaultCursor {
+  cursor: default !important;
+}
+
+//still in use???
+.container {
+  margin-left: 20px;
+  margin-right: 20px;
+  width: auto !important;
+}

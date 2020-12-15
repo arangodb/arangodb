@@ -1,0 +1,75 @@
+<%
+  function createSuite(suite) {
+    %>
+    <dt class="tests-result-spec-suite-title">
+      <%= suite.title %>
+    </dt>
+    <dd>
+      <% if (suite.tests.length) { %>
+        <ul class="tests-result-spec-tests">
+          <% _.each(suite.tests, createTest) %>
+        </ul>
+      <% } %>
+      <% if (suite.suites.length) { %>
+        <dl class="tests-result-spec-suites">
+          <% _.each(suite.suites, createSuite) %>
+        </dl>
+      <% } %>
+    </dd>
+    <%
+  }
+  function createTest(test) {
+    var slow = test.duration > 75;
+    %>
+    <li class="tests-result-spec-test <%= test.result %><%= slow ? ' slow': '' %>">
+      <span class="tests-result-spec-test-title">
+        <% switch (test.result) {
+          case 'pass': %>
+          <span class="fa fa-check"></span>
+          <% break;
+          case 'fail': %>
+          <span class="fa fa-times"></span>
+          <% break;
+          case 'pending': %>
+          <span class="fa fa-circle"></span>
+        <% } %>
+        <%= test.title %>
+        <%= slow ? '(' + test.duration + 'ms)' : '' %>
+      </span>
+      <% if (!_.isEmpty(test.err)) { %>
+        <pre class="stack"><%= test.err.stack %></pre>
+      <% } %>
+    </li>
+  <%
+  } %>
+  <div class="tests-result">
+    <% if (info.stack) { %>
+      <div class="tests-result-stats fail">
+        Test runner failed with an error.
+      </div>
+      <pre class="stack"><%= info.stack %></pre>
+    <% } else { %>
+      <div class="tests-result-stats">
+        Completed <b><%= info.stats.tests %></b> tests in <b><%= info.stats.duration %>ms</b>
+        (<span class="pass" title="passes"><%= info.stats.passes
+        %></span>/<span class="fail" title="failures"><%= info.stats.failures
+        %></span>/<span class="pending" title="pending"><%= info.stats.pending
+        %></span>)
+      </div>
+      <div class="tests-result-spec">
+        <% if (info.tests.length) { %>
+          <ul class="tests-result-spec-tests">
+            <% _.each(info.tests, createTest) %>
+          </ul>
+        <% } %>
+        <% if (info.suites.length) { %>
+          <dl class="tests-result-spec-suites">
+            <% _.each(info.suites, createSuite) %>
+          </dl>
+        <% } %>
+        <% if (!info.tests.length && !info.suites.length) { %>
+          <div class="tests-result-spec-empty">No tests found.</div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>

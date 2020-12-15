@@ -1,0 +1,52 @@
+
+  <div class="arangoToolbar arangoToolbarTop arangoFoxxToolbarTop">
+    <div class="pull-left">
+    </div>
+
+    <div class="pull-right">
+    </div>
+  </div>
+
+  <div class="contentDiv createModalDialog">
+    <div id="gitHubFoxx" class="foxxesInner modal-body">
+        <div>
+          <p>
+            Download a Foxx service from a public <a href="https://www.github.com">github.com</a> repository. In order to define a version please add a <a href="https://git-scm.com/book/en/v2/Git-Basics-Tagging">git tag</a> to your repository using the following format: "v1.2.3". To connect to github your username and the name of the repository are sufficient.
+          </p>
+          <table>
+            <tr class="tableRow">
+              <th class="collectionInfoTh">
+                Repository*:
+              </th>
+              <th class="collectionInfoTh">
+                <input type="text" id="repository" value="" placeholder="username/repository">
+              </th>
+            </tr>
+            <tr class="tableRow">
+              <th class="collectionInfoTh">
+                Version*:
+              </th>
+              <th class="collectionInfoTh">
+                <input type="text" id="tag" value="" placeholder="master">
+              </th>
+            </tr>
+            <tr class="tableRow" style="display: none">
+              <th class="collectionInfoTh">
+                Enable Legacy Mode:
+              </th>
+              <th class="collectionInfoTh">
+                <input type="checkbox" id="github-app-islegacy" value="true">
+              </th>
+            <th>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
+              </span>
+            </th>
+            </tr>
+          </table>
+        </div>
+    </div>
+    <div class="modal-footer">
+      <button id="installGitHubService" class="button-success" style="float:right" disabled>Install</button>
+    </div>
+  </div>
+

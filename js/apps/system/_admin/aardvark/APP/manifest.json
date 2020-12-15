@@ -1,0 +1,49 @@
+{
+  "name": "aardvark",
+  "description": "ArangoDB Admin Web Interface",
+  "author": "ArangoDB GmbH",
+  "version": "4.0.0",
+  "license": "Apache-2.0",
+  "engines": {
+    "arangodb": "^3.0.0-0 || ^3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arangodb/arangodb.git"
+  },
+  "contributors": [
+    {
+      "name": "Heiko Kernbach",
+      "email": "heiko@arangodb.com"
+    },
+    {
+      "name": "Michael Hackstein",
+      "email": "michael@arangodb.com"
+    }
+  ],
+  "main": "index.js",
+  "defaultDocument": "index.html",
+  "configuration": {},
+  "files": {
+    "/static": "react/build/static",
+    "/img": "frontend/img",
+    "/static/css/static/media": "react/build/static/media",
+    "/js/arango/aqltemplates.json": "react/build/assets/aqltemplates.json",
+    "/favicon.ico": {
+      "path": "react/build/favicon.ico",
+      "gzip": false
+    },
+    "/worker-json.js": {
+      "path": "react/build/assets/src/worker-json.js",
+      "gzip": true
+    },
+    "/ace.js": {
+      "path": "react/build/assets/src/ace.min.js",
+      "gzip": true
+    },
+    "/mode-aql.js": {
+      "path": "react/build/assets/src/mode-aql.js",
+      "gzip": false
+    }
+  }
+}

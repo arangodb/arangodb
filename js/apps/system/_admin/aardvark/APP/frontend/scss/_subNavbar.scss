@@ -1,0 +1,290 @@
+.subViewNavbar {
+
+  border-bottom: 2px solid $c-bluegrey-nontransp;
+  height: 40px;
+  list-style: none;
+  margin: {
+    bottom: 15px;
+    left: -15px;
+    right: 0;
+    top: -57px;
+  }
+  width: 100%;
+  z-index: 1000;
+
+  li {
+    cursor: pointer;
+    float: left;
+    font-size: 10pt;
+    line-height: 30px;
+    margin-bottom: 5px;
+    margin-top: 5px;
+    padding: 0 12px;
+
+    &.active {
+      border-bottom: 2px solid $c-active-green;
+      cursor: default;
+      padding-bottom: 5px;
+
+      a {
+        color: $c-black;
+      }
+    }
+
+
+    &.disabled {
+      cursor: not-allowed;
+
+      &:hover {
+        a {
+          color: rgba(51, 51, 51, .6);
+        }
+      }
+    }
+
+    &:hover {
+      a {
+        color: rgba(51, 51, 51, 1);
+        -moz-transition: all .2s ease-in;
+        -o-transition: all .2s ease-in;
+        -webkit-transition: all .2s ease-in;
+        transition: all .2s ease-in;
+      }
+    }
+
+    a {
+      color: rgba(51, 51, 51, .6);
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in;
+    }
+
+  }
+}
+
+.subnavmenu {
+
+  background-color: $c-white;
+  height: auto;
+
+  .bar-img {
+    background: none;
+    border-radius: 25px;
+    margin-right: 5px;
+    width: 25px;
+  }
+
+  .bar-img:hover {
+    cursor: pointer;
+  }
+
+  ul {
+
+    list-style: none;
+    margin: 0;
+
+    &.top {
+      background-color: $c-bluegrey-dark;
+      height: 60px;
+      width: 100%;
+
+      li {
+        padding: 0 10px 0 0;
+      }
+    }
+
+    &.bottom {
+      border-bottom: 2px solid $c-bluegrey-nontransp;
+      height: 40px;
+      width: 100%;
+      z-index: 1000;
+
+      li {
+        float: left;
+        padding: 0 12px;
+
+        //&:first-child {
+        //  margin-left: 20px;
+        //}
+      }
+    }
+
+    li {
+      cursor: pointer;
+      font-size: 10pt;
+      line-height: 30px;
+      margin-bottom: 5px;
+      margin-top: 5px;
+
+      &.active {
+        border-bottom: 2px solid $c-active-green;
+        cursor: default;
+        padding-bottom: 5px;
+
+        a {
+          color: $c-black;
+        }
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+
+        &:hover {
+          a {
+            color: rgba(51, 51, 51, .6);
+          }
+        }
+      }
+
+      &:hover {
+        a {
+          color: rgba(51, 51, 51, 1);
+          -moz-transition: all .2s ease-in;
+          -o-transition: all .2s ease-in;
+          -webkit-transition: all .2s ease-in;
+          transition: all .2s ease-in;
+        }
+      }
+
+      a {
+        color: rgba(51, 51, 51, .6);
+        -moz-transition: all .2s ease-in;
+        -o-transition: all .2s ease-in;
+        -webkit-transition: all .2s ease-in;
+        transition: all .2s ease-in;
+
+      }
+
+    }
+  }
+
+  .infoEntry {
+
+    line-height: 45px;
+
+    a {
+      margin-right: 5px;
+
+      &.default-icon {
+        i {
+          @extend %animated;
+          color: $c-white;
+        }
+
+        i:hover {
+          color: $c-positive;
+          cursor: pointer;
+        }
+      }
+    }
+
+    &:hover {
+      cursor: default;
+
+      .info {
+        @extend %noselect;
+        color: $c-white;
+      }
+    }
+
+    &.positive {
+      .health-state,
+      .state,
+      .health-icon {
+        color: $c-positive;
+      }
+    }
+
+    &.negative {
+      .health-state,
+      .health-icon {
+        color: $c-negative;
+      }
+    }
+  }
+
+  .info,
+  .icon,
+  .state {
+    color: rgba(255, 255, 255, .95);
+    display: block;
+    float: left;
+    font-weight: 300;
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    span {
+      color: $c-positive;
+    }
+
+    span:hover {
+      cursor: pointer;
+    }
+  }
+
+  #dbStatus {
+    padding-right: 20px;
+  }
+}
+
+.subBarDropdown {
+  background: $c-white;
+  border: 1px solid $c-bluegrey-border;
+  display: none;
+  margin-top: 55px !important;
+  min-width: 200px;
+  position: absolute;
+  z-index: 9999;
+
+  li {
+    padding: 0;
+  }
+
+  .dropdown-header {
+    background-color: $c-active-green;
+    cursor: default;
+    margin: 0;
+    margin-left: -1px;
+    margin-right: -1px;
+    padding: 0 !important;
+
+    img {
+      border: 3px solid rgb(109, 186, 140);
+      border-radius: 75px;
+      display: block;
+      margin: 0 auto;
+      margin-top: 10px;
+      width: 75px;
+    }
+
+    p,
+    small {
+      color: $c-white;
+      text-align: center;
+    }
+
+    small {
+      display: block;
+      margin-top: -10px;
+    }
+  }
+
+  .dropdown-footer {
+    padding: {
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 5px !important;
+      top: 0 !important;
+    };
+
+    button {
+      margin-bottom: 5px;
+      margin-top: -4px;
+    }
+  }
+}
+

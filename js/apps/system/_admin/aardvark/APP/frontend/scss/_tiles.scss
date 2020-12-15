@@ -1,0 +1,527 @@
+.tileList {
+  @extend %clear-float;
+  //margin-left: -6px;
+  //margin-right: -6px;
+  left: 10px;
+  padding-top: 5px;
+  position: absolute;
+  right: 10px;
+
+  legend {
+    padding-left: 5px;
+  }
+
+  .tile:first-child {
+    a {
+      opacity: .8;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+$iconsize: 50px;
+
+%tile {
+  @extend %pull-left;
+  @include box-shadow(none);
+
+  //background-color: $c-white;
+  //border: 1px solid $c-lightgreen-2-bg;
+  border-radius: 2px;
+  font-size: 14px;
+  list-style: none;
+  margin: {
+    bottom: 13px;
+    //left: 6px;
+    //right: 6px;
+  }
+  position: relative;
+  text-align: center;
+
+  z-index: 1;
+
+  progress[value] {
+    color: $c-progress-bar;
+  }
+
+  progress::-webkit-progress-bar-value {
+    background: $c-progress-bar;
+  }
+
+  progress::-webkit-progress-value {
+    background: $c-progress-bar;
+  }
+
+  progress::-moz-progress-bar {
+    background: $c-progress-bar;
+  }
+
+  progress {
+    -webkit-appearance: none;
+    border-radius: 0;
+    height: 2px;
+    margin-top: 16px;
+    position: relative;
+    width: 100%;
+    z-index: 10;
+  }
+
+  &:hover {
+    cursor: pointer;
+  }
+
+  &.locked {
+    cursor: not-allowed;
+
+    .iconSet,
+    .borderBox,
+    .collection-type-icon,
+    .collectionName {
+      opacity: .5;
+    }
+
+    .iconSet {
+      span:hover {
+        background-color: $c-white !important;
+        color: $c-black;
+        cursor: not-allowed !important;
+      }
+    }
+
+    .iconSet:hover {
+      cursor: not-allowed !important;
+    }
+  }
+
+  .warning-icons {
+    background-color: $c-negative;
+    border-radius: 2px;
+    color: $c-white;
+    font-size: 11px;
+    height: 17px;
+    left: 0;
+    line-height: 13px;
+    margin-left: 5px;
+    margin-top: 5px;
+    padding-left: 9px;
+    padding-right: 9px;
+    position: absolute;
+    top: 0;
+
+    .fa {
+      font-size: 11pt;
+      margin-left: 1px;
+    }
+
+  }
+
+  .collection-type-icon {
+    color: $c-darker-grey;
+    font-size: 30pt;
+    margin-left: -18px;
+    position: absolute;
+    top: 15px;
+  }
+
+  .collection-type-icon:hover {
+    cursor: pointer;
+  }
+
+  img {
+    position: relative;
+
+    &.icon {
+      height: $iconsize;
+      margin-top: -110px;
+      width: $iconsize;
+    }
+
+    &:hover {
+      cursor: pointer;
+    }
+  }
+
+  a {
+
+    span {
+
+      &.add-Icon {
+        @extend %pull-left;
+        font-size: 20px;
+        margin-left: 22px;
+        margin-right: 10px;
+        position: relative;
+        top: 0;
+      }
+
+      &.icon {
+        @extend %clickable;
+        font-size: $iconsize;
+      }
+    }
+
+    svg {
+      @extend %clickable;
+
+      &.icon {
+        height: $iconsize;
+        width: $iconsize;
+      }
+    }
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    opacity: .4;
+
+    &:hover {
+      cursor: not-allowed;
+    }
+
+    a {
+      &:hover {
+        cursor: not-allowed;
+        opacity: .8 !important;
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .tile-icon-svg {
+    cursor: pointer;
+    fill: $c-icon-grey;
+    height: $iconsize;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: -63px;
+    position: relative;
+    width: $iconsize;
+  }
+
+  .tile-icon {
+    color: $c-icon-grey;
+    font-size: $iconsize;
+    line-height: 1.2;
+    margin-left: -50px;
+    top: 10px;
+  }
+
+  .icon_arangodb_edge5-2,
+  .tile-icon {
+    position: absolute;
+    top: 15px;
+  }
+
+  .icon_arangodb_edge5-2 {
+    display: inline-block;
+    margin-left: 5px;
+    position: absolute;
+    top: 0;
+    -moz-transform: rotate(80deg);
+    -o-transform: rotate(80deg);
+    -webkit-transform: rotate(80deg);
+  }
+
+  h5 {
+    background: $c-bluegrey-light;
+    color: $c-white;
+    font-size: 12px;
+    margin: 0;
+    margin-left: 5px;
+    margin-right: 5px;
+    overflow: hidden !important;
+    padding: 4px 55px 4px 8px;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+
+    &.inProgress {
+      color: $c-progress-bar;
+    }
+  }
+
+  .tileSelects {
+    margin-left: 40px;
+    position: relative;
+    z-index: 9999;
+
+    select {
+      float: right;
+      height: 20px;
+      margin-right: 5px;
+      margin-top: 16px;
+      width: 70px;
+    }
+  }
+
+  .fullBorderBox {
+    background-color: $c-white;
+    border: 1px solid $c-tile-border;
+    border-radius: 2px;
+    box-sizing: border-box;
+    height: 100%;
+    margin-left: 5px;
+    margin-right: 5px;
+    position: relative;
+    width: auto;
+
+    .add {
+      color: $c-bluegrey-dark;
+
+      span {
+        color: $c-positive;
+      }
+    }
+  }
+
+  .paddingBox {
+    box-sizing: border-box;
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .borderBox {
+    background-color: $c-white;
+    border: 1px solid $c-bluegrey-border;
+    border-bottom: 0;
+    border-radius: 2px;
+    box-sizing: border-box;
+    height: 75px;
+    position: relative;
+    width: 100%;
+  }
+
+  .iconSet {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+
+    span {
+      @extend %clickable;
+      @extend %pull-right;
+      border-radius: 2px;
+      color: $c-darker-grey;
+      font-size: 18px;
+      padding-bottom: 2px;
+      padding-left: 3px;
+      padding-right: 3px;
+      padding-top: 2px;
+      z-index: 2;
+
+      &:hover {
+        background-color: $c-positive;
+        color: $c-white;
+      }
+
+      &.disabled {
+        cursor: default;
+        opacity: .2;
+      }
+
+      &.disabled:hover {
+        background-color: $c-white;
+        color: $c-black;
+        cursor: default;
+        opacity: .2;
+      }
+    }
+  }
+
+  .badge-success {
+    font-weight: 300;
+  }
+
+  .unloaded div {
+    border-bottom: 16px solid $c-unloaded;
+  }
+
+  .deleted div {
+    border-bottom: 16px solid $c-state-critical;
+  }
+
+  .tileBadge {
+    bottom: 2px;
+    font-size: 11px;
+    font-weight: 300;
+    position: absolute;
+    right: 0;
+    z-index: 1;
+
+    button {
+      margin: {
+        left: 0;
+        right: 5px;
+      }
+    }
+
+    span {
+      display: inline-block;
+      line-height: 15px;
+
+      .corneredBadge {
+        border: {
+          bottom: {
+            style: solid;
+            width: 17px;
+          }
+          left: 5px solid $c-transp;
+        }
+        border-radius: 2px;
+        color: $c-white;
+        height: 0;
+        line-height: 17px;
+        margin-bottom: 4px;
+        margin-right: 10px;
+        padding-left: 1px;
+        padding-right: 6px;
+
+        &.loading {
+          border-bottom-color: $c-unloaded;
+        }
+
+        &.loaded {
+          border-bottom-color: $c-positive;
+        }
+
+        &.corrupted {
+          border-bottom-color: $c-negative;
+        }
+
+        &.inProgress {
+          border-bottom-color: $c-progress-bar;
+        }
+
+        &.unloaded {
+          border-bottom-color: $c-unloaded;
+        }
+
+        &.development {
+          border-bottom-color: $c-unloaded;
+        }
+
+        &.production {
+          border-bottom-color: $c-positive;
+        }
+      }
+    }
+  }
+}
+
+div {
+
+  .tile {
+    @extend %tile;
+    height: 100px;
+    //width: $tile-width - 14px;
+  }
+
+  .tile-graph {
+
+    h5 {
+      margin-left: 5px;
+      margin-right: 5px;
+    }
+
+    .tile-icon:hover {
+      cursor: pointer;
+    }
+  }
+
+  .bigtile {
+    @extend %clickable;
+    @extend %tile;
+    height: 309px;
+    width: 2 * ($tile-width - 14px);
+
+    .shardContainer {
+      font-size: 30px;
+
+      span {
+        padding: 2px;
+      }
+    }
+  }
+}
+
+.collectionName {
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  bottom: 0;
+  font-weight: 300;
+  left: 0;
+  position: absolute;
+  right: 0;
+  text-align: left;
+}
+
+#userManagementThumbnailsIn {
+  .tile {
+    .paddingBox {
+      img {
+        border-radius: 58px;
+        margin-top: -99px;
+        padding: 0;
+      }
+    }
+  }
+}
+
+.foxxTile {
+  .paddingBox {
+    .foxxActions {
+      float: right;
+      margin-right: 5px;
+      margin-top: 67px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .foxxDesc {
+      margin-left: 70px;
+      margin-top: 7px;
+      position: absolute;
+      z-index: 10;
+
+      p {
+        color: $c-dark-grey;
+        font-size: 12px;
+        font-weight: 100;
+        margin: 0;
+        margin-bottom: -2px;
+        text-align: left;
+
+        i {
+          margin-right: 5px;
+        }
+      }
+
+      p:first-child {
+        span {
+          color: $c-black;
+          font-size: 14px;
+          font-weight: 500;
+        }
+      }
+    }
+
+    .borderBox {
+      border-bottom: 1px solid rgba(64, 74, 83, .2);
+      height: 100px;
+    }
+
+    img.icon {
+      float: left;
+      height: 50px;
+      image-rendering: -webkit-optimize-contrast;
+      margin-left: 10px;
+      margin-top: -90px;
+      padding: 0;
+      width: 50px;
+    }
+  }
+}

@@ -1,0 +1,25 @@
+// Horizontal offset, vertical offset, blur, spread, color
+@mixin box-shadow($params...) {
+  -webkit-box-shadow: $params;
+  -moz-box-shadow: $params;
+  box-shadow: $params;
+}
+
+@mixin border-radius($r) {
+  -moz-border-radius: $r;
+  -webkit-border-radius: $r;
+  border-radius: $r;
+}
+
+@mixin border-triangle($width, $color) {
+  position: absolute;
+  border: {
+    bottom-color: $color;
+    color: $c-transp;
+    style: solid;
+    top: none;
+    width: $width;
+  }
+  display: inline-block;
+  content: '';
+}

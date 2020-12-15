@@ -1,0 +1,156 @@
+.loginFixedWindow {
+  background: $c-test-green;
+  height: 100%;
+  left: 0;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 9999;
+
+  #databases {
+    height: 140px;
+
+    .no-database {
+      background: $c-white;
+      border-radius: 2px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    #logout {
+      margin-top: 20px;
+    }
+  }
+
+  .resizecontainer {
+    position: relative;
+    top: 0;
+
+    img {
+      height: 33px;
+      margin-left: -6px;
+      margin-top: 9px;
+    }
+  }
+}
+
+.login-window {
+  //background-color: $c-white;
+  background-color: rgba(255, 255, 255, .75);
+  border: 1px solid $c-content-border;
+  border-radius: 3px;
+  height: auto;
+  margin: 0 auto;
+  padding: {
+    bottom: 50px;
+    left: 20px;
+    right: 20px;
+    top: 20px;
+  };
+  position: relative;
+  top: 25px;
+  width: 350px;
+
+  .databaseInput {
+    box-sizing: border-box;
+    font-size: 16px;
+    height: 40px;
+    line-height: 40px;
+    margin-bottom: 30px;
+    padding-left: 10px;
+    width: 100%;
+  }
+
+  select {
+    @extend %flat-select;
+    margin-bottom: 30px;
+    padding-left: 35px;
+    -moz-appearance: none;
+  }
+
+  .login-logo-round {
+    margin-bottom: 25px;
+    margin-top: 10px;
+
+    object {
+      margin-left: 15%;
+      width: 70%;
+    }
+
+    img {
+      display: block;
+      margin: 0 auto;
+      width: 250px;
+    }
+  }
+
+  .checking-password {
+    box-sizing: border-box;
+    color: rgba(0, 0, 0, .5);
+    margin-left: -21px;
+    margin-top: -25px;
+    position: absolute;
+    text-align: center;
+    width: 100%;
+  }
+
+  form {
+    .fa {
+      color: rgba(0, 0, 0, .2);
+      float: left;
+      font-size: 14pt;
+      left: 30px;
+      margin-top: 11px;
+      position: absolute;
+    }
+  }
+
+  .no-access,
+  .wrong-credentials {
+    color: $c-negative;
+    margin-left: -20px;
+    margin-top: -24px;
+    position: absolute;
+    text-align: center;
+    width: 100%;
+  }
+
+  .login-space {
+    height: 50px;
+  }
+
+  .login-input {
+    @extend %inputs;
+    background: $c-login-grey !important;
+    background-color: $c-login-grey !important;
+    border: 2px $c-login-grey !important;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    box-sizing: border-box;
+    font-size: 14px;
+    height: 40px;
+    margin: 0 0 15px;
+    outline: 0;
+    padding: 10px;
+    padding-left: 35px;
+    width: 100%;
+  }
+
+  .databaseInput {
+    padding-left: 10px !important;
+  }
+
+  .form-error {
+    border: 2px solid $c-negative !important;
+  }
+
+  button {
+    @extend %animated;
+    height: 40px;
+    width: 100%;
+  }
+
+}
+

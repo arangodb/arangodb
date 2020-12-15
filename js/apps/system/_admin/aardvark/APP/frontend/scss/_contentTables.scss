@@ -1,0 +1,97 @@
+.contentButtons {
+  clear: both;
+  margin-bottom: 10px;
+  width: 100%;
+
+  #createDatabase,
+  #createUser {
+    margin-left: 0;
+  }
+}
+
+.contentTables {
+  margin-bottom: 10px;
+  width: 100%;
+
+  thead {
+    text-align: left;
+
+    tr {
+      background-color: $c-white;
+      border-bottom: 1px solid $c-c2grey;
+    }
+  }
+
+  tbody {
+
+    tr {
+
+      &:nth-child(odd) {
+        background-color: $c-odd;
+      };
+
+      &:nth-child(even) {
+        background-color: $c-even;
+      };
+
+    }
+  }
+
+  tr {
+
+    &.contentRowActive {
+      background-color: $c-content-row-active !important;
+      font-weight: 400;
+
+      a {
+        color: $c-black !important;
+      }
+
+      span {
+        display: none;
+      }
+    }
+
+    &.contentRowInactive {
+      a {
+        @extend %clickable;
+        color: $c-black !important;
+      }
+    }
+
+  }
+
+  .dbThFirst {
+    width: 90%;
+  }
+
+  .dbThSecond {
+    width: 10%;
+  }
+
+  td {
+    padding: 12px 18px;
+
+    span {
+      @extend %icon-negative;
+      float: right;
+      font-size: 22px;
+    }
+
+    &.dbThSecond {
+      span {
+        @extend %icon-positive;
+      }
+    }
+  }
+
+  .collectionThSec {
+    margin-right: 0;
+    width: 80%;
+  }
+
+  .collectionTh {
+    margin-right: 0;
+    width: 5%;
+  }
+}

@@ -1,0 +1,79 @@
+.graphLabel {
+  @extend %font-family;
+  font-size: 11pt;
+  font-weight: 600;
+  margin-top: -25px;
+  opacity: .5;
+  padding-bottom: 20px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.cluster-graphs {
+
+  > div {
+
+    .graphWrapper {
+      border: 1px solid $c-content-border;
+      margin-left: -1px;
+      margin-top: -1px;
+      padding: {
+        bottom: 10px;
+        left: 20px;
+        right: 20px;
+        top: 20px;
+      }
+
+      .nv-controlsWrap {
+        display: none;
+      }
+
+      .nv-legendWrap {
+        margin-bottom: 10px;
+      }
+
+      svg {
+        height: 250px;
+        margin-left: -17px;
+      }
+    }
+
+  }
+}
+
+.cluster-values {
+
+  margin-top: -13px;
+
+  > div {
+    .valueWrapper {
+      border: 1px solid $c-content-border;
+      margin-left: -1px;
+      margin-top: -1px;
+
+      .value {
+        color: $c-black;
+        font-size: 24pt;
+        line-height: 150px;
+        text-align: center;
+
+        &.positive {
+          color: $c-positive;
+        }
+
+        &.warning {
+          color: $c-warning;
+        }
+
+        &.negative {
+          color: $c-negative;
+        }
+
+      }
+
+      div:first-child {
+        height: 150px;
+      }
+    }
+  }
+}

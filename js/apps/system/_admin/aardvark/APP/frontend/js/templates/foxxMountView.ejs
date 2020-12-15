@@ -1,0 +1,41 @@
+<div id="install-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Install Service</a>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th class="collectionTh">Name:</th>
+        <th class="collectionTh"><strong><%=attributes.name %></strong></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">&nbsp;</th>
+        <th class="collectionTh">&nbsp;</th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Mount:</th>
+        <th class="collectionTh">
+          <input type="text" id="mount-point" name="mountpoint" value="/<%=attributes.name%>" placeholder="mount-path" />
+        </th>
+        <th><a class="modalTooltips" title="The path where the app can be reached."><i class="arangoicon icon_arangodb_info"></i></a></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Version:</th>
+        <th class="collectionTh">
+          <%=attributes.version %>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">System:</th>
+        <th class="collectionTh">
+          <%=attributes.isSystem ? "Yes" : "No" %>
+        <th>
+      </tr>
+    </table>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button class="button-success pull-right installFoxx">Install</button>    
+    <button id="cancel" class="button-danger pull-right">Cancel</button>
+  </div>
+</div>

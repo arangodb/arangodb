@@ -1,0 +1,135 @@
+.log-content {
+  word-break: break-all;
+  word-wrap: break-word;
+}
+
+.tab-content {
+  min-height: 390px;
+}
+
+.log-table-id,
+.info-table-id,
+.debug-table-id,
+.crit-table-id,
+.warn-table-id {
+  border-spacing: 0 0;
+  font-size: 15px !important;
+  margin-top: -5px !important;
+
+  thead {
+    background-color: $c-logs-table-id-thead-bg;
+    border-top: 6px solid $c-tab-border !important;
+    text-align: center;
+
+    tr th {
+      background-color: $c-white !important;
+      border-bottom: 1px solid $c-c2grey;
+      border-top: 2px solid $c-tab-border;
+    }
+  }
+
+  .firstcol {
+    cursor: default !important;
+    max-width: 80px !important;
+    width: 80px !important;
+  }
+
+  tbody .firstcol {
+    background-color: transparent !important;
+  }
+
+  tbody tr td {
+    padding-bottom: 8px !important;
+    padding-top: 8px !important;
+  }
+}
+
+.thirdcol {
+  cursor: default !important;
+  max-width: 500px !important;
+}
+
+.seccol,
+.dataTables_empty {
+  cursor: default !important;
+  margin-bottom: 5px;
+  width: 100px !important;
+}
+
+.dataTables_info {
+  display: none;
+}
+
+//new log view - do not delete
+#arangoLogTable {
+  border-top: 0;
+
+  tbody {
+
+    tr {
+      height: 40px;
+    }
+
+    td:nth-child(1) {
+      text-align: center;
+      width: 70px;
+    }
+
+    td:nth-child(2) {
+      text-align: center;
+      width: 150px;
+    }
+
+    td:nth-child(3) {
+      width: auto;
+    }
+  }
+}
+
+.log-content-id {
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+
+  .dataTable {
+    border-collapse: separate;
+    border-spacing: 0 5px;
+    table-layout: fixed !important;
+  }
+
+  .arango-tab {
+    border-bottom: 0 !important;
+  }
+
+  .tab-content {
+    margin-top: 1px !important;
+  }
+
+  .arango-tabbar {
+    left: 0;
+    margin-top: -51px;
+    position: absolute;
+
+    button {
+      background-color: $c-white;
+      border: 0;
+      color: $c-black;
+      float: left;
+      font-size: 10.5pt;
+      min-width: 60px;
+      opacity: .64;
+      outline: none;
+      padding-left: 0;
+      padding-right: 0;
+      text-align: center;
+      width: auto;
+
+      &.arango-active-tab {
+        border-bottom: 2px solid $c-active-green;
+        font-weight: 400;
+        height: 35px;
+        opacity: 1;
+        padding-bottom: 9px;
+      }
+    }
+  }
+}

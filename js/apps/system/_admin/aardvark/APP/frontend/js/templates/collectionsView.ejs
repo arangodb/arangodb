@@ -1,0 +1,114 @@
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
+      <i id="searchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+          <a id="collectionsToggle" class="headerButton">
+            <span class="icon_arangodb_settings2" title="Settings"></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+
+  <div id="collectionsDropdown2" class="headerDropdown">
+
+    <div id="collectionsDropdown" class="dropdownInner">
+
+      <ul>
+        <li class="nav-header">Type</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox checkSystemCollections" type="checkbox">
+            <i class="fa"></i>
+            System
+          </label>
+        </a></li>
+
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkDocument">
+            <i class="fa"></i>
+            Document
+          </label>
+        </a></li>
+
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkEdge">
+            <i class="fa"></i>
+            Edge
+          </label>
+        </a></li>
+
+        </li>
+      </ul>
+
+      <ul>
+        <li class="nav-header">Status</li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkLoaded">
+            <i class="fa"></i>
+            Loaded
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkUnloaded">
+            <i class="fa"></i>
+            Unloaded
+          </label>
+        </a></li>
+
+      </ul>
+      <ul>
+        <li class="nav-header">Sorting</li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortName">
+            <i class="fa css-round-label"></i>
+            Sort by name
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortType">
+            <i class="fa css-round-label"></i>
+            Sort by type
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortOrder">
+            <i class="fa"></i>
+            Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+      <div id="collectionsThumbnailsIn" class="tileList pure-g">
+        <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
+          <div class="fullBorderBox">
+            <a id="createCollection" class="add"><span id="newCollection" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
+</span> Add Collection</a>
+          </div>
+        </div>
+      </div>
+  </div>
+

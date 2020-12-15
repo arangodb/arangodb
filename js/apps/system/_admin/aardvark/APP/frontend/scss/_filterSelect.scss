@@ -1,0 +1,95 @@
+#filterSelectDiv {
+  height: 100%;
+  position: fixed;
+  width: 100%;
+  z-index: 1000;
+}
+
+.filterSelect {
+  float: right;
+
+  i.fa {
+    margin-left: 5px;
+    margin-right: 0;
+  }
+}
+
+.filterSelectBox {
+  background: $c-white;
+  border: 1px solid rgba(27, 31, 35, .15);
+  border-radius: 3px;
+  height: 400px;
+  position: absolute;
+  width: 300px;
+
+  .filterLabel {
+    background: rgba(246, 248, 250, 1);
+    border-bottom: 1px solid rgba(225, 228, 232, 1);
+    font-weight: 500;
+
+    span {
+      float: right;
+      font-size: 12pt;
+      opacity: .6;
+
+      &:hover {
+        cursor: pointer;
+        opacity: 1;
+      }
+    }
+  }
+
+  .filterInput,
+  .filterLabel {
+    padding: 5px;
+  }
+
+  .filterOptions {
+    height: 328px;
+    overflow-y: scroll;
+
+    div {
+      cursor: pointer;
+      line-height: 9px;
+      padding-bottom: 10px;
+      padding-left: 5px;
+      padding-right: 5px;
+      padding-top: 10px;
+
+      &:first-child {
+        padding-top: 15px;
+      }
+
+      strong {
+        margin-left: 21px;
+      }
+
+      .color,
+      .name {
+        margin-left: 5px;
+      }
+
+      .color {
+        border: 1px solid rgba(27, 31, 35, .15);
+        border-radius: 2px;
+        display: inline-block;
+        height: 10px;
+        width: 10px;
+      }
+    }
+
+    div:hover {
+      background: rgba(246, 248, 250, 1);
+    }
+  }
+
+  .filterInput {
+    background: rgba(246, 248, 250, 1);
+    border-bottom: 1px solid rgba(225, 228, 232, 1);
+
+    input {
+      margin-bottom: 0;
+      width: 275px;
+    }
+  }
+}

@@ -1,0 +1,111 @@
+<!-- swagger-ui 3.25.1 -->
+<!-- HTML for static distribution bundle build -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="./swagger-ui.css" >
+    <link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16" />
+    <style>
+      html
+      {
+        box-sizing: border-box;
+        overflow: -moz-scrollbars-vertical;
+        overflow-y: scroll;
+      }
+
+      *,
+      *:before,
+      *:after
+      {
+        box-sizing: inherit;
+      }
+
+      /* #region ArangoDB-specific changes */
+      body {
+        margin: 0;
+        background: #fff;
+        font-family: 'Open Sans', sans-serif;
+      }
+
+      .swagger-ui .scheme-container {
+        display: none;
+      }
+      .swagger-ui .info {
+        margin: 15px 0;
+      }
+      .swagger-ui a.nostyle span {
+        font-family: 'Open Sans', sans-serif;
+        font-weight: 400;
+      }
+      .swagger-ui code {
+        font-weight: 100 !important;
+      }
+
+      /* This fixes what seems to be a bug in the swagger-ui stylesheet
+       * causing syntax-highlighted code to have random white-on-gray text.
+       */
+      .swagger-ui .opblock-body pre span{
+        color: #000 !important;
+      }
+
+      /* The topbar lets the user pick arbitrary URLs.
+       * We don't need this feature in ArangoDB.
+       */
+      .topbar {
+        display: none;
+      }
+      /* #endregion */
+    </style>
+  </head>
+
+  <body>
+    <div id="swagger-ui"></div>
+
+    <script src="./swagger-ui-bundle.js"> </script>
+    <script src="./swagger-ui-standalone-preset.js"> </script>
+    <script>
+    window.onload = function() {
+      // Begin Swagger UI call region
+      const ui = SwaggerUIBundle({
+        //#region ArangoDB-specific changes
+        // Infer location of swagger.json from `location.href` instead of
+        // defaulting to the pet store example.
+        url: location.href.replace("index.html", "swagger.json").replace(/#.*/, ""),
+        //#endregion
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout",
+        //#region ArangoDB-specific changes
+        validatorUrl: null,
+        docExpansion: "list",
+        requestInterceptor: function (request) {
+          var jwt = sessionStorage.getItem("jwt");
+          // Inject the web interface JWT for bearer authentication if the
+          // request would otherwise not send an authorization header.
+          // This is necessary for the ArangoDB HTTP API documentation to work
+          // and for the swagger.json files to be loaded correctly in the
+          // API documentation mounted by the ArangoDB web interface in an iframe.
+          if (jwt && !request.headers.Authorization && !request.headers.authorization) {
+            request.headers.Authorization = 'bearer ' + jwt;
+          }
+          return request;
+        }
+        //#endregion
+      })
+      // End Swagger UI call region
+
+      window.ui = ui
+    }
+  </script>
+  </body>
+</html>

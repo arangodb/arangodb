@@ -1,0 +1,64 @@
+.shardFollowers,
+.shardLeader {
+
+  span {
+    @extend %animated;
+
+    &:hover {
+      color: $c-black;
+      cursor: pointer;
+    }
+  }
+
+  .inSync {
+    color: $c-positive;
+  }
+
+  .notInSync {
+    color: $c-warning;
+  }
+}
+
+.sectionShard {
+  .sectionHeader {
+    cursor: pointer;
+    margin-bottom: 1px;
+  }
+
+  .sectionShardContent {
+    .pure-g {
+      width: auto;
+    }
+  }
+
+  .shardSyncIcons {
+    .fa {
+      color: $c-warning;
+      float: right;
+      font-size: 12pt;
+      margin-left: 0;
+      margin-right: 10px;
+
+      &.fa-check-circle {
+        color: $c-positive;
+      }
+    }
+  }
+
+  .progressWrapper {
+    .fa {
+      float: right;
+      font-size: 12pt;
+      margin-right: 5px;
+      margin-top: 10px;
+
+      &.fa-spin {
+        margin-right: 2px;
+      }
+    }
+
+    .shardProgress {
+      float: right;
+    }
+  }
+}

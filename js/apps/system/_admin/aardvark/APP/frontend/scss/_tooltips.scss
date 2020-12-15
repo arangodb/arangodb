@@ -1,0 +1,33 @@
+.ui-tooltip {
+  @extend %font-family;
+  background-color: $c-positive !important;
+  border: 0 !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+  color: $c-white !important;
+  font-size: 10pt !important;
+  font-weight: 100 !important;
+  z-index: 99999999;
+}
+
+.tooltip-inner {
+  max-width: 300px !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+}
+
+.index-tooltip {
+  color: $c-btn-inverse;
+
+  &:hover {
+    color: $c-black;
+  }
+
+  .arangoicon {
+    font-size: 18px !important;
+  }
+}
+
+.tooltipInfoTh {
+  width: 10%;
+}
