@@ -59,7 +59,7 @@ static constexpr char UncompressedCurrent = '2';
 namespace arangodb {
 namespace containers {
 
-std::uint64_t FnvHasher::hash(std::uint64_t input) const {
+std::uint64_t FnvHashProvider::hash(std::uint64_t input) const {
   return TRI_FnvHashPod(input);
 }
 
@@ -74,7 +74,7 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::nodeCoun
   return ((static_cast<std::uint64_t>(1) << (BranchingBits * (maxDepth + 1))) - 1) /
          (BranchingFactor - 1);
 }
-class TestNodeCountUpToDepth : public MerkleTree<FnvHasher, 3, 64> {
+class TestNodeCountUpToDepth : public MerkleTree<FnvHashProvider, 3, 64> {
   static_assert(nodeCountUpToDepth(0) == 1);
   static_assert(nodeCountUpToDepth(1) == 9);
   static_assert(nodeCountUpToDepth(2) == 73);
@@ -98,7 +98,7 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::log2ceil
   }
   return i;
 }
-class TestLog2Ceil : public MerkleTree<FnvHasher, 3, 64> {
+class TestLog2Ceil : public MerkleTree<FnvHashProvider, 3, 64> {
   static_assert(log2ceil(0) == 1);
   static_assert(log2ceil(1) == 1);
   static_assert(log2ceil(2) == 1);
@@ -137,7 +137,7 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::minimumF
   TRI_ASSERT(target >= (current * correctedFactor / 2));
   return correctedFactor;
 }
-class TestMinimumFactorFor : public MerkleTree<FnvHasher, 3, 64> {
+class TestMinimumFactorFor : public MerkleTree<FnvHashProvider, 3, 64> {
   static_assert(minimumFactorFor(1, 2) == 4);
   static_assert(minimumFactorFor(1, 4) == 8);
   static_assert(minimumFactorFor(1, 12) == 16);
@@ -722,7 +722,7 @@ template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t cons
 void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::uint64_t key, bool isInsert) {
   // not thread-safe, shared-lock buffer from outside
   Hasher h;
-  std::uint64_t value = h.hash(key);
+  std::uint64_t const value = h.hash(key);
   for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
     bool success = modifyLocal(depth, key, value, isInsert, true);
     if (!success) {
@@ -854,8 +854,8 @@ std::ostream& operator<<(std::ostream& stream,
 }
 
 /// INSTANTIATIONS
-template class MerkleTree<FnvHasher, 3, 64>;
-template std::ostream& operator<<(std::ostream& stream, MerkleTree<FnvHasher, 3, 64> const&);
+template class MerkleTree<FnvHashProvider, 3, 64>;
+template std::ostream& operator<<(std::ostream& stream, MerkleTree<FnvHashProvider, 3, 64> const&);
 
 }  // namespace containers
 }  // namespace arangodb

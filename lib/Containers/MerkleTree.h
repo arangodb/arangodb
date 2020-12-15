@@ -45,7 +45,7 @@ class HashProvider {
   virtual std::uint64_t hash(std::uint64_t input) const = 0;
 };
 
-class FnvHasher : public HashProvider {
+class FnvHashProvider : public HashProvider {
  public:
   std::uint64_t hash(std::uint64_t input) const override;
 };
@@ -301,7 +301,7 @@ template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t cons
 std::ostream& operator<<(std::ostream& stream,
                          MerkleTree<Hasher, BranchingBits, LockStripes> const& tree);
 
-using RevisionTree = MerkleTree<FnvHasher, 3, 64>;
+using RevisionTree = MerkleTree<FnvHashProvider, 3, 64>;
 
 }  // namespace containers
 }  // namespace arangodb
