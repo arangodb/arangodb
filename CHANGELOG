@@ -1,6 +1,9 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
 
 * Fix Windows directory creation error handling.
