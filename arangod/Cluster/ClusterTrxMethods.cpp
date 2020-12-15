@@ -50,7 +50,6 @@ using namespace arangodb::futures;
 namespace {
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
 const double FAST_PATH_LOCK_TIMEOUT = 2.0;
-const double SETUP_TIMEOUT = 15.0;
 
 void buildTransactionBody(TransactionState& state, ServerID const& server,
                           VPackBuilder& builder) {
@@ -128,8 +127,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 
 /// @brief lazy begin a transaction on subordinate servers
 Future<network::Response> beginTransactionRequest(TransactionState& state,
-                                                  ServerID const& server,
-                                                  double timeout = 120.0) {
+                                                  ServerID const& server) {
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
@@ -139,7 +137,6 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
 
   network::RequestOptions reqOpts;
   reqOpts.database = state.vocbase().name();
-  reqOpts.timeout = arangodb::network::Timeout(timeout);
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
@@ -328,11 +325,10 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
   // We cannot write-lock after we already write-locked something.
   bool canRevertToSlowPath = state.knownServers().empty();
 
-  double timeoutToUse = SETUP_TIMEOUT;
+  double oldLockTimeout = state.options().lockTimeout;
   {
     if (canRevertToSlowPath) {
-      // TODO set lock timeout to 2.0s
-      timeoutToUse = FAST_PATH_LOCK_TIMEOUT;
+      state.options().lockTimeout = FAST_PATH_LOCK_TIMEOUT;
     }
     // Run fastPath
     std::vector<Future<network::Response>> requests;
@@ -340,8 +336,8 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       if (state.knowsServer(leader)) {
         continue;  // already send a begin transaction there
       }
-      state.addKnownServer(leader);
-      requests.emplace_back(::beginTransactionRequest(state, leader, timeoutToUse));
+      // state.addKnownServer(leader); // TODO: Remove me
+      requests.emplace_back(::beginTransactionRequest(state, leader));
     }
 
     if (requests.empty()) {
@@ -349,16 +345,28 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     }
 
     const TransactionId tid = state.id().child();
+    std::mutex serverToKnowsListLock{};
+
     Result fastPathResult =
         futures::collectAll(requests)
-            .thenValue([=](std::vector<Try<network::Response>>&& responses) -> Result {
-              std::vector<Result> innerFastPathResults{};
+            .thenValue([=, &state, &serverToKnowsListLock](
+                           std::vector<Try<network::Response>>&& responses) -> Result {
+              std::vector<Result> innerFastPathResults{};  // TODO: no need for vector here, single res enough
               for (Try<arangodb::network::Response> const& tryRes : responses) {
                 network::Response const& resp = tryRes.get();  // throws exceptions upwards
+
                 Result res =
                     ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
                 if (res.fail()) {
                   innerFastPathResults.push_back(res);
+                } else {
+                  LOG_DEVEL << "NO ERROR:";
+                  LOG_DEVEL << res.errorMessage();
+                  {
+                    std::unique_lock<std::mutex> guard{serverToKnowsListLock};
+                    LOG_DEVEL << "fast added to known: " << resp.serverId();
+                    state.addKnownServer(resp.serverId());  // add server id to known list
+                  }
                 }
               }
 
@@ -380,17 +388,29 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
             })
             .get();
 
+    LOG_DEVEL << "INFO:";
+    LOG_DEVEL << fastPathResult.errorMessage();
+    LOG_DEVEL << fastPathResult.errorNumber();
+    LOG_DEVEL << "ok: " << fastPathResult.ok();
+
     if (fastPathResult.ok()) {
+      LOG_DEVEL << "==== 1 ====";
+      LOG_DEVEL << "Fast path got success:";
+      LOG_DEVEL << fastPathResult.errorMessage();
       return fastPathResult;
     } else if (!canRevertToSlowPath && fastPathResult.fail()) {
+      LOG_DEVEL << "==== 2 ====";
+      LOG_DEVEL << "Error but we cannto revert to slow:";
+      LOG_DEVEL << fastPathResult.errorMessage();
       return fastPathResult;
     } else {
+      state.options().lockTimeout = oldLockTimeout;
       // slowPath entry point
-      LOG_DEVEL << "Starting slowpath";
+      LOG_DEVEL << "==== 3 ====";
+      LOG_DEVEL << "== Starting slowpath == ";
       TRI_ASSERT(fastPathResult.fail());
 
       // in case of fast path failure, we need to cleanup engines
-      timeoutToUse = SETUP_TIMEOUT;
 
       // abortTransaction on knownServers() and wait for them
       if (!state.knownServers().empty()) {
@@ -406,25 +426,32 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       // rerollTrxId() - this also clears _knownServers (!)
       state.coordinatorRerollTransactionId();
 
-      // Run slowPath
-      requests.clear();
+      // Make sure we always use the same ordering on servers
+      std::vector<ServerID> sortedVector{};
+      sortedVector.reserve(leaders.size());
+      sortedVector = leaders;
 
-      for (ServerID const& leader : leaders) {
+      std::sort(sortedVector.begin(), sortedVector.end(),
+                [](auto const& lhs, auto const& rhs) { return lhs < rhs; });
+
+      // Run slowPath
+      LOG_DEVEL << "== STARTING SLOW PATH ==";
+      for (ServerID const& leader : sortedVector) {
+        LOG_DEVEL << "checking server: " << leader;
         if (state.knowsServer(leader)) {
           continue;  // already send a begin transaction there
         }
-        state.addKnownServer(leader);
+
+        {
+          // TODO only in success case
+          std::unique_lock<std::mutex> guard{serverToKnowsListLock};
+          LOG_DEVEL << "second added to known: " << leader;
+          state.addKnownServer(leader);  // add server id to known list
+        }
+
         // use default setup timeout here
-        requests.emplace_back(::beginTransactionRequest(state, leader, SETUP_TIMEOUT));
-      }
-
-      if (requests.empty()) {
-        return res;
-      }
-
-      // sync and blocking calls
-      for (auto const& resp : requests) {
-        auto const& resolvedResponse = resp.result().get();
+        auto resp = ::beginTransactionRequest(state, leader);
+        auto const& resolvedResponse = resp.get();
         if (resolvedResponse.fail()) {
           int code = network::fuerteToArangoErrorCode(resolvedResponse);
           std::string message = network::fuerteToArangoErrorMessage(resolvedResponse);
@@ -434,7 +461,6 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     }
   }
 
-  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
