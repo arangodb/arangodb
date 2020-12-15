@@ -161,7 +161,7 @@ void DatabaseManagerThread::run() {
             // remove apps directory for database
             std::string const& appPath = dealer.appPath();
             if (database->isOwnAppsDirectory() && !appPath.empty()) {
-              MUTEX_LOCKER(mutexLocker1, _databaseCreateLock);
+              MUTEX_LOCKER(mutexLocker1, databaseFeature._databaseCreateLock);
 
               // but only if nobody re-created a database with the same name!
               MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
