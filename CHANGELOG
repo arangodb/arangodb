@@ -6,6 +6,9 @@ v3.7.6 (XXXX-XX-XX)
   reduced load on the cluster. Previously this involved requests to all
   coordinators, where each of them ran two DB queries.
 
+* When querying the list of currently running or slow AQL queries, ignore
+  not-yet created databases on other coordinators.
+
 * Fix AQL cost estimate of spliced subqueries which could lead to overly large
   numbers in the explain output of such queries.
 
