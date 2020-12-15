@@ -284,7 +284,7 @@ void RocksDBShaCalculator::OnTableFileDeleted(const rocksdb::TableFileDeletionIn
 
 void RocksDBShaCalculator::OnCompactionCompleted(rocksdb::DB* db,
                                                  const rocksdb::CompactionJobInfo& ci) {
-  for (auto filename : ci.output_files) {
+  for (auto const& filename : ci.output_files) {
     _shaThread.queueShaCalcFile(filename);
   }
 }
