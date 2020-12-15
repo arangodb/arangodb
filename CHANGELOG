@@ -1,11 +1,16 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
-* Fixed bug in the connection pool which could prevent connection reusage
-  under high load and lead to lots of new connection creations, in particular
-  with TLS.
+* Fixed bug in the connection pool which could prevent connection reusage under
+  high load and lead to lots of new connection creations, in particular with
+  TLS.
 
 * Added more metrics around connection pool.
+
+* Fix a potential nullptr access in AsyncAgencyComm in case there was a specific
+  error when sending an agency request.
+
+* Clean up agency change log, cluster info caches.
 
 
 v3.7.5 (2020-12-09)
