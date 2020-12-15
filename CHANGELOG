@@ -1,7 +1,7 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
-* added SNI support for arangosh and other client tools
+* Added SNI support for arangosh.
 
 * Updated ArangoDB Starter to 0.14.15-1.
 
