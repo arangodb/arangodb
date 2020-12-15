@@ -231,8 +231,8 @@ class State {
 
   /// @brief Load collection from persistent store
   bool loadPersisted();
-  bool loadCompacted();
-  bool loadRemaining();
+  index_t loadCompacted();
+  bool loadRemaining(index_t);
   bool loadOrPersistConfiguration();
 
   /// @brief Check collections

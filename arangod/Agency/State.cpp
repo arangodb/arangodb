@@ -843,6 +843,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
   return false;
 }
 
+
 /// Load actually persisted collections
 bool State::loadPersisted() {
   TRI_ASSERT(_vocbase != nullptr);
@@ -854,12 +855,33 @@ bool State::loadPersisted() {
   loadOrPersistConfiguration();
 
   if (checkCollection("log") && checkCollection("compact")) {
-    bool lc = loadCompacted();
-    bool lr = loadRemaining();
-    return (lc && lr);
+    index_t lastCompactionIndex = loadCompacted();
+    if (loadRemaining(lastCompactionIndex)) {
+      return true;
+    } else {
+      LOG_TOPIC("1a476", INFO, Logger::AGENCY)
+        << "Non matching compaction and log indexes. Dropping both collections";
+
+      std::function<void(std::string const&)> drop = [&](std::string const& colName) {
+        try {
+          auto col = _vocbase->lookupCollection(colName)->id();
+          auto res = _vocbase->dropCollection(col, false, -1.0).errorNumber();
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC("ba841", ERR, Logger::AGENCY)
+              << "unable to drop collection log: " << TRI_errno_string(res);
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC("69fc4", FATAL, Logger::REPLICATION)
+            << "unable to drop collections log/compact" << e.what();
+        }
+      };
+      drop("log");
+      drop("compact");
+
+    }
   }
 
-  LOG_TOPIC("9e72a", DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
+  LOG_TOPIC("9e72a", DEBUG, Logger::AGENCY) << "No persisted log: creating collections.";
   createCollections();
 
   return true;
@@ -919,7 +941,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
 }
 
 /// Load compaction collection
-bool State::loadCompacted() {
+index_t State::loadCompacted() {
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
@@ -959,7 +981,7 @@ bool State::loadCompacted() {
     }
   }
 
-  return true;
+  return _cur;
 }
 
 /// Load persisted configuration
@@ -1069,11 +1091,13 @@ bool State::loadOrPersistConfiguration() {
   return true;
 }
 
-/// Load beyond last compaction
-bool State::loadRemaining() {
+/// Load beyond last compaction and check if compaction index
+/// matches any log entry
+bool State::loadRemaining(index_t cind) {
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
+  bool match = false;
 
   std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
 
@@ -1147,15 +1171,16 @@ bool State::loadRemaining() {
 
         if (index == lastIndex + 1 || (index == lastIndex && _log.empty())) {
           // Real entries
-          logEmplaceBackNoLock(
-            log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
-                  ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
+          logEmplaceBackNoLock(log_t(index, ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
+          if (index == cind) {
+            match = true;
+          }
           lastIndex = index;
         }
       }
     }
   }
-  if (_log.empty()) {
+  if (_log.empty() || !match) {
     return false;
   }
 
@@ -1327,8 +1352,8 @@ bool State::removeObsolete(index_t cind) {
 }
 
 /// Persist a compaction snapshot
-bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t term,
-                                      arangodb::consensus::Store& snapshot) {
+bool State::persistCompactionSnapshot(
+  index_t cind, arangodb::consensus::term_t term, arangodb::consensus::Store& snapshot) {
   if (checkCollection("compact")) {
     std::stringstream i_str;
 
