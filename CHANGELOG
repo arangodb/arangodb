@@ -1,8 +1,12 @@
-v3.7.5 (XXXX-XX-XX)
+v3.7.6 (XXXX-XX-XX)
 -------------------
 
-* Fix a potential nullptr access in AsyncAgencyComm in case there was a
-  specific error when sending an agency request.
+* Fix a potential nullptr access in AsyncAgencyComm in case there was a specific
+  error when sending an agency request.
+
+
+v3.7.5 (XXXX-XX-XX)
+-------------------
 
 * Fixed ES-662 by introducing refactored thread pool to make more efficient
   consolidation and commit routines for links of ArangoSearch views.
