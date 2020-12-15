@@ -1,6 +1,8 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
+
 * Updated ArangoDB Starter to 0.14.15-1.
 
 * Better tracking of memory used in AQL graph traversals, COLLECT and SORT
