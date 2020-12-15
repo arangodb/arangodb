@@ -53,9 +53,9 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  SslClientConnection(Endpoint* endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(Endpoint* endpoint, double, double, size_t, uint64_t, std::string);
 
-  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t, std::string);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
@@ -101,6 +101,9 @@ class SslClientConnection final : public GeneralClientConnection {
   bool readable() override;
 
  private:
+  // hostname of the server for SNI
+  std::string const _hostname;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying session
   //////////////////////////////////////////////////////////////////////////////

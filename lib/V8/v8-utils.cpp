@@ -978,8 +978,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      std::string("Cannot connect to INADDR_ANY or INADDR6_ANY ") + url);
     }
 
+    std::string host = ep.get()->host();
+
     std::unique_ptr<GeneralClientConnection> connection(
-        GeneralClientConnection::factory(ep.get(), timeout, timeout, 3, sslProtocol));
+      GeneralClientConnection::factory(ep.get(), timeout, timeout, 3, sslProtocol, host));
 
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();

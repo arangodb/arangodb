@@ -183,10 +183,12 @@ Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& ap
   std::unique_ptr<httpclient::GeneralClientConnection> connection;
   std::unique_ptr<Endpoint> endpoint{Endpoint::clientFactory(_endpointString)};
   if (endpoint != nullptr) {
+    std::string host = endpoint.get()->host();
+
     connection.reset(httpclient::GeneralClientConnection::factory(
         endpoint, applierConfig._requestTimeout, applierConfig._connectTimeout,
         static_cast<size_t>(applierConfig._maxConnectRetries),
-        static_cast<uint32_t>(applierConfig._sslProtocol)));
+        static_cast<uint32_t>(applierConfig._sslProtocol), host));
   }
 
   if (connection != nullptr) {

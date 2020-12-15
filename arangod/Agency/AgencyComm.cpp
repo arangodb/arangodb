@@ -859,10 +859,12 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::createNewConnection(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
+  std::string host = endpoint.get()->host();
+
   return std::unique_ptr<GeneralClientConnection>(
       GeneralClientConnection::factory(endpoint, CONNECTION_OPTIONS._requestTimeout,
                                        CONNECTION_OPTIONS._connectTimeout,
-                                       CONNECTION_OPTIONS._connectRetries, 0));
+                                       CONNECTION_OPTIONS._connectRetries, 0, host));
 }
 
 void AgencyCommManager::switchCurrentEndpoint() {

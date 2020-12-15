@@ -124,12 +124,13 @@ GeneralClientConnection* GeneralClientConnection::factory(Endpoint* endpoint,
                                                           double requestTimeout,
                                                           double connectTimeout,
                                                           size_t numRetries,
-                                                          uint64_t sslProtocol) {
+                                                          uint64_t sslProtocol,
+							  std::string hostname) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
     return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
-                                   numRetries, sslProtocol);
+                                   numRetries, sslProtocol, hostname);
   }
 
   return nullptr;
@@ -137,12 +138,13 @@ GeneralClientConnection* GeneralClientConnection::factory(Endpoint* endpoint,
 
 GeneralClientConnection* GeneralClientConnection::factory(
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
-    double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
+    double connectTimeout, size_t numRetries, uint64_t sslProtocol,
+    std::string hostname) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
     return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
-                                   numRetries, sslProtocol);
+                                   numRetries, sslProtocol, hostname);
   }
 
   return nullptr;
