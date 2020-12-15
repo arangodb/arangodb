@@ -29,11 +29,17 @@
 
 #ifndef IRESEARCH_DLL
 
+TEST(ngram_token_stream_test, consts) {
+  static_assert("ngram" == irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::name());
+  static_assert("ngram" == irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::UTF8>>::name());
+}
+
 TEST(ngram_token_stream_test, construct) {
   // load jSON object
   {
     auto stream = irs::analysis::analyzers::get("ngram", irs::type<irs::text_format::json>::get(), "{\"min\":1, \"max\":3, \"preserveOriginal\":true}");
     ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
     auto& impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>&>(*stream);
     ASSERT_EQ(1, impl.min_gram());

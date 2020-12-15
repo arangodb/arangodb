@@ -897,7 +897,6 @@ namespace iresearch {
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC("72dde", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       e.code(),
@@ -906,7 +905,6 @@ namespace iresearch {
   } catch (std::exception const& e) {
     LOG_TOPIC("9d5f8", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for arangosearch view '" << view.name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
@@ -915,7 +913,6 @@ namespace iresearch {
   } catch (...) {
     LOG_TOPIC("ff0b6", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for arangosearch view '" << view.name() << "'";
-    IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,

@@ -35,21 +35,20 @@
 
 // use busywait implementation for Win32 since std::mutex cannot be used in calls going through dllmain()
 #ifdef _WIN32
-  #include "async_utils.hpp"
+#include "async_utils.hpp"
 
-  NS_LOCAL
-    typedef iresearch::async_utils::busywait_mutex mutex_t;
-  NS_END
+namespace {
+  typedef irs::async_utils::busywait_mutex mutex_t;
+}
 #else
-  #include <mutex>
+#include <mutex>
 
-  NS_LOCAL
-    typedef std::mutex mutex_t;
-
-  NS_END
+namespace {
+  typedef std::mutex mutex_t;
+}
 #endif
 
-NS_ROOT
+namespace iresearch {
 
 // Generic class representing globally-stored correspondence
 // between object of KeyType and EntryType
@@ -222,6 +221,6 @@ template<
    tag_map_t tag_map_;
 };
 
-NS_END
+}
 
 #endif

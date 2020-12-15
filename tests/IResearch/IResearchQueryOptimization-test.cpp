@@ -46,7 +46,7 @@
 
 extern const char* ARGV0;  // defined in main.cpp
 
-NS_LOCAL
+namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
@@ -166,7 +166,7 @@ std::vector<std::string> optimizerOptionsAvailable = {
 };
 
 constexpr size_t disabledDnfOptimizationStart = 2;
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

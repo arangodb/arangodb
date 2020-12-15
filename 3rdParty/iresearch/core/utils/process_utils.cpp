@@ -33,7 +33,7 @@
   #include <signal.h>
 #endif // _WIN32
 
-NS_ROOT
+namespace iresearch {
 
 bool is_running(pid_t pid) {
 #ifdef _WIN32
@@ -73,4 +73,4 @@ bool is_valid_pid(const char* buf) {
       && is_running(static_cast<pid_t>(pid));
 }
 
-NS_END
+}

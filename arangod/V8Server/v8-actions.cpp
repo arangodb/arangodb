@@ -1883,4 +1883,12 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
           v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
+
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC,
+          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+          v8::Boolean::New(isolate, foxxQueuesFeature.startupWaitForSelfHeal()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
 }

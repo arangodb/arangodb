@@ -1174,7 +1174,7 @@ class block_disjunction final
     return block_size()*num_blocks();
   }
 
-  static_assert(window() < std::numeric_limits<doc_id_t>::max());
+  static_assert(block_size()*size_t(num_blocks()) < std::numeric_limits<doc_id_t>::max());
 
   using score_buffer_type = std::conditional_t<traits_type::score(),
     detail::score_buffer,
@@ -1305,11 +1305,11 @@ class block_disjunction final
 
         if constexpr (traits_type::score()) {
           if (!it.score->is_default()) {
-            return refill<true>(it, empty);
+            return this->refill<true>(it, empty);
           }
         }
 
-        return refill<false>(it, empty);
+        return this->refill<false>(it, empty);
       });
     } while (empty && !itrs_.empty());
 
