@@ -6,6 +6,13 @@ v3.7.6 (XXXX-XX-XX)
   reduced load on the cluster. Previously this involved requests to all
   coordinators, where each of them ran two DB queries.
 
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+* Fix Windows directory creation error handling.
+
 * Added new metrics for tracking AQL queries and slow queries:
   * `arangodb_aql_query_time`: histogram with AQL query times distribution.
   * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
