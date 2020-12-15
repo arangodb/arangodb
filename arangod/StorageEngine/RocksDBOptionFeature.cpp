@@ -490,7 +490,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                        "--rocksdb.max-write-buffer-number for the " +
                            name + " column family",
                        new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
-                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                       .setIntroducedIn(30800);
   };
   for (auto family : families) {
     addMaxWriteBufferNumberCf(family);
