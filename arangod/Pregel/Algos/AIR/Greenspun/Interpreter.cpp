@@ -607,9 +607,9 @@ template <typename F>
 auto exceptionIntoResult(F&& f) -> std::invoke_result_t<F> try {
   return std::forward<F>(f)();
 } catch (std::exception const& e) {
-  return EvalError(std::string{"unchaught exception with message: "} + e.what());
+  return EvalError(std::string{"uncaught exception with message: "} + e.what());
 } catch (...) {
-  return EvalError("unchaught exception");
+  return EvalError("uncaught exception");
 }
 
 EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
