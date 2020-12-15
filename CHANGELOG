@@ -4,7 +4,7 @@ v3.7.6 (XXXX-XX-XX)
 * Clean up agency change log, cluster info caches.
 
 
-v3.7.5 (XXXX-XX-XX)
+v3.7.5 (2020-12-09)
 -------------------
 
 * Fixed ES-662 by introducing refactored thread pool to make more efficient
