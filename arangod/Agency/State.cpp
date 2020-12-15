@@ -875,6 +875,8 @@ bool State::loadPersisted() {
             << "unable to drop collections log/compact" << e.what();
         }
       };
+      _log.clear();
+      _cur = 0;
       drop("log");
       drop("compact");
 
@@ -977,6 +979,7 @@ index_t State::loadCompacted() {
       _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
+      _cur = 0;
       LOG_TOPIC("bc330", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
   }
