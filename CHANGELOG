@@ -1,6 +1,9 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fix a potential nullptr access in AsyncAgencyComm in case there was a specific
+  error when sending an agency request.
+
 * Clean up agency change log, cluster info caches.
 
 
