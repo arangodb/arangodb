@@ -30,6 +30,9 @@
 #include "RestServer/Metrics.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 /// @brief Gathers better metrics from RocksDB than we can get by scraping alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
