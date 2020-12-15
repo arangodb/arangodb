@@ -27,6 +27,7 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
@@ -34,7 +35,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -70,6 +70,7 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc
       _readSnapshot(nullptr),
       _rocksReadOptions(),
       _cacheTx(nullptr),
+      _numCommits(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -91,7 +92,24 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   _hints = hints;  // set hints before useCollections
 
-  Result res = useCollections();
+  auto& stats = statistics();
+
+  Result res;
+  if (isReadOnlyTransaction()) {
+    // for read-only transactions there will be no locking. so we will not
+    // even call TRI_microtime() to save some cycles
+    res = useCollections();
+  } else {
+    // measure execution time of "useCollections" operation, which is
+    // responsible for acquring locks as well
+    double start = TRI_microtime();
+    res = useCollections();
+    
+    double diff = TRI_microtime() - start;
+    stats._lockTimeMicros += static_cast<uint64_t>(1000000.0 * diff);
+    stats._lockTimes.count(diff);
+  }
+  
   if (res.fail()) {
     // something is wrong
     updateStatus(transaction::Status::ABORTED);
@@ -101,7 +119,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   // register with manager
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
+  ++stats._transactionsStarted;
 
   setRegistered();
 
@@ -315,9 +333,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // begin transaction + commit transaction + n doc removes
     TRI_ASSERT(_numLogdata == (2 + _numRemoves));
   }
-  ++_numCommits;
   TRI_ASSERT(x > 0);
 #endif
+  ++_numCommits;
 
   prepareCollections();
 
@@ -392,7 +410,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
   if (res.ok()) {
     updateStatus(transaction::Status::COMMITTED);
     cleanupTransaction();  // deletes trx
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
+    ++statistics()._transactionsCommitted;
   } else {
     abortTransaction(activeTrx);  // deletes trx
   }
@@ -422,7 +440,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     clearQueryCache();
   }
   TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
+  ++statistics()._transactionsAborted;
 
   return result;
 }
@@ -596,7 +614,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   }
 
   hasPerformedIntermediateCommit = true;
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._intermediateCommits++;
+  ++statistics()._intermediateCommits;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -605,6 +623,8 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
+  // reset counters for DML operations, but intentionally don't reset
+  // the commit counter, as we need to track if we had intermediate commits
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
@@ -620,6 +640,10 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
 Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit) {
   hasPerformedIntermediateCommit = false;
+    
+  TRI_IF_FAILURE("noIntermediateCommits") {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
     auto numOperations = _numInserts + _numUpdates + _numRemoves;
@@ -697,7 +721,7 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   return db->GetLatestSequenceNumber();
 }
-
+  
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
     : _ctx(trx->transactionContextPtr()),
