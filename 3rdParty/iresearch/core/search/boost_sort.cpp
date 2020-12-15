@@ -22,7 +22,7 @@
 
 #include "boost_sort.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -83,9 +83,9 @@ struct prepared final : prepared_sort_basic<boost_t> {
   }
 };
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(irs::boost_sort);
 
@@ -102,4 +102,4 @@ sort::prepared::ptr boost_sort::prepare() const {
   return memory::make_unique<::prepared>();
 }
 
-NS_END
+}

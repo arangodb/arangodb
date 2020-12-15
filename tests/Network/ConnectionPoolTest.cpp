@@ -26,6 +26,9 @@
 
 #include "gtest/gtest.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
 
 #include <fuerte/connection.h>
@@ -42,7 +45,23 @@ void doNothing(fuerte::Error, std::unique_ptr<fuerte::Request> req,
 };
 }
 
+struct ConfigMock {
+  ConfigMock() :
+    _po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path")),
+    _as(_po, nullptr) {
+    _as.addFeature<arangodb::MetricsFeature>();
+    _as.addFeature<arangodb::ClusterFeature>();
+    _as.getFeature<arangodb::ClusterFeature>().allocateMembers();
+  }
+  void operator()(ConnectionPool::Config& config) {
+    config.clusterInfo = &_as.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  }
+  std::shared_ptr<arangodb::options::ProgramOptions> _po;
+  arangodb::application_features::ApplicationServer _as;
+};
+
 TEST(NetworkConnectionPoolTest, acquire_endpoint) {
+
   ConnectionPool::Config config;
   config.numIOThreads = 1;
   config.minOpenConnections = 1;
@@ -50,10 +69,12 @@ TEST(NetworkConnectionPoolTest, acquire_endpoint) {
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
-  
+
+  ConfigMock cm;
+  cm(config);
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  
+
   auto conn = pool.leaseConnection("tcp://example.org:80");
   ASSERT_EQ(pool.numOpenConnections(), 1);
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset);
@@ -70,23 +91,24 @@ TEST(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
-  
+
+  ConfigMock cm; cm(config);
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  
+
   auto conn1 = pool.leaseConnection("tcp://example.org:80");
-  
+
   conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                            fuerte::ContentType::Unset), doNothing);
-  
+
   auto conn2 = pool.leaseConnection("tcp://example.org:80");
-  
+
   ASSERT_NE(conn1.get(), conn2.get());
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   auto conn3 = pool.leaseConnection("tcp://example.com:80");
   ASSERT_NE(conn1.get(), conn3.get());
-  
+
   ASSERT_EQ(pool.numOpenConnections(), 3);
 }
 
@@ -98,25 +120,25 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
-  
+
+  ConfigMock cm; cm(config);
   ConnectionPool pool(config);
 
-  
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   std::this_thread::sleep_for(std::chrono::milliseconds(11));
   pool.pruneConnections();
-  
+
   ASSERT_EQ(pool.numOpenConnections(), 2); // keep one endpoint each
 }
 
@@ -128,64 +150,65 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
-  
+
+  ConfigMock cm; cm(config);
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
   // this will only expire conn2 (conn1 is still in use)
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 1);
 
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 0);
 
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
-    
+
     conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   pool.drainConnections();
 }
 
@@ -197,31 +220,32 @@ TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
-  
+
+  ConfigMock cm; cm(config);
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
-   
+
     auto conn2 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
-    
+
     conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
-    
+
     auto conn3 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_NE(conn1.get(), conn3.get());
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
@@ -230,31 +254,31 @@ TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   ASSERT_EQ(pool.numOpenConnections(), 2);
 
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
-   
+
     auto conn2 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
-    
+
     conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
-    
+
     auto conn3 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_NE(conn1.get(), conn3.get());
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 3);
-    
+
     conn3->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
@@ -272,34 +296,35 @@ TEST(NetworkConnectionPoolTest, checking_expiration) {
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
-  
+
+  ConfigMock cm; cm(config);
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
   }
   ASSERT_EQ(pool.numOpenConnections(), 1);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
   // expires the connection
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 0);
-  
+
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
@@ -308,26 +333,26 @@ TEST(NetworkConnectionPoolTest, checking_expiration) {
   ASSERT_EQ(pool.numOpenConnections(), 0);
 
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 2);
-    
+
     auto conn3 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
   // expires the connections
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 0);
-  
+
   pool.drainConnections();
 }
 
@@ -339,19 +364,20 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
-  
+
+  ConfigMock cm; cm(config);
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
@@ -360,16 +386,16 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   ASSERT_EQ(pool.numOpenConnections(), 1);
 
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
@@ -378,73 +404,73 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   ASSERT_EQ(pool.numOpenConnections(), 2);
 
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 2);
-    
+
     auto conn3 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
   // expires the connections
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 2);
-    
+
     auto conn3 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 3);
-    
+
     auto conn4 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_EQ(pool.numOpenConnections(), 4);
-    
+
     auto conn5 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_EQ(pool.numOpenConnections(), 5);
   }
   ASSERT_EQ(pool.numOpenConnections(), 5);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
   // expires the connections
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 2);
-  
+
   pool.drainConnections();
-  
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    
+
     auto conn2 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_EQ(pool.numOpenConnections(), 2);
-    
+
     auto conn3 = pool.leaseConnection("tcp://example.net:80");
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);
-  
+
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
   // expires the connections
   pool.pruneConnections();
   ASSERT_EQ(pool.numOpenConnections(), 3);
-  
+
   pool.drainConnections();
 }

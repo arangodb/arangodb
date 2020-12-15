@@ -28,7 +28,7 @@
 #include "index/index_reader.hpp"
 #include "utils/memory_pool.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -39,9 +39,9 @@ const byte_type* no_score(score_ctx* ctx) noexcept {
   return reinterpret_cast<byte_type*>(ctx);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      filter_boost
@@ -255,4 +255,4 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
   return false;
 }
 
-NS_END
+}

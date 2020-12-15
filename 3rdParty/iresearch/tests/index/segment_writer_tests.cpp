@@ -30,7 +30,7 @@
 #include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 
-NS_LOCAL
+namespace {
 
 class segment_writer_tests: public test_base {
   virtual void SetUp() {
@@ -57,7 +57,7 @@ struct token_stream_mock final : public irs::token_stream {
   virtual bool next() override { return --token_count; }
 };
 
-NS_END
+}
 
 #ifndef IRESEARCH_DEBUG
 

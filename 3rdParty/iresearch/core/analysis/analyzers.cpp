@@ -31,12 +31,13 @@
   #include "text_token_stemming_stream.hpp"
   #include "text_token_stream.hpp"
   #include "token_masking_stream.hpp"
+  #include "pipeline_token_stream.hpp"
 #endif
 
 #include "analysis/analyzers.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -81,9 +82,9 @@ struct value{
   const analysis::normalizer_f normalizer;
 };
  
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::key> {
@@ -94,9 +95,9 @@ struct hash<::key> {
   }
 }; // hash
 
-NS_END // std
+} // std
 
-NS_LOCAL
+namespace {
 
 const std::string FILENAME_PREFIX("libanalyzer-");
 
@@ -121,10 +122,10 @@ class analyzer_register
   }
 };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 /*static*/ bool analyzers::exists(
     const string_ref& name,
@@ -147,7 +148,6 @@ NS_BEGIN(analysis)
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments", name.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -174,8 +174,6 @@ NS_BEGIN(analysis)
       "Caught exception while getting an analyzer instance",
       e.what());
   } catch (...) {
-    IR_LOG_EXCEPTION();
-
     return result::make<result::INVALID_ARGUMENT>(
       "Caught exception while getting an analyzer instance");
   }
@@ -197,7 +195,6 @@ NS_BEGIN(analysis)
     return factory ? factory(args) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -211,6 +208,7 @@ NS_BEGIN(analysis)
     irs::analysis::text_token_stemming_stream::init();
     irs::analysis::text_token_stream::init();
     irs::analysis::token_masking_stream::init();
+    irs::analysis::pipeline_token_stream::init();
   #endif
 }
 
@@ -279,5 +277,5 @@ analyzer_registrar::analyzer_registrar(
   }
 }
 
-NS_END // analysis
-NS_END
+} // analysis
+}

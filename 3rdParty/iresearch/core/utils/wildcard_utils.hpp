@@ -25,7 +25,7 @@
 
 #include "automaton.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 enum class WildcardType {
   INVALID  = 0,   // invalid input sequence
@@ -63,7 +63,7 @@ inline automaton from_wildcard(const string_ref& expr) {
   return from_wildcard(ref_cast<byte_type>(expr));
 }
 
-NS_END
+}
 
 #endif // IRESEARCH_WILDCARD_UTILS_H
 

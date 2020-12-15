@@ -241,6 +241,10 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
 
 BaseOptions::~BaseOptions() = default;
 
+arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
+  return _query.resourceMonitor();
+}
+
 void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.openObject();
   // base indexes
@@ -449,4 +453,10 @@ void BaseOptions::activateCache(bool enableDocumentCache,
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
   TRI_ASSERT(_cache == nullptr);
   _cache = std::move(testCache);
+}
+
+void BaseOptions::isQueryKilledCallback() const {
+  if (query().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 }

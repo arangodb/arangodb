@@ -127,6 +127,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
     bool lease() override {
       return true;
     }
+    void unlease() override {}
 
     AsyncAgencyCommPoolMock* _mock;
     std::string _endpoint;
@@ -192,6 +193,7 @@ struct AsyncAgencyCommTest
     config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "AsyncAgencyComm";
     return config;
   }
 

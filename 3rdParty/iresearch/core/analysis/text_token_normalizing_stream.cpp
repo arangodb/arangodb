@@ -52,8 +52,8 @@
 
 #include "text_token_normalizing_stream.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -74,10 +74,10 @@ struct text_token_normalizing_stream::state_t {
   }
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
-NS_LOCAL
+namespace {
 
 
 bool make_locale_from_name(const irs::string_ref& name,
@@ -96,7 +96,6 @@ bool make_locale_from_name(const irs::string_ref& name,
         "Caught error while constructing locale from "
         "name: %s",
         name.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -193,7 +192,6 @@ bool parse_json_config(
         "Caught error while constructing text_token_normalizing_stream from "
         "jSON arguments: %s",
         args.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -298,7 +296,6 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
       "Caught error while constructing text_token_normalizing_stream TEXT arguments: %s",
       args.c_str()
     );
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -319,10 +316,10 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json,
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text, 
                        normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
@@ -469,5 +466,5 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
 }
 
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

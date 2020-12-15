@@ -147,6 +147,10 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
     requests = slice.get("httpRequests").getNumber<int64_t>();
   }
 
+  if (slice.hasKey("peakMemoryUsage")) {
+    peakMemoryUsage = std::max<size_t>(peakMemoryUsage, slice.get("peakMemoryUsage").getNumber<int64_t>());
+  }
+
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();

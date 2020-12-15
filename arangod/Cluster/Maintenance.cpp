@@ -558,7 +558,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       } else {
         VPackSlice pb = it->second->slice()[0];
         VPackSlice pdb = pb.get(
-            std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
+          std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
         if (pdb.isNone() || pdb.isEmptyObject()) {
           LOG_TOPIC("12274", INFO, Logger::MAINTENANCE)
             << "Dropping databases: pdb is "
@@ -1397,6 +1397,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     std::string d = key.substr(0, pos);  // database
     if (dirty.find(d) != dirty.end()) {
       auto const pit = plan.find(d);
+      if (pit == plan.end()) {
+        continue;
+      }
       auto const lit = local.find(d);
       auto const cit = current.find(d);
 

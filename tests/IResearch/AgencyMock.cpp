@@ -111,6 +111,8 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
   bool lease() override {
     return true;
   }
+  void unlease() override {
+  }
 
   AsyncAgencyStorePoolMock* _mock;
   std::string _endpoint;
