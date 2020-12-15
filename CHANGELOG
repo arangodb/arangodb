@@ -9,7 +9,7 @@ devel
     agency cache callbacks table. This gauge will be effective on coordinators
     and DB servers.
   - `arangodb_agency_callback_count`: current number of agency callbacks
-    registered. This gauge will be effecitive on coordinators and DB servers.
+    registered. This gauge will be effective on coordinators and DB servers.
 
 * Fix for issue #772: Optimized document counting for ArangoSearch views.
   Added new ArangoSearch view option 'countApproximate' for customizing 
