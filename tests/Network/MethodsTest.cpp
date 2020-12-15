@@ -66,6 +66,7 @@ struct DummyConnection final : public fuerte::Connection {
   bool lease() override {
     return true;
   }
+  void unlease() override {}
 
   fuerte::Connection::State _state = fuerte::Connection::State::Connected;
   
@@ -104,6 +105,7 @@ struct NetworkMethodsTest
     config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "NetworkMethodsTest";
     return config;
   }
 

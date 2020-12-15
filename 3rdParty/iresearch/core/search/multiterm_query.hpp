@@ -27,7 +27,7 @@
 #include "search/filter.hpp"
 #include "utils/bitset.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct multiterm_state
@@ -135,6 +135,6 @@ class multiterm_query : public filter::prepared {
   sort::MergeType merge_type_;
 }; // multiterm_query
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_MULTITERM_QUERY_H

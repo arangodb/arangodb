@@ -30,7 +30,7 @@
 #include "range.hpp"
 #include "automaton_decl.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct data_output;
 struct data_input;
@@ -321,7 +321,7 @@ inline bool edit_distance(
                        rhs.begin(), rhs.size());
 }
 
-NS_END
+}
 
 #endif // IRESEARCH_LEVENSHTEIN_UTILS_H
 

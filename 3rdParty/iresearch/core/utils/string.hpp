@@ -169,6 +169,11 @@ class basic_string_ref {
     : data_(s.c_str()), size_(s.size()) {
   }
 
+  // Constructs a string reference object from a std::basic_string_view<Elem>
+  constexpr basic_string_ref(const std::basic_string_view<Elem>& str) noexcept
+    : data_(str.data()), size_(str.size()) {
+  }
+
   constexpr basic_string_ref(const std::basic_string<char_type>& str, size_t size) noexcept
     : data_(str.c_str()), size_(size) {
   }
@@ -187,6 +192,13 @@ class basic_string_ref {
   constexpr bool empty() const noexcept { return null() || 0 == size_; }
   constexpr const char_type* begin() const noexcept{ return data_; }
   constexpr const char_type* end() const noexcept{ return data_ + size_; }
+
+  constexpr std::reverse_iterator<const char_type*> rbegin() const noexcept {
+    return std::make_reverse_iterator(end());
+  }
+  constexpr std::reverse_iterator<const char_type*> rend() const noexcept {
+    return std::make_reverse_iterator(begin());
+  }
 
   constexpr const char_type& back() const noexcept {
     return IRS_ASSERT(!empty()), data_[size()-1];
@@ -386,6 +398,11 @@ constexpr inline basic_string_ref<_ElemDst> ref_cast(const basic_string_ref<_Ele
 template<typename ElemDst, typename ElemSrc>
 constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<ElemSrc>& src) {
   return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.c_str()), src.size());
+}
+
+template<typename ElemDst, typename ElemSrc>
+constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string_view<ElemSrc>& src) {
+  return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.data()), src.size());
 }
 
 // ----------------------------------------------------------------------------

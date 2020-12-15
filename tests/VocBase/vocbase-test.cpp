@@ -39,8 +39,8 @@
 
 namespace {
 struct TestView : public arangodb::LogicalView {
-  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
-      : arangodb::LogicalView(vocbase, definition, planVersion) {}
+  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+      : arangodb::LogicalView(vocbase, definition, 0) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder&, Serialization) const override {
     return arangodb::Result();
@@ -68,11 +68,11 @@ struct ViewFactory : public arangodb::ViewFactory {
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
-                                       TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice const& definition,
-                                       uint64_t planVersion) const override {
-    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition) const override {
+    view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
   }

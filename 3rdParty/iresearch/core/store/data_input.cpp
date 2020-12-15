@@ -30,7 +30,7 @@
 
 #include <memory>
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          input_buf implementation
@@ -195,4 +195,4 @@ void buffered_index_input::seek(size_t p) {
   }
 }
 
-NS_END
+}

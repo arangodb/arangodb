@@ -42,6 +42,9 @@ class ClusterTransactionState final : public TransactionState {
 
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
+  
+  /// @brief return number of commits, including intermediate commits
+  uint64_t numCommits() const override;
 
   bool hasFailedOperations() const override { return false; }
 };

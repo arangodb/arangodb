@@ -42,7 +42,7 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 
-NS_LOCAL
+namespace {
 
 const std::string HELP = "help";
 const std::string DIR_TYPE = "dir-type";
@@ -51,7 +51,7 @@ const std::string OUT_DIR = "out";
 const std::string OUT_FORMAT = "out-format";
 const std::string FORMATS_DIR = "format-dir";
 
-NS_END
+}
 
 int convert(
     const std::string& in,

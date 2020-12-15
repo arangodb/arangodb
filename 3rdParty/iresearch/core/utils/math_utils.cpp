@@ -23,8 +23,8 @@
 #include "shared.hpp"
 #include "math_utils.hpp"
 
-NS_ROOT
-NS_BEGIN( math )
+namespace iresearch {
+namespace math {
 
 uint32_t log2_64( uint64_t value ) {
   if ( 0 == value ) return 0;
@@ -79,6 +79,6 @@ uint32_t log(uint64_t x, uint64_t base) {
   return res;
 }
 
-NS_END // math
-NS_END // root
+} // math
+} // root
 

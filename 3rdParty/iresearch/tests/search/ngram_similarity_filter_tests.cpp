@@ -29,7 +29,7 @@
 
 #include <functional>
 
-NS_LOCAL
+namespace {
 
 irs::by_ngram_similarity make_filter(const irs::string_ref& field,
                                      const std::vector<irs::string_ref>& ngrams,
@@ -44,9 +44,9 @@ irs::by_ngram_similarity make_filter(const irs::string_ref& field,
   return filter;
 }
 
-NS_END
+}
 
-NS_BEGIN(tests)
+namespace tests {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                            by_ngram_similarity filter base tests
@@ -1094,6 +1094,88 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   check_query(filter, order, expected, rdr);
 }
 
+TEST_P(ngram_similarity_filter_test_case, seek_next) {
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
+  docs_t expected{1, 2, 5, 8, 11, 12, 13};
+  auto expected_it = std::begin(expected);
+  irs::order order;
+  auto prepared_order = order.prepare();
+  auto prepared_filter = filter.prepare(rdr, prepared_order);
+  for (const auto& sub : rdr) {
+    auto docs = prepared_filter->execute(sub, prepared_order);
+    auto* doc = irs::get<irs::document>(*docs);
+    ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+    ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
+    while (docs->next()) {
+      ASSERT_EQ(docs->value(),*expected_it);
+      ASSERT_EQ(doc->value, docs->value());
+      // seek same
+      ASSERT_EQ(*expected_it, docs->seek(*expected_it));
+      // seek backward
+      ASSERT_EQ(*expected_it, docs->seek((*expected_it) - 1));
+      ++expected_it;
+      if (expected_it != std::end(expected)) {
+        //seek forward
+        ASSERT_EQ(*expected_it, docs->seek(*expected_it));
+        ++expected_it;
+      }
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+    ASSERT_FALSE(docs->next());
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+  ASSERT_EQ(expected_it, std::end(expected));
+}
+
+TEST_P(ngram_similarity_filter_test_case, seek) {
+  {
+    tests::json_doc_generator gen(
+      resource("ngram_similarity.json"),
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+
+  irs::by_ngram_similarity filter = make_filter("field", { "never_match", "at", "tl", "la", "as", "ll" }, 0.5f);
+  docs_t seek_tagrets{ 2, 5, 8, 13 };
+  auto seek_it = std::begin(seek_tagrets);
+  irs::order order;
+  auto prepared_order = order.prepare();
+  auto prepared_filter = filter.prepare(rdr, prepared_order);
+  for (const auto& sub : rdr) {
+    while (std::end(seek_tagrets) != seek_it) {
+      auto docs = prepared_filter->execute(sub, prepared_order);
+      auto* doc = irs::get<irs::document>(*docs);
+      ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+      ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
+      ASSERT_EQ(doc->value, docs->value());
+      auto actual_seeked = docs->seek(*seek_it);
+      ASSERT_EQ(doc->value, docs->value());
+      if (actual_seeked == *seek_it) {
+        ASSERT_EQ(docs->seek(*seek_it), *seek_it);
+        ASSERT_EQ(docs->seek((*seek_it) - 1), *seek_it);
+        ASSERT_EQ(doc->value, docs->value());
+        ++seek_it;
+      }
+      if (actual_seeked == irs::doc_limits::eof()) {
+        // go try next subreader
+        break;
+      }
+    }
+  }
+  ASSERT_EQ(std::end(seek_tagrets), seek_it);
+}
+
 #endif
 
 INSTANTIATE_TEST_CASE_P(
@@ -1108,4 +1190,4 @@ INSTANTIATE_TEST_CASE_P(
                       tests::format_info{"1_3", "1_0"})),
     tests::to_string);
 
-NS_END // tests
+} // tests
