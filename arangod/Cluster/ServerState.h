@@ -239,11 +239,11 @@ class ServerState {
 
   bool isFoxxmaster() const;
 
-  std::string const& getFoxxmaster();
+  std::string getFoxxmaster() const;
 
   void setFoxxmaster(std::string const&);
-
-  void setFoxxmasterQueueupdate(bool);
+  
+  void setFoxxmasterQueueupdate(bool value) noexcept;
 
   bool getFoxxmasterQueueupdate() const noexcept;
 
@@ -286,8 +286,6 @@ class ServerState {
 
   /// @brief write the Current/ServersRegistered entry
   bool registerAtAgencyPhase2(AgencyComm&, bool hadPersistedId);
-
-  void setFoxxmasterSinceNow();
 
   /// @brief whether or not "value" is a server UUID
   bool isUuid(std::string const& value) const;
@@ -340,13 +338,16 @@ class ServerState {
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
+ 
+  /// @brief lock for all foxxmaster-related members
+  mutable arangodb::basics::ReadWriteSpinLock _foxxmasterLock;
   
-  bool _foxxmasterQueueupdate;
-
   std::string _foxxmaster;
 
   // @brief point in time since which this server is the Foxxmaster
   TRI_voc_tick_t _foxxmasterSince;
+  
+  bool _foxxmasterQueueupdate;
 };
 }  // namespace arangodb
 

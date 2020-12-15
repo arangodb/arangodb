@@ -30,6 +30,7 @@
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -62,6 +63,33 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
       runTime(runTime),
       state(state),
       stream(stream) {}
+
+void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
+  auto timeString = TRI_StringTimeStamp(started, Logger::getUseLocalTime());
+
+  out.add(VPackValue(VPackValueType::Object));
+  out.add("id", VPackValue(basics::StringUtils::itoa(id)));
+  out.add("database", VPackValue(database));
+  out.add("user", VPackValue(user));
+  out.add("query", VPackValue(queryString));
+  if (bindParameters != nullptr) {
+    out.add("bindVars", bindParameters->slice());
+  } else {
+    out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
+  }
+  if (!dataSources.empty()) {
+    out.add("dataSources", VPackValue(VPackValueType::Array));
+    for (auto const& dn : dataSources) {
+      out.add(VPackValue(dn));
+    }
+    out.close();
+  }
+  out.add("started", VPackValue(timeString));
+  out.add("runTime", VPackValue(runTime));
+  out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
+  out.add("stream", VPackValue(stream));
+  out.close();
+}
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
@@ -141,7 +169,7 @@ void QueryList::remove(Query* query) {
 
   try {
     // check if we need to push the query into the list of slow queries
-    if (elapsed >= threshold && !query->killed()) {
+    if (elapsed >= threshold) {
       // yes.
   
       _queryRegistryFeature.trackSlowQuery(elapsed);
@@ -165,6 +193,7 @@ void QueryList::remove(Query* query) {
         auto bp = query->bindParameters();
         if (bp != nullptr && !bp->slice().isNone()) {
           bindParameters.append(", bind vars: ");
+
           bindParameters.append(bp->slice().toJson());
           if (bindParameters.size() > _maxQueryStringLength) {
             bindParameters.resize(_maxQueryStringLength - 3);
@@ -223,8 +252,6 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
-  size_t const maxLength = _maxQueryStringLength;
-
   READ_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
@@ -235,7 +262,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 
   Query* query = (*it).second;
   LOG_TOPIC("25cc4", WARN, arangodb::Logger::FIXME)
-      << "killing AQL query " << id << " '" << extractQueryString(query, maxLength) << "'";
+      << "killing AQL query " << id << " '" << extractQueryString(query, _maxQueryStringLength) << "'";
 
   query->kill();
   return Result();

@@ -135,14 +135,14 @@ struct MockGraphDatabase {
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server, name, 1)) {}
 
   ~MockGraphDatabase() {
+    for (auto& o : spos) {
+      delete o;
+    }
     for (auto& q : queries) {
       if (q->trx() != nullptr) {
         q->trx()->abort();
       }
       delete q;
-    }
-    for (auto& o : spos) {
-      delete o;
     }
   }
 

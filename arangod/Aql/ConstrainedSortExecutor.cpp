@@ -146,11 +146,20 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
                      make_shared_unordered_set(_infos.numberOfOutputRegisters()),
                      _infos.registersToClear()} {
   TRI_ASSERT(_infos.limit() > 0);
+
+  arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), sortMemoryUsage());
+
   _rows.reserve(infos.limit());
+
+  // now we are responsible for memory tracking
+  guard.steal(); 
+
   _cmpHeap->setBuffer(_heapBuffer.get());
 }
 
-ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
+ConstrainedSortExecutor::~ConstrainedSortExecutor() {
+  _infos.getResourceMonitor()->decreaseMemoryUsage(sortMemoryUsage());
+}
 
 bool ConstrainedSortExecutor::doneProducing() const noexcept {
   // must not get strictly larger
@@ -309,4 +318,8 @@ std::tuple<ExecutionState, NoStats, size_t> ConstrainedSortExecutor::skipRows(si
   auto const state = doneSkipping() ? ExecutionState::DONE : ExecutionState::HASMORE;
 
   return {state, NoStats{}, skipped};
+}
+
+size_t ConstrainedSortExecutor::sortMemoryUsage() const noexcept {
+  return _infos.limit() * sizeof(decltype(_rows)::value_type);
 }

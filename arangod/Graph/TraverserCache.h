@@ -23,18 +23,16 @@
 #ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
 #define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
 
-#include <memory>
-#include <unordered_set>
-
 #include "Basics/Common.h"
+#include "Basics/StringHeap.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/StringRef.h>
 #include <map>
+#include <memory>
+#include <unordered_set>
 
 namespace arangodb {
-class ManagedDocumentResult;
-class StringHeap;
-
 namespace transaction {
 class Methods;
 }
@@ -132,7 +130,7 @@ class TraverserCache {
   /// @brief Reusable ManagedDocumentResult that temporarily takes
   ///        responsibility for one document.
   //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
+  ManagedDocumentResult _mmdr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
@@ -158,7 +156,7 @@ class TraverserCache {
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
   ///        during the entire traversal.
   //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<arangodb::StringHeap> _stringHeap;
+  arangodb::StringHeap _stringHeap;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Set of all strings persisted in the stringHeap. So we can save some

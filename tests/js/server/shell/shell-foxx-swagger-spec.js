@@ -6,6 +6,8 @@ const expect = require('chai').expect;
 const Service = require('@arangodb/foxx/service');
 const createRouter = require('@arangodb/foxx/router');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx Swagger', function () {
   let service;
   beforeEach(function () {

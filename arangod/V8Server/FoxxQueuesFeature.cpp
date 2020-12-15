@@ -33,7 +33,8 @@ namespace arangodb {
 FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
-      _enabled(true) {
+      _enabled(true),
+      _startupWaitForSelfHeal(true) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }
@@ -50,6 +51,16 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--foxx.queues-poll-interval",
                      "poll interval (in seconds) for Foxx queue manager",
                      new DoubleParameter(&_pollInterval));
+
+  options->addOption("--foxx.force-update-on-startup",
+                     "ensure all Foxx services are synchronized before "
+                     "completeing the boot sequence",
+                     new BooleanParameter(&_startupWaitForSelfHeal))
+                     .setIntroducedIn(30609);
+}
+
+bool FoxxQueuesFeature::startupWaitForSelfHeal() const {
+  return _startupWaitForSelfHeal;
 }
 
 void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

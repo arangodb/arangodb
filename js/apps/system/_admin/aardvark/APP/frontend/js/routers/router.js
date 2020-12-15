@@ -231,13 +231,15 @@
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();
-      this.foxxRepo.fetch({
-        success: function () {
-          if (self.serviceInstallView) {
-            self.serviceInstallView.collection = self.foxxRepo;
+      if (frontendConfig.foxxStoreEnabled) {
+        this.foxxRepo.fetch({
+          success: function () {
+            if (self.serviceInstallView) {
+              self.serviceInstallView.collection = self.foxxRepo;
+            }
           }
-        }
-      });
+        });
+      }
 
       window.progressView = new window.ProgressView();
 

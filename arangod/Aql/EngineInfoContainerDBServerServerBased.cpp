@@ -47,7 +47,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-const double SETUP_TIMEOUT = 90.0;
+const double SETUP_TIMEOUT = 15.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString());  // used as  a key in Json
@@ -292,7 +292,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   transaction::Methods* trx = _query.trx();
-
+  
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(SETUP_TIMEOUT);

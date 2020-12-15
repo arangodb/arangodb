@@ -73,6 +73,8 @@ class V8ClientConnection {
   double timeout() const;
 
   void timeout(double value);
+  
+  std::string protocol() const;
 
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }

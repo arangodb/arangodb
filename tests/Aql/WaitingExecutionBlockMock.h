@@ -25,7 +25,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ResourceUsage.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 
@@ -34,7 +34,6 @@ namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
-struct ResourceMonitor;
 }  // namespace aql
 
 namespace tests {
@@ -97,7 +96,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
 
  private:
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _resourceMonitor;
   size_t _inflight;
   bool _returnedDone = false;
   bool _hasWaited;

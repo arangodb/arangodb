@@ -35,6 +35,8 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace transaction {
 class Methods;
 }
@@ -54,7 +56,9 @@ class SortExecutorInfos : public ExecutorInfos {
                     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
                     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
                     std::unordered_set<RegisterId> registersToKeep,
-                    velocypack::Options const*, bool stable);
+                    velocypack::Options const* vpackOptions, 
+                    arangodb::ResourceMonitor* resourceMonitor,
+                    bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -62,6 +66,8 @@ class SortExecutorInfos : public ExecutorInfos {
   ~SortExecutorInfos() = default;
 
   [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
+  
+  arangodb::ResourceMonitor* getResourceMonitor() const;
 
   [[nodiscard]] std::vector<SortRegister> const& sortRegisters() const noexcept;
 
@@ -75,6 +81,7 @@ class SortExecutorInfos : public ExecutorInfos {
   std::size_t _limit;
   AqlItemBlockManager& _manager;
   velocypack::Options const* _vpackOptions;
+  arangodb::ResourceMonitor* _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
   bool _stable;
 };
@@ -119,6 +126,8 @@ class SortExecutor {
   std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
 
   size_t _returnNext;
+
+  size_t _memoryUsageForRowIndexes;
 };
 }  // namespace aql
 }  // namespace arangodb

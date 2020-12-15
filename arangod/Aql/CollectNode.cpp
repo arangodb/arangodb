@@ -289,7 +289,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
           std::move(readableInputRegisters), std::move(writeableOutputRegisters),
           std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
-          std::move(aggregateRegisters), trxPtr, _count);
+          std::move(aggregateRegisters), trxPtr, _plan->getAst()->query()->resourceMonitor(),
+          _count);
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));
@@ -377,7 +378,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                                          getRegsToClear(), calcRegsToKeep(),
                                          std::move(readableInputRegisters),
                                          std::move(writeableOutputRegisters),
-                                         std::move(groupRegisters), trxPtr);
+                                         std::move(groupRegisters), trxPtr,
+                                         _plan->getAst()->query()->resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
                                                                            std::move(infos));

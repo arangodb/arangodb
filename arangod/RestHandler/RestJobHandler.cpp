@@ -43,7 +43,6 @@ RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
                                AsyncJobManager* jobManager)
     : RestBaseHandler(server, request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
-  _allowDirectExecution = true;
 }
 
 RestStatus RestJobHandler::execute() {

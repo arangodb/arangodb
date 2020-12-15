@@ -81,7 +81,7 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_doesnt_w
   DistinctCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::move(groupRegisters), trx, &monitor);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, 2));
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
@@ -99,7 +99,7 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_waits) {
   DistinctCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::move(groupRegisters), trx, &monitor);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, 2));
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
@@ -126,7 +126,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::move(groupRegisters), trx, &monitor);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
@@ -170,7 +170,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::move(groupRegisters), trx, &monitor);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
@@ -222,7 +222,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::move(groupRegisters), trx, &monitor);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
@@ -283,7 +283,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::move(groupRegisters), trx, &monitor);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");

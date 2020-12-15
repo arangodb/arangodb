@@ -42,12 +42,6 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
   uint64_t _searchDepth;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
-
  public:
   NeighborsEnumerator(arangodb::traverser::Traverser* traverser,
                       arangodb::velocypack::Slice const& startVertex,

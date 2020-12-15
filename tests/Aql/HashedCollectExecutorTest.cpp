@@ -90,7 +90,7 @@ class HashedCollectExecutorTestNoRows : public ::testing::Test {
         infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
               std::move(readableInputRegisters),
               std::move(writeableOutputRegisters), std::move(groupRegisters), 0,
-              std::move(aggregateTypes), std::move(aggregateRegisters), trx, false),
+              std::move(aggregateTypes), std::move(aggregateRegisters), trx, &monitor, false),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
@@ -164,7 +164,7 @@ class HashedCollectExecutorTestRowsNoCount : public ::testing::Test {
         count(false),
         infos(1, nrOutputRegister, regToClear, regToKeep, std::move(readableInputRegisters),
               std::move(writeableOutputRegisters), std::move(groupRegisters), 0,
-              std::move(aggregateTypes), std::move(aggregateRegisters), trx, false),
+              std::move(aggregateTypes), std::move(aggregateRegisters), trx, &monitor, false),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -434,7 +434,7 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
                                    std::move(writeableOutputRegisters),
                                    std::move(groupRegisters), collectRegister,
                                    std::move(aggregateTypes),
-                                   std::move(aggregateRegisters), trx, count);
+                                   std::move(aggregateRegisters), trx, &monitor, count);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
   NoStats stats{};
@@ -531,7 +531,7 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
                                    std::move(writeableOutputRegisters),
                                    std::move(groupRegisters), collectRegister,
                                    std::move(aggregateTypes),
-                                   std::move(aggregateRegisters), trx, count);
+                                   std::move(aggregateRegisters), trx, &monitor, count);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
   NoStats stats{};
@@ -644,7 +644,7 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
                                    std::move(writeableOutputRegisters),
                                    std::move(groupRegisters), collectRegister,
                                    std::move(aggregateTypes),
-                                   std::move(aggregateRegisters), trx, count);
+                                   std::move(aggregateRegisters), trx, &monitor, count);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
   NoStats stats{};

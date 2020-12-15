@@ -60,8 +60,6 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
 
   /// start a legacy JS transaction
   void executeJSTransaction();
-  /// return the currently used V8Context
-  void returnContext();
 };
 }  // namespace arangodb
 

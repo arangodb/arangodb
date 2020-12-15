@@ -97,8 +97,6 @@ struct ShortestPathOptions : public BaseOptions {
 
   void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
 
-  void isQueryKilledCallback() const;
-
  private:
   EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid);
   EdgeCursor* nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid);

@@ -58,6 +58,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -69,19 +70,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-static std::atomic<TRI_voc_tick_t> nextQueryId(1);
-}
-
 /// @brief creates a query
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(Query::nextId()),
+    : _id(TRI_NewServerSpecificTick()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _context(nullptr),
+      _resultMemoryUsage(0),
       _queryString(queryString),
       _bindParameters(bindParameters),
       _options(options),
@@ -154,11 +152,12 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              std::shared_ptr<VPackBuilder> const& queryStruct,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(Query::nextId()),
+    : _id(TRI_NewServerSpecificTick()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _context(nullptr),
+      _resultMemoryUsage(0),
       _queryString(),
       _queryBuilder(queryStruct),
       _options(options),
@@ -204,6 +203,9 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
 
 /// @brief destroys a query
 Query::~Query() {
+  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resultMemoryUsage = 0;
+
   if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                               << "Query::~Query queryString: "
@@ -281,6 +283,10 @@ bool Query::killed() const {
     return true;
   }
   return _killed;
+}
+  
+void Query::setKilled() {
+  _killed = true;
 }
 
 /// @brief set the query to killed
@@ -694,6 +700,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
           // cache low-level pointer to avoid repeated shared-ptr-derefs
           TRI_ASSERT(_resultBuilder != nullptr);
           auto& resultBuilder = *_resultBuilder;
+          size_t previousLength = resultBuilder.bufferRef().byteSize();
 
           size_t const n = res.second->size();
 
@@ -704,6 +711,13 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
             }
           }
+          
+          size_t newLength = resultBuilder.bufferRef().byteSize();
+          TRI_ASSERT(newLength >= previousLength);
+          size_t diff = newLength - previousLength;
+
+          resourceMonitor()->increaseMemoryUsage(diff);
+          _resultMemoryUsage += diff;
 
           if (res.first == ExecutionState::DONE) {
             break;
@@ -905,6 +919,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         if (!_queryOptions.silent) {
           size_t const n = value->size();
 
+          size_t memoryUsed = 0;
           for (size_t i = 0; i < n; ++i) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
@@ -913,6 +928,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
+              } 
+              memoryUsed += sizeof(v8::Value);
+              if (val.requiresDestruction()){
+                memoryUsed += val.memoryUsage();
               }
             }
 
@@ -920,6 +939,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
             }
           }
+          
+          resourceMonitor()->increaseMemoryUsage(memoryUsed);
+          _resultMemoryUsage += memoryUsed;
         }
 
         if (_killed) {
@@ -1534,9 +1556,4 @@ ResultT<graph::Graph const*> Query::lookupGraphByName(std::string const& name) {
   _graphs.emplace(name, std::move(g.get()));
 
   return graphPtr;
-}
-
-/// @brief returns the next query id
-TRI_voc_tick_t Query::nextId() {
-  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst) + 1;
 }

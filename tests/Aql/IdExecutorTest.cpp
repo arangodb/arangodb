@@ -29,8 +29,8 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/velocypack-aliases.h>
 

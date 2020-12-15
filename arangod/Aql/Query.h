@@ -35,10 +35,10 @@
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Aql/RegexCache.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ResultT.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
@@ -112,7 +112,7 @@ class Query {
   /// @brief whether or not the query is killed
   bool killed() const;
 
-  void setKilled() { _killed = true; }
+  void setKilled();
 
   /// @brief set the query to killed
   void kill();
@@ -151,7 +151,7 @@ class Query {
     _resourceMonitor.decreaseMemoryUsage(value);
   }
 
-  ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
+  arangodb::ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
@@ -351,15 +351,12 @@ class Query {
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
 
-  /// @brief returns the next query id
-  static TRI_voc_tick_t nextId();
-
  private:
   /// @brief query id
-  const TRI_voc_tick_t _id;
+  TRI_voc_tick_t const _id;
 
   /// @brief current resources and limits used by query
-  ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _resourceMonitor;
 
   /// @brief resources used by query
   QueryResources _resources;
@@ -372,6 +369,9 @@ class Query {
 
   /// @brief the currently used V8 context
   V8Context* _context;
+
+  /// @brief total memory used for building the (partial) result
+  size_t _resultMemoryUsage;
 
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;

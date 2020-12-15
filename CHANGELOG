@@ -1,22 +1,119 @@
-v3.6.9.3 (2020-11-20)
----------------------
+v3.6.10 (XXXX-XX-XX)
+--------------------
 
-* Queries log peak mem usage when in topic is at level DEBUG.
+* added SNI support for arangosh and other client tools
 
+* Updated ArangoDB Starter to 0.14.15-1.
 
-v3.6.9.2 (2020-11-18)
----------------------
+* Better tracking of memory used in AQL graph traversals, COLLECT and SORT
+  operations. From this version onwards, certain AQL queries can report a higher
+  memory usage than in previous versions of ArangoDB. This is not because the
+  queries use more memory than before, but because the memory usage tracking has
+  been improved.
+  A side effect of this change is that queries with a memory limit set may now
+  be aborted whereas in previous versions they ran through successfully (but
+  actually violated the limit). In this case it may be necessary to adjust (i.e.
+  raise) query memory limits accordingly.
+
+* Reimplement coordshort request handler. The new implementation only runs two
+  DB queries without any additional requests to other coordinators, resulting in
+  reduced load on the cluster. Previously this involved requests to all
+  coordinators, where each of them ran two DB queries.
+
+* Fixed bug with ArangoSearch views on SmartGraph edge collections which could
+  contain some documents twice.
+  This change removes `_to_*` local auxiliary link creation and existence within
+  a view linked with a SmartGraph edge collection.
+
+* Updated arangosync to 0.7.13.
+
+* Fix HTTP/1.1 status response header in fuerte responses
+
+  This change makes fuerte return the full status header, including the numeric
+  status code and the status string in the `http/1.1` header of fuerte
+  responses.
+
+  Previously, the return header lacked the numeric status code, so it looked
+  like
+  ```
+  "http/1.1" : "Ok"
+  ```
+  Now, with the numeric status code, the response header will look like
+  ```
+  "http/1.1" : "200 Ok"
+  ```
+  This PR also adds a protocol() method for arango client connections in order
+  to check the protocol in use. The possible return values are
+  - "http" for HTTP/1.1 connections
+  - "http2" for HTTP/2 connections
+  - "vst" for VST connections
+  - "unknown" for everyhting else
+  This is needed during testing, but can also be used for other purposes.
+
+* Make the cancel operation safe for asynchronoulsly started JavaScript
+  transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
+  header set).
+
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
+    distribution.
+
+* Added load-balancing support for listing currently running and slow AQL
+  queries, killing running AQL queries and clearing the list of slow AQL
+  queries.
+
+  This change also will also modify the values returned in the "id" attribute of
+  AQL query objects. While the values of the "id" attribute remain strings with
+  numeric content, the ids will now start at arbitrary offsets after server
+  start and are supposed to have much higher numeric values than in previous
+  ArangoDB versions.
+  In previous ArangoDB versions, query ids always started at value 1 after a
+  server start/restart and were increased in increments of 1.
+  This change may lead to query ids being greater than what a 4 byte integer can
+  hold, which may affect client applications that treat the ids as numeric
+  values and do not have proper support for integer numbers requiring more than
+  4 byte/32 bits of storage.
+
+* Added support for fetching the list of currently running and slow AQL queries
+  from all databases at once, by adding an `all` parameter to the following
+  query APIs:
+
+  * `require("@arangodb/aql/queries").current({ all: true })`: will return the
+    currently running queries from all databases, not just the currently
+    selected database.
+  * HTTP GET `/_api/query/current?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").slow({ all: true })`: will return the slow
+    query history from all databases, not just the currently selected database.
+  * HTTP GET `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").clearSlow({ all: true })`: will clear the
+    slow query history for all databases, not just the currently selected
+    database.
+  * HTTP DELETE `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+
+  Using the `all` parameter is only allowed when making the call inside the
+  `_system` database and with superuser privileges.
+
+* Updated OpenSSL to 1.1.1h.
 
 * Fixed a hanger in the socket shutdown for the TLS case in fuerte (cluster
   internal communications).
 
 * Added compile option USE_JEMALLOC_PROF to enable memory profiling.
 
+* Make the number of network I/O threads properly configurable via the startup
+  option `--network.io-threads`. This option existed before, but its configured
+  value was effectively clamped to a value of `1`. ArangoDB 3.6.10 thus also
+  uses a default value of `1` for this option to remain compatible in terms of
+  default option values.
 
-v3.6.9.1 (2020-11-15)
----------------------
+* Disable cluster maintenance background threads on coordinators.
 
-* Updated arangosync to 0.7.12.
+  The maintenance threads don't have any purpose on coordinators, so there is no
+  need to start them there. This saves 2 or more background threads on
+  coordinators. These threads should have mostly been idle before, so saving
+  them will not have a huge impact except saving a few MB of thread stack
+  memory.
 
 * Added new metric `arangodb_network_forwarded_requests` to track the number
   of requests forwarded from one coordinator to another in a load-balancing
@@ -73,6 +170,74 @@ v3.6.9.1 (2020-11-15)
   their availability API is probed.
 
   nb: the default value for the scheduler queue length is 4096.
+
+* Added startup option `--foxx.force-update-on-startup` to toggle waiting for
+  all Foxx services in all databases to be propagated to a coordinator before it
+  completes the boot sequence.
+  In case the option is set to `false` (i.e. no waiting), the coordinator will
+  complete the boot sequence faster, and the Foxx services will be propagated
+  lazily. Until the initialization procedure has completed for the local Foxx
+  apps, any request to a Foxx app will be responded to with an HTTP 503 error
+  and message "waiting for initialization of Foxx services in this database".
+
+  This can cause an unavailability window for Foxx services on coordinator
+  startup for the initial requests to Foxx apps until the app propagation has
+  completed.
+  
+  When not using Foxx, this option should be set to `false` to benefit from a
+  faster coordinator startup.
+  Deployments relying on Foxx apps being available as soon as a coordinator is
+  integrated or responding should set this option to `true` (which is the
+  default value).
+  The option only has an effect for cluster setups.
+  On single servers and in active failover mode, all Foxx apps will be available
+  from the very beginning.
+  Note: ArangoDB 3.8 changes the default value to `false` for this option.
+
+* Added startup option `--database.old-system-collections` to toggle automatic
+  creation of system collections `_modules` and `_fishbowl`, along with their
+  internal usage. These collections are useful only in very few cases, so it is
+  normally not worth to create them in all databases.
+  The `_modules` collection is only used to register custom JavaScript modules,
+  for which there exists no API, and `_fishbowl` is used to store the temporary
+  list of Foxx apps retrieved from the Github Foxx store.
+  If the option value is `false` (which is the default from v3.8 onwards, but
+  for v3.6 and 3.7 the default value is `true` for downwards-compatibility), the
+  two collections will not be created for any new database. The `_fishbowl`
+  collection will still be created dynamically when needed. If the option value
+  is `true` (the default value in v3.6 and v3.7), the collections will be
+  created regularly as before.
+  The default value for the option is going to change to `false` in v3.8,
+  meaning the collections will not be created anymore there by default.
+
+  Two side effects of turning this option off are:
+  * there will be no iteration over all databases at server startup just to
+    check the contents of all `_modules` collections.
+  * less collections/shards will be around for deployments that create a large
+    number of databases.
+  Already existing `_modules` and `_fishbowl` system collections will not be
+  modified by this PR, even though they will likely be empty and unused.
+  
+  Any functionality related to the `_modules` system collection is deprecated
+  and will be removed in ArangoDB v3.9.
+
+* Don't iterate over all databases at server startup in order to initialize the
+  routing information. This is not necessary, as the routing information is
+  global and not tied to a specific database.
+
+* Changed the server-side implementation of the following internal JavaScript
+  APIs to no-ops:
+  * `internal.reloadAqlFunctions()`: this is a no-op function now
+  * `@arangodb/actions.buildRouting()`: this is a no-op function now
+  * `@arangodb/actions.routingTree`: will return an empty object
+  * `@arangodb/actions.routingList`: will return an empty object
+
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
+
+* Added arangobench options:
+  `--create-database` to create the test database on start
+	`--duration` to run test for a duration rather than a defined count
 
 
 v3.6.9 (2020-11-05)

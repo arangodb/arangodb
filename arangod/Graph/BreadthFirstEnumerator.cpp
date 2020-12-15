@@ -53,15 +53,18 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice 
       _lastReturned(0),
       _currentDepth(0),
       _toSearchPos(0) {
-  _schreier.reserve(32);
+
   arangodb::velocypack::StringRef startVId =
       _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
 
+  growStorage();
   _schreier.emplace_back(std::make_unique<PathStep>(startVId));
   _toSearch.emplace_back(NextStep(0));
 }
 
-BreadthFirstEnumerator::~BreadthFirstEnumerator() = default;
+BreadthFirstEnumerator::~BreadthFirstEnumerator() {
+  _opts->resourceMonitor()->decreaseMemoryUsage(_schreier.capacity() * pathStepSize());
+}
 
 bool BreadthFirstEnumerator::next() {
   if (_isFirst) {
@@ -107,7 +110,6 @@ bool BreadthFirstEnumerator::next() {
     // If not it should have bailed out before.
     TRI_ASSERT(_toSearchPos < _toSearch.size());
 
-    _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx]->vertex;
     arangodb::velocypack::StringRef vId;
@@ -145,6 +147,9 @@ bool BreadthFirstEnumerator::next() {
             }
           }
 
+          growStorage();
+
+          TRI_ASSERT(_schreier.capacity() > _schreier.size());
           _schreier.emplace_back(std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {
             // Prune here
@@ -172,6 +177,8 @@ bool BreadthFirstEnumerator::next() {
     // Nothing found for this vertex.
     // _toSearchPos is increased so
     // we are not stuck in an endless loop
+    
+    _opts->isQueryKilledCallback();
   }
 
   // _lastReturned points to the last used
@@ -330,4 +337,31 @@ bool BreadthFirstEnumerator::shouldPrune() {
     }
   }
   return false;
+}
+
+constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
+  return sizeof(void*) + sizeof(PathStep) + 2 * sizeof(NextStep);
+}
+
+void BreadthFirstEnumerator::growStorage() {
+  size_t capacity;
+  if (_schreier.empty()) {
+    // minimal reserve size
+    capacity = 8;
+  } else {
+    capacity = _schreier.size() + 1;
+    if (capacity > _schreier.capacity()) {
+      capacity *= 2;
+    }
+  }
+
+  TRI_ASSERT(capacity > _schreier.size());
+  if (capacity > _schreier.capacity()) {
+    arangodb::ResourceUsageScope guard(_opts->resourceMonitor(), (capacity - _schreier.capacity()) * pathStepSize());
+
+    _schreier.reserve(capacity);
+
+    // now we are responsible for tracking the memory
+    guard.steal();
+  }
 }
