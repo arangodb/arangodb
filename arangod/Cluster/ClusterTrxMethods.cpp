@@ -351,14 +351,22 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
         futures::collectAll(requests)
             .thenValue([=, &state, &serverToKnowsListLock](
                            std::vector<Try<network::Response>>&& responses) -> Result {
-              std::vector<Result> innerFastPathResults{};  // TODO: no need for vector here, single res enough
+              // We need to make sure to get() all responses.
+              // Otherwise they will eventually resolve and trigger the .then() callback
+              // which might be after we left this function.
+              // Especially if one response errors with "non-repairable" code so
+              // we actually abort here and cannot revert to slow path execution.
+              Result result{TRI_ERROR_NO_ERROR};
               for (Try<arangodb::network::Response> const& tryRes : responses) {
                 network::Response const& resp = tryRes.get();  // throws exceptions upwards
+
 
                 Result res =
                     ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
                 if (res.fail()) {
-                  innerFastPathResults.push_back(res);
+                  if (!result.fail() || result.is(TRI_ERROR_LOCK_TIMEOUT)) {
+                    result = res;
+                  }
                 } else {
                   LOG_DEVEL << "NO ERROR:";
                   LOG_DEVEL << res.errorMessage();
@@ -370,21 +378,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
                 }
               }
 
-              if (innerFastPathResults.empty()) {
-                return Result();  // all good
-              } else {
-                // remove follower from all collections
-                for (auto const& res : innerFastPathResults) {
-                  // LockTimeout check (if different error found here, we need to abort)
-                  if (res.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-                    return res;
-                  }
-                }
-              }
-              // We might return here if:
-              // 1.) No error appeared
-              // 2.) Only lock timeout errors appeared (and we want to try the slowPath variant)
-              return TRI_ERROR_NO_ERROR;
+              return result;
             })
             .get();
 
