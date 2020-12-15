@@ -730,7 +730,7 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::uint64_t key, b
       for (std::uint64_t d = 0; d < depth; ++d) {
         [[maybe_unused]] bool rolledBack = modifyLocal(d, key, value, !isInsert, true);
       }
-      break;
+      throw std::invalid_argument("Tried to remove key that is not present.");
     }
   }
 }
@@ -759,6 +759,9 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::vector<std::uin
         break;
       }
     }
+  }
+  if (!success) {
+    throw std::invalid_argument("Tried to remove key that is not present.");
   }
 }
 

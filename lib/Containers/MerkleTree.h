@@ -212,6 +212,7 @@ class MerkleTree {
    *              a value, then removed as if by the basic single removal
    *              method. This batch method is considerably more efficient.
    * @throws std::out_of_range  If key is less than rangeMin
+   * @throws std::invalid_argument  If remove hits a node with 0 count
    */
   void remove(std::vector<std::uint64_t> const& keys);
 
