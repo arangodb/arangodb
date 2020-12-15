@@ -496,7 +496,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   {  // add transaction to bucket
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-    TRI_ASSERT(state->id() == tid);
+    // TRI_ASSERT(state->id() == tid); // No longer valid as we could reroll a transaction ID due the slowPath/fastPath phase
     auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl, std::move(state));
     if (!it.second) {
       if (isFollowerTransactionOnDBServer) {
