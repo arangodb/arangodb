@@ -8,7 +8,7 @@ v3.7.6 (XXXX-XX-XX)
 * Added more metrics around connection pool.
 
 
-v3.7.5 (XXXX-XX-XX)
+v3.7.5 (2020-12-09)
 -------------------
 
 * Fixed ES-662 by introducing refactored thread pool to make more efficient
