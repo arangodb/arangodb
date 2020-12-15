@@ -48,7 +48,7 @@ void RocksDBMetricsListener::OnStallConditionsChanged(const rocksdb::WriteStallI
 
   if (info.condition.cur == rocksdb::WriteStallCondition::kDelayed) {
     _writeStalls.count();
-    LOG_TOPIC("9123c", INFO, Logger::ENGINES)
+    LOG_TOPIC("9123c", WARN, Logger::ENGINES)
         << "rocksdb is slowing incoming writes to column family '"
         << info.cf_name << "' to let background writes catch up";
   } else if (info.condition.cur == rocksdb::WriteStallCondition::kStopped) {
@@ -58,7 +58,7 @@ void RocksDBMetricsListener::OnStallConditionsChanged(const rocksdb::WriteStallI
         << info.cf_name << "' to let background writes catch up";
   } else {
     TRI_ASSERT(info.condition.cur == rocksdb::WriteStallCondition::kNormal);
-    LOG_TOPIC("9123e", WARN, Logger::ENGINES)
+    LOG_TOPIC("9123e", INFO, Logger::ENGINES)
         << "rocksdb is resuming normal writes for column family '"
         << info.cf_name << "'";
   }
