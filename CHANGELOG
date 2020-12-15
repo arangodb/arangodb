@@ -1,6 +1,11 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
+    distribution.
+
 * Reduce the number of dropped followers when running larger (>= 128 MB) write
   transactions.
 

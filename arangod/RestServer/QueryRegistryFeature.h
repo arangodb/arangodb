@@ -95,6 +95,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 
+  Histogram<log_scale_t<double>>& _queryTimes;
+  Histogram<log_scale_t<double>>& _slowQueryTimes;
   Counter& _totalQueryExecutionTime;
   Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
