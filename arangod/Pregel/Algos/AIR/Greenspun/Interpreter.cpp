@@ -282,6 +282,8 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
     return EvalError("Expected at least one argument");
   }
 
+  auto lists = *paramIterator++;
+
   struct IteratorTriple {
     std::string_view varName;
     VPackBuilder value;
@@ -313,9 +315,11 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
     return {};
   };
 
-  while (!paramIterator.isLast()) {
-    VPackSlice pair = *paramIterator;
-    ++paramIterator;
+  if (!lists.isArray()) {
+    return EvalError("first parameter expected to be list, found: " + lists.toJson());
+  }
+
+  for (auto&& pair : VPackArrayIterator(lists)) {
     if (auto res = readIteratorPair(pair); res.fail()) {
       return res.mapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index() - 1));
@@ -328,14 +332,22 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
   auto const runIterators = [&](Machine& ctx, std::size_t index, auto next) -> EvalResult {
     if (index == iterators.size()) {
       VPackBuilder sink;
-      return Evaluate(ctx, body, sink);
+      return SpecialSeq(ctx, paramIterator, sink).mapError([](EvalError& err) {
+        err.wrapMessage("in evaluation of for-statement");
+      });
     } else {
       auto pair = iterators.at(index);
       for (auto&& x : pair.iterator) {
         StackFrameGuard<true> guard(ctx);
         ctx.setVariable(std::string{pair.varName}, x);
         if (auto res = next(ctx, index + 1, next); res.fail()) {
-          return res;
+          return res.mapError([&](EvalError& err) {
+            std::string msg = "with ";
+            msg += pair.varName;
+            msg += " = ";
+            msg += x.toJson();
+            err.wrapMessage(std::move(msg));
+          });
         }
       }
       return {};
