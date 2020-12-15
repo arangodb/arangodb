@@ -73,13 +73,18 @@ class Manager final {
                std::shared_ptr<TransactionState> st);
     ~ManagedTrx();
 
+    bool hasPerformedIntermediateCommits() const;
     bool expired() const;
     void updateExpiry();
 
    public:
-    MetaType type;            /// managed, AQL or tombstone
+    /// @brief managed, AQL or tombstone
+    MetaType type;            
+    /// @brief whether or not the transaction has performed any intermediate
+    /// commits
+    bool intermediateCommits;
     /// @brief  final TRX state that is valid if this is a tombstone
-    /// necessary to avoid getting error on a 'diamond' commit or accidantally
+    /// necessary to avoid getting error on a 'diamond' commit or accidentally
     /// repeated commit / abort messages
     transaction::Status finalStatus;
     const double timeToLive;
@@ -118,7 +123,7 @@ class Manager final {
 
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
-                          velocypack::Slice const trxOpts,
+                          velocypack::Slice trxOpts,
                           bool isFollowerTransaction);
 
   /// @brief create managed transaction

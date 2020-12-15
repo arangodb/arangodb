@@ -69,6 +69,14 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
+      _queryTimes(
+        server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_aql_query_time", log_scale_t(2., 0.0, 50.0, 20),
+          "Execution time histogram for all AQL queries [s]")),
+      _slowQueryTimes(
+        server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_aql_slow_query_time", log_scale_t(2., 1.0, 2000.0, 10),
+          "Execution time histogram for slow AQL queries [s]")),
       _totalQueryExecutionTime(
         server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
@@ -262,6 +270,7 @@ void QueryRegistryFeature::unprepare() {
 
 void QueryRegistryFeature::trackQuery(double time) { 
   ++_queriesCounter; 
+  _queryTimes.count(time);
   _totalQueryExecutionTime += static_cast<uint64_t>(1000.0 * time);
 }
 
@@ -269,6 +278,7 @@ void QueryRegistryFeature::trackSlowQuery(double time) {
   // query is already counted here as normal query, so don't count it
   // again in _totalQueryExecutionTime
   ++_slowQueriesCounter; 
+  _slowQueryTimes.count(time);
 }
 
 }  // namespace arangodb

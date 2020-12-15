@@ -6,6 +6,8 @@ const expect = require('chai').expect;
 var FoxxRepository = require('@arangodb/foxx/legacy/repository').Repository;
 var Model = require('@arangodb/foxx/legacy/model').Model;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Model Events', function () {
   var collection, instance, repository;
 

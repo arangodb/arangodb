@@ -33,6 +33,8 @@
 var FoxxManager = require('@arangodb/foxx/manager');
 const expect = require('chai').expect;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 FoxxManager.update();
 
 var list = FoxxManager.availableJson(false);
