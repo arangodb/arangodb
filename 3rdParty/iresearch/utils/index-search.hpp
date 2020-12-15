@@ -27,11 +27,11 @@
 
 #include "shared.hpp"
 
-NS_BEGIN(cmdline)
+namespace cmdline {
 
 class parser;
 
-NS_END // cmdline
+} // cmdline
 
 int search(int argc, char* argv[]);
 

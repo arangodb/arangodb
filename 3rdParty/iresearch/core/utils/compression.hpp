@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_COMPRESSION_H
 #define IRESEARCH_COMPRESSION_H
 
-#include "type_id.hpp"
 #include "memory.hpp"
+#include "type_id.hpp"
 #include "noncopyable.hpp"
 
 #include <map>
@@ -40,12 +40,12 @@
 #define REGISTER_COMPRESSION(compression_name, compressor_factory, decompressor_factory) \
   REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, __FILE__, __LINE__)
 
-NS_ROOT
+namespace iresearch {
 
 struct data_output;
 struct data_input;
 
-NS_BEGIN(compression)
+namespace compression {
 
 struct options {
   enum class Hint : byte_type {
@@ -198,7 +198,7 @@ struct IRESEARCH_API none {
   }
 }; // raw
 
-NS_END // compression
-NS_END
+} // compression
+}
 
 #endif // IRESEARCH_COMPRESSION_H

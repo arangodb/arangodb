@@ -24,13 +24,13 @@
 #include "error/error.hpp"
 #include "directory_attributes.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::memory_allocator GLOBAL_ALLOC(128);
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  memory_allocator
@@ -94,4 +94,4 @@ void index_file_refs::clear() {
   }
 }
 
-NS_END
+}

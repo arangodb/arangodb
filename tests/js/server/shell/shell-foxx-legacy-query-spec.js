@@ -38,6 +38,8 @@ const db = arangodb.db;
 const ArangoError = arangodb.ArangoError;
 const errors = arangodb.errors;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('createQuery(query)', function () {
   it('should execute queries with no arguments', function () {
     const query = createQuery('RETURN 23');

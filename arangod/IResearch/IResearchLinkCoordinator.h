@@ -52,13 +52,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(IndexId id, arangodb::LogicalCollection& collection);
 
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
-    TRI_ASSERT(false);  // should not be called
-  }
-
   virtual bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }

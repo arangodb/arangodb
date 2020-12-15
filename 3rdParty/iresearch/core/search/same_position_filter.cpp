@@ -32,7 +32,7 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/misc.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -195,9 +195,9 @@ class same_position_query final : public filter::prepared {
   stats_t stats_;
 }; // same_position_query
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(by_same_position)
 
@@ -305,4 +305,4 @@ filter::prepared::ptr by_same_position::prepare(
     this->boost() * boost);
 }
 
-NS_END // ROOT
+} // ROOT

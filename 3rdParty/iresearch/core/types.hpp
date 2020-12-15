@@ -26,7 +26,7 @@
 
 #include "utils/integer.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 typedef uint8_t byte_type;
 typedef uint32_t term_id;
@@ -34,6 +34,6 @@ typedef uint64_t field_id;
 typedef uint32_t doc_id_t;
 typedef float_t boost_t;
 
-NS_END
+}
 
 #endif

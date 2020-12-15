@@ -292,10 +292,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 
           auto& req = result.request;
           auto& resp = result.response;
-          auto& body = *req;
 
           switch (result.error) {
-            case Error::NoError:
+            case Error::NoError: {
+              TRI_ASSERT(req != nullptr);
 
               LOG_TOPIC("aac88", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend [" << meta.requestId
@@ -320,6 +320,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
                 redirectOrError(man, endpoint, location);
 
                 // send again
+                auto& body = *req;
                 return ::agencyAsyncSend(man, std::move(meta), std::move(body).moveBuffer());
               }
 
@@ -328,25 +329,31 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
                 return futures::makeFuture(
                     AsyncAgencyCommResult{result.error, std::move(resp)});
               }
+            }
 
-              [[fallthrough]];
-              /* fallthrough */
-            case Error::Canceled:
-              if (man.server().isStopping()) {
+            [[fallthrough]];
+            
+            case Error::Canceled: {
+              if (man.server().isStopping() || req == nullptr) {
                 return futures::makeFuture(
                   AsyncAgencyCommResult{result.error, std::move(resp)});
               }
-              [[fallthrough]];
+            }
+            [[fallthrough]];
+
             case Error::Timeout:
             case Error::ConnectionClosed:
             case Error::ProtocolError:
             case Error::WriteError:
             case Error::ReadError:
-            case Error::CloseRequested:
-              // inquiry the request
+            case Error::CloseRequested: {
+              TRI_ASSERT(req != nullptr); 
+
+              // inquire the request
               man.reportError(endpoint);
               // in case of a write transaction we have to do inquiry
               if (meta.isInquiryOnNoResponse()) {
+                auto& body = *req;
                 return ::agencyAsyncInquiry(man, std::move(meta),
                                             std::move(body).moveBuffer());
               } else if (!meta.isRetryOnNoResponse()) {
@@ -354,24 +361,30 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
                 return futures::makeFuture(
                     AsyncAgencyCommResult{result.error, std::move(resp)});
               }
-              // otherwise just send again
-              [[fallthrough]];
+            }
+            // otherwise just send again
+            [[fallthrough]];
 
-            case Error::CouldNotConnect:
+            case Error::CouldNotConnect: {
               LOG_TOPIC("aac90", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend [" << meta.requestId << "] retry request soon";
               // retry to send the request
               man.reportError(endpoint);
               [[fallthrough]];
+            }
 
-            case Error::QueueCapacityExceeded:
-                return ::agencyAsyncSend(man, std::move(meta),
-                                         std::move(body).moveBuffer());  // retry always
+            case Error::QueueCapacityExceeded: {
+              TRI_ASSERT(req != nullptr);
+              auto& body = *req;
+              return ::agencyAsyncSend(man, std::move(meta),
+                                       std::move(body).moveBuffer());  // retry always
+            }
 
-            case Error::VstUnauthorized:
+            case Error::VstUnauthorized: {
               return futures::makeFuture(
                 AsyncAgencyCommResult{result.error,
                                       std::move(resp)});  // unrecoverable error
+            }
           }
 
           ADB_UNREACHABLE;

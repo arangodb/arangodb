@@ -29,8 +29,8 @@
 #include "log.hpp"
 #include "string.hpp"
 
-NS_ROOT
-NS_BEGIN(utf8_utils)
+namespace iresearch {
+namespace utf8_utils {
 
 // max number of bytes to represent single UTF8 code point
 constexpr size_t MAX_CODE_POINT_SIZE = 4;
@@ -220,7 +220,7 @@ FORCE_INLINE size_t utf8_length(const bytes_ref& in) noexcept {
   return utf8_length(in.c_str(), in.size());
 }
 
-NS_END // utf8_utils
-NS_END // ROOT
+} // utf8_utils
+} // ROOT
 
 #endif // IRESEARCH_UTF8_UTILS_H

@@ -33,7 +33,7 @@
 
 #include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
-NS_LOCAL
+namespace {
 
 std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
   auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -46,7 +46,7 @@ std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
   return result;
 }
 
-NS_END // NS_LOCAL
+} // namespace {
 
 namespace tests {
 
@@ -99,6 +99,10 @@ using namespace irs::analysis;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+TEST_F(TextAnalyzerParserTestSuite, consts) {
+  static_assert("text" == irs::type<irs::analysis::text_token_stream>::name());
+}
+
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   irs::analysis::text_token_stream::options_t options;
 
@@ -110,6 +114,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   std::string data;
   ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
   irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
+  ASSERT_EQ(irs::type<irs::analysis::text_token_stream >::id(), stream.type());
 
   ASSERT_TRUE(stream.reset(data));
 

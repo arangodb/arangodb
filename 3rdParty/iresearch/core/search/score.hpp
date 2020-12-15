@@ -26,7 +26,7 @@
 #include "sort.hpp"
 #include "utils/attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class score
@@ -112,7 +112,7 @@ class IRESEARCH_API score : public attribute {
 IRESEARCH_API void reset(
   irs::score& score, order::prepared::scorers&& scorers);
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_SCORE_H
 
