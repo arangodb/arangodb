@@ -181,10 +181,8 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
 
 SslClientConnection::SslClientConnection(Endpoint* endpoint, double requestTimeout,
                                          double connectTimeout,
-                                         size_t connectRetries, uint64_t sslProtocol,
-					 std::string hostname)
+                                         size_t connectRetries, uint64_t sslProtocol)
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
-      _hostname(hostname),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
@@ -193,10 +191,8 @@ SslClientConnection::SslClientConnection(Endpoint* endpoint, double requestTimeo
 
 SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
                                          double requestTimeout, double connectTimeout,
-                                         size_t connectRetries, uint64_t sslProtocol,
-					 std::string hostname)
+                                         size_t connectRetries, uint64_t sslProtocol)
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
-      _hostname(hostname),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
@@ -331,17 +327,6 @@ bool SslClientConnection::connectSocket() {
     disconnectSocket();
     _isConnected = false;
     return false;
-  }
-
-  if (!_hostname.empty()) {
-    int ret = SSL_set_tlsext_host_name(_ssl, _hostname.c_str());
-
-    if (!ret) {
-      _errorDetails = std::string("cannot set hostname");
-      disconnectSocket();
-      _isConnected = false;
-      return false;
-    }
   }
 
   switch (SslProtocol(_sslProtocol)) {

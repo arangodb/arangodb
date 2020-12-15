@@ -334,11 +334,9 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(std::st
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  std::string host = endpoint.get()->host();
-
   std::unique_ptr<GeneralClientConnection> connection(
       GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol, host));
+                                       _retries, _sslProtocol));
 
   return connection;
 }
@@ -361,11 +359,9 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  std::string host = endpoint.get()->host();
-
   std::unique_ptr<GeneralClientConnection> connection(
       GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol, host));
+                                       _retries, _sslProtocol));
 
   return std::make_unique<SimpleHttpClient>(connection, params);
 }

@@ -75,12 +75,11 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   static GeneralClientConnection* factory(Endpoint*, double requestTimeout, double connectTimeout,
-                                          size_t numRetries, uint64_t sslProtocol, std::string hostname);
+                                          size_t numRetries, uint64_t sslProtocol);
 
   static GeneralClientConnection* factory(std::unique_ptr<Endpoint>&,
                                           double requestTimeout, double connectTimeout,
-                                          size_t numRetries, uint64_t sslProtocol,
-					  std::string hostname);
+                                          size_t numRetries, uint64_t sslProtocol);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
