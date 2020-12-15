@@ -127,7 +127,7 @@ struct Socket<fuerte::SocketType::Ssl> {
       }
  
       // Set SNI Hostname (many hosts need this to handshake successfully)
-      if(! SSL_set_tlsext_host_name(socket.native_handle(), config._host.c_str())) {
+      if (!SSL_set_tlsext_host_name(socket.native_handle(), config._host.c_str())) {
         boost::system::error_code ec{static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
         done(ec);
         return;
