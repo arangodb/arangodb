@@ -368,6 +368,12 @@ EvalResult Call(Machine& ctx, VPackSlice const functionSlice, ArrayIterator para
 EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
                       ArrayIterator paramIterator, VPackSlice body,
                       VPackBuilder& result, bool isEvaluateParams) {
+  if (!paramNames.isArray()) {
+    return EvalError(
+        "bad lambda format: expected parameter name array, found: " +
+        paramNames.toJson());
+  }
+
   VPackBuilder paramBuilder;
   if (isEvaluateParams) {
     VPackArrayBuilder builder(&paramBuilder);
@@ -400,7 +406,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
     if (!builderIter.valid()) {
       return EvalError("lambda expects " + std::to_string(paramNames.length()) +
                        " parameters " + paramNames.toJson() + ", found " +
-                       std::to_string(builderIter.index() - 1));
+                       std::to_string(builderIter.index()));
     }
 
     ctx.setVariable(paramName.copyString(), *builderIter);
@@ -683,7 +689,7 @@ void Machine::pushStack(bool noParentScope) {
   variables.emplace_back().noParentScope = noParentScope;
 }
 
-void Machine::emplaceSack(StackFrame sf) {
+void Machine::emplaceStack(StackFrame sf) {
   variables.emplace_back(std::move(sf));
 }
 

@@ -570,21 +570,21 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
   if (key.isString()) {
     return slice.get(key.stringRef());
   } else if (key.isArray()) {
-
     struct Iter : VPackArrayIterator {
-
       using VPackArrayIterator ::difference_type;
       using value_type = VPackStringRef;
-      using VPackArrayIterator ::reference;
-      using VPackArrayIterator ::pointer;
       using VPackArrayIterator::iterator_category;
+      using VPackArrayIterator ::pointer;
+      using VPackArrayIterator ::reference;
 
-      value_type operator*() const { return VPackArrayIterator::operator*().stringRef(); }
+      value_type operator*() const {
+        return VPackArrayIterator::operator*().stringRef();
+      }
       Iter begin() const { return Iter{VPackArrayIterator::begin()}; }
       Iter end() const { return Iter{VPackArrayIterator::end()}; }
     };
 
-    Iter i{VPackArrayIterator (key)};
+    Iter i{VPackArrayIterator(key)};
     return slice.get(i);
   } else {
     return EvalError("key is neither array nor string");
@@ -725,6 +725,8 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
         return EvalError("in capture list: expected name, found: " + name.toJson());
       }
     }
+  } else {
+    return EvalError("capture list: expected array, found: " + captures.toJson());
   }
 
   auto params = *paramIterator++;
@@ -734,6 +736,8 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
         return EvalError("in parameter list: expected name, found: " + name.toJson());
       }
     }
+  } else {
+    return EvalError("parameter list: expected array, found: " + captures.toJson());
   }
 
   if (!paramIterator.valid()) {
@@ -862,16 +866,16 @@ EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
     {
       VPackArrayBuilder pb(&parameter);
       if constexpr (std::is_same_v<VPackObjectIterator&, decltype(iter)>) {
-        parameter.add(iter.key()); // object key
+        parameter.add(iter.key());  // object key
       } else {
-        parameter.add(VPackValue(iter.index())); // array index
+        parameter.add(VPackValue(iter.index()));  // array index
       }
 
       if (iter.isFirst()) {
-        parameter.add(iter.value());  // value
+        parameter.add(iter.value());      // value
         parameter.add(inputAccumulator);  // accum
       } else {
-        parameter.add(iter.value());              // value
+        parameter.add(iter.value());    // value
         parameter.add(result.slice());  // accumulator / previous result
       }
     }
