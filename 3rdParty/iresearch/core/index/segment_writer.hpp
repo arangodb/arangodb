@@ -35,7 +35,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/type_limits.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class comparer;
 struct segment_meta;
@@ -442,7 +442,7 @@ struct action_helper<Action::INDEX | Action::STORE_SORTED> {
   }
 }; // action_helper
 
-NS_END
+}
 
 MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // segment_writer::ptr
 

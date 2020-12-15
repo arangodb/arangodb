@@ -33,8 +33,8 @@
 #include "math_utils.hpp"
 #include "type_utils.hpp"
 
-NS_ROOT
-NS_BEGIN(memory)
+namespace iresearch {
+namespace memory {
 
 inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -628,8 +628,8 @@ struct maker<Class, false> {
   }
 };
 
-NS_END // memory
-NS_END // ROOT
+} // memory
+} // ROOT
 
 #define PTR_NAMED(class_type, name, ...) \
   class_type::ptr name; \

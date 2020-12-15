@@ -188,7 +188,7 @@ void AgencyCache::handleCallbacksNoLock(
     }
 
     // Paths are normalized. We omit the first 8 characters for "/arango" + "/"
-    const static size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
+    const size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
     if (k.size() > offset) {
       std::string_view r(k.c_str() + offset, k.size() - offset);
       auto rs = r.size();
@@ -284,7 +284,10 @@ void AgencyCache::run() {
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
           << "AgencyCache: poll polls: waiting for commitIndex " << commitIndex;
-      return AsyncAgencyComm().poll(60s, commitIndex);
+      // This is intentionally 61s timeout to avoid a client timeout, since
+      // the server returns after 60s by default. This avoids broken
+      // connections.
+      return AsyncAgencyComm().poll(61s, commitIndex);
     };
 
   // while not stopping
@@ -311,96 +314,103 @@ void AgencyCache::run() {
       //   {..., result:{commitIndex:X, firstIndex:0, readDB:{...}}}
       // * Incremental change to cache (firstIndex != 0)
       //   {..., result:{commitIndex:X, firstIndex:Y, log:[]}}
+      // * No change at all (server timeout)
+      //   {..., result:{commitIndex:X, log:[]}}
 
       if (server().getFeature<NetworkFeature>().prepared()) {
         auto ret = sendTransaction()
           .thenValue(
             [&](AsyncAgencyCommResult&& rb) {
-
-              if (rb.ok() && rb.statusCode() == arangodb::fuerte::StatusOK) {
-                index_t curIndex = 0;
-                {
-                  std::lock_guard g(_storeLock);
-                  curIndex = _commitIndex;
-                }
-                auto slc = rb.slice();
-                wait = 0.;
-                TRI_ASSERT(slc.hasKey("result"));
-                VPackSlice rs = slc.get("result");
-                TRI_ASSERT(rs.hasKey("commitIndex"));
-                TRI_ASSERT(rs.get("commitIndex").isNumber());
-                TRI_ASSERT(rs.hasKey("firstIndex"));
-                TRI_ASSERT(rs.get("firstIndex").isNumber());
-                index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
-                index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
-
-                if (firstIndex > 0) {
-                  TRI_ASSERT(_initialized);
-                  // Do incoming logs match our cache's index?
-                  if (firstIndex != curIndex + 1) {
-                    LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
-                      << "Logs from poll start with index " << firstIndex
-                      << " we requested logs from and including " << curIndex
-                      << " retrying.";
-                    LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
-                      << "Incoming: " << rs.toJson();
-                    increaseWaitTime();
-                  } else {
-                    TRI_ASSERT(rs.hasKey("log"));
-                    TRI_ASSERT(rs.get("log").isArray());
-                    LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
-                      "Applying to cache " << rs.get("log").toJson();
-                    std::unordered_set<std::string> pc;  // Plan changes
-                    std::unordered_set<std::string> cc;  // Current changes
-                    for (auto const& i : VPackArrayIterator(rs.get("log"))) {
-                      pc.clear();
-                      cc.clear();
-                      {
-                        std::lock_guard g(_storeLock);
-                        _readDB.applyTransaction(i); // apply logs
-                        _commitIndex = i.get("index").getNumber<uint64_t>();
-
-                        {
-                          std::lock_guard g(_callbacksLock);
-                          handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
-                        }
-
-                        for (auto const& i : pc) {
-                          _planChanges.emplace(_commitIndex, i);
-                        }
-                        for (auto const& i : cc) {
-                          _currentChanges.emplace(_commitIndex, i);
-                        }
-                      }
-                    }
-                  }
-                } else {
-                  TRI_ASSERT(rs.hasKey("readDB"));
-                  std::lock_guard g(_storeLock);
-                  LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
-                    "Fresh start: overwriting agency cache with " << rs.toJson();
-                  _readDB = rs;                  // overwrite
-                  _initialized.store(true, std::memory_order_relaxed);
-                  std::unordered_set<std::string> pc = reInitPlan();
-                  for (auto const& i : pc) {
-                    _planChanges.emplace(_commitIndex, i);
-                  }
-                  // !! Check documentation of the function before making changes here !!
-                  _commitIndex = commitIndex;
-                  _lastSnapshot = commitIndex;
-                }
-                triggerWaiting(commitIndex);
-                if (firstIndex > 0) {
-                  if (!toCall.empty()) {
-                    invokeCallbacks(toCall);
-                  }
-                } else {
-                  invokeAllCallbacks();
-                }
-              } else {
+              if (!rb.ok() || rb.statusCode() != arangodb::fuerte::StatusOK) {
+                // Error response, this includes client timeout
                 increaseWaitTime();
                 LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER) <<
                   "Failed to get poll result from agency.";
+                return futures::makeFuture();
+              }
+              // Correct response:
+              index_t curIndex = 0;
+              {
+                std::lock_guard g(_storeLock);
+                curIndex = _commitIndex;
+              }
+              auto slc = rb.slice();
+              wait = 0.;
+              TRI_ASSERT(slc.hasKey("result"));
+              VPackSlice rs = slc.get("result");
+              TRI_ASSERT(rs.hasKey("commitIndex"));
+              TRI_ASSERT(rs.get("commitIndex").isNumber());
+              index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
+              VPackSlice firstIndexSlice = rs.get("firstIndex");
+              if (!firstIndexSlice.isNumber()) {
+                // Nothing happened at all, server timeout
+                return futures::makeFuture();
+              }
+              index_t firstIndex = firstIndexSlice.getNumber<uint64_t>();
+              if (firstIndex > 0) {
+                // No snapshot, this is actual some log continuation
+                TRI_ASSERT(_initialized);
+                // Do incoming logs match our cache's index?
+                if (firstIndex != curIndex + 1) {
+                  LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
+                    << "Logs from poll start with index " << firstIndex
+                    << " we requested logs from and including " << curIndex
+                    << " retrying.";
+                  LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
+                    << "Incoming: " << rs.toJson();
+                  increaseWaitTime();
+                  return futures::makeFuture();
+                }
+                TRI_ASSERT(rs.hasKey("log"));
+                TRI_ASSERT(rs.get("log").isArray());
+                LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
+                  "Applying to cache " << rs.get("log").toJson();
+                std::unordered_set<std::string> pc;  // Plan changes
+                std::unordered_set<std::string> cc;  // Current changes
+                for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                  pc.clear();
+                  cc.clear();
+                  {
+                    std::lock_guard g(_storeLock);
+                    _readDB.applyTransaction(i); // apply logs
+                    _commitIndex = i.get("index").getNumber<uint64_t>();
+
+                    {
+                      std::lock_guard g(_callbacksLock);
+                      handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
+                    }
+
+                    for (auto const& i : pc) {
+                      _planChanges.emplace(_commitIndex, i);
+                    }
+                    for (auto const& i : cc) {
+                      _currentChanges.emplace(_commitIndex, i);
+                    }
+                  }
+                }
+              } else {
+                // firstIndex == 0, we got a snapshot:
+                TRI_ASSERT(rs.hasKey("readDB"));
+                std::lock_guard g(_storeLock);
+                LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
+                  "Fresh start: overwriting agency cache with " << rs.toJson();
+                _readDB = rs;                  // overwrite
+                _initialized.store(true, std::memory_order_relaxed);
+                std::unordered_set<std::string> pc = reInitPlan();
+                for (auto const& i : pc) {
+                  _planChanges.emplace(_commitIndex, i);
+                }
+                // !! Check documentation of the function before making changes here !!
+                _commitIndex = commitIndex;
+                _lastSnapshot = commitIndex;
+              }
+              triggerWaiting(commitIndex);
+              if (firstIndex > 0) {
+                if (!toCall.empty()) {
+                invokeCallbacks(toCall);
+                }
+              } else {
+                invokeAllCallbacks();
               }
               return futures::makeFuture();
             })

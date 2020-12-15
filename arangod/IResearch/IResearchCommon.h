@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,6 +43,11 @@ ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
 ///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
 size_t const LATEST_VERSION = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the storage format used with IResearch index
+////////////////////////////////////////////////////////////////////////////////
+constexpr std::string_view LATEST_FORMAT = "1_3simd";
 
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////

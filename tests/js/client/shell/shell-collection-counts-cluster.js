@@ -33,29 +33,37 @@ const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
+  
+let getServers = function (role) {
+  const isRole = (d) => (_.toLower(d.role) === role);
+  const endpointToURL = (server) => {
+    let endpoint = server.endpoint;
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
+  };
+
+  return global.instanceInfo.arangods.filter(isRole)
+                              .map((server) => { 
+                                return { url: endpointToURL(server), id: server.id };
+                              });
+};
+
+let getDBServers = function() {
+  return getServers('dbserver');
+};
+let getCoordinators = function() {
+  return getServers('coordinator');
+};
+
 
 function collectionCountsSuite () {
   const cn = "UnitTestsCollection";
-
-  let getDBServers = function() {
-    const isDBServer = (d) => (_.toLower(d.role) === 'dbserver');
-    const endpointToURL = (server) => {
-      let endpoint = server.endpoint;
-      if (endpoint.substr(0, 6) === 'ssl://') {
-        return 'https://' + endpoint.substr(6);
-      }
-      let pos = endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + endpoint;
-      }
-      return 'http' + endpoint.substr(pos);
-    };
-
-    return global.instanceInfo.arangods.filter(isDBServer)
-                                .map((server) => { 
-                                  return { url: endpointToURL(server), id: server.id };
-                                });
-  };
 
   let clearFailurePoints = function () {
     getDBServers().forEach((server) => {
@@ -921,6 +929,9 @@ function collectionCountsSuite () {
 
   };
 }
-
-jsunity.run(collectionCountsSuite);
+  
+let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
+if (res.body === "true") {
+  jsunity.run(collectionCountsSuite);
+}
 return jsunity.done();

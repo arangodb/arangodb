@@ -23,16 +23,15 @@
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include "sort.hpp"
-
 #include <unordered_map>
 #include <functional>
 
 #include "shared.hpp"
+#include "search/sort.hpp"
 #include "index/iterators.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename State>
 class states_cache : private util::noncopyable {
@@ -264,10 +263,6 @@ class filter_base : public filter_with_options<Options> {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API empty final : public filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::empty";
-  }
-
   DECLARE_FACTORY();
 
   empty();
@@ -282,9 +277,9 @@ class IRESEARCH_API empty final : public filter {
 struct filter_visitor;
 using field_visitor = std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<iresearch::filter> {
@@ -296,6 +291,6 @@ struct hash<iresearch::filter> {
   }
 };
 
-NS_END // std
+} // std
 
 #endif

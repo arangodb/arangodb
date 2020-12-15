@@ -26,7 +26,7 @@
 #include "analysis/analyzers.hpp"
 #include "utils/runtime_utils.hpp"
 
-NS_BEGIN(tests)
+namespace tests {
 
 class analyzer_test: public ::testing::Test {
 
@@ -54,7 +54,7 @@ class analyzer_test: public ::testing::Test {
   }
 };
 
-NS_END
+}
 
 using namespace tests;
 
@@ -64,10 +64,6 @@ using namespace tests;
 
 TEST_F(analyzer_test, duplicate_register) {
   struct dummy_analyzer: public irs::analysis::analyzer {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "dummy_analyzer";
-    }
-
     static ptr make(const irs::string_ref&) { return ptr(new dummy_analyzer()); }
     static bool normalize(const irs::string_ref&, std::string&) { return true; }
     dummy_analyzer(): irs::analysis::analyzer(irs::type<dummy_analyzer>::get()) { }
@@ -80,14 +76,14 @@ TEST_F(analyzer_test, duplicate_register) {
 
   // check required for tests with repeat (static maps are not cleared between runs)
   if (initial_expected) {
-    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::csv>::get()));
-    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::json>::get()));
-    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::text>::get()));
-    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::xml>::get()));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::csv>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::text>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::xml>::get(), irs::string_ref::NIL));
+    ASSERT_FALSE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::csv>::get()));
+    ASSERT_FALSE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::json>::get()));
+    ASSERT_FALSE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::text>::get()));
+    ASSERT_FALSE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::xml>::get()));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::csv>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::text>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::xml>::get(), irs::string_ref::NIL));
 
     irs::analysis::analyzer_registrar initial0(irs::type<dummy_analyzer>::get(),
                                                irs::type<irs::text_format::csv>::get(),
@@ -131,14 +127,14 @@ TEST_F(analyzer_test, duplicate_register) {
   ASSERT_TRUE(!duplicate2);
   ASSERT_TRUE(!duplicate3);
 
-  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::csv>::get()));
-  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::json>::get()));
-  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::text>::get()));
-  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::type<irs::text_format::xml>::get()));
-  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::csv>::get(), irs::string_ref::NIL));
-  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::text>::get(), irs::string_ref::NIL));
-  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::type<irs::text_format::xml>::get(), irs::string_ref::NIL));
+  ASSERT_TRUE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::csv>::get()));
+  ASSERT_TRUE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::json>::get()));
+  ASSERT_TRUE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::text>::get()));
+  ASSERT_TRUE(irs::analysis::analyzers::exists(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::xml>::get()));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::csv>::get(), irs::string_ref::NIL));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::text>::get(), irs::string_ref::NIL));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get(irs::type<dummy_analyzer>::name(), irs::type<irs::text_format::xml>::get(), irs::string_ref::NIL));
 }
 
 TEST_F(analyzer_test, test_load) {

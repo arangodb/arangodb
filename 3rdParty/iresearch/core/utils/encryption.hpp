@@ -29,7 +29,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct encryption
@@ -224,6 +224,6 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
 }; // encrypted_input
 
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_ENCRYPTION_H

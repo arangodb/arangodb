@@ -32,6 +32,8 @@ var jsunity = require("jsunity"),
   arangodb = require("@arangodb"),
   db = arangodb.db;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 function TemplateMiddlewareSpec () {
   'use strict';
   var TemplateMiddleware, templateMiddleware, templateCollection, request, response, options, next, error;

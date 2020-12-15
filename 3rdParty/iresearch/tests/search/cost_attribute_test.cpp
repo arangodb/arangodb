@@ -28,10 +28,8 @@
 #include <limits>
 
 TEST(cost_attribute_test, consts) {
-  ASSERT_EQ(
-    (std::numeric_limits<irs::cost::cost_t>::max)(),
-    irs::cost::cost_t(irs::cost::MAX)
-  );
+  static_assert("iresearch::cost" == irs::type<irs::cost>::name());
+  static_assert((std::numeric_limits<irs::cost::cost_t>::max)() == irs::cost::MAX);
 }
 
 TEST(cost_attribute_test, ctor) {

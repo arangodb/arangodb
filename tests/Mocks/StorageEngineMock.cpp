@@ -1016,7 +1016,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
-    l->batchInsert(trx, docs, taskQueuePtr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second);
+    }
   } else {
     TRI_ASSERT(false);
   }
@@ -1140,8 +1142,7 @@ arangodb::Result PhysicalCollectionMock::insert(
         auto* l =
             static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
         if (!l->insert(*trx, ref->second.docId(),
-                       arangodb::velocypack::Slice(result.vpack()),
-                       arangodb::Index::OperationMode::normal)
+                       arangodb::velocypack::Slice(result.vpack()))
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
@@ -1860,6 +1861,10 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
 //  releaseUsage();
 
   return arangodb::Result();
+}
+  
+uint64_t TransactionStateMock::numCommits() const {
+  return commitTransactionCount;
 }
 
 bool TransactionStateMock::hasFailedOperations() const {

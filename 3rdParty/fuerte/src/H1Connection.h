@@ -58,6 +58,9 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   // If false is retured the connection is broken beyond repair.
   bool lease() override;
 
+  /// Give back lease, if no sendRequest was called on it.
+  void unlease() override;
+
   /// All methods below here must only be called from the IO thread.
  protected:
   /// This is posted by `sendRequest` to the _io_context thread, the `_active`

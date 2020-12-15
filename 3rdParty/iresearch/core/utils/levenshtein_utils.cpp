@@ -37,7 +37,7 @@
 #include "utf8_utils.hpp"
 #include "misc.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -101,7 +101,7 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
 ////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
-  return lhs.transpose | !rhs.transpose
+  return (lhs.transpose | !rhs.transpose)
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
@@ -445,9 +445,9 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   return (lhs | rhs) & mask;
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 parametric_description::parametric_description(
     std::vector<transition_t>&& transitions,
@@ -754,4 +754,4 @@ bool edit_distance(
   return true;
 }
 
-NS_END
+}
