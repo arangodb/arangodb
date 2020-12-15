@@ -4,8 +4,10 @@ v3.7.6 (XXXX-XX-XX)
 * Fix a potential nullptr access in AsyncAgencyComm in case there was a specific
   error when sending an agency request.
 
+* Clean up agency change log, cluster info caches.
 
-v3.7.5 (XXXX-XX-XX)
+
+v3.7.5 (2020-12-09)
 -------------------
 
 * Fixed ES-662 by introducing refactored thread pool to make more efficient

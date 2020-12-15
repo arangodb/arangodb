@@ -294,12 +294,12 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   int res = TRI_GetTempName(nullptr, filename, true, err, msg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::INTERNAL_ERROR, res, msg);
+    generateError(rest::ResponseCode::SERVER_ERROR, res, msg);
   } else {
-    char const* f = fileName.c_str();
+    char const* f = filename.c_str();
     try {
       mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
-      std::string const content = FileUtils::slurp(fileName);
+      std::string const content = FileUtils::slurp(filename);
       TRI_UnlinkFile(f);
 
       resetResponse(rest::ResponseCode::OK);
