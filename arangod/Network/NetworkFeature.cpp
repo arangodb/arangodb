@@ -31,6 +31,7 @@
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -66,7 +67,7 @@ namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
     : NetworkFeature(server, network::ConnectionPool::Config{}) {
-  this->_numIOThreads = 2; // override default
+  this->_numIOThreads = 1; // override default
 }
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
@@ -76,7 +77,10 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _idleTtlMilli(config.idleConnectionMilli),
       _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts),
-      _prepared(false) {
+      _prepared(false),
+      _forwardedRequests(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_forwarded_requests", 0, "Number of requests forwarded to another coordinator")) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -139,7 +143,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  _numIOThreads = std::min<unsigned>(1, std::max<unsigned>(_numIOThreads, 8));
+  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
@@ -161,7 +165,7 @@ void NetworkFeature::prepare() {
   if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
-
+  
   network::ConnectionPool::Config config;
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
@@ -266,6 +270,10 @@ void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
 
 bool NetworkFeature::prepared() const {
   return _prepared;
+}
+
+void NetworkFeature::trackForwardedRequest() {
+  ++_forwardedRequests;
 }
 
 }  // namespace arangodb

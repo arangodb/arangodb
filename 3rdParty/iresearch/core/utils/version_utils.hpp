@@ -35,15 +35,15 @@
   #define IRESEARCH_VERSION 0
 #endif
 
-NS_ROOT
-NS_BEGIN(version_utils)
+namespace iresearch {
+namespace version_utils {
 
 const string_ref build_date();
 const string_ref build_id();
 const string_ref build_time();
 const string_ref build_version();
 
-NS_END
-NS_END
+}
+}
 
 #endif

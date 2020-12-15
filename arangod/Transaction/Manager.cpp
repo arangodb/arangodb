@@ -238,7 +238,8 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
 }
 
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
-                                 VPackSlice const trxOpts) {
+                                 VPackSlice const trxOpts,
+                                 bool isFollowerTransaction) {
   Result res;
   if (_disallowInserts) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -255,6 +256,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (options.lockTimeout < 0.0) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
+  }
+  if (isFollowerTransaction) {
+    options.isFollowerTransaction = true;
   }
 
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
@@ -401,6 +405,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (options.isFollowerTransaction || transaction::isFollowerTransactionId(tid)) {
+    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
@@ -438,6 +445,10 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
                                                                AccessMode::Type mode) {
   TRI_ASSERT(mode != AccessMode::Type::NONE);
   if (_disallowInserts.load(std::memory_order_acquire)) {
+    return nullptr;
+  }
+
+  TRI_IF_FAILURE("leaseManagedTrxFail") {
     return nullptr;
   }
   
@@ -529,26 +540,39 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 }
 
 void Manager::returnManagedTrx(TRI_voc_tid_t tid) noexcept {
-  const size_t bucket = getBucket(tid);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  bool isSoftAborted = false;
 
-  auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
-    LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
-        << "managed transaction was not found";
-    TRI_ASSERT(false);
-    return;
-  }
+  {
+    const size_t bucket = getBucket(tid);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  TRI_ASSERT(it->second.state != nullptr);
+    auto it = _transactions[bucket]._managed.find(tid);
+    if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
+      LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
+          << "managed transaction was not found";
+      TRI_ASSERT(false);
+      return;
+    }
 
-  // garbageCollection might soft abort used transactions
-  const bool isSoftAborted = it->second.expiryTime == 0;
-  if (!isSoftAborted) {
-    it->second.updateExpiry();
+    TRI_ASSERT(it->second.state != nullptr);
+
+    // garbageCollection might soft abort used transactions
+    isSoftAborted = it->second.expiryTime == 0;
+    if (!isSoftAborted) {
+      it->second.updateExpiry();
+    }
+    
+    it->second.rwlock.unlock();
   }
   
-  it->second.rwlock.unlock();
+  // it is important that we release the write lock for the bucket here,
+  // because abortManagedTrx will call statusChangeWithTimeout, which will
+  // call updateTransaction, which then will try to acquire the same 
+  // write lock
+  
+  TRI_IF_FAILURE("returnManagedTrxForceSoftAbort") {
+    isSoftAborted = true;
+  }
 
   if (isSoftAborted) {
     abortManagedTrx(tid);

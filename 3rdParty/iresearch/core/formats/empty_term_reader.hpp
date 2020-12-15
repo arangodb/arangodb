@@ -26,7 +26,7 @@
 #include "formats.hpp"
 #include "index/field_meta.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a term_reader implementation with docs_count but without terms
@@ -77,6 +77,6 @@ class empty_term_reader final : public irs::term_reader {
   uint64_t docs_count_;
 };
 
-NS_END // ROOT
+} // ROOT
 
 #endif

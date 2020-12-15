@@ -26,8 +26,8 @@
 
 #include "index/index_writer.hpp"
 
-NS_ROOT
-NS_BEGIN(index_utils)
+namespace iresearch {
+namespace index_utils {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @param threshold merge segment if:
@@ -135,7 +135,7 @@ void read_document_mask(document_mask& docs_mask, const directory& dir, const se
 ////////////////////////////////////////////////////////////////////////////////
 void flush_index_segment(directory& dir, index_meta::index_segment_t& segment);
 
-NS_END
-NS_END
+}
+}
 
 #endif

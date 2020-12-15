@@ -23,11 +23,11 @@
 #ifndef IRESEARCH_NETWORK_UTILS_H
 #define IRESEARCH_NETWORK_UTILS_H
 
-NS_ROOT
+namespace iresearch {
 
 IRESEARCH_API int get_host_name(char* name, size_t size);
 bool is_same_hostname(const char* rhs, size_t size);
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_NETWORK_UTILS_H

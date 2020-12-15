@@ -802,7 +802,8 @@ AqlValue Expression::executeSimpleExpressionFCall(AstNode const* node,
   // only some functions have C++ handlers
   // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
-  if (func->implementation != nullptr) {
+  TRI_ASSERT(func != nullptr);
+  if (func->hasCxxImplementation()) {
     return executeSimpleExpressionFCallCxx(node, trx, mustDestroy);
   }
   return executeSimpleExpressionFCallJS(node, trx, mustDestroy);
@@ -814,7 +815,8 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
                                                      bool& mustDestroy) {
   mustDestroy = false;
   auto func = static_cast<Function*>(node->getData());
-  TRI_ASSERT(func->implementation != nullptr);
+  TRI_ASSERT(func != nullptr);
+  TRI_ASSERT(func->hasCxxImplementation());
 
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
@@ -979,6 +981,8 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     } else {
       // a call to a built-in V8 function
       auto func = static_cast<Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+      TRI_ASSERT(func->hasV8Implementation());
       jsName = "AQL_" + func->name;
 
       for (size_t i = 0; i < n; ++i) {
@@ -1699,9 +1703,9 @@ AstNode* Expression::nodeForModification() const {
   return _node; 
 }
 
-bool Expression::canRunOnDBServer() {
+bool Expression::canRunOnDBServer(bool isOneShard) {
   TRI_ASSERT(_type != UNPROCESSED);
-  return (_type == JSON || _node->canRunOnDBServer());
+  return (_type == JSON || _node->canRunOnDBServer(isOneShard));
 }
 
 bool Expression::isDeterministic() {

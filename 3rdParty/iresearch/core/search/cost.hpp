@@ -28,7 +28,7 @@
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class cost
@@ -64,7 +64,7 @@ class IRESEARCH_API cost final : public attribute {
   template<typename Provider>
   static cost_t extract(const Provider& src, cost_t def = MAX) noexcept {
     cost::cost_t est = def;
-    auto* attr = irs::get<iresearch::cost>(src);
+    auto* attr = irs::get<irs::cost>(src);
     if (attr) {
       est = attr->estimate();
     }
@@ -109,6 +109,6 @@ class IRESEARCH_API cost final : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_COST_H

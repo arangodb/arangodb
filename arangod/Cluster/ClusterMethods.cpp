@@ -575,8 +575,8 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Enterprise Relecant code to filter out hidden collections
-///        that should ne be triggered directly by operations.
+/// @brief Enterprise Relevant code to filter out hidden collections
+///        that should not be triggered directly by operations.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_ENTERPRISE
@@ -585,6 +585,16 @@ bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
 }
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to filter out hidden collections
+///        that should not be included in links
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_ENTERPRISE
+bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
+  return true;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
