@@ -106,6 +106,9 @@ function startParameterTest(options, testpath, suiteName) {
           return;
         }
         if (pu.shutdownInstance(instanceInfo, clonedOpts, false)) {                                                     // stop
+          instanceInfo.arangods.forEach(function(arangod) {
+            arangod.pid = null;
+          });
           pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
         }
         else {
