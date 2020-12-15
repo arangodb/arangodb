@@ -88,7 +88,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
 
   void StopThread();
 
-  uint64_t GetThrottle() const { return _throttleBps; };
+  uint64_t GetThrottle() const { return _throttleBps; }
 
  protected:
   void Startup(rocksdb::DB* db);
