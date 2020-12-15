@@ -37,6 +37,7 @@
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"

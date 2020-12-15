@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "VocBase/LogicalCollection.h"

@@ -39,6 +39,7 @@
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
