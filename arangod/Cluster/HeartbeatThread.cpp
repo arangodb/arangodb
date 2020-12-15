@@ -398,9 +398,16 @@ DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
 
 void HeartbeatThread::runDBServer() {
 
-    using namespace std::chrono_literals;
+  using namespace std::chrono_literals;
 
   _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+
+  while (!isStopping() && !server().getFeature<DatabaseFeature>().started()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    LOG_TOPIC("eec21", DEBUG, Logger::HEARTBEAT)
+        << "Waiting for database feature to finish start up";
+  }
+
   if (!_maintenanceThread->start()) {
     // WHAT TO DO NOW?
     LOG_TOPIC("12cee", ERR, Logger::HEARTBEAT)
@@ -531,9 +538,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     VPackSlice foxxmasterQueueupdateSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "FoxxmasterQueueupdate"}));
 
-    if (foxxmasterQueueupdateSlice.isBool()) {
-      ServerState::instance()->setFoxxmasterQueueupdate(
-          foxxmasterQueueupdateSlice.getBool());
+    if (foxxmasterQueueupdateSlice.isBool() && foxxmasterQueueupdateSlice.getBool()) {
+      ServerState::instance()->setFoxxmasterQueueupdate(true);
     }
 
     VPackSlice foxxmasterSlice = result[0].get(std::vector<std::string>(

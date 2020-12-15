@@ -29,7 +29,7 @@
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -102,9 +102,9 @@ void collect_terms(
   }
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(by_terms)
 
@@ -154,4 +154,4 @@ filter::prepared::ptr by_terms::prepare(
     boost, sort::MergeType::AGGREGATE);
 }
 
-NS_END
+}

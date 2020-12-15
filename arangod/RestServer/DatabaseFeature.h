@@ -93,6 +93,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// the replication appliers) for all databases
   void recoveryDone();
 
+  /// @brief whether or not the DatabaseFeature has started (and thus has
+  /// completely populated its lists of databases and collections from 
+  /// persistent storage)
+  bool started() const noexcept;
+
   /// @brief enumerate all databases
   void enumerate(std::function<void(TRI_vocbase_t*)> const& callback);
 
@@ -162,7 +167,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
 
   /// @brief create app subdirectory for a database
-  int createApplicationDirectory(std::string const& name, std::string const& basePath);
+  int createApplicationDirectory(std::string const& name, std::string const& basePath, bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
   int iterateDatabases(arangodb::velocypack::Slice const& databases);
@@ -195,6 +200,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _checkVersion;
   bool _upgrade;
   bool _useOldSystemCollections;
+  
+  std::atomic<bool> _started;
 
   /// @brief lock for serializing the creation of databases
   arangodb::Mutex _databaseCreateLock;

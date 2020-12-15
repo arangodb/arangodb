@@ -24,7 +24,7 @@
 #include "gtest/gtest.h"
 #include "analysis/token_masking_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 class token_masking_stream_tests: public ::testing::Test {
   virtual void SetUp() {
@@ -36,13 +36,17 @@ class token_masking_stream_tests: public ::testing::Test {
   }
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 #ifndef IRESEARCH_DLL
+
+TEST_F(token_masking_stream_tests, consts) {
+  static_assert("mask" == irs::type<irs::analysis::token_masking_stream>::name());
+}
 
 TEST_F(token_masking_stream_tests, test_masking) {
   // test mask nothing
@@ -51,6 +55,7 @@ TEST_F(token_masking_stream_tests, test_masking) {
     irs::string_ref data1("ghi");
     std::unordered_set<irs::bstring> mask;
     irs::analysis::token_masking_stream stream(std::move(mask));
+    ASSERT_EQ(irs::type<irs::analysis::token_masking_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);

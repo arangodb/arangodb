@@ -157,27 +157,45 @@ void DatabaseManagerThread::run() {
 
           TRI_ASSERT(!database->isSystem());
 
-          // remove apps directory for database
-          auto appPath = dealer.appPath();
+          {
+            // remove apps directory for database
+            std::string const& appPath = dealer.appPath();
+            if (database->isOwnAppsDirectory() && !appPath.empty()) {
+              MUTEX_LOCKER(mutexLocker1, databaseFeature._databaseCreateLock);
 
-          if (database->isOwnAppsDirectory() && !appPath.empty()) {
-            std::string path = arangodb::basics::FileUtils::buildFilename(
-                arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-                database->name());
+              // but only if nobody re-created a database with the same name!
+              MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
+              
+              TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+              TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
 
-            if (TRI_IsDirectory(path.c_str())) {
-              LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
-                  << "removing app directory '" << path << "' of database '"
-                  << database->name() << "'";
+              if (newInstance == nullptr) {
+                std::string path = arangodb::basics::FileUtils::buildFilename(
+                    arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
+                    database->name());
 
-              TRI_RemoveDirectory(path.c_str());
+                if (TRI_IsDirectory(path.c_str())) {
+                  LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
+                    << "removing app directory '" << path << "' of database '"
+                    << database->name() << "'";
+
+                  TRI_RemoveDirectory(path.c_str());
+                }
+              }
             }
           }
 
+          // destroy all items in the QueryRegistry for this database
           auto queryRegistry = QueryRegistryFeature::registry();
           if (queryRegistry != nullptr) {
-            // destroy all items in the QueryRegistry for this database
-            queryRegistry->destroy(database->name());
+            // but only if nobody re-created a database with the same name!
+            MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+            TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+            TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
+
+            if (newInstance == nullptr) {
+              queryRegistry->destroy(database->name());
+            }
           }
 
           try {
@@ -255,7 +273,8 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
-      _useOldSystemCollections(true) {
+      _useOldSystemCollections(true),
+      _started(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -391,6 +410,8 @@ void DatabaseFeature::start() {
 
   // update all v8 contexts
   updateContexts();
+
+  _started.store(true);
 }
 
 // signal to all databases that active cursors can be wiped
@@ -583,6 +604,10 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 
   return Result();
 }
+
+bool DatabaseFeature::started() const noexcept {
+  return _started.load(std::memory_order_relaxed);
+}
   
 void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
   auto unuser(_databasesProtector.use());
@@ -663,7 +688,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       auto appPath = dealer.appPath();
 
       // create app directory for database if it does not exist
-      int res = createApplicationDirectory(name, appPath);
+      int res = createApplicationDirectory(name, appPath, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         events::CreateDatabase(name, res);
@@ -769,7 +794,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
 
         if (!result.ok()) {
           res = result.errorNumber();
-          LOG_TOPIC("c44cb", FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("c44cb", ERR, arangodb::Logger::FIXME)
               << "failed to drop DataSource '" << dataSource.name()
               << "' while dropping database '" << vocbase->name()
               << "': " << result.errorNumber() << " " << result.errorMessage();
@@ -814,6 +839,11 @@ int DatabaseFeature::dropDatabase(std::string const& name,
 
     if (server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
+    }
+          
+    auto queryRegistry = QueryRegistryFeature::registry();
+    if (queryRegistry != nullptr) {
+      queryRegistry->destroy(vocbase->name());
     }
 
     res = engine->prepareDropDatabase(*vocbase).errorNumber();
@@ -1179,34 +1209,50 @@ int DatabaseFeature::createBaseApplicationDirectory(std::string const& appPath,
 
 /// @brief create app subdirectory for a database
 int DatabaseFeature::createApplicationDirectory(std::string const& name,
-                                                std::string const& basePath) {
-  int res = TRI_ERROR_NO_ERROR;
-
+                                                std::string const& basePath,
+                                                bool removeExisting) {
   if (basePath.empty()) {
-    return res;
+    return TRI_ERROR_NO_ERROR;
   }
 
   std::string const path = basics::FileUtils::buildFilename(
       basics::FileUtils::buildFilename(basePath, "_db"), name);
-  if (!TRI_IsDirectory(path.c_str())) {
-    long systemError;
-    std::string errorMessage;
-    res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
-          << "created application directory '" << path << "' for database '"
-          << name << "'";
-    } else if (res == TRI_ERROR_FILE_EXISTS) {
-      LOG_TOPIC("2a78e", INFO, arangodb::Logger::FIXME)
-          << "unable to create application directory '" << path
-          << "' for database '" << name << "': " << errorMessage;
-      res = TRI_ERROR_NO_ERROR;
-    } else {
-      LOG_TOPIC("36682", ERR, arangodb::Logger::FIXME)
-          << "unable to create application directory '" << path
-          << "' for database '" << name << "': " << errorMessage;
+  if (TRI_IsDirectory(path.c_str())) {
+    // directory already exists
+    // this can happen if a database is dropped and quickly recreated
+    if (!removeExisting) {
+      return TRI_ERROR_NO_ERROR;
     }
+
+    if (!basics::FileUtils::listFiles(path).empty()) {
+      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
+          << "forcefully removing existing application directory '" << path
+          << "' for database '" << name << "'";
+      // removing is best effort. if it does not succeed, we can still
+      // go on creating the it
+      TRI_RemoveDirectory(path.c_str());
+    }
+  }
+
+  // directory does not yet exist - this should be the standard case
+  long systemError;
+  std::string errorMessage;
+  int res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
+        << "created application directory '" << path << "' for database '"
+        << name << "'";
+  } else if (res == TRI_ERROR_FILE_EXISTS) {
+    LOG_TOPIC("2a78e", INFO, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
+    res = TRI_ERROR_NO_ERROR;
+  } else {
+    LOG_TOPIC("36682", ERR, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
   }
 
   return res;
@@ -1244,7 +1290,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       std::string const databaseName = it.get("name").copyString();
 
       // create app directory for database if it does not exist
-      res = createApplicationDirectory(databaseName, appPath);
+      res = createApplicationDirectory(databaseName, appPath, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         break;

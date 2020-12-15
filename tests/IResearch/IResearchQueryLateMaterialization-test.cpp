@@ -32,7 +32,7 @@
 
 #include <velocypack/Iterator.h>
 
-NS_LOCAL
+namespace {
 
 static const char* collectionName1 = "collection_1";
 static const char* collectionName2 = "collection_2";
@@ -223,7 +223,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
   }
 };
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

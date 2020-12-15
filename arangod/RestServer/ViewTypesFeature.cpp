@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,8 +51,7 @@ struct InvalidViewFactory : public arangodb::ViewFactory {
   }
 
   virtual arangodb::Result instantiate(arangodb::LogicalView::ptr&, TRI_vocbase_t&,
-                                       arangodb::velocypack::Slice const& definition,
-                                       uint64_t) const override {
+                                       arangodb::velocypack::Slice const& definition) const override {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(

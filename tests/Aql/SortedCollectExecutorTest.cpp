@@ -84,7 +84,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -167,7 +167,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestRowsUpstream()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -386,7 +386,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
 
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -475,7 +475,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -613,7 +613,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestSkip()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         collectRegister(2),

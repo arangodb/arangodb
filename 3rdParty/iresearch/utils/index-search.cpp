@@ -72,16 +72,16 @@
 #else
   #include "boost/regex.hpp"
 
-  NS_BEGIN(std)
+  namespace std {
     typedef ::boost::regex regex;
     typedef ::boost::match_results<string::const_iterator> smatch;
 
     template <typename... Args>
     bool regex_match(Args&&... args) { return ::boost::regex_match(std::forward<Args>(args)...); }
-  NS_END // std
+  } // std
 #endif
 
-NS_LOCAL
+namespace {
 
 const std::string HELP = "help";
 const std::string INDEX_DIR = "index-dir";
@@ -100,7 +100,7 @@ const std::string SCORER_ARG_FMT = "scorer-arg-format";
 const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
 
-NS_END
+}
 
 enum class category_t {
   HighTerm,

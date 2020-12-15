@@ -28,8 +28,8 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an analyzer capable of masking the input, treated as a single token,
@@ -57,7 +57,7 @@ class token_masking_stream
    bool term_eof_;
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

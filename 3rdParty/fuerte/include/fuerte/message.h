@@ -40,6 +40,7 @@ const std::string fu_accept_key("accept");
 const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
 const std::string fu_content_type_key("content-type");
+const std::string fu_content_encoding_key("content-encoding");
 const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
@@ -61,6 +62,8 @@ struct MessageHeader {
       if (_contentType != ContentType::Custom) {
         return;
       }
+    } else if (fu_content_encoding_key == key) {
+      _contentEncoding = to_ContentEncoding(value);
     }
     this->_meta.emplace(std::forward<K>(key), std::forward<V>(value));
   }
@@ -75,6 +78,7 @@ struct MessageHeader {
   }
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
+  ContentEncoding contentEncoding() const { return _contentEncoding; }
   // content type accessors
   ContentType contentType() const { return _contentType; }
   void contentType(ContentType type) {
@@ -89,6 +93,7 @@ struct MessageHeader {
   short _version;
   ContentType _contentType = ContentType::Unset;
   ContentType _acceptType = ContentType::VPack;
+  ContentEncoding _contentEncoding = ContentEncoding::Identity;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -161,6 +166,9 @@ class Message {
     }
     return velocypack::Slice::noneSlice();
   }
+
+  /// content-encoding header type
+  ContentEncoding contentEncoding() const;
 
   /// content-type header accessors
   ContentType contentType() const;

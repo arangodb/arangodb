@@ -35,6 +35,8 @@ if (getOptions === true) {
   };
 }
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 if (runSetup === true) {
   let users = require("@arangodb/users");
   

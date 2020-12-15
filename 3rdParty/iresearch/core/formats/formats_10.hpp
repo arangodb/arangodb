@@ -25,8 +25,8 @@
 
 #include "formats.hpp"
 
-NS_ROOT
-NS_BEGIN(version10)
+namespace iresearch {
+namespace version10 {
 
 void init();
 
@@ -42,7 +42,7 @@ class IRESEARCH_PLUGIN format : public irs::format {
   explicit format(const type_info& type) noexcept;
 }; // format
 
-NS_END // version10
-NS_END // ROOT
+} // version10
+} // ROOT
 
 #endif

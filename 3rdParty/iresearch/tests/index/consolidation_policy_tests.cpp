@@ -26,7 +26,7 @@
 #include "index/index_writer.hpp"
 #include "utils/index_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 void print_consolidation(
     const irs::index_meta& meta,
@@ -76,7 +76,7 @@ void assert_candidates(
   }
 }
 
-NS_END
+}
 
 TEST(consolidation_test_tier, test_max_consolidation_size) {
   // generate meta

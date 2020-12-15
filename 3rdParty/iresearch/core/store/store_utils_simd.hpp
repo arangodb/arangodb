@@ -23,13 +23,13 @@
 #ifndef IRESEARCH_STORE_UTILS_SIMD_H
 #define IRESEARCH_STORE_UTILS_SIMD_H
 
-NS_ROOT
+namespace iresearch {
 
 struct data_input;
 struct data_output;
 
-NS_BEGIN(encode)
-NS_BEGIN(bitpack)
+namespace encode {
+namespace bitpack {
 
 // reads block of 128 integers from the stream
 // that was previously encoded with the corresponding
@@ -67,8 +67,8 @@ IRESEARCH_API uint32_t write_block_simd(
   uint32_t size,
   uint32_t* RESTRICT encoded);
 
-NS_END // encode
-NS_END // bitpack
-NS_END // ROOT
+} // encode
+} // bitpack
+} // ROOT
 
 #endif
