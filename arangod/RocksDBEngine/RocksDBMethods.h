@@ -25,7 +25,6 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_METHODS_H 1
 
 #include "Basics/Result.h"
-#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 
 namespace rocksdb {
