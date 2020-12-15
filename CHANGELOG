@@ -1,6 +1,8 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
 * Fix Windows directory creation error handling.
 
 * Added new metrics for tracking AQL queries and slow queries:
