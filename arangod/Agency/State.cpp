@@ -769,15 +769,19 @@ bool State::checkCollection(std::string const& name) {
 /// Drop
 void State::dropCollection(std::string const& colName) {
   try {
-    auto col = _vocbase->lookupCollection(colName)->id();
-    auto res = _vocbase->dropCollection(col, false, -1.0).errorNumber();
+    auto col = _vocbase->lookupCollection(colName);
+    if (col == nullptr) {
+      return;
+    }
+    auto res = _vocbase->dropCollection(col->id(), false, -1.0).errorNumber();
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("ba841", ERR, Logger::AGENCY)
-        << "unable to drop collection log: " << TRI_errno_string(res);
+        << "unable to drop collection '" << colName << "': " << TRI_errno_string(res);
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("69f4c", FATAL, Logger::AGENCY)
-      << "unable to drop collections " << colName << ": " << e.what();
+      << "unable to drop collection '" << colName << "': " << e.what();
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -864,7 +868,6 @@ bool State::loadPersisted() {
       _log.clear();
       _cur = 0;
       dropCollection("log");
-      //TRI_ASSERT(false);
       dropCollection("compact");
 
     }
