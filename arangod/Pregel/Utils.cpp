@@ -55,13 +55,14 @@ std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
+std::string const Utils::edgeCollectionRestrictionsKey = "edgeCollectionRestrictions";
 std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::asyncModeKey = "asyncMode";
 std::string const Utils::lazyLoadingKey = "lazyloading";
-std::string const Utils::useMemoryMaps = "useMemoryMaps";
+std::string const Utils::useMemoryMapsKey = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
 
 std::string const Utils::globalSuperstepKey = "gss";
@@ -88,7 +89,7 @@ std::string Utils::baseUrl(std::string const& prefix) {
 int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                         std::string const& collectionName, std::string const& shardKey,
                         VPackStringRef vertexKey, std::string& responsibleShard) {
-  if (ServerState::instance()->isRunningInCluster() == false) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     responsibleShard = collectionName;
     return TRI_ERROR_NO_ERROR;
   }

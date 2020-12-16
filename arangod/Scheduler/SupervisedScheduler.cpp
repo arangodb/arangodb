@@ -398,8 +398,8 @@ void SupervisedScheduler::runWorker() {
     }
 
     // inform the supervisor that this thread is alive
-    state->_ready = true;
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
+    state->_ready = true;
     _conditionSupervisor.notify_one();
   }
   _numAwake.fetch_add(1, std::memory_order_relaxed);
@@ -412,7 +412,7 @@ void SupervisedScheduler::runWorker() {
 
       _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
 
-      state->_lastJobStarted = clock::now();
+      state->_lastJobStarted.store(clock::now(), std::memory_order_release);
       state->_working = true;
       _numWorking.fetch_add(1, std::memory_order_relaxed);
       try {
@@ -549,7 +549,8 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
         continue;
       }
 
-      if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
+      if ((now - state->_lastJobStarted.load(std::memory_order_acquire)) >
+          std::chrono::seconds(5)) {
         LOG_TOPIC("efcaa", TRACE, Logger::THREADS)
             << "Detach long running thread.";
 
@@ -624,7 +625,8 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
   while (!state->_stop) {
     auto loopStart = std::chrono::steady_clock::now();
     uint64_t timeOutForNow = state->_queueRetryTime_us;
-    if (loopStart - state->_lastJobStarted > std::chrono::seconds(1)) {
+    if (loopStart - state->_lastJobStarted.load(std::memory_order_acquire) >
+        std::chrono::seconds(1)) {
       timeOutForNow = 0;
     }
     do {
@@ -746,6 +748,7 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
       _working(false),
       _sleeping(false),
       _ready(false),
+      _lastJobStarted(clock::now()),
       _thread(new SupervisedSchedulerWorkerThread(scheduler._server, scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }

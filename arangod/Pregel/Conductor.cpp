@@ -61,6 +61,7 @@ const char* arangodb::pregel::ExecutionStateNames[7] = {
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
                      std::vector<CollectionID> const& edgeCollections,
+                     std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
                      std::string const& algoName, VPackSlice const& config)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
@@ -68,10 +69,26 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   if (!config.isObject()) {
-    _userParams.openObject();
-    _userParams.close();
+    _userParams.add(VPackSlice::emptyObjectSlice());
   } else {
     _userParams.add(config);
+  }
+
+  // handle edge collection restrictions
+  if (ServerState::instance()->isCoordinator()) {
+    for (auto const& it : edgeCollectionRestrictions) {
+      for (auto const& shardId : getShardIds(it.first)) {
+        // intentionally create key in map
+        auto& restrictions = _edgeCollectionRestrictions[shardId];
+        for (auto const& cn : it.second) {
+          for (auto const& edgeShardId : getShardIds(cn)) {
+            restrictions.push_back(edgeShardId);
+          }
+        }
+      }
+    }
+  } else {
+    _edgeCollectionRestrictions = edgeCollectionRestrictions;
   }
 
   if (!_algorithm) {
@@ -95,7 +112,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
     LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
-                                                      Utils::useMemoryMaps, _useMemoryMaps);
+                                                      Utils::useMemoryMapsKey, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -402,8 +419,9 @@ void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
   bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
-      Logger::PREGEL, "cancel worker execution");
+      [this]() -> bool { 
+        return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); 
+      }, Logger::PREGEL, "cancel worker execution");
   if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
         << "Failed to cancel worker execution for five minutes, giving up.";
@@ -552,7 +570,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
   }
-  // do not reload all shard id's, this list is must stay in the same order
+  // do not reload all shard id's, this list must stay in the same order
   if (_allShards.size() == 0) {
     _allShards = shardList;
   }
@@ -577,12 +595,23 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
     b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
-    b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
+    b.add(Utils::useMemoryMapsKey, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);
       }
     }
+    
+    // edge collection restrictions
+    b.add(Utils::edgeCollectionRestrictionsKey, VPackValue(VPackValueType::Object));
+    for (auto const& pair : _edgeCollectionRestrictions) {
+      b.add(pair.first, VPackValue(VPackValueType::Array));
+      for (ShardID const& shard: pair.second) {
+        b.add(VPackValue(shard));
+      }
+      b.close();
+    }
+    b.close();
 
     b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : vertexShardMap) {
@@ -601,6 +630,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       }
       b.close();
     }
+    
     b.close();
     b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : collectionPlanIdMap) {
@@ -613,7 +643,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     }
     b.close();
     b.close();
-
+  
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
@@ -885,4 +915,23 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);
+}
+
+std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
+  TRI_vocbase_t& vocbase = _vocbaseGuard.database();
+  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+
+  std::vector<ShardID> result;
+  try {
+    std::shared_ptr<LogicalCollection> lc = ci.getCollection(vocbase.name(), collection);
+    std::shared_ptr<std::vector<ShardID>> shardIDs = ci.getShardList(std::to_string(lc->id()));
+    result.reserve(shardIDs->size());
+    for (auto const& it : *shardIDs) {
+      result.emplace_back(it);
+    }
+  } catch (...) {
+    result.clear();
+  }
+
+  return result;
 }

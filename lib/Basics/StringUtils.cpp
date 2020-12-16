@@ -910,16 +910,15 @@ std::string urlEncode(char const* src, size_t const len) {
   return result;
 }
 
-std::string encodeURIComponent(char const* src, size_t len) {
+void encodeURIComponent(std::string& result, char const* src, size_t len) {
   char const* end = src + len;
 
   // cppcheck-suppress unsignedPositive
-  if (len >= (SIZE_MAX - 1) / 3) {
+  if (result.size() + len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  std::string result;
-  result.reserve(3 * len);
+  result.reserve(result.size() + 3 * len);
 
   for (; src < end; ++src) {
     if (*src == '-' || *src == '_' || *src == '.' || *src == '!' ||
@@ -936,7 +935,11 @@ std::string encodeURIComponent(char const* src, size_t len) {
       result.push_back(::hexValuesUpper[c % 16]);
     }
   }
+}
 
+std::string encodeURIComponent(char const* src, size_t len) {
+  std::string result;
+  encodeURIComponent(result, src, len);
   return result;
 }
 
