@@ -242,10 +242,13 @@ class State {
   bool checkCollection(std::string const& name);
 
   /// @brief Create collections
-  bool createCollections();
+  void createCollections();
+
+  /// @brief Create collections
+  void dropCollection(std::string const& name);
 
   /// @brief Create collection
-  bool createCollection(std::string const& name);
+  bool createCollection(std::string const& name, bool drop);
 
   /// @brief Compact persisted logs
   bool compactPersisted(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);

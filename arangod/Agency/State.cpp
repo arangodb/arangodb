@@ -766,18 +766,20 @@ bool State::configure(Agent* agent) {
 /// Check if collections exist otherwise create them
 bool State::checkCollections() {
   if (!_collectionsChecked) {
-    _collectionsChecked = checkCollection("log") && checkCollection("election");
+    _collectionsChecked =
+      checkCollection("log") && checkCollection("compact") && checkCollection("election");
   }
   return _collectionsChecked;
 }
 
 /// Create agency collections
-bool State::createCollections() {
+void State::createCollections() {
   if (!_collectionsChecked) {
-    return (createCollection("log") && createCollection("election") &&
-            createCollection("compact"));
+    createCollection("log", false);
+    createCollection("compact", false);
+    createCollection("election", false);
   }
-  return _collectionsChecked;
+  _collectionsChecked = true;
 }
 
 /// Check collection by name
@@ -788,8 +790,23 @@ bool State::checkCollection(std::string const& name) {
   return true;
 }
 
+/// Drop
+void State::dropCollection(std::string const& colName) {
+  try {
+    auto col = _vocbase->lookupCollection(colName)->id();
+    auto res = _vocbase->dropCollection(col, false, -1.0).errorNumber();
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC("ba841", ERR, Logger::AGENCY)
+        << "unable to drop collection log: " << TRI_errno_string(res);
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("69fc4", FATAL, Logger::REPLICATION)
+      << "unable to drop collections " << colName << ": " << e.what();
+  }
+}
+
 /// Create collection by name
-bool State::createCollection(std::string const& name) {
+bool State::createCollection(std::string const& name, bool drop) {
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -798,8 +815,11 @@ bool State::createCollection(std::string const& name) {
     body.add("isSystem", VPackValue(TRI_vocbase_t::IsSystemName(name)));
   }
 
-  auto collection = _vocbase->createCollection(body.slice());
+  if (drop && _vocbase->lookupCollection(name) != nullptr) {
+    dropCollection(name);
+  }
 
+  auto collection = _vocbase->createCollection(body.slice());
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
   }
@@ -849,7 +869,7 @@ bool State::loadPersisted() {
   TRI_ASSERT(_vocbase != nullptr);
 
   if (!checkCollection("configuration")) {
-    createCollection("configuration");
+    createCollection("configuration", false);
   }
 
   loadOrPersistConfiguration();
@@ -861,30 +881,22 @@ bool State::loadPersisted() {
     } else {
       LOG_TOPIC("1a476", INFO, Logger::AGENCY)
         << "Non matching compaction and log indexes. Dropping both collections";
-
-      std::function<void(std::string const&)> drop = [&](std::string const& colName) {
-        try {
-          auto col = _vocbase->lookupCollection(colName)->id();
-          auto res = _vocbase->dropCollection(col, false, -1.0).errorNumber();
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC("ba841", ERR, Logger::AGENCY)
-              << "unable to drop collection log: " << TRI_errno_string(res);
-          }
-        } catch (std::exception const& e) {
-          LOG_TOPIC("69fc4", FATAL, Logger::REPLICATION)
-            << "unable to drop collections log/compact" << e.what();
-        }
-      };
       _log.clear();
       _cur = 0;
-      drop("log");
-      drop("compact");
+      dropCollection("log");
+      dropCollection("compact");
 
     }
   }
 
   LOG_TOPIC("9e72a", DEBUG, Logger::AGENCY) << "No persisted log: creating collections.";
-  createCollections();
+
+  // This is a combined create of logs and compact, as otherwise inconsistencies
+  // in log and compact cannot be mitigated after this point. We are here because
+  // of the above missing / incomplete log / compaction. Including the case of only
+  // one of the two collections being present.
+  createCollection("log", true);
+  createCollection("compact", true);
 
   return true;
 }
