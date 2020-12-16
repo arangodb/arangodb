@@ -235,14 +235,8 @@ class State {
   bool loadRemaining(index_t);
   bool loadOrPersistConfiguration();
 
-  /// @brief Check collections
-  bool checkCollections();
-
   /// @brief Check collection sanity
   bool checkCollection(std::string const& name);
-
-  /// @brief Create collections
-  void createCollections();
 
   /// @brief Create collections
   void dropCollection(std::string const& name);
@@ -276,7 +270,6 @@ class State {
   mutable arangodb::Mutex _logLock;
   std::deque<log_t> _log; /**< @brief  State entries */
   // Invariant: This has at least one entry at all times!
-  bool _collectionsChecked; /**< @brief Collections checked */
   bool _collectionsLoaded;
   std::multimap<std::string, arangodb::consensus::index_t> _clientIdLookupTable;
 
