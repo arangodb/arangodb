@@ -361,7 +361,6 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
               for (Try<arangodb::network::Response> const& tryRes : responses) {
                 network::Response const& resp = tryRes.get();  // throws exceptions upwards
 
-
                 Result res =
                     ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
                 if (res.fail()) {
@@ -409,23 +408,23 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     // Make sure we always use the same ordering on servers
     std::vector<ServerID> sortedLeaders{leaders};
 
-    // TODO create a shared constant sort Method for serverId
     std::sort(sortedLeaders.begin(), sortedLeaders.end(),
-              [](auto const& lhs, auto const& rhs) { return lhs < rhs; });
-
+              [&state](auto const& lhs, auto const& rhs) {
+                return state.SortServerIds(lhs, rhs);
+              });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // Make sure we always maintain the correct ordering of servers
-      // here, if we contact them in increasing name, we avoid dead-locks
-      std::string serverBefore = "";
+    // Make sure we always maintain the correct ordering of servers
+    // here, if we contact them in increasing name, we avoid dead-locks
+    std::string serverBefore = "";
 #endif
     // Run slowPath
     for (ServerID const& leader : sortedLeaders) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // If the serverBefore has a smaller ID we allways contact by increasing
-        // ID here.
-        TRI_ASSERT(serverBefore < leader);
-        serverBefore = leader;
+      // If the serverBefore has a smaller ID we allways contact by increasing
+      // ID here.
+      TRI_ASSERT(serverBefore < leader);
+      serverBefore = leader;
 #endif
 
       auto resp = ::beginTransactionRequest(state, leader);
@@ -435,7 +434,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
         std::string message = network::fuerteToArangoErrorMessage(resolvedResponse);
         return Result{code, message};
       } else {
-       state.addKnownServer(leader);  // add server id to known list
+        state.addKnownServer(leader);  // add server id to known list
       }
     }
   }

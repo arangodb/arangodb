@@ -74,6 +74,10 @@ class TransactionState {
     virtual ~Cookie() = default;
   };
 
+  static bool SortServerIds(ServerID const& lhs, ServerID const& rhs) {
+    return lhs < rhs;
+  }
+
   typedef std::function<void(TransactionState& state)> StatusChangeCallback;
 
   TransactionState() = delete;

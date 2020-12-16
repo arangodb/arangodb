@@ -498,9 +498,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
       // Make sure we always use the same ordering on servers
       std::sort(engineInformation.begin(), engineInformation.end(),
-                [](auto const& lhs, auto const& rhs) {
+                [&trx](auto const& lhs, auto const& rhs) {
                   // Entry <0> is the Server
-                  return std::get<0>(lhs) < std::get<0>(rhs);
+                  return trx.state()->SortServerIds(std::get<0>(lhs), std::get<0>(rhs));
                 });
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // Make sure we always maintain the correct ordering of servers
