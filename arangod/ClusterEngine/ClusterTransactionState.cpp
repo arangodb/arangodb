@@ -59,7 +59,6 @@ ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, Transac
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
-  LOG_DEVEL << "starting trx: " << id().id();
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
              !AccessMode::isWriteOrExclusive(_type));
