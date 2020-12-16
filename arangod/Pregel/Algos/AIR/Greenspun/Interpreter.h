@@ -60,7 +60,6 @@ struct Machine {
       std::function<EvalResult(Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
 
   EvalResult setFunction(std::string_view name, function_type&& f);
-  EvalResult unsetFunction(std::string_view name);
 
   EvalResult applyFunction(std::string name, VPackSlice slice, VPackBuilder& result);
 

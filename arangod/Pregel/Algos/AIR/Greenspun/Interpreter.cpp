@@ -276,8 +276,6 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
 }
 
 EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  // ["for-each", ["a", ["list", "A", "B", "C"]], ["d", ["list", "1", "2", "3"]], ["print", ["var-ref", "a"], ["var-ref", "d"]]]
-
   if (!paramIterator.valid()) {
     return EvalError("Expected at least one argument");
   }
@@ -326,8 +324,6 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
       });
     }
   }
-
-  VPackSlice body = paramIterator.value();
 
   auto const runIterators = [&](Machine& ctx, std::size_t index, auto next) -> EvalResult {
     if (index == iterators.size()) {
@@ -549,22 +545,6 @@ EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator paramIterator, VPackBui
   return {};
 }
 
-EvalResult SpecialStr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  std::stringstream ss;
-
-  for (; paramIterator.valid(); ++paramIterator) {
-    if ((*paramIterator).isString()) {
-      ss << (*paramIterator).copyString();
-    } else {
-      return EvalError(std::string{"`str` expecting string, not "} +
-                       (*paramIterator).typeName());
-    }
-  }
-
-  result.add(VPackValue(ss.str()));
-  return {};
-}
-
 EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
                          ArrayIterator paramIterator, VPackBuilder& result,
                          bool isEvaluateParameter) {
@@ -592,8 +572,6 @@ EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
       return SpecialForEach(ctx, paramIterator, result);
     } else if (functionSlice.isEqualString("let")) {
       return SpecialLet(ctx, paramIterator, result);
-    } else if (functionSlice.isEqualString("str")) {
-      return SpecialStr(ctx, paramIterator, result);
     } else {
       return Call(ctx, functionSlice, paramIterator, result, isEvaluateParameter);
     }
@@ -670,7 +648,6 @@ EvalResult Machine::getVariable(const std::string& name, VPackBuilder& result) {
       break;
     }
   }
-  // TODO: variable not found error.
   result.add(VPackSlice::noneSlice());
   return EvalError("variable `" + name + "` not found");
 }
@@ -686,7 +663,6 @@ EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result
     result.add(iter->second);
     return {};
   }
-  // TODO: variable not found error.
   result.add(VPackSlice::noneSlice());
   return EvalError("variable `" + name + "` not found");
 }
@@ -719,16 +695,6 @@ EvalResult Machine::setFunction(std::string_view name, function_type&& f) {
     return EvalError("function `" + sname + "` already registered");
   }
   functions[sname] = std::move(f);
-  return {};
-}
-
-EvalResult Machine::unsetFunction(std::string_view name) {
-  auto sname = std::string{name};
-
-  auto n = functions.erase(sname);
-  if (n == 0) {
-    return EvalError("function `" + sname + "` not known");
-  }
   return {};
 }
 
