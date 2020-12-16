@@ -286,7 +286,7 @@ arangodb::Result modifyLinks( // modify links
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
         normalized, link, true, view.vocbase(), &view.primarySort(),
         &view.primarySortCompression(), &view.storedValues(),
-        link.get(arangodb::StaticStrings::IndexId)
+        link.get(arangodb::StaticStrings::IndexId), collectionName
     );
 
     if (!res.ok()) {
@@ -672,7 +672,8 @@ namespace iresearch {
     IResearchViewSort const* primarySort, /* = nullptr */
     irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
-    arangodb::velocypack::Slice idSlice /* = arangodb::velocypack::Slice()*/ // id for normalized
+    arangodb::velocypack::Slice idSlice, /* = arangodb::velocypack::Slice()*/ // id for normalized
+    irs::string_ref collectionName /*= irs::string_ref::NIL*/
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -704,6 +705,13 @@ namespace iresearch {
   normalized.add(
     arangodb::StaticStrings::IndexType, arangodb::velocypack::Value(LINK_TYPE)
   );
+
+  if (ServerState::instance()->isClusterRole() && 
+      isCreation &&
+      !collectionName.null() &&
+      meta._collectionName.empty()) {
+    meta._collectionName  = collectionName;
+  }
 
   // copy over IResearch Link identifier
   if (!idSlice.isNone()) {
