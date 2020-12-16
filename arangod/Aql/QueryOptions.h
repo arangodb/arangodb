@@ -54,12 +54,12 @@ enum class ProfileLevel : uint8_t {
 };
 
 struct QueryOptions {
-  explicit QueryOptions();
-  explicit QueryOptions(arangodb::velocypack::Slice const);
+  QueryOptions();
+  explicit QueryOptions(arangodb::velocypack::Slice);
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice const slice);
-  void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
+  void fromVelocyPack(arangodb::velocypack::Slice slice);
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
 
   size_t memoryLimit;

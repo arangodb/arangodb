@@ -84,11 +84,12 @@ QueryOptions::QueryOptions()
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice) : QueryOptions() {
+QueryOptions::QueryOptions(arangodb::velocypack::Slice slice) 
+    : QueryOptions() {
   this->fromVelocyPack(slice);
 }
 
-void QueryOptions::fromVelocyPack(VPackSlice const slice) {
+void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (!slice.isObject()) {
     return;
   }

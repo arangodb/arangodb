@@ -138,10 +138,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                             arangodb::aql::QueryString(queryStr),
-                             emptyBuilder, emptyBuilder);
+                             arangodb::aql::QueryString(queryStr), nullptr);
 
   query.queryOptions().cache = false;
   query.queryOptions().ttl = 30;
