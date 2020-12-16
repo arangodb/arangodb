@@ -1,6 +1,9 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
 * Improvements for the Pregel distributed graph processing feature:
   - during the loading/startup phase, the in-memory edge cache is now
     intentionally bypassed. The reason for this is that any edges are looked up
