@@ -159,9 +159,9 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
     return Result(commError);
   }
 
-  VPackSlice answer = resp.response->slice();
-  if ((resp.response->statusCode() == fuerte::StatusOK ||
-       resp.response->statusCode() == fuerte::StatusCreated) &&
+  VPackSlice answer = resp.slice();
+  if ((resp.statusCode() == fuerte::StatusOK ||
+       resp.statusCode() == fuerte::StatusCreated) &&
       answer.isObject()) {
     VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
     VPackSlice statusSlice =
@@ -217,6 +217,12 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
 
   TransactionId tidPlus = state->id().child();
   const std::string path = "/_api/transaction/" + std::to_string(tidPlus.id());
+  if (state->isDBServer()) {
+    // This is a leader replicating the transaction commit or abort and
+    // we should tell the follower that this is a replication operation.
+    // It will then execute the request with a higher priority.
+    reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
+  }
 
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {

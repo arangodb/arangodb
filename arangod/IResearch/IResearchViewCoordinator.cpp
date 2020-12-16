@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
@@ -270,6 +271,9 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 }
 
 Result IResearchViewCoordinator::link(IResearchLink const& link) {
+  if (!arangodb::ClusterMethods::includeHiddenCollectionInLink(link.collection().name())) {
+    return TRI_ERROR_NO_ERROR;
+  }
   static const std::function<bool(irs::string_ref const& key)> acceptor = []( // acceptor
     irs::string_ref const& key // key
   ) -> bool {

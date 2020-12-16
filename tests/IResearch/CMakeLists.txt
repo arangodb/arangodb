@@ -64,6 +64,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewNode-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSort-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSorted-test.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewCountApproximate-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelper-test.cpp
 )
 

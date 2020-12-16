@@ -21,6 +21,9 @@ if (MSVC)
   add_definitions(-DBOOST_ALL_NO_LIB)
 endif()
 
+if (MSVC)
+  set(Boost_LIB_PREFIX "lib")
+endif()
 set(Boost_USE_MULTITHREAD ON)
 
 # define boost required components
