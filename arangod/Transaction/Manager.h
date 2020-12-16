@@ -51,6 +51,7 @@ class Slice;
 namespace transaction {
 class Context;
 class ManagerFeature;
+class Hints;
 struct Options;
 
 /// @brief Tracks TransasctionState instances
@@ -148,6 +149,8 @@ class Manager final {
                          std::vector<std::string> const& exclusiveCollections,
                          std::vector<std::string> const& writeCollections,
                          std::vector<std::string> const& readCollections);
+  transaction::Hints ensureHints(transaction::Options& options) const;
+  Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState> state);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,

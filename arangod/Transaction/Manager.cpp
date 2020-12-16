@@ -334,6 +334,34 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   return ensureManagedTrx(vocbase, tid, reads, writes, exclusives, std::move(options));
 }
 
+transaction::Hints Manager::ensureHints(transaction::Options& options) const {
+  transaction::Hints hints;
+  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isFollowerTransactionOnDBServer(options)) {
+    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    // turn on intermediate commits on followers as well. otherwise huge leader
+    // transactions could make the follower claim all memory and crash.
+    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  }
+  return hints;
+}
+
+Result Manager::beginTransaction(transaction::Hints hints,
+                                 std::shared_ptr<TransactionState> state) {
+  Result res{};
+  try {
+    res = state->beginTransaction(hints);  // registers with transaction manager
+  } catch (basics::Exception const& ex) {
+    res.reset(ex.code(), ex.what());
+  }
+
+  if (res.fail()) {
+    TRI_ASSERT(!state->isRunning());
+    return res;
+  }
+  return res;
+}
+
 void Manager::prepareOptions(transaction::Options& options) {
   // enforce size limit per DBServer
   if (isFollowerTransactionOnDBServer(options)) {
@@ -505,21 +533,9 @@ ResultT<TransactionId> Manager::createManagedTrx(
 
   // TODO: add hint or bool if transaction is rerollable
   // start the transaction
-  transaction::Hints hints;
-  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isFollowerTransactionOnDBServer(options)) {
-    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-    // turn on intermediate commits on followers as well. otherwise huge leader
-    // transactions could make the follower claim all memory and crash.
-    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  }
-  try {
-    res = state->beginTransaction(hints);  // registers with transaction manager
-  } catch (basics::Exception const& ex) {
-    res.reset(ex.code(), ex.what());
-  }
+  auto hints = ensureHints(options);
+  res = beginTransaction(hints, state);
   if (res.fail()) {
-    TRI_ASSERT(!state->isRunning());
     return res;
   }
 
@@ -566,10 +582,9 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   /*
-   * TODO: Check (mchacki) - we need to check tid.isFollowerTransactionId() here?
-  bool const isFollowerTransactionOnDBServer =
-      (ServerState::instance()->isDBServer() &&
-       (tid.isFollowerTransactionId() || options.isFollowerTransaction));
+   * TODO: Check (mchacki) - we need to check tid.isFollowerTransactionId()
+  here? bool const isFollowerTransactionOnDBServer = (ServerState::instance()->isDBServer()
+  && (tid.isFollowerTransactionId() || options.isFollowerTransaction));
   */
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
@@ -626,22 +641,9 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   // start the transaction
-  transaction::Hints hints;
-  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isFollowerTransactionOnDBServer(options)) {
-    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-    // turn on intermediate commits on followers as well. otherwise huge leader
-    // transactions could make the follower claim all memory and crash.
-    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  }
-  try {
-    res = state->beginTransaction(hints);  // registers with transaction manager
-  } catch (basics::Exception const& ex) {
-    res.reset(ex.code(), ex.what());
-  }
-
+  auto hints = ensureHints(options);
+  res = beginTransaction(hints, state);
   if (res.fail()) {
-    TRI_ASSERT(!state->isRunning());
     return res;
   }
 
