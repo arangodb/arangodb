@@ -18,6 +18,7 @@ const aql = arangodb.aql;
 var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const isVst = arango.getEndpoint().match('^vst://') !== null;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
@@ -57,7 +58,7 @@ function installFoxx(mountpoint, which) {
   expect(crudResp).to.have.property('manifest');
 }
 
-function deleteFox(mountpoint) {
+function deleteFoxx(mountpoint) {
   const deleteResp = arango.DELETE('/_api/foxx/service?force=true&mount=' + mountpoint);
   expect(deleteResp).to.have.property('code');
   expect(deleteResp.code).to.equal(204);
@@ -300,13 +301,13 @@ describe('Foxx service', () => {
 
   afterEach(() => {
     try {
-      deleteFox(serviceServiceMount);
+      deleteFoxx(serviceServiceMount);
     } catch (e) {}
   });
 
   afterEach(() => {
     try {
-      deleteFox(mount);
+      deleteFoxx(mount);
     } catch (e) {}
   });
 

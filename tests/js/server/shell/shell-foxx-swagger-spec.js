@@ -8,6 +8,8 @@ const createRouter = require('@arangodb/foxx/router');
 
 const noop = () => {};
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx Swagger', function () {
   let service;
   beforeEach(function () {
