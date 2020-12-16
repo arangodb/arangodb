@@ -658,9 +658,15 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
+/// 1447: ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED
+/// "follower transaction intermediate commit already performed"
+/// Will be raised when a follower transaction has already performed an
+/// intermediate commit and must be rolled back.
+constexpr int TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED           = 1447;
+
 /// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
 /// "creating collection failed due to precondition"
-/// Will be raised when updating the plan on collection creatio failed.
+/// Will be raised when updating the plan on collection creation failed.
 constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 1448;
 
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN

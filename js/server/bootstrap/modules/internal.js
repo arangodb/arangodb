@@ -207,6 +207,10 @@
 
   // autoload specific modules
   exports.autoloadModules = function () {
+    if (!global.USE_OLD_SYSTEM_COLLECTIONS) {
+      return;
+    }
+
     console.debug('autoloading actions');
 
     try {

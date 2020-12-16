@@ -545,6 +545,10 @@ void ExecutionEngine::kill() {
     return;
   }
   
+  network::RequestOptions options;
+  options.database = _query.vocbase().name();
+  options.timeout = network::Timeout(30.0);
+  
   // TODO: maybe kill global DBServers ?
   VPackBuffer<uint8_t> body;
   std::vector<network::FutureRes> futures;
@@ -554,7 +558,7 @@ void ExecutionEngine::kill() {
       for (auto const& snippetId : it2.second) {
         TRI_ASSERT(it2.first.substr(0, 7) == "server:");
         auto future = network::sendRequest(pool, it2.first, fuerte::RestVerb::Delete,
-                                           "/_api/aql/kill/" + snippetId, body);
+                                           "/_api/aql/kill/" + snippetId, body, options);
         futures.emplace_back(std::move(future));
       }
     }
