@@ -23,16 +23,19 @@
 
 #include "TransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/MetricsFeature.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
@@ -40,7 +43,6 @@
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
-
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase,
@@ -54,8 +56,8 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase,
       _arena(),
       _collections{_arena},  // assign arena to vector
       _hints(),
-      _options(options),
       _serverRole(ServerState::instance()->getRole()),
+      _options(options),
       _registeredTransaction(false) {}
 
 /// @brief free a transaction container
@@ -398,4 +400,23 @@ void TransactionState::updateStatus(transaction::Status status) {
   }
 
   _status = status;
+}
+  
+/// @brief returns the name of the actor the transaction runs on:
+/// - leader
+/// - follower
+/// - coordinator
+/// - single
+char const* TransactionState::actorName() const noexcept {
+  if (isDBServer()) {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX) ? "follower" : "leader";
+  } else if (isCoordinator()) {
+    return "coordinator";
+  } 
+  return "single";
+}
+
+/// @brief return a reference to the global transaction statistics
+TransactionStatistics& TransactionState::statistics() noexcept {
+  return _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
 }

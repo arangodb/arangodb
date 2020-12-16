@@ -35,6 +35,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 
 class NoStats;
@@ -44,7 +46,9 @@ class SingleRowFetcher;
 
 class SubqueryEndExecutorInfos {
  public:
-  SubqueryEndExecutorInfos(velocypack::Options const* options, RegisterId inReg,
+  SubqueryEndExecutorInfos(velocypack::Options const* options, 
+                           arangodb::ResourceMonitor& resourceMonitor, 
+                           RegisterId inReg,
                            RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
@@ -56,9 +60,11 @@ class SubqueryEndExecutorInfos {
   [[nodiscard]] RegisterId getOutputRegister() const noexcept;
   [[nodiscard]] bool usesInputRegister() const noexcept;
   [[nodiscard]] RegisterId getInputRegister() const noexcept;
+  [[nodiscard]] arangodb::ResourceMonitor& getResourceMonitor() const noexcept;
 
  private:
   velocypack::Options const* _vpackOptions;
+  arangodb::ResourceMonitor& _resourceMonitor;
   RegisterId const _outReg;
   RegisterId const _inReg;
 };
@@ -112,7 +118,9 @@ class SubqueryEndExecutor {
   // control of it to hand over to an AqlValue
   class Accumulator {
    public:
-    explicit Accumulator(VPackOptions const* options);
+    explicit Accumulator(arangodb::ResourceMonitor& resourceMonitor, VPackOptions const* options);
+    ~Accumulator();
+    
     void reset();
 
     void addValue(AqlValue const& value);
@@ -122,9 +130,11 @@ class SubqueryEndExecutor {
     size_t numValues() const noexcept;
 
    private:
+    arangodb::ResourceMonitor& _resourceMonitor;
     VPackOptions const* const _options;
     std::unique_ptr<arangodb::velocypack::Buffer<uint8_t>> _buffer{nullptr};
     std::unique_ptr<VPackBuilder> _builder{nullptr};
+    size_t _memoryUsage{0};
     size_t _numValues{0};
   };
 

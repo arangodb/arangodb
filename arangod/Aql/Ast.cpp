@@ -206,7 +206,7 @@ Ast::SpecialNodes::SpecialNodes()
 /// @brief create the AST
 Ast::Ast(QueryContext& query)
     : _query(query),
-      _resources(&query.resourceMonitor()),
+      _resources(query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),

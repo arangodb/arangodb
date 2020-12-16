@@ -40,6 +40,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -81,7 +82,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              std::shared_ptr<VPackBuilder> const& options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
-      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
       _sharedState(std::move(sharedState)),
@@ -91,6 +92,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _queryOptions(_vocbase.server().getFeature<QueryRegistryFeature>()),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
+      _resultMemoryUsage(0),
       _queryHash(DontCache),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
@@ -163,6 +165,8 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const
 
 /// @brief destroys a query
 Query::~Query() {
+  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resultMemoryUsage = 0;
   if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES) << elapsedSince(_startTime)
                                               << " Query::~Query queryString: "
@@ -313,7 +317,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
-  auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
+  auto plan = ExecutionPlan::instantiateFromAst(_ast.get(), true);
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -445,6 +449,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             TRI_ASSERT(_resultBuilder != nullptr);
             auto& resultBuilder = *_resultBuilder;
 
+            size_t previousLength = resultBuilder.bufferRef().byteSize();
             size_t const n = block->size();
 
             for (size_t i = 0; i < n; ++i) {
@@ -454,6 +459,13 @@ ExecutionState Query::execute(QueryResult& queryResult) {
                 val.toVelocyPack(&vpackOptions(), resultBuilder, useQueryCache);
               }
             }
+
+            size_t newLength = resultBuilder.bufferRef().byteSize();
+            TRI_ASSERT(newLength >= previousLength);
+            size_t diff = newLength - previousLength;
+
+            _resourceMonitor.increaseMemoryUsage(diff);
+            _resultMemoryUsage += diff;
           }
 
           if (state == ExecutionState::DONE) {
@@ -655,6 +667,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent) {
+          size_t memoryUsage = 0;
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -667,12 +680,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
               if (useQueryCache) {
                 val.toVelocyPack(&vpackOptions(), *builder, true);
               }
+              memoryUsage += sizeof(v8::Value);
+              if (val.requiresDestruction()){
+                memoryUsage += val.memoryUsage();
+              }
 
               if (V8PlatformFeature::isOutOfMemory(isolate)) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
             }
           }
+
+          // this may throw
+          _resourceMonitor.increaseMemoryUsage(memoryUsage);
+          _resultMemoryUsage += memoryUsage;
         }
 
         if (killed()) {
@@ -859,7 +880,7 @@ QueryResult Query::explain() {
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     std::unique_ptr<ExecutionPlan> plan =
-        ExecutionPlan::instantiateFromAst(parser.ast());
+        ExecutionPlan::instantiateFromAst(parser.ast(), true);
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
