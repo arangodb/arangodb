@@ -2,23 +2,23 @@ v3.7.6 (XXXX-XX-XX)
 -------------------
 
 * Improvements for the Pregel distributed graph processing feature:
-  - during the loading/startup phase, the in-memory edge cache is now 
-    intentionally bypassed. The reason for this is that any edges are 
-    looked up exactly once, so caching them is not beneficial, but would
-    only lead to cache pollution.
+  - during the loading/startup phase, the in-memory edge cache is now
+    intentionally bypassed. The reason for this is that any edges are looked up
+    exactly once, so caching them is not beneficial, but would only lead to
+    cache pollution.
   - the loading/startup phase can now load multiple collections in parallel,
     whereas previously it was only loading multiple shards of the same
-    collection in parallel. This change helps to reduce load times in case
-    there are many collections with few shards, and on single server.
-  - the loading and result storage phases code has been overhauled so that 
-    it runs slightly faster.
+    collection in parallel. This change helps to reduce load times in case there
+    are many collections with few shards, and on single server.
+  - the loading and result storage phases code has been overhauled so that it
+    runs slightly faster.
   - for Pregel runs that are based on named graphs (in contrast to explicit
     naming of the to-be-used vertex and edge collections), only those edge
-    collections are considered that, according to the graph definition, can 
-    have connections with the vertex. This change can reduce the loading
-    time substantially in case the graph contains many edge definitions.
-  - the number of executed rounds for the underlying Pregel algorithm now
-    does not vary for different `parallelism` values.
+    collections are considered that, according to the graph definition, can have
+    connections with the vertex. This change can reduce the loading time
+    substantially in case the graph contains many edge definitions.
+  - the number of executed rounds for the underlying Pregel algorithm now does
+    not vary for different `parallelism` values.
 
 * Reimplement coordshort request handler. The new implementation only runs two
   DB queries without any additional requests to other coordinators, resulting in
