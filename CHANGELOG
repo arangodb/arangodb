@@ -1,6 +1,24 @@
 devel
 -----
 
+* Added new `rocksdb_write_stalls` and `rocksdb_write_stops` counter metrics,
+  which should be more accurate than existing metrics related to the underlying
+  conditions.
+
+* Increased the default value of `--rocksdb.min-write-buffer-number-to-merge` in
+  some cases when we have allocated a sufficient amount of memory to the write
+  buffers for this to make sense. The increased value should help prevent
+  compaction-induced write stalls/stops, and should only be enabled when under
+  conditions such that it shouldn't greatly increase the chance of flush-induced
+  write stalls/stops.
+
+* Changed the default values for `--rocksdb.cache-index-and-filter-blocks` and
+  `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to true to
+  improve control over memory usage.
+
+* Lowered the minimum allowed value for `--rocksdb.max-write-buffer-number` from
+  9 to 4 to allow more fine-grained memory usage control.
+  
 * Fix for issue #772: Optimized document counting for ArangoSearch views.
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.

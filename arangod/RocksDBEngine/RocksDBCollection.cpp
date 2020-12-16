@@ -39,6 +39,7 @@
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -384,7 +385,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       rocksdb::PinnableSlice ps;
       rocksdb::Status s =
           engine.db()->Get(rocksdb::ReadOptions(),
-                           RocksDBColumnFamily::definitions(), key.string(), &ps);
+                           RocksDBColumnFamilyManager::get(
+                               RocksDBColumnFamilyManager::Family::Definitions),
+                           key.string(), &ps);
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s));
         break;
@@ -696,7 +699,9 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // normal transactional truncate
   RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(objectId());
-  rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+  rocksdb::Comparator const* cmp =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+          ->GetComparator();
   // intentionally copy the read options so we can modify them
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
@@ -1295,10 +1300,11 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
   rocksdb::Range r(bounds.start(), bounds.end());
 
   uint64_t out = 0;
-  db->GetApproximateSizes(RocksDBColumnFamily::documents(), &r, 1, &out,
-                          static_cast<uint8_t>(
-                              rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-                              rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  db->GetApproximateSizes(
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+      &r, 1, &out,
+      static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+                           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder.add("documentsSize", VPackValue(out));
   bool cacheInUse = useCache();
@@ -1406,10 +1412,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   IndexingDisabler disabler(mthds, state->isSingleOperation());
 
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
-  rocksdb::Status s =
-      mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
-                          rocksdb::Slice(doc.startAs<char>(),
-                                         static_cast<size_t>(doc.byteSize())));
+  rocksdb::Status s = mthds->PutUntracked(
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+      key.ref(),
+      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1459,7 +1465,10 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s =
+      mthds->SingleDelete(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1517,14 +1526,19 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
   invalidateCacheEntry(key.ref());
 
-  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s =
+      mthds->SingleDelete(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
+  s = mthds->PutUntracked(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref(),
                           rocksdb::Slice(newDoc.startAs<char>(),
                                          static_cast<size_t>(newDoc.byteSize())));
   if (!s.ok()) {
@@ -1597,7 +1611,9 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
+  rocksdb::Status s =
+      mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+                key->string(), &ps);
 
   if (!s.ok()) {
     LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
@@ -1655,7 +1671,9 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   rocksdb::PinnableSlice ps(buffer.get());
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
+  rocksdb::Status s =
+      mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+                key->string(), &ps);
 
   if (!s.ok()) {
     return false;
