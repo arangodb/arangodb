@@ -1,6 +1,13 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
+* Added the following agency-related metrics:
+  - `arangodb_agency_client_lookup_table_size`: current number of entries
+    in agency client id lookup table. This gauge is available only on
+    agent instances.
+  - `arangodb_agency_callback_count`: current number of agency callbacks
+    registered. This gauge will be effecitive on coordinators and DB servers.
+
 * Updated ArangoDB Starter to 0.14.15-1.
 
 * Better tracking of memory used in AQL graph traversals, COLLECT and SORT
