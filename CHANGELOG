@@ -4,8 +4,140 @@ v3.7.6 (XXXX-XX-XX)
 * Improve performance and memory efficiency of agency restart from persisted
   database directory.
 
+* Reimplement coordshort request handler. The new implementation only runs two
+  DB queries without any additional requests to other coordinators, resulting in
+  reduced load on the cluster. Previously this involved requests to all
+  coordinators, where each of them ran two DB queries.
 
-v3.7.5 (XXXX-XX-XX)
+* When querying the list of currently running or slow AQL queries, ignore
+  not-yet created databases on other coordinators.
+
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+* Fix Windows directory creation error handling.
+
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
+    distribution.
+
+* Reduce the number of dropped followers when running larger (>= 128 MB) write
+  transactions.
+
+* Remove a case in which followers were dropped unnecessarily in streaming
+  transactions that replicated to the same follower.
+
+* Added metrics for collection locks:
+  - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts when
+    trying to acquire collection exclusive locks
+  - `arangodb_collection_lock_timeouts_write`: Number of lock timeouts when
+    trying to acquire collection write locks
+  - `arangodb_collection_lock_acquisition_micros`: Total amount of collection
+    lock acquisition time [μs]
+  - `arangodb_collection_lock_acquisition_time`: Total collection lock
+    acquisition time histogram [s]
+
+* Reduce lock timeout on followers to 15 seconds.
+  Rationale: we should not have any locking conflicts on followers, generally.
+  Any shard locking should be performed on leaders first, which will then,
+  eventually replicate changes to followers. replication to followers is only
+  done once the locks have been acquired on the leader(s).
+
+* Better tracking of memory used in AQL graph traversals, COLLECT and SORT
+  operations. From this version onwards, certain AQL queries can report a higher
+  memory usage than in previous versions of ArangoDB. This is not because the
+  queries use more memory than before, but because the memory usage tracking has
+  been improved.
+  A side effect of this change is that queries with a memory limit set may now
+  be aborted whereas in previous versions they ran through successfully (but
+  actually violated the limit). In this case it may be necessary to adjust (i.e.
+  raise) query memory limits accordingly.
+
+* Changed the server-side implementation of the following internal JavaScript 
+  APIs to no-ops:
+  * `internal.reloadAqlFunctions()`: this is a no-op function now
+  * `@arangodb/actions.buildRouting()`: this is a no-op function now
+  * `@arangodb/actions.routingTree`: will return an empty object
+  * `@arangodb/actions.routingList`: will return an empty object
+
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
+
+* Added startup option `--foxx.force-update-on-startup` to toggle waiting for
+  all Foxx services in all databases to be propagated to a coordinator before it
+  completes the boot sequence.
+  In case the option is set to `false` (i.e. no waiting), the coordinator will
+  complete the boot sequence faster, and the Foxx services will be propagated
+  lazily. Until the initialization procedure has completed for the local Foxx
+  apps, any request to a Foxx app will be responded to with an HTTP 503 error
+  and message
+
+    waiting for initialization of Foxx services in this database
+
+  This can cause an unavailability window for Foxx services on coordinator
+  startup for the initial requests to Foxx apps until the app propagation has
+  completed.
+
+  When not using Foxx, this option should be set to `false` to benefit from a
+  faster coordinator startup.
+  Deployments relying on Foxx apps being available as soon as a coordinator is
+  integrated or responding should set this option to `true` (which is the
+  default value).
+  The option only has an effect for cluster setups.
+  On single servers and in active failover mode, all Foxx apps will be available
+  from the very beginning.
+  Note: ArangoDB 3.6 and 3.7 introduce this option with a default value of
+  `true`. ArangoDB 3.8 changes the default value to `false`.
+
+* Changed the server-side implementation of the following internal JavaScript
+  APIs to no-ops:
+  * `internal.reloadAqlFunctions()`: this is a no-op function now
+  * `@arangodb/actions.buildRouting()`: this is a no-op function now
+  * `@arangodb/actions.routingTree`: will return an empty object
+  * `@arangodb/actions.routingList`: will return an empty object
+
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
+
+* Fix HTTP/1.1 status response header in fuerte responses
+
+  This change makes fuerte return the full status header, including the numeric
+  status code and the status string in the `http/1.1` header of fuerte
+  responses.
+
+  Previously, the return header lacked the numeric status code, so it looked
+  like
+  ```
+  "http/1.1" : "Ok"
+  ```
+  Now, with the numeric status code, the response header will look like
+  ```
+  "http/1.1" : "200 Ok"
+  ```
+  This PR also adds a protocol() method for arango client connections in order
+  to check the protocol in use. The possible return values are
+  - "http" for HTTP/1.1 connections
+  - "http2" for HTTP/2 connections
+  - "vst" for VST connections
+  - "unknown" for everyhting else
+  This is needed during testing, but can also be used for other purposes.
+
+* Fixed bug in the connection pool which could prevent connection reusage under
+  high load and lead to lots of new connection creations, in particular with
+  TLS.
+
+* Added more metrics around connection pool.
+
+* Fix a potential nullptr access in AsyncAgencyComm in case there was a specific
+  error when sending an agency request.
+
+* Clean up agency change log, cluster info caches.
+
+
+v3.7.5 (2020-12-09)
 -------------------
 
 * Fixed ES-662 by introducing refactored thread pool to make more efficient

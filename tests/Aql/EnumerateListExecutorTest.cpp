@@ -34,9 +34,9 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 #include "AqlItemBlockHelper.h"
+#include "Basics/ResourceUsage.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -59,9 +59,9 @@ class EnumerateListExecutorTest : public ::testing::Test {
   AqlCall call;
 
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   EnumerateListExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {

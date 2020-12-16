@@ -55,11 +55,11 @@ template <SocketType ST>
 int H1Connection<ST>::on_status(http_parser* parser, const char* at,
                                 size_t len) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
-  // required for some arango shenanigans
+  
   self->_response->header.addMeta(std::string("http/") +
                                       std::to_string(parser->http_major) + '.' +
                                       std::to_string(parser->http_minor),
-                                  std::string(at, len));
+                                  std::to_string(parser->status_code) + ' ' + std::string(at, len));
   return 0;
 }
 
@@ -721,6 +721,16 @@ bool H1Connection<ST>::lease() {
   }
   FUERTE_LOG_TRACE << "Connection leased: this=" << this;
   return true;   // this is a noop, derived classes can override
+}
+
+// Unlease this connection, has to be done if no sendRequest was called
+// on it after the lease.
+template <SocketType ST>
+void H1Connection<ST>::unlease() {
+  int exp = 1;
+  // Undo the lease, we do not care if this has not worked.
+  this->_leased.compare_exchange_strong(exp, 0);
+  FUERTE_LOG_TRACE << "Connection un leased: this=" << this;
 }
 
 template class arangodb::fuerte::v1::http::H1Connection<SocketType::Tcp>;

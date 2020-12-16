@@ -653,6 +653,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
+
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
@@ -786,8 +787,35 @@ void ClusterInfo::loadPlan() {
     name = database.first;
     auto dbSlice = database.second->slice()[0];
     std::vector<std::string> dbPath{AgencyCommHelper::path(), "Plan", "Databases", name};
-    if (!dbSlice.hasKey(dbPath)) { // Dropped from Plan
+
+    // Dropped from Plan?
+    if (!dbSlice.hasKey(dbPath)) {
+      std::shared_ptr<VPackBuilder> plan = nullptr;
+      {
+        READ_LOCKER(guard, _planProt.lock);
+        auto it = _plan.find(name);
+        if (it != _plan.end()) {
+          plan = it->second;
+        }
+      }
+      if (plan != nullptr) {
+        std::vector<std::string> colPath{AgencyCommHelper::path(), "Plan", "Collections", name};
+        auto planColSlice = plan->slice()[0].get(colPath);
+        if (planColSlice.isObject()) {
+          for (auto const& col : VPackObjectIterator(planColSlice)) {
+            if (col.value.hasKey("shards")) {
+              for (auto const& shard : VPackObjectIterator(col.value.get("shards"))) {
+                auto const& shardName = shard.key.copyString();
+                newShards.erase(shardName);
+                newShardServers.erase(shardName);
+                newShardToName.erase(shardName);
+              }
+            }
+          }
+        }
+      }
       newDatabases.erase(name);
+      newPlan.erase(name);
       continue;
     }
 
@@ -1092,7 +1120,40 @@ void ClusterInfo::loadPlan() {
     // we can safely keep this iterator around because we hold the read-lock on _planProt here.
     // reusing the lookup positions helps avoiding redundant lookups into _plannedCollections
     // for the same database
-    AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
+
+    AllCollections::const_iterator existingCollections,
+      stillExistingCollections = newCollections.find(databaseName);
+    {
+      READ_LOCKER(guard, _planProt.lock);
+      existingCollections = _plannedCollections.find(databaseName);
+    }
+
+    if (stillExistingCollections != newCollections.end()) {
+      auto const& np = newPlan.find(databaseName);
+      if (np != newPlan.end()) {
+        auto nps = np->second->slice()[0];
+        for (auto const& ec : *(stillExistingCollections->second)) {
+          auto const& cid = ec.first;
+          if (cid.empty() || !std::isdigit(cid.front())) {
+            continue;
+          }
+          collectionsPath.push_back(cid);
+          if (!nps.hasKey(collectionsPath))  { // collection gone
+            collectionsPath.push_back("shards");
+            READ_LOCKER(guard, _planProt.lock);
+            for (auto const& sh :
+                   VPackObjectIterator(_plan.find(databaseName)->second->slice()[0].get(collectionsPath))) {
+              auto const& shardId = sh.key.copyString();
+              newShards.erase(shardId);
+              newShardServers.erase(shardId);
+              newShardToName.erase(shardId);
+            }
+            collectionsPath.pop_back();
+          }
+          collectionsPath.pop_back();
+        }
+      }
+    }
 
     for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
       auto const& collectionSlice = collectionPairSlice.value;
@@ -1341,8 +1402,34 @@ void ClusterInfo::loadCurrent() {
     std::vector<std::string> dbPath{
       AgencyCommHelper::path(), "Current", "Databases", databaseName};
     auto databaseSlice = database.second->slice()[0];
+
+    // Database missing in Current
     if (!databaseSlice.hasKey(dbPath)) {
-      newDatabases.erase(databaseName);
+
+      // newShardIds
+      std::shared_ptr<VPackBuilder> db = nullptr;
+      {
+        READ_LOCKER(guard, _currentProt.lock);
+        auto const it = _current.find(databaseName);
+        if (it != _current.end()) {
+          db = it->second;
+        }
+      }
+      if (db != nullptr) {
+        std::vector<std::string> colPath {
+            AgencyCommHelper::path(), "Current", "Collections", databaseName};
+
+        auto colsSlice = db->slice()[0].get(colPath);
+        if (colsSlice.isObject()) {
+          for (auto const cc : VPackObjectIterator(colsSlice)) {
+            if (cc.value.isObject()) {
+              for (auto const cs : VPackObjectIterator(cc.value)) {
+                newShardIds.erase(cs.key.copyString());
+              }
+            }
+          }
+        }
+      }
       swapDatabases = true;
       continue;
     }
@@ -1379,6 +1466,37 @@ void ClusterInfo::loadCurrent() {
     databaseSlice = databaseSlice.get(dbPath);
 
     DatabaseCollectionsCurrent databaseCollections;
+
+    auto const existingCollections = newCollections.find(databaseName);
+    if (existingCollections != newCollections.end()) {
+      auto const& nc = newCurrent.find(databaseName);
+      if (nc != newCurrent.end()) {
+        auto ncs = nc->second->slice()[0];
+        std::vector<std::string> path{
+          AgencyCommHelper::path(), "Current", "Collections", databaseName};
+        for (auto const& ec : existingCollections->second) {
+          auto const& cid = ec.first;
+          path.push_back(cid);
+          if (ncs.hasKey(path)) {
+            std::shared_ptr<VPackBuilder> cur;
+            {
+              READ_LOCKER(guard, _currentProt.lock);
+              cur = _current.find(databaseName)->second;
+            }
+            auto const cc = cur->slice()[0].get(path);
+            for (auto const& sh : VPackObjectIterator(cc)) {
+              path.push_back(sh.key.copyString());
+              if (!ncs.hasKey(path)) {
+                newShardIds.erase(path.back());
+              }
+              path.pop_back();
+            }
+            path.pop_back();
+          }
+        }
+      }
+    }
+
 
     for (auto const& collectionSlice : VPackObjectIterator(databaseSlice)) {
       std::string collectionName = collectionSlice.key.copyString();
@@ -3756,8 +3874,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   if (result.successful()) {
     if (result.slice().get("results").length()) {
-      auto& c = _server.getFeature<ClusterFeature>().agencyCache();
-      auto [a,b] = c.get("/");
       waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
   }
@@ -5641,33 +5757,91 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout
 }
 
 
+// Debugging output no need for consistency across locks
 VPackBuilder ClusterInfo::toVelocyPack() {
   VPackBuilder dump;
   {
     { VPackObjectBuilder c(&dump);
-      dump.add(VPackValue("Plan"));
-      { VPackObjectBuilder d(&dump);
+      {
         READ_LOCKER(readLocker, _planProt.lock);
-        for (auto const& i : _plan) {
-          dump.add(i.first, i.second->slice());
+        dump.add(VPackValue("plan"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& i : _plan) {
+            dump.add(i.first, i.second->slice());
+          }
         }
-      }
-      dump.add(VPackValue("PlannedCollections"));
-      { VPackObjectBuilder d(&dump);
-        READ_LOCKER(readLocker, _planProt.lock);
-        for (auto const& db : _plannedCollections) {
-          dump.add(VPackValue(db.first));
-          VPackArrayBuilder cs(&dump);
-          for (auto const& col : *db.second) {
-            dump.add(VPackValue(col.first));
+        dump.add(VPackValue("plannedCollections"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& c : _plannedCollections) {
+            dump.add(VPackValue(c.first));
+            VPackArrayBuilder cs(&dump);
+            for (auto const& col : *c.second) {
+              dump.add(VPackValue(col.first));
+            }
+          }
+        }
+        dump.add(VPackValue("shardToName"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardToName) {
+            dump.add(s.first, VPackValue(s.second));
+          }
+        }
+        dump.add(VPackValue("shardServers"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardServers) {
+            dump.add(VPackValue(s.first));
+            VPackArrayBuilder a(&dump);
+            for (auto const& sv : s.second) {
+              dump.add(VPackValue(sv));
+            }
+          }
+        }
+        dump.add(VPackValue("shards"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& s : _shards) {
+            dump.add(VPackValue(s.first));
+            VPackArrayBuilder a(&dump);
+            for (auto const& sh : *s.second) {
+              dump.add(VPackValue(sh));
+            }
           }
         }
       }
-      dump.add(VPackValue("Current"));
-      { VPackObjectBuilder d(&dump);
+      {
         READ_LOCKER(readLocker, _currentProt.lock);
-        for (auto const& i : _current) {
-          dump.add(i.first, i.second->slice());
+        dump.add(VPackValue("current"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& i : _current) {
+            dump.add(i.first, i.second->slice());
+          }
+        }
+        dump.add(VPackValue("shardIds"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& i : _shardIds) {
+            dump.add(VPackValue(i.first));
+            VPackArrayBuilder a(&dump);
+            for (auto const& i : *i.second){
+              dump.add(VPackValue(i));
+            }
+          }
+        }
+      }
+      {
+        READ_LOCKER(readLocker, _DBServersProt.lock);
+        dump.add(VPackValue("DBServers"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& dbs : _DBServers) {
+            dump.add(dbs.first, VPackValue(dbs.second));
+          }
+        }
+      }
+      {
+        READ_LOCKER(readLocker, _coordinatorsProt.lock);
+        dump.add(VPackValue("coordinators"));
+        { VPackObjectBuilder c(&dump);
+          for (auto const& crdn : _coordinators) {
+            dump.add(crdn.first, VPackValue(crdn.second));
+          }
         }
       }
     }

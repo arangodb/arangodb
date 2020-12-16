@@ -188,7 +188,7 @@ void AgencyCache::handleCallbacksNoLock(
     }
 
     // Paths are normalized. We omit the first 8 characters for "/arango" + "/"
-    const static size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
+    const size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
     if (k.size() > offset) {
       std::string_view r(k.c_str() + offset, k.size() - offset);
       auto rs = r.size();
