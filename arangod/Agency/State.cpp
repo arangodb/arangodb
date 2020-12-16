@@ -65,7 +65,6 @@ State::State(application_features::ApplicationServer& server)
     _agent(nullptr),
     _vocbase(nullptr),
     _ready(false),
-    _collectionsChecked(false),
     _collectionsLoaded(false),
     _nextCompactionAfter(0),
     _lastCompactionAt(0),
@@ -759,35 +758,12 @@ log_t State::lastLog() const {
 bool State::configure(Agent* agent) {
   _agent = agent;
   _nextCompactionAfter = _agent->config().compactionStepSize();
-  _collectionsChecked = false;
   return true;
-}
-
-/// Check if collections exist otherwise create them
-bool State::checkCollections() {
-  if (!_collectionsChecked) {
-    _collectionsChecked =
-      checkCollection("log") && checkCollection("compact") && checkCollection("election");
-  }
-  return _collectionsChecked;
-}
-
-/// Create agency collections
-void State::createCollections() {
-  if (!_collectionsChecked) {
-    createCollection("log", false);
-    createCollection("compact", false);
-    createCollection("election", false);
-  }
-  _collectionsChecked = true;
 }
 
 /// Check collection by name
 bool State::checkCollection(std::string const& name) {
-  if (!_collectionsChecked) {
-    return (_vocbase->lookupCollection(name) != nullptr);
-  }
-  return true;
+  return (_vocbase->lookupCollection(name) != nullptr);
 }
 
 /// Drop
@@ -874,6 +850,10 @@ bool State::loadPersisted() {
 
   loadOrPersistConfiguration();
 
+  if (!checkCollection("election")) {
+    createCollection("election", false);
+  }
+
   if (checkCollection("log") && checkCollection("compact")) {
     index_t lastCompactionIndex = loadCompacted();
     if (loadRemaining(lastCompactionIndex)) {
@@ -884,6 +864,7 @@ bool State::loadPersisted() {
       _log.clear();
       _cur = 0;
       dropCollection("log");
+      //TRI_ASSERT(false);
       dropCollection("compact");
 
     }
