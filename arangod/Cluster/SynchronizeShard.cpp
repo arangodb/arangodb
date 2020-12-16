@@ -158,7 +158,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   auto res = response.combinedResult();
 
   if (res.ok()) {
-    auto const idSlice = response.response->slice();
+    auto const idSlice = response.slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
@@ -356,22 +356,11 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
                                   std::move(*body.steal()), options)
                  .get();
 
-  if (response.ok() && response.response &&
-      response.statusCode() == fuerte::StatusNotFound) {
-    auto const slice = response.response->slice();
-    if (slice.isObject()) {
-      VPackSlice s = slice.get(StaticStrings::ErrorNum);
-      if (s.isNumber()) {
-        int errorNum = s.getNumber<int>();
-        if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-          // database is gone. that means our lock is also gone
-          return arangodb::Result();
-        }
-      }
-    }
-  }
-
   auto res = response.combinedResult();
+  if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+    // database is gone. that means our lock is also gone
+    return arangodb::Result();
+  }
 
   if (res.fail()) {
     // rebuild body since we stole it earlier

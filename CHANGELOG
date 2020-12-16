@@ -1,6 +1,65 @@
 devel
 -----
 
+* Fix for issue #772: Optimized document counting for ArangoSearch views.
+  Added new ArangoSearch view option 'countApproximate' for customizing 
+  view count strategy.
+
+* Fix AR-113. Add a check in the AQL geo-index-optimizer rule that vars
+  referenced by a candidate index expression are actually available at the
+  candidate index node.
+
+* Views on SmartGraph Edge collections do not contain some documents
+  twice.
+
+* Fixed agency redirect in poll api.
+
+* Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
+  section of a foxx app.
+
+* The scheduler will now run a minimum of 4 threads at all times, and the
+  default and minimal value for `--server.maximal-threads` has been lowered from
+  64 to the greater of 32 and twice the number of detected cores.
+
+* Throttle work coming from low priority queue, according to a constant
+  and to an estimate taking into account fanout for multi-shard operations.
+
+* Move to 4 priority levels "low", "medium", "high" and "maintenance" in
+  scheduler to ensure that maintenance work and diagnostics is always
+  possible, even in the case of RocksDB throttles. Do not allow any
+  RocksDB work on "maintenance".
+
+* Commit replications on high priority queue.
+
+* Essentially get rid of timeout in replication to drop followers. This
+  is now entirely handled via reboot and failure tracking. The timeout
+  has now a default minimum of 15 minutes but can still be configured via
+  options.
+
+* Additional metrics for all queue lengths and low prio ongoing work.
+
+* New metric for number and total time of replication operations.
+
+* New metrics for number of internal requests in flight, internal request
+  duration, and internal request timeouts
+
+* Fix `Gauge` assignment operators.
+
+* Fixed and extended LDAP log messages.
+
+* Added LDAP_OFF if referrals and restart are false.
+
+* If LDAP search fails, also retry (update to given number of retries).
+
+* Add cluster support for collection.checksum() method to calculate CRC
+  checksums for collections.
+
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
 * Make all Pregel HTTP and JavaScript APIs also accept stringified execution
   number values, in addition to numeric ones.
 
@@ -120,11 +179,11 @@ devel
 * Added metrics for the system CPU usage:
   - `arangodb_server_statistics_user_percent`: Percentage of time that the
     system CPUs have spent in user mode
-  - `arangodb_server_statistics_system_percent`: Percentage of time that 
+  - `arangodb_server_statistics_system_percent`: Percentage of time that
     the system CPUs have spent in kernel mode
-  - `arangodb_server_statistics_idle_percent`: Percentage of time that the 
+  - `arangodb_server_statistics_idle_percent`: Percentage of time that the
     system CPUs have been idle
-  - `arangodb_server_statistics_iowait_percent`: Percentage of time that 
+  - `arangodb_server_statistics_iowait_percent`: Percentage of time that
     the system CPUs have been waiting for I/O
 
   These metrics resemble the overall CPU usage metrics in `top`.
@@ -138,19 +197,19 @@ devel
   configured value was effectively clamped to a value of `1`.
 
 * Improvements for the Pregel distributed graph processing feature:
-  - during the loading/startup phase, the in-memory edge cache is now 
-    intentionally bypassed. The reason for this is that any edges are 
+  - during the loading/startup phase, the in-memory edge cache is now
+    intentionally bypassed. The reason for this is that any edges are
     looked up exactly once, so caching them is not beneficial, but would
     only lead to cache pollution.
   - the loading/startup phase can now load multiple collections in parallel,
     whereas previously it was only loading multiple shards of the same
     collection in parallel. This change helps to reduce load times in case
     there are many collections with few shards, and on single server.
-  - the loading and result storage phases code has been overhauled so that 
+  - the loading and result storage phases code has been overhauled so that
     it runs slightly faster.
   - for Pregel runs that are based on named graphs (in contrast to explicit
     naming of the to-be-used vertex and edge collections), only those edge
-    collections are considered that, according to the graph definition, can 
+    collections are considered that, according to the graph definition, can
     have connections with the vertex. This change can reduce the loading
     time substantially in case the graph contains many edge definitions.
   - the number of executed rounds for the underlying Pregel algorithm now

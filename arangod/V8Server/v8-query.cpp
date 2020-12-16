@@ -320,8 +320,6 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
-
   bool withRevisions = false;
   bool withData = false;
 

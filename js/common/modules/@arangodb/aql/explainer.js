@@ -1191,6 +1191,10 @@ function processQuery(query, explain, planIndex) {
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
         }
+        if (node.hasOwnProperty('options')) {
+          if (node.options.hasOwnProperty('countApproximate'))
+          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+        }
         viewAnnotation += ' */';
         let viewVariables = '';
         if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
