@@ -1,6 +1,16 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Added the following agency-related metrics:
+  - `arangodb_agency_client_lookup_table_size`: current number of entries in
+    agency client id lookup table. This gauge is available only on agent
+    instances.
+  - `arangodb_agency_cache_callback_count`: current number of entries in agency
+    cache callbacks table. This gauge will be effective on coordinators and DB
+    servers.
+  - `arangodb_agency_callback_count`: current number of agency callbacks
+    registered. This gauge will be effective on coordinators and DB servers.
+
 * Fix cluster-internal replication of documents with special keys (percent
   character, which has a special meaning when used inside URLs).
 
