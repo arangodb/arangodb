@@ -90,6 +90,10 @@ RegisterCount AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
 
 uint64_t AqlItemMatrix::size() const noexcept { return _numDataRows; }
 
+size_t AqlItemMatrix::memoryUsageForRowIndexes() const noexcept {
+  return size() * sizeof(RowIndex);
+}
+
 void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   // If we are stopped by shadow row, we first need to solve this blockage
   // by popShadowRow calls. In order to continue.

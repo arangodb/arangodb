@@ -44,17 +44,25 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace {
+constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::StringRef);
+};
+
 TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
       _trx(opts->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(4096), /* arbitrary block-size may be adjusted for performance */
+      _stringHeap(query.resourceMonitor(), 4096), /* arbitrary block-size may be adjusted for performance */
       _baseOptions(opts) {}
 
-TraverserCache::~TraverserCache() = default;
+TraverserCache::~TraverserCache() {
+  clear();
+}
 
 void TraverserCache::clear() {
+  _query.resourceMonitor().decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
+
   _stringHeap.clear();
   _persistedStrings.clear();
   _mmdr.clear();
@@ -172,7 +180,16 @@ arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypa
   if (it != _persistedStrings.end()) {
     return *it;
   }
+
   arangodb::velocypack::StringRef res = _stringHeap.registerString(idString.data(), idString.length());
-  _persistedStrings.emplace(res);
+  {
+    ResourceUsageScope guard(_query.resourceMonitor(), ::costPerPersistedString);
+
+    _persistedStrings.emplace(res);
+  
+    // now make the TraverserCache responsible for memory tracking
+    guard.steal();
+  }
+
   return res;
 }

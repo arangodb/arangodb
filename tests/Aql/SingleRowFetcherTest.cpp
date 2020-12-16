@@ -34,8 +34,8 @@
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 
 #include "FetcherTestHelper.h"
@@ -64,7 +64,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
       ::arangodb::aql::BlockPassthrough::Enable;
   SingleRowFetcherTestPassBlocks()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
 
   void validateInputRange(AqlItemBlockInputRange& input,
                           std::vector<std::string> const& result) {
@@ -121,7 +121,7 @@ class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
       ::arangodb::aql::BlockPassthrough::Disable;
   SingleRowFetcherTestDoNotPassBlocks()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 TEST_F(SingleRowFetcherTestPassBlocks, there_are_no_blocks_upstream_the_producer_doesnt_wait) {

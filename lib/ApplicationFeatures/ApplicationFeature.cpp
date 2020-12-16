@@ -41,6 +41,7 @@ namespace application_features {
 
 ApplicationFeature::ApplicationFeature(ApplicationServer& server, std::string const& name)
     : _server(server),
+      _registration(std::type_index(typeid(ApplicationFeature))),
       _name(name),
       _state(State::UNINITIALIZED),
       _enabled(true),
@@ -109,7 +110,7 @@ bool ApplicationFeature::doesStartBefore(std::type_index type) const {
   }
 
   auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
-  if (otherAncestors.find(std::type_index(typeid(*this))) != otherAncestors.end()) {
+  if (otherAncestors.find(_registration) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
@@ -130,7 +131,7 @@ void ApplicationFeature::addAncestorToAllInPath(
   std::function<bool(std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&)> typeMatch =
       [ancestorType](std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair) -> bool {
     auto& feature = pair.second.get();
-    return std::type_index(typeid(feature)) == ancestorType;
+    return feature.registration() == ancestorType;
   };
 
   if (std::find_if(path.begin(), path.end(), typeMatch) != path.end()) {
@@ -140,7 +141,7 @@ void ApplicationFeature::addAncestorToAllInPath(
     std::vector<std::type_index> pathTypes;
     for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
       auto& feature = pair.second.get();
-      pathTypes.emplace_back(std::type_index(typeid(feature)));
+      pathTypes.emplace_back(feature.registration());
     }
     pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
 
@@ -203,6 +204,14 @@ void ApplicationFeature::determineAncestors(std::type_index rootAsType) {
   }
 
   TRI_ASSERT(_ancestorsDetermined);
+}
+
+std::type_index ApplicationFeature::registration() const {
+  return _registration;
+}
+
+void ApplicationFeature::setRegistration(std::type_index registration) {
+  _registration = registration;
 }
 
 }  // namespace application_features
