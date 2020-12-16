@@ -138,12 +138,12 @@ class IResearchLink {
   }
 
   void afterTruncate(TRI_voc_tick_t tick,
-                     transaction::Methods* trx); // arangodb::Index override
+                     arangodb::transaction::Methods* trx); // arangodb::Index override
 
   bool canBeDropped() const {
     // valid for a link to be dropped from an ArangoSearch view
     return true;
-  };
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return the associated collection

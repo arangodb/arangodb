@@ -116,7 +116,7 @@ class SupervisedScheduler final : public Scheduler {
     // _ready = true means it is initialized and can be used to dispatch tasks to
     // _ready is protected by the Scheduler's condition variable & mutex
     bool _ready;
-    clock::time_point _lastJobStarted;
+    std::atomic<clock::time_point> _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
     std::mutex _mutex;
     std::condition_variable _conditionWork;

@@ -11,6 +11,28 @@ v3.7.6 (XXXX-XX-XX)
   - `arangodb_agency_callback_count`: current number of agency callbacks
     registered. This gauge will be effective on coordinators and DB servers.
 
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
+* Improvements for the Pregel distributed graph processing feature:
+  - during the loading/startup phase, the in-memory edge cache is now
+    intentionally bypassed. The reason for this is that any edges are looked up
+    exactly once, so caching them is not beneficial, but would only lead to
+    cache pollution.
+  - the loading/startup phase can now load multiple collections in parallel,
+    whereas previously it was only loading multiple shards of the same
+    collection in parallel. This change helps to reduce load times in case there
+    are many collections with few shards, and on single server.
+  - the loading and result storage phases code has been overhauled so that it
+    runs slightly faster.
+  - for Pregel runs that are based on named graphs (in contrast to explicit
+    naming of the to-be-used vertex and edge collections), only those edge
+    collections are considered that, according to the graph definition, can have
+    connections with the vertex. This change can reduce the loading time
+    substantially in case the graph contains many edge definitions.
+  - the number of executed rounds for the underlying Pregel algorithm now does
+    not vary for different `parallelism` values.
+
 * Reimplement coordshort request handler. The new implementation only runs two
   DB queries without any additional requests to other coordinators, resulting in
   reduced load on the cluster. Previously this involved requests to all
