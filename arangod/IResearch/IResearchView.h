@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -50,10 +51,10 @@ namespace iresearch {
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-class IResearchFeature;  // forward declaration
-class IResearchLink;     // forward declaration
+class IResearchFeature;
+class AsyncLinkHandle;
 template <typename T>
-class TypedResourceMutex;  // forward declaration
+class TypedResourceMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -75,7 +76,7 @@ class TypedResourceMutex;  // forward declaration
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchView final: public arangodb::LogicalView {
-  typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
+  typedef std::shared_ptr<AsyncLinkHandle> AsyncLinkPtr;
 
  public:
 
@@ -218,7 +219,7 @@ class IResearchView final: public arangodb::LogicalView {
   struct ViewFactory; // forward declaration
 
   AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links; // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
+  std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
   IResearchViewMeta _meta; // the view configuration
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
@@ -228,7 +229,6 @@ class IResearchView final: public arangodb::LogicalView {
   IResearchView( // constructor
     TRI_vocbase_t& vocbase, // view vocbase
     arangodb::velocypack::Slice const& info, // view definition
-    uint64_t planVersion, // view plan version
     IResearchViewMeta&& meta // view meta
   );
 

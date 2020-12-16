@@ -38,7 +38,7 @@
 #include <tuple>
 #include <unordered_map>
 
-NS_ROOT
+namespace iresearch {
 
 struct field_writer;
 class token_stream;
@@ -52,11 +52,11 @@ struct flush_state;
 
 typedef block_pool<size_t, 8192> int_block_pool;
 
-NS_BEGIN(detail)
+namespace detail {
 class term_iterator;
 class doc_iterator;
 class sorting_doc_iterator;
-NS_END
+}
 
 IRESEARCH_API bool memcmp_less(
   const byte_type* lhs,
@@ -185,6 +185,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-NS_END
+}
 
 #endif

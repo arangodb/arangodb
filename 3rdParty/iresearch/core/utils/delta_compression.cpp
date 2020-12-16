@@ -24,15 +24,15 @@
 #include "delta_compression.hpp"
 #include "store/store_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::compression::delta_compressor COMPRESSOR;
 irs::compression::delta_decompressor DECOMPRESSOR;
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(compression)
+namespace iresearch {
+namespace compression {
 
 bytes_ref delta_compressor::compress(byte_type* src, size_t size, bstring& buf) {
   auto* begin = reinterpret_cast<uint64_t*>(src);
@@ -82,5 +82,5 @@ void delta::init() {
 
 REGISTER_COMPRESSION(delta, &delta::compressor, &delta::decompressor);
 
-NS_END // compression
-NS_END
+} // compression
+}

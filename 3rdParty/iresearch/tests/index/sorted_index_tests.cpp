@@ -27,7 +27,7 @@
 
 #include "index_tests.hpp"
 
-NS_LOCAL
+namespace {
 
 class sorted_europarl_doc_template : public tests::templates::europarl_doc_template {
  public:
@@ -1372,4 +1372,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

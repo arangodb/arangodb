@@ -36,11 +36,12 @@ struct BaseOptions;
 
 namespace traverser {
 
+class EnumeratedPath;
 class PathEnumerator;
 
 class SingleServerTraverser final : public Traverser {
  public:
-  SingleServerTraverser(TraverserOptions*);
+  explicit SingleServerTraverser(TraverserOptions*);
 
   ~SingleServerTraverser();
 
@@ -61,7 +62,7 @@ class SingleServerTraverser final : public Traverser {
   ///        Returns true if the vertex passes filtering conditions
   ///        Adds the _id of the vertex into the given vector
 
-  bool getVertex(arangodb::velocypack::Slice edge, std::vector<arangodb::velocypack::StringRef>&) override;
+  bool getVertex(arangodb::velocypack::Slice edge, arangodb::traverser::EnumeratedPath& path) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions

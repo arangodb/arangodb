@@ -133,6 +133,7 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp
@@ -222,6 +223,7 @@ add_library(arango STATIC
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp
+  Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp

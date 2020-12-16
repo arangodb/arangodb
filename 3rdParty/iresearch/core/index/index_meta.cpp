@@ -26,7 +26,7 @@
 #include "utils/type_limits.hpp"
 #include "index_meta.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 /* -------------------------------------------------------------------
  * segment_meta
@@ -58,7 +58,8 @@ segment_meta::segment_meta(
     column_store(column_store) {
 }
 
-segment_meta::segment_meta(segment_meta&& rhs) noexcept
+segment_meta::segment_meta(segment_meta&& rhs)
+    noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>))
   : files(std::move(rhs.files)),
     name(std::move(rhs.name)),
     docs_count(rhs.docs_count),
@@ -73,7 +74,8 @@ segment_meta::segment_meta(segment_meta&& rhs) noexcept
   rhs.sort = field_limits::invalid();
 }
 
-segment_meta& segment_meta::operator=(segment_meta&& rhs) noexcept {
+segment_meta& segment_meta::operator=(segment_meta&& rhs)
+    noexcept(noexcept(std::is_nothrow_move_assignable_v<file_set>)) {
   if (this != &rhs) {
     files = std::move(rhs.files);
     name = std::move(rhs.name);
@@ -202,4 +204,4 @@ bool index_meta::index_segment_t::operator!=(
   return filename != other.filename || meta != other.meta;
 }
 
-NS_END
+}

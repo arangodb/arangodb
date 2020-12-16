@@ -41,9 +41,6 @@
 namespace tests {
   class test_sort: public iresearch::sort {
    public:
-    static constexpr irs::string_ref type_name() noexcept {
-      return __FILE__ ":" STRINGIFY(__LINE__);
-    }
     DECLARE_FACTORY();
 
     class prepared : public sort::prepared {
