@@ -21,24 +21,30 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
-#define ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_METRICS_LISTENER_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_METRICS_LISTENER_H 1
 
 // public rocksdb headers
-#include <rocksdb/db.h>
 #include <rocksdb/listener.h>
 
+#include "RestServer/Metrics.h"
+
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
-class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
+/// @brief Gathers better metrics from RocksDB than we can get by scraping alone.
+class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
-  virtual ~RocksDBBackgroundErrorListener();
+  explicit RocksDBMetricsListener(application_features::ApplicationServer&);
 
-  void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
+  void OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) override;
 
- private:
-  bool _called = false;
-};  // class RocksDBThrottle
+ protected:
+  Counter& _writeStalls;
+  Counter& _writeStops;
+};
 
 }  // namespace arangodb
 

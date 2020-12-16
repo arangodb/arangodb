@@ -32,7 +32,7 @@ namespace iresearch {
 void ResourceMutex::reset() {
   if (get()) {
     irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     _resource.store(nullptr);
   }
 }

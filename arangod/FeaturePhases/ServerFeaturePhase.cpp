@@ -26,6 +26,7 @@
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -41,6 +42,7 @@ ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
 
   startsAfter<EndpointFeature>();
   startsAfter<GeneralServerFeature>();
+  startsAfter<NetworkFeature>();
   startsAfter<ServerFeature>();
   startsAfter<SslServerFeature>();
   startsAfter<StatisticsFeature>();
