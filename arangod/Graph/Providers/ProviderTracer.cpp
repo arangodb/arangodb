@@ -40,9 +40,9 @@ ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryC
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::~ProviderTracer() {
-  LOG_TOPIC("f39e8", INFO, Logger::GRAPHS) << "Provider Trace report:";
+  LOG_TOPIC("f39y8", INFO, Logger::GRAPHS) << "Provider Trace report:";
   for (auto const& [name, trace] : _stats) {
-    LOG_TOPIC("f39e9", INFO, Logger::GRAPHS) << "  " << name << ": " << trace;
+    LOG_TOPIC("f39z9", INFO, Logger::GRAPHS) << "  " << name << ": " << trace;
   }
 }
 

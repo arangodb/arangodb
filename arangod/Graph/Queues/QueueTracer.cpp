@@ -37,9 +37,9 @@ QueueTracer<QueueImpl>::QueueTracer(arangodb::ResourceMonitor& resourceMonitor) 
 
 template <class QueueImpl>
 QueueTracer<QueueImpl>::~QueueTracer() {
-  LOG_TOPIC("f39e8", INFO, Logger::GRAPHS) << "Queue Trace report:";
+  LOG_TOPIC("f39x8", INFO, Logger::GRAPHS) << "Queue Trace report:";
   for (auto const& [name, trace] : _stats) {
-    LOG_TOPIC("f39e9", INFO, Logger::GRAPHS) << "  " << name << ": " << trace;
+    LOG_TOPIC("f39z9", INFO, Logger::GRAPHS) << "  " << name << ": " << trace;
   }
 }
 

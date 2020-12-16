@@ -188,7 +188,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     if (getDepth() + other.getDepth() >= _minDepth) {
       other.matchResultsInShell(n, results);
     }
-    LOG_TOPIC("9620c", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
+    LOG_TOPIC("9620b", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
     // Add the step to our shell
     _resourceMonitor.increaseMemoryUsage(sizeof(n));
     _shell.emplace(std::move(n));

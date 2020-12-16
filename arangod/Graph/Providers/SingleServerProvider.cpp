@@ -129,7 +129,7 @@ auto SingleServerProvider::startVertex(VertexType vertex) -> Step {
 
 auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
-  LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
+  LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Fetching...";
   std::vector<Step*> result{};  // TODO: Question: Modify inplace or build up new result vector
   result.reserve(looseEnds.size());
