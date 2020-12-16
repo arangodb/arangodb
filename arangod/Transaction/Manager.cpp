@@ -542,27 +542,16 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // During beginTransaction we may reroll the Transaction ID.
   tid = state->id();
 
-  if (ttl <= 0) {
-    ttl = Manager::ttlForType(MetaType::Managed);
-  }
-
-  {  // add transaction to bucket
-    size_t const bucket = getBucket(tid);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-    // TRI_ASSERT(state->id() == tid); // No longer valid as we could reroll a transaction ID due the slowPath/fastPath phase
-    auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
-                                                         ttl, std::move(state));
-    if (!it.second) {
-      if (isFollowerTransactionOnDBServer(options)) {
-        TRI_ASSERT(res.ok());
-        return res;
-      }
-
-      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction id ") + std::to_string(tid.id()) +
-                           " already used (while creating)");
+  bool stored = storeManagedState(tid, std::move(state), ttl);
+  if (!stored) {
+    if (isFollowerTransactionOnDBServer(options)) {
+      TRI_ASSERT(res.ok());
+      return res;
     }
+
+    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     std::string("transaction id ") + std::to_string(tid.id()) +
+                         " already used (while creating)");
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx " << tid;
@@ -590,34 +579,25 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
       << "managed trx creating: " << tid.id();
 
-  size_t const bucket = getBucket(tid);
-
-  {
-    // quick check whether ID exists
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-    auto& buck = _transactions[bucket];
-    auto it = buck._managed.find(tid);
-    if (it != buck._managed.end()) {
-      if (isFollowerTransactionOnDBServer(options)) {
-        // it is ok for two different leaders to try to create the same
-        // follower transaction on a leader.
-        // for example, if we have 3 database servers and 2 shards, so that
-        // - db server 1 is the leader for shard A
-        // - db server 2 is the leader for shard B
-        // - db server 3 is the follower for both shard A and B,
-        // then db server 1 may try to lazily start a follower transaction
-        // on db server 3, and db server 2 may try to do the same. It is
-        // important that both succeed, because otherwise one of the calls
-        // would just drop db server 3 as a follower.
-        TRI_ASSERT(res.ok());
-        return res;
-      }
-
-      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction id ") + std::to_string(tid.id()) +
-                           " already used (before creating)");
+  if (testIfTransactionIdExists(tid)) {
+    if (isFollowerTransactionOnDBServer(options)) {
+      // it is ok for two different leaders to try to create the same
+      // follower transaction on a leader.
+      // for example, if we have 3 database servers and 2 shards, so that
+      // - db server 1 is the leader for shard A
+      // - db server 2 is the leader for shard B
+      // - db server 3 is the follower for both shard A and B,
+      // then db server 1 may try to lazily start a follower transaction
+      // on db server 3, and db server 2 may try to do the same. It is
+      // important that both succeed, because otherwise one of the calls
+      // would just drop db server 3 as a follower.
+      TRI_ASSERT(res.ok());
+      return res;
     }
+
+    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     std::string("transaction id ") + std::to_string(tid.id()) +
+                         " already used (before creating)");
   }
 
   // no transaction with ID exists yet, so start a new transaction
@@ -647,29 +627,16 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res;
   }
 
-  if (ttl <= 0) {
-    ttl = Manager::ttlForType(MetaType::Managed);
-  }
-
-  // ensure that we never reroll a given transcation id.
-  // The TID might be use outside
-  TRI_ASSERT(state->id() == tid);
-
-  {  // add transaction to bucket
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-    auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
-                                                         ttl, std::move(state));
-    if (!it.second) {
-      if (isFollowerTransactionOnDBServer(options)) {
-        TRI_ASSERT(res.ok());
-        return res;
-      }
-
-      return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction id ") + std::to_string(tid.id()) +
-                           " already used (while creating)");
+  bool stored = storeManagedState(tid, std::move(state), ttl);
+  if (!stored) {
+    if (isFollowerTransactionOnDBServer(options)) {
+      TRI_ASSERT(res.ok());
+      return res;
     }
+
+    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     std::string("transaction id ") + std::to_string(tid.id()) +
+                         " already used (while creating)");
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx " << tid;
@@ -1279,6 +1246,33 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
   }
 
   return res;
+}
+
+bool Manager::testIfTransactionIdExists(TransactionId const& tid) const {
+  size_t const bucket = getBucket(tid);
+  // quick check whether ID exists
+  READ_LOCKER(readLocker, _transactions[bucket]._lock);
+
+  auto const& buck = _transactions[bucket];
+  auto it = buck._managed.find(tid);
+  return it != buck._managed.end();
+}
+
+bool Manager::storeManagedState(TransactionId const& tid,
+                                std::shared_ptr<arangodb::TransactionState> state,
+                                double ttl) {
+  if (ttl <= 0) {
+    ttl = Manager::ttlForType(MetaType::Managed);
+  }
+
+  {  // add transaction to bucket
+    size_t const bucket = getBucket(tid);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+
+    auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
+                                                         ttl, std::move(state));
+    return it.second;
+  }
 }
 
 }  // namespace transaction

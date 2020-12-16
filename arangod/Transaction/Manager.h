@@ -233,6 +233,10 @@ class Manager final {
 
   static double ttlForType(Manager::MetaType);
 
+  bool testIfTransactionIdExists(TransactionId const& tid) const;
+  bool storeManagedState(TransactionId const& tid,
+                         std::shared_ptr<arangodb::TransactionState> state, double ttl);
+
  private:
   ManagerFeature& _feature;
 
