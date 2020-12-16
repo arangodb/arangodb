@@ -43,7 +43,7 @@ struct MyComputation : public VertexComputation<uint64_t, uint8_t, uint64_t> {
       for (const uint64_t* msg : messages) {
         if (*msg < currentComponent) {
           currentComponent = *msg;
-        };
+        }
       }
 
       if (currentComponent != vertexData()) {
@@ -60,9 +60,9 @@ struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
                          std::string const& result)
       : VertexGraphFormat<uint64_t, uint8_t>(server, result, /*vertexNull*/0) {}
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      uint64_t& targetPtr) override {
-    targetPtr = _vertexIdRange++;
+  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
+                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+    targetPtr = vertexIdRange++;
   }
 };
 

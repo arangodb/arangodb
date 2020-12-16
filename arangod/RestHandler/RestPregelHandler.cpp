@@ -45,7 +45,6 @@ RestStatus RestPregelHandler::execute() {
     bool parseSuccess = true;
     VPackSlice body = parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {
-      LOG_TOPIC("cec03", ERR, Logger::PREGEL) << "Bad request body\n";
       // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
