@@ -818,7 +818,7 @@ bool SynchronizeShard::first() {
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
       _clientInfoString =
-          std::string{"follower "} + ServerState::instance()->getPersistedId() +
+          std::string{"follower "} + ServerState::instance()->getId() +
           " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
