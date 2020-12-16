@@ -788,7 +788,7 @@ function AqlSatelliteSetupPathSuite() {
   return GenericAqlSetupPathSuite("Satellite");
 }
 
-// jsunity.run(CommunicationSuite);
+jsunity.run(CommunicationSuite);
 if (internal.isCluster()) {
   jsunity.run(AqlSetupPathSuite);
   jsunity.run(AqlGraphSetupPathSuite);
