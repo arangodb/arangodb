@@ -491,7 +491,6 @@ function GenericAqlSetupPathSuite(type) {
         require("console").log(err);
         return {};
       }
-      require("console").log("GOT " + res.body);
       if (typeof res.body === "string") {
         if (res.body === "") {
           res.body = {};
