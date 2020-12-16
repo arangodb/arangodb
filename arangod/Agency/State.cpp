@@ -773,10 +773,11 @@ void State::dropCollection(std::string const& colName) {
     if (col == nullptr) {
       return;
     }
-    auto res = _vocbase->dropCollection(col->id(), false, -1.0).errorNumber();
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("ba841", ERR, Logger::AGENCY)
-        << "unable to drop collection '" << colName << "': " << TRI_errno_string(res);
+    auto res = _vocbase->dropCollection(col->id(), false, -1.0);
+    if (res.fail()) {
+      LOG_TOPIC("ba841", FATAL, Logger::AGENCY)
+        << "unable to drop collection '" << colName << "': " << res.errorMessage();
+      FATAL_ERROR_EXIT();
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("69f4c", FATAL, Logger::AGENCY)
