@@ -321,7 +321,8 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
   ) const override;
 };
 
-MSVC_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC requires a static instance of an 'id' member
+MSVC_ONLY(/*static*/ std::locale::id codecvt16_facet::id{
+  static_cast<size_t>(std::codecvt<char16_t, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
 
 
 #if defined (__GNUC__)
@@ -539,7 +540,8 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
   ) const override;
 };
 
-MSVC_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC requires a static instance of an 'id' member
+MSVC_ONLY(/*static*/ std::locale::id codecvt32_facet::id {
+  static_cast<size_t>(std::codecvt<char32_t, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
 
 bool codecvt32_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -1462,6 +1464,8 @@ std::codecvt_base::result codecvt_base<InternType>::do_unshift(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt8_facet final: public codecvt_base<char> {
  public:
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvt8_facet(converter_pool& pool_int, converter_pool& pool_ext)
     : codecvt_base(pool_int, pool_ext) {
   }
@@ -1492,6 +1496,9 @@ class codecvt8_facet final: public codecvt_base<char> {
     extern_type*& to_next
   ) const override;
 };
+
+MSVC_ONLY(/*static*/ std::locale::id codecvt8_facet::id {
+  static_cast<size_t>(std::codecvt<char, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
 
 
 bool codecvt8_facet::append(
@@ -1833,6 +1840,9 @@ std::codecvt_base::result codecvt8_facet::do_out(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvtw_facet final: public codecvt_base<wchar_t> {
  public:
+
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvtw_facet(converter_pool& pool_int, converter_pool& pool_ext)
     : codecvt_base(pool_int, pool_ext) {
   }
@@ -1863,6 +1873,9 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
     extern_type*& to_next
   ) const override;
 };
+
+MSVC_ONLY(/*static*/ std::locale::id codecvtw_facet::id {
+  static_cast<size_t>(std::codecvt<wchar_t, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
 
 bool codecvtw_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -3607,7 +3620,6 @@ const std::locale& get_locale(
   auto* locale_info_ptr = locale_info.get();
   auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
-
   locale = std::locale(
     locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
   );

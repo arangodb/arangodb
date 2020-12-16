@@ -580,8 +580,8 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Enterprise Relecant code to filter out hidden collections
-///        that should ne be triggered directly by operations.
+/// @brief Enterprise Relevant code to filter out hidden collections
+///        that should not be triggered directly by operations.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_ENTERPRISE
@@ -590,6 +590,16 @@ bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
 }
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to filter out hidden collections
+///        that should not be included in links
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_ENTERPRISE
+bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
+  return true;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
@@ -978,6 +988,92 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
             result.reset(TRI_ERROR_INTERNAL);
           }
         });
+  };
+  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+}
+
+futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
+                                                       std::string const& dbname,
+                                                       std::string const& collname,
+                                                       OperationOptions const& options,
+                                                       bool withRevisions,
+                                                       bool withData) {
+  // Set a few variables needed for our work:
+  ClusterInfo& ci = feature.clusterInfo();
+
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+
+  network::RequestOptions reqOpts;
+  reqOpts.database = dbname;
+  reqOpts.timeout = network::Timeout(600.0);
+  reqOpts.param("withRevisions", withRevisions ? "true" : "false");
+  reqOpts.param("withData", withData ? "true" : "false");
+
+  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(shards->size());
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+  for (auto const& p : *shards) {
+    auto future =
+        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+                             "/_api/collection/" + StringUtils::urlEncode(p.first) + "/checksum",
+                             VPackBuffer<uint8_t>(), reqOpts);
+    futures.emplace_back(std::move(future));
+  }
+
+  auto cb = [options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto pre = [](Result&, VPackBuilder& builder) -> void {
+      VPackObjectBuilder b(&builder);
+      builder.add("checksum", VPackValue(0));
+      builder.add("revision", VPackValue(RevisionId::none().id()));
+    };
+    auto handler = [](Result& result, VPackBuilder& builder, ShardID const&,
+                             VPackSlice answer) mutable -> void {
+      if (!answer.isObject()) {
+        result.reset(TRI_ERROR_INTERNAL, "invalid data received for checksum calculation");
+        return;
+      }
+
+      VPackSlice r = answer.get("revision");
+      VPackSlice c = answer.get("checksum");
+      if (!r.isString() || !c.isString()) {
+        result.reset(TRI_ERROR_INTERNAL, "invalid data received for checksum calculation");
+        return;
+      }
+
+      VPackValueLength len;
+      auto p = c.getString(len);
+      bool valid = true;
+      auto checksum = NumberUtils::atoi<std::uint64_t>(p, p + len, valid);
+      if (!valid) {
+        result.reset(TRI_ERROR_INTERNAL, "invalid data received for checksum calculation");
+        return;
+      }
+
+      // xor is commutative, so it doesn't matter in which order we combine document
+      // checksums or partial results from different shards.
+      checksum ^= builder.slice().get("checksum").getUInt();
+
+      RevisionId cmp = RevisionId::fromSlice(r);
+      RevisionId rid = RevisionId::fromSlice(builder.slice().get("revision"));
+      if (cmp != RevisionId::max() && cmp > rid) {
+        // get the maximum value
+        rid = cmp;
+      }
+
+      builder.clear();
+      VPackObjectBuilder b(&builder);
+      builder.add("checksum", VPackValue(checksum));
+      builder.add("revision", VPackValue(rid.id()));
+    
+    };
+    return handleResponsesFromAllShards(options, results, handler, pre);
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
