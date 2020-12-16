@@ -718,7 +718,7 @@ EvalResult Machine::setFunction(std::string_view name, function_type&& f) {
   if (functions.find(sname) != functions.end()) {
     return EvalError("function `" + sname + "` already registered");
   }
-  functions[sname] = std::move(f);
+  functions.try_emplace(sname, std::move(f));
   return {};
 }
 
@@ -797,7 +797,7 @@ bool ValueConsideredTrue(VPackSlice const value) {
   return !ValueConsideredFalse(value);
 }
 
-std::string paramsToString(const VPackArrayIterator iter) {
+std::string paramsToString(VPackArrayIterator const iter) {
   std::stringstream ss;
 
   for (auto&& p : iter) {
@@ -815,7 +815,7 @@ std::string paramsToString(const VPackArrayIterator iter) {
   return ss.str();
 }
 
-std::string paramsToString(const VPackSlice params) {
+std::string paramsToString(VPackSlice const params) {
   return paramsToString(VPackArrayIterator(params));
 }
 
