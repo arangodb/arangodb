@@ -58,6 +58,9 @@ class GeneralConnection : public fuerte::Connection {
   // If false is retured the connection is broken beyond repair.
   virtual bool lease() override;
 
+  // Give back a lease when no sendRequest was called.
+  virtual void unlease() override;
+
   /// All protected or private methods below here must only be called on the
   /// IO thread.
  protected:

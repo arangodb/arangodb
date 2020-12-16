@@ -115,7 +115,7 @@ class GraphNode : public ExecutionNode {
   Variable const* vertexOutVariable() const;
 
   /// @brief checks if the vertex out variable is used
-  bool usesVertexOutVariable() const;
+  bool isVertexOutVariableUsedLater() const;
 
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
@@ -124,7 +124,7 @@ class GraphNode : public ExecutionNode {
   Variable const* edgeOutVariable() const;
 
   /// @brief checks if the edge out variable is used
-  bool usesEdgeOutVariable() const;
+  bool isEdgeOutVariableUsedLater() const;
 
   /// @brief set the edge out variable
   void setEdgeOutput(Variable const* outVar);

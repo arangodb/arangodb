@@ -23,6 +23,6 @@
 #include "cost.hpp"
 #include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-NS_END // ROOT
+} // ROOT

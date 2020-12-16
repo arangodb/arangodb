@@ -60,6 +60,7 @@ add_library(arango_iresearch
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
+  IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
@@ -85,14 +86,9 @@ target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
 
-if(MSVC)
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
-else()
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
-endif()
-
 get_target_property(IRESEARCH_INCLUDE
-  ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
+  iresearch-static INCLUDE_DIRECTORIES
+)
 
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
@@ -105,13 +101,13 @@ if (USE_ENTERPRISE)
 endif()
 
 target_link_libraries(arango_iresearch
-  ${IRESEARCH_TARGET_DEPENDENCY}
+  iresearch-static
   s2 # needed for some includes
   boost_locale # required by iResearch
 )
 
 add_dependencies(arango_iresearch
-  ${IRESEARCH_TARGET_DEPENDENCY}
+  iresearch-static
   v8_build # for ICU required by iResearch
 )
 

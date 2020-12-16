@@ -848,7 +848,6 @@ namespace iresearch {
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
 
-const ptrdiff_t IResearchViewNode::SortColumnNumber = -1;
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                                      aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,

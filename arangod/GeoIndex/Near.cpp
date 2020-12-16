@@ -159,6 +159,8 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   // TRI_ASSERT(!_params.ascending || _innerAngle != _maxAngle);
   TRI_ASSERT(_deltaAngle >=
              S1ChordAngle::Radians(S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2)));
+  
+  std::vector<geo::Interval> intervals;
 
   if (_numScans == 0) {
     calculateBounds();
@@ -169,13 +171,8 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   _numScans++;
 
   TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
+  
   TRI_ASSERT(_innerAngle != _outerAngle);
-
-  /*if (!_buffer.empty()) {
-    LOG_TOPIC("bf909", ERR, Logger::FIXME) << "Inner angle: " << _innerAngle.radians() <<
-  "  top distance: " << _buffer.top().distAngle.radians();
-  }*/
-
   std::vector<S2CellId> cover;
   if (_innerAngle == _minAngle) {
     // LOG_TOPIC("55f3b", INFO, Logger::FIXME) << "[Scan] 0 to something";
@@ -230,10 +227,9 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 
   } else {  // invalid bounds
     TRI_ASSERT(false);
-    return {};
+    return intervals;
   }
 
-  std::vector<geo::Interval> intervals;
   if (!cover.empty()) {
     geo::utils::scanIntervals(_params, cover, intervals);
     _scannedCells.insert(_scannedCells.end(), cover.begin(), cover.end());

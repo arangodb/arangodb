@@ -32,16 +32,16 @@ namespace arangodb {
 class ClientFeature;
 
 struct BenchRunResult {
-  double time;
-  size_t failures;
-  size_t incomplete;
-  double requestTime;
+  double _time;
+  uint64_t _failures;
+  uint64_t _incomplete;
+  double _requestTime;
 
-  void update(double _time, size_t _failures, size_t _incomplete, double _requestTime) {
-    time = _time;
-    failures = _failures;
-    incomplete = _incomplete;
-    requestTime = _requestTime;
+  void update(double time, uint64_t failures, uint64_t incomplete, double requestTime) {
+    _time = time;
+    _failures = failures;
+    _incomplete = incomplete;
+    _requestTime = requestTime;
   }
 };
 

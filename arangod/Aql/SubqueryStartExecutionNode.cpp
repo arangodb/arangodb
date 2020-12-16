@@ -50,6 +50,13 @@ CostEstimate SubqueryStartNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  // Save the nrItems going into the subquery to restore later at the
+  // corresponding SubqueryEndNode.
+  estimate.saveEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
+
   return estimate;
 }
 

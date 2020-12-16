@@ -436,6 +436,54 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   // intentional copy, as we will modify the headers later
   auto headers = request->headers();
 
+  std::string const& acceptPlain = request->contentTypeResponsePlain();
+
+  if (!acceptPlain.empty()) {
+    headers.emplace(StaticStrings::Accept, acceptPlain);
+  } else {
+    switch (request->contentTypeResponse()) {
+      case ContentType::UNSET:
+      case ContentType::CUSTOM:  // use Content-Type from _headers
+        break;
+      case ContentType::JSON:    // application/json
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJson);
+        break;
+      case ContentType::VPACK:   // application/x-velocypack
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeVPack);
+        break;
+      case ContentType::TEXT:    // text/plain
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeText);
+        break;
+      case ContentType::HTML:    // text/html
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeHtml);
+        break;
+      case ContentType::DUMP:    // application/x-arango-dump
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeDump);
+        break;
+    }
+  }
+
+  switch (request->contentType()) {
+    case ContentType::UNSET:
+    case ContentType::CUSTOM:  // use Content-Type from _headers
+      break;
+    case ContentType::JSON:    // application/json
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson);
+      break;
+    case ContentType::VPACK:   // application/x-velocypack
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack);
+      break;
+    case ContentType::TEXT:    // text/plain
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeText);
+      break;
+    case ContentType::HTML:    // text/html
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeHtml);
+      break;
+    case ContentType::DUMP:    // application/x-arango-dump
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeDump);
+      break;
+  }
+
   TRI_GET_GLOBAL_STRING(HeadersKey);
   req->Set(context, HeadersKey, headerFields).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(RequestTypeKey);
@@ -1796,17 +1844,17 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CREATE_HOTBACKUP"),
+                               JS_CreateHotbackup);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_CREATE_HOTBACKUP"),
-                               JS_CreateHotbackup);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(
@@ -1834,5 +1882,13 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
           v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC,
+          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+          v8::Boolean::New(isolate, foxxQueuesFeature.startupWaitForSelfHeal()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }

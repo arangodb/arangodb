@@ -230,6 +230,7 @@ class ApplicationServer {
          _features.try_emplace(std::type_index(typeid(As)),
                            std::make_unique<Type>(*this, std::forward<Args>(args)...));
      TRI_ASSERT(result.second);
+     result.first->second->setRegistration(std::type_index(typeid(As)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
      auto obj = dynamic_cast<As*>(result.first->second.get());
      TRI_ASSERT(obj != nullptr);

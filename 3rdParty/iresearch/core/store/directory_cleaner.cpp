@@ -25,7 +25,7 @@
 #include "directory_attributes.hpp"
 #include "directory_cleaner.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 directory_cleaner
@@ -67,4 +67,4 @@ NS_ROOT
   return remove_count;
 }
 
-NS_END
+}

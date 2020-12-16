@@ -28,7 +28,7 @@
 
 #include <functional>
 
-NS_ROOT
+namespace iresearch {
 
 class IRESEARCH_API utf8_path {
  public:
@@ -96,6 +96,6 @@ class IRESEARCH_API utf8_path {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-NS_END
+}
 
 #endif

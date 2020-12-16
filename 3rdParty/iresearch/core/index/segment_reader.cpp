@@ -35,7 +35,7 @@
 
 #include <unordered_map>
 
-NS_LOCAL
+namespace {
 
 class all_iterator final : public irs::doc_iterator {
  public:
@@ -225,9 +225,9 @@ bool read_columns_meta(
   return true;
 }
 
-NS_END // NS_LOCAL
+} // namespace {
 
-NS_ROOT
+namespace iresearch {
 
 // -------------------------------------------------------------------
 // segment_reader
@@ -481,4 +481,4 @@ const columnstore_reader::column_reader* segment_reader_impl::column_reader(
     : nullptr;
 }
 
-NS_END
+}

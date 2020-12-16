@@ -575,8 +575,8 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Enterprise Relecant code to filter out hidden collections
-///        that should ne be triggered directly by operations.
+/// @brief Enterprise Relevant code to filter out hidden collections
+///        that should not be triggered directly by operations.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_ENTERPRISE
@@ -585,6 +585,16 @@ bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
 }
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to filter out hidden collections
+///        that should not be included in links
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_ENTERPRISE
+bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
+  return true;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
@@ -1147,6 +1157,13 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
 
+  if (TRI_vocbase_t::IsSystemName(cname)) {
+    // system collection (e.g. _apps, _jobs, _graphs...
+    // very likely this is an internal request that should not block other processing
+    // in case we don't get a timely response
+    reqOpts.timeout = network::Timeout(5.0);
+  }
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
@@ -1217,6 +1234,13 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
+  
+  if (TRI_vocbase_t::IsSystemName(collname)) {
+    // system collection (e.g. _apps, _jobs, _graphs...
+    // very likely this is an internal request that should not block other processing
+    // in case we don't get a timely response
+    reqOpts.timeout = network::Timeout(5.0);
+  }
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());

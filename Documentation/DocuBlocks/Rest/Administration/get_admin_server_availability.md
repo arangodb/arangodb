@@ -20,4 +20,9 @@ in case of an active failover setup.
 @RESTRETURNCODE{503}
 HTTP 503 will be returned in case the server is during startup or during shutdown,
 is set to read-only mode or is currently a follower in an active failover setup.
+
+In addition, since ArangoDB version 3.7.6, HTTP 503 will be returned in case the 
+fill grade of the scheduler queue exceeds the configured high-water mark (adjustable 
+via startup option `--server.unavailability-queue-fill-grade`), which by default is 
+set to 100 % of the maximum queue length. I
 @endDocuBlock
