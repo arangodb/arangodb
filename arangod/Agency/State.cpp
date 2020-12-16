@@ -800,7 +800,7 @@ void State::dropCollection(std::string const& colName) {
         << "unable to drop collection log: " << TRI_errno_string(res);
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC("69fc4", FATAL, Logger::REPLICATION)
+    LOG_TOPIC("53642", FATAL, Logger::REPLICATION)
       << "unable to drop collections " << colName << ": " << e.what();
   }
 }
@@ -884,6 +884,7 @@ bool State::loadPersisted() {
       _log.clear();
       _cur = 0;
       dropCollection("log");
+      //TRI_ASSERT(false);
       dropCollection("compact");
 
     }
