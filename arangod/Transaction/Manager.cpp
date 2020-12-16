@@ -554,7 +554,7 @@ ResultT<TransactionId> Manager::createManagedTrx(
                          " already used (while creating)");
   }
 
-  LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx " << tid;
+  LOG_TOPIC("d6807", DEBUG, Logger::TRANSACTIONS) << "created managed trx " << tid;
 
   return ResultT{tid};
 }
