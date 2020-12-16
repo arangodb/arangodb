@@ -722,32 +722,32 @@ void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::Program
                      "the exact number of threads to use for asynchronous "
                      "tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_threads))
-                     .setDeprecatedIn(30800);
+                     .setDeprecatedIn(30705);
   options->addOption(THREADS_LIMIT_PARAM,
                      "upper limit to the autodetected number of threads to use "
                      "for asynchronous tasks (0 == use default)",
                      new options::UInt32Parameter(&_threadsLimit))
-                     .setDeprecatedIn(30800);
+                     .setDeprecatedIn(30705);
   options->addOption(CONSOLIDATION_THREADS_PARAM,
                      "upper limit to the allowed number of consolidation threads "
                      "(0 == autodetect)",
                      new options::UInt32Parameter(&_consolidationThreads))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
   options->addOption(CONSOLIDATION_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for consolidation tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_consolidationThreadsIdle))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
   options->addOption(COMMIT_THREADS_PARAM,
                      "upper limit to the allowed number of commit threads "
                      "(0 == autodetect)",
                      new options::UInt32Parameter(&_commitThreads))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
   options->addOption(COMMIT_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for commit tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_commitThreadsIdle))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
 }
 
 void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {

@@ -38,17 +38,15 @@ using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
 bool Traverser::VertexGetter::getVertex(VPackSlice edge,
-                                        std::vector<arangodb::velocypack::StringRef>& result) {
-  TRI_ASSERT(!result.empty());
-  
+                                        arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data 
   // if the vertex is found.
   arangodb::velocypack::StringRef s;
-  if (!getSingleVertex(edge, result.back(), result.size(), s)) {
+  if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
     return false;
   }
 
-  result.emplace_back(s);
+  path.pushVertex(s);
   return true;
 }
 
@@ -77,17 +75,15 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
 void Traverser::VertexGetter::reset(arangodb::velocypack::StringRef const&) {}
 
 bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
-                                              std::vector<arangodb::velocypack::StringRef>& result) {
-  TRI_ASSERT(!result.empty());
-  
+                                              arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data 
   // if the vertex is found.
   arangodb::velocypack::StringRef s;
-  if (!getSingleVertex(edge, result.back(), result.size(), s)) {
+  if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
     return false;
   }
 
-  result.emplace_back(s);
+  path.pushVertex(s);
   return true;
 }
 

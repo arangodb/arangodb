@@ -6,6 +6,8 @@ const CANONICAL_SCHEMA = require('@arangodb/foxx/manifest').schemaUrl;
 const request = require('@arangodb/request');
 const db = require('@arangodb').db;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx manifest $schema field', () => {
   it(`defaults to "${CANONICAL_SCHEMA}"`, () => {
     const manifest = validateManifest('fake', {}, '/fake');
