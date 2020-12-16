@@ -28,6 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -118,18 +119,29 @@ class Manager final {
   void registerAQLTrx(std::shared_ptr<TransactionState> const&);
   void unregisterAQLTrx(TransactionId tid) noexcept;
 
-  /// @brief create managed transaction
-  Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                          velocypack::Slice trxOpts,
-                          bool isFollowerTransaction);
+  /// @brief create managed transaction, also generate a tranactionId
+  ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
+                                          bool isFollowerTransaction);
 
-  /// @brief create managed transaction
-  Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
+  /// @brief create managed transaction, also generate a tranactionId
+  ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
+                                          std::vector<std::string> const& readCollections,
+                                          std::vector<std::string> const& writeCollections,
+                                          std::vector<std::string> const& exclusiveCollections,
+                                          transaction::Options options, double ttl = 0.0);
+
+  /// @brief ensure managed transaction, either use the one on the given tid
+  ///        or create a new one with the given tid
+  Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
+                          velocypack::Slice trxOpts, bool isFollowerTransaction);
+
+  /// @brief ensure managed transaction, either use the one on the given tid
+  ///        or create a new one with the given tid
+  Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          transaction::Options options,
-                          double ttl = 0.0);
+                          transaction::Options options, double ttl = 0.0);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,

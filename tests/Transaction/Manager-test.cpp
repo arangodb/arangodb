@@ -93,12 +93,12 @@ class TransactionManagerTest : public ::testing::Test {
 
 TEST_F(TransactionManagerTest, parsing_errors) {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"write\": [33] }");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   EXPECT_TRUE(res.is(TRI_ERROR_BAD_PARAMETER));
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": \"33\"}, \"lockTimeout\": -1 }");
-  res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   EXPECT_TRUE(res.is(TRI_ERROR_BAD_PARAMETER));
 }
 
@@ -107,17 +107,17 @@ TEST_F(TransactionManagerTest, collection_not_found) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"33\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
-  res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"exclusive\": [\"33\"]}}");
-  res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
@@ -132,12 +132,12 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
-  res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_INTERNAL);
 
   res = mgr->abortManagedTrx(tid, vocbase.name());
@@ -155,7 +155,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
 
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"_key\": \"1\"}");
@@ -207,7 +207,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
 
   {
@@ -251,7 +251,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), true);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), true);
   ASSERT_TRUE(res.ok());
 
   {
@@ -290,7 +290,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
 
   {
@@ -329,7 +329,7 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
 
   {
@@ -369,7 +369,7 @@ TEST_F(TransactionManagerTest, lock_conflict) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
   {
     transaction::Options opts;
@@ -397,7 +397,7 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
   {
     transaction::Options opts;
@@ -458,7 +458,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_TRUE(res.ok());
 
   {
@@ -505,14 +505,14 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   EXPECT_TRUE(res.ok());
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
 
   tid = TransactionId::createSingleServer();
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_READ_ONLY);
 }
 
@@ -535,6 +535,6 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), false);
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
   ASSERT_EQ(res.errorNumber(), TRI_ERROR_FORBIDDEN);
 }

@@ -3479,7 +3479,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   
   transaction::Options opts;
   opts.lockTimeout = ttl; // not sure if appropriate ?
-  Result res = mgr->createManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
+  Result res = mgr->ensureManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
 
   if (res.fail()) {
     return res;
