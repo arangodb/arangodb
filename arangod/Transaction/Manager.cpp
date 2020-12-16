@@ -565,9 +565,12 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
+  /*
+   * TODO: Check (mchacki) - we need to check tid.isFollowerTransactionId() here?
   bool const isFollowerTransactionOnDBServer =
       (ServerState::instance()->isDBServer() &&
        (tid.isFollowerTransactionId() || options.isFollowerTransaction));
+  */
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
       << "managed trx creating: " << tid.id();
@@ -581,7 +584,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
-      if (isFollowerTransactionOnDBServer) {
+      if (isFollowerTransactionOnDBServer(options)) {
         // it is ok for two different leaders to try to create the same
         // follower transaction on a leader.
         // for example, if we have 3 database servers and 2 shards, so that
@@ -603,51 +606,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   // no transaction with ID exists yet, so start a new transaction
-
-  // enforce size limit per DBServer
-  if (isFollowerTransactionOnDBServer) {
-    // if we are a follower, we reuse the leader's max transaction size and
-    // slightly increase it. this is to ensure that the follower can process at
-    // least as many data as the leader, even if the data representation is
-    // slightly varied for network transport etc.
-    if (options.maxTransactionSize != UINT64_MAX) {
-      uint64_t adjust = options.maxTransactionSize / 10;
-      if (adjust < UINT64_MAX - options.maxTransactionSize) {
-        // now the transaction on the follower should be able to grow to at
-        // least the size of the transaction on the leader.
-        options.maxTransactionSize += adjust;
-      }
-    }
-    // it is also important that we set this option, so that it is ok for two
-    // different leaders to add "their" shards to the same follower transaction.
-    // for example, if we have 3 database servers and 2 shards, so that
-    // - db server 1 is the leader for shard A
-    // - db server 2 is the leader for shard B
-    // - db server 3 is the follower for both shard A and B,
-    // then db server 1 may try to lazily start a follower transaction
-    // on db server 3 for shard A, and db server 2 may try to do the same for shard B.
-    // Both calls will only send data for "their" shards, so effectively we need to
-    // add write collections to the transaction at runtime whenever this happens.
-    // It is important that all these calls succeed, because otherwise one of the calls
-    // would just drop db server 3 as a follower.
-    options.allowImplicitCollectionsForWrite = true;
-
-    // we should not have any locking conflicts on followers, generally. shard
-    // locking should be performed on leaders first, which will then, eventually
-    // replicate changes to followers. replication to followers is only done
-    // once the locks have been acquired on the leader(s). so if there are any
-    // locking issues, they are supposed to happen first on leaders, and not
-    // affect followers. that's why we can hard-code the lock timeout here to a
-    // rather low value on followers
-    constexpr double followerLockTimeout = 15.0;
-    if (options.lockTimeout == 0.0 || options.lockTimeout >= followerLockTimeout) {
-      options.lockTimeout = followerLockTimeout;
-    }
-  } else {
-    // for all other transactions, apply a size limitation
-    options.maxTransactionSize =
-        std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
-  }
+  prepareOptions(options);
 
   std::shared_ptr<TransactionState> state;
   try {
@@ -661,81 +620,15 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   TRI_ASSERT(state->id() == tid);
 
   // lock collections
-  CollectionNameResolver resolver(vocbase);
-  auto lockCols = [&](std::vector<std::string> const& cols, AccessMode::Type mode) {
-    for (auto const& cname : cols) {
-      DataSourceId cid = DataSourceId::none();
-      if (state->isCoordinator()) {
-        cid = resolver.getCollectionIdCluster(cname);
-      } else {  // only support local collections / shards
-        cid = resolver.getCollectionIdLocal(cname);
-      }
-
-      if (cid.empty()) {
-        // not found
-        res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
-                      ": " + cname);
-      } else {
-#ifdef USE_ENTERPRISE
-        if (state->isCoordinator()) {
-          try {
-            std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
-            if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
-              auto theEdge =
-                  dynamic_cast<arangodb::VirtualSmartEdgeCollection*>(col.get());
-              if (theEdge == nullptr) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(
-                    TRI_ERROR_INTERNAL,
-                    "cannot cast collection to smart edge collection");
-              }
-              res.reset(state->addCollection(theEdge->getLocalCid(), "_local_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
-              }
-              res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
-              }
-              res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
-              }
-            }
-          } catch (basics::Exception const& ex) {
-            res.reset(ex.code(), ex.what());
-            return false;
-          }
-        }
-#endif
-        res.reset(state->addCollection(cid, cname, mode, /*lockUsage*/ false));
-      }
-
-      if (res.fail()) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  if (!lockCols(exclusiveCollections, AccessMode::Type::EXCLUSIVE) ||
-      !lockCols(writeCollections, AccessMode::Type::WRITE) ||
-      !lockCols(readCollections, AccessMode::Type::READ)) {
-    if (res.fail()) {
-      // error already set by callback function
-      return res;
-    }
-    // no error set. so it must be "data source not found"
-    return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  res = lockCollections(vocbase, state, exclusiveCollections, writeCollections, readCollections);
+  if (res.fail()) {
+    return res;
   }
 
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isFollowerTransactionOnDBServer) {
+  if (isFollowerTransactionOnDBServer(options)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     // turn on intermediate commits on followers as well. otherwise huge leader
     // transactions could make the follower claim all memory and crash.
@@ -766,7 +659,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
                                                          ttl, std::move(state));
     if (!it.second) {
-      if (isFollowerTransactionOnDBServer) {
+      if (isFollowerTransactionOnDBServer(options)) {
         TRI_ASSERT(res.ok());
         return res;
       }
