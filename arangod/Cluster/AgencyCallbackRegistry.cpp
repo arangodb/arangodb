@@ -40,8 +40,9 @@
 #include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
-AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePath)
+AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server, std::string const& callbackBasePath)
     : _agency(), 
       _callbackBasePath(callbackBasePath),
       _callbacksCount(

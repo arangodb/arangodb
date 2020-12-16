@@ -24,6 +24,7 @@
 #ifndef CLUSTER_AGENCY_CALLBACK_REGISTRY_H
 #define CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyCallback.h"
 #include "RestServer/Metrics.h"
@@ -35,7 +36,7 @@ class AgencyCallbackRegistry {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
-  explicit AgencyCallbackRegistry(std::string const&);
+  explicit AgencyCallbackRegistry(application_features::ApplicationServer& server, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dtor
