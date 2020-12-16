@@ -48,6 +48,7 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
+#include "OptimizerUtils.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Iterator.h>
@@ -439,31 +440,42 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
 }
 
 std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes() const {
-  // std::vector<IndexAccessor> usedIndexes{
-  // IndexAccessor{edgeIndexHandle, indexCondition, 0}};
   std::vector<IndexAccessor> indexAccessors{};
 
   if (_options->refactor()) {
-    // TODO: remove / cleanup later
-    // Compute Indexes for KPathFinder Refactored Version
-    // NOTE this is hardcoded for edge indexes for now.
-    // We need to use bestIndexHandle here!
     size_t numEdgeColls = _edgeColls.size();
+    bool onlyEdgeIndexes = true;
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
       auto dir = _directions[i];
       switch (dir) {
         case TRI_EDGE_IN: {
-          // Index 2 is _to edge index
-          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(2);
-          indexAccessors.emplace_back(idx,
+          std::shared_ptr<Index> indexToUse{nullptr};
+          aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], toCondition,
+                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
+                                                                      indexToUse, onlyEdgeIndexes);
+          if (!res) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           "expected edge index not found");
+          }
+
+          indexAccessors.emplace_back(indexToUse,
                                       _toCondition->clone(options()->query().ast()), 0);
           break;
         }
         case TRI_EDGE_OUT: {
-          // Index 2 is _from edge index
-          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(1);
-          indexAccessors.emplace_back(idx,
+          std::shared_ptr<Index> indexToUse{nullptr};
+          aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], fromCondition,
+                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
+                                                                      indexToUse, onlyEdgeIndexes);
+          if (!res) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           "expected edge index not found");
+          }
+
+          indexAccessors.emplace_back(indexToUse,
                                       _fromCondition->clone(options()->query().ast()), 0);
           break;
         }
@@ -477,8 +489,6 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
 }
 
 std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsedIndexes() const {
-  // std::vector<IndexAccessor> usedIndexes{
-  // IndexAccessor{edgeIndexHandle, indexCondition, 0}};
   std::vector<IndexAccessor> indexAccessors{};
 
   if (_options->refactor()) {
@@ -487,21 +497,38 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
     // NOTE this is hardcoded for edge indexes for now.
     // We need to use bestIndexHandle here!
     size_t numEdgeColls = _edgeColls.size();
+    bool onlyEdgeIndexes = true;
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
       auto dir = _directions[i];
       switch (dir) {
         case TRI_EDGE_IN: {
-          // Index 2 is _from edge index
-          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(1);
-          indexAccessors.emplace_back(idx,
+          std::shared_ptr<Index> indexToUse{nullptr};
+          aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], fromCondition,
+                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
+                                                                      indexToUse, onlyEdgeIndexes);
+          if (!res) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           "expected edge index not found");
+          }
+
+          indexAccessors.emplace_back(indexToUse,
                                       _fromCondition->clone(options()->query().ast()), 0);
           break;
         }
         case TRI_EDGE_OUT: {
-          // Index 2 is _to edge index
-          auto idx = _edgeColls[i]->getCollection()->getIndexes().at(2);
-          indexAccessors.emplace_back(idx,
+          std::shared_ptr<Index> indexToUse{nullptr};
+          aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], toCondition,
+                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
+                                                                      indexToUse, onlyEdgeIndexes);
+          if (!res) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           "expected edge index not found");
+          }
+
+          indexAccessors.emplace_back(indexToUse,
                                       _toCondition->clone(options()->query().ast()), 0);
           break;
         }
