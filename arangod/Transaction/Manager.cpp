@@ -458,6 +458,8 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
     // no error set. so it must be "data source not found"
     return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
+
+  return res;
 }
 
 bool Manager::isFollowerTransactionOnDBServer(transaction::Options& options) const {
