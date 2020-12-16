@@ -691,7 +691,7 @@ function GenericAqlSetupPathSuite(type) {
       singleRun(tests);
       assertEqual(db[twoShardColName].count(), numWriters * docsPerWrite);
     };
-  }
+  };
 
   const testSuite = {
     setUpAll: function () {
