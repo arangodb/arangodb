@@ -182,7 +182,7 @@ void RestTransactionHandler::executeBegin() {
     }
 
     // start
-    ResultT<TransactionId> res = mgr->createManagedTrx(_vocbase, slice, false);
+    ResultT<TransactionId> res = mgr->createManagedTrx(_vocbase, slice);
     if (res.fail()) {
       generateError(res.result());
     } else {

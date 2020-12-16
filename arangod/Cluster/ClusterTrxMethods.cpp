@@ -322,7 +322,9 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
 
   // If !state.knownServers.empty() => We have already locked something.
   //   We cannot revert fastPath locking and continue over slowpath. (Trx may be used)
-  bool canRevertToSlowPath = state.knownServers().empty();
+  bool canRevertToSlowPath =
+      state.hasHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER) &&
+      state.knownServers().empty();
 
   double oldLockTimeout = state.options().lockTimeout;
   {

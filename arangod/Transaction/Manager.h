@@ -120,8 +120,7 @@ class Manager final {
   void unregisterAQLTrx(TransactionId tid) noexcept;
 
   /// @brief create managed transaction, also generate a tranactionId
-  ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
-                                          bool isFollowerTransaction);
+  ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase, velocypack::Slice trxOpts);
 
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,

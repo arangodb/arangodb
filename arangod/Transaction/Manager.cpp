@@ -275,8 +275,7 @@ bool ExtractCollections(VPackSlice collections, std::vector<std::string>& reads,
 }
 }  // namespace
 
-ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts,
-                                                 bool isFollowerTransaction) {
+ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts) {
   Result res;
   // parse the collections to register
   if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {
@@ -289,9 +288,6 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSl
   if (options.lockTimeout < 0.0) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
-  }
-  if (isFollowerTransaction) {
-    options.isFollowerTransaction = true;
   }
 
   std::vector<std::string> reads, writes, exclusives;
@@ -500,6 +496,9 @@ ResultT<TransactionId> Manager::createManagedTrx(
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
     transaction::Options options, double ttl) {
+  // We cannot run this on FollowerTransactions.
+  // They need to get injected the TransactionIds.
+  TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -534,21 +533,24 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // TODO: add hint or bool if transaction is rerollable
   // start the transaction
   auto hints = ensureHints(options);
+  // We allow to do a fast locking round here
+  // We can only do this because we KNOW that the tid is not
+  // known to any other place yet.
+  hints.set(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
   res = beginTransaction(hints, state);
   if (res.fail()) {
     return res;
   }
+  // Unset the FastLockRound hint, if for some reason we ever end up locking
+  // something again for this transaction we cannot recover from a fast lock
+  // failure
+  hints.unset(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
 
   // During beginTransaction we may reroll the Transaction ID.
   tid = state->id();
 
   bool stored = storeManagedState(tid, std::move(state), ttl);
   if (!stored) {
-    if (isFollowerTransactionOnDBServer(options)) {
-      TRI_ASSERT(res.ok());
-      return res;
-    }
-
     return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                      std::string("transaction id ") + std::to_string(tid.id()) +
                          " already used (while creating)");
