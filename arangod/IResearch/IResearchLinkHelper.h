@@ -105,7 +105,8 @@ struct IResearchLinkHelper {
     IResearchViewSort const* primarySort = nullptr,
     irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
-    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
+    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice(), // id for normalized
+    irs::string_ref collectionName = irs::string_ref::NIL
   );
 
   ////////////////////////////////////////////////////////////////////////////////

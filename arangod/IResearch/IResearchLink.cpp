@@ -29,6 +29,7 @@
 #include <utils/singleton.hpp>
 
 #include "IResearchLink.h"
+#include "IResearchDocument.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
@@ -155,45 +156,7 @@ inline Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // Stored value field
   {
-    struct StoredValue {
-      StoredValue(transaction::Methods const& trx, VPackSlice const& document) : trx(trx), document(document) {}
-
-      bool write(irs::data_output& out) const {
-        auto size = fields->size();
-        for (auto const& storedValue : *fields) {
-          auto slice = get(document, storedValue.second, VPackSlice::nullSlice());
-          // null value optimization
-          if (1 == size && slice.isNull()) {
-            return true;
-          }
-
-          // _id field
-          if (slice.isCustom()) {
-            TRI_ASSERT(1 == storedValue.second.size() &&
-                       storedValue.second[0].name == arangodb::StaticStrings::IdString);
-            buffer.reset();
-            VPackBuilder builder(buffer);
-            builder.add(VPackValue(transaction::helpers::extractIdString(
-              trx.resolver(), slice, document)));
-            slice = builder.slice();
-            // a builder is destroyed but a buffer is alive
-          }
-          out.write_bytes(slice.start(), slice.byteSize());
-        }
-        return true;
-      }
-
-      irs::string_ref const& name() const noexcept {
-        return fieldName;
-      }
-
-      mutable VPackBuffer<uint8_t> buffer;
-      transaction::Methods const& trx;
-      velocypack::Slice const& document;
-      irs::string_ref fieldName;
-      std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
-    } field(trx, document); // StoredValue
-
+    StoredValue field(trx, meta._collectionName, document);
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
@@ -1521,7 +1484,7 @@ Result IResearchLink::insert(
   auto insertImpl = [this, &trx, &doc, &documentId](
                         irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIterator body(trx);
+      FieldIterator body(trx, _meta._collectionName);
 
       return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
     } catch (basics::Exception const& e) {

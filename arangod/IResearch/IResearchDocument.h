@@ -125,7 +125,7 @@ struct Field {
 ////////////////////////////////////////////////////////////////////////////////
 class FieldIterator {
  public:
-  explicit FieldIterator(arangodb::transaction::Methods& trx);
+  explicit FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -193,6 +193,8 @@ class FieldIterator {
   std::string _valueBuffer;  // need temporary buffer for custom types in VelocyPack
   VPackBuffer<uint8_t> _buffer; // buffer for stored values
   arangodb::transaction::Methods* _trx;
+  irs::string_ref _collection;
+  bool _isDBServer;
   Field _value;  // iterator's value
 }; // FieldIterator
 
@@ -218,6 +220,24 @@ struct DocumentPrimaryKey {
 
   DocumentPrimaryKey() = delete;
 };  // DocumentPrimaryKey
+
+struct StoredValue {
+  StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const& doc);
+
+  bool write(irs::data_output& out) const;
+
+  irs::string_ref const& name() const noexcept {
+    return fieldName;
+  }
+
+  mutable VPackBuffer<uint8_t> buffer;
+  transaction::Methods const& trx;
+  velocypack::Slice const& document;
+  irs::string_ref fieldName;
+  irs::string_ref collection;
+  std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
+  bool isDBServer;
+}; // StoredValue
 
 }  // namespace iresearch
 }  // namespace arangodb
