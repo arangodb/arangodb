@@ -36,11 +36,11 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -81,7 +81,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     sortRegisters.emplace_back(std::move(sortReg));
     return SortExecutorInfos(1, 1, {}, std::move(sortRegisters),
                              /*limit (ignored for default sort)*/ 0, manager(),
-                             vpackOptions, false);
+                             vpackOptions, monitor, false);
   }
 
  private:

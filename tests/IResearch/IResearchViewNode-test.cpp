@@ -2555,11 +2555,10 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   MockQuery query(ctx, arangodb::aql::QueryString("RETURN 1"),
                   nullptr, arangodb::velocypack::Parser::fromJson("{}"));
   query.initForTests();
-//  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::ExecutionPlan plan(query.ast());
+  arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
   arangodb::aql::Variable const outVariable("variable", 0, false);
 
@@ -2649,11 +2648,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
                   arangodb::aql::QueryString("RETURN 1"),
                   nullptr, arangodb::velocypack::Parser::fromJson("{}"));
     query.initForTests();
-  //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::ExecutionPlan plan(query.ast());
+  arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
   // dummy engine
   arangodb::aql::SingletonNode singleton(&plan, arangodb::aql::ExecutionNodeId{0});

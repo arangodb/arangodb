@@ -29,9 +29,9 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ResultT.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
@@ -72,7 +72,7 @@ class QueryContext {
 
   virtual ~QueryContext();
 
-  ResourceMonitor& resourceMonitor() { return _resourceMonitor; }
+  arangodb::ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
   
   /// @brief get the vocbase
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
@@ -135,10 +135,10 @@ class QueryContext {
 
  protected:
   
-  const TRI_voc_tick_t _queryId;
+  TRI_voc_tick_t const _queryId;
 
   /// @brief current resources and limits used by query
-  ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _resourceMonitor;
   
   /// @brief thread-safe query warnings collector
   QueryWarnings _warnings;

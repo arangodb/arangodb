@@ -105,8 +105,6 @@ struct ShortestPathOptions : public BaseOptions {
 
   void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
 
-  void isQueryKilledCallback() const;
-
   auto estimateDepth() const noexcept -> uint64_t override;
 
  private:

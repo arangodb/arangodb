@@ -260,6 +260,13 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
           Result res = ::checkTransactionResult(tidPlus, status, resp);
           if (res.fail()) {  // remove follower from all collections
             ServerID follower = resp.serverId();
+            LOG_TOPIC("230c3", INFO, Logger::REPLICATION) 
+                << "synchronous replication: dropping follower " 
+                << follower << " for all participating shards in"
+                << " transaction " << state->id() << " (status " 
+                << arangodb::transaction::statusString(status) 
+                << "), status code: " << static_cast<int>(resp.statusCode()) 
+                << ", message: " << network::fuerteToArangoErrorMessage(resp);
             state->allCollections([&](TransactionCollection& tc) {
               auto cc = tc.collection();
               if (cc) {
@@ -267,7 +274,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
                 if (r.ok()) {
                   // TODO: what happens if a server is re-added during a transaction ?
                   LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                      << "synchronous replication: dropping follower "
+                      << "synchronous replication: dropped follower "
                       << follower << " for shard " << tc.collectionName()
                       << " in database " << cc->vocbase().name();
                   LOG_TOPIC("b071c", WARN, Logger::DEVEL)
@@ -285,6 +292,8 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
                   return false;  // cancel transaction
                 }
               }
+              // continue dropping the follower for all shards in this
+              // transaction
               return true;
             });
           }
