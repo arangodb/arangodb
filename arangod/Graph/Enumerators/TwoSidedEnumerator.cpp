@@ -139,9 +139,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::fetchResu
     // Will throw all network errors here
     auto&& preparedEnds = futureEnds.get();
     LOG_DEVEL << "needs to be implemented: " << preparedEnds;
-    // TODO we need to ensure that we now have all vertices fetched
+    // TODO: we need to ensure that we now have all vertices fetched - (future - not yet implemented and not relevant yet)
     // or that we need to refetch at some later point.
-    // TODO maybe we can combine this with prefetching of paths
+    // TODO: maybe we can combine this with prefetching of paths
   }
 #endif
 }
@@ -158,30 +158,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     // Will throw all network errors here
     auto&& preparedEnds = futureEnds.get();
     LOG_DEVEL << "needs to be implemented: " << preparedEnds;
-    // TODO we somehow need to handover those looseends to
+    // TODO we somehow need to handover those looseends to - (future - not yet implemented and not relevant yet)
     // the queue again, in order to remove them from the loosend list.
   }
   auto step = _queue.pop();
   auto previous = _interior.append(step);
-#if 0
-  auto neighbors = _provider.expand(step, previous);
-
-  LOG_TOPIC("a092f", DEBUG, Logger::GRAPHS)
-      << (_direction == Direction::FORWARD ? "Forward" : "Backward")
-      << " expanding step " << step << " with " << neighbors.size() << " neighbors.";
-
-  for (auto& n : neighbors) {
-    // Check if other Ball knows this Vertex.
-    // Include it in results.
-    if (getDepth() + other.getDepth() >= _minDepth) {
-      other.matchResultsInShell(n, results);
-    }
-    LOG_TOPIC("9620c", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
-    // Add the step to our shell
-    _resourceMonitor.increaseMemoryUsage(sizeof(n));
-    _shell.emplace(std::move(n));
-  }
-#else
   _provider.expand(step, previous, [&](Step n) -> void {
     // Check if other Ball knows this Vertex.
     // Include it in results.
@@ -193,7 +174,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     _resourceMonitor.increaseMemoryUsage(sizeof(n));
     _shell.emplace(std::move(n));
   });
-#endif
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -254,9 +234,16 @@ template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::destroyEngines() -> void {
+  // Note: Left & Right Provider use the same traversal engines.
+  //   => Destroying one of them is enough.
+  _left.provider().destroyEngines();
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::clear() {
-  // Cases:
-  // - TODO: Needs to clear left and right?
+  _left.clear();
+  _right.clear();
   _results.clear();
 }
 

@@ -163,7 +163,7 @@ class TwoSidedEnumerator {
    */
 
   bool skipPath();
-  auto destroyEngines() -> void{};  // TODO: remove me
+  auto destroyEngines() -> void;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
