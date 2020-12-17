@@ -229,7 +229,7 @@ struct BaseOptions {
   bool const _isCoordinator;
 
   /// @brief whether or not we are running the refactored version
-  /// TODO: This must be removed prior release
+  /// TODO: This must be removed prior release - (is currently needed for the refactoring)
   bool _refactor;
 };
 
