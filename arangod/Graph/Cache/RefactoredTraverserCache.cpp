@@ -90,14 +90,9 @@ VPackSlice RefactoredTraverserCache::lookupToken(EdgeDocumentToken const& idToke
 
 VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
     arangodb::velocypack::HashedStringRef const& idHashed) {
-  // TODO: Missing produceVertices check
-  /*if (!_baseOptions->produceVertices()) {
-    // this traversal does not produce any vertices
-    return arangodb::velocypack::Slice::nullSlice();
-  }*/
   arangodb::velocypack::StringRef id{idHashed};
 
-  // TRI_ASSERT(!ServerState::instance()->isCoordinator()); // TODO: if we're just setting this up for singleserver we can enable that assert
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid
@@ -107,15 +102,6 @@ VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
   }
 
   std::string collectionName = id.substr(0, pos).toString();
-
-  /* TODO: See todo above, we could just get rid of this in standalone (e.g. just being used in SingleServerProdiver as Cache)
-  auto const& map = _baseOptions->collectionToShard();
-  if (!map.empty()) {
-    auto found = map.find(collectionName);
-    if (found != map.end()) {
-      collectionName = found->second;
-    }
-  }*/
 
   try {
     Result res = _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), _mmdr);
@@ -129,7 +115,7 @@ VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
       THROW_ARANGO_EXCEPTION(res);
     }
   } catch (basics::Exception const& ex) {
-    // TODO: see todo above, same issue
+    // Note: This will be only relevant if SmartGraph Provider is able to reuse SingleServerProvider.
     if (ServerState::instance()->isDBServer()) {
       // on a DB server, we could have got here only in the OneShard case.
       // in this case turn the rather misleading "collection or view not found"
@@ -150,7 +136,7 @@ VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
 
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
-  _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());  // TODO CHECK: Query only needed for warnings?!
+  _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
   // This is expected, we may have dangling edges. Interpret as NULL
   return arangodb::velocypack::Slice::nullSlice();
 }
