@@ -269,7 +269,7 @@ template<typename T> void gauge_test() {
   random_device rnd_device;
   mt19937 mersenne_engine {rnd_device()};  // Generates random integers
   uniform_real_distribution<T> dist {T(1), T(100)};
-  vector<T> vr(100);
+  vector<T> vr(1000);
   auto gen = [&dist, &mersenne_engine](){
                return dist(mersenne_engine);
              };
@@ -294,9 +294,9 @@ template<typename T> void gauge_test() {
     i.wait();
   }
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-3f);
   } else {
-    ASSERT_DOUBLE_EQ(1.,  g.load());
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-10f);
   }
 
   g = one;
@@ -313,11 +313,11 @@ template<typename T> void gauge_test() {
     i.wait();
   }
   if constexpr (std::is_same<T,float>::value) {
-    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-6f);
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-3f);
   } else {
-    ASSERT_DOUBLE_EQ(1.,  g.load());
+    ASSERT_TRUE(std::abs(1.f - g.load()) < 1.e-10f);
   }
-  
+
   g = zero;
   ASSERT_DOUBLE_EQ(g.load(),  zero);
   g += zdo;
@@ -331,11 +331,8 @@ template<typename T> void gauge_test() {
   ASSERT_DOUBLE_EQ(g.load(),  one);
   g -= g.load();
   ASSERT_DOUBLE_EQ(g.load(),  zero);
-
-  std::string s;
-  g.toPrometheus(s);
-  LOG_DEVEL << s;
 }
+
 
 TEST_F(MetricsTest, long_double) {
   gauge_test<long double>();
