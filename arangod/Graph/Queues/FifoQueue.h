@@ -36,7 +36,7 @@ template <class StepType>
 class FifoQueue {
  public:
   using Step = StepType;
-  // TODOS: Add Sorting (Performance)
+  // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the end
 
   FifoQueue(arangodb::ResourceMonitor& resourceMonitor) : _resourceMonitor{resourceMonitor} {
