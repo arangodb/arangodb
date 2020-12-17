@@ -1000,7 +1000,7 @@ ExecutionState Query::finalize(QueryResult& result) {
       }
     }
 
-    LOG_TOPIC("7ef18", DEBUG, Logger::QUERIES)
+    LOG_TOPIC("7ef28", DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
         << "Query::finalize: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t)this;
