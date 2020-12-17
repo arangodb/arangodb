@@ -44,8 +44,8 @@ class PathResult {
  public:
   PathResult(ProviderType& sourceProvider, ProviderType& targetProvider);
   auto clear() -> void;
-  auto appendVertex(typename Step::Vertex v) -> void;
-  auto prependVertex(typename Step::Vertex v) -> void;
+  auto appendVertex(typename Step::Vertex v) -> bool;
+  auto prependVertex(typename Step::Vertex v) -> bool;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
@@ -74,7 +74,7 @@ class PathResult {
   // Provider for the end of the path (target)
   ProviderType& _targetProvider;
   
-  // TODO: UniqueCheck will not be handled here in the future
+  // TODO: UniqueCheck will not be handled here in the future (will be handled in the future after other alrogithms will be ported to the refactored graph engine)
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 };
 }  // namespace graph
