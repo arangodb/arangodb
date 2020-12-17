@@ -66,10 +66,10 @@ class PathStoreTracer {
   size_t size() const;
 
   template <class ProviderType>
-  void buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
+  auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
 
   template <class ProviderType>
-  void reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
+  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
 
  private:
   PathStoreImpl _impl;

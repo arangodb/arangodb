@@ -76,8 +76,8 @@ size_t PathStoreTracer<PathStoreImpl>::size() const {
 
 template <class PathStoreImpl>
 template <class ProviderType>
-void PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex,
-                                               PathResult<ProviderType, Step>& path) const {
+auto PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex,
+                                               PathResult<ProviderType, Step>& path) const -> bool {
   double start = TRI_microtime();
   TRI_DEFER(_stats["buildPath"].addTiming(TRI_microtime() - start));
   return _impl.buildPath(vertex, path);
@@ -85,8 +85,8 @@ void PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex,
 
 template <class PathStoreImpl>
 template <class ProviderType>
-void PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex,
-                                                      PathResult<ProviderType, Step>& path) const {
+auto PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex,
+                                                      PathResult<ProviderType, Step>& path) const -> bool {
   double start = TRI_microtime();
   TRI_DEFER(_stats["reverseBuildPath"].addTiming(TRI_microtime() - start));
   return _impl.reverseBuildPath(vertex, path);
@@ -95,9 +95,9 @@ void PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex,
 template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>;
 
 // Tracing
-template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<ProviderTracer<SingleServerProvider>>(
+template bool ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
-template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
+template bool arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
