@@ -36,22 +36,24 @@ namespace arangodb {
 template <typename T>
 class FixedSizeAllocator {
  private:
+  // sizeof(T) is always a multiple of alignof(T) unless T is packed (which should never be the case here)!
+  static_assert((sizeof(T) % alignof(T)) == 0);
+
   class MemoryBlock {
    public:
+    void operator delete(void* p) {
+      ::operator delete(p);
+    }
+
     MemoryBlock(MemoryBlock const&) = delete;
     MemoryBlock& operator=(MemoryBlock const&) = delete;
 
     MemoryBlock(size_t numItems)
-        : _numAllocated(0), _numUsed(0), _alloc(nullptr), _data(nullptr) {
+        : _numAllocated(numItems), _numUsed(0), _next() {
       TRI_ASSERT(numItems >= 32);
-      // assumption is that the size of a cache line is at least 64,
-      // so we are allocating 64 bytes in addition
-      _alloc = new char[(std::max<size_t>(sizeof(T), alignof(T)) * numItems) + 64];
-
-      _numAllocated = numItems;
 
       // adjust memory address to cache line offset (assumed to be 64 bytes)
-      _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(_alloc) + 63u) &
+      _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(this + 1) + 63u) &
                                       ~(uintptr_t(63u)));
 
       // the result should at least be 8-byte aligned
@@ -62,12 +64,18 @@ class FixedSizeAllocator {
     ~MemoryBlock() noexcept { 
       // destroy all items
       for (size_t i = 0; i < _numUsed; ++i) {
-        T* p =  reinterpret_cast<T*>(_data + (std::max<size_t>(sizeof(T), alignof(T)) * i));
+        T* p =  reinterpret_cast<T*>(_data + sizeof(T) * i);
         // call destructor for each item
         p->~T();
       }
-      // free storage
-      delete[] _alloc; 
+    }
+
+    MemoryBlock* getNextBlock() const noexcept {
+      return _next.get();
+    }
+
+    void setNextBlock(std::unique_ptr<MemoryBlock> next) noexcept {
+      _next = std::move(next);
     }
 
     /// @brief return memory address for next in-place object construction.
@@ -89,8 +97,8 @@ class FixedSizeAllocator {
    private:
     size_t _numAllocated;
     size_t _numUsed;
-    char* _alloc;
     char* _data;
+    std::unique_ptr<MemoryBlock> _next;
   };
 
  public:
@@ -102,30 +110,32 @@ class FixedSizeAllocator {
 
   template <typename... Args>
   T* allocate(Args&&... args) {
-    if (_blocks.empty() || _blocks.back()->full()) {
+    if (_head == nullptr || _head->full()) {
       allocateBlock();
     }
-    TRI_ASSERT(!_blocks.empty());
-    TRI_ASSERT(!_blocks.back()->full());
+    TRI_ASSERT(_head != nullptr);
+    TRI_ASSERT(!_head->full());
    
     try {
-      T* p = _blocks.back()->nextSlot();
+      T* p = _head->nextSlot();
       return new (p) T(std::forward<Args>(args)...);
     } catch (...) {
-      _blocks.back()->rollbackSlot();
+      _head->rollbackSlot();
       throw;
     }
   }
 
   void clear() {
-    _blocks.clear();
+    _head.reset();
   }
 
   /// @brief return the total number of used elements, in all blocks
   size_t numUsed() const noexcept {
     size_t used = 0;
-    for (auto const& block : _blocks) {
+    auto* block = _head.get();
+    while (block != nullptr) {
       used += block->numUsed();
+      block = block->getNextBlock();
     }
     return used;
   }
@@ -134,11 +144,21 @@ class FixedSizeAllocator {
   void allocateBlock() {
     // minimum block size is for 64 items
     // maximum block size is for 4096 items
-    size_t const numItems = 64 << std::min<size_t>(6, _blocks.size() + 1);
-    _blocks.emplace_back(std::make_unique<MemoryBlock>(numItems));
+    size_t const numItems = 64 << std::min<size_t>(6, _numBlocks + 1);
+
+    // assumption is that the size of a cache line is at least 64,
+    // so we are allocating 64 bytes in addition
+    auto const dataSize = sizeof(T) * numItems + 64;
+    void* p = ::operator new(sizeof(MemoryBlock) + dataSize);
+    new (p)MemoryBlock(numItems);
+    std::unique_ptr<MemoryBlock> block(static_cast<MemoryBlock*>(p));
+    block->setNextBlock(std::move(_head));
+    _head = std::move(block);
+    ++_numBlocks;
   }
 
-  std::vector<std::unique_ptr<MemoryBlock>> _blocks;
+  std::unique_ptr<MemoryBlock> _head;
+  std::size_t _numBlocks{0};
 };
 
 }  // namespace arangodb
