@@ -310,9 +310,13 @@ namespace arangodb {
 namespace ClusterTrxMethods {
 using namespace arangodb::futures;
 
+bool ServerSorter::operator()(ServerID const& lhs, ServerID const& rhs) const {
+  return TransactionState::SortServerIds(lhs, rhs);
+}
+
 /// @brief begin a transaction on all leaders
 Future<Result> beginTransactionOnLeaders(TransactionState& state,
-                                         std::vector<ServerID> const& leaders) {
+                                         std::set<ServerID, ServerSorter> const& leaders) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
@@ -407,21 +411,13 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     // rerollTrxId() - this also clears _knownServers (!)
     state.coordinatorRerollTransactionId();
 
-    // Make sure we always use the same ordering on servers
-    std::vector<ServerID> sortedLeaders{leaders};
-
-    std::sort(sortedLeaders.begin(), sortedLeaders.end(),
-              [&state](auto const& lhs, auto const& rhs) {
-                return state.SortServerIds(lhs, rhs);
-              });
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Make sure we always maintain the correct ordering of servers
     // here, if we contact them in increasing name, we avoid dead-locks
     std::string serverBefore = "";
 #endif
     // Run slowPath
-    for (ServerID const& leader : sortedLeaders) {
+    for (ServerID const& leader : leaders) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // If the serverBefore has a smaller ID we allways contact by increasing
       // ID here.

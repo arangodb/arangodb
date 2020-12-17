@@ -87,13 +87,13 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     TRI_ASSERT(isCoordinator());
 
-    std::vector<std::string> leaders;
+    ClusterTrxMethods::SortedServersSet leaders{};
     allCollections([&](TransactionCollection& c) {
       auto shardIds = c.collection()->shardIds();
       for (auto const& pair : *shardIds) {
         std::vector<arangodb::ShardID> const& servers = pair.second;
         if (!servers.empty()) {
-          leaders.push_back(servers[0]);
+          leaders.emplace(servers[0]);
         }
       }
       return true;  // continue
