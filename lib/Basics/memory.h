@@ -33,7 +33,4 @@ void* TRI_Reallocate(void*, size_t);
 /// @brief basic memory management for deallocate
 void TRI_Free(void*);
 
-/// @brief securely zero memory
-void TRI_ZeroMemory(void* m, size_t size);
-
 #endif

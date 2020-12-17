@@ -18,20 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PRIME__NUMBERS_H
-#define ARANGODB_BASICS_PRIME__NUMBERS_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
 
-#include <cstdint>
+// public rocksdb headers
+#include <rocksdb/db.h>
+#include <rocksdb/listener.h>
 
-#include "Basics/Common.h"
+namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a prime number not lower than value
-////////////////////////////////////////////////////////////////////////////////
+class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
+ public:
+  virtual ~RocksDBBackgroundErrorListener();
 
-uint64_t TRI_NearPrime(uint64_t);
+  void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
+
+ private:
+  bool _called = false;
+};
+
+}  // namespace arangodb
 
 #endif

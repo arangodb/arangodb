@@ -90,6 +90,17 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature&,
                                                        OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns checksum for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
+                                                       std::string const& dbname,
+                                                       std::string const& collname,
+                                                       OperationOptions const& options,
+                                                       bool withRevisions,
+                                                       bool withData);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -328,11 +339,17 @@ class ClusterMethods {
       std::shared_ptr<LogicalCollection> const& colPtr);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Enterprise Relecant code to filter out hidden collections
-  ///        that should ne be triggered directly by operations.
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be triggered directly by operations.
   ////////////////////////////////////////////////////////////////////////////////
 
   static bool filterHiddenCollections(LogicalCollection const& c);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be included in links
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool includeHiddenCollectionInLink(std::string const& name);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////
