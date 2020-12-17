@@ -137,7 +137,7 @@ class RefactoredSingleServerEdgeCursor {
 #endif
   void getDocAndRunCallback(IndexIterator*, Callback const& callback);
 
-  [[nodiscard]] transaction::Methods* trx() const;  // TODO check nodiscard
+  [[nodiscard]] transaction::Methods* trx() const;
 };
 }  // namespace graph
 }  // namespace arangodb
