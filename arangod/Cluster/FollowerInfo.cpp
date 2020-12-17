@@ -306,24 +306,32 @@ bool FollowerInfo::updateFailoverCandidates() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_failoverCandidates->size() == _followers->size());
     std::vector<std::string> diff;
-    std::set_symmetric_difference(_failoverCandidates->begin(),
-                                  _failoverCandidates->end(), _followers->begin(),
-                                  _followers->end(), std::back_inserter(diff));
+    auto followers = *_followers;
+    auto failoverCandidates = *_failoverCandidates;
+    std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::greater<std::string>());
+    std::sort(followers.begin(), followers.end(), std::greater<std::string>());
+    std::set_symmetric_difference(failoverCandidates.begin(),
+                                  failoverCandidates.end(), followers.begin(),
+                                  followers.end(), std::back_inserter(diff));
     TRI_ASSERT(diff.empty());
 #endif
     return _canWrite;
   }
   TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
-  _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
+  _failoverCandidates = std::make_shared<std::vector<ServerID>>(*_followers);
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<std::string> diff;
-  std::set_symmetric_difference(_failoverCandidates->begin(),
-                                _failoverCandidates->end(), _followers->begin(),
-                                _followers->end(), std::back_inserter(diff));
+  auto followers = *_followers;
+  auto failoverCandidates = *_failoverCandidates;
+  std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::greater<std::string>());
+  std::sort(followers.begin(), followers.end(), std::greater<std::string>());
+  std::set_symmetric_difference(failoverCandidates.begin(),
+                                failoverCandidates.end(), followers.begin(),
+                                followers.end(), std::back_inserter(diff));
   TRI_ASSERT(diff.empty());
 #endif
   Result res = persistInAgency(true);

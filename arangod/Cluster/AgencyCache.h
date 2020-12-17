@@ -122,6 +122,14 @@ class AgencyCache final : public arangodb::Thread {
    */
   change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
+  
+  /**
+   * @brief         Clean up planned/current changes up to including index
+   *
+   * @param section   "Plan" or "Current"
+   * @param doneIndex   Done index
+   */
+  void clearChanged(std::string const& section, consensus::index_t const& doneIndex);
 
  private:
 
