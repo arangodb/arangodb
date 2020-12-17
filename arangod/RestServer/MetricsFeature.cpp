@@ -73,7 +73,7 @@ bool MetricsFeature::exportAPI() const {
 
 void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
-void MetricsFeature::toPrometheus(std::string& result) const {
+void MetricsFeature::toPrometheus(std::string& result, bool withDocs) const {
 
   // minimize reallocs
   result.reserve(32768);
@@ -81,7 +81,7 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);
     for (auto const& i : _registry) {
-      i.second->toPrometheus(result);
+      i.second->toPrometheus(result, withDocs);
     }
   }
 

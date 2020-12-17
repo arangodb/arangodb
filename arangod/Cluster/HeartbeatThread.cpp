@@ -188,6 +188,25 @@ class HeartbeatBackgroundJobThread : public Thread {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
+static char const* heartbeat_send_time_ms_docs = R"RRR(
+**Metric**
+- `arangodb_heartbeat_send_time_msec`:
+  The time a single heartbeat took to be delivered.
+
+**Exposed by**
+Coordinator, DB-Server
+
+**Threshold**
+  - Depending on your network latency, we typically expect this to be somewhere
+    below 100ms.
+  - below 1000ms is still acceptable but not great.
+  - 1000ms - 3000ms is considered critical, but cluster should still operate,
+    consider contacting our support.
+  - above 3000ms expect outages! If any of these fails to deliver, the server
+    will be flagged as dead and we will trigger failover. With this timing the
+    failovers will most likely stack up and cause more trouble.
+)RRR";
+
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning)
@@ -216,7 +235,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _agencySync(_server, this),
       _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
           StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
-          "Time required to send heartbeat [ms]")),
+          "Time required to send heartbeat [ms]", heartbeat_send_time_ms_docs)),
       _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
           StaticStrings::HeartbeatFailureCounter, 0,
           "Counting failed heartbeat transmissions")) {}

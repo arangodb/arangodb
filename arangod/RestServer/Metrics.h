@@ -41,16 +41,18 @@
 
 class Metric {
  public:
-  Metric(std::string const& name, std::string const& help, std::string const& labels);
+  Metric(std::string const& name, std::string const& help, std::string const& docs, std::string const& labels);
   virtual ~Metric();
   std::string const& help() const;
   std::string const& name() const;
   std::string const& labels() const;
-  virtual void toPrometheus(std::string& result) const = 0;
+  std::string const& docs() const;
+  virtual void toPrometheus(std::string& result, bool withDocs = false) const = 0;
   void header(std::string& result) const;
  protected:
   std::string const _name;
   std::string const _help;
+  std::string const _docs;
   std::string const _labels;
 };
 
@@ -67,6 +69,7 @@ struct Metrics {
 class Counter : public Metric {
  public:
   Counter(uint64_t const& val, std::string const& name, std::string const& help,
+          std::string const& docs = std::string(),
           std::string const& labels = std::string());
   Counter(Counter const&) = delete;
   ~Counter();
@@ -80,7 +83,7 @@ class Counter : public Metric {
   uint64_t load() const;
   void store(uint64_t const&);
   void push();
-  virtual void toPrometheus(std::string&) const override;
+  virtual void toPrometheus(std::string&, bool withDocs = false) const override;
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
@@ -91,8 +94,8 @@ template<typename T> class Gauge : public Metric {
  public:
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
-        std::string const& labels = std::string())
-    : Metric(name, help, labels) {
+        std::string const& docs = std::string(), std::string const& labels = std::string())
+    : Metric(name, help, docs, labels) {
     _g.store(val);
   }
   Gauge(Gauge const&) = delete;
@@ -139,9 +142,9 @@ template<typename T> class Gauge : public Metric {
     return *this;
   }
   T load() const { return _g.load(); }
-  virtual void toPrometheus(std::string& result) const override {
+  virtual void toPrometheus(std::string& result, bool withDocs = false) const override {
     result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + help() + "\n";
+    result += "#HELP " + name() + " " + (withDocs ? docs() : help()) + "\n";
     result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
   };
  private:
@@ -369,15 +372,17 @@ template<typename Scale> class Histogram : public Metric {
   Histogram() = delete;
 
   Histogram(Scale&& scale, std::string const& name, std::string const& help,
+            std::string const& docs = std::string(),
             std::string const& labels = std::string())
-    : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
+    : Metric(name, help, docs, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
       _n(_scale.n() - 1) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
+            std::string const& docs = std::string(),
             std::string const& labels = std::string())
-    : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
+    : Metric(name, help, docs, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
       _n(_scale.n() - 1) {}
@@ -434,9 +439,9 @@ template<typename Scale> class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  virtual void toPrometheus(std::string& result) const override {
+  virtual void toPrometheus(std::string& result, bool withDocs = false) const override {
     result += "\n#TYPE " + name() + " histogram\n";
-    result += "#HELP " + name() + " " + help() + "\n";
+    result += "#HELP " + name() + " " + (withDocs ? docs() : help()) + "\n";
     std::string lbs = labels();
     auto const haveLabels = !lbs.empty();
     auto const separator = haveLabels && lbs.back() != ',';

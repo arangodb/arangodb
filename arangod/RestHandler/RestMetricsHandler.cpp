@@ -69,8 +69,17 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
+  bool withDocs = false;
+  bool found;
+  std::string value = _request->value("withDocs", found);
+  if (found) {
+    if (value == "true") {
+      withDocs = true;
+    }
+  }
+
   std::string result;
-  metrics.toPrometheus(result);
+  metrics.toPrometheus(result, withDocs);
   _response->setResponseCode(rest::ResponseCode::OK);
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(VPackStringRef(result));

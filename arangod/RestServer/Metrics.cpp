@@ -25,6 +25,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Basics/debugging.h"
+#include "Basics/StringUtils.h"
 #include <type_traits>
 
 using namespace arangodb;
@@ -49,11 +50,21 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
   return o;
 }
 
-Metric::Metric(std::string const& name, std::string const& help, std::string const& labels)
-  : _name(name), _help(help), _labels(labels) {};
+std::string cleanDocs(std::string const& docs) {
+  // We need to trim whitespace front and back, and to quote newlines
+  // and backslashes:
+  std::string s = arangodb::basics::StringUtils::trim(docs);
+  s = arangodb::basics::StringUtils::replace(s, "\\", "\\\\");
+  s = arangodb::basics::StringUtils::replace(s, "\n", "\\n");
+  return s;
+}
+
+Metric::Metric(std::string const& name, std::string const& help, std::string const& docs, std::string const& labels)
+  : _name(name), _help(help), _docs(docs.empty() ? help : cleanDocs(docs)), _labels(labels) {};
 
 Metric::~Metric() = default;
 
+std::string const& Metric::docs() const { return _docs; }
 std::string const& Metric::help() const { return _help; }
 std::string const& Metric::name() const { return _name; }
 std::string const& Metric::labels() const { return _labels; }
@@ -100,17 +111,17 @@ void Counter::store(uint64_t const& n) {
   _c.exchange(n);
 }
 
-void Counter::toPrometheus(std::string& result) const {
+void Counter::toPrometheus(std::string& result, bool withDocs) const {
   _b.push();
   result += "\n#TYPE " + name() + " counter\n";
-  result += "#HELP " + name() + " " + help() + "\n";
+  result += "#HELP " + name() + " " + (withDocs ? docs() : help()) + "\n";
   result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
 }
 
 Counter::Counter(
   uint64_t const& val, std::string const& name, std::string const& help,
-  std::string const& labels) :
-  Metric(name, help, labels), _c(val), _b(_c) {}
+  std::string const& docs, std::string const& labels) :
+  Metric(name, help, docs, labels), _c(val), _b(_c) {}
 
 Counter::~Counter() { _b.push(); }
 

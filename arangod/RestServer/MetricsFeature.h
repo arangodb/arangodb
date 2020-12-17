@@ -73,20 +73,23 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template <typename Scale>
   Histogram<Scale>& histogram(std::string const& name, Scale const& scale,
-                              std::string const& help = std::string()) {
-    return histogram<Scale>(metrics_key(name), scale, help);
+                              std::string const& help = std::string(),
+                              std::string const& docs = std::string()) {
+    return histogram<Scale>(metrics_key(name), scale, help, docs);
   }
 
   template <typename Scale>
   Histogram<Scale>& histogram(std::initializer_list<std::string> const& il,
                               Scale const& scale,
-                              std::string const& help = std::string()) {
-    return histogram<Scale>(metrics_key(il), scale, help);
+                              std::string const& help = std::string(),
+                              std::string const& docs = std::string()) {
+    return histogram<Scale>(metrics_key(il), scale, help, docs);
   }
 
   template <typename Scale>
   Histogram<Scale>& histogram(metrics_key const& mk, Scale const& scale,
-                              std::string const& help = std::string()) {
+                              std::string const& help = std::string(),
+                              std::string const& docs = std::string()) {
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
@@ -98,7 +101,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
 
-    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
+    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, docs, labels);
     bool success = false;
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -257,7 +260,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  void toPrometheus(std::string& result) const;
+  void toPrometheus(std::string& result, bool withDocs) const;
 
   ServerStatistics& serverStatistics();
 
