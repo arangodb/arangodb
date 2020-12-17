@@ -82,15 +82,10 @@ class PathStore {
   size_t size() const { return _schreier.size(); }
 
   template <class ProviderType>
-  void buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
+  auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
 
   template <class ProviderType>
-  void reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const;
-
-  // TODO: to be defined - section idea: methods to convenient build paths for AQL
-  arangodb::aql::AqlValue lastVertexToAqlValue();
-  arangodb::aql::AqlValue lastEdgeToAqlValue();
-  arangodb::aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result);
+  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
 };
 
 }  // namespace graph

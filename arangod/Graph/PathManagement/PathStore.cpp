@@ -74,24 +74,27 @@ size_t PathStore<Step>::append(Step step) {
 
 template <class Step>
 template <class ProviderType>
-void PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const {
+auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool{
   Step const* myStep = &vertex;
 
   while (!myStep->isFirst()) {
-    path.prependVertex(myStep->getVertex());
+    bool isUnique = path.prependVertex(myStep->getVertex());
+    if (!isUnique) {
+      return false;
+    }
     TRI_ASSERT(myStep->getEdge().isValid());
     path.prependEdge(myStep->getEdge());
 
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }
-  path.prependVertex(myStep->getVertex());
+  return path.prependVertex(myStep->getVertex());
 }
 
 template <class Step>
 template <class ProviderType>
-void PathStore<Step>::reverseBuildPath(Step const& vertex,
-                                       PathResult<ProviderType, Step>& path) const {
+auto PathStore<Step>::reverseBuildPath(Step const& vertex,
+                                       PathResult<ProviderType, Step>& path) const -> bool {
   // For backward we just need to attach ourself
   // So everything until here should be done.
   // We never start with an empty path here, the other side should at least have
@@ -101,7 +104,7 @@ void PathStore<Step>::reverseBuildPath(Step const& vertex,
     // already started at the center.
     // Can stop here
     // The buildPath of the other side has included the vertex already
-    return;
+    return true;
   }
 
   TRI_ASSERT(size() > vertex.getPrevious());
@@ -113,7 +116,10 @@ void PathStore<Step>::reverseBuildPath(Step const& vertex,
   Step const* myStep = &_schreier[vertex.getPrevious()];
 
   while (!myStep->isFirst()) {
-    path.appendVertex(myStep->getVertex());
+    bool isUnique = path.appendVertex(myStep->getVertex());
+    if (!isUnique) {
+      return false;
+    }
 
     TRI_ASSERT(myStep->getEdge().isValid());
     path.appendEdge(myStep->getEdge());
@@ -121,29 +127,29 @@ void PathStore<Step>::reverseBuildPath(Step const& vertex,
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }
-  path.appendVertex(myStep->getVertex());
+  return path.appendVertex(myStep->getVertex());
 }
 
 template <class Step>
 bool PathStore<Step>::testPath(Step step) {
   LOG_TOPIC("2ff8d", TRACE, Logger::GRAPHS) << "<PathStore> Testing path:";
-  // TODO: needs to be implemented
+  // TODO: needs to be implemented - discuss (this is a feature we need in the future)
   return true;
 }
 
 template class PathStore<SingleServerProvider::Step>;
-template void PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(
+template bool PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(
     SingleServerProvider::Step const& vertex,
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
-template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(
+template bool PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(
     SingleServerProvider::Step const& vertex,
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
 
 // Tracing
-template void PathStore<SingleServerProvider::Step>::buildPath<ProviderTracer<SingleServerProvider>>(
+template bool PathStore<SingleServerProvider::Step>::buildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
-template void PathStore<SingleServerProvider::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
+template bool PathStore<SingleServerProvider::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
 
