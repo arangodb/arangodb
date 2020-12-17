@@ -60,8 +60,7 @@ class ProviderTracer {
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
-  auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void; // index
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
@@ -70,7 +69,8 @@ class ProviderTracer {
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
 
-  void destroyEngines(){};  // TODO: remove after refactor
+  // Note: ClusterProvider will need to implement destroyEngines
+  void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
   arangodb::ResourceMonitor* resourceMonitor();

@@ -62,14 +62,6 @@ futures::Future<std::vector<typename ProviderImpl::Step*>> ProviderTracer<Provid
 }
 
 template <class ProviderImpl>
-std::vector<typename ProviderImpl::Step> ProviderTracer<ProviderImpl>::expand(Step const& from,
-                                                                              size_t previous) {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["expand"].addTiming(TRI_microtime() - start));
-  return _impl.expand(from, previous);
-}
-
-template <class ProviderImpl>
 auto ProviderTracer<ProviderImpl>::expand(Step const& from,
                                                                               size_t previous,
                                                                               std::function<void(Step)> callback) -> void {
