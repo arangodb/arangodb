@@ -1,6 +1,14 @@
 devel
 -----
 
+* Fix for BTS-213
+  Changed the transaction locking mechanism in the cluster case.
+  For all installations that do not use "exclusive" collection locks this change
+  will not be noticable. In case of "exclusive" locks, and collections with more
+  than one shard, it is now less likely to get a LOCK_TIMEOUT (ErrorNum 18).
+  It is still possible to get into the LOCK_TIMEOUT case, especially if
+  the "exclusive" operation(s) are long-running.
+
 * Fix for issue #772: Optimized document counting for ArangoSearch views.
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.
