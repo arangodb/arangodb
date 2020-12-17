@@ -92,7 +92,7 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
       _resourceMonitor(&resourceMonitor),
       _cache(_trx.get(), &queryContext, resourceMonitor),
       _opts(std::move(opts)) {
-  // activateCache(false); // TODO CHECK RefactoredTraverserCache
+  // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
   _cursor = buildCursor();
 }
 
@@ -117,48 +117,23 @@ void SingleServerProvider::activateCache(bool enableDocumentCache) {
 
 auto SingleServerProvider::startVertex(VertexType vertex) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Start Vertex:" << vertex;
-  // Should not clear anything: clearCursor(vertex);
+      << "<SingleServerProvider> Start Vertex:" << vertex;
 
   // Create default initial step
-
-  // TODO Implement minimal variant of _cache in the Provider
-  // This should only handle the HashedStringRef storage (string heap, and Lookup List)
+  // Note: Refactor naming, Strings in our cache here are not allowed to be removed.
   return Step(_cache.persistString(vertex));
 }
 
 auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
+  // Should never be called in SingleServer case
+  TRI_ASSERT(false);
   LOG_TOPIC("c9160", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Fetching...";
-  std::vector<Step*> result{};  // TODO: Question: Modify inplace or build up new result vector
+      << "<SingleServerProvider> Fetching...";
+  std::vector<Step*> result{};
   result.reserve(looseEnds.size());
-  // TODO do we need to do something at all?
-  // We may want to cache the Vertex Data
-  return futures::makeFuture(std::move(result));
-}
 
-auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vector<Step> {
-  TRI_ASSERT(!step.isLooseEnd());
-  std::vector<Step> result{};
-  auto const& vertex = step.getVertex();
-  TRI_ASSERT(_cursor != nullptr);
-  _cursor->rearm(vertex.data(), 0);
-  _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
-    VertexType id = _cache.persistString(([&]() -> auto {
-      if (edge.isString()) {
-        return VertexType(edge);
-      } else {
-        VertexType other(transaction::helpers::extractFromFromDocument(edge));
-        if (other == vertex.data()) {  // TODO: Check getId
-          other = VertexType(transaction::helpers::extractToFromDocument(edge));
-        }
-        return other;
-      }
-    })());
-    result.emplace_back(id, std::move(eid), previous);
-  });
-  return result;
+  return futures::makeFuture(std::move(result));
 }
 
 auto SingleServerProvider::expand(Step const& step, size_t previous,
@@ -173,7 +148,7 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
         return VertexType(edge);
       } else {
         VertexType other(transaction::helpers::extractFromFromDocument(edge));
-        if (other == vertex.data()) {  // TODO: Check getId
+        if (other == vertex.data()) {  // TODO: Check getId - discuss
           other = VertexType(transaction::helpers::extractToFromDocument(edge));
         }
         return other;

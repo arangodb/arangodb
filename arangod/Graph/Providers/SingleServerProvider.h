@@ -56,13 +56,10 @@ class HashedStringRef;
 
 namespace graph {
 
-// TODO we need to control from the outside if and which ports of the vertex
+// TODO: we need to control from the outside if and which parts of the vertex - (will be implemented in the future via template parameters)
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
 struct SingleServerProvider {
-  enum Direction { FORWARD, BACKWARD };  // TODO check
-  enum class LooseEndBehaviour { NEVER, ALLWAYS };
-
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     class Vertex {
@@ -134,16 +131,14 @@ struct SingleServerProvider {
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
-  auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
-
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void; // index
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
-  void destroyEngines(){};  // TODO: remove after refactor
+  void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
   arangodb::ResourceMonitor* resourceMonitor();
@@ -166,7 +161,6 @@ struct SingleServerProvider {
 
   arangodb::ResourceMonitor* _resourceMonitor;
 
-  // We DO take responsibility for the Cache (TODO?)
   RefactoredTraverserCache _cache;
 
   BaseProviderOptions _opts;
