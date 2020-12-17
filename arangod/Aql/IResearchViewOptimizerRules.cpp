@@ -104,8 +104,9 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
   // build search condition
   Condition searchCondition(plan.getAst());
 
-  if (!viewNode.filterConditionIsEmpty()) {
-    searchCondition.andCombine(&viewNode.filterCondition());
+  auto nodeFilter = viewNode.filterCondition();
+  if (!filterConditionIsEmpty(&nodeFilter)) {
+    searchCondition.andCombine(&nodeFilter);
     searchCondition.normalize(
         &plan, true, viewNode.options().conditionOptimization);
 
@@ -361,7 +362,7 @@ void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& use
   });
   // get values from columns which contain max number of appropriate values
   for (auto i : idx) {
-    auto const& it = usedColumnsCounter[i];
+    auto& it = usedColumnsCounter[i];
     for (auto& f : it) {
       TRI_ASSERT(f.afData);
       if (f.afData->field == nullptr) {
