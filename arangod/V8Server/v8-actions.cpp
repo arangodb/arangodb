@@ -1845,17 +1845,17 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CREATE_HOTBACKUP"),
+                               JS_CreateHotbackup);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_CREATE_HOTBACKUP"),
-                               JS_CreateHotbackup);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(

@@ -21,8 +21,8 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_EVENT_LISTENER_H
-#define ARANGO_ROCKSDB_ROCKSDB_EVENT_LISTENER_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_SHA_CALCULATOR_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_SHA_CALCULATOR_H 1
 
 #include <atomic>
 #include <queue>
@@ -36,31 +36,31 @@
 
 namespace arangodb {
 
-class RocksDBEventListenerThread : public arangodb::Thread {
-public:
- explicit RocksDBEventListenerThread(application_features::ApplicationServer& server,
-                                     std::string const& name)
-     : Thread(server, name) {}
- ~RocksDBEventListenerThread();
+class RocksDBShaCalculatorThread : public arangodb::Thread {
+ public:
+  explicit RocksDBShaCalculatorThread(application_features::ApplicationServer& server,
+                                      std::string const& name)
+      : Thread(server, name) {}
+  ~RocksDBShaCalculatorThread();
 
- void queueShaCalcFile(std::string const& pathName);
+  void queueShaCalcFile(std::string const& pathName);
 
- void queueDeleteFile(std::string const& pathName);
+  void queueDeleteFile(std::string const& pathName);
 
- void signalLoop();
+  void signalLoop();
 
- static bool shaCalcFile(std::string const& filename);
+  static bool shaCalcFile(std::string const& filename);
 
- static bool deleteFile(std::string const& filename);
+  static bool deleteFile(std::string const& filename);
 
- static void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
+  static void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 
-protected:
- void run() override;
+ protected:
+  void run() override;
 
- struct actionNeeded_t {
-   enum { CALC_SHA, DELETE_ACTION } _action;
-   std::string _path;
+  struct actionNeeded_t {
+    enum { CALC_SHA, DELETE_ACTION } _action;
+    std::string _path;
   };
 
   basics::ConditionVariable _loopingCondvar;
@@ -72,17 +72,16 @@ protected:
   /// @brief The following wrapper routines simplify unit testing
   ////////////////////////////////////////////////////////////////////////////////
   virtual std::string getRocksDBPath();
-
-};// class RocksDBEventListenerThread
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///
 ////////////////////////////////////////////////////////////////////////////////
-class RocksDBEventListener : public rocksdb::EventListener {
+class RocksDBShaCalculator : public rocksdb::EventListener {
  public:
-  explicit RocksDBEventListener(application_features::ApplicationServer&);
-  virtual ~RocksDBEventListener();
+  explicit RocksDBShaCalculator(application_features::ApplicationServer&);
+  virtual ~RocksDBShaCalculator();
 
   void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
 
@@ -90,15 +89,13 @@ class RocksDBEventListener : public rocksdb::EventListener {
 
   void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
 
-  void beginShutdown() {_shaThread.beginShutdown();};
+  void beginShutdown() { _shaThread.beginShutdown(); };
 
  protected:
-
   /// thread to perform sha256 and file deletes in background
   basics::ConditionVariable _threadDone;
-  RocksDBEventListenerThread _shaThread;
-
-};  // class RocksDBEventListener
+  RocksDBShaCalculatorThread _shaThread;
+};
 
 }  // namespace arangodb
 
