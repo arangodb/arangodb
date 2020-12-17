@@ -353,7 +353,6 @@ Result Manager::beginTransaction(transaction::Hints hints,
 
   if (res.fail()) {
     TRI_ASSERT(!state->isRunning());
-    return res;
   }
   return res;
 }
@@ -572,11 +571,9 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  /*
-   * TODO: Check (mchacki) - we need to check tid.isFollowerTransactionId()
-  here? bool const isFollowerTransactionOnDBServer = (ServerState::instance()->isDBServer()
-  && (tid.isFollowerTransactionId() || options.isFollowerTransaction));
-  */
+  if (tid.isFollowerTransactionId()) {
+    options.isFollowerTransaction = true;
+  }
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
       << "managed trx creating: " << tid.id();
@@ -628,6 +625,10 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   if (res.fail()) {
     return res;
   }
+  // The coordinator in some cases can reroll the Transaction id.
+  // This however can not be allowed here, as this transaction ID
+  // may be managed outside.
+  TRI_ASSERT(state->id() == tid);
 
   bool stored = storeManagedState(tid, std::move(state), ttl);
   if (!stored) {
@@ -1267,14 +1268,13 @@ bool Manager::storeManagedState(TransactionId const& tid,
     ttl = Manager::ttlForType(MetaType::Managed);
   }
 
-  {  // add transaction to bucket
-    size_t const bucket = getBucket(tid);
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  // add transaction to bucket
+  size_t const bucket = getBucket(tid);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-    auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
-                                                         ttl, std::move(state));
-    return it.second;
-  }
+  auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
+                                                       ttl, std::move(state));
+  return it.second;
 }
 
 }  // namespace transaction
