@@ -288,14 +288,14 @@ class State {
   /// @brief Operation options
   arangodb::OperationOptions _options;
 
-  /// @brief Empty log entry;
-  static log_t emptyLog;
-
   /// @brief Protect writing into configuration collection
   arangodb::Mutex _configurationWriteLock;
 
   /// @brief Current state deque size in bytes
   Gauge<uint64_t>& _log_size;
+
+  /// @brief current number of entries in _clientIdLookupTable
+  Gauge<uint64_t>& _clientIdLookupCount;
 
 };
 
