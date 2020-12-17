@@ -271,6 +271,15 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchViewStoredValues const& storedValues() const noexcept;
 
+  bool setCollectionName(irs::string_ref name) {
+    if (_meta._collectionName != name) {
+      auto nonConstMeta = const_cast<IResearchLinkMeta*>(&_meta);
+      nonConstMeta->_collectionName = name;
+      return true;
+    }
+    return false;
+  }
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
