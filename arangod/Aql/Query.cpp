@@ -58,6 +58,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -69,15 +70,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-static std::atomic<TRI_voc_tick_t> nextQueryId(1);
-}
-
 /// @brief creates a query
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(Query::nextId()),
+    : _id(TRI_NewServerSpecificTick()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
@@ -154,7 +151,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              std::shared_ptr<VPackBuilder> const& queryStruct,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(Query::nextId()),
+    : _id(TRI_NewServerSpecificTick()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
@@ -1532,9 +1529,4 @@ ResultT<graph::Graph const*> Query::lookupGraphByName(std::string const& name) {
   _graphs.emplace(name, std::move(g.get()));
 
   return graphPtr;
-}
-
-/// @brief returns the next query id
-TRI_voc_tick_t Query::nextId() {
-  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst) + 1;
 }
