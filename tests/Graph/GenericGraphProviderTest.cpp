@@ -47,6 +47,9 @@ using TypesToTest = ::testing::Types<MockGraphProvider, SingleServerProvider>;
 
 template <class ProviderType>
 class GraphProviderTest : public ::testing::Test {
+ public:
+  using Step = typename ProviderType::Step;
+
  protected:
   // Only used to mock a singleServer
   std::unique_ptr<GraphTestSetup> s{nullptr};
@@ -105,8 +108,13 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
-  auto res = testee.expand(start, 0);
-  EXPECT_EQ(res.size(), 0);
+
+  std::vector<typename decltype(testee)::Step> result{};
+  testee.expand(start, 0, [&](typename decltype(testee)::Step n) -> void {
+    result.emplace_back(std::move(n));
+  });
+
+  EXPECT_EQ(result.size(), 0);
 }
 
 TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
@@ -118,9 +126,13 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
-  auto res = testee.expand(start, 0);
-  ASSERT_EQ(res.size(), 1);
-  auto const& f = res.front();
+  std::vector<typename decltype(testee)::Step> result{};
+  testee.expand(start, 0, [&result](typename decltype(testee)::Step n) -> void {
+    result.emplace_back(std::move(n));
+  });
+
+  ASSERT_EQ(result.size(), 1);
+  auto const& f = result.at(0);
   EXPECT_EQ(f.getVertex().data().toString(), "v/1");
   EXPECT_EQ(f.getPrevious(), 0);
 }
@@ -137,9 +149,14 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
-  auto res = testee.expand(start, 0);
-  ASSERT_EQ(res.size(), 3);
-  for (auto const& f : res) {
+
+  std::vector<typename decltype(testee)::Step> result{};
+  testee.expand(start, 0, [&](typename decltype(testee)::Step n) -> void {
+    result.emplace_back(std::move(n));
+  });
+
+  ASSERT_EQ(result.size(), 3);
+  for (auto const& f : result) {
     // All expand of the same previous
     EXPECT_EQ(f.getPrevious(), 0);
     auto const& v = f.getVertex().data().toString();
