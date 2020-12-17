@@ -38,7 +38,7 @@ using namespace arangodb::aql;
 // and only then gets instantiated. That is okay, however, because the
 // constructor will not access it.
 template <BlockPassthrough passBlocksThrough>
-DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::ResourceMonitor& monitor,
                                                             ::arangodb::aql::RegisterId nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                          std::shared_ptr<std::unordered_set<RegisterId>>(),
@@ -170,7 +170,7 @@ std::pair<ExecutionState, size_t> DependencyProxyMock<passBlocksThrough>::skipSo
 
 template <BlockPassthrough passBlocksThrough>
 MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
-    arangodb::aql::ResourceMonitor& monitor,
+    arangodb::ResourceMonitor& monitor,
     ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                          std::shared_ptr<std::unordered_set<RegisterId>>(),

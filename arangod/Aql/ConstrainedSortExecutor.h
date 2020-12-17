@@ -99,6 +99,8 @@ class ConstrainedSortExecutor {
 
   ExecutionState consumeInput();
 
+  size_t sortMemoryUsage() const noexcept;
+
  private:
   Infos& _infos;
   Fetcher& _fetcher;

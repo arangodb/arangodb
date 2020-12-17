@@ -91,7 +91,9 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                  getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                 calcRegsToKeep(), vpackOptions, inReg, outReg);
+                                 calcRegsToKeep(), vpackOptions, 
+                                 _plan->getAst()->query()->resourceMonitor(), 
+                                 inReg, outReg);
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
                                                                    std::move(infos));

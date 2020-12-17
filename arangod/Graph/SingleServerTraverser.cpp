@@ -78,8 +78,8 @@ void SingleServerTraverser::clear() {
   traverserCache()->clear();
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {
-  return _vertexGetter->getVertex(edge, result);
+bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+  return _vertexGetter->getVertex(edge, path);
 }
 
 bool SingleServerTraverser::getSingleVertex(VPackSlice edge, arangodb::velocypack::StringRef const sourceVertexId,

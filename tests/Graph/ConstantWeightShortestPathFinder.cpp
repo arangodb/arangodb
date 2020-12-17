@@ -33,6 +33,7 @@
 #include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
+#include "Graph/TraverserCache.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -74,8 +75,6 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
   arangodb::aql::Query* query;
   arangodb::graph::ShortestPathOptions* spo;
 
-  ConstantWeightShortestPathFinder* finder;
-
   ConstantWeightShortestPathFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
     gdb.addEdgeCollection("e", "v",
@@ -83,14 +82,13 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
                            {7, 6},   {8, 7},   {1, 10},  {10, 11}, {11, 12},
                            {12, 4},  {12, 5},  {21, 22}, {22, 23}, {23, 24},
                            {24, 25}, {21, 26}, {26, 27}, {27, 28}, {28, 25}});
-
-    query = gdb.getQuery("RETURN 1");
-    spo = gdb.getShortestPathOptions(query);
-
-    finder = new ConstantWeightShortestPathFinder(*spo);
   }
 
-  ~ConstantWeightShortestPathFinderTest() { delete finder; }
+  void SetUp() override {
+    // Query and ShortestPathOptions objects are owned by MockGraphDatabase
+    query = gdb.getQuery("RETURN 1");
+    spo = gdb.getShortestPathOptions(query);
+  }
 };
 
 TEST_F(ConstantWeightShortestPathFinderTest, path_from_vertex_to_itself) {
@@ -98,7 +96,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_from_vertex_to_itself) {
   auto end = velocypack::Parser::fromJson("\"v/0\"");
   ShortestPathResult result;
 
-  ASSERT_TRUE(finder->shortestPath(start->slice(), end->slice(), result));
+  ConstantWeightShortestPathFinder finder(*spo);
+  ASSERT_TRUE(finder.shortestPath(start->slice(), end->slice(), result));
 }
 
 TEST_F(ConstantWeightShortestPathFinderTest, no_path_exists) {
@@ -106,7 +105,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, no_path_exists) {
   auto end = velocypack::Parser::fromJson("\"v/1\"");
   ShortestPathResult result;
 
-  ASSERT_FALSE(finder->shortestPath(start->slice(), end->slice(), result));
+  ConstantWeightShortestPathFinder finder(*spo);
+  ASSERT_FALSE(finder.shortestPath(start->slice(), end->slice(), result));
   EXPECT_EQ(result.length(), 0);
 }
 
@@ -116,7 +116,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_1) {
   ShortestPathResult result;
   std::string msgs;
 
-  auto rr = finder->shortestPath(start->slice(), end->slice(), result);
+  ConstantWeightShortestPathFinder finder(*spo);
+  auto rr = finder.shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
   auto cpr = checkPath(spo, result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
@@ -128,7 +129,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_4) {
   ShortestPathResult result;
   std::string msgs;
 
-  auto rr = finder->shortestPath(start->slice(), end->slice(), result);
+  ConstantWeightShortestPathFinder finder(*spo);
+  auto rr = finder.shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
   auto cpr = checkPath(spo, result, {"1", "2", "3", "4"},
                        {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
@@ -142,7 +144,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, two_paths_of_length_5) {
   std::string msgs;
 
   {
-    auto rr = finder->shortestPath(start->slice(), end->slice(), result);
+    ConstantWeightShortestPathFinder finder(*spo);
+    auto rr = finder.shortestPath(start->slice(), end->slice(), result);
 
     ASSERT_TRUE(rr);
     // One of the two has to be returned
@@ -165,7 +168,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, two_paths_of_length_5) {
   }
 
   {
-    auto rr = finder->shortestPath(end->slice(), start->slice(), result);
+    ConstantWeightShortestPathFinder finder(*spo);
+    auto rr = finder.shortestPath(end->slice(), start->slice(), result);
     ASSERT_FALSE(rr);
   }
 }

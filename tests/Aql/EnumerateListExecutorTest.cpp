@@ -32,8 +32,8 @@
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 

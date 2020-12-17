@@ -31,6 +31,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
@@ -45,13 +46,15 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableInputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-    transaction::Methods* trxPtr)
+    transaction::Methods* trxPtr,
+    arangodb::ResourceMonitor* resourceMonitor)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _groupRegisters(groupRegisters),
-      _trxPtr(trxPtr) {
+      _trxPtr(trxPtr),
+      _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -61,6 +64,10 @@ std::vector<std::pair<RegisterId, RegisterId>> DistinctCollectExecutorInfos::get
 
 transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
   return _trxPtr;
+}
+  
+arangodb::ResourceMonitor* DistinctCollectExecutorInfos::getResourceMonitor() const {
+  return _resourceMonitor;
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
@@ -112,19 +119,30 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAq
     bool newGroup = foundIt == _seen.end();
     if (newGroup) {
       size_t i = 0;
+      
+      size_t memoryUsage = memoryUsageForGroup(groupValues);
+      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsage);
 
       for (auto& it : _infos.getGroupRegisters()) {
+        if (groupValues[i].requiresDestruction()) {
+          memoryUsage += groupValues[i].memoryUsage();
+        }
+
         output.cloneValueInto(it.first, input, groupValues[i]);
         ++i;
       }
-
+      
       // transfer ownership
       std::vector<AqlValue> copy;
       copy.reserve(groupValues.size());
       for (auto const& it : groupValues) {
         copy.emplace_back(it.clone());
       }
+
       _seen.emplace(std::move(copy));
+
+      // now we are responsible for memory tracking
+      guard.steal();
     }
 
     // Abort if upstream is done
@@ -144,12 +162,27 @@ std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(
 
 void DistinctCollectExecutor::destroyValues() {
   // destroy all AqlValues captured
+  size_t memoryUsage = 0;
   for (auto& it : _seen) {
+    memoryUsage += memoryUsageForGroup(it);
+
     for (auto& it2 : it) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
   _seen.clear();
+  _infos.getResourceMonitor()->decreaseMemoryUsage(memoryUsage);
+}
+
+size_t DistinctCollectExecutor::memoryUsageForGroup(std::vector<AqlValue> const& groupValues) const {
+  size_t memoryUsage = 3 * sizeof(void*) +
+                       groupValues.size() * sizeof(AqlValue);
+  for (auto const& it : groupValues) {
+    if (it.requiresDestruction()) {
+      memoryUsage += it.memoryUsage();
+    }
+  }
+  return memoryUsage;
 }
 
 const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {

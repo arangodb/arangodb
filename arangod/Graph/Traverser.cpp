@@ -38,21 +38,21 @@ using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
 bool Traverser::VertexGetter::getVertex(VPackSlice edge,
-                                        std::vector<arangodb::velocypack::StringRef>& result) {
+                                        arangodb::traverser::EnumeratedPath& path) {
   VPackSlice res = edge;
   if (!res.isString()) {
     res = transaction::helpers::extractFromFromDocument(edge);
-    if (result.back() == arangodb::velocypack::StringRef(res)) {
+    if (path.lastVertex() == arangodb::velocypack::StringRef(res)) {
       res = transaction::helpers::extractToFromDocument(edge);
     }
   }
   TRI_ASSERT(res.isString());
 
   if (!_traverser->vertexMatchesConditions(arangodb::velocypack::StringRef(res),
-                                           result.size())) {
+                                           path.numVertices())) {
     return false;
   }
-  result.emplace_back(_traverser->traverserCache()->persistString(
+  path.pushVertex(_traverser->traverserCache()->persistString(
       arangodb::velocypack::StringRef(res)));
   return true;
 }
@@ -79,11 +79,11 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
 void Traverser::VertexGetter::reset(arangodb::velocypack::StringRef const&) {}
 
 bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
-                                              std::vector<arangodb::velocypack::StringRef>& result) {
+                                              arangodb::traverser::EnumeratedPath& path) {
   VPackSlice toAdd = edge;
   if (!toAdd.isString()) {
     toAdd = transaction::helpers::extractFromFromDocument(edge);
-    arangodb::velocypack::StringRef const& cmp = result.back();
+    arangodb::velocypack::StringRef const& cmp = path.lastVertex();
     TRI_ASSERT(toAdd.isString());
     if (cmp == arangodb::velocypack::StringRef(toAdd)) {
       toAdd = transaction::helpers::extractToFromDocument(edge);
@@ -99,13 +99,13 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
   } else {
-    if (!_traverser->vertexMatchesConditions(toAddStr, result.size())) {
+    if (!_traverser->vertexMatchesConditions(toAddStr, path.numVertices())) {
       return false;
     }
     _returnedVertices.emplace(toAddStr);
   }
 
-  result.emplace_back(toAddStr);
+  path.pushVertex(toAddStr);
   return true;
 }
 

@@ -92,10 +92,10 @@ void ClusterTraverser::clear() {
   _verticesToFetch.clear();
 }
 
-bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {
-  bool res = _vertexGetter->getVertex(edge, result);
+bool ClusterTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+  bool res = _vertexGetter->getVertex(edge, path);
   if (res) {
-    arangodb::velocypack::StringRef const& other = result.back();
+    arangodb::velocypack::StringRef const& other = path.lastVertex();
     if (_vertices.find(other) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
       _verticesToFetch.emplace(other);
