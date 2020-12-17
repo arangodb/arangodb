@@ -24,7 +24,7 @@
 #include "RocksDBIterators.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -170,9 +170,10 @@ void RocksDBAllIndexIterator::resetImpl() {
 
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx) 
+                                                 transaction::Methods* trx)
     : IndexIterator(col, trx),
-      _cmp(RocksDBColumnFamily::documents()->GetComparator()),
+      _cmp(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+               ->GetComparator()),
       _objectId(static_cast<RocksDBMetaCollection*>(col->getPhysical())->objectId()),
       _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _total(0),
@@ -407,6 +408,7 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   auto iterator = RocksDBGenericIterator(engine.db(), options, bounds);
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());
-  TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(iterator.bounds().columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
   return iterator;
 }

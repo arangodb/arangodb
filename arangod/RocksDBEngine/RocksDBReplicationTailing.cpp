@@ -27,7 +27,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication/common-defines.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -109,9 +109,12 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
  public:
   WALParser(TRI_vocbase_t* vocbase, bool includeSystem,
             DataSourceId collectionId, VPackBuilder& builder)
-      : _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
-        _documentsCF(RocksDBColumnFamily::documents()->GetID()),
-        _primaryCF(RocksDBColumnFamily::primary()->GetID()),
+      : _definitionsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+                           ->GetID()),
+        _documentsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                         ->GetID()),
+        _primaryCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex)
+                       ->GetID()),
 
         _vocbase(vocbase),
         _includeSystem(includeSystem),

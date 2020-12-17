@@ -154,7 +154,6 @@ void RestClusterHandler::handleClusterInfo() {
   auto dump = ci.toVelocyPack();
 
   generateResult(rest::ResponseCode::OK, dump.slice());
-
 }
 
 /// @brief returns information about all coordinator endpoints

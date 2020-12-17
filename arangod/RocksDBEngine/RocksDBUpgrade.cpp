@@ -27,7 +27,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
@@ -62,7 +62,8 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
   // read the co
   rocksdb::PinnableSlice oldVersion;
   rocksdb::Status s;
-  s = db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
+  s = db->Get(rocksdb::ReadOptions(),
+              RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
               versionKey.string(), &oldVersion);
 
   // default endianess for existing DBs
@@ -93,7 +94,8 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
 
       // read current endianess
       rocksdb::PinnableSlice endianSlice;
-      s = db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
+      s = db->Get(rocksdb::ReadOptions(),
+                  RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
                   endianKey.string(), &endianSlice);
       if (s.ok() && endianSlice.size() == 1) {
         TRI_ASSERT(endianSlice.data()[0] == 'L' || endianSlice.data()[0] == 'B');
@@ -114,7 +116,8 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
 
   // store endianess forever
   const char endVal = static_cast<char>(endianess);
-  s = db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
+  s = db->Put(rocksdb::WriteOptions(),
+              RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
               endianKey.string(), rocksdb::Slice(&endVal, sizeof(char)));
   if (!s.ok()) {
     LOG_TOPIC("3d88b", FATAL, Logger::ENGINES) << "Error storing endianess";
@@ -122,7 +125,8 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
   }
 
   // store current version
-  s = db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
+  s = db->Put(rocksdb::WriteOptions(),
+              RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
               versionKey.string(), rocksdb::Slice(&version, sizeof(char)));
   TRI_ASSERT(s.ok());
 }
