@@ -81,7 +81,6 @@ class State {
   ///        Default: [first, last]
   std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
-
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
 
  private:
@@ -104,6 +103,11 @@ class State {
    * @param l       log entry
    */
   void logEmplaceBackNoLock(log_t&& l);
+
+  /// @brief reads the _key value from the data and returns it as a numeric index value.
+  /// data needs to be an object with the _key attribute being present as a string value
+  /// inside.
+  static index_t extractIndexFromKey(arangodb::velocypack::Slice data);
 
  public:
   /// @brief Check for a log entry, returns 0, if the log does not

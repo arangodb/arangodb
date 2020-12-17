@@ -108,7 +108,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   Builder body;
   {
     VPackObjectBuilder b(&body);
-    body.add("_key", Value(stringify(index)));
+    body.add(StaticStrings::KeyString, Value(stringify(index)));
     body.add("term", Value(term));
     body.add("request", entry);
     body.add("clientId", Value(clientId));
@@ -154,7 +154,7 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   Builder log;
   {
     VPackObjectBuilder b(&log);
-    log.add("_key", Value(stringify(index)));
+    log.add(StaticStrings::KeyString, Value(stringify(index)));
     log.add("term", Value(term));
     log.add("request", entry);
     log.add("clientId", Value(clientId));
@@ -192,7 +192,7 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   Builder configuration;
   {
     VPackObjectBuilder b(&configuration);
-    configuration.add("_key", VPackValue("0"));
+    configuration.add(StaticStrings::KeyString, VPackValue("0"));
     configuration.add("cfg", config);
   }
 
@@ -365,11 +365,11 @@ index_t State::logFollower(query_t const& transactions) {
     std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
   }
 
-  MUTEX_LOCKER(logLock, _logLock);
-
   // Check whether we have got a snapshot in the first position:
   bool gotSnapshot = slices.length() > 0 && slices[0].isObject() &&
                      !slices[0].get("readDB").isNone();
+  
+  MUTEX_LOCKER(logLock, _logLock);
 
   // In case of a snapshot, there are three possibilities:
   //   1. Our highest log index is smaller than the snapshot index, in this
@@ -442,9 +442,9 @@ index_t State::logFollower(query_t const& transactions) {
       auto index = slice.get("index").getUInt();
 
       uint64_t tstamp = 0;
-      if (slice.hasKey("timestamp")) {
+      if (auto timeSlice = slice.get("timestamp"); timeSlice.isInteger()) {
         // compatibility with older appendEntries protocol
-        tstamp = slice.get("timestamp").getUInt();
+        tstamp = timeSlice.getUInt();
       }
       if (tstamp == 0) {
         tstamp = duration_cast<milliseconds>(
@@ -516,11 +516,11 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
             << _log.at(pos).term;
 
         // persisted logs
-        std::string const aql(std::string("FOR l IN log FILTER l._key >= '") +
-                              stringify(idx) + "' REMOVE l IN log");
+        std::string const aql("FOR l IN log FILTER l._key >= @key REMOVE l IN log");
 
         auto bindVars = std::make_shared<VPackBuilder>();
         bindVars->openObject();
+        bindVars->add(StaticStrings::KeyString, VPackValue(stringify(idx)));
         bindVars->close();
 
         TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
@@ -723,7 +723,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
               oper.value.get("op").isEqualString("set") && oper.value.hasKey("ttl")) {
             VPackObjectBuilder oo(&slices);
             for (auto const& i : VPackObjectIterator(oper.value)) {
-              slices.add(i.key.copyString(), i.value);
+              slices.add(i.key.stringRef(), i.value);
             }
             slices.add("epoch_millis", VPackValue(_log.at(i).timestamp.count()));
           } else {
@@ -873,10 +873,9 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
   bindVars->openObject();
   bindVars->close();
 
-  std::string const aql(
-      std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
+  std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
-  TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
+  TRI_ASSERT(nullptr != _vocbase);  
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
                              aql::QueryString(aql), bindVars, nullptr);
 
@@ -887,34 +886,29 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
   }
 
   VPackSlice result = queryResult.data->slice();
+  // AQL results are guaranteed to be arrays
+  TRI_ASSERT(result.isArray());
+    
+  // Default: No compaction snapshot yet
+  index = 0;
+  term = 0;
 
-  if (result.isArray()) {
-    if (result.length() == 1) {
-      VPackSlice i = result[0];
-      VPackSlice ii = i.resolveExternals();
-      try {
-        store = ii;
-        index = StringUtils::uint64(ii.get("_key").copyString());
-        term = ii.get("term").getNumber<uint64_t>();
-        return true;
-      } catch (std::exception const& e) {
-        LOG_TOPIC("8ef2a", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-      }
-    } else if (result.length() == 0) {
-      // No compaction snapshot yet
-      index = 0;
-      term = 0;
-      return true;
+  if (result.length()) {
+    // we queried with LIMIT 1, so there must be exactly one result now
+    TRI_ASSERT(result.length() == 1);
+
+    VPackSlice ii = result[0];
+    try {
+      store = ii;
+      index = extractIndexFromKey(ii);
+      term = ii.get("term").getNumber<uint64_t>();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("8ef2a", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      return false;
     }
-  } else {
-    // We should never be here! Just die!
-    LOG_TOPIC("013d3", FATAL, Logger::AGENCY)
-        << "Error retrieving last persisted compaction. The result was not an "
-           "Array";
-    FATAL_ERROR_EXIT();
   }
 
-  return false;
+  return true;
 }
 
 /// Load compaction collection
@@ -923,8 +917,7 @@ bool State::loadCompacted() {
   bindVars->openObject();
   bindVars->close();
 
-  std::string const aql(
-      std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
+  std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
@@ -937,16 +930,17 @@ bool State::loadCompacted() {
   }
 
   VPackSlice result = queryResult.data->slice();
+  // AQL results are guaranteed to be arrays
+  TRI_ASSERT(result.isArray());
 
-  MUTEX_LOCKER(logLock, _logLock);
-
-  if (result.isArray() && result.length()) {
+  if (result.length()) {
     // Result can only have length 0 or 1.
-    VPackSlice ii = result[0].resolveExternals();
-    buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+    VPackSlice ii = result[0];
+    
+    MUTEX_LOCKER(logLock, _logLock);
     _agent->setPersistedState(ii);
     try {
-      _cur = StringUtils::uint64(ii.get("_key").copyString());
+      _cur = extractIndexFromKey(ii);
       _log.clear();  // will be filled in loadRemaining
       _log_size = 0;
       _clientIdLookupTable.clear();
@@ -956,6 +950,7 @@ bool State::loadCompacted() {
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
       LOG_TOPIC("bc330", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      return false;
     }
   }
 
@@ -968,8 +963,7 @@ bool State::loadOrPersistConfiguration() {
   bindVars->openObject();
   bindVars->close();
 
-  std::string const aql(
-      std::string("FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg"));
+  std::string const aql("FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
@@ -982,13 +976,13 @@ bool State::loadOrPersistConfiguration() {
   }
 
   VPackSlice result = queryResult.data->slice();
+  // AQL results are guaranteed to be arrays
+  TRI_ASSERT(result.isArray());
 
-  if (result.isArray() && result.length()) {  // We already have a persisted conf
-
-    auto resolved = result[0].resolveExternals();
-
-    TRI_ASSERT(resolved.hasKey("id"));
-    auto id = resolved.get("id");
+  if (result.length()) {  // We already have a persisted conf
+    auto conf = result[0];
+    TRI_ASSERT(conf.hasKey("id"));
+    auto id = conf.get("id");
 
     TRI_ASSERT(id.isString());
     if (ServerState::instance()->hasPersistedId()) {
@@ -998,11 +992,11 @@ bool State::loadOrPersistConfiguration() {
     }
 
     try {
-      LOG_TOPIC("504da", DEBUG, Logger::AGENCY) << "Merging configuration " << resolved.toJson();
-      _agent->mergeConfiguration(resolved);
+      LOG_TOPIC("504da", DEBUG, Logger::AGENCY) << "Merging configuration " << conf.toJson();
+      _agent->mergeConfiguration(conf);
 
     } catch (std::exception const& e) {
-      LOG_TOPIC("6acd2", ERR, Logger::AGENCY)
+      LOG_TOPIC("6acd2", FATAL, Logger::AGENCY)
           << "Failed to merge persisted configuration into runtime "
              "configuration: "
           << e.what();
@@ -1045,7 +1039,7 @@ bool State::loadOrPersistConfiguration() {
     Builder doc;
     {
       VPackObjectBuilder d(&doc);
-      doc.add("_key", VPackValue("0"));
+      doc.add(StaticStrings::KeyString, VPackValue("0"));
       doc.add("cfg", _agent->config().toBuilder()->slice());
     }
 
@@ -1053,7 +1047,7 @@ bool State::loadOrPersistConfiguration() {
       OperationResult result = trx.insert("configuration", doc.slice(), _options);
       res = trx.finish(result.result);
     } catch (std::exception const& e) {
-      LOG_TOPIC("4384a", ERR, Logger::AGENCY)
+      LOG_TOPIC("4384a", FATAL, Logger::AGENCY)
           << "Failed to persist configuration entry:" << e.what();
       FATAL_ERROR_EXIT();
     }
@@ -1069,11 +1063,29 @@ bool State::loadOrPersistConfiguration() {
 
 /// Load beyond last compaction
 bool State::loadRemaining() {
+  index_t lastIndex;
+  {
+    // read current index initially, which should be the last compacted
+    // state. we can this as the lower bound of log entries we will be
+    // interested in, because we will skip anything with a lower index
+    // value anyway.
+    // note that further down below we will fetch _cur once again, and
+    // that it may have moved forward then. this does not matter, because
+    // we are using the initial _cur value only as a lower bound in the
+    // AQL query, but use the second _cur value for the actual, per-log
+    // entry filtering.
+    MUTEX_LOCKER(logLock, _logLock);
+    lastIndex = _cur;
+  }
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
+  // in case lastIndex is still 0, we need to compare against and include
+  // key "0", which sorts lower than the full-padded key "00000000000000000000".
+  bindVars->add("key", VPackValue(lastIndex == 0 ? "0" : stringify(lastIndex)));
   bindVars->close();
 
-  std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
+  std::string const aql("FOR l IN log FILTER l._key >= @key SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
@@ -1090,74 +1102,75 @@ bool State::loadRemaining() {
   MUTEX_LOCKER(logLock, _logLock);
   if (result.isArray() && result.length() > 0) {
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
-    std::string clientId, tstamp;
     // We know that _cur has been set in loadCompacted to the index of the
     // snapshot that was loaded or to 0 if there is no snapshot.
-    index_t lastIndex = _cur;
+    lastIndex = _cur;
+    std::string clientId;
 
-    for (auto const& i : VPackArrayIterator(result)) {
-      buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-
-      auto ii = i.resolveExternals();
-      auto req = ii.get("request");
-      tmp->append(req.startAs<char const>(), req.byteSize());
-
-      clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
-                                        : std::string();
-
-      uint64_t millis = 0;
-      if (ii.hasKey("epoch_millis")) {
-        if (ii.get("epoch_millis").isInteger()) {
-          try {
-            millis = ii.get("epoch_millis").getNumber<uint64_t>();
-          } catch (std::exception const& e) {
-            LOG_TOPIC("2ee75", ERR, Logger::AGENCY)
-              << "Failed to parse integer value for epoch_millis " << e.what();
-            FATAL_ERROR_EXIT();
-          }
-        } else {
-          LOG_TOPIC("52ee7", ERR, Logger::AGENCY) << "epoch_millis is not an integer type";
-          FATAL_ERROR_EXIT();
-        }
-      }
-
-      // Dummy fill missing entries (Not good at all.)
-      index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
+    for (auto const& ii : VPackArrayIterator(result)) {
+      // _key
+      index_t const index = extractIndexFromKey(ii);
 
       // Ignore log entries, which are older than lastIndex:
-      if (index >= lastIndex) {
-        // Empty patches :
-        if (index > lastIndex + 1) {
-          std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-          VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
-          buf->append(value.startAs<char const>(), value.byteSize());
-          term_t term(ii.get("term").getNumber<uint64_t>());
-          for (index_t i = lastIndex + 1; i < index; ++i) {
-            LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
-            _log.emplace_back(log_t(i, term, buf, std::string()));
-            _log_size += value.byteSize();
-            // This has empty clientId, so we do not need to adjust
-            // _clientIdLookupTable.
-            lastIndex = i;
-          }
-          // After this loop, index will be lastIndex + 1
-        }
+      if (index < lastIndex) {
+        continue;
+      }
 
-        if (index == lastIndex + 1 || (index == lastIndex && _log.empty())) {
-          // Real entries
-          logEmplaceBackNoLock(
-            log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
-                  ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
-          lastIndex = index;
+      auto req = ii.get("request");
+
+      // clientId
+      if (auto clientSlice = req.get("clientId"); clientSlice.isString()) {
+        clientId = clientSlice.copyString();
+      } else {
+        clientId.clear();
+      }
+
+      // epoch_millis
+      uint64_t millis = 0;
+      if (auto milliSlice = ii.get("epoch_millis"); milliSlice.isInteger()) {
+        try {
+          millis = milliSlice.getNumber<uint64_t>();
+        } catch (std::exception const& e) {
+          LOG_TOPIC("2ee75", FATAL, Logger::AGENCY)
+            << "Failed to parse integer value for epoch_millis: " << e.what();
+          FATAL_ERROR_EXIT();
         }
+      } else {
+        LOG_TOPIC("52ee7", FATAL, Logger::AGENCY) << "epoch_millis is not an integer type";
+        FATAL_ERROR_EXIT();
+      }
+
+      // Empty patches :
+      if (index > lastIndex + 1) {
+        // Dummy fill missing entries (Not good at all.)
+        std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+        VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
+        buf->append(value.startAs<char const>(), value.byteSize());
+        term_t term(ii.get("term").getNumber<uint64_t>());
+        for (index_t i = lastIndex + 1; i < index; ++i) {
+          LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
+          _log.emplace_back(log_t(i, term, buf, std::string()));
+          _log_size += value.byteSize();
+          // This has empty clientId, so we do not need to adjust
+          // _clientIdLookupTable.
+          lastIndex = i;
+        }
+        // After this loop, index will be lastIndex + 1
+      }
+
+      if (index == lastIndex + 1 || (index == lastIndex && _log.empty())) {
+        // Real entries
+        buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+        tmp->append(req.startAs<char const>(), req.byteSize());
+
+        logEmplaceBackNoLock(
+          log_t(index, ii.get("term").getNumber<uint64_t>(), std::move(tmp), clientId, millis));
+        lastIndex = index;
       }
     }
   }
-  if (_log.empty()) {
-    return false;
-  }
-
-  return true;
+  
+  return !_log.empty();
 }
 
 /// Find entry by index and term
@@ -1274,14 +1287,10 @@ bool State::compactPersisted(index_t cind, index_t keep) {
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
+  bindVars->add("key", VPackValue(stringify(cut)));
   bindVars->close();
 
-  std::stringstream i_str;
-
-  i_str << std::setw(20) << std::setfill('0') << cut;
-
-  std::string const aql(std::string("FOR l IN log FILTER l._key < \"") +
-                        i_str.str() + "\" REMOVE l IN log");
+  std::string const aql("FOR l IN log FILTER l._key < @key REMOVE l IN log");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
@@ -1301,14 +1310,10 @@ bool State::removeObsolete(index_t cind) {
   if (cind > 3 * _agent->config().compactionKeepSize()) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
+    bindVars->add("key", VPackValue(stringify(cind - 3 * _agent->config().compactionKeepSize())));
     bindVars->close();
 
-    std::stringstream i_str;
-    i_str << std::setw(20) << std::setfill('0')
-          << -3 * _agent->config().compactionKeepSize() + cind;
-
-    std::string const aql(std::string("FOR c IN compact FILTER c._key < \"") +
-                          i_str.str() + "\" REMOVE c IN compact");
+    std::string const aql("FOR c IN compact FILTER c._key < @key REMOVE c IN compact");
 
     TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
@@ -1328,10 +1333,6 @@ bool State::removeObsolete(index_t cind) {
 bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t term,
                                       arangodb::consensus::Store& snapshot) {
   if (checkCollection("compact")) {
-    std::stringstream i_str;
-
-    i_str << std::setw(20) << std::setfill('0') << cind;
-
     Builder store;
     {
       VPackObjectBuilder s(&store);
@@ -1340,14 +1341,15 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
         VPackArrayBuilder a(&store);
         snapshot.dumpToBuilder(store);
       }
-      store.add("term", VPackValue(static_cast<double>(term)));
-      store.add("_key", VPackValue(i_str.str()));
+      store.add("term", VPackValue(term));
+      store.add(StaticStrings::KeyString, VPackValue(stringify(cind)));
       store.add("version", VPackValue(2));
     }
 
     TRI_ASSERT(_vocbase != nullptr);
     auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "compact", AccessMode::Type::WRITE);
+  
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1405,7 +1407,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
       << "Removing complete log because of new snapshot.";
 
   // persisted logs
-  std::string const aql(std::string("FOR l IN log REMOVE l IN log"));
+  std::string const aql("FOR l IN log REMOVE l IN log");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
@@ -1432,7 +1434,7 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   Builder builder;
   {
     VPackObjectBuilder guard(&builder);
-    builder.add("_key", VPackValue("0"));
+    builder.add(StaticStrings::KeyString, VPackValue("0"));
     builder.add(VPackValue("cfg"));
     {
       VPackObjectBuilder guard2(&builder);
@@ -1569,8 +1571,7 @@ index_t State::firstIndex() const {
 std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
                                                        index_t& index, term_t& term) {
   // First get the latest snapshot, if there is any:
-  std::string aql(
-      std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
+  std::string aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
   arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
                              aql::QueryString(aql), nullptr, nullptr);
 
@@ -1587,11 +1588,10 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   term = 0;
   if (result.isArray() && result.length() == 1) {
     // Result can only have length 0 or 1.
-    VPackSlice ii = result[0].resolveExternals();
-    buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-    store = ii;
-    index = StringUtils::uint64(ii.get("_key").copyString());
-    term = ii.get("term").getNumber<uint64_t>();
+    VPackSlice s = result[0];
+    store = s;
+    index = extractIndexFromKey(s);
+    term = s.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
         << "Read snapshot at index " << index << " with term " << term;
   }
@@ -1613,21 +1613,23 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
     VPackBuilder b;
     {
       VPackArrayBuilder bb(&b);
-      for (auto const& i : VPackArrayIterator(result)) {
+      for (auto const& ii : VPackArrayIterator(result)) {
         buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
 
-        auto ii = i.resolveExternals();
         auto req = ii.get("request");
         tmp->append(req.startAs<char const>(), req.byteSize());
 
-        std::string clientId =
-            req.hasKey("clientId") ? req.get("clientId").copyString() : std::string();
+        std::string clientId;
+        if (auto clientSlice = req.get("clientId"); clientSlice.isString()) {
+          clientId = clientSlice.copyString();
+        }
 
-        uint64_t epoch_millis =
-          (req.hasKey("epoch_millis") && req.get("epoch_millis").isInteger()) ?
-          req.get("epoch_millis").getNumber<uint64_t>() : 0;
+        uint64_t epoch_millis = 0;
+        if (auto milliSlice = req.get("epoch_millis"); milliSlice.isInteger()) {
+          epoch_millis = milliSlice.getNumber<uint64_t>();
+        }
 
-        log_t entry(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
+        log_t entry(extractIndexFromKey(ii),
                     ii.get("term").getNumber<uint64_t>(), tmp, clientId, epoch_millis);
 
         if (entry.index <= index) {
@@ -1663,10 +1665,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
   auto bindVars = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder b(bindVars.get()); }
+  bindVars->openObject();
+  bindVars->add(StaticStrings::KeyString, VPackValue(stringify(lastIndex)));
+  bindVars->close();
 
-  std::string const logQueryStr = std::string("FOR l IN log FILTER l._key <= '")
-    + stringify(lastIndex) + std::string("' SORT l._key RETURN l");
+  std::string const logQueryStr("FOR l IN log FILTER l._key <= @key SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query logQuery(transaction::StandaloneContext::Create(*_vocbase),
@@ -1678,15 +1681,16 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     THROW_ARANGO_EXCEPTION(logQueryResult.result);
   }
 
-  VPackSlice result = logQueryResult.data->slice().resolveExternals();
+  VPackSlice result = logQueryResult.data->slice();
   std::string firstIndex;
   uint64_t n = 0;
 
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
-    { VPackObjectBuilder guard(&builder);
+    { 
+      VPackObjectBuilder guard(&builder);
       for (auto const& p : VPackObjectIterator(slice)) {
-        if (p.key.copyString() != "_id") {
+        if (!p.key.isEqualString(StaticStrings::IdString)) {
           builder.add(p.key);
           builder.add(p.value);
         }
@@ -1697,16 +1701,16 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   builder.add(VPackValue("log"));
   if (result.isArray()) {
     try {
-      { VPackArrayBuilder guard(&builder);
-        for (VPackSlice e : VPackArrayIterator(result)) {
-          VPackSlice ee = e.resolveExternals();
+      { 
+        VPackArrayBuilder guard(&builder);
+        for (VPackSlice ee : VPackArrayIterator(result)) {
           TRI_ASSERT(ee.isObject());
           copyWithoutId(ee, builder);
         }
       }
       n = result.length();
       if (n > 0) {
-        firstIndex = result[0].resolveExternals().get("_key").copyString();
+        firstIndex = result[0].get(StaticStrings::KeyString).copyString();
       }
     } catch (...) {
       VPackArrayBuilder a(&builder);
@@ -1734,7 +1738,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       if (result.length() > 0) {
         builder.add(VPackValue("compaction"));
         try {
-          VPackSlice c = result[0].resolveExternals();
+          VPackSlice c = result[0];
           TRI_ASSERT(c.isObject());
           copyWithoutId(c, builder);
         } catch (...) {
@@ -1746,3 +1750,14 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   return n;
 }
+
+/*static*/ index_t State::extractIndexFromKey(arangodb::velocypack::Slice data) {
+  TRI_ASSERT(data.isObject());
+  VPackSlice keySlice = data.get(StaticStrings::KeyString);
+  TRI_ASSERT(keySlice.isString());
+
+  VPackValueLength keyLength;
+  char const* key = keySlice.getString(keyLength);
+  return index_t(arangodb::basics::StringUtils::uint64(key, keyLength));
+}
+
