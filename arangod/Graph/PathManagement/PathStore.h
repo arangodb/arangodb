@@ -61,7 +61,7 @@ class PathStore {
 
  public:
   explicit PathStore(arangodb::ResourceMonitor& resourceMonitor);
-  ~PathStore() = default;
+  ~PathStore();
 
   /// @brief schreier vector to store the visited vertices
   std::vector<Step> _schreier;

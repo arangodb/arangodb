@@ -46,7 +46,11 @@ PathStore<Step>::PathStore(arangodb::ResourceMonitor& resourceMonitor)
   // performance optimization: just reserve a little more as per default
   LOG_TOPIC("47891", TRACE, Logger::GRAPHS) << "<PathStore> Initialization.";
   _schreier.reserve(32);
-  //_resourceMonitor.increaseMemoryUsage(_schreier.capacity());
+}
+
+template <class Step>
+PathStore<Step>::~PathStore() {
+  reset();
 }
 
 template <class Step>
