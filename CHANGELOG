@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix warnings about suggest-override which can break builds when warnings
+  are treated as errors
+
 * Clean up agency change log, cluster info caches
 
 * Added new `rocksdb_write_stalls` and `rocksdb_write_stops` counter metrics,
