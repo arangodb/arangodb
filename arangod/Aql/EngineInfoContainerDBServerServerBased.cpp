@@ -515,7 +515,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // If the serverBefore has a smaller ID we allways contact by increasing
       // ID here.
-      TRI_ASSERT(serverBefore < server);
+      TRI_ASSERT(TransactionState::SortServerIds(serverBefore, leader));
       serverBefore = server;
 #endif
       VPackSlice infoSlice{buffer->data()};
