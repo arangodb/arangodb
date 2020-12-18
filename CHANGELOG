@@ -1,6 +1,13 @@
 devel
 -----
 
+* Reduce overhead of audit logging functionality if audit logging is turned
+  off.
+
+* Add several more attributes to audit-logged queries, namely query execution
+  time and exit code (0 = no error, other values correspond to general ArangoDB 
+  error codes).
+
 * When querying the list of currently running or slow AQL queries, ignore not-yet
   created databases on other coordinators.
 
