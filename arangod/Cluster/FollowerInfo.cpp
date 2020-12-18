@@ -313,6 +313,16 @@ bool FollowerInfo::updateFailoverCandidates() {
     std::set_symmetric_difference(failoverCandidates.begin(),
                                   failoverCandidates.end(), followers.begin(),
                                   followers.end(), std::back_inserter(diff));
+    if (!diff.empty()) {
+      std::stringstream s;
+      s << "Symmetric difference alert: ";
+      for (auto const& d : diff) { s << d << " "; }
+      s << "failoverCandidates: ";
+      for (auto const& d : failoverCandidates) { s << d << " "; }
+      s << "followers: ";
+      for (auto const& d : followers) { s << d << " "; }
+      LOG_DEVEL << s.str();
+    }
     TRI_ASSERT(diff.empty());
 #endif
     return _canWrite;
@@ -332,6 +342,16 @@ bool FollowerInfo::updateFailoverCandidates() {
   std::set_symmetric_difference(failoverCandidates.begin(),
                                 failoverCandidates.end(), followers.begin(),
                                 followers.end(), std::back_inserter(diff));
+  if (!diff.empty()) {
+    std::stringstream s;
+    s << "Symmetric difference alert: ";
+    for (auto const& d : diff) { s << d << " "; }
+    s << "failoverCandidates: ";
+    for (auto const& d : failoverCandidates) { s << d << " "; }
+    s << "followers: ";
+    for (auto const& d : followers) { s << d << " "; }
+    LOG_DEVEL << s.str();
+  }
   TRI_ASSERT(diff.empty());
 #endif
   Result res = persistInAgency(true);
