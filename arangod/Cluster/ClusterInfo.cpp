@@ -3671,7 +3671,7 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
     do {
       resultBuilder.clear();
-      res = ensureIndexCoordinatorInner(  // creat index
+      res = ensureIndexCoordinatorInner(  // create index
           collection, idString, slice, create, resultBuilder, timeout);
 
       // Note that this function sets the errorMsg unless it is precondition

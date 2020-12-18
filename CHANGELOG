@@ -1,7 +1,46 @@
 devel
 -----
 
-* Clean up agency change log, cluster info caches
+* Fixed issue #13238 Thread naming API on Windows are now used only if
+  available in KERNEL32.DLL
+
+* When querying the list of currently running or slow AQL queries, ignore not-yet
+  created databases on other coordinators.
+
+* Added support for fetching the list of currently running and slow AQL queries
+  from all databases at once, by adding an `all` parameter to the following
+  query APIs:
+
+  * `require("@arangodb/aql/queries").current({ all: true })`: will return the
+    currently running queries from all databases, not just the currently
+    selected database.
+  * HTTP GET `/_api/query/current?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").slow({ all: true })`: will return the
+    slow query history from all databases, not just the currently selected
+    database.
+  * HTTP GET `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").clearSlow({ all: true })`: will clear
+    the slow query history for all databases, not just the currently selected
+    database.
+  * HTTP DELETE `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+
+  Using the `all` parameter is only allowed when making the call inside the
+  `_system` database and with superuser privileges.
+  
+* Improve performance and memory efficiency of agency restart from persisted
+  database directory.
+
+* Added the following agency-related metrics:
+  - `arangodb_agency_client_lookup_table_size`: current number of entries
+    in agency client id lookup table. This gauge is available only on
+    agent instances.
+  - `arangodb_agency_cache_callback_count`: current number of entries in
+    agency cache callbacks table. This gauge will be effective on coordinators
+    and DB servers.
+  - `arangodb_agency_callback_count`: current number of agency callbacks
+    registered. This gauge will be effective on coordinators and DB servers.
+
+* Clean up agency change log, cluster info caches.
 
 * Added new `rocksdb_write_stalls` and `rocksdb_write_stops` counter metrics,
   which should be more accurate than existing metrics related to the underlying
@@ -25,7 +64,7 @@ devel
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.
 
-* Fix AR-113. Add a check in the AQL geo-index-optimizer rule that vars
+* Fix AR-113: Add a check in the AQL geo-index-optimizer rule that vars
   referenced by a candidate index expression are actually available at the
   candidate index node.
 
