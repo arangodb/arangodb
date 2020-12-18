@@ -520,7 +520,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
         auto bindVars = std::make_shared<VPackBuilder>();
         bindVars->openObject();
-        bindVars->add(StaticStrings::KeyString, VPackValue(stringify(idx)));
+        bindVars->add("key", VPackValue(stringify(idx)));
         bindVars->close();
 
         TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
@@ -1666,7 +1666,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add(StaticStrings::KeyString, VPackValue(stringify(lastIndex)));
+  bindVars->add("key", VPackValue(stringify(lastIndex)));
   bindVars->close();
 
   std::string const logQueryStr("FOR l IN log FILTER l._key <= @key SORT l._key RETURN l");
@@ -1718,6 +1718,9 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   }
 
   if (n > 0) {
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->close();
 
     std::string const compQueryStr =
       std::string("FOR c in compact FILTER c._key >= '") + firstIndex
