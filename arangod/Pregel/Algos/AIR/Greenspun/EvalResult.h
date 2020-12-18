@@ -42,6 +42,10 @@ struct EvalError {
     std::vector<std::string> parameter;
   };
 
+  struct SpecialFormFrame {
+    std::string specialForm;
+  };
+
   struct ParamFrame {
     std::string function;
     std::size_t offset;
@@ -51,7 +55,7 @@ struct EvalError {
     std::string message;
   };
 
-  using Frame = std::variant<ParamFrame, CallFrame, WrapFrame>;
+  using Frame = std::variant<ParamFrame, CallFrame, WrapFrame, SpecialFormFrame>;
 
   explicit EvalError(std::string message) : message(std::move(message)) {}
   EvalError(EvalError const&) = default;
@@ -76,6 +80,11 @@ struct EvalError {
       parameterVec.push_back(p.toJson());
     }
     frames.emplace_back(CallFrame{std::move(function), std::move(parameterVec)});
+    return *this;
+  }
+
+  EvalError& wrapSpecialForm(std::string function) {
+    frames.emplace_back(SpecialFormFrame{std::move(function)});
     return *this;
   }
 

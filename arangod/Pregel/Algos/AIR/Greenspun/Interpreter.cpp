@@ -549,29 +549,34 @@ EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
                          ArrayIterator paramIterator, VPackBuilder& result,
                          bool isEvaluateParameter) {
   if (functionSlice.isString()) {
+    auto callSpecialForm = [&](auto specialForm) {
+      return specialForm(ctx, paramIterator, result).mapError([&](EvalError& err) {
+        return err.wrapSpecialForm(functionSlice.copyString());
+      });
+    };
     // check for special forms
     if (functionSlice.isEqualString("if")) {
-      return SpecialIf(ctx, paramIterator, result);
+      return callSpecialForm(SpecialIf);
     } else if (functionSlice.isEqualString("quote")) {
-      return SpecialQuote(ctx, paramIterator, result);
+      return callSpecialForm(SpecialQuote);
     } else if (functionSlice.isEqualString("quote-splice")) {
-      return SpecialQuoteSplice(ctx, paramIterator, result);
+      return callSpecialForm(SpecialQuoteSplice);
     } else if (functionSlice.isEqualString("quasi-quote")) {
-      return SpecialQuasiQuote(ctx, paramIterator, result);
+      return callSpecialForm(SpecialQuasiQuote);
     } else if (functionSlice.isEqualString("cons")) {
-      return SpecialCons(ctx, paramIterator, result);
+      return callSpecialForm(SpecialCons);
     } else if (functionSlice.isEqualString("and")) {
-      return SpecialAnd(ctx, paramIterator, result);
+      return callSpecialForm(SpecialAnd);
     } else if (functionSlice.isEqualString("or")) {
-      return SpecialOr(ctx, paramIterator, result);
+      return callSpecialForm(SpecialOr);
     } else if (functionSlice.isEqualString("seq")) {
-      return SpecialSeq(ctx, paramIterator, result);
+      return callSpecialForm(SpecialSeq);
     } else if (functionSlice.isEqualString("match")) {
-      return SpecialMatch(ctx, paramIterator, result);
+      return callSpecialForm(SpecialMatch);
     } else if (functionSlice.isEqualString("for-each")) {
-      return SpecialForEach(ctx, paramIterator, result);
+      return callSpecialForm(SpecialForEach);
     } else if (functionSlice.isEqualString("let")) {
-      return SpecialLet(ctx, paramIterator, result);
+      return callSpecialForm(SpecialLet);
     } else {
       return Call(ctx, functionSlice, paramIterator, result, isEvaluateParameter);
     }
@@ -737,6 +742,10 @@ std::string EvalError::toString() const {
         ss << " `" << s << "`";
       }
       ss << " )" << std::endl;
+    }
+
+    void operator()(EvalError::SpecialFormFrame const& f) {
+      ss << "when evaluating special form `" << f.specialForm << "`" << std::endl;
     }
 
     void operator()(EvalError::WrapFrame const& f) {
