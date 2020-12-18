@@ -18,38 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_QUERIES_H
-#define ARANGOD_VOC_BASE_API_QUERIES_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
 
-#include "VocBase/vocbase.h"
-#include "Basics/Result.h"
+// public rocksdb headers
+#include <rocksdb/db.h>
+#include <rocksdb/listener.h>
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
 
-namespace methods {
+class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
+ public:
+  virtual ~RocksDBBackgroundErrorListener();
 
-struct Queries {
-  /// @brief return the list of slow queries
-  static Result listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout);
-  
-  /// @brief return the list of currently running queries
-  static Result listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases,  bool fanout);
-  
-  /// @brief clears the list of slow queries
-  static Result clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout);
-  
-  /// @brief kills the given query
-  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabases); 
+  void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
+ private:
+  bool _called = false;
 };
 
-}  // namespace methods
 }  // namespace arangodb
 
 #endif

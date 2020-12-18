@@ -49,7 +49,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -223,7 +223,8 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(application_featu
 void IResearchRocksDBRecoveryHelper::prepare() {
   _dbFeature = DatabaseFeature::DATABASE;
   _engine = &_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  _documentCF = RocksDBColumnFamily::documents()->GetID();
+  _documentCF = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                    ->GetID();
 }
 
 void IResearchRocksDBRecoveryHelper::PutCF(

@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "VocBase/LogicalCollection.h"
@@ -54,7 +55,9 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, _index->columnFamily());
-    TRI_ASSERT(_index->columnFamily()->GetID() == RocksDBColumnFamily::geo()->GetID());
+    TRI_ASSERT(_index->columnFamily()->GetID() ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex)
+                   ->GetID());
     estimateDensity();
   }
 
@@ -239,7 +242,9 @@ class RDBNearIterator final : public IndexIterator {
 RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info,
                                  std::string const& typeName)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
+    : RocksDBIndex(iid, collection, info,
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+                   false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
   TRI_ASSERT(iid.isSet());
@@ -401,8 +406,11 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     TRI_ASSERT(key->containsLocalDocumentId(documentId));
- 
-    rocksdb::Status s = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
+
+    rocksdb::Status s =
+        mthd->PutUntracked(RocksDBColumnFamilyManager::get(
+                               RocksDBColumnFamilyManager::Family::GeoIndex),
+                           key.ref(), val.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
@@ -442,7 +450,9 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(objectId(), cell.id(), documentId);
-    rocksdb::Status s = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
+    rocksdb::Status s =
+        mthd->Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+                     key.ref());
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
       addErrorMsg(res);
