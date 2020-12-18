@@ -28,6 +28,7 @@
 #include "RocksDBOptionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -552,6 +553,20 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
   _minWriteBufferNumberToMergeTouched = options->processingResult().touched(
       "--rocksdb.min-write-buffer-number-to-merge");
+ 
+  // limit memory usage of agent instances, if not otherwise configured
+  AgencyFeature& feature = server().getEnabledFeature<AgencyFeature>();
+  if (feature.activated()) {
+    // if we are an agency instance...
+    if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
+      // restrict block cache size to 1 GB if not set explicitly
+      _blockCacheSize = std::min<uint64_t>(_blockCacheSize, uint64_t(1) << 30);
+    }
+    if (!options->processingResult().touched("--rocksdb.total-write-buffer-size")) {
+      // restrict total write buffer size to 512 MB if not set explicitly
+      _totalWriteBufferSize = std::min<uint64_t>(_totalWriteBufferSize, uint64_t(512) << 20);
+    }
+  }
 }
 
 void RocksDBOptionFeature::start() {
