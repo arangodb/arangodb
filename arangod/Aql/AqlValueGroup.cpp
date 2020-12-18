@@ -37,7 +37,9 @@ AqlValueGroupHash::AqlValueGroupHash([[maybe_unused]] size_t num)
 size_t AqlValueGroupHash::operator()(const std::vector<AqlValue>& value) const {
   uint64_t hash = 0x12345678;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(value.size() == _num);
+#endif
 
   for (AqlValue const& it : value) {
     // we must use the slow hash function here, because a value may have
