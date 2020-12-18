@@ -34,7 +34,9 @@
 #include "Basics/SharedPRNG.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/fasthash.h"
+#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -188,6 +190,24 @@ bool Cache::isBusy() {
 
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
+}
+
+Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
+                          void const* value, std::size_t valueSize,
+                          std::function<bool(Result)> retry) {
+  std::unique_ptr<CachedValue> cv{CachedValue::construct(key, keySize, value, valueSize)};
+  if (!cv) {
+    status.reset(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  do {
+    status = cache.insert(cv.get());
+    basics::cpu_relax();
+  } while (status.fail() && retry(status));
+
+  if (status.ok()) {
+    cv.release();
+  }
 }
 
 void Cache::destroy(std::shared_ptr<Cache> const& cache) {
