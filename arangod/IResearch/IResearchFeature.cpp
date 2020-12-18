@@ -297,51 +297,48 @@ uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit, uint32_t d
 
 bool upgradeClusterArangoSearchView1_2(TRI_vocbase_t& vocbase,
                                        arangodb::velocypack::Slice const& /*upgradeParams*/) {
-  LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
-                << " STARTING ";
   using arangodb::application_features::ApplicationServer;
-  if (!arangodb::ServerState::instance()->isAgent() &&
-      !arangodb::ServerState::instance()->isDBServer()) {
+  if (!arangodb::ServerState::instance()->isDBServer()) {
     return true;  // not applicable for other ServerState roles
   }
-  if (arangodb::ServerState::instance()->isDBServer()) {
-    LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
-                << " ON DB SERVER";
-    auto& selector = vocbase.server().getFeature<arangodb::EngineSelectorFeature>();
-    auto& clusterInfo = vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
-    auto& engine = selector.engine<arangodb::RocksDBEngine>();
-    // persist collection names in links
-    for (auto& collection : vocbase.collections(false)) {
-      auto indexes = collection->getIndexes();
-      auto clusterCollection =  clusterInfo.getCollectionNT(
-          vocbase.name(), std::to_string(collection->planId().id()));
-      if (clusterCollection) {
-        auto name  = clusterCollection->name();
-        LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
-                  << " Processing  " << name;
-        for (auto& index : indexes) {
-          if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-            auto indexPtr =
-                dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
-            if (indexPtr) {
-              LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
-                  << "Checking collection name '" << name << "' for link " << indexPtr->id().id();
-              if (indexPtr->setCollectionName(name)) {
-                LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
-                  << "Setting collection name '" << name << "' for link " << indexPtr->id().id();
-                auto builder = collection->toVelocyPackIgnore({"path", "statusString"},
-                                                              arangodb::LogicalDataSource::Serialization::PersistenceWithInProgress);
-                auto res = engine.writeCreateCollectionMarker(
-                    vocbase.id(), collection->id(), builder.slice(), arangodb::RocksDBLogValue::Empty());
-              }
+  auto& selector = vocbase.server().getFeature<arangodb::EngineSelectorFeature>();
+  auto& clusterInfo =
+      vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& engine = selector.engine<arangodb::RocksDBEngine>();
+  // persist collection names in links
+  for (auto& collection : vocbase.collections(false)) {
+    auto indexes = collection->getIndexes();
+    auto clusterCollection =
+        clusterInfo.getCollectionNT(vocbase.name(),
+                                    std::to_string(collection->planId().id()));
+    if (clusterCollection) {
+      auto name = clusterCollection->name();
+      LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)
+          << " Processing collection " << name;
+      for (auto& index : indexes) {
+        if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+          auto indexPtr =
+              dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+          if (indexPtr) {
+            LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
+                << "Checking collection name '" << name << "' for link "
+                << indexPtr->id().id();
+            if (indexPtr->setCollectionName(name)) {
+              LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
+                  << "Setting collection name '" << name << "' for link "
+                  << indexPtr->id().id();
+              auto builder =
+                  collection->toVelocyPackIgnore({"path", "statusString"},
+                                                 arangodb::LogicalDataSource::Serialization::PersistenceWithInProgress);
+              auto res =
+                  engine.writeCreateCollectionMarker(vocbase.id(), collection->id(),
+                                                     builder.slice(),
+                                                     arangodb::RocksDBLogValue::Empty());
             }
           }
         }
       }
     }
-  } else {
-    // store collection names in plan definitions as this data should arrive to newly joined servers
-    // TODO: implement me
   }
   return true;
 }
@@ -617,8 +614,7 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
     task.name = "upgradeArangoSearch1_2";
     task.description = "store collection name in ArangoSearch Link`s metadata";
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
-                        | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL; // agency
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL;  // db-server
     task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
                          arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
     task.action = &upgradeClusterArangoSearchView1_2;
