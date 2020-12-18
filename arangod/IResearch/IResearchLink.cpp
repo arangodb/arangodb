@@ -1061,6 +1061,27 @@ Result IResearchLink::init(
     // cluster-wide link
     auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
 
+    // upgrade step for old link definition without collection name
+    // this could be received from  agency while shard of the collection was moved (or added)
+    // to the server.
+    // New links already has collection name set, but here we must get this name on our own
+    if (meta._collectionName.empty()) {
+      if (clusterWideLink) {// could set directly
+        LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC) << "Setting collection name '" << _collection.name() << "' for new link '"
+          << this->id().id() << "'";
+        meta._collectionName = _collection.name();
+      } else {
+        meta._collectionName = ci.getCollectionNameForShard(_collection.name());
+        LOG_TOPIC("86ece", TRACE, iresearch::TOPIC) << "Setting collection name '" << meta._collectionName << "' for new link '"
+          << this->id().id() << "'";
+      }
+      TRI_ASSERT(!meta._collectionName.empty());
+      if (ADB_UNLIKELY(meta._collectionName.empty())) {
+        LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
+          << this->id().id() << "'. Please recreate the link!";
+      }
+    }
+
     if (!clusterWideLink) {
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
