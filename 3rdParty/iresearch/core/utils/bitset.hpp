@@ -208,12 +208,16 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
   // counts bits set
-  word_t count() const noexcept {
+  static word_t count(const word_t* begin, const word_t* end) noexcept {
     return std::accumulate(
-      begin(), end(), word_t(0),
+      begin, end, word_t(0),
       [] (word_t v, word_t w) {
         return v + math::math_traits<word_t>::pop(w);
     });
+  }
+
+  word_t count() const noexcept {
+    return dynamic_bitset::count(begin(), end());
   }
 
  private:
