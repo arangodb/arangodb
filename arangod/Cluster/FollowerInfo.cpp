@@ -308,7 +308,7 @@ bool FollowerInfo::updateFailoverCandidates() {
     std::vector<std::string> diff;
     auto followers = *_followers;
     auto failoverCandidates = *_failoverCandidates;
-    std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::greater<std::string>());
+    std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::less<std::string>());
     std::sort(followers.begin(), followers.end(), std::greater<std::string>());
     std::set_symmetric_difference(failoverCandidates.begin(),
                                   failoverCandidates.end(), followers.begin(),
@@ -327,7 +327,7 @@ bool FollowerInfo::updateFailoverCandidates() {
   std::vector<std::string> diff;
   auto followers = *_followers;
   auto failoverCandidates = *_failoverCandidates;
-  std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::greater<std::string>());
+  std::sort(failoverCandidates.begin(), failoverCandidates.end(), std::less<std::string>());
   std::sort(followers.begin(), followers.end(), std::greater<std::string>());
   std::set_symmetric_difference(failoverCandidates.begin(),
                                 failoverCandidates.end(), followers.begin(),

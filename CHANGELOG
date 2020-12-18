@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a bug in maintainer mode sorting followerinfo lists the wrong way.
+
 * Fixed issue #13238 Thread naming API on Windows are now used only if
   available in KERNEL32.DLL
 
