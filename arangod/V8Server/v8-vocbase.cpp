@@ -92,6 +92,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/Methods/Queries.h"
 #include "VocBase/Methods/Transactions.h"
 
 #ifdef USE_ENTERPRISE
@@ -1010,55 +1011,102 @@ static void JS_QueriesPropertiesAql(v8::FunctionCallbackInfo<v8::Value> const& a
 static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT(params)");
+  }
+  
   auto& vocbase = GetContextVocBase(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT()");
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+    } else {
+      allDatabases = TRI_ObjectToBoolean(isolate, args[0]);
+    }
   }
 
-  auto* queryList = vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
-
+  bool const fanout = ServerState::instance()->isCoordinator();
+  
   VPackBuilder b;
-  b.openArray();
-  for (auto const& q : queryList->listCurrent()) {
-    q.toVelocyPack(b);
+  Result res = methods::Queries::listCurrent(vocbase, b, allDatabases, fanout);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
-  b.close();
-              
   TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
   
   TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the list of slow running queries or clears the list
+/// @brief returns the list of slow running queries
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW(params)");
+  }
+  
   auto& vocbase = GetContextVocBase(isolate);
-  auto* queryList = vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
-
-  if (args.Length() == 1) {
-    queryList->clearSlow();
-    TRI_V8_RETURN_TRUE();
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+    } else {
+      allDatabases = TRI_ObjectToBoolean(isolate, args[0]);
+    }
   }
 
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW()");
-  }
-
+  bool const fanout = ServerState::instance()->isCoordinator();
+  
   VPackBuilder b;
-  b.openArray();
-  for (auto const& q : queryList->listSlow()) {
-    q.toVelocyPack(b);
+  Result res = methods::Queries::listSlow(vocbase, b, allDatabases, fanout);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
-  b.close();
-              
   TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
+  
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears the list of slow queries
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueriesClearSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CLEAR_SLOW(params)");
+  }
+  
+  auto& vocbase = GetContextVocBase(isolate);
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+    } else {
+      allDatabases = TRI_ObjectToBoolean(isolate, args[0]);
+    }
+  }
+
+  bool const fanout = ServerState::instance()->isCoordinator();
+  
+  Result res = methods::Queries::clearSlow(vocbase, allDatabases, fanout);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  TRI_V8_RETURN_TRUE();
   
   TRI_V8_TRY_CATCH_END
 }
@@ -1070,23 +1118,37 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_KILL(<id>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_KILL(<params>)");
+  }
+  
+  auto& vocbase = GetContextVocBase(isolate);
+  uint64_t id = 0;
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      auto context = TRI_IGETC;
+
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+      id = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+      if (TRI_HasProperty(context, isolate, obj, "id")) {
+        id = TRI_ObjectToUInt64(
+            isolate, obj->Get(context, TRI_V8_ASCII_STRING(isolate, "id")).FromMaybe(v8::Local<v8::Value>()), true);
+      }
+    } else {
+      id = TRI_ObjectToUInt64(isolate, args[0], true);
+    }
   }
 
-  auto id = TRI_ObjectToUInt64(isolate, args[0], true);
-  auto* queryList = vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
+  Result res = methods::Queries::kill(vocbase, id, allDatabases);
 
-  Result res = queryList->kill(id);
-
-  if (res.ok()) {
-    TRI_V8_RETURN_TRUE();
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
+  TRI_V8_RETURN_TRUE();
 
-  TRI_V8_THROW_EXCEPTION(res);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2042,6 +2104,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_SLOW"),
                                JS_QueriesSlowAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_CLEAR_SLOW"),
+                               JS_QueriesClearSlowAql, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_KILL"),
                                JS_QueriesKillAql, true);

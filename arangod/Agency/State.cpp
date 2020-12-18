@@ -1704,7 +1704,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   if (n > 0) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
-    bindVars->add("key", VPackValue(firstIndex);
+    bindVars->add("key", VPackValue(firstIndex));
     bindVars->close();
 
     std::string const compQueryStr("FOR c in compact FILTER c._key >= @key SORT c._key LIMIT 1 RETURN c");
