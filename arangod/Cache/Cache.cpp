@@ -419,8 +419,9 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   table->setAuxiliary(newTable);
 
   // do the actual migration
-  for (std::uint32_t i = 0; i < table->size(); i++) {
-    migrateBucket(table->primaryBucket(i), table->auxiliaryBuckets(i), newTable);
+  for (std::uint64_t i = 0; i < table->size(); i++) {  // need uint64 for end condition
+    migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
+                  table->auxiliaryBuckets(static_cast<uint32_t>(i)), newTable);
   }
 
   // swap tables
