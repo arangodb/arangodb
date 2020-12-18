@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
@@ -144,6 +145,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   query.queryOptions().cache = false;
   query.queryOptions().ttl = 30;
   query.queryOptions().maxRuntime = 30;
+  query.queryOptions().skipAudit = true;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";

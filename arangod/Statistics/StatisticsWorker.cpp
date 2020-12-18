@@ -167,6 +167,7 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
                              _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -288,6 +289,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
                              _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -317,6 +319,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
                              _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
   aql::QueryResult queryResult = query.executeSync();
 

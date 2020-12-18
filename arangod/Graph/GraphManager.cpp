@@ -36,6 +36,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -460,6 +461,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString{queryStr},
                              nullptr);
+  query.queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
@@ -650,6 +652,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
   arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr),
                              nullptr);
+  query.queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";

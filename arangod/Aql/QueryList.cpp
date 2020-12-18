@@ -165,7 +165,9 @@ void QueryList::remove(Query* query) {
   _queryRegistryFeature.trackQuery(elapsed);
 
   // log to audit log
-  events::AqlQuery(*query);
+  if (!query->queryOptions().skipAudit) {
+    events::AqlQuery(*query);
+  }
 
   if (!trackSlowQueries()) {
     return;
