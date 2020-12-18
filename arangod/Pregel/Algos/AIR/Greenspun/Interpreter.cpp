@@ -98,7 +98,7 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
     auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder condResult;
     {
-      StackFrameGuard<false> guard(ctx);
+      StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
       auto res = Evaluate(ctx, cond, condResult);
       if (!res) {
         return res.mapError([&](EvalError& err) {
@@ -107,7 +107,7 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
       }
     }
     if (!condResult.slice().isFalse()) {
-      StackFrameGuard<false> guard(ctx);
+      StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
       return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(iter.index()));
       });
@@ -334,7 +334,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
     } else {
       auto pair = iterators.at(index);
       for (auto&& x : pair.iterator) {
-        StackFrameGuard<true> guard(ctx);
+        StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> guard(ctx);
         ctx.setVariable(std::string{pair.varName}, x);
         if (auto res = next(ctx, index + 1, next); res.fail()) {
           return res.mapError([&](EvalError& err) {
@@ -359,7 +359,7 @@ EvalResult Call(Machine& ctx, VPackSlice const functionSlice, ArrayIterator para
   if (isEvaluateParameter) {
     VPackArrayBuilder builder(&paramBuilder);
     for (; paramIterator.valid(); ++paramIterator) {
-      StackFrameGuard<false> guard(ctx);
+      StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
       if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
         return res.mapError([&](EvalError& err) {
           err.wrapParameter(functionSlice.copyString(), paramIterator.index());
@@ -386,7 +386,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
   if (isEvaluateParams) {
     VPackArrayBuilder builder(&paramBuilder);
     for (; paramIterator.valid(); ++paramIterator) {
-      StackFrameGuard<false> guard(ctx);
+      StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
       if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
         return res.mapError([&](EvalError& err) {
           err.wrapParameter("<lambda>" + captures.toJson() + paramNames.toJson(),
@@ -396,12 +396,12 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
     }
   }
 
-  StackFrameGuard<true, true> captureFrameGuard(ctx);
+  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT> captureFrameGuard(ctx);
   for (auto&& pair : ObjectIterator(captures)) {
     ctx.setVariable(pair.key.copyString(), pair.value);
   }
 
-  StackFrameGuard<true, false> parameterFrameGuard(ctx);
+  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> parameterFrameGuard(ctx);
   VPackArrayIterator builderIter =
       (isEvaluateParams ? VPackArrayIterator(paramBuilder.slice()) : paramIterator);
   for (auto&& paramName : ArrayIterator(paramNames)) {
@@ -471,7 +471,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
     }
   }
 
-  StackFrameGuard<true> guard(ctx, std::move(frame));
+  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> guard(ctx, std::move(frame));
 
   // Now do a seq evaluation of the remaining parameter
   return SpecialSeq(ctx, paramIterator, result).mapError([](EvalError& err) {
@@ -610,7 +610,7 @@ EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& res
 
     VPackBuilder functionBuilder;
     {
-      StackFrameGuard<false> guard(ctx);
+      StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
       auto err = Evaluate(ctx, *paramIterator, functionBuilder);
       if (err.fail()) {
         return err.mapError(

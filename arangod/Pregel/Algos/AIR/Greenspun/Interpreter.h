@@ -67,12 +67,14 @@ struct Machine {
   using member_function_type =
     std::function<EvalResult(T*, Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
 
-  template<typename T, typename F>
+  template <typename T, typename F>
   EvalResult setFunctionMember(std::string_view name, F&& f, T* ptr) {
     static_assert(!(std::is_move_constructible_v<T> || std::is_move_assignable_v<T> ||
                     std::is_copy_constructible_v<T> || std::is_copy_assignable_v<T>),
                   "please make sure that `this` is a stable pointer.");
-    return setFunction(name, bind_member(f, ptr));
+    return setFunction(name, [f, ptr](Machine& ctx, VPackSlice slice, VPackBuilder& result) -> EvalResult {
+      return (ptr->*f)(ctx, slice, result);
+    });
   }
 
   using print_callback_type = std::function<void(std::string)>;
@@ -90,21 +92,33 @@ struct Machine {
   print_callback_type printCallback;
 };
 
-template <bool isNewScope, bool noParentScope = false>
+enum class StackFrameGuardMode {
+  KEEP_SCOPE,
+  NEW_SCOPE,
+  NEW_SCOPE_HIDE_PARENT
+};
+
+template <StackFrameGuardMode mode>
 struct StackFrameGuard {
-  template<bool U = isNewScope, std::enable_if_t<U, int> = 0>
+  template<StackFrameGuardMode U>
+  static constexpr bool isNewScope = U == StackFrameGuardMode::NEW_SCOPE || U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
+  template<StackFrameGuardMode U>
+  static constexpr bool noParentScope = U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
+
+  template <StackFrameGuardMode U = mode,
+            std::enable_if_t<isNewScope<U>, int> = 0>
   StackFrameGuard(Machine& ctx, StackFrame sf) : _ctx(ctx) {
     ctx.emplaceStack(std::move(sf));
   }
 
   explicit StackFrameGuard(Machine& ctx) : _ctx(ctx) {
-    if constexpr (isNewScope) {
-      ctx.pushStack(noParentScope);
+    if constexpr (isNewScope<mode>) {
+      ctx.pushStack(noParentScope<mode>);
     }
   }
 
   ~StackFrameGuard() {
-    if constexpr (isNewScope) {
+    if constexpr (isNewScope<mode>) {
       _ctx.popStack();
     }
   }
