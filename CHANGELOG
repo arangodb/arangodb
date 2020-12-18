@@ -1,6 +1,9 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #13238 Thread naming API on Windows are now used only if
+  available in KERNEL32.DLL
+
 * Fix for issue #772: Optimized document counting for ArangoSearch views.
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.

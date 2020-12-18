@@ -390,6 +390,8 @@ class ngram_similarity_query : public filter::prepared {
       const ngram_segment_state_t& query_state) const {
     using disjunction_t = irs::disjunction_iterator<doc_iterator::ptr>;
 
+    const auto& features = irs::flags::empty_instance();
+
     disjunction_t::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
     for (auto& term_state : query_state.terms) {
@@ -405,7 +407,7 @@ class ngram_similarity_query : public filter::prepared {
       }
 
       // get postings
-      auto docs = term->postings(irs::flags::empty_instance());
+      auto docs = term->postings(features);
       assert(docs);
 
       // add iterator
