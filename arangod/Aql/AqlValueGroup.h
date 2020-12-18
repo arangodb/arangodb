@@ -37,7 +37,7 @@ namespace aql {
 using AqlValueGroup = std::vector<AqlValue>;
 
 struct HashedAqlValueGroup {
-  size_t hash;
+  size_t hash{0};
   AqlValueGroup values;
 };
 
