@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue #13238 Thread naming API on Windows are now used only if
+  available in KERNEL32.DLL
+
 * When querying the list of currently running or slow AQL queries, ignore not-yet
   created databases on other coordinators.
 
