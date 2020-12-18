@@ -1,0 +1,452 @@
+/* *******************************************
+ * Stemmer for Yiddish language in YIVO script
+ *
+ * Author: Assaf Urieli
+ * Emails: assaf.urieli at gmail.com
+ * Version: 0.1 (15.05.2020)
+ *
+ ********************************************* */
+
+routines (
+       prelude
+       mark_regions
+       R1
+       standard_suffix
+)
+
+externals ( stem )
+
+integers ( p1 x )
+
+groupings ( vowel niked alefBeys consonant )
+
+stringescapes {}
+
+// AlefBeys
+stringdef Alef         '{U+05D0}'
+stringdef Beys         '{U+05D1}'
+stringdef Giml         '{U+05D2}'
+stringdef Dalet        '{U+05D3}'
+stringdef Hey          '{U+05D4}'
+stringdef Vov          '{U+05D5}'
+stringdef Zayen        '{U+05D6}'
+stringdef Khes         '{U+05D7}'
+stringdef Tes          '{U+05D8}'
+stringdef Yud          '{U+05D9}'
+stringdef LangerKhof   '{U+05DA}'
+stringdef Khof         '{U+05DB}'
+stringdef Lamed        '{U+05DC}'
+stringdef ShlosMem     '{U+05DD}'
+stringdef Mem          '{U+05DE}'
+stringdef LangerNun    '{U+05DF}'
+stringdef Nun          '{U+05E0}'
+stringdef Samekh       '{U+05E1}'
+stringdef Ayen         '{U+05E2}'
+stringdef LangerFey    '{U+05E3}'
+stringdef Fey          '{U+05E4}'
+stringdef LangerTsadek '{U+05E5}'
+stringdef Tsadek       '{U+05E6}'
+stringdef Kuf          '{U+05E7}'
+stringdef Reysh        '{U+05E8}'
+stringdef Shin         '{U+05E9}'
+stringdef Sof          '{U+05EA}'
+stringdef TsveyVovn    '{U+05F0}'
+stringdef VovYud       '{U+05F1}'
+stringdef TsveyYudn    '{U+05F2}'
+
+// Niked
+stringdef Shvo          '{U+05B0}'
+stringdef Khirik        '{U+05B4}'
+stringdef Tseyre        '{U+05B5}'
+stringdef Segl          '{U+05B6}'
+stringdef ReducedSegl   '{U+05B1}'
+stringdef Pasekh        '{U+05B7}'
+stringdef ReducedPasekh '{U+05B2}'
+stringdef Komets        '{U+05B8}'
+stringdef ReducedKomets '{U+05B3}'
+stringdef Rafe          '{U+05BF}'
+stringdef SinDot        '{U+05C2}'
+stringdef ShinDot       '{U+05C1}'
+stringdef Khoylm        '{U+05B9}'
+stringdef Melupm        '{U+05BC}'
+stringdef Kubuts        '{U+05BB}'
+
+// Groupings
+define niked       '{Shvo}{Khirik}{Tseyre}{Segl}{ReducedSegl}{Pasekh}{ReducedPasekh}{Komets}{ReducedKomets}{SinDot}{ShinDot}{Khoylm}{Melupm}{Kubuts}{Rafe}'
+define alefBeys    '{Alef}{Beys}{Giml}{Dalet}{Hey}{Vov}{Zayen}{Khes}{Tes}{Yud}{LangerKhof}{Khof}{Lamed}{ShlosMem}{Mem}{LangerNun}{Nun}{Samekh}{Ayen}{LangerFey}{Fey}{LangerTsadek}{Tsadek}{Kuf}{Reysh}{Shin}{Sof}{TsveyVovn}{VovYud}{TsveyYudn}'
+define vowel           '{Alef}{Vov}{Yud}{Ayen}{VovYud}{TsveyYudn}'
+define consonant   alefBeys - vowel
+
+define prelude as (
+  do (
+    repeat goto (
+      ( ['{Vov}{Vov}'] not '{Melupm}' <- '{TsveyVovn}' )
+      or
+      ( ['{Vov}{Yud}'] not '{Khirik}' <- '{VovYud}' )
+      or
+      ( ['{Yud}{Yud}'] not '{Khirik}' <- '{TsveyYudn}' )
+      or
+      ( ['{LangerKhof}'] <- '{Khof}')
+      or
+      ( ['{ShlosMem}'] <- '{Mem}' )
+      or
+      ( ['{LangerNun}'] <- '{Nun}' )
+      or
+      ( ['{LangerFey}'] <- '{Fey}' )
+      or
+      ( ['{LangerTsadek}'] <- '{Tsadek}' )
+    )
+  )
+
+  do (repeat goto ( [niked] delete ))
+)
+
+define mark_regions as (
+  $p1 = limit
+
+  (
+    try (
+      // Replace past participle ge- at start of word
+      ['{Giml}{Ayen}']
+         ( <- 'GE' )
+    )
+
+    try (
+      // skip verbal prefix
+      among(
+        // Free stressed: Adurkh-, Durkh-, Ahin-, Aher-, Avek-, Mit-, Antkegn-, Akegn-, Anider-, Arop-, Aroys-, Aroyf-, Arum-, Arayn-, Arunter-, Ariber-, Nokh-, Farbay-, Aheym-, Afir-, Faroys-, Funander-, Tsuzamen-, Tsunoyf-, Tsurik-
+        '{Alef}{Dalet}{Vov}{Reysh}{Khof}' '{Dalet}{Vov}{Reysh}{Khof}' '{Alef}{Hey}{Yud}{Nun}' '{Alef}{Hey}{Ayen}{Reysh}' '{Alef}{TsveyVovn}{Ayen}{Kuf}' '{Mem}{Yud}{Tes}' '{Alef}{Nun}{Tes}{Kuf}{Ayen}{Giml}{Nun}' '{Alef}{Kuf}{Ayen}{Giml}{Nun}' '{Alef}{Nun}{Yud}{Dalet}{Ayen}{Reysh}' '{Alef}{Reysh}{Alef}{Fey}' '{Alef}{Reysh}{VovYud}{Samekh}' '{Alef}{Reysh}{VovYud}{Fey}' '{Alef}{Reysh}{Vov}{Mem}' '{Alef}{Reysh}{TsveyYudn}{Nun}' '{Alef}{Reysh}{Vov}{Nun}{Tes}{Ayen}{Reysh}' '{Alef}{Reysh}{Yud}{Beys}{Ayen}{Reysh}' '{Nun}{Alef}{Khof}' '{Fey}{Alef}{Reysh}{Beys}{TsveyYudn}' '{Alef}{Hey}{TsveyYudn}{Mem}' '{Alef}{Fey}{Yud}{Reysh}' '{Fey}{Alef}{Reysh}{VovYud}{Samekh}' '{Fey}{Vov}{Nun}{Alef}{Nun}{Dalet}{Ayen}{Reysh}' '{Tsadek}{Vov}{Zayen}{Alef}{Mem}{Ayen}{Nun}' '{Tsadek}{Vov}{Nun}{VovYud}{Fey}' '{Tsadek}{Vov}{Reysh}{Yud}{Kuf}'
+
+        // Stressed: Oys-, Oyf-, Um-, Unter-, Iber-, Ayn-, On-, Op-, Bay-, For-, Tsu-.
+        '{Alef}{VovYud}{Samekh}' '{Alef}{VovYud}{Fey}' '{Alef}{Vov}{Mem}' '{Alef}{Vov}{Nun}{Tes}{Ayen}{Reysh}' '{Alef}{Yud}{Beys}{Ayen}{Reysh}' '{Alef}{TsveyYudn}{Nun}' '{Alef}{Nun}' '{Alef}{Fey}' '{Beys}{TsveyYudn}' '{Fey}{Alef}{Reysh}' '{Tsadek}{Vov}'
+
+        // Unstressed:  Ant-, Ba-, Der-, Tse-. Far- already covered by For-. Ge- comes later.
+        '{Alef}{Nun}{Tes}' '{Beys}{Alef}' '{Dalet}{Ayen}{Reysh}' '{Tsadek}{Ayen}'
+
+        // If verbal prefix followed by Tsu- or Ge-, replace it
+        (
+
+          (('{Tsadek}{Vov}{Giml}{Nun}' or '{Tsadek}{Vov}{Kuf}{Tes}' or '{Tsadek}{Vov}{Kuf}{Nun}') not (hop 1) hop -4)
+          or
+          ( ['{Giml}{Ayen}'] <- 'GE')
+          or
+          (['{Tsadek}{Vov}'] <- 'TSU')
+        )
+      )
+    )
+
+    test(hop 3 setmark x)
+
+    // We want to allow three-consonant Hebrew roots.
+    // To this end, we skip three-consonant combinations that exist in non-Hebraic Yiddish.
+    try (
+      among(
+        '{Shin}{Fey}{Reysh}' '{Shin}{Tes}{Reysh}' '{Shin}{Tes}{Shin}' '{Dalet}{Zayen}{Shin}'
+          ( true )
+      )
+    )
+
+    // Either 3 consonants or the first non-vowel after a vowel
+    (
+      not (consonant consonant consonant setmark p1)
+      goto vowel repeat vowel setmark p1
+    )
+    try($p1 < x  $p1 = x)  // at least 3 past the prefix
+  )
+
+)
+
+backwardmode (
+  define R1 as $p1 <= cursor
+
+  define standard_suffix as (
+    do (
+      [substring] among(
+        // Plural/adjective endings: -er, -ers, -e, -n, -s, -en, -ns, -eners, -ens, -es
+         '{Ayen}{Reysh}{Samekh}' '{Ayen}{Nun}' '{Nun}{Samekh}' '{Ayen}{Nun}{Ayen}{Reysh}{Samekh}' '{Ayen}{Samekh}' '{Ayen}' '{Nun}' '{Samekh}' '{Ayen}{Mem}' '{Ayen}{Reysh}'
+          ( R1 delete )
+
+        // Exception: don't delete noun endings -ie, like "agitatsie"
+        '{Yud}{Ayen}'
+          ( true )
+
+        // -ies => ie
+        '{Yud}{Ayen}{Samekh}'
+          ( R1  <- '{Yud}{Ayen}'  )
+
+        // Plural/adjective endings: -enem, -ener, -ene, -ens
+        '{Ayen}{Nun}{Ayen}' '{Ayen}{Nun}{Ayen}{Mem}' '{Ayen}{Nun}{Ayen}{Reysh}' '{Ayen}{Nun}{Samekh}'
+          (R1 delete 
+            // -gegangen => -gey
+            not (['{Giml}{Alef}{Nun}{Giml}' ] <- '{Giml}{TsveyYudn}')
+            // -genumen => -nem
+            not (['{Nun}{Vov}{Mem}'] <- '{Nun}{Ayen}{Mem}')
+            // -gemiten => -mayd
+            not (['{Mem}{Yud}{Tes}'] <- '{Mem}{TsveyYudn}{Dalet}')
+            // -gebiten => -bayt
+            not (['{Beys}{Yud}{Tes}'] <- '{Beys}{TsveyYudn}{Tes}')
+            // -gebisen => -bays
+            not (['{Beys}{Yud}{Samekh}'] <- '{Beys}{TsveyYudn}{Samekh}')
+            // -gevizen => -vayz
+            not (['{TsveyVovn}{Yud}{Zayen}'] <- '{TsveyVovn}{TsveyYudn}{Zayen}')
+            // -getriben => -trayb
+            not (['{Tes}{Reysh}{Yud}{Beys}'] <- '{Tes}{Reysh}{TsveyYudn}{Beys}')
+            // -geliten => -layt
+            not (['{Lamed}{Yud}{Tes}'] <- '{Lamed}{TsveyYudn}{Tes}')
+            // -gekliben => -klayb
+            not (['{Kuf}{Lamed}{Yud}{Beys}'] <- '{Kuf}{Lamed}{TsveyYudn}{Beys}')
+            // -geriben => -rayb
+            not (['{Reysh}{Yud}{Beys}'] <- '{Reysh}{TsveyYudn}{Beys}')
+            // -gerisen => -rays
+            not (['{Reysh}{Yud}{Samekh}'] <- '{Reysh}{TsveyYudn}{Samekh}')
+            // -geshvigen => -shvayg
+            not (['{Shin}{TsveyVovn}{Yud}{Giml}'] <- '{Shin}{TsveyVovn}{TsveyYudn}{Giml}')
+            // -geshmisen => -shmays
+            not (['{Shin}{Mem}{Yud}{Samekh}'] <- '{Shin}{Mem}{TsveyYudn}{Samekh}')
+            // -geshniten => -shnayd
+            not (['{Shin}{Nun}{Yud}{Tes}'] <- '{Shin}{Nun}{TsveyYudn}{Dalet}')
+            // -geshriben => -shrayb
+            not (['{Shin}{Reysh}{Yud}{Beys}'] <- '{Shin}{Reysh}{TsveyYudn}{Beys}')
+            // -gebunden => -bind
+            not (['{Beys}{Vov}{Nun}{Dalet}'] <- '{Beys}{Yud}{Nun}{Dalet}')
+            // -gevuntshn => -vintsh
+            not (['{TsveyVovn}{Vov}{Tes}{Shin}'] <- '{TsveyVovn}{Yud}{Tes}{Shin}')
+            // -gezungen => -zing
+            not (['{Zayen}{Vov}{Nun}{Giml}'] <- '{Zayen}{Yud}{Nun}{Giml}')
+            // -getrunken => -trink
+            not (['{Tes}{Reysh}{Vov}{Nun}{Kuf}'] <- '{Tes}{Reysh}{Yud}{Nun}{Kuf}')
+            // -getsvungen => -tsving
+            not (['{Tsadek}{TsveyVovn}{Vov}{Nun}{Giml}'] <- '{Tsadek}{TsveyVovn}{Yud}{Nun}{Giml}')
+            // -geshlungen => -shling
+            not (['{Shin}{Lamed}{Vov}{Nun}{Giml}'] <- '{Shin}{Lamed}{Yud}{Nun}{Giml}')
+            // -geboygen => -beyg
+            not (['{Beys}{VovYud}{Giml}'] <- '{Beys}{TsveyYudn}{Giml}')
+            // -gehoyben => -heyb
+            not (['{Hey}{VovYud}{Beys}'] <- '{Hey}{TsveyYudn}{Beys}')
+            // -farloyren => -farlir
+            not (['{Fey}{Alef}{Reysh}{Lamed}{VovYud}{Reysh}'] <- '{Fey}{Alef}{Reysh}{Lamed}{Yud}{Reysh}')
+            // -shtanen => -shtey
+            not (['{Shin}{Tes}{Alef}{Nun}'] <- '{Shin}{Tes}{TsveyYudn}')
+             // -geshvoyrn => -shver
+            not (['{Shin}{TsveyVovn}{VovYud}{Reysh}'] <- '{Shin}{TsveyVovn}{Ayen}{Reysh}')
+         )
+
+        // Verb/past participle ending: -t
+        '{Tes}'
+          ( R1 delete ) 
+
+        // As well as noun/adjectives ending in -tn, -te, -ter, -ts so that the "-t" doesn't differentiate
+        // Similarly for past participles: -tns, -tene, -tenem, -tener
+        // If the Tes was before R1, we try to perform the same action while leaving the Tes in place
+        '{Tes}{Nun}' '{Tes}{Ayen}' '{Tes}{Ayen}{Reysh}' '{Tes}{Samekh}'
+        '{Tes}{Nun}{Samekh}' '{Tes}{Ayen}{Nun}{Ayen}' '{Tes}{Ayen}{Nun}{Ayen}{Mem}' '{Tes}{Ayen}{Nun}{Ayen}{Reysh}'
+          ( not (R1 delete
+              // -gebrakht => -breng
+              not (['{Giml}{Ayen}{Beys}{Reysh}{Alef}{Khof}' or '{Beys}{Reysh}{Alef}{Khof}'] <- '{Beys}{Reysh}{Ayen}{Nun}{Giml}')
+              )
+              repeat (hop -1)
+              ['{Ayen}{Nun}{Ayen}{Reysh}' or '{Ayen}{Nun}{Ayen}{Mem}' or '{Ayen}{Nun}{Ayen}' or'{Nun}' or '{Ayen}{Reysh}' or '{Nun}{Samekh}' or '{Ayen}' or '{Samekh}'] R1 delete) 
+
+        // -geyn shorted to -gey
+        '{Giml}{TsveyYudn}{Nun}'
+                    ( <- '{Giml}{TsveyYudn}')
+
+        // ##################### Long list of irregular past participles
+        // -(ge)gangen (shortened to -gangen after prefixes) => -gey
+        '{Giml}{Alef}{Nun}{Giml}{Ayen}{Nun}'
+                    ( <- '{Giml}{TsveyYudn}' )
+
+        // -(ge)numen (shortened to -numen after prefixes) => -nem
+        '{Nun}{Vov}{Mem}{Ayen}{Nun}'
+          (<- '{Nun}{Ayen}{Mem}' )
+
+        // -(ge)shribn (shortened to -shribn after prefixes) => -shrayb
+        '{Shin}{Reysh}{Yud}{Beys}{Nun}'
+          (<- '{Shin}{Reysh}{TsveyYudn}{Beys}' )
+
+        // -gemiten => -mayd
+        'GE{Mem}{Yud}{Tes}{Nun}' 
+          (<- '{Mem}{TsveyYudn}{Dalet}')
+
+        // -gebiten => -bayt
+        'GE{Beys}{Yud}{Tes}{Nun}' 
+          (<- '{Beys}{TsveyYudn}{Tes}')
+
+        // -gebisen => -bays
+        'GE{Beys}{Yud}{Samekh}{Nun}' 
+          ( <- '{Beys}{TsveyYudn}{Samekh}')
+
+        // -gevizen => -vayz
+        '{TsveyVovn}{Yud}{Zayen}{Nun}' 
+           ( <- '{TsveyVovn}{TsveyYudn}{Zayen}')
+
+        // -getriben => -trayb
+        '{Tes}{Reysh}{Yud}{Beys}{Nun}' 
+           ( <- '{Tes}{Reysh}{TsveyYudn}{Beys}')
+
+        // -geliten => -layt
+        'GE{Lamed}{Yud}{Tes}{Nun}' 
+           ( <- '{Lamed}{TsveyYudn}{Tes}')
+
+        // -gekliben => -klayb
+        '{Kuf}{Lamed}{Yud}{Beys}{Nun}' 
+           ( <- '{Kuf}{Lamed}{TsveyYudn}{Beys}')
+
+        // -geriben => -rayb
+        '{Reysh}{Yud}{Beys}{Nun}' 
+           ( <- '{Reysh}{TsveyYudn}{Beys}')
+
+        // -gerisen => -rays
+        'GE{Reysh}{Yud}{Samekh}{Nun}' 
+           ( <- '{Reysh}{TsveyYudn}{Samekh}')
+
+        // -geshvigen => -shvayg
+        '{Shin}{TsveyVovn}{Yud}{Giml}{Nun}' 
+           ( <- '{Shin}{TsveyVovn}{TsveyYudn}{Giml}')
+
+        // -geshmisen => -shmays
+        '{Shin}{Mem}{Yud}{Samekh}{Nun}' 
+           ( <- '{Shin}{Mem}{TsveyYudn}{Samekh}')
+
+        // -geshniten => -shnayd
+        '{Shin}{Nun}{Yud}{Tes}{Nun}' 
+           ( <- '{Shin}{Nun}{TsveyYudn}{Dalet}')
+
+        // -gebunden => -bind
+        '{Beys}{Vov}{Nun}{Dalet}{Nun}' 
+         ( <- '{Beys}{Yud}{Nun}{Dalet}')
+
+        // -gevuntshn => -vintsh
+        '{TsveyVovn}{Vov}{Tes}{Shin}{Nun}' 
+         ( <- '{TsveyVovn}{Yud}{Tes}{Shin}')
+
+        // -gezungen => -zing
+        '{Zayen}{Vov}{Nun}{Giml}{Nun}' 
+         ( <- '{Zayen}{Yud}{Nun}{Giml}')
+
+        // -getrunken => -trink
+        '{Tes}{Reysh}{Vov}{Nun}{Kuf}{Nun}' 
+         ( <- '{Tes}{Reysh}{Yud}{Nun}{Kuf}')
+
+        // -getsvungen => -tsving
+        '{Tsadek}{TsveyVovn}{Vov}{Nun}{Giml}{Nun}' 
+         ( <- '{Tsadek}{TsveyVovn}{Yud}{Nun}{Giml}')
+
+        // -geshlungen => -shling
+        '{Shin}{Lamed}{Vov}{Nun}{Giml}{Nun}' 
+         ( <- '{Shin}{Lamed}{Yud}{Nun}{Giml}')
+
+        // -geboygen => -beyg
+        '{Beys}{VovYud}{Giml}{Nun}' 
+         ( <- '{Beys}{TsveyYudn}{Giml}')
+
+        // -gehoyben => -heyb
+        '{Hey}{VovYud}{Beys}{Nun}' 
+         ( <- '{Hey}{TsveyYudn}{Beys}')
+
+        // -farloyren => -farlir
+        '{Fey}{Alef}{Reysh}{Lamed}{VovYud}{Reysh}{Nun}' 
+         ( <- '{Fey}{Alef}{Reysh}{Lamed}{Yud}{Reysh}')
+
+        // -shtanen => -shtey
+        '{Shin}{Tes}{Alef}{Nun}{Ayen}{Nun}' 
+         ( <- '{Shin}{Tes}{TsveyYudn}')
+
+         // -geshvoyrn => -shver
+        '{Shin}{TsveyVovn}{VovYud}{Reysh}{Nun}' 
+         ( <- '{Shin}{TsveyVovn}{Ayen}{Reysh}')
+
+        // -(ge)brakht (shortened to -brakht after prefixes) => -breng
+        '{Beys}{Reysh}{Alef}{Khof}{Tes}'
+          (<- '{Beys}{Reysh}{Ayen}{Nun}{Giml}' )
+
+        // ###### End of irregular past participles
+
+        // Noun endings: -ung, -hayt, -kayt, -ikayt, -shaft
+        '{Vov}{Nun}{Giml}' '{Hey}{TsveyYudn}{Tes}' '{Kuf}{TsveyYudn}{Tes}' '{Yud}{Kuf}{TsveyYudn}{Tes}' '{Shin}{Alef}{Fey}{Tes}'
+          ( R1 delete )
+
+        // Noun endings: -izm, izmen
+        '{Yud}{Zayen}{Mem}' '{Yud}{Zayen}{Mem}{Ayen}{Nun}'
+          ( R1 delete )
+
+        // Plural ending: -im
+        '{Yud}{Mem}'
+          ( R1 delete )
+          
+        // Plural ending: -os (Hebraic), replace with -h
+        '{Vov}{Sof}'
+          ( R1  <- '{Hey}' )
+
+        // Diminutive endings: -elekh, -ele, -lekh, -eles, -elen
+        '{Ayen}{Lamed}{Ayen}{Khof}' '{Ayen}{Lamed}{Ayen}' '{Lamed}{Ayen}{Khof}' '{Ayen}{Lamed}{Ayen}{Samekh}' '{Ayen}{Lamed}{Ayen}{Nun}'
+           ( R1 delete )
+        
+        // Noun ending: -ist, -istn
+        '{Yud}{Samekh}{Tes}' '{Yud}{Samekh}{Tes}{Nun}'
+          ( R1 delete )
+
+        // Exceptions to above: -gist, -shist
+        '{Giml}{Yud}{Samekh}{Tes}' '{Shin}{Yud}{Samekh}{Tes}'
+          ( hop -4 ['{Tes}'] R1 delete )
+        
+        // Verb ending: -stu
+        '{Samekh}{Tes}{Vov}'
+          ( R1 delete )
+
+        // Superlative ending: -ster, -ste, -stn 
+        '{Samekh}{Tes}{Ayen}{Reysh}' '{Samekh}{Tes}{Ayen}' '{Samekh}{Tes}{Nun}' 
+          ( R1 delete )
+          
+        // Ambiguous verb ending: -st
+        '{Samekh}{Tes}'
+          ( R1 delete ) 
+      )
+    )
+
+    do (
+      [substring] among(
+        // Noun endings: -ung, -hayt, -kayt, -ikayt, -shaft
+        '{Vov}{Nun}{Giml}' '{Hey}{TsveyYudn}{Tes}' '{Kuf}{TsveyYudn}{Tes}' '{Yud}{Kuf}{TsveyYudn}{Tes}' '{Shin}{Alef}{Fey}{Tes}'
+          ( R1 delete )
+
+        // Diminutive endings: -l
+        '{Lamed}'
+          ( R1 consonant delete )
+      )
+    )
+
+    do (
+      [substring] among(
+        // Adjective endings: -ig, -ik, -ish, -nik
+        '{Yud}{Giml}' '{Yud}{Kuf}' '{Yud}{Shin}' '{Nun}{Yud}{Kuf}' '{Dalet}{Yud}{Kuf}'
+          ( R1 delete )
+
+        // Exceptions to above: -blik, -glik
+        '{Beys}{Lamed}{Yud}{Kuf}' '{Giml}{Lamed}{Yud}{Kuf}'
+          ( true )
+          
+        // Present participle endings: -ndik
+        '{Nun}{Dalet}{Yud}{Kuf}'
+           ( R1 delete )
+
+        // Present participle ending -endik: delete if after a -ng, -nk, -n, -m, consonant+l, or vowel.
+        // Otherwise, delete just the -ndik part.
+        '{Ayen}{Nun}{Dalet}{Yud}{Kuf}'
+           ( R1 
+             not (test('{Nun}{Giml}' or '{Nun}{Kuf}' or '{Nun}' or '{Mem}' or ('Lamed' consonant) or vowel) delete)
+             hop -5 '{Nun}{Dalet}{Yud}{Kuf}' delete
+           )
+      )
+    )
+
+    do (repeat goto ( ['GE' or 'TSU'] delete ))
+  )
+)
+
+define stem as (
+  do prelude
+  do mark_regions
+  backwards
+    do standard_suffix
+)

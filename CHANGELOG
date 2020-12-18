@@ -24,6 +24,50 @@ devel
   Using the `all` parameter is only allowed when making the call inside the
   `_system` database and with superuser privileges.
   
+* Improve performance and memory efficiency of agency restart from persisted
+  database directory.
+
+* Added the following agency-related metrics:
+  - `arangodb_agency_client_lookup_table_size`: current number of entries
+    in agency client id lookup table. This gauge is available only on
+    agent instances.
+  - `arangodb_agency_cache_callback_count`: current number of entries in
+    agency cache callbacks table. This gauge will be effective on coordinators
+    and DB servers.
+  - `arangodb_agency_callback_count`: current number of agency callbacks
+    registered. This gauge will be effective on coordinators and DB servers.
+
+* Clean up agency change log, cluster info caches.
+
+* Added new `rocksdb_write_stalls` and `rocksdb_write_stops` counter metrics,
+  which should be more accurate than existing metrics related to the underlying
+  conditions.
+
+* Increased the default value of `--rocksdb.min-write-buffer-number-to-merge` in
+  some cases when we have allocated a sufficient amount of memory to the write
+  buffers for this to make sense. The increased value should help prevent
+  compaction-induced write stalls/stops, and should only be enabled when under
+  conditions such that it shouldn't greatly increase the chance of flush-induced
+  write stalls/stops.
+
+* Changed the default values for `--rocksdb.cache-index-and-filter-blocks` and
+  `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to true to
+  improve control over memory usage.
+
+* Lowered the minimum allowed value for `--rocksdb.max-write-buffer-number` from
+  9 to 4 to allow more fine-grained memory usage control.
+  
+* Fix for issue #772: Optimized document counting for ArangoSearch views.
+  Added new ArangoSearch view option 'countApproximate' for customizing 
+  view count strategy.
+
+* Fix AR-113: Add a check in the AQL geo-index-optimizer rule that vars
+  referenced by a candidate index expression are actually available at the
+  candidate index node.
+
+* Views on SmartGraph Edge collections do not contain some documents
+  twice.
+
 * Fixed agency redirect in poll api.
 
 * Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
@@ -62,6 +106,9 @@ devel
 * Added LDAP_OFF if referrals and restart are false.
 
 * If LDAP search fails, also retry (update to given number of retries).
+
+* Add cluster support for collection.checksum() method to calculate CRC
+  checksums for collections.
 
 * Fix cluster-internal replication of documents with special keys (percent
   character, which has a special meaning when used inside URLs).

@@ -53,12 +53,12 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
-class RocksDBEventListener;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
+class RocksDBShaCalculator;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
@@ -407,8 +407,6 @@ class RocksDBEngine final : public StorageEngine {
   rocksdb::TransactionDB* _db;
   /// default read options
   rocksdb::Options _options;
-  /// arangodb comparator - required because of vpack in keys
-  std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir
@@ -486,11 +484,11 @@ class RocksDBEngine final : public StorageEngine {
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
-  std::shared_ptr<RocksDBThrottle> _listener;
+  std::shared_ptr<RocksDBThrottle> _throttleListener;
 
   // optional code to notice when rocksdb creates or deletes .ssh files.  Currently
   //  uses that input to create or delete parallel sha256 files
-  std::shared_ptr<RocksDBEventListener> _shaListener;
+  std::shared_ptr<RocksDBShaCalculator> _shaListener;
 
   arangodb::basics::ReadWriteLock _purgeLock;
 };
