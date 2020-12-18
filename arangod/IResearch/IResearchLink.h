@@ -271,12 +271,14 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchViewStoredValues const& storedValues() const noexcept;
 
-  bool setCollectionName(irs::string_ref name) {
-    if (_meta._collectionName != name) {
+  bool setCollectionName(irs::string_ref name) noexcept {
+    TRI_ASSERT(!name.empty());
+    if (_meta._collectionName.empty()) {
       auto nonConstMeta = const_cast<IResearchLinkMeta*>(&_meta);
       nonConstMeta->_collectionName = name;
       return true;
     }
+    TRI_ASSERT(name == _meta._collectionName);
     return false;
   }
 
