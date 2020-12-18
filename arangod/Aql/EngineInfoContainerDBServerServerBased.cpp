@@ -404,7 +404,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
   auto cleanupGuard = scopeGuard([this, &serverToQueryId]() {
-    cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), serverToQueryId);
+    // Fire and forget
+    std::ignore = cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), serverToQueryId);
   });
 
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
@@ -449,84 +450,83 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   futures::Future<Result> fastPathResult =
       futures::collectAll(networkCalls)
           .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses) -> Result {
-            // We need to make sure to get() all responses.
-            // Otherwise they will eventually resolve and trigger the .then() callback
-            // which might be after we left this function.
-            // Especially if one response errors with "non-repairable" code so
-            // we actually abort here and cannot revert to slow path execution.
+            // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
+            // error as we need to abort after.
+            // Otherwise we need to report 
             Result res{TRI_ERROR_NO_ERROR};
             for (auto const& tryRes : responses) {
-              if (tryRes.get().fail()) {
-                // keep the first error.
-                // value other erros above lock timeout
-                // as we can only continue iff we do only get timeout
-                // here, if we get something else we have no chance
-                // to succeed on slow path either.
-                if (!res.fail() || res.is(TRI_ERROR_LOCK_TIMEOUT)) {
-                  res = tryRes.get();
+              auto response = tryRes.get();
+              if (response.fail()) {
+                if (response.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+                  // Found something we cannot revoer from.
+                  // Return and give up
+                  return response;
                 }
-              };
+                // track that we have lock_timeout_present
+                res = response;
+              }
             }
             // Return what we have, this will be ok() if and only
             // if none of the requests failed.
             // If will be LOCK_TIMEOUT if and only if the only error
             // we see was LOCK_TIMEOUT.
-            // Will contain any other of the errors else.
             return res;
           });
   if (fastPathResult.get().fail()) {
-    if (fastPathResult.get().is(TRI_ERROR_LOCK_TIMEOUT)) {
-      {
-        // in case of fast path failure, we need to cleanup engines
-        cleanupEngines(fastPathResult.get().errorNumber(),
-                       _query.vocbase().name(), serverToQueryId);
-        snippetIds.clear();
-        // TODO what if a cleanup job fails?
-      }
-
-      // set back to default lock timeout for slow path fallback
-      _query.setLockTimeout(oldLockTimeout);
-      LOG_TOPIC("f5022", INFO, Logger::AQL)
-          << "Potential dead-lock detected, using slow path for locking. This "
-             "is expected if exclusive locks are used.";
-
-      // trx.abort() => Coordinator && DBServer löschen diese Transaction
-      // trx.rerollId() => Coordintor denkt sich eine neue ID aus, und setzt diese auf den Aktuellen stand der
-      // vorber aborteten transaction.
-      // Weitermachen (request muss neu gebaut werden mit TrxId stimmt)
-      trx.state()->coordinatorRerollTransactionId();
-
-      // Make sure we always use the same ordering on servers
-      std::sort(engineInformation.begin(), engineInformation.end(),
-                [&trx](auto const& lhs, auto const& rhs) {
-                  // Entry <0> is the Server
-                  return trx.state()->SortServerIds(std::get<0>(lhs), std::get<0>(rhs));
-                });
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // Make sure we always maintain the correct ordering of servers
-      // here, if we contact them in increasing name, we avoid dead-locks
-      std::string serverBefore = "";
-#endif
-      // fallback routine, use synchronous requests (slowPath)
-      for (auto& [server, buffer, didCreateEngine] : engineInformation) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // If the serverBefore has a smaller ID we allways contact by increasing
-        // ID here.
-        TRI_ASSERT(serverBefore < server);
-        serverBefore = server;
-#endif
-        VPackSlice infoSlice{buffer->data()};
-
-        auto request = buildSetupRequest(trx, std::move(server), infoSlice,
-                                         std::move(didCreateEngine), snippetIds, serverToQueryId,
-                                         serverToQueryIdLock, pool, options);
-        _query.incHttpRequests(unsigned(1));
-        if (request.get().fail()) {
-          return request.get();
-        }
-      }
-    } else {
+    if (fastPathResult.get().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
       return fastPathResult.get();
+    }
+    {
+      // in case of fast path failure, we need to cleanup engines
+      auto requests = cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), serverToQueryId);
+      // Wait for all requests to complete.
+      // So we know that all Transactions are aborted.
+      // We do NOT care for the actual result.
+      futures::collectAll(requests).wait();
+      snippetIds.clear();
+
+    }
+
+    // set back to default lock timeout for slow path fallback
+    _query.setLockTimeout(oldLockTimeout);
+    LOG_TOPIC("f5022", INFO, Logger::AQL)
+        << "Potential dead-lock detected, using slow path for locking. This "
+           "is expected if exclusive locks are used.";
+
+    // trx.abort() => Coordinator && DBServer löschen diese Transaction
+    // trx.rerollId() => Coordintor denkt sich eine neue ID aus, und setzt diese auf den Aktuellen stand der
+    // vorber aborteten transaction.
+    // Weitermachen (request muss neu gebaut werden mit TrxId stimmt)
+    trx.state()->coordinatorRerollTransactionId();
+
+    // Make sure we always use the same ordering on servers
+    std::sort(engineInformation.begin(), engineInformation.end(),
+              [&trx](auto const& lhs, auto const& rhs) {
+                // Entry <0> is the Server
+                return trx.state()->SortServerIds(std::get<0>(lhs), std::get<0>(rhs));
+              });
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // Make sure we always maintain the correct ordering of servers
+    // here, if we contact them in increasing name, we avoid dead-locks
+    std::string serverBefore = "";
+#endif
+    // fallback routine, use synchronous requests (slowPath)
+    for (auto& [server, buffer, didCreateEngine] : engineInformation) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      // If the serverBefore has a smaller ID we allways contact by increasing
+      // ID here.
+      TRI_ASSERT(serverBefore < server);
+      serverBefore = server;
+#endif
+      VPackSlice infoSlice{buffer->data()};
+
+      auto request = buildSetupRequest(trx, std::move(server), infoSlice,
+                                       std::move(didCreateEngine), snippetIds, serverToQueryId,
+                                       serverToQueryIdLock, pool, options);
+      _query.incHttpRequests(unsigned(1));
+      if (request.get().fail()) {
+        return request.get();
+      }
     }
   }
 
@@ -539,7 +539,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     std::string serverDest, std::vector<bool> const& didCreateEngine,
     QueryId& globalQueryId) const {
   if (!response.isObject() || !response.get("result").isObject()) {
-    LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
+    LOG_TOPIC("0c3f2", WARN, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
     if (response.hasKey("errorMessage") && response.hasKey("errorNum")) {
       int code =
@@ -635,8 +635,9 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
  * -> queryid.
  */
-void EngineInfoContainerDBServerServerBased::cleanupEngines(
+std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased::cleanupEngines(
     int errorCode, std::string const& dbname, aql::ServerQueryIdList& serverQueryIds) const {
+  std::vector<arangodb::network::FutureRes> requests;
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
@@ -652,11 +653,11 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
   builder.openObject();
   builder.add("code", VPackValue(std::to_string(errorCode)));
   builder.close();
+  requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {
-    // fire and forget
-    network::sendRequest(pool, server, fuerte::RestVerb::Delete,
-                         url + std::to_string(queryId),
-                         /*copy*/ body, options);
+    requests.emplace_back(network::sendRequest(pool, server, fuerte::RestVerb::Delete,
+                                                          url + std::to_string(queryId),
+                                                          /*copy*/ body, options));
   }
   _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
@@ -667,15 +668,15 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
-      // fire and forget
-      network::sendRequest(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-                           url + basics::StringUtils::itoa(engine.second), noBody, options);
+      requests.emplace_back(network::sendRequest(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+                           url + basics::StringUtils::itoa(engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
     gn->clearEngines();
   }
 
   serverQueryIds.clear();
+  return requests;
 }
 
 // Insert a GraphNode that needs to generate TraverserEngines on

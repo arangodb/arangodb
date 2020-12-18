@@ -40,6 +40,7 @@ namespace arangodb {
 namespace network {
 class ConnectionPool;
 struct RequestOptions;
+struct Response;
 }
 
 namespace velocypack {
@@ -164,8 +165,8 @@ class EngineInfoContainerDBServerServerBased {
    * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
    * -> queryid.
    */
-  void cleanupEngines(int errorCode, std::string const& dbname,
-                      aql::ServerQueryIdList& queryIds) const;
+  std::vector<futures::Future<network::Response>> cleanupEngines(
+      int errorCode, std::string const& dbname, aql::ServerQueryIdList& queryIds) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
