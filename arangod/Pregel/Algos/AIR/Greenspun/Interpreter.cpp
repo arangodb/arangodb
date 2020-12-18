@@ -294,7 +294,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
   std::vector<IteratorTriple> iterators;
 
   auto const readIteratorPair = [&](VPackSlice pair) -> EvalResult {
-    if (pair.length() != 2) {
+    if (!pair.isArray() || pair.length() != 2) {
       return EvalError("Expected pair, found: " + pair.toJson());
     }
     auto&& [var, array] = unpackTuple<VPackSlice, VPackSlice>(pair);
