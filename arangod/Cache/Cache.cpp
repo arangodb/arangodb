@@ -375,6 +375,18 @@ bool Cache::canMigrate() {
   return !_metadata.isMigrating();
 }
 
+/// TODO Improve freeing algorithm
+/// Currently we pick a bucket at random, free something if possible, then
+/// repeat. In a table with a low fill ratio, this will inevitably waste a lot
+/// of time visiting empty buckets. If we get unlucky, we can go an arbitrarily
+/// long time without fixing anything. We may wish to make the walk a bit more
+/// like visiting the buckets in the order of a fixed random permutation. This
+/// should be achievable by picking a random start bucket S, and a suitably
+/// large number P co-prime to the size of the table N to use as a constant
+/// offset for each subsequent step. (The sequence of numbers S, ((S + P) % N)),
+/// ((S + 2P) % N)... (S + (N-1)P) % N should form a permuation of [1, N].
+/// That way we still visit the buckets in a sufficiently random order, but we
+/// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
   if (isShutdown()) {
     return false;
