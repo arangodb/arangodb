@@ -250,6 +250,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     case aql::NODE_TYPE_OPERATOR_BINARY_LE:
       qp.maxInclusive = true;
       // intentional fallthrough
+      [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
@@ -259,6 +260,9 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 
       aql::AstNode const* max = node->getMemberUnchecked(1);
       TRI_ASSERT(max->type == aql::NODE_TYPE_VALUE);
+      if (max->type != aql::NODE_TYPE_VALUE) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
+      }
       if (!max->isValueType(aql::VALUE_TYPE_STRING)) {
         qp.maxDistance = max->getDoubleValue();
       }  // else assert(max->getStringValue() == "unlimited")
@@ -267,22 +271,25 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     case aql::NODE_TYPE_OPERATOR_BINARY_GE:
       qp.minInclusive = true;
       // intentional fallthrough
+      [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
       if (!qp.origin.is_valid()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
-      // LOG_TOPIC("a9633", ERR, Logger::FIXME) << "Found center: " << c.toString();
 
       aql::AstNode const* min = node->getMemberUnchecked(1);
       TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);
+      if (min->type != aql::NODE_TYPE_VALUE) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
+      }
       qp.minDistance = min->getDoubleValue();
       break;
     }
     default:
       TRI_ASSERT(false);
-      break;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
   }
 }
 
