@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added "startupTime", "computationTime" and "storageTime" to Pregel result
+  statistics.
+
 * Limit value of `--rocksdb.block-cache-size` to 1 GB for agent instances to
   reduce agency RAM usage, unless configured otherwise. In addition, limit the 
   value of `--rocksdb.total-write-buffer-size` to 512 MB on agent instances for
