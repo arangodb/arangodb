@@ -1,3 +1,10 @@
+v3.7.7 (XXXX-XX-XX)
+-------------------
+
+* Added "startupTime", "computationTime" and "storageTime" to Pregel result
+  statistics.
+
+
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
