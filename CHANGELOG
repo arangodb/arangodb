@@ -3,6 +3,8 @@ v3.7.6 (XXXX-XX-XX)
 
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
+* Added SNI support for arangosh.
+
 * Fix agency restart with mismatching compation and log indexes
 
 * Improve performance and memory efficiency of agency restart from persisted
