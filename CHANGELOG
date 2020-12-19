@@ -1,3 +1,9 @@
+v3.6.11 (XXXX-XX-XX)
+--------------------
+
+* Add query execution time and query id to audit log query messages.
+
+
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
