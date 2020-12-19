@@ -1,7 +1,9 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
-* Fix agency restart with mismatching compation and log indexes
+* Add query execution time and query id to audit log query messages.
+
+* Fix agency restart with mismatching compation and log indexes.
 
 * Improve performance and memory efficiency of agency restart from persisted
   database directory.
