@@ -152,11 +152,17 @@ void QueryList::remove(Query* query) {
 
   TRI_ASSERT(!query->queryString().empty());
 
-  WRITE_LOCKER(writeLocker, _lock);
+  {
+    // acquire the query list's write lock only for a short amount of
+    // time. if we need to insert a slow query later, we will re-acquire
+    // the lock. but the hope is that for the majority of queries this is 
+    // not required
+    WRITE_LOCKER(writeLocker, _lock);
 
-  if (_current.erase(query->id()) == 0) {
-    // not found
-    return;
+    if (_current.erase(query->id()) == 0) {
+      // not found
+      return;
+    }
   }
 
   // elapsed time since query start
@@ -174,7 +180,9 @@ void QueryList::remove(Query* query) {
   }
 
   bool const isStreaming = query->queryOptions().stream;
-  double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
+  double threshold = isStreaming ? 
+      _slowStreamingQueryThreshold.load(std::memory_order_relaxed) : 
+      _slowQueryThreshold.load(std::memory_order_relaxed);
 
   // check if we need to push the query into the list of slow queries
   if (elapsed >= threshold && threshold >= 0.0) {
@@ -200,7 +208,7 @@ void QueryList::remove(Query* query) {
         auto bp = query->bindParameters();
         if (bp != nullptr && !bp->slice().isNone()) {
           bindParameters.append(", bind vars: ");
-          bindParameters.append(bp->slice().toJson());
+          bp->slice().toJson(bindParameters);
           if (bindParameters.size() > maxQueryStringLength) {
             bindParameters.resize(maxQueryStringLength - 3);
             bindParameters.append("...");
@@ -237,6 +245,10 @@ void QueryList::remove(Query* query) {
           << ", exit code: " << resultCode
           << ", took: " << Logger::FIXED(elapsed) << " s";
 
+   
+      // acquire the query list lock again
+      WRITE_LOCKER(writeLocker, _lock);
+      
       _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
