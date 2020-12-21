@@ -1630,7 +1630,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
     cache::Cache::Inserter inserter(*_cache, key->string().data(),
                                     static_cast<uint32_t>(key->string().size()),
                                     ps.data(), static_cast<uint64_t>(ps.size()),
-                                    [&attempts](Result res) -> bool {
+                                    [&attempts](Result const& res) -> bool {
                                       return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
                                              ++attempts < 2;
                                     });
@@ -1682,7 +1682,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
     cache::Cache::Inserter inserter(*_cache, key->string().data(),
                                     static_cast<uint32_t>(key->string().size()),
                                     ps.data(), static_cast<uint64_t>(ps.size()),
-                                    [&attempts](Result res) -> bool {
+                                    [&attempts](Result const& res) -> bool {
                                       return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
                                              ++attempts < 2;
                                     });

@@ -535,7 +535,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     cache::Cache::Inserter inserter(*_cache, key->string().data(),
                                     static_cast<uint32_t>(key->string().size()),
                                     val.data(), static_cast<uint64_t>(val.size()),
-                                    [&attempts](Result res) -> bool {
+                                    [&attempts](Result const& res) -> bool {
                                       return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
                                              ++attempts < 2;
                                     });

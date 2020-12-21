@@ -365,7 +365,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                                       static_cast<uint32_t>(fromTo.size()),
                                       _builder.slice().start(),
                                       static_cast<uint64_t>(_builder.slice().byteSize()),
-                                      [&attempts](Result res) -> bool {
+                                      [&attempts](Result const& res) -> bool {
                                         return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
                                                ++attempts <= 10;
                                       });
@@ -759,7 +759,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
                                         static_cast<uint32_t>(previous.size()),
                                         builder.slice().start(),
                                         static_cast<uint64_t>(builder.slice().byteSize()),
-                                        [&attempts](Result res) -> bool {
+                                        [&attempts](Result const& res) -> bool {
                                           return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
                                                  ++attempts <= 10;
                                         });
@@ -803,7 +803,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
                                     static_cast<uint32_t>(previous.size()),
                                     builder.slice().start(),
                                     static_cast<uint64_t>(builder.slice().byteSize()),
-                                    [&attempts](Result res) -> bool {
+                                    [&attempts](Result const& res) -> bool {
                                       return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
                                              ++attempts <= 10;
                                     });
