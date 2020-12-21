@@ -69,7 +69,6 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::reset(Ver
 
 template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::clear() {
-  _resourceMonitor.decreaseMemoryUsage(sizeof(Step) * _shell.size());
   _shell.clear();
   _interior.reset();
   _queue.clear();
@@ -168,7 +167,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     }
     LOG_TOPIC("9620b", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
     // Add the step to our shell
-    _resourceMonitor.increaseMemoryUsage(sizeof(n));
     _shell.emplace(std::move(n));
   });
 }

@@ -93,6 +93,7 @@ class TwoSidedEnumerator {
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
 
+    // TODO: Double check if we really need the monitor here. Currently unused.
     arangodb::ResourceMonitor& _resourceMonitor;
 
     // This stores all paths processed by this ball
