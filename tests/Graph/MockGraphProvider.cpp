@@ -64,15 +64,6 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProc
 
 MockGraphProvider::Step::~Step() {}
 
-void MockGraphProvider::Step::Vertex::addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const {
-  // TODO: works only if collection name stays "v/"
-  std::string id = _vertex.toString();
-  builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
-  builder.add(StaticStrings::IdString, VPackValue(id));
-  builder.close();
-}
-
 void MockGraphProvider::Step::Edge::addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const {
   _edge.addToBuilder(builder);
 }
@@ -128,6 +119,19 @@ auto MockGraphProvider::expand(Step const& step, size_t previous, std::function<
   for (auto const& s : results) {
     callback(s);
   }
+}
+
+auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex, arangodb::velocypack::Builder& builder) -> void {
+  //std::string id = _vertex.toString();
+  std::string id = vertex.getId().toString();
+  builder.openObject();
+  builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
+  builder.add(StaticStrings::IdString, VPackValue(id));
+  builder.close();
+}
+
+auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge, arangodb::velocypack::Builder& builder) -> void {
+
 }
 
 auto MockGraphProvider::expand(Step const& source, size_t previousIndex)

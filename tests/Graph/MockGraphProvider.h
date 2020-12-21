@@ -69,8 +69,6 @@ class MockGraphProvider {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
-      void addToBuilder(MockGraphProvider& provider,
-                        arangodb::velocypack::Builder& builder) const;
       VertexRef getId() const;
 
       // This is only internal for the mock.
@@ -134,11 +132,11 @@ class MockGraphProvider {
     }
 
     Vertex getVertex() const {
-      if (!isProcessable()) {
+      /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "Accessing vertex (" + _vertex.data().toString() +
                                            "), before fetching it");
-      }
+      }*/
       return _vertex;
     }
 
@@ -183,10 +181,9 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
       -> void;
 
-  // TODO: Implement those if needed
   void addVertexToBuilder(Step::Vertex const& vertex,
-                          arangodb::velocypack::Builder& builder){};
-  void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder){};
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
   [[nodiscard]] transaction::Methods* trx();
 
