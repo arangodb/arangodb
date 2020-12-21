@@ -29,45 +29,7 @@ let arangodb = require("@arangodb");
 let internal = require("internal");
 let request = require("@arangodb/request");
 let db = arangodb.db;
-
-function getEndpointById(id) {
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-                              .map(toEndpoint)
-                              .map(endpointToURL)[0];
-}
-
-function getEndpointsByType(type) {
-  const isType = (d) => (d.role.toLowerCase() === type);
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-}
+let { getEndpointById, getEndpointsByType } = require('@arangodb/test-helper');
 
 /// @brief set failure point
 function debugCanUseFailAt(endpoint) {

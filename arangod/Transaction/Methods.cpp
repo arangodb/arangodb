@@ -57,6 +57,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -962,7 +963,19 @@ Future<OperationResult> transaction::Methods::insertCoordinator(std::string cons
 
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
-static double chooseTimeout(size_t count, size_t totalBytes) {
+static double chooseTimeoutForReplication(size_t count, size_t totalBytes) {
+  // We essentially stop using a meaningful timeout for this operation.
+  // This is achieved by setting the default for the minimal timeout to 15m or
+  // 900s. The reason behind this is the following: We have to live with RocksDB
+  // stalls and write stops, which can happen in overload situations. Then, no
+  // meaningful timeout helps and it is almost certainly better to keep trying
+  // to not have to drop the follower and make matters worse. In case of an
+  // actual failure (or indeed a restart), the follower is marked as failed and
+  // its reboot id is increased. As a consequence, the connection is aborted and
+  // we run into an error anyway. This is when a follower will be dropped.
+
+  // We leave this code in place for now.
+  
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
@@ -973,10 +986,9 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   // processing all
   timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
 
-  if (timeout < ReplicationTimeoutFeature::lowerLimit) {
-    return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
-  }
-  return (std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor;
+  return std::clamp(timeout, ReplicationTimeoutFeature::lowerLimit,
+                    ReplicationTimeoutFeature::upperLimit) *
+         ReplicationTimeoutFeature::timeoutFactor;
 }
 
 /// @brief create one or multiple documents in a collection, local
@@ -2215,7 +2227,7 @@ Future<Result> Methods::replicateOperations(
     url.push_back('/');
     VPackValueLength len;
     const char* ptr = value.get(StaticStrings::KeyString).getString(len);
-    url.append(ptr, len);
+    basics::StringUtils::encodeURIComponent(url, ptr, len);
   }
 
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -2284,11 +2296,13 @@ Future<Result> Methods::replicateOperations(
     return Result();
   }
 
-  reqOpts.timeout = network::Timeout(chooseTimeout(count, payload->size()));
+  reqOpts.timeout = network::Timeout(chooseTimeoutForReplication(count, payload->size()));
 
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
+
+  auto startTimeReplication = std::chrono::steady_clock::now();
 
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
@@ -2317,6 +2331,11 @@ Future<Result> Methods::replicateOperations(
   // In any case, we drop the follower here (just in case).
   auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
 
+    auto duration = std::chrono::steady_clock::now() - startTimeReplication;
+    auto& replMetrics = vocbase().server().getFeature<ReplicationMetricsFeature>();
+    replMetrics.synchronousOpsTotal() += 1;
+    replMetrics.synchronousTimeTotal() += std::chrono::nanoseconds(duration).count();
+
     bool didRefuse = false;
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followerList->size(); ++i) {
@@ -2330,7 +2349,7 @@ Future<Result> Methods::replicateOperations(
                             resp.statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
-          resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
+          resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         } else {
           auto r = resp.combinedResult();

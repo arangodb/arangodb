@@ -150,7 +150,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
 
   {
     arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                               arangodb::aql::QueryString(aql), binds, nullptr);
+                               arangodb::aql::QueryString(aql), binds);
     aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
@@ -347,7 +347,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->close();
 
   arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                             arangodb::aql::QueryString(aql), binds, nullptr);
+                             arangodb::aql::QueryString(aql), binds);
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {

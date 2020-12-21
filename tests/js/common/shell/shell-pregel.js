@@ -41,14 +41,23 @@ const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgo(a, p) {
-  var pid = pregel.start(a, graphName, p);
-  var i = 10000;
+  let pid = pregel.start(a, graphName, p);
+  assertTrue(typeof pid === "string");
+  let i = 10000;
   do {
-    internal.wait(0.2);
-    var stats = pregel.status(pid);
+    internal.sleep(0.2);
+    let stats = pregel.status(pid);
     if (stats.state !== "running") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
+      let attrs = ["totalRuntime", "startupTime", "computationTime"];
+      if (p.store) {
+        attrs.push("storageTime");
+      }
+      attrs.forEach((k) => {
+        assertTrue(stats.hasOwnProperty(k));
+        assertEqual("number", typeof stats[k]);
+      });
 
       db[vColl].all().toArray()
         .forEach(function (d) {
@@ -169,7 +178,7 @@ function basicTestSuite() {
       var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: false });
       var i = 10000;
       do {
-        internal.wait(0.2);
+        internal.sleep(0.2);
         var stats = pregel.status(pid);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, 11, stats);
@@ -207,7 +216,7 @@ function basicTestSuite() {
           });
 
           pregel.cancel(pid); // delete contents
-          internal.wait(5.0);
+          internal.sleep(5.0);
 
           array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
           assertEqual(array.length, 1);
@@ -251,9 +260,10 @@ function exampleTestSuite() {
         vertexCollections: ['female', 'male'], 
         edgeCollections: ['relation'],
       }, { resultField: "closeness" });
+      assertTrue(typeof key === "string");
       var i = 10000;
       do {
-        internal.wait(0.2);
+        internal.sleep(0.2);
         var stats = pregel.status(key);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, 4, stats);
@@ -273,6 +283,41 @@ function randomTestSuite() {
 
   const n = 20000; // vertices
   const m = 300000; // edges
+  
+  let checkStatus = function(key) {
+    let i = 10000;
+    do {
+      internal.sleep(0.2);
+      let stats = pregel.status(key);
+      if (stats.state !== "running") {
+        break;
+      }
+    } while (i-- >= 0);
+    if (i === 0) {
+      assertTrue(false, "timeout in pregel execution");
+    }
+  };
+  
+  let checkCancel = function(key) {
+    checkStatus(key);
+    pregel.cancel(key);
+    let i = 10000;
+    do {
+      try {
+        let stats = pregel.status(key);
+        if (stats.state === "canceled") {
+          break;
+        }
+      } catch (err) {
+        // fine.
+        break;
+      }
+      internal.sleep(0.2);
+    } while (i-- >= 0);
+    if (i === 0) {
+      assertTrue(false, "timeout in pregel execution");
+    }
+  };
 
   return {
 
@@ -352,7 +397,7 @@ function randomTestSuite() {
       var pid = pregel.start("pagerank", graphName, { threshold: 0.0000001, resultField: "result", store: true });
       var i = 10000;
       do {
-        internal.wait(0.2);
+        internal.sleep(0.2);
         var stats = pregel.status(pid);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, n, stats);
@@ -373,7 +418,7 @@ function randomTestSuite() {
       var pid = pregel.start("pagerank", graphName, opts);
       var i = 10000;
       do {
-        internal.wait(0.2);
+        internal.sleep(0.2);
         var stats = pregel.status(pid);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, n, stats);
@@ -394,7 +439,7 @@ function randomTestSuite() {
       var pid = pregel.start("hits", graphName, opts);
       var i = 10000;
       do {
-        internal.wait(0.2);
+        internal.sleep(0.2);
         var stats = pregel.status(pid);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, n, stats);
@@ -405,7 +450,32 @@ function randomTestSuite() {
       if (i === 0) {
         assertTrue(false, "timeout in pregel execution");
       }
-    }
+    },
+
+    testStatusWithNumericId: function () {
+      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
+      assertTrue(typeof key === "string");
+      checkStatus(Number(key));
+    },
+    
+    testStatusWithStringId: function () {
+      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
+      assertTrue(typeof key === "string");
+      checkStatus(key);
+    },
+    
+    testCancelWithNumericId: function () {
+      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
+      assertTrue(typeof key === "string");
+      checkCancel(Number(key));
+    },
+    
+    testCancelWithStringId: function () {
+      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
+      assertTrue(typeof key === "string");
+      checkCancel(key);
+    },
+
   };
 }
 
@@ -575,7 +645,7 @@ function componentsTestSuite() {
       var pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
       var i = 10000;
       do {
-        internal.wait(0.2);
+        internal.sleep(0.2);
         let stats = pregel.status(pid);
         if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, numComponents * n, stats);
@@ -792,7 +862,7 @@ function multiCollectionTestSuite() {
       var pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
       var i = 10000;
       do {
-        internal.wait(0.2);
+        internal.sleep(0.2);
         let stats = pregel.status(pid);
         if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, numComponents * n, stats);
@@ -823,7 +893,7 @@ function multiCollectionTestSuite() {
         let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism });
         let i = 10000;
         do {
-          internal.wait(0.2);
+          internal.sleep(0.2);
           let stats = pregel.status(pid);
           if (stats.state !== "running" && stats.state !== "storing") {
             assertEqual(500, stats.gss);
@@ -856,7 +926,7 @@ function multiCollectionTestSuite() {
         let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism, useMemoryMaps: true });
         let i = 10000;
         do {
-          internal.wait(0.2);
+          internal.sleep(0.2);
           let stats = pregel.status(pid);
           if (stats.state !== "running" && stats.state !== "storing") {
             assertEqual(500, stats.gss);
@@ -895,7 +965,7 @@ function edgeCollectionRestrictionsTestSuite() {
   let checkResult = function(pid) {
     var i = 10000;
     do {
-      internal.wait(0.2);
+      internal.sleep(0.2);
       let stats = pregel.status(pid);
       if (stats.state !== "running" && stats.state !== "storing") {
         assertEqual(200, stats.vertexCount, stats);

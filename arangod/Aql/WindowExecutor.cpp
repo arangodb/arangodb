@@ -85,8 +85,8 @@ BaseWindowExecutor::AggregatorList BaseWindowExecutor::createAggregators(
 
   // initialize aggregators
   for (auto const& r : infos.getAggregateTypes()) {
-    auto factory = Aggregator::factoryFromTypeString(r);
-    aggregators.emplace_back((*factory)(infos.getVPackOptions()));
+    auto& factory = Aggregator::factoryFromTypeString(r);
+    aggregators.emplace_back(factory(infos.getVPackOptions()));
   }
 
   return aggregators;

@@ -156,7 +156,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
     arangodb::aql::Query notSplicedQuery(ctx,
                                          arangodb::aql::QueryString(querystring), bindParamVpack,
-                                         disableRuleOptions(additionalOptions));
+                                         disableRuleOptions(additionalOptions)->slice());
     notSplicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
@@ -176,7 +176,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
 
     auto ctx2 = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
     arangodb::aql::Query splicedQuery(ctx2, arangodb::aql::QueryString(querystring), bindParamVpack,
-                                      enableRuleOptions(additionalOptions));
+                                      enableRuleOptions(additionalOptions)->slice());
     splicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 

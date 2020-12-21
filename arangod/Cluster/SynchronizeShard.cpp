@@ -158,7 +158,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   auto res = response.combinedResult();
 
   if (res.ok()) {
-    auto const idSlice = response.response->slice();
+    auto const idSlice = response.slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
@@ -356,22 +356,11 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
                                   std::move(*body.steal()), options)
                  .get();
 
-  if (response.ok() && response.response &&
-      response.statusCode() == fuerte::StatusNotFound) {
-    auto const slice = response.response->slice();
-    if (slice.isObject()) {
-      VPackSlice s = slice.get(StaticStrings::ErrorNum);
-      if (s.isNumber()) {
-        int errorNum = s.getNumber<int>();
-        if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-          // database is gone. that means our lock is also gone
-          return arangodb::Result();
-        }
-      }
-    }
-  }
-
   auto res = response.combinedResult();
+  if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+    // database is gone. that means our lock is also gone
+    return arangodb::Result();
+  }
 
   if (res.fail()) {
     // rebuild body since we stole it earlier
@@ -741,7 +730,7 @@ bool SynchronizeShard::first() {
     }
 
     auto ep = clusterInfo.getServerEndpoint(leader);
-    uint64_t docCount;
+    uint64_t docCount = 0;
     if (!collectionCount(*collection, docCount).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << database << "/" << shard;
@@ -753,7 +742,7 @@ bool SynchronizeShard::first() {
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
       _clientInfoString =
-          std::string{"follower "} + ServerState::instance()->getPersistedId() +
+          std::string{"follower "} + ServerState::instance()->getId() +
           " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
@@ -1133,7 +1122,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
        << "recalculating collection count on follower for "
        << database << "/" << shard;
 
-    uint64_t docCount;
+    uint64_t docCount = 0;
     Result countRes = collectionCount(collection, docCount);
     if (countRes.fail()) {
       return countRes;

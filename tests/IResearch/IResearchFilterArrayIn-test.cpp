@@ -1494,10 +1494,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-        nullptr, options);
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1601,10 +1599,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-        nullptr, options);
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1716,10 +1712,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-        nullptr, options);
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1827,10 +1821,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-        nullptr, options);
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -3193,10 +3185,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-        nullptr, options);
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -3305,10 +3295,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-        nullptr, options);
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -3418,10 +3406,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-        nullptr, options);
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());

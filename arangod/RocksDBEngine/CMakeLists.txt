@@ -39,15 +39,18 @@ endif()
 
 # add sources for rocksdb engine
 set(ROCKSDB_SOURCES
-  RocksDBEngine/RocksDBBackgroundErrorListener.cpp
+  RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.cpp
+  RocksDBEngine/Listeners/RocksDBMetricsListener.cpp
+  RocksDBEngine/Listeners/RocksDBShaCalculator.cpp
+  RocksDBEngine/Listeners/RocksDBThrottle.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp
   RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBColumnFamilyManager.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
-  RocksDBEngine/RocksDBEventListener.cpp
   RocksDBEngine/RocksDBFormat.cpp
   RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBGeoIndex.cpp
@@ -78,7 +81,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBSyncThread.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
-  RocksDBEngine/RocksDBThrottle.cpp
   RocksDBEngine/RocksDBTtlIndex.cpp
   RocksDBEngine/RocksDBTypes.cpp
   RocksDBEngine/RocksDBUpgrade.cpp

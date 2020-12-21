@@ -170,7 +170,6 @@ add_library(arango STATIC
   Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
-  Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/signals.cpp
   Basics/socket-utils.cpp
@@ -234,6 +233,7 @@ add_library(arango STATIC
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp
+  Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp

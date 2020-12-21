@@ -27,7 +27,6 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RestServer/VocbaseContext.h"
 
 struct TRI_vocbase_t;
 
