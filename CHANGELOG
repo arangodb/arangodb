@@ -1,3 +1,10 @@
+v3.6.11 (XXXX-XX-XX)
+--------------------
+
+* Fix recovery of "clientId" values in Agency when restarting an agent from
+  persistence.
+
+
 v3.6.10 (2020-12-08)
 --------------------
 
