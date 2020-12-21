@@ -53,7 +53,7 @@
 
 namespace arangodb {
 namespace velocypack {
-class Sink;
+struct Sink;
 
 template<typename, typename = void>
 struct Extractor;
