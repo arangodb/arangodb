@@ -93,8 +93,6 @@ class MockGraphProvider {
      public:
       Edge(EdgeType e) : _edge(e){};
       Edge() : _edge({{}, {}, 0}){};
-      void addToBuilder(MockGraphProvider& provider,
-                        arangodb::velocypack::Builder& builder) const;
 
       std::string toString() const {
         return "Edge - _from: " + _edge._from + ", _to: " + _edge._to;

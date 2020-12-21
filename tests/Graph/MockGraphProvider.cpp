@@ -64,10 +64,6 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProc
 
 MockGraphProvider::Step::~Step() {}
 
-void MockGraphProvider::Step::Edge::addToBuilder(MockGraphProvider& provider, arangodb::velocypack::Builder& builder) const {
-  _edge.addToBuilder(builder);
-}
-
 arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() const {
   return _vertex;
 }
@@ -122,7 +118,6 @@ auto MockGraphProvider::expand(Step const& step, size_t previous, std::function<
 }
 
 auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex, arangodb::velocypack::Builder& builder) -> void {
-  //std::string id = _vertex.toString();
   std::string id = vertex.getId().toString();
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
@@ -131,7 +126,17 @@ auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex, arangodb:
 }
 
 auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge, arangodb::velocypack::Builder& builder) -> void {
+  std::string fromId = edge.getEdge()._from;
+  std::string toId = edge.getEdge()._to;
+  std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
 
+  builder.openObject();
+  builder.add(StaticStrings::IdString, VPackValue("e/" + keyId));
+  builder.add(StaticStrings::KeyString, VPackValue(keyId));
+  builder.add(StaticStrings::FromString, VPackValue(fromId));
+  builder.add(StaticStrings::ToString, VPackValue(toId));
+  builder.add("weight", VPackValue(edge.getEdge()._weight));
+  builder.close();
 }
 
 auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
