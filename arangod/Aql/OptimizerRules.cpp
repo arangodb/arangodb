@@ -6213,10 +6213,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool isValueOrReference(AstNode const* node) {
-  return node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_REFERENCE;
-}
-
 /// Essentially mirrors the geo::QueryParams struct, but with
 /// abstracts AstNode value objects
 struct GeoIndexInfo {
@@ -6522,7 +6518,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   // checks @first `smaller` @second
   // note: this only modifies "info" if the function returns true
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool {
-    if (isValueOrReference(second) &&       // no attribute access
+    if (second->type == NODE_TYPE_VALUE &&  // only constants allowed
         info.maxDistanceExpr == nullptr &&  // max distance is not yet set
         checkDistanceFunc(plan, first, /*legacy*/ true, info)) {
       TRI_ASSERT(info.index);
@@ -6530,7 +6526,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
       info.maxInclusive = info.maxInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
-    } else if (isValueOrReference(first) &&        // no attribute access
+    } else if (first->type == NODE_TYPE_VALUE &&   // only constants allowed
                info.minDistanceExpr == nullptr &&  // min distance is not yet set
                checkDistanceFunc(plan, second, /*legacy*/ true, info)) {
       info.minDistanceExpr = first;

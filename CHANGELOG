@@ -1,6 +1,8 @@
 v3.5.7 (XXXX-XX-XX)
 -------------------
 
+* Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
+
 * Updated ArangoDB Starter to 0.14.15-1.
 
 * Updated arangosync to 0.7.13.
