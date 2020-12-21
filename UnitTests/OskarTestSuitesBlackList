@@ -14,3 +14,4 @@ communication_ssl
 resilience_analyzers
 fuerte
 restart
+agency-restart
