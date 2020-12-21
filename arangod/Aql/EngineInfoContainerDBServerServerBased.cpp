@@ -323,7 +323,6 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
       std::string message = network::fuerteToArangoErrorMessage(resolvedResponse);
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
           << server << " responded with " << code << " -> " << message;
-      // LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson(); // TODO: Check
       return Result{code, message};
     }
 
@@ -458,7 +457,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
               auto response = tryRes.get();
               if (response.fail()) {
                 if (response.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-                  // Found something we cannot revoer from.
+                  // Found something we cannot recover from.
                   // Return and give up
                   return response;
                 }
@@ -484,7 +483,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       // We do NOT care for the actual result.
       futures::collectAll(requests).wait();
       snippetIds.clear();
-
     }
 
     // set back to default lock timeout for slow path fallback
@@ -493,10 +491,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         << "Potential dead-lock detected, using slow path for locking. This "
            "is expected if exclusive locks are used.";
 
-    // trx.abort() => Coordinator && DBServer löschen diese Transaction
-    // trx.rerollId() => Coordintor denkt sich eine neue ID aus, und setzt diese auf den Aktuellen stand der
-    // vorber aborteten transaction.
-    // Weitermachen (request muss neu gebaut werden mit TrxId stimmt)
     trx.state()->coordinatorRerollTransactionId();
 
     // Make sure we always use the same ordering on servers
