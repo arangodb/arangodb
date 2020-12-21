@@ -8,6 +8,13 @@ devel
   time and exit code (0 = no error, other values correspond to general ArangoDB 
   error codes).
 
+* Fixed a bug in maintainer mode sorting followerinfo lists the wrong way.
+
+* Limit value of `--rocksdb.block-cache-size` to 1 GB for agent instances to
+  reduce agency RAM usage, unless configured otherwise. In addition, limit the 
+  value of `--rocksdb.total-write-buffer-size` to 512 MB on agent instances for
+  the same reason.
+
 * Fixed issue #13238 Thread naming API on Windows are now used only if
   available in KERNEL32.DLL
 
