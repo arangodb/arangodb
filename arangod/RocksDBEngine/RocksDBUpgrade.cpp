@@ -114,19 +114,21 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
   // enable correct key format
   rocksutils::setRocksDBKeyFormatEndianess(endianess);
 
-  // store endianess forever
-  const char endVal = static_cast<char>(endianess);
-  s = db->Put(rocksdb::WriteOptions(),
-              RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
-              endianKey.string(), rocksdb::Slice(&endVal, sizeof(char)));
-  if (!s.ok()) {
-    LOG_TOPIC("3d88b", FATAL, Logger::ENGINES) << "Error storing endianess";
-    FATAL_ERROR_EXIT();
-  }
+  if (!dbExisted) {
+    // store endianess forever
+    const char endVal = static_cast<char>(endianess);
+    s = db->Put(rocksdb::WriteOptions(),
+                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                endianKey.string(), rocksdb::Slice(&endVal, sizeof(char)));
+    if (!s.ok()) {
+      LOG_TOPIC("3d88b", FATAL, Logger::ENGINES) << "Error storing endianess";
+      FATAL_ERROR_EXIT();
+    }
 
-  // store current version
-  s = db->Put(rocksdb::WriteOptions(),
-              RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
-              versionKey.string(), rocksdb::Slice(&version, sizeof(char)));
-  TRI_ASSERT(s.ok());
+    // store current version
+    s = db->Put(rocksdb::WriteOptions(),
+                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                versionKey.string(), rocksdb::Slice(&version, sizeof(char)));
+    TRI_ASSERT(s.ok());
+  }
 }
