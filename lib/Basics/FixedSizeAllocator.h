@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H
-#define ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H 1
+#define ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -41,20 +41,12 @@ class FixedSizeAllocator {
 
   class MemoryBlock {
    public:
-    void operator delete(void* p) {
-      ::operator delete(p);
-    }
-
     MemoryBlock(MemoryBlock const&) = delete;
     MemoryBlock& operator=(MemoryBlock const&) = delete;
 
-    MemoryBlock(size_t numItems)
-        : _numAllocated(numItems), _numUsed(0), _next() {
+    MemoryBlock(size_t numItems, T* data) noexcept
+        : _numAllocated(numItems), _numUsed(0), _data(data), _next() {
       TRI_ASSERT(numItems >= 32);
-
-      // adjust memory address to cache line offset (assumed to be 64 bytes)
-      _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(this + 1) + 63u) &
-                                      ~(uintptr_t(63u)));
 
       // the result should at least be 8-byte aligned
       TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % sizeof(void*) == 0);
@@ -64,24 +56,24 @@ class FixedSizeAllocator {
     ~MemoryBlock() noexcept { 
       // destroy all items
       for (size_t i = 0; i < _numUsed; ++i) {
-        T* p =  reinterpret_cast<T*>(_data + sizeof(T) * i);
+        T* p =  _data + i;
         // call destructor for each item
         p->~T();
       }
     }
 
     MemoryBlock* getNextBlock() const noexcept {
-      return _next.get();
+      return _next;
     }
 
-    void setNextBlock(std::unique_ptr<MemoryBlock> next) noexcept {
-      _next = std::move(next);
+    void setNextBlock(MemoryBlock* next) noexcept {
+      _next = next;
     }
 
     /// @brief return memory address for next in-place object construction.
     T* nextSlot() noexcept {
       TRI_ASSERT(_numUsed < _numAllocated);
-      return reinterpret_cast<T*>(_data + (sizeof(T) * _numUsed++));
+      return _data + _numUsed++;
     }
 
     /// @brief roll back the effect of nextSlot()
@@ -97,8 +89,8 @@ class FixedSizeAllocator {
    private:
     size_t _numAllocated;
     size_t _numUsed;
-    char* _data;
-    std::unique_ptr<MemoryBlock> _next;
+    T* _data;
+    MemoryBlock* _next;
   };
 
  public:
@@ -106,7 +98,9 @@ class FixedSizeAllocator {
   FixedSizeAllocator& operator=(FixedSizeAllocator const&) = delete;
 
   FixedSizeAllocator() = default;
-  ~FixedSizeAllocator() = default;
+  ~FixedSizeAllocator() noexcept {
+    clear();
+  }
 
   template <typename... Args>
   T* allocate(Args&&... args) {
@@ -125,14 +119,20 @@ class FixedSizeAllocator {
     }
   }
 
-  void clear() {
-    _head.reset();
+  void clear() noexcept {
+    auto* block = _head;
+    while (block != nullptr) {
+      auto* next = block->getNextBlock();
+      block->~MemoryBlock();
+      ::operator delete(block);
+      block = next;
+    }
   }
 
   /// @brief return the total number of used elements, in all blocks
   size_t numUsed() const noexcept {
     size_t used = 0;
-    auto* block = _head.get();
+    auto* block = _head;
     while (block != nullptr) {
       used += block->numUsed();
       block = block->getNextBlock();
@@ -144,20 +144,25 @@ class FixedSizeAllocator {
   void allocateBlock() {
     // minimum block size is for 64 items
     // maximum block size is for 4096 items
-    size_t const numItems = 64 << std::min<size_t>(6, _numBlocks + 1);
+    size_t const numItems = 64 << std::min<size_t>(6, _numBlocks);
 
     // assumption is that the size of a cache line is at least 64,
     // so we are allocating 64 bytes in addition
     auto const dataSize = sizeof(T) * numItems + 64;
     void* p = ::operator new(sizeof(MemoryBlock) + dataSize);
-    new (p)MemoryBlock(numItems);
-    std::unique_ptr<MemoryBlock> block(static_cast<MemoryBlock*>(p));
-    block->setNextBlock(std::move(_head));
-    _head = std::move(block);
+
+    // adjust memory address to cache line offset (assumed to be 64 bytes)
+    auto* data = reinterpret_cast<T*>(
+      (reinterpret_cast<uintptr_t>(p) + sizeof(MemoryBlock) + 63u) & ~(uintptr_t(63u)));
+
+    new (p)MemoryBlock(numItems, data);
+    MemoryBlock* block = static_cast<MemoryBlock*>(p);
+    block->setNextBlock(_head);
+    _head = block;
     ++_numBlocks;
   }
 
-  std::unique_ptr<MemoryBlock> _head;
+  MemoryBlock* _head{nullptr};
   std::size_t _numBlocks{0};
 };
 
