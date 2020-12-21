@@ -1626,21 +1626,14 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   if (fillCache && useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    auto entry =
-        cache::CachedValue::construct(key->string().data(),
-                                      static_cast<uint32_t>(key->string().size()),
-                                      ps.data(), static_cast<uint64_t>(ps.size()));
-    if (entry) {
-      auto status = _cache->insert(entry);
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        // the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
-      }
-    }
+    size_t attempts = 0;
+    cache::Cache::Inserter inserter(*_cache, key->string().data(),
+                                    static_cast<uint32_t>(key->string().size()),
+                                    ps.data(), static_cast<uint64_t>(ps.size()),
+                                    [&attempts](Result res) -> bool {
+                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                             ++attempts < 2;
+                                    });
   }
 
   return res;
@@ -1685,21 +1678,14 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    auto entry =
-        cache::CachedValue::construct(key->string().data(),
-                                      static_cast<uint32_t>(key->string().size()),
-                                      ps.data(), static_cast<uint64_t>(ps.size()));
-    if (entry) {
-      auto status = _cache->insert(entry);
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        // the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
-      }
-    }
+    size_t attempts = 0;
+    cache::Cache::Inserter inserter(*_cache, key->string().data(),
+                                    static_cast<uint32_t>(key->string().size()),
+                                    ps.data(), static_cast<uint64_t>(ps.size()),
+                                    [&attempts](Result res) -> bool {
+                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                             ++attempts < 2;
+                                    });
   }
 
   return true;
