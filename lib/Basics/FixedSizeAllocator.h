@@ -127,6 +127,7 @@ class FixedSizeAllocator {
       ::operator delete(block);
       block = next;
     }
+    _head = nullptr;
   }
 
   /// @brief return the total number of used elements, in all blocks
