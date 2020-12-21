@@ -83,7 +83,7 @@ if(WIN32)
 endif()
 # Prepend paths that contain python${PythonInterp_FIND_VERSION_MAJOR} in them:
 set(PATHLIST $ENV{PATH})
-LIST(FILTER PATHLIST INCLUDE REGEX ".*on2.*")
+LIST(FILTER PATHLIST INCLUDE REGEX ".*on27")
 message("${PATHLIST}")
 message("${_Python_NAMES}")
 
