@@ -199,14 +199,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   bool _queryKilled;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the finalize operation is allowed to further process
-  /// the request data. this will not work if the original request cannot be
-  /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _isValidForFinalize;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid
   ///        to reparse and set default options
   //////////////////////////////////////////////////////////////////////////////
