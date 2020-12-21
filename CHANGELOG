@@ -1,4 +1,4 @@
-v3.5.7 (XXXX-XX-XX)
+v3.5.7 (2020-12-22)
 -------------------
 
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
