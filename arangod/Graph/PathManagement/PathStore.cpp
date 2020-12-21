@@ -56,8 +56,10 @@ PathStore<Step>::~PathStore() {
 template <class Step>
 void PathStore<Step>::reset() {
   LOG_TOPIC("8f726", TRACE, Logger::GRAPHS) << "<PathStore> Resetting.";
-  _resourceMonitor.decreaseMemoryUsage(_schreier.size() * sizeof(Step));
-  _schreier.clear();
+  if (!_schreier.empty()) {
+    _resourceMonitor.decreaseMemoryUsage(_schreier.size() * sizeof(Step));
+    _schreier.clear();
+  }
 }
 
 template <class Step>
