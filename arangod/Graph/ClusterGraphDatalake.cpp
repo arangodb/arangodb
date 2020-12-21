@@ -25,7 +25,6 @@
 
 #include "Basics/debugging.h"
 
-#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -34,16 +33,19 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <typename T>
-void ClusterGraphDatalake<T>::add(std::shared_ptr<T> data, size_t memoryUsage) {
-  TRI_ASSERT(data != nullptr);
+arangodb::velocypack::Slice ClusterGraphDatalake::operator[](size_t index) const noexcept {
+  TRI_ASSERT(index < _data.size()); 
+  return arangodb::velocypack::Slice(_data[index]->data());
+}
 
+arangodb::velocypack::Slice ClusterGraphDatalake::add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>&& data) {
   if (_data.empty()) {
     // save initial reallocations
     _data.reserve(8);
   }
   
-  memoryUsage += sizeof(typename decltype(_data)::value_type) + sizeof(T);
+  size_t memoryUsage = (data->usesLocalMemory() ? 0 : data->capacity());
+  memoryUsage += sizeof(typename decltype(_data)::value_type) + sizeof(arangodb::velocypack::Buffer<uint8_t>);
   
   {
     arangodb::ResourceUsageScope scope(_resourceMonitor, memoryUsage);
@@ -54,31 +56,6 @@ void ClusterGraphDatalake<T>::add(std::shared_ptr<T> data, size_t memoryUsage) {
     scope.steal();
   }
   _totalMemoryUsage += memoryUsage;
-}
-  
-// partial specializations for different container types
-template <>
-arangodb::velocypack::Slice ClusterGraphDatalake<arangodb::velocypack::Builder>::operator[](size_t index) const noexcept {
-  TRI_ASSERT(index < _data.size()); 
-  return _data[index]->slice();
-}
-
-template <>
-arangodb::velocypack::Slice ClusterGraphDatalake<arangodb::velocypack::Builder>::add(std::shared_ptr<arangodb::velocypack::Builder> data) {
-  add(std::move(data), data->size());
-
-  return _data.back()->slice();
-}
-
-template <>
-arangodb::velocypack::Slice ClusterGraphDatalake<arangodb::velocypack::UInt8Buffer>::operator[](size_t index) const noexcept {
-  TRI_ASSERT(index < _data.size()); 
-  return arangodb::velocypack::Slice(_data[index]->data());
-}
-
-template <>
-arangodb::velocypack::Slice ClusterGraphDatalake<arangodb::velocypack::UInt8Buffer>::add(std::shared_ptr<arangodb::velocypack::UInt8Buffer> data) {
-  add(std::move(data), (data->usesLocalMemory() ? 0 : data->capacity()));
 
   return arangodb::velocypack::Slice(_data.back()->data());
 }

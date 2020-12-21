@@ -94,7 +94,7 @@ class ClusterTraverserCache final : public TraverserCache {
     return _cache;
   }
 
-  arangodb::graph::ClusterGraphDatalake<arangodb::velocypack::UInt8Buffer>& datalake() noexcept {
+  arangodb::graph::ClusterGraphDatalake& datalake() noexcept {
     return _datalake;
   }
 
@@ -107,7 +107,7 @@ class ClusterTraverserCache final : public TraverserCache {
   Cache _cache;
 
   /// @brief dump for our edge and vertex documents
-  arangodb::graph::ClusterGraphDatalake<arangodb::velocypack::UInt8Buffer> _datalake;
+  arangodb::graph::ClusterGraphDatalake _datalake;
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 };

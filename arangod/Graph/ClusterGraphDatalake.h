@@ -26,6 +26,8 @@
 
 #include "Basics/ResourceUsage.h"
 
+#include <velocypack/Buffer.h>
+
 #include <memory>
 #include <vector>
 
@@ -34,11 +36,11 @@ struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
+class Slice;
 }
 
 namespace graph {
 
-template <typename T>
 class ClusterGraphDatalake {
  public:
   ClusterGraphDatalake(arangodb::ResourceMonitor& resourceMonitor)
@@ -59,15 +61,12 @@ class ClusterGraphDatalake {
   
   arangodb::velocypack::Slice operator[](size_t index) const noexcept;
 
-  arangodb::velocypack::Slice add(std::shared_ptr<T> data);
-
- private:
-  void add(std::shared_ptr<T> data, size_t memoryUsage);
+  arangodb::velocypack::Slice add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>&& data);
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;
   size_t _totalMemoryUsage;
-  std::vector<std::shared_ptr<T>> _data;
+  std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _data;
 };
 
 }  // namespace graph
