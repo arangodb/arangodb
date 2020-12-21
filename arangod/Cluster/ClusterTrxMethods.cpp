@@ -352,12 +352,10 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     }
 
     const TransactionId tid = state.id().child();
-    std::mutex serverToKnowsListLock{};
 
     Result fastPathResult =
         futures::collectAll(requests)
-            .thenValue([=, &state, &serverToKnowsListLock](
-                           std::vector<Try<network::Response>>&& responses) -> Result {
+            .thenValue([&tid, &state](std::vector<Try<network::Response>>&& responses) -> Result {
               // We need to make sure to get() all responses.
               // Otherwise they will eventually resolve and trigger the .then() callback
               // which might be after we left this function.
@@ -374,7 +372,6 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
                     result = res;
                   }
                 } else {
-                  std::unique_lock<std::mutex> guard{serverToKnowsListLock};
                   state.addKnownServer(resp.serverId());  // add server id to known list
                 }
               }
