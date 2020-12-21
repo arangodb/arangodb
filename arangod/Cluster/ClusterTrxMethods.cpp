@@ -316,7 +316,7 @@ bool ServerSorter::operator()(ServerID const& lhs, ServerID const& rhs) const {
 
 /// @brief begin a transaction on all leaders
 Future<Result> beginTransactionOnLeaders(TransactionState& state,
-                                         std::set<ServerID, ServerSorter> const& leaders) {
+                                         ClusterTrxMethods::SortedServersSet const& leaders) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
@@ -382,15 +382,15 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
 
     if (fastPathResult.ok() || !canRevertToSlowPath ||
         fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-      // We have no way out of this situation
-      // We need to return the error here.
+      // We are either good or we cannot use the slow path.
+      // We need to return the result here.
       // We made sure that all servers that reported success are known to the transaction.
       return fastPathResult;
     }
 
     // Entering slow path
 
-    // use original setup timeout here
+    // use original lock timeout here
     state.options().lockTimeout = oldLockTimeout;
 
     TRI_ASSERT(fastPathResult.fail() && fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT));

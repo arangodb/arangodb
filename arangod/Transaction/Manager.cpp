@@ -507,7 +507,6 @@ ResultT<TransactionId> Manager::createManagedTrx(
   prepareOptions(options);
   std::shared_ptr<TransactionState> state;
 
-  // TODO check if we can end up on DBServer here
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   TRI_ASSERT(ServerState::isSingleServerOrCoordinator(role));
   TransactionId tid = ServerState::isSingleServer(role)
@@ -529,7 +528,6 @@ ResultT<TransactionId> Manager::createManagedTrx(
     return res;
   }
 
-  // TODO: add hint or bool if transaction is rerollable
   // start the transaction
   auto hints = ensureHints(options);
   // We allow to do a fast locking round here

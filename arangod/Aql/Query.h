@@ -109,7 +109,7 @@ class Query : public QueryContext {
   /// @brief set the query to killed
   void kill();
 
-  /// @brief whether or not the query is killed
+  /// @brief setter and getter methods for the query lockTimeout. 
   void setLockTimeout(double timeout) noexcept override;
   double getLockTimeout() const noexcept override;
 
