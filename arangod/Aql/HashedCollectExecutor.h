@@ -162,7 +162,7 @@ class HashedCollectExecutor {
    private:
     std::size_t _size;
   };
-  using GroupKeyType = std::vector<AqlValue>;
+  using GroupKeyType = HashedAqlValueGroup;
   using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
@@ -214,7 +214,7 @@ class HashedCollectExecutor {
 
   std::vector<Aggregator::Factory const*> _aggregatorFactories;
 
-  GroupKeyType _nextGroupValues;
+  GroupKeyType _nextGroup;
 
   size_t _returnedGroups = 0;
 };
