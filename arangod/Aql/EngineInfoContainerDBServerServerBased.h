@@ -123,9 +123,6 @@ class EngineInfoContainerDBServerServerBased {
   // the given queryid of the coordinator as data provider.
   void closeSnippet(QueryId inputSnippet);
 
-  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
-                                    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                                    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   // Build the Engines for the DBServer
   //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
@@ -143,6 +140,17 @@ class EngineInfoContainerDBServerServerBased {
                       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
+
+  // Insert a GraphNode that needs to generate TraverserEngines on
+  // the DBServers. The GraphNode itself will retain on the coordinator.
+  void addGraphNode(GraphNode* node, bool pushToSingleServer);
+
+ private:
+
+  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
+                                    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                                    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+
   arangodb::futures::Future<Result> buildSetupRequest(
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
       std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
@@ -150,6 +158,7 @@ class EngineInfoContainerDBServerServerBased {
       network::ConnectionPool* pool, network::RequestOptions const& options) const;
 
   [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
+
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -168,11 +177,7 @@ class EngineInfoContainerDBServerServerBased {
   std::vector<futures::Future<network::Response>> cleanupEngines(
       int errorCode, std::string const& dbname, aql::ServerQueryIdList& queryIds) const;
 
-  // Insert a GraphNode that needs to generate TraverserEngines on
-  // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
- private:
   // Insert the Locking information into the message to be send to DBServers
   void addLockingPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
 
