@@ -83,8 +83,7 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                             arangodb::aql::QueryString(queryString), bindVars,
-                             std::make_shared<arangodb::velocypack::Builder>());
+                             arangodb::aql::QueryString(queryString), bindVars);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -199,7 +198,7 @@ void assertOrderParseFail(arangodb::application_features::ApplicationServer& ser
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                             nullptr, nullptr);
+                             nullptr);
 
   auto const parseResult = query.parse();
   ASSERT_EQ(parseCode, parseResult.result.errorNumber());

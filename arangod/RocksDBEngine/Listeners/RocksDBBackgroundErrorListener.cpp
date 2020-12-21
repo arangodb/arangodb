@@ -62,9 +62,8 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
     }
 
     LOG_TOPIC("fae2c", ERR, Logger::ROCKSDB)
-        << "RocksDB encountered a background error during a " << operation
-        << " operation: " << (status != nullptr ? status->ToString() : "unknown error") 
-        << "; The database will be put in read-only mode, and subsequent write errors are likely";
+        << "RocksDB encountered a background error during a " << operation << " operation: "
+        << (status != nullptr ? status->ToString() : "unknown error") << "; The database will be put in read-only mode, and subsequent write errors are likely";
   }
 }
 

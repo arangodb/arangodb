@@ -36,6 +36,7 @@
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -411,7 +412,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                    ((attr == StaticStrings::FromString) ? StaticStrings::IndexNameEdgeFrom
                                                         : StaticStrings::IndexNameEdgeTo),
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
-                   false, false, RocksDBColumnFamily::edge(),
+                   false, false,
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex),
                    basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
                    !ServerState::instance()->isCoordinator() &&
                        collection.vocbase()
@@ -425,7 +427,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString : StaticStrings::FromString),
                                      false)}}) {
-  TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex));
 
   if (!ServerState::instance()->isCoordinator()) {
     // We activate the estimator only on DBServers
