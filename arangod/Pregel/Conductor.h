@@ -97,10 +97,11 @@ class Conductor {
   uint64_t _totalEdgesCount = 0;
   /// some tracking info
   double _startTimeSecs = 0;
-  double _computationStartTimeSecs = 0;
-  double _finalizationStartTimeSecs = 0;
-  double _endTimeSecs = 0;
-  double _stepStartTimeSecs = 0; // start time of current gss
+  double _computationStartTimeSecs = 0.0;
+  double _finalizationStartTimeSecs = 0.0;
+  double _storeTimeSecs = 0.0;
+  double _endTimeSecs = 0.0;
+  double _stepStartTimeSecs = 0.0; // start time of current gss
   Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();
