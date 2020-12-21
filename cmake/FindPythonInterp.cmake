@@ -78,9 +78,12 @@ else()
     set(_PYTHON_FIND_OTHER_VERSIONS ${_PYTHON3_VERSIONS} ${_PYTHON2_VERSIONS} ${_PYTHON1_VERSIONS})
 endif()
 
+if(WIN32)
+  set(_Python_NAMES "python.exe")
+endif()
 # Prepend paths that contain python${PythonInterp_FIND_VERSION_MAJOR} in them:
 set(PATHLIST $ENV{PATH})
-LIST(FILTER PATHLIST INCLUDE REGEX ".*on2*$")
+LIST(FILTER PATHLIST INCLUDE REGEX ".*on2.*")
 message("${PATHLIST}")
 message("${_Python_NAMES}")
 
