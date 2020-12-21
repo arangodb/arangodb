@@ -81,6 +81,7 @@ endif()
 # Prepend paths that contain python${PythonInterp_FIND_VERSION_MAJOR} in them:
 set(PATHLIST $ENV{PATH})
 LIST(FILTER PATHLIST INCLUDE REGEX ".*on2.*")
+print(${PATHLIST})
 find_program(PYTHON_EXECUTABLE NAMES ${_Python_NAMES} HINTS ${PATHLIST} CMAKE_FIND_ROOT_PATH_BOTH)
 
 # Set up the versions we know about, in the order we will search. Always add
@@ -120,6 +121,7 @@ endif()
 
 # determine python version string
 if(PYTHON_EXECUTABLE)
+  print(${PYTHON_EXECUTABLE})
     execute_process(COMMAND "${PYTHON_EXECUTABLE}" -c
                             "import sys; sys.stdout.write(';'.join([str(x) for x in sys.version_info[:3]]))"
                     OUTPUT_VARIABLE _VERSION
