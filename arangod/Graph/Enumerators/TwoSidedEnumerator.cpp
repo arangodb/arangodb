@@ -55,9 +55,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(
       _queue(resourceMonitor),
       _provider(std::move(provider)),
       _direction(dir),
-      _minDepth(options.getMinDepth()) {
-  _resourceMonitor.increaseMemoryUsage(_shell.size());
-}
+      _minDepth(options.getMinDepth()) {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::~Ball() = default;
@@ -109,7 +107,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::startNext
   // based on the shell contents.
   TRI_ASSERT(_queue.isEmpty());
   for (auto& step : _shell) {
-    _resourceMonitor.decreaseMemoryUsage(sizeof(step));
     _queue.append(std::move(step));
   }
   _shell.clear();
@@ -234,7 +231,8 @@ template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::destroyEngines() -> void {
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::destroyEngines()
+    -> void {
   // Note: Left & Right Provider use the same traversal engines.
   //   => Destroying one of them is enough.
   _left.provider().destroyEngines();
