@@ -1,7 +1,10 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
-* Fix ordering of followerinfo lists in maintainer mode.
+* Fix recovery of "clientId" values in Agency when restarting an agent from
+  persistence. 
+
+* Fix ordering of followerInfo lists in maintainer mode.
 
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
