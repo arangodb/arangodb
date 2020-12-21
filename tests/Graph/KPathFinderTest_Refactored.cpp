@@ -37,6 +37,7 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
 
@@ -56,13 +57,13 @@ namespace graph {
 
 class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   
-  using KPathFinder =
-      TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
+  //using KPathFinder =
+  //    TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
    
-  /*
+
   using KPathFinder =
-      TwoSidedEnumerator<QueueTracer<FifoQueue<MockGraphProvider::Step>>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
-*/
+      TwoSidedEnumerator<QueueTracer<FifoQueue<MockGraphProvider::Step>>, PathStoreTracer<PathStore<MockGraphProvider::Step>>, MockGraphProvider>;
+
  protected:
   bool activateLogging{false};
   MockGraph mockGraph;
