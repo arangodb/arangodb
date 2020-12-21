@@ -142,13 +142,6 @@ class Manager final {
                           std::vector<std::string> const& exclusiveCollections,
                           transaction::Options options, double ttl = 0.0);
 
-  void prepareOptions(transaction::Options& options);
-  bool isFollowerTransactionOnDBServer(transaction::Options& options) const;
-  Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
-                         std::vector<std::string> const& exclusiveCollections,
-                         std::vector<std::string> const& writeCollections,
-                         std::vector<std::string> const& readCollections);
-  transaction::Hints ensureHints(transaction::Options& options) const;
   Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState> state);
 
   /// @brief lease the transaction, increases nesting
@@ -215,6 +208,14 @@ class Manager final {
   }
 
  private:
+  void prepareOptions(transaction::Options& options);
+  bool isFollowerTransactionOnDBServer(transaction::Options& options) const;
+  Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
+                         std::vector<std::string> const& exclusiveCollections,
+                         std::vector<std::string> const& writeCollections,
+                         std::vector<std::string> const& readCollections);
+  transaction::Hints ensureHints(transaction::Options& options) const;
+
   /// @brief performs a status change on a transaction using a timeout
   Result statusChangeWithTimeout(TransactionId tid, std::string const& database,
                                  transaction::Status status);
