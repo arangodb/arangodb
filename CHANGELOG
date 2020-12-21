@@ -1,6 +1,8 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fix ordering of followerinfo lists in maintainer mode.
+
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
 * Added SNI support for arangosh.
