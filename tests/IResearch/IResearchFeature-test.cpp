@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
@@ -1899,7 +1899,14 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
     }
   }
 
-  EXPECT_EQ(std::cv_status::timeout, cond.wait_for(lock, 100ms));
+  std::cv_status wait_status;
+  do {
+    wait_status = cond.wait_for(lock, 100ms);
+    if (std::cv_status::timeout == wait_status) {
+      break;
+    }
+    ASSERT_EQ(1, count); // spurious wakeup?
+  } while(1);
   EXPECT_FALSE(deallocated); // still scheduled
   EXPECT_EQ(1, count);
 }
