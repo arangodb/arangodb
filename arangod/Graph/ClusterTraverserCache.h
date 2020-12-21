@@ -33,7 +33,7 @@
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace aql {
 struct AqlValue;
