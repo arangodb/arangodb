@@ -501,9 +501,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     // Make sure we always use the same ordering on servers
     std::sort(engineInformation.begin(), engineInformation.end(),
-              [&trx](auto const& lhs, auto const& rhs) {
+              [](auto const& lhs, auto const& rhs) {
                 // Entry <0> is the Server
-                return trx.state()->SortServerIds(std::get<0>(lhs), std::get<0>(rhs));
+                return TransactionState::SortServerIds(std::get<0>(lhs), std::get<0>(rhs));
               });
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Make sure we always maintain the correct ordering of servers
@@ -515,7 +515,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // If the serverBefore has a smaller ID we allways contact by increasing
       // ID here.
-      TRI_ASSERT(TransactionState::SortServerIds(serverBefore, leader));
+      TRI_ASSERT(TransactionState::SortServerIds(serverBefore, server));
       serverBefore = server;
 #endif
       VPackSlice infoSlice{buffer->data()};
@@ -536,7 +536,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
-    std::string serverDest, std::vector<bool> const& didCreateEngine,
+    std::string const& serverDest, std::vector<bool> const& didCreateEngine,
     QueryId& globalQueryId) const {
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", WARN, Logger::AQL) << "Received error information from "

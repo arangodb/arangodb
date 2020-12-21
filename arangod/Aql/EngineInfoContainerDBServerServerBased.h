@@ -195,7 +195,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
-                       ServerID const& server, std::string serverDest,
+                       ServerID const& server, std::string const& serverDest,
                        std::vector<bool> const& didCreateEngine,
                        QueryId& globalQueryId) const;
 
