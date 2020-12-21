@@ -43,6 +43,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -182,10 +183,10 @@ static arangodb::Result getReadLockId(std::string const& endpoint,
   return arangodb::Result();
 }
 
-static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollection> const& col,
+static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
                                         uint64_t& c) {
-  std::string collectionName(col->name());
-  auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
+  std::string collectionName(collection.name());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -199,7 +200,7 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
-    LOG_TOPIC("263d2", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
         << "Failed to finish count transaction: " << res;
     return res;
   }
@@ -209,6 +210,19 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   c = s.getNumber<uint64_t>();
 
   return opResult.result;
+}
+
+arangodb::Result collectionReCount(LogicalCollection& collection,
+                                   uint64_t& c) {
+  Result res;
+  if (EngineSelectorFeature::isRocksDB()) {
+    try {
+      c = collection.getPhysical()->recalculateCounts();
+    } catch (basics::Exception const& e) {
+      res.reset(e.code(), e.message());
+    }
+  }
+  return res;
 }
 
 static arangodb::Result addShardFollower(std::string const& endpoint,
@@ -242,7 +256,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
     }
 
     uint64_t docCount;
-    Result res = collectionCount(collection, docCount);
+    Result res = collectionCount(*collection, docCount);
     if (res.fail()) {
       return res;
     }
@@ -270,7 +284,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
           // here. Note that we are in the lockJobId == 0 case, which is
           // the shortcut.
           std::string msg =
-              "Short cut synchronization for shard " + shard +
+              "Short cut synchronization for " + database + "/" + shard +
               " did not work, since we got a document in the meantime.";
           LOG_TOPIC("ef299", INFO, Logger::MAINTENANCE) << msg;
           return arangodb::Result(TRI_ERROR_INTERNAL, msg);
@@ -294,7 +308,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
         errorMessage += "With shortcut (can happen, no problem).";
         LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE) << errorMessage;
       }
-      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+      return arangodb::Result(comres->getErrorCode(), errorMessage);
     }
 
     LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE) << "addShardFollower: success";
@@ -770,7 +784,7 @@ bool SynchronizeShard::first() {
     auto collection = vocbase->lookupCollection(shard);
     if (collection == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local shard " << shard;
+      error << "failed to lookup local shard " << database << "/" << shard;
       LOG_TOPIC("06489", ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
@@ -778,23 +792,31 @@ bool SynchronizeShard::first() {
 
     auto ep = clusterInfo->getServerEndpoint(leader);
     uint64_t docCount;
-    if (!collectionCount(collection, docCount).ok()) {
+    if (!collectionCount(*collection.get(), docCount).ok()) {
       std::stringstream error;
-      error << "failed to get a count on leader " << shard;
+      error << "failed to get a count on leader " << database << "/" << shard;
       LOG_TOPIC("da225", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
       _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
+                   
 
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
       _clientInfoString =
           std::string{"follower "} + ServerState::instance()->getPersistedId() +
-          " of shard " + collection->name() + " of collection " + database +
+          " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
+  
+    std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
 
-    if (docCount == 0) {
+    // old "shortcut" code for getting in sync. This code takes a shortcut if the
+    // shard in question is supposed to be empty. in this case it will simply try
+    // to add itself as an in-sync follower, without running the full replication
+    // protocol. this shortcut relies on the collection counts being correct, and
+    // as these can be at least temporarily off, we need to disable it.
+    if (docCount == 0 && engineName == "mmfiles") {
       // We have a short cut:
       LOG_TOPIC("0932a", DEBUG, Logger::MAINTENANCE)
           << "synchronizeOneShard: trying short cut to synchronize local shard "
@@ -853,8 +875,7 @@ bool SynchronizeShard::first() {
       {
         VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
-        config.add(INCREMENTAL,
-                   VPackValue(docCount > 0));  // use dump if possible
+        config.add(INCREMENTAL, VPackValue(docCount > 0)); // use incremental if possible
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));
@@ -881,7 +902,7 @@ bool SynchronizeShard::first() {
       if (endTime - startTime > seconds(5)) {
         LOG_TOPIC("ca7e3", INFO, Logger::MAINTENANCE)
             << "synchronizeOneShard: long call to syncCollection for shard"
-            << shard << " " << syncRes.errorMessage()
+            << database << "/" << shard << " " << syncRes.errorMessage()
             << " start time: " << timepointToString(startTime)
             << ", end time: " << timepointToString(system_clock::now());
       }
@@ -889,7 +910,7 @@ bool SynchronizeShard::first() {
       // If this did not work, then we cannot go on:
       if (!syncRes.ok()) {
         std::stringstream error;
-        error << "could not initially synchronize shard " << shard << ": "
+        error << "could not initially synchronize shard " << database << "/" << shard << ": "
               << syncRes.errorMessage();
         LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -1068,7 +1089,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 }
 
 Result SynchronizeShard::catchupWithExclusiveLock(
-    std::string const& ep, std::string const& database, LogicalCollection const& collection,
+    std::string const& ep, std::string const& database, LogicalCollection& collection,
     std::string const& clientId, std::string const& shard, std::string const& leader,
     SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
   uint64_t lockJobId = 0;
@@ -1117,28 +1138,107 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   res = addShardFollower(ep, database, shard, lockJobId, clientId, syncerId, _clientInfoString, 60.0);
 
+  // if we get a checksum mismatch, it means that we got different amounts
+  // of documents on the leader and the follower, which can happen if collection
+  // counts are off for whatever reason. 
+  // under many cicrumstances the counts will have been auto-healed by the initial
+  // or the incremental replication before, so in many cases we will not even get
+  // into this if case
+  if (EngineSelectorFeature::isRocksDB() && res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
+    // give up the lock on the leader, so writes aren't stopped unncessarily
+    // on the leader while we are recalculating the counts
+    readLockGuard.fire();
+          
+    // recalculate collection count on follower
+    LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
+       << "recalculating collection count on follower for "
+       << database << "/" << shard;
+  
+    uint64_t docCount;
+    Result countRes = collectionCount(collection, docCount);
+    if (countRes.fail()) {
+      return countRes;
+    }
+    // store current count value
+    uint64_t oldCount = docCount;
+
+    // recalculate on follower. this can take a long time
+    countRes = collectionReCount(collection, docCount);
+    if (countRes.fail()) {
+      return countRes;
+    }
+  
+    LOG_TOPIC("d2689", INFO, Logger::MAINTENANCE) 
+       << "recalculated collection count on follower for "
+       << database << "/" << shard << ", old: " << oldCount << ", new: " << docCount;
+
+    // check if our recalculation has made a difference
+    if (oldCount == docCount) {
+      // no change happened due to recalculation. now try recounting on leader too.
+      // this is last resort and should not happen often!
+      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
+         << "recalculating collection count on leader for "
+         << database << "/" << shard;
+  
+      auto cc = arangodb::ClusterComm::instance();
+      if (cc == nullptr) {  // nullptr only happens during controlled shutdown
+        return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
+                                "startReadLockOnLeader: Shutting down");
+      }
+ 
+      auto comres =
+          cc->syncRequest(TRI_NewTickServer(), ep, rest::RequestType::PUT,
+                        DB + database + "/_api/collection/" + collection.name() + "/recalculateCount", "{}",
+                        std::unordered_map<std::string, std::string>(), 600.0);
+    
+      auto result = comres->result;
+
+      if (result == nullptr || result->getHttpReturnCode() != 200) {
+        std::string const errorMessage =
+            "addShardFollower: could not add us to the leader's follower "
+            "list for " + database + "/" + shard +
+            ", error while recalculating count on leader: " +
+            comres->stringifyErrorMessage();
+        LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
+        return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+      }
+    }
+ 
+    // still let the operation fail here, because we gave up the lock 
+    // already and cannot be sure the data on the leader hasn't changed in
+    // the meantime. we will sort this issue out during the next maintenance
+    // run
+    TRI_ASSERT(res.fail());
+    TRI_ASSERT(res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM));
+    return res;
+  }
+
+  // no more retrying...
+
   if (!res.ok()) {
     std::string errorMessage(
         "synchronizeOneshard: error in addShardFollower: ");
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
-
+  
   // Report success:
   LOG_TOPIC("3423d", DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: synchronization worked for shard " << shard;
+      << "synchronizeOneShard: synchronization worked for shard " << database << "/" << shard;
   _result.reset(TRI_ERROR_NO_ERROR);
   return {TRI_ERROR_NO_ERROR};
 }
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    auto const& shard = _description.get("shard");
+    auto const& shard = _description.get(SHARD);
     if (COMPLETE == state) {
+      std::string database = _description.get(DATABASE);
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
-        << "SynchronizeShard: synchronization completed for shard " << shard;
+        << "SynchronizeShard: synchronization completed for shard " << database << "/" << shard;
     }
     _feature.incShardVersion(shard);
+    _feature.unlockShard(shard);
   }
   ActionBase::setState(state);
 }

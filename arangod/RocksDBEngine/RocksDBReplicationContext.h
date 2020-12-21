@@ -80,6 +80,8 @@ class RocksDBReplicationContext {
     /// @brief number of documents in this collection
     /// only set in a very specific use-case
     uint64_t numberDocuments;
+    /// @brief number of documents we iterated over in /dump
+    uint64_t numberDocumentsDumped;
     /// @brief snapshot and number documents were fetched exclusively
     bool isNumberDocumentsExclusive;
 
@@ -138,6 +140,9 @@ class RocksDBReplicationContext {
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
                       bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
+
+  void setPatchCount(std::string const& patchCount);
+  std::string const& patchCount() const;
 
   // ========================= Dump API =============================
 
@@ -229,6 +234,12 @@ class RocksDBReplicationContext {
   SyncerId const _syncerId;
   TRI_server_id_t const _clientId;
   std::string const _clientInfo;
+
+  /// @brief collection for which we are allowed to patch counts. this can
+  /// be empty, meaning that the counts should not be patched for any collection.
+  /// if this is set to the name of any collection/shard, it is expected that the
+  /// context will only be used for exactly one collection/shard.
+  std::string _patchCount;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;

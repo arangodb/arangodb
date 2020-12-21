@@ -266,9 +266,12 @@ exports.manage = function () {
         runInDatabase();
       }
     } catch (e) {
-      warn("An exception occurred while setting up foxx queue handling in database "
-            + e.message + " "
-            + JSON.stringify(e));
+      if (!(e.code && e.code === errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code)) {
+        // database not found is an "expected" error that we can ignore safely
+        warn("An exception occurred while setting up foxx queue handling in database "
+              + database + ": "
+              + JSON.stringify(e));
+      }
       // noop
     }
   });

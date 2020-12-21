@@ -709,7 +709,7 @@ void IResearchFeature::Async::Thread::run() {
         _cond.wait_until(lock, timeout);  // wait for timeout or notify
       }
 
-      onlyPending = !_wasNotified && pendingStart < _tasks.size();  // process all tasks if a notification was raised
+      onlyPending = !_wasNotified;  // process all tasks if a notification was raised
       _wasNotified = false;  // ignore notification since woke up
 
       if (_terminate->load()) {  // check again after sleep
@@ -742,6 +742,8 @@ void IResearchFeature::Async::Thread::run() {
       _next->_cond.notify_all();  // notify thread about a new task (thread may
                                   // be sleeping indefinitely)
     }
+
+    onlyPending &= (pendingStart < _tasks.size());
 
     for (size_t i = onlyPending ? pendingStart : 0,
                 count = _tasks.size();  // optimization to skip previously run

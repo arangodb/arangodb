@@ -84,7 +84,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto* ctx = _manager->createContext(ttl, syncerId, clientId);
+    auto* ctx = _manager->createContext(ttl, syncerId, clientId, patchCount);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {

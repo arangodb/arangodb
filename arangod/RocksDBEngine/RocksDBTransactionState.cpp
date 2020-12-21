@@ -29,6 +29,7 @@
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -331,10 +332,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered
-        TRI_IF_FAILURE("RocksDBCommitCounts") {
-          committed = true;
-          continue;
-        }
         coll->commitCounts(id(), postCommitSeq);
         committed = true;
       }

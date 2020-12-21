@@ -13,3 +13,4 @@ communication
 communication_ssl
 resilience_analyzers
 fuerte
+restart

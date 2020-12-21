@@ -570,34 +570,47 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 }
 
 void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcept {
-  const size_t bucket = getBucket(tid);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  bool isSoftAborted = false;
 
-  auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
-    LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
-        << "managed transaction was not found";
-    TRI_ASSERT(false);
-    return;
+  {
+    const size_t bucket = getBucket(tid);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+
+    auto it = _transactions[bucket]._managed.find(tid);
+    if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
+      LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
+          << "managed transaction was not found";
+      TRI_ASSERT(false);
+      return;
+    }
+
+    TRI_ASSERT(it->second.state != nullptr);
+    TRI_ASSERT(it->second.state->isEmbeddedTransaction());
+    int level = it->second.state->decreaseNesting();
+    TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 0);
+
+    // garbageCollection might soft abort used transactions
+    isSoftAborted = it->second.usedTimeSecs == 0;
+    if (!isSoftAborted) {
+      it->second.usedTimeSecs = TRI_microtime();
+    }
+    if (AccessMode::isWriteOrExclusive(mode)) {
+      it->second.rwlock.unlockWrite();
+    } else if (mode == AccessMode::Type::READ) {
+      it->second.rwlock.unlockRead();
+    } else {
+      TRI_ASSERT(false);
+    }
   }
 
-  TRI_ASSERT(it->second.state != nullptr);
-  TRI_ASSERT(it->second.state->isEmbeddedTransaction());
-  int level = it->second.state->decreaseNesting();
-  TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 0);
-
-  // garbageCollection might soft abort used transactions
-  const bool isSoftAborted = it->second.usedTimeSecs == 0;
-  if (!isSoftAborted) {
-    it->second.usedTimeSecs = TRI_microtime();
-  }
-  if (AccessMode::isWriteOrExclusive(mode)) {
-    it->second.rwlock.unlockWrite();
-  } else if (mode == AccessMode::Type::READ) {
-    it->second.rwlock.unlockRead();
-  } else {
-    TRI_ASSERT(false);
+  // it is important that we release the write lock for the bucket here,
+  // because abortManagedTrx will call statusChangeWithTimeout, which will
+  // call updateTransaction, which then will try to acquire the same 
+  // write lock
+  
+  TRI_IF_FAILURE("returnManagedTrxForceSoftAbort") {
+    isSoftAborted = true;
   }
 
   if (isSoftAborted) {

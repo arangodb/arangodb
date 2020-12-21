@@ -1503,7 +1503,21 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       throw new Error('cluster startup timed out after 10 minutes!');
     }
   }
+
+  print("Determining server IDs");
+  instanceInfo.arangods.forEach(arangod => {
+    // agents don't support the ID call...
+    if ((arangod.role !== "agent") && (arangod.role !== "single")) {
+      const reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      if (reply.error || reply.code !== 200) {
+        throw new Error("Server has no detectable ID! " + JSON.stringify(reply) + "\n" + JSON.stringify(arangod));
+      }
+      let res = JSON.parse(reply.body);
+      arangod.id = res['id'];
+    }
+  });
 }
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief starts an instance
 // /

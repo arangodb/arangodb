@@ -1,3 +1,66 @@
+v3.5.7 (XXXX-XX-XX)
+-------------------
+
+* Updated ArangoDB Starter to 0.14.15-1.
+
+* Updated arangosync to 0.7.13.
+
+* Updated OpenSSL to 1.1.1h.
+
+* Fixed potential deadlock in cluster transactions if a transaction is returned
+  that was soft-aborted by transaction garbage collection before.
+  This deadlock should rarely ever occur in practice, as it can only be
+  triggered once during the server shutdown sequence.
+
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
+
+* Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
+  section of a foxx app.
+
+* Fixed collection count which could be off after a server crash.
+
+* Fixed handling of failedLeaderJob. In case of a plan modification, that
+  removes a server from the plan, e.g. reduce replication factor. Directly
+  followed by a failure of the current shard leader, would reinsert the just
+  removed server in the plan, which is undesired, we first need to have a full
+  "desync" cycle on this server to be reusable in the plan again.
+
+* Fix an issue in arangoimport improperly handling filenames with less than 3
+  characters. The specified input filename was checked for a potential ".gz"
+  ending, but the check required the filename to have at least 3 characters.
+  This is now fixed.
+
+* Make sure the optimizer doesn't pick another index than the TTL index itself
+  while fulfilling the expiry of TTL.
+
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can
+  never be re-added to the Plan before this has happened.
+
+* Fixed issue ES-696: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
+* Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
+  v1.53.0 release.
+
+* Suppress warning about non-found databases in Foxx queues manager after
+  dropping a database.
+
+* Make the reboot tracker catch failed coordinators, too. Previously the reboot
+  tracker was invoked only when a DB server failed or was restarted, and when a
+  coordinator was restarted. Now it will also act if a coordinator just fails
+  (without restart).
+
+* Implement RebootTracker usage for AQL queries in case of coordinator restarts
+  or failures. This will clean up the rest of an AQL query on dbservers more
+  quickly and in particular release locks faster.
+
+* Serialize maintenance actions for each shard. This addresses lost document
+  problems found in chaos testing.
+
+
 v3.5.6 (2020-09-11)
 -------------------
 

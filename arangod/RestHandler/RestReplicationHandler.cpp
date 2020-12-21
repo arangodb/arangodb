@@ -2503,20 +2503,22 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  std::string const leaderChecksum = referenceChecksum.get();
+  
   LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
-      << "Compare Leader: " << referenceChecksum.get()
+      << "Compare Leader: " << leaderChecksum
       << " == Follower: " << checksumSlice.copyString();
-  if (!checksumSlice.isEqualString(referenceChecksum.get())) {
+  if (!checksumSlice.isEqualString(leaderChecksum)) {
     LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION)
         << followerId << " is not yet in sync with " << _vocbase.name() << "/"
         << col->name();
     const std::string checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
         << "Cannot add follower, mismatching checksums. "
-        << "Expected: " << referenceChecksum.get() << " Actual: " << checksum;
+        << "Expected (leader): " << leaderChecksum << " Actual (follower): " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-                  "'checksum' is wrong. Expected: " + referenceChecksum.get() +
-                      ". Actual: " + checksum);
+                  "'checksum' is wrong. Expected (leader): " + leaderChecksum +
+                      ". Actual (follower): " + checksum);
     return;
   }
 
@@ -3164,11 +3166,11 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
     std::string comment = std::string("SynchronizeShard from ") + serverId +
       " for " + col.name() + " access mode " + AccessMode::typeString(access);
-    std::unique_ptr<CallbackGuard> rGuard = nullptr;
+    CallbackGuard rGuard;
     if (!serverId.empty()) {
-      rGuard = std::make_unique<CallbackGuard>(
+      rGuard =
         ci.rebootTracker().callMeOnChange(
-          RebootTracker::PeerState(serverId, rebootId), f, comment));
+          RebootTracker::PeerState(serverId, rebootId), f, comment);
     }
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
   } catch (...) {

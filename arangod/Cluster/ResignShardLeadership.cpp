@@ -137,3 +137,10 @@ bool ResignShardLeadership::first() {
 }
 
 std::string const ResignShardLeadership::LeaderNotYetKnownString = "LEADER_NOT_YET_KNOWN";
+
+void ResignShardLeadership::setState(ActionState state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    _feature.unlockShard(_description.get(SHARD));
+  }
+  ActionBase::setState(state);
+}

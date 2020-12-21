@@ -99,7 +99,7 @@ set(ARANGODB_VERSION_MINOR "5")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "6")
+  set(ARANGODB_VERSION_PATCH "7")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -881,7 +881,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter ${BASE_FLAGS}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-range-loop-analysis ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
