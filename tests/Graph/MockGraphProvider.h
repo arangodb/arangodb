@@ -139,11 +139,11 @@ class MockGraphProvider {
     }
 
     Edge getEdge() const {
-      if (!isProcessable()) {
+      /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "Accessing edge (" + _edge.toString() +
                                            "), before fetching it");
-      }
+      }*/
       return _edge;
     }
 
