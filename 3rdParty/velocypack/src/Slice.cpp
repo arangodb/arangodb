@@ -127,9 +127,19 @@ std::string Slice::toHex() const {
 std::string Slice::toJson(Options const* options) const {
   std::string buffer;
   StringSink sink(&buffer);
-  Dumper dumper(&sink, options);
-  dumper.dump(this);
+  toJson(&sink, options);
   return buffer;
+}
+
+std::string& Slice::toJson(std::string& out, Options const* options) const {
+  StringSink sink(&out);
+  toJson(&sink, options);
+  return out;
+}
+
+void Slice::toJson(Sink* sink, Options const* options) const {
+  Dumper dumper(sink, options);
+  dumper.dump(this);
 }
 
 std::string Slice::toString(Options const* options) const {

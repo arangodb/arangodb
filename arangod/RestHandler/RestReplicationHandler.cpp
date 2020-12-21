@@ -1577,7 +1577,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
   bindVars->close();  // bindVars
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars, nullptr);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars);
   aql::QueryResult queryResult = query.executeSync();
 
   // neither agency nor dbserver should get here
