@@ -68,6 +68,7 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
   std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+  arangodb::ResourceMonitor resourceMonitor{};
 
   KPathFinderTest_Refactored() {
     if (activateLogging) {
@@ -116,7 +117,6 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
   
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
-    arangodb::ResourceMonitor resourceMonitor{};
     return KPathFinder{MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), false),
       MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), true),
       std::move(options), resourceMonitor};
