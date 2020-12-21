@@ -456,8 +456,8 @@ void TransactionState::coordinatorRerollTransactionId() {
   TRI_ASSERT(isRunning())
   auto old = _id;
   _id = transaction::Context::makeTransactionId();
-  LOG_DEVEL << "Rerolling transaction id from " << old << " to " << _id
-            << " status " << _status;
+  LOG_TOPIC("a565a", DEBUG, Logger::TRANSACTIONS)
+      << "Rerolling transaction id from " << old << " to " << _id;
   clearKnownServers();
 }
 
