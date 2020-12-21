@@ -24,8 +24,8 @@
 #ifndef ARANGOD_GRAPH_QUEUE_H
 #define ARANGOD_GRAPH_QUEUE_H 1
 
-#include "Basics/debugging.h"
 #include "Basics/ResourceUsage.h"
+#include "Basics/debugging.h"
 
 #include <queue>
 
@@ -39,13 +39,12 @@ class FifoQueue {
   // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the end
 
-  FifoQueue(arangodb::ResourceMonitor& resourceMonitor) : _resourceMonitor{resourceMonitor} {
-    _resourceMonitor.increaseMemoryUsage(sizeof(_queue));
-  }
-  ~FifoQueue() {}
+  FifoQueue(arangodb::ResourceMonitor& resourceMonitor)
+      : _resourceMonitor{resourceMonitor} {}
+  ~FifoQueue() { this->clear(); }
 
   void clear() {
-    _resourceMonitor.decreaseMemoryUsage(sizeof(_queue));
+    _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
     _queue.clear();
   };
 
