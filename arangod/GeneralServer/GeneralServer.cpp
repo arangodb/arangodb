@@ -200,7 +200,12 @@ GeneralServer::IoThread::~IoThread() { shutdown(); }
 
 void GeneralServer::IoThread::run() {
   // run the asio io context
-  _iocontext._asioIoContext.run();
+  try {
+    _iocontext._asioIoContext.run();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("6794f", WARN, Logger::THREADS)
+      << "caught exception in IO thread '" << ex.what();
+  }
 }
 
 GeneralServer::IoContext::IoContext()

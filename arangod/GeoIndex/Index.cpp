@@ -245,8 +245,6 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     // Handle GEO_DISTANCE(<something>, doc.field) [<|<=|=>|>] <constant>
     case aql::NODE_TYPE_OPERATOR_BINARY_LE:
       qp.maxInclusive = true;
-      // intentional fallthrough
-      [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
@@ -266,8 +264,6 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     }
     case aql::NODE_TYPE_OPERATOR_BINARY_GE:
       qp.minInclusive = true;
-      // intentional fallthrough
-      [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
