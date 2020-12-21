@@ -147,7 +147,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   struct Inserter {
     Inserter(Cache& cache, void const* key, std::size_t keySize, void const* value,
-             std::size_t valueSize, std::function<bool(Result)> retry);
+             std::size_t valueSize, std::function<bool(Result const&)> retry);
     Result status;
   };
 

@@ -194,7 +194,7 @@ bool Cache::isBusy() {
 
 Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
                           void const* value, std::size_t valueSize,
-                          std::function<bool(Result const&)> const& retry) {
+                          std::function<bool(Result const&)> retry) {
   std::unique_ptr<CachedValue> cv{CachedValue::construct(key, keySize, value, valueSize)};
   if (!cv) {
     status.reset(TRI_ERROR_OUT_OF_MEMORY);
