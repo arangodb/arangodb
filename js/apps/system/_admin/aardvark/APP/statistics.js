@@ -38,6 +38,7 @@ const STATISTICS_HISTORY_INTERVAL = 15 * 60; // seconds
 const joi = require('joi');
 const httperr = require('http-errors');
 const createRouter = require('@arangodb/foxx/router');
+const { MergeStatisticSamples } = require('@arangodb/statistics-helper');
 
 const router = createRouter();
 module.exports = router;
@@ -406,152 +407,58 @@ router.use((req, res, next) => {
 });
 
 router.get('/coordshort', function (req, res) {
-  var merged = {
-    http: {}
-  };
+  var merged = { };
 
-  var mergeHistory = function (data) {
-    var onetime = ['times'];
-    var values = [
-      'physicalMemory',
-      'residentSizeCurrent',
-      'clientConnections15M',
-      'clientConnectionsCurrent'
-    ];
-    var http = [
-      'optionsPerSecond',
-      'putsPerSecond',
-      'headsPerSecond',
-      'postsPerSecond',
-      'getsPerSecond',
-      'deletesPerSecond',
-      'othersPerSecond',
-      'patchesPerSecond'
-    ];
-    var arrays = [
-      'bytesSentPerSecond',
-      'bytesReceivedPerSecond',
-      'avgRequestTime'
-    ];
+  const coordinators = global.ArangoClusterInfo.getCoordinators();
+  try {
+    const stats15Query = `
+      FOR s IN _statistics15
+        FILTER s.time > @start
+        FILTER s.clusterId IN @clusterIds
+        SORT s.time
+        COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections
+        LET clientConnectionsCurrent = LAST(clientConnections)
+        COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent)
+        RETURN {clientConnections15M: clientConnections15M || 0}`;
 
-    var counter = 0;
-    var counter2;
-
-    _.each(data, function (stat) {
-      if (typeof stat === 'object' && Object.keys(stat).length !== 0) {
-        if (counter === 0) {
-          // one time value
-          _.each(onetime, function (value) {
-            merged[value] = stat[value];
-          });
-
-          // values
-          _.each(values, function (value) {
-            merged[value] = stat[value];
-          });
-
-          // http requests arrays
-          _.each(http, function (value) {
-            merged.http[value] = stat[value];
-          });
-
-          // arrays
-          _.each(arrays, function (value) {
-            merged[value] = stat[value];
-          });
-        } else {
-          // values
-          _.each(values, function (value) {
-            merged[value] = merged[value] + stat[value];
-          });
-          // http requests arrays
-          _.each(http, function (value) {
-            counter2 = 0;
-            _.each(stat[value], function (x) {
-              try {
-                if (merged.http[value][counter2] === undefined) {
-                  // this will hit if a previous coordinator was not able to deliver
-                  // proper current statistics, but the current one already has statistics.
-                  merged.http[value][counter2] = x;
-                } else {
-                  merged.http[value][counter2] += x;
-                }
-              } catch (err) {}
-              counter2++;
-            });
-          });
-          _.each(arrays, function (value) {
-            counter2 = 0;
-            _.each(stat[value], function (x) {
-              try {
-                if (merged[value][counter2] === undefined) {
-                  merged[value][counter2] = 0;
-                } else {
-                  merged[value][counter2] += x;
-                }
-              } catch (err) {}
-              counter2++;
-            });
-          });
-        }
-        counter++;
-      }
-    });
-  };
-
-  var coordinators = global.ArangoClusterInfo.getCoordinators();
-  var coordinatorStats;
-  if (Array.isArray(coordinators)) {
-    coordinatorStats = coordinators.map(coordinator => {
-      const op = ArangoClusterComm.asyncRequest(
-        "GET",
-        "server:" + coordinator,
-        "_system",
-        '/_admin/aardvark/statistics/short',
-        "",
-        {},
-        { timeout: 10 }
-      );
-
-      const r = ArangoClusterComm.wait(op);
-
-      if (r.status === "RECEIVED") {
-        res.set("content-type", "application/json; charset=utf-8");
-        return JSON.parse(r.body);
-      } 
-      if (r.status === "TIMEOUT") {
-        throw new httperr.BadRequest("operation timed out");
-      } 
-      let body;
-      try {
-        body = JSON.parse(r.body);
-      } catch (e) {
-        // noop
-      }
-
-      return {};
-
-      /* don't throw here, as this will render the entire web UI cluster stats broken */
-      /*
-      throw Object.assign(
-        new httperr.BadRequest("error from Coordinator '" + coordinator + "', possibly Coordinator unknown or down"),
-        {extra: {body}}
-      );
-      */
-    });
-
-    if (coordinatorStats) {
-      mergeHistory(coordinatorStats);
+    const statsSampleQuery = `
+      FOR s IN _statistics
+        FILTER s.time > @start
+        FILTER s.clusterId IN @clusterIds
+        RETURN {
+          time: s.time,
+          clusterId: s.clusterId,
+          physicalMemory: s.server.physicalMemory,
+          residentSizeCurrent: s.system.residentSize,
+          clientConnectionsCurrent: s.client.httpConnections,
+          avgRequestTime: s.client.avgRequestTime,
+          bytesSentPerSecond: s.client.bytesSentPerSecond,
+          bytesReceivedPerSecond: s.client.bytesReceivedPerSecond,
+          http: {
+            optionsPerSecond: s.http.requestsOptionsPerSecond,
+            putsPerSecond: s.http.requestsPutPerSecond,
+            headsPerSecond: s.http.requestsHeadPerSecond,
+            postsPerSecond: s.http.requestsPostPerSecond,
+            getsPerSecond: s.http.requestsGetPerSecond,
+            deletesPerSecond: s.http.requestsDeletePerSecond,
+            othersPerSecond: s.http.requestsOptionsPerSecond,
+            patchesPerSecond: s.http.requestsPatchPerSecond
+          }
+      }`;
+    
+    const params = { start: startOffsetSchema - 2 * STATISTICS_INTERVAL, clusterIds: coordinators };
+    const stats15 = db._query(stats15Query, params).toArray();
+    const statsSamples = db._query(statsSampleQuery, params).toArray();
+    if (statsSamples.length !== 0) {
+      // we have no samples -> either statistics are disabled, or the server has just been started
+      merged = MergeStatisticSamples(statsSamples);
+      merged.clientConnections15M = stats15.length === 0 ? 0 : stats15[0].clientConnections15M;
     }
+  } catch (e) {
+    // ignore exceptions, because throwing here will render the entire web UI cluster stats broken
   }
-  if (coordinatorStats) {
-    res.json({'enabled': coordinatorStats.some(stat => stat.enabled), 'data': merged});
-  } else {
-    res.json({
-      'enabled': false,
-      'data': {}
-    });
-  }
+
+  res.json({'enabled': internal.enabledStatistics(), 'data': merged});
 })
   .summary('Short term history for all coordinators')
   .description('This function is used to get the statistics history.');

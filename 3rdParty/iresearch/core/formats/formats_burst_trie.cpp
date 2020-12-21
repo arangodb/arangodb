@@ -570,7 +570,7 @@ class fst_buffer : public vector_byte_fst {
   /// @class fst_stats
   /// @brief fst builder stats
   ///////////////////////////////////////////////////////////////////////////////
-  struct fst_stats : iresearch::fst_stats {
+  struct fst_stats : irs::fst_stats {
     size_t total_weight_size{};
 
     void operator()(const byte_weight& w) noexcept {
@@ -978,9 +978,8 @@ void field_writer::prepare(const irs::flush_state& state) {
       assert(index_out_cipher_ && index_out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_output::DEFAULT_BUFFER_SIZE,
-        index_out_cipher_->block_size()
-      );
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
+        index_out_cipher_->block_size());
 
       index_out_ = index_output::make<encrypted_output>(
         std::move(index_out_),
@@ -1334,7 +1333,9 @@ class block_iterator : util::noncopyable {
     suffix_ = suffix_begin_;
     reader(suffix_, suffix_length_);
     suffix_begin_ += suffix_length_;
+#ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
   }
 
   template<typename Reader>
@@ -1353,7 +1354,7 @@ class block_iterator : util::noncopyable {
   const byte_type* header_end_{header_begin_}; // end of valid header input stream
   const byte_type* suffix_end_{suffix_begin_ + suffix_block_.size()}; // end of valid suffix input stream
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
-#endif
+#endif // IRESEARCH_DEBUG
   const byte_type* suffix_{}; // current suffix
   uint64_t suffix_length_{}; // current suffix length
   version10::term_meta state_;
@@ -1388,7 +1389,9 @@ block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
     sub_count_ = vread<uint64_t>(header_begin_);
     next_label_ = *header_begin_++;
   }
+#ifdef IRESEARCH_DEBUG
   assert(header_begin_ <= header_end_);
+#endif // IRESEARCH_DEBUG
 }
 
 void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
@@ -1466,7 +1469,9 @@ void block_iterator::read_entry_nonleaf(Reader& reader) {
 
   suffix_ = suffix_begin_;
   suffix_begin_ += suffix_length_;
+#ifdef IRESEARCH_DEBUG
   assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 
   switch (cur_type_) {
     case ET_TERM: ++term_count_; break;
@@ -1477,7 +1482,9 @@ void block_iterator::read_entry_nonleaf(Reader& reader) {
   // read after state is updated
   reader(suffix_, suffix_length_);
 
+#ifdef IRESEARCH_DEBUG
   assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 }
 
 SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
@@ -1489,10 +1496,14 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
     ++term_count_;
     cur_type_ = ET_TERM;
     suffix_length_ = vread<uint64_t>(suffix_begin_);
+#ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
     suffix_ = suffix_begin_; // start of the current suffix
     suffix_begin_ += suffix_length_; // skip to the next term
+#ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 
     const byte_type* suffix = suffix_;
     const byte_type* target = term.c_str() + prefix_;
@@ -1536,10 +1547,14 @@ SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
     ++cur_ent_;
     cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
         ? ET_BLOCK : ET_TERM;
+#ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
     suffix_ = suffix_begin_;
     suffix_begin_ += suffix_length_; // skip to the next entry
+#ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 
     switch (cur_type_) {
       case ET_TERM: ++term_count_; break;
@@ -1619,7 +1634,9 @@ void block_iterator::scan_to_sub_block(byte_type label) {
     dirty_ = true;
   }
 
+#ifdef IRESEARCH_DEBUG
   assert(header_begin_ <= header_end_);
+#endif // IRESEARCH_DEBUG
 }
 
 void block_iterator::scan_to_block(uint64_t start) {
@@ -1638,10 +1655,14 @@ void block_iterator::scan_to_block(uint64_t start) {
     ++cur_ent_;
     const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
         ? ET_BLOCK : ET_TERM;
+#ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
     suffix_ = suffix_begin_;
     suffix_begin_ += suffix_length_;
+#ifdef IRESEARCH_DEBUG
     assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
 
     switch (type) {
       case ET_TERM:
@@ -1649,11 +1670,15 @@ void block_iterator::scan_to_block(uint64_t start) {
         break;
       case ET_BLOCK:
         if (vread<uint64_t>(suffix_begin_) == target) {
+#ifdef IRESEARCH_DEBUG
           assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
           cur_block_start_ = target;
           return;
         }
+#ifdef IRESEARCH_DEBUG
         assert(suffix_begin_ <= suffix_end_);
+#endif // IRESEARCH_DEBUG
         break;
       default:
         assert(false);
@@ -1682,7 +1707,9 @@ void block_iterator::load_data(const field_meta& meta,
 
   for (; cur_stats_ent_ < term_count_; ++cur_stats_ent_) {
     stats_begin_ += pr.decode(stats_begin_, meta.features, attrs, state);
+#ifdef IRESEARCH_DEBUG
     assert(stats_begin_ <= stats_end_);
+#endif // IRESEARCH_DEBUG
   }
 
   state_ = state;
@@ -1704,7 +1731,9 @@ void block_iterator::reset() {
   }
   dirty_ = true;
 
+#ifdef IRESEARCH_DEBUG
   assert(header_begin_ <= header_end_);
+#endif // IRESEARCH_DEBUG
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2704,7 +2733,7 @@ void field_reader::prepare(
       assert(index_in_cipher && index_in_cipher->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_input::DEFAULT_BUFFER_SIZE,
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
         index_in_cipher->block_size());
 
       index_in = memory::make_unique<encrypted_input>(

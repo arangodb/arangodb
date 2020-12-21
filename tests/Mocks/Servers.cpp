@@ -154,7 +154,12 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<arangodb::QueryRegistryFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
-  server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+  {
+    auto& feature = server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
+  }
+
   server.addFeature<arangodb::aql::AqlFunctionFeature>(true);
   server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
   server.addFeature<arangodb::AqlFeature>(true);
@@ -300,6 +305,7 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
+  addFeature<arangodb::NetworkFeature>(false);
 
   if (start) {
     startFeatures();
@@ -332,12 +338,12 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
-  auto queryOptions = std::make_shared<VPackBuilder>();
-  queryOptions->openObject();
+  VPackBuilder queryOptions;
+  queryOptions.openObject();
   if (activateTracing) {
-    queryOptions->add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
+    queryOptions.add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
   }
-  queryOptions->close();
+  queryOptions.close();
   if (queryString.empty()) {
     queryString = "RETURN 1";
   }
@@ -345,7 +351,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   aql::QueryString fakeQueryString(queryString);
   auto query =
       std::make_unique<arangodb::aql::Query>(arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-                                             fakeQueryString, bindParams, queryOptions);
+                                             fakeQueryString, bindParams, queryOptions.slice());
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
 //  auto engine =
@@ -358,6 +364,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<arangodb::QueryRegistryFeature>(false);
+  addFeature<arangodb::NetworkFeature>(false);
   if (start) {
     startFeatures();
   }

@@ -70,7 +70,7 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    if (r.response->statusCode() == fuerte::StatusOK) {
+    if (r.statusCode() == fuerte::StatusOK) {
       out += r.slice().get("result");
     } else {
       int code = network::errorCodeFromBody(r.slice());
@@ -104,7 +104,7 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    if (r.response->statusCode() == fuerte::StatusOK) {
+    if (r.statusCode() == fuerte::StatusOK) {
       out.add(r.slice().get("result"));
       break;
     } else {
@@ -144,7 +144,7 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
       return network::fuerteToArangoErrorCode(r);
     }
 
-    if (r.response->statusCode() == fuerte::StatusOK) {
+    if (r.statusCode() == fuerte::StatusOK) {
       out.add(r.slice().get("result"));
       break;
     } else {

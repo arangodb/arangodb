@@ -29,14 +29,14 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
-#include "Transaction/Context.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -66,7 +66,8 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
       _cache(nullptr),
       _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr),
       _objectId(::ensureObjectId(objectId)) {
-  TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
+  TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamilyManager::get(
+                                        RocksDBColumnFamilyManager::Family::Definitions));
 
   if (_cacheEnabled) {
     createCache();
@@ -87,7 +88,8 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
       _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr),
       _objectId(::ensureObjectId(
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId))) {
-  TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
+  TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamilyManager::get(
+                                        RocksDBColumnFamilyManager::Family::Definitions));
 
   if (_cacheEnabled) {
     createCache();
@@ -284,7 +286,7 @@ void RocksDBIndex::compact() {
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::CompactRangeOptions opts;
-  if (_cf != RocksDBColumnFamily::invalid()) {
+  if (_cf != RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid)) {
     RocksDBKeyBounds bounds = this->getBounds();
     TRI_ASSERT(_cf == bounds.columnFamily());
     rocksdb::Slice b = bounds.start(), e = bounds.end();

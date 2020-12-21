@@ -105,6 +105,7 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
+  ApplicationFeatures/CpuUsageFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
@@ -122,6 +123,7 @@ add_library(arango STATIC
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
+  Basics/CpuUsageSnapshot.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
   Basics/EncodingUtils.cpp
@@ -167,7 +169,6 @@ add_library(arango STATIC
   Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
-  Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/signals.cpp
   Basics/socket-utils.cpp
@@ -231,6 +232,7 @@ add_library(arango STATIC
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp
+  Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp

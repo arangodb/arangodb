@@ -211,12 +211,22 @@ function endpoints (options) {
   return Object.keys(endpoints).reduce((results, endpointName) => {
     let testName = 'endpoint-' + endpointName;
     let testCase = endpoints[endpointName];
-    if (options.cluster || options.skipEndpoints || (testCase.skip && testCase.skip())) {
+
+    if (options.cluster || options.skipEndpoints) {
       return {
         failed: 0,
         status: true,
         skipped: true
       };
+    }
+    if (testCase.skip()) {
+      results[endpointName + '-' + 'all'] = {
+        failed: 0,
+        skipped: true,
+        status: true,
+        message: 'test skipped'
+      };
+      return results;
     }
 
     let serverArgs = testCase.serverArgs();
@@ -228,11 +238,13 @@ function endpoints (options) {
 
     if (instanceInfo === false) {
       results.failed += 1;
-      return {
+
+      results[endpointName + '-' + 'all'] = {
         failed: 1,
         status: false,
         message: 'failed to start server!'
       };
+      return results;
     }
 
     const specFile = testPaths.endpoints[0];

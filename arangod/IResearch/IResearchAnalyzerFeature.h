@@ -50,6 +50,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
@@ -394,7 +395,7 @@ class IResearchAnalyzerFeature final
   Analyzers _analyzers; // all analyzers known to this feature (including static)
                         // (names are stored with expanded vocbase prefixes)
   std::unordered_map<std::string, AnalyzersRevision::Revision> _lastLoad; // last revision for database was loaded
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_analyzers', '_lastLoad'
+  mutable basics::ReadWriteLock _mutex; // for use with member '_analyzers', '_lastLoad'
 
   static Analyzers const& getStaticAnalyzers();
 

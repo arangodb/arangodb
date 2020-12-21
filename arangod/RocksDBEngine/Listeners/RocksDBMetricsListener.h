@@ -18,34 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_NON_ACTION_H
-#define ARANGODB_MAINTENANCE_NON_ACTION_H
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_METRICS_LISTENER_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_METRICS_LISTENER_H 1
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
+// public rocksdb headers
+#include <rocksdb/listener.h>
 
-#include <chrono>
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
-namespace maintenance {
+namespace application_features {
+class ApplicationServer;
+}
 
-/**
- * @brief  Dummy action for failure to find action
- */
-class NonAction : public ActionBase {
+/// @brief Gathers better metrics from RocksDB than we can get by scraping alone.
+class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
-  NonAction(MaintenanceFeature&, ActionDescription const& d);
+  explicit RocksDBMetricsListener(application_features::ApplicationServer&);
 
-  virtual ~NonAction();
+  void OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) override;
 
-  virtual bool first() override final;
+ protected:
+  Counter& _writeStalls;
+  Counter& _writeStops;
 };
 
-}  // namespace maintenance
 }  // namespace arangodb
 
 #endif

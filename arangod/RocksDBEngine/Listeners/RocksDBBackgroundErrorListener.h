@@ -21,8 +21,8 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
-#define ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
 
 // public rocksdb headers
 #include <rocksdb/db.h>
@@ -38,7 +38,7 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 
  private:
   bool _called = false;
-};  // class RocksDBThrottle
+};
 
 }  // namespace arangodb
 

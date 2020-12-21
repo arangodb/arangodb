@@ -23,6 +23,8 @@
 
 #include "NetworkFeature.h"
 
+#include <fuerte/connection.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
@@ -30,6 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Network/ConnectionPool.h"
+#include "Network/Methods.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/MetricsFeature.h"
@@ -59,6 +62,10 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
     FATAL_ERROR_EXIT();
   }
 }
+
+constexpr double CongestionRatio = 0.5;
+constexpr std::uint64_t MaxAllowedInFlight = 65536;
+constexpr std::uint64_t MinAllowedInFlight = 64;
 }  // namespace
 
 using namespace arangodb::basics;
@@ -80,9 +87,20 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts),
       _prepared(false),
-      _forwardedRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_network_forwarded_requests", 0, "Number of requests forwarded to another coordinator")) {
+      _forwardedRequests(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_forwarded_requests", 0,
+          "Number of requests forwarded to another coordinator")),
+      _maxInFlight(::MaxAllowedInFlight),
+      _requestsInFlight(server.getFeature<arangodb::MetricsFeature>().gauge<std::uint64_t>(
+          "arangodb_network_requests_in_flight", 0,
+          "Number of outgoing internal requests in flight")),
+      _requestTimeouts(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_request_timeouts", 0,
+          "Number of internal requests that have timed out")),
+      _requestDurations(server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_network_request_duration_as_percentage_of_timeout",
+          fixed_scale_t(0.0, 100.0, {1.0, 5.0, 15.0, 50.0}),
+          "Internal request round-trip time as a percentage of timeout [%]")) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -114,10 +132,18 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--network.protocol", "network protocol to use for cluster-internal communication",
                      new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
                      .setIntroducedIn(30700);
+
+  options
+      ->addOption("--network.max-requests-in-flight",
+                  "controls the number of internal requests that can be in "
+                  "flight at a given point in time",
+                  new options::UInt64Parameter(&_maxInFlight),
+                  options::makeDefaultFlags(options::Flags::Hidden))
+      .setIntroducedIn(30800);
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opts) {
-  _numIOThreads = std::min<unsigned>(1, std::max<unsigned>(_numIOThreads, 8));
+  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
@@ -126,6 +152,14 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   }
   if (_idleTtlMilli < 10000) {
     _idleTtlMilli = 10000;
+  }
+
+  uint64_t clamped = std::clamp(_maxInFlight, ::MinAllowedInFlight, ::MaxAllowedInFlight);
+  if (clamped != _maxInFlight) {
+    LOG_TOPIC("38cd1", WARN, Logger::CONFIG)
+        << "Must set --network.max-requests-in-flight between " << ::MinAllowedInFlight
+        << " and " << ::MaxAllowedInFlight << ", clamping value";
+    _maxInFlight = clamped;
   }
 }
 
@@ -236,6 +270,65 @@ bool NetworkFeature::prepared() const {
 
 void NetworkFeature::trackForwardedRequest() {
   ++_forwardedRequests;
+}
+
+std::size_t NetworkFeature::requestsInFlight() const {
+  return _requestsInFlight.load();
+}
+
+bool NetworkFeature::isCongested() const {
+  return _requestsInFlight.load() >= (_maxInFlight * ::CongestionRatio);
+}
+
+bool NetworkFeature::isSaturated() const {
+  return _requestsInFlight.load() >= _maxInFlight;
+}
+
+void NetworkFeature::sendRequest(network::ConnectionPool& pool,
+                                 network::RequestOptions const& options,
+                                 std::string const& endpoint,
+                                 std::unique_ptr<fuerte::Request>&& req,
+                                 RequestCallback&& cb) {
+  TRI_ASSERT(req != nullptr);
+  prepareRequest(pool, req);
+  auto conn = pool.leaseConnection(endpoint);
+  conn->sendRequest(std::move(req),
+                    [this, &pool,
+                     cb = std::move(cb)](fuerte::Error err,
+                                         std::unique_ptr<fuerte::Request> req,
+                                         std::unique_ptr<fuerte::Response> res) {
+                      TRI_ASSERT(req != nullptr);
+                      finishRequest(pool, err, req, res);
+                      TRI_ASSERT(req != nullptr);
+                      cb(err, std::move(req), std::move(res));
+                    });
+}
+
+void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
+                                    std::unique_ptr<fuerte::Request>& req) {
+  _requestsInFlight += 1;
+  if (req) {
+    req->timestamp(std::chrono::steady_clock::now());
+  }
+}
+void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::Error err,
+                                   std::unique_ptr<fuerte::Request> const& req,
+                                   std::unique_ptr<fuerte::Response>& res) {
+  _requestsInFlight -= 1;
+  if (err == fuerte::Error::RequestTimeout) {
+    _requestTimeouts.count();
+  } else if (req && res) {
+    res->timestamp(std::chrono::steady_clock::now());
+    std::chrono::milliseconds duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(res->timestamp() -
+                                                              req->timestamp());
+    std::chrono::milliseconds timeout = req->timeout();
+    TRI_ASSERT(timeout.count() > 0);
+    double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
+                                       static_cast<double>(timeout.count()),
+                                   0.0, 100.0);
+    _requestDurations.count(percentage);
+  }
 }
 
 }  // namespace arangodb

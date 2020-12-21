@@ -474,7 +474,7 @@ void Constituent::callElection() {
     }
     network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, "/_api/agency_priv/requestVote",
                          VPackBuffer<uint8_t>(), reqOpts).thenValue([=](network::Response r) {
-      if (r.ok() && r.response->statusCode() == 200) {
+      if (r.ok() && r.statusCode() == 200) {
         VPackSlice slc = r.slice();
 
         // Got ballot
@@ -574,17 +574,13 @@ void Constituent::run() {
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
 
   // Most recent vote
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                               arangodb::aql::QueryString(aql),
-                               bindVars, nullptr);
+                               arangodb::aql::QueryString(aql), nullptr);
 
     aql::QueryResult queryResult = query.executeSync();
 

@@ -125,7 +125,6 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     if (call.needsFullCount()) {
       call.didSkip(rowsLeft);
     }
-    rowsLeft = 0;
 
     // In this case we consumed all rows until the end of
     // a) the shadowRow range

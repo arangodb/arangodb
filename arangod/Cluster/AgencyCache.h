@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,7 +28,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Promise.h"
-#include "GeneralServer/RestHandler.h"
+#include "RestServer/Metrics.h"
 
 #include <map>
 #include <shared_mutex>
@@ -37,9 +36,7 @@
 namespace arangodb {
 
 class AgencyCache final : public arangodb::Thread {
-
-public:
-
+ public:
   typedef std::unordered_map<std::string, consensus::query_t> databases_t;
 
   struct change_set_t {
@@ -59,8 +56,7 @@ public:
     application_features::ApplicationServer& server,
     AgencyCallbackRegistry& callbackRegistry);
 
-  /// @brief Clean up
-  virtual ~AgencyCache();
+  ~AgencyCache();
 
   // whether or not the thread is allowed to start during prepare
   bool isSystem() const override;
@@ -127,7 +123,15 @@ public:
   change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
   
-private:
+  /**
+   * @brief         Clean up planned/current changes up to including index
+   *
+   * @param section   "Plan" or "Current"
+   * @param doneIndex   Done index
+   */
+  void clearChanged(std::string const& section, consensus::index_t const& doneIndex);
+
+ private:
 
   /// @brief invoke all callbacks
   void invokeAllCallbacks() const;
@@ -160,6 +164,9 @@ private:
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
 
+  /// @brief Make sure, that we have seen in the beginning a snapshot
+  std::atomic<bool> _initialized;
+
   /// @brief Agency callback registry
   AgencyCallbackRegistry& _callbackRegistry;
 
@@ -171,13 +178,15 @@ private:
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
 
-  /// @ brief changes of index to plan and current 
+  /// @ brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;
   std::multimap<consensus::index_t, std::string> _currentChanges;
 
-  /// @brief snapshot note for client 
+  /// @brief snapshot note for client
   consensus::index_t _lastSnapshot;
   
+  /// @brief current number of entries in _callbacks
+  Gauge<uint64_t>& _callbacksCount;
 };
 
 } // namespace

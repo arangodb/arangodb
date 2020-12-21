@@ -48,7 +48,10 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
     std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
                                   isSyncReplication);
     if (isSyncReplication) {
-      return RequestLane::CLIENT_FAST;
+      return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+      // This leads to the high queue, we want replication requests to be
+      // executed with a higher prio than leader requests, even if they
+      // are done from AQL.
     }
     return RequestLane::CLIENT_SLOW;
   }

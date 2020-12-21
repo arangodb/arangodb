@@ -22,13 +22,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"  // required for RocksDBColumnFamily.h
+#include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -42,46 +42,45 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, arangodb::LogicalCollection& collection)
+IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection)
     : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
-                   RocksDBColumnFamily::invalid(), false),
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
+                   false),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
 }
 
-void IResearchRocksDBLink::toVelocyPack( // generate definition
-    arangodb::velocypack::Builder& builder, // destination buffer
-    std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
-) const {
+void IResearchRocksDBLink::toVelocyPack(
+    VPackBuilder& builder,
+    std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+    THROW_ARANGO_EXCEPTION(Result(  // result
         TRI_ERROR_BAD_PARAMETER,              // code
         std::string("failed to generate link definition for arangosearch view "
                     "RocksDB link '") +
-            std::to_string(arangodb::Index::id().id()) + "'"));
+            std::to_string(Index::id().id()) + "'"));
   }
 
-  auto forPersistence = // definition for persistence
-    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
+  auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
 
   builder.openObject();
 
   if (!IResearchLink::properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
-        TRI_ERROR_INTERNAL,                   // code
+    THROW_ARANGO_EXCEPTION(Result(
+        TRI_ERROR_INTERNAL,
         std::string("failed to generate link definition for arangosearch view "
                     "RocksDB link '") +
-            std::to_string(arangodb::Index::id().id()) + "'"));
+            std::to_string(Index::id().id()) + "'"));
   }
 
-  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals)) {
+  if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
     builder.add("objectId", VPackValue(std::to_string(objectId())));
   }
 
-  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();
@@ -153,21 +152,22 @@ class RocksDBEncryptionProvider final : public irs::encryption {
   rocksdb::EnvOptions _options;
 };  // RocksDBEncryptionProvider
 
-IResearchRocksDBLink::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
+IResearchRocksDBLink::IndexFactory::IndexFactory(application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
-bool IResearchRocksDBLink::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
-                                               arangodb::velocypack::Slice const& rhs,
-                                               std::string const& dbname) const {
-  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
+bool IResearchRocksDBLink::IndexFactory::equal(
+    VPackSlice const& lhs,
+    VPackSlice const& rhs,
+    std::string const& dbname) const {
+  return IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
-std::shared_ptr<arangodb::Index> IResearchRocksDBLink::IndexFactory::instantiate(
-    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
+std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
+    LogicalCollection& collection, VPackSlice const& definition,
     IndexId id, bool /*isClusterConstructor*/) const {
-  auto link = std::shared_ptr<arangodb::iresearch::IResearchRocksDBLink>(
-      new arangodb::iresearch::IResearchRocksDBLink(id, collection));
-  auto res = link->init(definition, [this](irs::directory& dir) {
+  auto link = std::make_shared<IResearchRocksDBLink>(id, collection);
+
+  auto const res = link->init(definition, [this](irs::directory& dir) {
     auto& selector = _server.getFeature<EngineSelectorFeature>();
     TRI_ASSERT(selector.isRocksDB());
     auto& engine = selector.engine<RocksDBEngine>();
@@ -185,15 +185,13 @@ std::shared_ptr<arangodb::Index> IResearchRocksDBLink::IndexFactory::instantiate
   return link;
 }
 
-arangodb::Result IResearchRocksDBLink::IndexFactory::normalize(  // normalize definition
-    arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-    arangodb::velocypack::Slice definition,  // source definition
-    bool isCreation,                         // definition for index creation
-    TRI_vocbase_t const& vocbase             // index vocbase
-    ) const {
-  return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
-      normalized, definition, isCreation, vocbase              // args
-  );
+Result IResearchRocksDBLink::IndexFactory::normalize(
+    VPackBuilder& normalized,
+    VPackSlice definition,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase) const {
+  return IResearchLinkHelper::normalize(
+      normalized, definition, isCreation, vocbase);
 }
 
 std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::createFactory(
@@ -204,7 +202,3 @@ std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::create
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

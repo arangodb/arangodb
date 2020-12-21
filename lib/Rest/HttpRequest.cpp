@@ -403,7 +403,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
   for (size_t i = 0; i < length; ++i) {
     tmp.push_back(path[i]);
     if (path[i] == '/') {
-      while (i + 1 < length && path[i+1] == '/') {
+      while (i + 1 < length && path[i + 1] == '/') {
         ++i;
       }
     }
@@ -439,6 +439,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
     }
   } else {
     _fullUrl.assign(start, end - start);
+  }
+
+  if (_fullUrl.empty()) {
+    _fullUrl.push_back('/');
   }
   TRI_ASSERT(!_fullUrl.empty());
 
@@ -505,6 +509,11 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
 
   if (key == StaticStrings::Accept) {
     _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
+    if (value.find(',') != std::string::npos) {
+      _contentTypeResponsePlain = value;
+    } else {
+      _contentTypeResponsePlain.clear();
+    }
     return;
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
@@ -828,7 +837,7 @@ void HttpRequest::parseCookies(char const* buffer, size_t length) {
 
     // check for missing value phase
     if (valueBegin == nullptr) {
-      valueBegin = value = key;
+      valueBegin = key;
     } else {
       *value = '\0';
     }

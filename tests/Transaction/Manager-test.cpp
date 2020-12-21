@@ -23,12 +23,13 @@
 
 #include "Aql/Query.h"
 
+#include "Basics/ScopeGuard.h"
+#include "Cluster/ServerState.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/Manager.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Status.h"
-
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -46,13 +47,7 @@ using namespace arangodb;
 static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
                                                std::string const& queryString,
                                                std::shared_ptr<transaction::Context> ctx) {
-  auto options = std::make_shared<VPackBuilder>();
-  options->openObject();
-  options->close();
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                             bindVars, options);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   arangodb::aql::QueryResult result;
   while (true) {
@@ -235,6 +230,11 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
+  auto beforeRole = arangodb::ServerState::instance()->getRole();
+  auto roleGuard = scopeGuard([&]() {
+    arangodb::ServerState::instance()->setRole(beforeRole);
+  });
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
   std::shared_ptr<LogicalCollection> coll;
   {
     auto json =

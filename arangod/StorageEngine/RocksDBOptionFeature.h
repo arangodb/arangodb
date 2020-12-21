@@ -28,8 +28,12 @@
 #include <memory>
 #include <string>
 
+#include <rocksdb/options.h>
+#include <rocksdb/table.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 namespace arangodb {
 namespace application_features {
@@ -53,6 +57,10 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
+
+  rocksdb::ColumnFamilyOptions columnFamilyOptions(
+      RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
+      rocksdb::BlockBasedTableOptions const& tableBase) const;
 
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
@@ -100,6 +108,15 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
   bool _exclusiveWrites;
+
+ private:
+  /// arangodb comparator - required because of vpack in keys
+  std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
+
+  /// per column family write buffer limits
+  std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies> _maxWriteBufferNumberCf;
+
+  bool _minWriteBufferNumberToMergeTouched;
 };
 
 }  // namespace arangodb

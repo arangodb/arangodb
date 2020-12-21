@@ -33,13 +33,17 @@
 #include "Logger/Logger.h"
 
 namespace arangodb {
+/// @brief base class for regular logging and audit logging streams.
+/// do _not_ add virtual methods here, as this will be bad for efficiency.
 class LoggerStreamBase {
  public:
   LoggerStreamBase(LoggerStreamBase const&) = delete;
   LoggerStreamBase& operator=(LoggerStreamBase const&) = delete;
 
   LoggerStreamBase();
-  virtual ~LoggerStreamBase() = default;
+
+  // intentionally not virtual, as such objects can be created _very_ often!
+  ~LoggerStreamBase() = default;
 
  public:
   LoggerStreamBase& operator<<(LogLevel const& level) noexcept;
@@ -63,7 +67,7 @@ class LoggerStreamBase {
   LoggerStreamBase& operator<<(Logger::LOGID const& logid) noexcept;
 
   template <typename T>
-  LoggerStreamBase& operator<<(T const& obj) {
+  LoggerStreamBase& operator<<(T const& obj) noexcept {
     try {
       _out << obj;
     } catch (...) {
@@ -75,6 +79,9 @@ class LoggerStreamBase {
  protected:
   std::stringstream _out;
   size_t _topicId;
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+  LogLevel _topicLevel;
+#endif
   LogLevel _level;
   int _line;
   char const* _logid;

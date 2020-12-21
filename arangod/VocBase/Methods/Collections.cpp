@@ -471,7 +471,6 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
             // do not grant rights on system collections
             if (!col->system()) {
               entry.grantCollection(vocbase.name(), col->name(), auth::Level::RW);
-              events::CreateCollection(vocbase.name(), col->name(), TRI_ERROR_NO_ERROR);
             }
           }
           return TRI_ERROR_NO_ERROR;
@@ -511,7 +510,11 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
   for (auto const& info : infos) {
-    events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    if (!ServerState::instance()->isSingleServer()) {
+      // don't log here (again) for single servers, because on the single
+      // server we will log the creation of each collection inside vocbase::createCollectionWorker
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    }
     velocypack::Builder builder(info.properties);
     OperationResult result(Result(), builder.steal(), options);
     events::PropertyUpdateCollection(vocbase.name(), info.name, result);
@@ -930,7 +933,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
 
   queue->dispatchAndWait();
 
-  if (queue->status() == TRI_ERROR_NO_ERROR) {
+  if (queue->status().ok()) {
     res = trx.commit();
   } else {
     return futures::makeFuture(Result(queue->status()));
@@ -968,7 +971,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     binds->add("@coll", VPackValue(cname));
     binds->close();
     arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(q), binds, std::make_shared<VPackBuilder>());
+                               aql::QueryString(q), binds);
     aql::QueryResult queryResult = query.executeSync();
 
     Result res = queryResult.result;
@@ -1004,7 +1007,16 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
                                        bool withRevisions, bool withData,
                                        uint64_t& checksum, RevisionId& revId) {
   if (ServerState::instance()->isCoordinator()) {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+    auto cid = std::to_string(collection.id().id());
+    auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
+    OperationOptions options(ExecContext::current());
+    auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
+                                     options, withRevisions, withData).get();
+    if (res.ok()) {
+      revId = RevisionId::fromSlice(res.slice().get("revision"));
+      checksum = res.slice().get("checksum").getUInt();
+    }
+    return res.result;
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);

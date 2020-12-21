@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,20 +17,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PRIME__NUMBERS_H
-#define ARANGODB_BASICS_PRIME__NUMBERS_H 1
+#ifndef ARANGODB_UTILITIES_IS_EXECUTABLE_H
+#define ARANGODB_UTILITIES_IS_EXECUTABLE_H 1
 
-#include <cstdint>
-
-#include "Basics/Common.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a prime number not lower than value
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_NearPrime(uint64_t);
+//////////////////////////////////////////////////////////////////////////////
+/// @brief tell whether str contains a string matching one of our executables
+//////////////////////////////////////////////////////////////////////////////
+std::string extractShellExecutableName(std::string const& input);
 
 #endif

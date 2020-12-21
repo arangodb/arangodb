@@ -341,7 +341,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                        std::string("transaction id ") + std::to_string(tid.id()) +
-                       " already used, (before creating)");
+                       " already used (before creating)");
     }
   }
 
@@ -472,12 +472,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (options.isFollowerTransaction || tid.isFollowerTransactionId()) {
+  if (isFollowerTransactionOnDBServer) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     // turn on intermediate commits on followers as well. otherwise huge leader
     // transactions could make the follower claim all memory and crash.
-  }
-  if (isFollowerTransactionOnDBServer) {
     hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
   try {
@@ -501,9 +499,14 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     TRI_ASSERT(state->id() == tid);
     auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl, std::move(state));
     if (!it.second) {
+      if (isFollowerTransactionOnDBServer) {
+        TRI_ASSERT(res.ok());
+        return res;
+      }
+
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                        std::string("transaction id ") + std::to_string(tid.id()) +
-                           " already used, (while creating)");
+                           " already used (while creating)");
     }
   }
 
@@ -1025,7 +1028,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
         }
         auto& res = it.get();
-        if (res.response && res.response->statusCode() == fuerte::StatusOK) {
+        if (res.statusCode() == fuerte::StatusOK) {
           VPackSlice slice = res.slice();
           if (slice.isObject()) {
             slice = slice.get("transactions");

@@ -7,11 +7,11 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/build/bin"
 ulimit -c unlimited
 
 for i in `seq 1 1`; do
-    for j in  1; do
+    for j in  25; do
         MAX_LINES=${j}000000
 
         # search
-        /usr/bin/time -v ./bin/iresearch-benchmarks -m search --in ${BENCHMARK_RESOURCES_ROOT}/benchmark.tasks --dir-type mmap --index-dir iresearch.data --max-tasks 1 --repeat 2 --format 1_3simd --threads 1 --scorer=bm25 --scorer-arg='{"b":0}' --scored-terms-limit=16 --csv --topN=100 2> iresearch.stderr.${MAX_LINES}.search.log.$i 1> iresearch.stdout.${MAX_LINES}.search.log.$i &
+        /usr/bin/time -v ./bin/iresearch-benchmarks -m search --in ${BENCHMARK_RESOURCES_ROOT}/benchmark.tasks --dir-type mmap --index-dir iresearch.data --max-tasks 1 --repeat 2 --format 1_2 --threads 1 --scorer=bm25 --scorer-arg='{"b":0}' --scored-terms-limit=16 --csv --topN=100 2> iresearch.stderr.${MAX_LINES}.search.log.$i 1> iresearch.stdout.${MAX_LINES}.search.log.$i &
         IRESEARCH_PID=$!
         wait $IRESEARCH_PID
 

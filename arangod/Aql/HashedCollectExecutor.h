@@ -76,9 +76,9 @@ class HashedCollectExecutorInfos {
   ~HashedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
-  std::vector<std::string> getAggregateTypes() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
+  std::vector<std::string> const& getAggregateTypes() const;
   bool getCount() const noexcept;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
@@ -153,9 +153,17 @@ class HashedCollectExecutor {
                                              AqlCall const& call) const noexcept -> size_t;
 
  private:
-  using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
-  using GroupKeyType = std::vector<AqlValue>;
-  using GroupValueType = std::unique_ptr<AggregateValuesType>;
+  struct ValueAggregators {
+    ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts);
+    ~ValueAggregators();
+    std::size_t size() const;
+    Aggregator& operator[](std::size_t index);
+    static void operator delete(void* ptr);
+   private:
+    std::size_t _size;
+  };
+  using GroupKeyType = HashedAqlValueGroup;
+  using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
@@ -180,13 +188,15 @@ class HashedCollectExecutor {
 
   void destroyAllGroupsAqlValues();
 
-  static std::vector<Aggregator::Factory> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
+  static std::vector<Aggregator::Factory const*> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
   void consumeInputRow(InputAqlItemRow& input);
 
   void writeCurrentGroupToOutput(OutputAqlItemRow& output);
+
+  std::unique_ptr<ValueAggregators> makeAggregateValues() const;
 
  private:
   Infos const& _infos;
@@ -202,9 +212,9 @@ class HashedCollectExecutor {
 
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
-  std::vector<Aggregator::Factory> _aggregatorFactories;
+  std::vector<Aggregator::Factory const*> _aggregatorFactories;
 
-  GroupKeyType _nextGroupValues;
+  GroupKeyType _nextGroup;
 
   size_t _returnedGroups = 0;
 };
