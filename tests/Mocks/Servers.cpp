@@ -302,6 +302,16 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
   return *system;
 }
 
+MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
+  // setup required application features
+  SetupGreetingsPhase(*this);
+  addFeature<arangodb::EngineSelectorFeature>(false);
+
+  if (start) {
+    startFeatures();
+  }
+}
+
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
