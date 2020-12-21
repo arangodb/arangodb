@@ -338,12 +338,12 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
-  auto queryOptions = std::make_shared<VPackBuilder>();
-  queryOptions->openObject();
+  VPackBuilder queryOptions;
+  queryOptions.openObject();
   if (activateTracing) {
-    queryOptions->add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
+    queryOptions.add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
   }
-  queryOptions->close();
+  queryOptions.close();
   if (queryString.empty()) {
     queryString = "RETURN 1";
   }
@@ -351,7 +351,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   aql::QueryString fakeQueryString(queryString);
   auto query =
       std::make_unique<arangodb::aql::Query>(arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-                                             fakeQueryString, bindParams, queryOptions);
+                                             fakeQueryString, bindParams, queryOptions.slice());
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
 //  auto engine =
