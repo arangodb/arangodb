@@ -205,10 +205,16 @@ auto CustomAccumulator<VPackSlice>::finalizeIntoBuilder(VPackBuilder& result)
     return getIntoBuilder(result);
   }
 
-  return greenspun::Evaluate(_machine, this->_definition.finalizeProgram.slice(), result)
+  auto res = greenspun::Evaluate(_machine, this->_definition.finalizeProgram.slice(), result)
       .mapError([](auto& err) {
         err.wrapMessage("in finalizeProgram of custom accumulator");
       });
+  if (res.fail()) {
+    // Write null in case of failure
+    result.add(VPackValue(VPackValueType::Null));
+  }
+
+  return res;
 }
 
 void CustomAccumulator<VPackSlice>::SetupFunctions() {
