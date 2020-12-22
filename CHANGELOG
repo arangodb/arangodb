@@ -3,7 +3,7 @@ v3.6.11 (XXXX-XX-XX)
 
 * Prevent a write to RocksDB during recovery in the case that the 
   database already exists. The write at startup is potentially blocking,
-  and will delay the startup for servers that were stopped shut down while
+  and will delay the startup for servers that were shut down while
   in a write-stopped state.
 
 
