@@ -4783,7 +4783,7 @@ function testEasyPathKPathsAny(testGraph) {
 function testEasyPathKPathsInbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const query = aql`
-        FOR path IN 1..9 OUTBOUND K_PATHS ${testGraph.vertex('J')} TO ${testGraph.vertex('A')}
+        FOR path IN 1..9 INBOUND K_PATHS ${testGraph.vertex('J')} TO ${testGraph.vertex('A')}
         GRAPH ${testGraph.name()}
         RETURN path.vertices[* RETURN CURRENT.key]
       `;
