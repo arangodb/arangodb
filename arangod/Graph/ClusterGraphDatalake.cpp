@@ -30,8 +30,16 @@
 
 #include <type_traits>
 
-using namespace arangodb;
-using namespace arangodb::graph;
+namespace arangodb {
+namespace graph {
+  
+ClusterGraphDatalake::ClusterGraphDatalake(arangodb::ResourceMonitor& resourceMonitor)
+    : _resourceMonitor(resourceMonitor),
+      _totalMemoryUsage(0) {}
+  
+ClusterGraphDatalake::~ClusterGraphDatalake() {
+  clear();
+}
 
 arangodb::velocypack::Slice ClusterGraphDatalake::operator[](size_t index) const noexcept {
   TRI_ASSERT(index < _data.size()); 
@@ -59,3 +67,6 @@ arangodb::velocypack::Slice ClusterGraphDatalake::add(std::shared_ptr<arangodb::
 
   return arangodb::velocypack::Slice(_data.back()->data());
 }
+
+} // namespace
+} // namespace

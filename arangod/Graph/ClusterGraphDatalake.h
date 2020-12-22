@@ -36,20 +36,17 @@ struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
-class Slice;
 }
 
 namespace graph {
 
 class ClusterGraphDatalake {
  public:
-  ClusterGraphDatalake(arangodb::ResourceMonitor& resourceMonitor)
-      : _resourceMonitor(resourceMonitor),
-        _totalMemoryUsage(0) {}
+  ClusterGraphDatalake(ClusterGraphDatalake const&) = delete;
+  ClusterGraphDatalake& operator=(ClusterGraphDatalake const&) = delete;
 
-  ~ClusterGraphDatalake() {
-    clear();
-  }
+  explicit ClusterGraphDatalake(arangodb::ResourceMonitor& resourceMonitor);
+  ~ClusterGraphDatalake();
 
   size_t numEntries() const noexcept { return _data.size(); }
   
