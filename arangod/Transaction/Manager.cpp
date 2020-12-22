@@ -351,9 +351,7 @@ Result Manager::beginTransaction(transaction::Hints hints,
     res.reset(ex.code(), ex.what());
   }
 
-  if (res.fail()) {
-    TRI_ASSERT(!state->isRunning());
-  }
+  TRI_ASSERT(res.ok() || !state->isRunning());
   return res;
 }
 
@@ -406,9 +404,9 @@ void Manager::prepareOptions(transaction::Options& options) {
 
 Result Manager::lockCollections(TRI_vocbase_t& vocbase,
                                 std::shared_ptr<TransactionState> state,
-                                const std::vector<std::string>& exclusiveCollections,
-                                const std::vector<std::string>& writeCollections,
-                                const std::vector<std::string>& readCollections) {
+                                std::vector<std::string> const& exclusiveCollections,
+                                std::vector<std::string> const& writeCollections,
+                                std::vector<std::string> const& readCollections) {
   Result res;
   CollectionNameResolver resolver(vocbase);
 
@@ -485,7 +483,7 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
   return res;
 }
 
-bool Manager::isFollowerTransactionOnDBServer(transaction::Options& options) const {
+bool Manager::isFollowerTransactionOnDBServer(transaction::Options const& options) const {
   return ServerState::instance()->isDBServer() && options.isFollowerTransaction;
 }
 

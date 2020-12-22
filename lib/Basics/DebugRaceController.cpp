@@ -34,12 +34,10 @@ DebugRaceController::DebugRaceController() {}
 DebugRaceController& DebugRaceController::sharedInstance() { return Instance; }
 
 void DebugRaceController::reset() {
-  {
-    std::unique_lock<std::mutex> guard(_mutex);
-    _condVariable.notify_all();
-    _data.clear();
-    _didTrigger = false;
-  }
+  std::unique_lock<std::mutex> guard(_mutex);
+  _condVariable.notify_all();
+  _data.clear();
+  _didTrigger = false;
 }
 
 bool DebugRaceController::didTrigger() const { return _didTrigger; }
