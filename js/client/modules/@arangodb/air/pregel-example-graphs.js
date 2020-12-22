@@ -22,6 +22,8 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+'use strict';
+
 // Example graphs for pregel testing
 
 const internal = require("internal");
@@ -3328,7 +3330,65 @@ function createWikiVoteGraph(graphName, numberOfShards) {
   return { name: graphName, vname: vname, ename: ename };
 }
 
+/*
+ *            (a)  →  12  →  (b)
+ *          ↗ ↓ ↑             ↑  ↘
+ *       16                        20
+ *     ↗      ↓ ↑             ↑       ↘
+ *  (s)     10   4            7        (t)
+ *     ↘      ↓ ↑             ↑       ↗
+ *       13                        4
+ *          ↘ ↓ ↑             ↑  ↗
+ *            (c)  →  14  →  (d)
+ *
+ * Plus reverse edges with capacity 0.
+ */
+function createSimpleNetworkFlowGraph(graphName) {
+  const vname = graphName + "_V";
+  const ename = graphName + "_E";
+  try {
+    graphModule._drop(graphName, true);
+  } catch (e) {}
+
+  graphModule._create(
+    graphName,
+    [graphModule._relation(ename, vname, vname)],
+    [],
+    { smartGraphAttribute: "name", numberOfShards: 3 }
+  );
+
+  const vertices = ['s', 't', 'a', 'b', 'c', 'd'];
+  db[vname].save(vertices.map(v => ({name: v})));
+  const vDocs = db[vname].toArray();
+  const vs = Object.fromEntries(vDocs.map(v => [v.name, v._id]));
+
+  const storeEdge = function (_from, _to, capacity) {
+    db[ename].save({_from, _to, capacity});
+  };
+
+  storeEdge(vs.s, vs.a, 16);
+  storeEdge(vs.s, vs.c, 13);
+  storeEdge(vs.a, vs.c, 10);
+  storeEdge(vs.c, vs.a, 4);
+  storeEdge(vs.a, vs.b, 12);
+  storeEdge(vs.c, vs.d, 14);
+  storeEdge(vs.d, vs.b, 7);
+  storeEdge(vs.b, vs.t, 20);
+  storeEdge(vs.d, vs.t, 4);
+
+  // Add reverse edges with capacity 0
+  db._query(`
+    FOR e IN @@E
+      LET hasRev = 0 < COUNT(FOR e1 IN @@E FILTER e1._from == e._to && e1._to == e._from RETURN 1)
+      FILTER !hasRev
+      INSERT {_from: e._to, _to: e._from, capacity: 0} INTO @@E
+  `, {'@E': ename});
+
+  return { name: graphName, vname: vname, ename: ename, source: vs.s, target: vs.t };
+}
+
 exports.create_wiki_vote_graph = createWikiVoteGraph;
 exports.create_line_graph = createLineGraph;
 exports.create_pagerank_graph = createPageRankGraph;
 exports.create_circle = createCircle;
+exports.create_network_flow_graph = createSimpleNetworkFlowGraph;
