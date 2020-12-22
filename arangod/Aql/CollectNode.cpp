@@ -52,7 +52,7 @@ CollectNode::CollectNode(
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables,
-    bool count, bool isDistinctCommand)
+    bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
       _groupVariables(groupVariables),
@@ -61,7 +61,6 @@ CollectNode::CollectNode(
       _outVariable(outVariable),
       _keepVariables(keepVariables),
       _variableMap(variableMap),
-      _count(count),
       _isDistinctCommand(isDistinctCommand),
       _specialized(false) {}
 
@@ -124,7 +123,6 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
   }
 
-  nodes.add("count", VPackValue(_count));
   nodes.add("isDistinctCommand", VPackValue(_isDistinctCommand));
   nodes.add("specialized", VPackValue(_specialized));
   nodes.add(VPackValue("collectOptions"));
@@ -269,7 +267,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      std::move(aggregateTypes),
                                      std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(), _count);
+                                     &_plan->getAst()->query().vpackOptions());
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -319,17 +317,19 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                                      expressionRegister, _expressionVariable,
                                      std::move(aggregateTypes), std::move(inputVariables),
                                      std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(), _count);
+                                     &_plan->getAst()->query().vpackOptions());
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(registerInfos),
                                                                          std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::COUNT: {
+      TRI_ASSERT(aggregateVariables().size() == 1);
+      TRI_ASSERT(hasOutVariable() == false);
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 
-      auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+      auto it = getRegisterPlan()->varInfo.find(aggregateVariables()[0].outVar->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       RegisterId collectRegister = (*it).second.registerId;
 
@@ -406,7 +406,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables,
                                          aggregateVariables, expressionVariable,
                                          outVariable, _keepVariables, _variableMap,
-                                         _count, _isDistinctCommand);
+                                         _isDistinctCommand);
 
   // specialize the cloned node
   if (isSpecialized()) {
@@ -635,8 +635,8 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
     vars.emplace(_expressionVariable);
   }
 
-  // !_keepVariables.empty() => _outVariable != nullptr && !_count
-  TRI_ASSERT(_keepVariables.empty() || (_outVariable != nullptr && !_count));
+  // !_keepVariables.empty() => _outVariable != nullptr
+  TRI_ASSERT(_keepVariables.empty() || _outVariable != nullptr);
 
   // Note that the keep variables can either be user-supplied via KEEP,
   // or are calculated automatically in ExecutionPlan::fromNodeCollect
@@ -687,7 +687,7 @@ CollectNode::CollectNode(
     Variable const* expressionVariable, Variable const* outVariable,
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
-    bool count, bool isDistinctCommand)
+    bool isDistinctCommand)
     : ExecutionNode(plan, id),
       _options(options),
       _groupVariables(groupVariables),
@@ -696,12 +696,8 @@ CollectNode::CollectNode(
       _outVariable(outVariable),
       _keepVariables(keepVariables),
       _variableMap(variableMap),
-      _count(count),
       _isDistinctCommand(isDistinctCommand),
-      _specialized(false) {
-  // outVariable can be a nullptr, but only if _count is not set
-  TRI_ASSERT(!_count || _outVariable != nullptr);
-}
+      _specialized(false) {}
 
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
 
@@ -721,14 +717,6 @@ void CollectNode::aggregationMethod(CollectOptions::CollectMethod method) {
 
 CollectOptions& CollectNode::getOptions() { return _options; }
 
-bool CollectNode::count() const { return _count; }
-
-void CollectNode::count(bool value) { _count = value; }
-
-bool CollectNode::hasOutVariableButNoCount() const {
-  return (_outVariable != nullptr && !_count);
-}
-
 bool CollectNode::hasOutVariable() const { return _outVariable != nullptr; }
 
 Variable const* CollectNode::outVariable() const { return _outVariable; }
@@ -736,7 +724,6 @@ Variable const* CollectNode::outVariable() const { return _outVariable; }
 void CollectNode::clearOutVariable() {
   TRI_ASSERT(_outVariable != nullptr);
   _outVariable = nullptr;
-  _count = false;
 }
 
 void CollectNode::clearKeepVariables() {

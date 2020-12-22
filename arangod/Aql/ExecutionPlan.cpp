@@ -764,7 +764,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
 
   auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables, aggregateVariables,
                             nullptr, nullptr, std::vector<Variable const*>(),
-                            _ast->variables()->variables(false), false, true);
+                            _ast->variables()->variables(false), true);
 
   registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
@@ -1579,7 +1579,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   auto collectNode =
       new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
                       expressionVariable, outVariable, keepVariables,
-                      _ast->variables()->variables(false), false, false);
+                      _ast->variables()->variables(false), false);
 
   auto en = registerNode(collectNode);
 
