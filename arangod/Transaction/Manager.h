@@ -209,7 +209,7 @@ class Manager final {
 
  private:
   void prepareOptions(transaction::Options& options);
-  bool isFollowerTransactionOnDBServer(transaction::Options& options) const;
+  bool isFollowerTransactionOnDBServer(transaction::Options const& options) const;
   Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
                          std::vector<std::string> const& exclusiveCollections,
                          std::vector<std::string> const& writeCollections,

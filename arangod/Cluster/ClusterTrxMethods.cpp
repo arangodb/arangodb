@@ -310,7 +310,7 @@ namespace arangodb {
 namespace ClusterTrxMethods {
 using namespace arangodb::futures;
 
-bool ServerSorter::operator()(ServerID const& lhs, ServerID const& rhs) const {
+bool ServerSorter::operator()(ServerID const& lhs, ServerID const& rhs) const noexcept {
   return TransactionState::SortServerIds(lhs, rhs);
 }
 
@@ -342,7 +342,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     std::vector<Future<network::Response>> requests;
     for (ServerID const& leader : leaders) {
       if (state.knowsServer(leader)) {
-        continue;  // already send a begin transaction there
+        continue;  // already sent a begin transaction there
       }
       requests.emplace_back(::beginTransactionRequest(state, leader));
     }
@@ -380,8 +380,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
             })
             .get();
 
-    if (fastPathResult.ok() || !canRevertToSlowPath ||
-        fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+    if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT) || !canRevertToSlowPath) {
       // We are either good or we cannot use the slow path.
       // We need to return the result here.
       // We made sure that all servers that reported success are known to the transaction.
@@ -393,7 +392,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     // use original lock timeout here
     state.options().lockTimeout = oldLockTimeout;
 
-    TRI_ASSERT(fastPathResult.fail() && fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT));
+    TRI_ASSERT(fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT));
 
     // abortTransaction on knownServers() and wait for them
     if (!state.knownServers().empty()) {
@@ -425,9 +424,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       auto resp = ::beginTransactionRequest(state, leader);
       auto const& resolvedResponse = resp.get();
       if (resolvedResponse.fail()) {
-        int code = network::fuerteToArangoErrorCode(resolvedResponse);
-        std::string message = network::fuerteToArangoErrorMessage(resolvedResponse);
-        return Result{code, message};
+        return resolvedResponse.combinedResult();
       } else {
         state.addKnownServer(leader);  // add server id to known list
       }

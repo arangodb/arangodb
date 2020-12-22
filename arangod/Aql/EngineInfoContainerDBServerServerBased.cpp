@@ -319,36 +319,31 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
           arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
     auto const& resolvedResponse = response.get();
     if (resolvedResponse.fail()) {
-      int code = network::fuerteToArangoErrorCode(resolvedResponse);
-      std::string message = network::fuerteToArangoErrorMessage(resolvedResponse);
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
-          << server << " responded with " << code << " -> " << message;
-      return Result{code, message};
+          << server << " responded with " << code << ": " 
+          << resolvedResponse.combinedResult().errorMessage();
+      return resolvedResponse.combinedResult();
     }
 
     VPackSlice responseSlice = resolvedResponse.slice();
     if (responseSlice.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
-    {
-      std::unique_lock<std::mutex> guard{serverToQueryIdLock};
-      QueryId globalId = 0;
-      auto result = parseResponse(responseSlice, snippetIds, server, serverDest,
-                                  didCreateEngine, globalId);
-      if (!result.ok()) {
-        return result;
-      }
-
+    std::unique_lock<std::mutex> guard{serverToQueryIdLock};
+    QueryId globalId = 0;
+    auto result = parseResponse(responseSlice, snippetIds, server, serverDest,
+                                didCreateEngine, globalId);
+    if (result.ok()) {
       serverToQueryId.emplace_back(serverDest, globalId);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return result;
   };
 
   return network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
                               "/_api/aql/setup", std::move(buffer), options,
                               std::move(headers))
-      .then([buildCallback](futures::Try<network::Response>&& resp) mutable {
+      .then([buildCallback = std::move(buildCallback)](futures::Try<network::Response>&& resp) mutable {
         return buildCallback(resp);
       });
 };
@@ -360,8 +355,7 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(VPackSlice inf
   TRI_ASSERT(infoSlice.hasKey("variables"));
   // We need to have at least one: snippets (non empty) or traverserEngines
 
-  if (!((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
-         !infoSlice.get("snippets").isEmptyObject()) ||
+  if (!((infoSlice.get("snippets").isObject() && !infoSlice.get("snippets").isEmptyObject()) ||
         infoSlice.hasKey("traverserEngines"))) {
     // This is possible in the satellite case.
     // The leader of a read-only satellite is potentially
@@ -369,8 +363,7 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(VPackSlice inf
     return true;
   }
 
-  TRI_ASSERT((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
-              !infoSlice.get("snippets").isEmptyObject()) ||
+  TRI_ASSERT((infoSlice.get("snippets").isObject() && !infoSlice.get("snippets").isEmptyObject()) ||
              infoSlice.hasKey("traverserEngines"));
 
   return false;
@@ -488,7 +481,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // set back to default lock timeout for slow path fallback
     _query.setLockTimeout(oldLockTimeout);
     LOG_TOPIC("f5022", INFO, Logger::AQL)
-        << "Potential dead-lock detected, using slow path for locking. This "
+        << "Potential deadlock detected, using slow path for locking. This "
            "is expected if exclusive locks are used.";
 
     trx.state()->coordinatorRerollTransactionId();
@@ -535,12 +528,8 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", WARN, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
-    if (response.hasKey("errorMessage") && response.hasKey("errorNum")) {
-      int code =
-          basics::VelocyPackHelper::getNumericValue<int>(response, "errorNum", 0);
-      std::string msg =
-          basics::VelocyPackHelper::getStringValue(response, "errorMessage", "");
-      return Result{code, msg + ". Please check: " + server};
+    if (response.hasKey(StaticStrings::ErrorNum) && response.hasKey(StaticStrings::ErrorMessage)) {
+      return network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION).appendErrorMessage(std::string(". Please check: ") + server);
     }
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unable to deploy query on all required "
