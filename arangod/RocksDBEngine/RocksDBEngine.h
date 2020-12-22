@@ -306,6 +306,7 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
   
+#ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
   bool isEncryptionEnabled() const;
@@ -325,9 +326,11 @@ class RocksDBEngine final : public StorageEngine {
   Result decryptInternalKeystore(std::string const& keystorePath,
                                  std::vector<enterprise::EncryptionSecret>& userKeys,
                                  std::string& encryptionKey) const;
+#endif
  
   // returns whether sha files are created or not
-  bool getCreateShaFiles() { return _createShaFiles; }
+  bool getCreateShaFiles() const { return _createShaFiles; }
+
   // enabled or disable sha file creation. Requires feature not be started.
   void setCreateShaFiles(bool create) { _createShaFiles = create; }
 
@@ -392,7 +395,6 @@ class RocksDBEngine final : public StorageEngine {
   Result decryptInternalKeystore();
   /// encrypt the internal keystore with all user keys
   Result encryptInternalKeystore();
-  
 #endif
  
  public:
