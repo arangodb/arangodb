@@ -61,7 +61,7 @@ class MockGraphProvider {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  enum class LooseEndBehaviour { NEVER, ALLWAYS };
+  enum class LooseEndBehaviour { NEVER, ALWAYS };
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:

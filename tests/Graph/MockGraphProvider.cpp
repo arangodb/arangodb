@@ -84,7 +84,7 @@ auto MockGraphProvider::decideProcessable() const -> bool {
   switch (_looseEnds) {
     case LooseEndBehaviour::NEVER:
       return true;
-    case LooseEndBehaviour::ALLWAYS:
+    case LooseEndBehaviour::ALWAYS:
       return false;
   }
 }
