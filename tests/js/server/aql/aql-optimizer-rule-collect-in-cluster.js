@@ -84,7 +84,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testCountView : function () {
@@ -100,7 +100,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testCountMulti : function () {
@@ -116,7 +116,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testCountMultiView : function () {
@@ -132,7 +132,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
     testDistinct : function () {
@@ -255,7 +255,7 @@ function optimizerCollectInClusterSingleShardSuite () {
       });
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testSingleCountView : function () {
@@ -271,7 +271,7 @@ function optimizerCollectInClusterSingleShardSuite () {
       });
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testSingleCountMulti : function () {
@@ -287,7 +287,7 @@ function optimizerCollectInClusterSingleShardSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testSingleCountMultiView : function () {
@@ -303,7 +303,7 @@ function optimizerCollectInClusterSingleShardSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
 

@@ -90,10 +90,22 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var collectNode = plan.nodes[3];
       assertEqual("CollectNode", collectNode.type);
-      assertEqual("count", collectNode.collectOptions.method);
-      assertEqual(1, collectNode.aggregates.length);
-      assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
-      assertEqual("LENGTH", collectNode.aggregates[0].type);
+      if (isCluster) {
+        assertEqual("count", collectNode.collectOptions.method);
+        assertEqual(1, collectNode.aggregates.length);
+        assertEqual("LENGTH", collectNode.aggregates[0].type);
+        collectNode = plan.nodes[4];
+        assertEqual("sorted", collectNode.collectOptions.method);
+        assertEqual(1, collectNode.aggregates.length);
+        assertEqual("LENGTH", collectNode.aggregates[0].type);
+        assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
+        assertEqual(collectNode.aggregates[0].inVariable.name, plan.nodes[3].aggregates[0].outVariable.name);
+      } else {
+        assertEqual("count", collectNode.collectOptions.method);
+        assertEqual(1, collectNode.aggregates.length);
+        assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
+        assertEqual("LENGTH", collectNode.aggregates[0].type);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
