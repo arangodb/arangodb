@@ -84,6 +84,22 @@ function optimizerCountTestSuite () {
 /// @brief test count
 ////////////////////////////////////////////////////////////////////////////////
 
+    testCountIsTransformedToAggregate : function () {
+      var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO cnt RETURN cnt";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var collectNode = plan.nodes[3];
+      assertEqual("CollectNode", collectNode.type);
+      assertEqual("count", collectNode.collectOptions.method);
+      assertEqual(1, collectNode.aggregates.length);
+      assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
+      assertEqual("LENGTH", collectNode.aggregates[0].type);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
     testCountTotalSimple : function () {
       var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
 
@@ -472,7 +488,7 @@ function optimizerCountTestSuite () {
     // be used without group variables.
     testCollectSortedUndefined: function () {
       const randomDocumentID = db["UnitTestsCollection"].any()._id;
-      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE count = count(i) RETURN {count, start}';
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE sum = SUM(i) RETURN {sum, start}';
       const bindParams = {};
       const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
 
@@ -487,17 +503,18 @@ function optimizerCountTestSuite () {
       // expectation is that we exactly get one result
       // count will be 0, start will be undefined
       assertEqual(1, results.length);
-      assertEqual(0, results[0].count);
+      assertEqual(null, results[0].sum);
       assertEqual(undefined, results[0].start);
     },
 
     testCollectCountUndefined: function () {
       const randomDocumentID = db["UnitTestsCollection"].any()._id;
-      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT WITH COUNT INTO count RETURN {count, start}';
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE count = count(i) RETURN {count, start}';
       const bindParams = {};
       const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
 
       const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
+
       assertEqual(
         [ "SingletonNode", "CalculationNode", "CalculationNode",
           "EnumerateListNode", "CollectNode", "CalculationNode", "ReturnNode" ],
@@ -511,7 +528,6 @@ function optimizerCountTestSuite () {
       assertEqual(0, results[0].count);
       assertEqual(undefined, results[0].start);
     }
-
   };
 }
 
