@@ -26,6 +26,7 @@
 
 #include "Transaction/Methods.h"
 
+#include <optional>
 #include <vector>
 
 namespace arangodb {
