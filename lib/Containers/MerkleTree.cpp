@@ -655,6 +655,43 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::serializeBinary(std::string
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
+std::vector<std::pair<std::uint64_t, std::uint64_t>>
+MerkleTree<Hasher, BranchingBits, LockStripes>::partitionKeys(std::uint64_t count) {
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> result;
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+  if (count <= 1) {
+    // special case, just return full range
+    result.emplace_back(meta().rangeMin, meta().rangeMax);
+    return result;
+  }
+
+  std::uint64_t targetCount = 0;
+  {
+    std::unique_lock<std::mutex> lock(this->lock(0));
+    targetCount = std::max(static_cast<std::uint64_t>(1), node(0).count / count);
+  }
+
+  std::uint64_t depth = meta().maxDepth;
+  std::uint64_t offset = (depth == 0) ? 0 : nodeCountUpToDepth(depth - 1);
+  std::uint64_t rangeStart = meta().rangeMin;
+  std::uint64_t rangeCount = 0;
+  for (std::uint64_t chunk = 0; chunk < nodeCountAtDepth(depth); ++chunk) {
+    std::uint64_t index = offset + chunk;
+    std::unique_lock<std::mutex> guard(this->lock(index));
+    Node& node = this->node(index);
+    rangeCount += node.count;
+    if (rangeCount >= targetCount || chunk == nodeCountAtDepth(depth) - 1) {
+      auto [_, rangeEnd] = chunkRange(chunk, depth);
+      result.emplace_back(rangeStart, rangeEnd);
+    }
+  }
+
+  TRI_ASSERT(result.size() == count);
+
+  return result;
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
 MerkleTree<Hasher, BranchingBits, LockStripes>::MerkleTree(std::string_view buffer)
     : _buffer(new uint8_t[buffer.size()]) {
   std::memcpy(_buffer.get(), buffer.data(), buffer.size());
