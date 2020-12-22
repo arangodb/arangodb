@@ -27,6 +27,7 @@
 #include "Greenspun/Extractor.h"
 #include "Greenspun/Interpreter.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/overload.h"
 
 #include <velocypack/Collection.h>
@@ -115,48 +116,46 @@ void filterDocumentData(VPackBuilder& finalBuilder, PathList paths,
   }
 }
 
-// Extract vertex data from vertex document into target
-void GraphFormat::copyVertexData(std::string const& documentId,
-                                 arangodb::velocypack::Slice vertexDocument,
-                                 vertex_type& targetPtr, uint64_t& vertexIdRange) {
-  // HACK HACK HACK - we want to eliminate all custom types and work with
-  // the actual json document
-  VPackBuilder doc;
-  {
-    VPackParser parser(doc);
-    parser.parse(vertexDocument.toJson());
-  }
+// Extract vertex data from vertex rawDocument into target
+void GraphFormat::copyVertexData(arangodb::velocypack::Options const& vpackOptions,
+                                 std::string const& documentId,
+                                 arangodb::velocypack::Slice rawDocument,
+                                 ProgrammablePregelAlgorithm::vertex_type& targetPtr,
+                                 uint64_t& vertexIdRange) {
+  // Eliminate all custom types
+  VPackBuilder sanitizedDocument;
+  basics::VelocyPackHelper::sanitizeNonClientTypes(rawDocument, rawDocument, sanitizedDocument,
+                                                   &vpackOptions, false, true);
 
   if (_dataAccess.readVertex) {
-    // copy only specified keys/key-paths to document
+    // copy only specified keys/key-paths to rawDocument
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, *_dataAccess.readVertex, doc.slice());
+    filterDocumentData(tmpBuilder, *_dataAccess.readVertex, sanitizedDocument.slice());
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
                     documentId, tmpBuilder.slice(), _vertexIdRange++);
   } else {
     // copy all
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
-                    documentId, doc.slice(), _vertexIdRange++);
+                     documentId, sanitizedDocument.slice(), _vertexIdRange++);
   }
 }
 
-void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
-  // HACK HACK HACK - we want to eliminate all custom types and work with
-  // the actual json document
-  VPackBuilder doc;
-  {
-    VPackParser parser(doc);
-    parser.parse(edgeDocument.toJson());
-  }
+void GraphFormat::copyEdgeData(arangodb::velocypack::Options const& vpackOptions,
+                               arangodb::velocypack::Slice rawDocument,
+                               ProgrammablePregelAlgorithm::edge_type& targetPtr) {
+  // Eliminate all custom types
+  VPackBuilder sanitizedDocument;
+  basics::VelocyPackHelper::sanitizeNonClientTypes(rawDocument, rawDocument, sanitizedDocument,
+                                                   &vpackOptions, false, true);
 
   if (_dataAccess.readEdge) {
-    // copy only specified keys/key-paths to document
+    // copy only specified keys/key-paths to rawDocument
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, *_dataAccess.readEdge, doc.slice());
+    filterDocumentData(tmpBuilder, *_dataAccess.readEdge, sanitizedDocument.slice());
     targetPtr.reset(tmpBuilder.slice());
   } else {
     // copy all
-    targetPtr.reset(doc.slice());
+    targetPtr.reset(sanitizedDocument.slice());
   }
 }
 

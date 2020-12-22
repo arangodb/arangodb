@@ -745,7 +745,13 @@ std::string EvalError::toString() const {
 
     void operator()(EvalError::CallFrame const& f) {
       ss << "in function `" << f.function << "` called with (";
+      bool first = true;
       for (auto&& s : f.parameter) {
+        if (!first) {
+          ss << ",";
+        } else {
+          first = false;
+        }
         ss << " `" << s << "`";
       }
       ss << " )" << std::endl;

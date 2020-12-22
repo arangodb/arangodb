@@ -658,6 +658,57 @@ TEST_F(GreenspunTest, ne_string_not_equal) {
   ASSERT_TRUE(result.slice().getBoolean());
 }
 
+TEST_F(GreenspunTest, string_huh) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["string?", "hello"]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isTrue());
+
+  program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["string?", 12]
+    )aql");
+
+  result.clear();
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isFalse()) << result.slice().toJson();
+}
+
+TEST_F(GreenspunTest, bool_huh) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["bool?", true]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isTrue());
+
+  program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["bool?", "12"]
+    )aql");
+
+  result.clear();
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isFalse()) << result.slice().toJson();
+}
+
+TEST_F(GreenspunTest, number_huh) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["number?", 17]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isTrue());
+
+  program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["number?", "12"]
+    )aql");
+
+  result.clear();
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isFalse()) << result.slice().toJson();
+}
+
 /*
  * List operators
  */

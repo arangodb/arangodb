@@ -279,6 +279,17 @@ EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& re
   return {};
 }
 
+EvalResult Prim_ToJsonString(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected a single argument");
+  }
+  auto value = params.at(0);
+
+  result.add(VPackValue(value.toJson()));
+
+  return {};
+}
+
 EvalResult Prim_FalseHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
@@ -607,6 +618,39 @@ EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return EvalError("Prim_Foldl1 not implemented");
 }
 
+EvalResult Prim_NumberHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+  auto&& [testee] = res.value();
+
+  result.add(VPackValue(testee.isNumber()));
+  return {};
+}
+
+EvalResult Prim_NullHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+  auto&& [testee] = res.value();
+
+  result.add(VPackValue(testee.isNull()));
+  return {};
+}
+
+EvalResult Prim_BoolHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+  auto&& [testee] = res.value();
+
+  result.add(VPackValue(testee.isBool()));
+  return {};
+}
+
 EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   VPackArrayIterator iter(paramsList);
   if (!iter.valid()) {
@@ -716,6 +760,7 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   // Utilities
   ctx.setFunction("int-to-str", Prim_IntToStr);
+  ctx.setFunction("to-json-string", Prim_ToJsonString);
 
   // Functional stuff
   ctx.setFunction("id", Prim_Identity);
@@ -725,6 +770,11 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("filter", Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or ["filter", <func(key, value) -> bool>, <dict>]
   ctx.setFunction("foldl", Prim_Foldl);
   ctx.setFunction("foldl1", Prim_Foldl1);
+
+  // Type-related functions
+  ctx.setFunction("number?", Prim_NumberHuh);
+  ctx.setFunction("null?", Prim_NullHuh);
+  ctx.setFunction("bool?", Prim_BoolHuh);
 
   ctx.setFunction("var-ref", Prim_VarRef);
   ctx.setFunction("bind-ref", Prim_VarRef);

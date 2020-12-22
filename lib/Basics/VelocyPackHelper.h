@@ -378,11 +378,6 @@ class VelocyPackHelper {
                                      bool sanitizeExternals, bool sanitizeCustom,
                                      bool allowUnindexed = false);
 
-  static VPackBuffer<uint8_t> sanitizeNonClientTypesChecked(
-      arangodb::velocypack::Slice,
-      VPackOptions const* options = &VPackOptions::Options::Defaults,
-      bool sanitizeExternals = true, bool sanitizeCustom = true);
-
   static uint64_t extractIdValue(VPackSlice const& slice);
 
   static arangodb::velocypack::Options strictRequestValidationOptions;
