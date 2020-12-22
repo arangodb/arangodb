@@ -4326,7 +4326,7 @@ function testCompleteGraphShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testCompleteGraphKPathsD1(testGraph) {
+function testCompleteGraphKPathsD1Outbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR path IN 1..1 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}
@@ -4336,6 +4336,42 @@ function testCompleteGraphKPathsD1(testGraph) {
 
   const necessaryPaths = [
     ["A", "C"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testCompleteGraphKPathsD1Any(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR path IN 1..1 ANY K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "C"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testCompleteGraphKPathsD1Inbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR path IN 1..1 INBOUND K_PATHS ${testGraph.vertex('C')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["C", "A"]
   ];
 
   const res = db._query(query);
@@ -5651,7 +5687,9 @@ const testsByGraph = {
     testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD10,
     testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD10,
     testCompleteGraphShortestPath,
-    testCompleteGraphKPathsD1,
+    testCompleteGraphKPathsD1Outbound,
+    testCompleteGraphKPathsD1Any,
+    testCompleteGraphKPathsD1Inbound,
     testCompleteGraphKPathsD2,
     testCompleteGraphKPathsD3,
     testCompleteGraphShortestPathEnabledWeightCheck,
