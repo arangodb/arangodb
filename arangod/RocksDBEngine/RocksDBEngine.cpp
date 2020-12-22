@@ -125,12 +125,6 @@ static constexpr uint64_t minSyncInterval = 5;
 
 static constexpr uint64_t databaseIdForGlobalApplier = 0;
 
-#ifdef USE_ENTERPRISE
-constexpr bool isEnterprise = true;
-#else
-constexpr bool isEnterprise = false;
-#endif
-
 // handles for recovery helpers
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>> RocksDBEngine::_recoveryHelpers;
 
@@ -200,7 +194,11 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _useReleasedTick(false),
       _debugLogging(false),
       _useEdgeCache(true),
-      _createShaFiles(isEnterprise),
+#ifdef USE_ENTERPRISE
+      _createShaFiles(true),
+#else
+      _createShaFiles(false),
+#endif
       _lastHealthCheckSuccessful(false),
       _lastHealthCheckTimestamp(std::chrono::steady_clock::time_point()) {
   startsAfter<BasicFeaturePhaseServer>();
@@ -336,12 +334,12 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_useThrottle),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
 
-  if constexpr (isEnterprise) {
-    options->addOption("--rocksdb.create-sha-files",
-                       "enable generation of sha256 files for each .sst file",
-                       new BooleanParameter(&_createShaFiles),
-                       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Enterprise));
-  }
+#ifdef USE_ENTERPRISE
+  options->addOption("--rocksdb.create-sha-files",
+                     "enable generation of sha256 files for each .sst file",
+                     new BooleanParameter(&_createShaFiles),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Enterprise));
+#endif
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
@@ -359,18 +357,18 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new UInt64Parameter(&_maxWalArchiveSizeLimit),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden));
 
-  if constexpr (isEnterprise) {
-    collectEnterpriseOptions(options);
-  }
+#ifdef USE_ENTERPRISE
+  collectEnterpriseOptions(options);
+#endif
 }
 
 // validate the storage engine's specific options
 void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize,
                                   _intermediateCommitCount);
-  if constexpr (isEnterprise) {
-    validateEnterpriseOptions(options);
-  }
+#ifdef USE_ENTERPRISE
+  validateEnterpriseOptions(options);
+#endif
 
   if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
     LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
@@ -428,9 +426,9 @@ void RocksDBEngine::prepare() {
 
   TRI_ASSERT(!_basePath.empty());
 
-  if constexpr (isEnterprise) {
-    prepareEnterprise();
-  }
+#ifdef USE_ENTERPRISE
+  prepareEnterprise();
+#endif
 }
 
 void RocksDBEngine::start() {
@@ -454,7 +452,7 @@ void RocksDBEngine::start() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
-  bool createdEngineDir = false;
+  [[maybe_unused]] bool createdEngineDir = false;
   if (!basics::FileUtils::isDirectory(_path)) {
     std::string systemErrorStr;
     long errorNo;
@@ -560,11 +558,9 @@ void RocksDBEngine::start() {
   _options.recycle_log_file_num = opts._recycleLogFileNum;
   _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
 
-  if constexpr (isEnterprise) {
+#ifdef USE_ENTERPRISE
     configureEnterpriseRocksDBOptions(_options, createdEngineDir);
-  } else {
-    ((void)createdEngineDir);
-  }
+#endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
                                      rocksdb::Env::Priority::HIGH);
