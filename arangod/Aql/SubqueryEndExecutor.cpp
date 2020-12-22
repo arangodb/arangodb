@@ -177,7 +177,8 @@ void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
 SubqueryEndExecutor::Accumulator::Accumulator(arangodb::ResourceMonitor& resourceMonitor,
                                               VPackOptions const* options) 
     : _resourceMonitor(resourceMonitor), 
-      _options(options) {
+      _options(options),
+      _builder(_buffer) {
   reset();
 }
 

@@ -31,3 +31,53 @@ ResourceMonitor::~ResourceMonitor() {
   // down. the assertion will have no effect in production.
   TRI_ASSERT(currentResources.memoryUsage.load(std::memory_order_relaxed) == 0);
 }
+  
+void ResourceMonitor::increaseMemoryUsage(size_t value) {
+  size_t current = value + currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
+
+  if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
+    currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
+  }
+  
+  size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
+  while (peak < current) {
+    if (currentResources.peakMemoryUsage.compare_exchange_weak(peak, current,
+                                                               std::memory_order_release,
+                                                               std::memory_order_relaxed)) {
+      break;
+    }
+  }
+}
+  
+void ResourceMonitor::decreaseMemoryUsage(size_t value) noexcept {
+  [[maybe_unused]] size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+  TRI_ASSERT(previous >= value);
+}
+  
+ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value)
+    : _resourceMonitor(resourceMonitor), _value(value) {
+  // may throw
+  increase(_value);
+}
+  
+ResourceUsageScope::~ResourceUsageScope() {
+  decrease(_value);
+}
+  
+void ResourceUsageScope::increase(size_t value) {
+  if (value > 0) {
+    // may throw
+    _resourceMonitor.increaseMemoryUsage(value);
+  }
+}
+  
+void ResourceUsageScope::decrease(size_t value) noexcept {
+  if (value > 0) {
+    _resourceMonitor.decreaseMemoryUsage(value);
+  }
+}
+
+void ResourceUsageScope::steal() noexcept {
+  _value = 0;
+}

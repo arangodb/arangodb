@@ -376,12 +376,14 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   // emplace must not fail
   TRI_ASSERT(emplaced);
 
+  guard.steal();
+
   // Moving _nextGroup left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
   _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 
   return result;
-};
+}
 
 [[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {

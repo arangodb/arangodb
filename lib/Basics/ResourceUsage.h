@@ -29,7 +29,6 @@
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
 
-#include <algorithm>
 #include <atomic>
 
 namespace arangodb {
@@ -62,29 +61,10 @@ struct ResourceMonitor final {
 
   size_t memoryLimit() const { return maxMemoryUsage; }
 
-  inline void increaseMemoryUsage(size_t value) {
-    size_t current = currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
-    current += value;
+  /// @brief increase memory usage by <value> bytes. may throw!
+  void increaseMemoryUsage(size_t value);
 
-    if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
-      currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
-    }
-    
-    size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
-    while (peak < current) {
-      if (currentResources.peakMemoryUsage.compare_exchange_weak(peak, current,
-                                                                 std::memory_order_release,
-                                                                 std::memory_order_relaxed)) {
-        break;
-      }
-    }
-  }
-
-  inline void decreaseMemoryUsage(size_t value) noexcept {
-    [[maybe_unused]] size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
-    TRI_ASSERT(previous >= value);
-  }
+  void decreaseMemoryUsage(size_t value) noexcept;
 
   void clear() { currentResources.clear(); }
   
@@ -100,38 +80,26 @@ struct ResourceMonitor final {
 
 /// @brief RAII object for temporary resource tracking
 /// will track the resource usage on creation, and untrack it
-/// on destruction
+/// on destruction, unless the responsibility is stolen
+/// from it.
 class ResourceUsageScope {
  public:
   ResourceUsageScope(ResourceUsageScope const&) = delete;
   ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
 
-  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value)
-      : _resourceMonitor(resourceMonitor), _value(value) {
-    // may throw
-    increase(_value);
-  }
+  /// @brief track <value> bytes of memory, may throw!
+  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value);
 
-  ~ResourceUsageScope() {
-    decrease(_value);
-  }
+  ~ResourceUsageScope();
 
-  inline void increase(size_t value) {
-    if (value > 0) {
-      // may throw
-      _resourceMonitor.increaseMemoryUsage(value);
-    }
-  }
+  /// @brief track <value> bytes of memory, may throw!
+  void increase(size_t value);
   
-  inline void decrease(size_t value) noexcept {
-    if (value > 0) {
-      _resourceMonitor.decreaseMemoryUsage(value);
-    }
-  }
+  void decrease(size_t value) noexcept;
 
-  void steal() noexcept {
-    _value = 0;
-  }
+  /// @brief steal responsibility for decreasing the memory 
+  /// usage on destruction
+  void steal() noexcept;
 
  private:
   ResourceMonitor& _resourceMonitor;
