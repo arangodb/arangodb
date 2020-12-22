@@ -517,7 +517,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
   arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             nullptr, nullptr);
+                             nullptr);
   auto parseResult = query.parse();
 
   if (parseResult.result.fail()) {
@@ -633,19 +633,18 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto options = std::make_shared<VPackBuilder>();
-
+  VPackBuilder options;
   if (args.Length() > 2) {
     // handle options
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-    TRI_V8ToVPack(isolate, *options, args[2], false);
+    TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
   // bind parameters will be freed by the query later
   arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true),
-                             aql::QueryString(queryString), bindVars, options);
+                             aql::QueryString(queryString), bindVars, options.slice());
   auto queryResult = query.explain();
 
   if (queryResult.result.fail()) {
@@ -706,48 +705,33 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1 || args.Length() > 2) {
-    events::QueryDocument(vocbase.name(), VPackSlice(), TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_EXECUTEJSON(<queryjson>, <options>)");
   }
 
   if (!args[0]->IsObject()) {
-    events::QueryDocument(vocbase.name(), VPackSlice(), TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("expecting object for <queryjson>");
   }
 
-  auto queryBuilder = std::make_shared<VPackBuilder>();
-  try {
-    TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
-  } catch (arangodb::basics::Exception const& ex) {
-    events::QueryDocument(vocbase.name(), VPackSlice(), ex.code());
-    throw;
-  }
+  VPackBuilder queryBuilder;
+  TRI_V8ToVPack(isolate, queryBuilder, args[0], false);
 
-  auto options = std::make_shared<VPackBuilder>();
-
+  VPackBuilder options;
   if (args.Length() > 1) {
-    // we have options! yikes!
     if (!args[1]->IsUndefined() && !args[1]->IsObject()) {
-      events::QueryDocument(vocbase.name(), queryBuilder->slice(), TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    try {
-      TRI_V8ToVPack(isolate, *options, args[1], false);
-    } catch (arangodb::basics::Exception const& ex) {
-      events::QueryDocument(vocbase.name(), queryBuilder->slice(), ex.code());
-      throw;
-    }
+    TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
   arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true),
-                                    aql::QueryOptions(options->slice()));
+                                    aql::QueryOptions(options.slice()));
   
-  VPackSlice collections = queryBuilder->slice().get("collections");
-  VPackSlice variables = queryBuilder->slice().get("variables");
+  VPackSlice collections = queryBuilder.slice().get("collections");
+  VPackSlice variables = queryBuilder.slice().get("variables");
   
   QueryAnalyzerRevisions analyzersRevision;
-  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder->slice());
+  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder.slice());
   if (ADB_UNLIKELY(revisionRes.fail())) {
     TRI_V8_THROW_EXCEPTION(revisionRes);
   }
@@ -756,7 +740,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder snippetBuilder; // simon: hack to make format conform
   snippetBuilder.openObject();
   snippetBuilder.add("0", VPackValue(VPackValueType::Object));
-  snippetBuilder.add("nodes", queryBuilder->slice().get("nodes"));
+  snippetBuilder.add("nodes", queryBuilder.slice().get("nodes"));
   snippetBuilder.close();
   snippetBuilder.close();
  
@@ -770,7 +754,6 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
-    events::QueryDocument(vocbase.name(), queryBuilder->slice(), queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
@@ -810,8 +793,6 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
               TRI_V8_ASCII_STRING(isolate, "cached"),
               v8::Boolean::New(isolate, queryResult.cached)).FromMaybe(false);
 
-  events::QueryDocument(vocbase.name(), queryBuilder->slice(), TRI_ERROR_NO_ERROR);
-
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -827,14 +808,12 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1 || args.Length() > 3) {
-    events::QueryDocument(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE(
         "AQL_EXECUTE(<queryString>, <bindVars>, <options>)");
   }
 
   // get the query string
   if (!args[0]->IsString()) {
-    events::QueryDocument(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
@@ -845,43 +824,27 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
-      events::QueryDocument(vocbase.name(), queryString, "", TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
     }
     if (args[1]->IsObject()) {
-      bindVars.reset(new VPackBuilder);
-      try {
-        TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
-      } catch (arangodb::basics::Exception const& ex) {
-        events::QueryDocument(vocbase.name(), queryString, "", ex.code());
-        throw;
-      }
+      bindVars = std::make_shared<VPackBuilder>();
+      TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
     }
   }
 
   // options
-  auto options = std::make_shared<VPackBuilder>();
+  VPackBuilder options;
   if (args.Length() > 2) {
-    // we have options! yikes!
     if (!args[2]->IsObject()) {
-      events::QueryDocument(vocbase.name(), queryString,
-                            (bindVars ? bindVars->slice().toJson() : ""),
-                            TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    try {
-      TRI_V8ToVPack(isolate, *options, args[2], false);
-    } catch (arangodb::basics::Exception const& ex) {
-      events::QueryDocument(vocbase.name(), queryString,
-                            (bindVars ? bindVars->slice().toJson() : ""), ex.code());
-      throw;
-    }
+    TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
   // bind parameters will be freed by the query later
   arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             bindVars, options);
+                             bindVars, options.slice());
 
   arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
 
@@ -889,15 +852,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
       TRI_GET_GLOBALS();
       v8g->_canceled = true;
-      events::QueryDocument(vocbase.name(), queryString,
-                            (bindVars ? bindVars->slice().toJson() : ""),
-                            TRI_ERROR_REQUEST_CANCELED);
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-
-    events::QueryDocument(vocbase.name(), queryString,
-                          (bindVars ? bindVars->slice().toJson() : ""),
-                          queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
@@ -933,9 +888,6 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "cached"),
               v8::Boolean::New(isolate, queryResult.cached)).FromMaybe(false);
-
-  events::QueryDocument(vocbase.name(), queryString,
-                        (bindVars ? bindVars->slice().toJson() : ""), TRI_ERROR_NO_ERROR);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

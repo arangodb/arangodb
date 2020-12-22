@@ -525,7 +525,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
         TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
         arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-                                   bindVars, nullptr);
+                                   bindVars);
 
         aql::QueryResult queryResult = query.executeSync();
         if (queryResult.result.fail()) {
@@ -869,15 +869,11 @@ bool State::loadPersisted() {
 /// is reset to the state after log index `index` has been applied. Sets
 /// `index` to 0 if there is no compacted snapshot.
 bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term) {
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
-
   std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
   TRI_ASSERT(nullptr != _vocbase);  
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), bindVars, nullptr);
+                             aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -913,15 +909,11 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
 
 /// Load compaction collection
 bool State::loadCompacted() {
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
-
   std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), bindVars, nullptr);
+                             aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -959,15 +951,11 @@ bool State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
-
   std::string const aql("FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), bindVars, nullptr);
+                             aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -1089,7 +1077,7 @@ bool State::loadRemaining() {
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), bindVars, nullptr);
+                             aql::QueryString(aql), bindVars);
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -1294,7 +1282,7 @@ bool State::compactPersisted(index_t cind, index_t keep) {
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                              aql::QueryString(aql), bindVars, nullptr);
+                             aql::QueryString(aql), bindVars);
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -1317,7 +1305,7 @@ bool State::removeObsolete(index_t cind) {
 
     TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                               aql::QueryString(aql), bindVars, nullptr);
+                               aql::QueryString(aql), bindVars);
 
     aql::QueryResult queryResult = query.executeSync();
 
@@ -1411,7 +1399,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(aql), nullptr, nullptr);
+                             aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -1470,19 +1458,17 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
 }
 
 query_t State::allLogs() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
-
-  auto bindVars = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder(bindVars.get()); }
-
   std::string const comp("FOR c IN compact SORT c._key RETURN c");
   std::string const logs("FOR l IN log SORT l._key RETURN l");
 
-  TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
+  TRI_ASSERT(nullptr != _vocbase); 
+  
+  MUTEX_LOCKER(mutexLocker, _logLock);
+
   arangodb::aql::Query compq(transaction::StandaloneContext::Create(*_vocbase),
-                              aql::QueryString(comp), bindVars, nullptr);
+                              aql::QueryString(comp), nullptr);
   arangodb::aql::Query logsq(transaction::StandaloneContext::Create(*_vocbase),
-                             aql::QueryString(logs), bindVars, nullptr);
+                             aql::QueryString(logs), nullptr);
 
   aql::QueryResult compqResult = compq.executeSync();
 
@@ -1573,7 +1559,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   // First get the latest snapshot, if there is any:
   std::string aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
   arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                             aql::QueryString(aql), nullptr, nullptr);
+                             aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -1582,11 +1568,12 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   }
 
   VPackSlice result = queryResult.data->slice();
+  TRI_ASSERT(result.isArray());
 
   Store store(vocbase.server(), nullptr);
   index = 0;
   term = 0;
-  if (result.isArray() && result.length() == 1) {
+  if (result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice s = result[0];
     store = s;
@@ -1599,7 +1586,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   // Now get the rest of the log entries, if there are any:
   aql = "FOR l IN log SORT l._key RETURN l";
   arangodb::aql::Query query2(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(aql), nullptr, nullptr);
+                               aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult2 = query2.executeSync();
 
@@ -1661,7 +1648,6 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 /// is reset to the state after log index `index` has been applied. Sets
 /// `index` to 0 if there is no compacted snapshot.
 uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
-
   TRI_ASSERT(builder.isOpenObject());
 
   auto bindVars = std::make_shared<VPackBuilder>();
@@ -1673,7 +1659,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
   arangodb::aql::Query logQuery(transaction::StandaloneContext::Create(*_vocbase),
-                                aql::QueryString(logQueryStr), bindVars, nullptr);
+                                aql::QueryString(logQueryStr), bindVars);
 
   aql::QueryResult logQueryResult = logQuery.executeSync();
 
@@ -1682,6 +1668,8 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   }
 
   VPackSlice result = logQueryResult.data->slice();
+  TRI_ASSERT(result.isArray());
+
   std::string firstIndex;
   uint64_t n = 0;
 
@@ -1698,36 +1686,31 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     }
   };
 
-  builder.add(VPackValue("log"));
-  if (result.isArray()) {
-    try {
-      { 
-        VPackArrayBuilder guard(&builder);
-        for (VPackSlice ee : VPackArrayIterator(result)) {
-          TRI_ASSERT(ee.isObject());
-          copyWithoutId(ee, builder);
-        }
-      }
-      n = result.length();
-      if (n > 0) {
-        firstIndex = result[0].get(StaticStrings::KeyString).copyString();
-      }
-    } catch (...) {
-      VPackArrayBuilder a(&builder);
+  builder.add("log", VPackValue(VPackValueType::Array));
+  try {
+    for (VPackSlice ee : VPackArrayIterator(result)) {
+      TRI_ASSERT(ee.isObject());
+      copyWithoutId(ee, builder);
     }
+    n = result.length();
+    if (n > 0) {
+      firstIndex = result[0].get(StaticStrings::KeyString).copyString();
+    }
+  } catch (...) {
+    // ...
   }
+  builder.close(); // "log"
 
   if (n > 0) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
+    bindVars->add("key", VPackValue(firstIndex));
     bindVars->close();
 
-    std::string const compQueryStr =
-      std::string("FOR c in compact FILTER c._key >= '") + firstIndex
-      + std::string("' SORT c._key LIMIT 1 RETURN c");
+    std::string const compQueryStr("FOR c in compact FILTER c._key >= @key SORT c._key LIMIT 1 RETURN c");
 
     arangodb::aql::Query compQuery(transaction::StandaloneContext::Create(*_vocbase),
-                                   aql::QueryString(compQueryStr), bindVars, nullptr);
+                                   aql::QueryString(compQueryStr), bindVars);
 
     aql::QueryResult compQueryResult = compQuery.executeSync();
 
@@ -1735,18 +1718,17 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
 
-    result = compQueryResult.data->slice().resolveExternals();
+    result = compQueryResult.data->slice();
+    TRI_ASSERT(result.isArray());
 
-    if (result.isArray()) {
-      if (result.length() > 0) {
-        builder.add(VPackValue("compaction"));
-        try {
-          VPackSlice c = result[0];
-          TRI_ASSERT(c.isObject());
-          copyWithoutId(c, builder);
-        } catch (...) {
-          VPackObjectBuilder a(&builder);
-        }
+    if (result.length() > 0) {
+      builder.add(VPackValue("compaction"));
+      try {
+        VPackSlice c = result[0];
+        TRI_ASSERT(c.isObject());
+        copyWithoutId(c, builder);
+      } catch (...) {
+        VPackObjectBuilder a(&builder);
       }
     }
   }
@@ -1763,4 +1745,3 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   char const* key = keySlice.getString(keyLength);
   return index_t(arangodb::basics::StringUtils::uint64(key, keyLength));
 }
-

@@ -59,6 +59,7 @@ QueryOptions::QueryOptions()
       count(false),
       verboseErrors(false),
       inspectSimplePlans(true),
+      skipAudit(false),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
   {
@@ -84,11 +85,12 @@ QueryOptions::QueryOptions()
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice) : QueryOptions() {
+QueryOptions::QueryOptions(arangodb::velocypack::Slice slice) 
+    : QueryOptions() {
   this->fromVelocyPack(slice);
 }
 
-void QueryOptions::fromVelocyPack(VPackSlice const slice) {
+void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (!slice.isObject()) {
     return;
   }
@@ -187,6 +189,9 @@ void QueryOptions::fromVelocyPack(VPackSlice const slice) {
         value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
 
+  // note: skipAudit is intentionally not read here.
+  // the end user cannot override this setting
+
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
     value = optimizer.get("inspectSimplePlans");
@@ -256,6 +261,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   builder.add("verboseErrors", VPackValue(verboseErrors));
+  
+  // note: skipAudit is intentionally not serialized here.
+  // the end user cannot override this setting anyway.
 
   builder.add("optimizer", VPackValue(VPackValueType::Object));
   builder.add("inspectSimplePlans", VPackValue(inspectSimplePlans));

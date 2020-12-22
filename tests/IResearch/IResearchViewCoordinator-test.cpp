@@ -6018,8 +6018,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
 
     // dummy query
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                               arangodb::aql::QueryString("RETURN 1"),
-                               nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+                               arangodb::aql::QueryString("RETURN 1"), nullptr);
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
     arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
