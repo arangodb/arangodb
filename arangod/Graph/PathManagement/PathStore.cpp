@@ -76,7 +76,7 @@ size_t PathStore<Step>::append(Step step) {
 
 template <class Step>
 template <class ProviderType>
-auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool{
+auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool {
   Step const* myStep = &vertex;
 
   while (!myStep->isFirst()) {
