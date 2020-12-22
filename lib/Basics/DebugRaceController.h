@@ -31,6 +31,11 @@
 #include <vector>
 
 namespace arangodb {
+
+namespace application_features {
+class ApplicationServer;
+}
+
 namespace basics {
 
 class DebugRaceController {
@@ -53,7 +58,8 @@ class DebugRaceController {
   // Caller is required to COPY the data to store here.
   // Otherwise a concurrent thread might try to read it,
   // after the caller has freed the memory.
-  void waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData);
+  void waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
+                     arangodb::application_features::ApplicationServer const& server);
 
  private:
   bool _didTrigger{false};

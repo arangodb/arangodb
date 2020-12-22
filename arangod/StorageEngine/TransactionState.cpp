@@ -129,7 +129,7 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     if (!raceController.didTrigger()) {
-      raceController.waitForOthers(2, _id);
+      raceController.waitForOthers(2, _id, vocbase().server());
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
       std::vector<std::any> const& data = raceController.data();

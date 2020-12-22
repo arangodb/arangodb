@@ -23,6 +23,7 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include "DebugRaceController.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -44,11 +45,13 @@ bool DebugRaceController::didTrigger() const { return _didTrigger; }
 
 std::vector<std::any> DebugRaceController::data() const { return _data; }
 
-void DebugRaceController::waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData) {
+void DebugRaceController::waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
+                                        arangodb::application_features::ApplicationServer const& server) {
   std::unique_lock<std::mutex> guard(_mutex);
   _data.emplace_back(std::move(myData));
-  _condVariable.wait(guard,
-                     [&] { return _data.size() == numberOfThreadsToWaitFor; });
+  _condVariable.wait(guard, [&] {
+    return _data.size() == numberOfThreadsToWaitFor || server.isStopping();
+  });
   _didTrigger = true;
   _condVariable.notify_all();
 }
