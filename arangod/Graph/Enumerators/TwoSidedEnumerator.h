@@ -76,7 +76,7 @@ class TwoSidedEnumerator {
     [[nodiscard]] auto doneWithDepth() const -> bool;
     auto testDepthZero(Ball const& other, ResultList& results) const -> void;
 
-    auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void;
+    auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> bool;
 
     auto matchResultsInShell(Step const& match, ResultList& results) const -> void;
     auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;

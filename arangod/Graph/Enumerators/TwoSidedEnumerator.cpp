@@ -160,12 +160,18 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
+    // [ok, prune, filter, filterAndPrune] = _interior.validate(n);
+    // ok => continue
+    // prune => not add to _shell
+    // filter => not match results in _shell
+    // filterAndPrune => prune & filter
+
     // Check if other Ball knows this Vertex.
     // Include it in results.
     if (getDepth() + other.getDepth() >= _minDepth) {
       other.matchResultsInShell(n, results);
     }
-    LOG_TOPIC("9620b", TRACE, Logger::GRAPHS) << "  Neighbor " << n;
+
     // Add the step to our shell
     _shell.emplace(std::move(n));
   });
@@ -202,11 +208,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResu
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath(
-    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void {
+    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> bool {
   if (_direction == FORWARD) {
-    _interior.buildPath(vertexInShell, path);
+    return _interior.buildPath(vertexInShell, path);
   } else {
-    _interior.reverseBuildPath(vertexInShell, path);
+    return _interior.reverseBuildPath(vertexInShell, path);
   }
 }
 
@@ -317,15 +323,14 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPa
       auto const& [leftVertex, rightVertex] = _results.back();
 
       _resultPath.clear();
-      _left.buildPath(leftVertex, _resultPath);
-      _right.buildPath(rightVertex, _resultPath);
-
-      // result done
-      _results.pop_back();
-      if (_resultPath.isValid()) {
+      if (_left.buildPath(leftVertex, _resultPath) && _right.buildPath(rightVertex, _resultPath)) {
+        _results.pop_back();
         _resultPath.toVelocyPack(result);
         return true;
       }
+
+      // result done
+      _results.pop_back();
     }
   }
   return false;
