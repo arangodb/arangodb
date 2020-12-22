@@ -2186,7 +2186,9 @@ class IResearchFeatureTestCoordinator
   }
 
   ~IResearchFeatureTestCoordinator() {
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
+    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    ci.shutdownSyncers();
+    ci.waitForSyncersToStop();
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
@@ -2439,7 +2441,9 @@ class IResearchFeatureTestDBServer
   }
 
   ~IResearchFeatureTestDBServer() {
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
+    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    ci.shutdownSyncers();
+    ci.waitForSyncersToStop();
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 

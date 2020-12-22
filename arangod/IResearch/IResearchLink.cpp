@@ -1075,10 +1075,9 @@ Result IResearchLink::init(
         LOG_TOPIC("86ece", TRACE, iresearch::TOPIC) << "Setting collection name '" << meta._collectionName << "' for new link '"
           << this->id().id() << "'";
       }
-      TRI_ASSERT(!meta._collectionName.empty());
       if (ADB_UNLIKELY(meta._collectionName.empty())) {
         LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
-          << this->id().id() << "'. Please recreate the link!";
+          << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
       }
     }
 
