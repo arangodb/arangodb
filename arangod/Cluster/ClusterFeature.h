@@ -147,7 +147,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
-  bool _allocated = false;
   double _indexCreationTimeout = 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
