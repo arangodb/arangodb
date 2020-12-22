@@ -825,7 +825,8 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
     }
   }
 
-  if (writeAnalyzerDefinition && ServerState::instance()->isClusterRole()) {
+  if (writeAnalyzerDefinition && ServerState::instance()->isClusterRole()
+      && (!mask || mask->_collectionName)) {
      addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
 
