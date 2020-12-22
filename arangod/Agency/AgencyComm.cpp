@@ -632,8 +632,8 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
       _agency_comm_request_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram<log_scale_t<uint64_t>>(
           StaticStrings::AgencyCommRequestTimeMs)) {}
 
-AgencyCommResult AgencyComm::sendServerState(double timeout) {
-  // construct JSON value { "status": "...", "time": "..." }
+AgencyCommResult AgencyComm::sendServerState(double timeout, bool isHealthy) {
+  // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
 
   try {
@@ -643,6 +643,7 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
     builder.add("status", VPackValue(status));
     std::string const stamp = AgencyCommHelper::generateStamp();
     builder.add("time", VPackValue(stamp));
+    builder.add("healthy", VPackValue(isHealthy));
     builder.close();
   } catch (...) {
     return AgencyCommResult();

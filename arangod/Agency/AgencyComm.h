@@ -578,7 +578,7 @@ class AgencyComm {
  public:
   explicit AgencyComm(application_features::ApplicationServer&);
 
-  AgencyCommResult sendServerState(double timeout);
+  AgencyCommResult sendServerState(double timeout, bool isHealthy);
 
   std::string version();
 

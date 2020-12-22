@@ -33,6 +33,8 @@
 #include "Replication/ReplicationFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -147,6 +149,11 @@ void RestAdminServerHandler::handleAvailability() {
             available = false;
           }
         }
+      }
+      if (available) {
+        // also ask storage engine for its health
+        StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+        available = engine.checkHealth();
       }
       break;
     }

@@ -1427,11 +1427,15 @@ StorageEngineMock::StorageEngineMock(arangodb::application_features::Application
       vocbaseCount(1),
       _releasedTick(0) {}
 
+bool StorageEngineMock::checkHealth() {
+  return true;
+}
+
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   TRI_ASSERT(false);
   return nullptr;
 }
-
+  
 void StorageEngineMock::addOptimizerRules(arangodb::aql::OptimizerRulesFeature& /*feature*/) {
   before();
   // NOOP

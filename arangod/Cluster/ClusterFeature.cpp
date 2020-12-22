@@ -561,7 +561,7 @@ void ClusterFeature::start() {
 
   // tell the agency about our state
   AgencyComm comm(server());
-  comm.sendServerState(120.0);
+  comm.sendServerState(120.0, true);
 
   auto const version = comm.version();
 
@@ -657,7 +657,7 @@ void ClusterFeature::stop() {
   // to write something into a non-existing agency.
   AgencyComm comm(server());
   // this will be stored in transient only
-  comm.sendServerState(4.0);
+  comm.sendServerState(4.0, true);
 
   // the following ops will be stored in Plan/Current (for unregister) or
   // Current (for logoff)

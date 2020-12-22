@@ -106,6 +106,8 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter<transaction::ManagerFeature>();
     startsAfter<ViewTypesFeature>();
   }
+  
+  virtual bool checkHealth() = 0;
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(

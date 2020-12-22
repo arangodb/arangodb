@@ -624,10 +624,22 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Sync.status is copied to Health.syncStatus
       std::string syncTime;
       std::string syncStatus;
-      bool heartBeatVisible = _transient.has(syncPrefix + serverID);
-      if (heartBeatVisible) {
+      // the default assumption is that a server that reports back without any
+      // health data can be considered healthy. only more recent versions and
+      // only also some types of servers (DB servers) actually report their
+      // health separately.
+      bool isHealthy = true;
+
+      bool heartbeatVisible = _transient.has(syncPrefix + serverID);
+      if (heartbeatVisible) {
         syncTime = _transient.hasAsString(syncPrefix + serverID + "/time").first;
         syncStatus = _transient.hasAsString(syncPrefix + serverID + "/status").first;
+        // it is optional for servers to send health data, so we need to be prepared
+        // for not receiving any.
+        auto healthData = _transient.hasAsBool(syncPrefix + serverID + "/healthy");
+        if (healthData.second) {
+          isHealthy = healthData.first;
+        }
       } else {
         syncTime = timepointToString(std::chrono::system_clock::time_point()); // beginning of time
         syncStatus = "UNKNOWN";
@@ -635,7 +647,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Compute the time when we last discovered a new heartbeat from that server:
       std::chrono::system_clock::time_point lastAckedTime;
-      if (heartBeatVisible) {
+      if (heartbeatVisible) {
         if (transientHealthRecordFound) {
           lastAckedTime = (syncTime != transist.syncTime)
                           ? startTimeLoop
@@ -676,6 +688,12 @@ std::vector<check_t> Supervision::check(std::string const& type) {
           transist.status = Supervision::HEALTH_STATUS_BAD;
         } else {
           transist.status = Supervision::HEALTH_STATUS_FAILED;
+        }
+
+        // forcefully downgrade the status from GOOD to BAD for servers that have
+        // reported back, but have reported that they are not healthy.
+        if (transist.status == Supervision::HEALTH_STATUS_GOOD && !isHealthy) {
+          transist.status = Supervision::HEALTH_STATUS_BAD;
         }
 
         // Status changed?

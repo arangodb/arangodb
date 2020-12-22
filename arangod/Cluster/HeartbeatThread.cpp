@@ -213,6 +213,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
       _updateCounter(0),
+      _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
       _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
           StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
@@ -1278,7 +1279,23 @@ bool HeartbeatThread::sendServerState() {
   if (isStopping()) {
     timeout = 5.0;
   }
-  const AgencyCommResult result = _agency.sendServerState(timeout);
+
+  bool isHealthy = true;
+  if (ServerState::instance()->isDBServer()) {
+    // use storage engine health self-assessment and send it to agency too
+    isHealthy = _server.getFeature<EngineSelectorFeature>().engine().checkHealth();
+    if (!isHealthy) {
+      auto now = std::chrono::steady_clock::now();
+      if (now - _lastUnhealthyTimestamp > std::chrono::seconds(60)) {
+        // log only every 60 seconds to prevent log spamming in case the 
+        // unhealthiness persists
+        _lastUnhealthyTimestamp = now;
+        LOG_TOPIC("e4742", WARN, Logger::HEARTBEAT)
+          << "reporting storage engine unhealthiness to agency"; 
+      }
+    }
+  }
+  AgencyCommResult const result = _agency.sendServerState(timeout, isHealthy);
 
   if (result.successful()) {
     _numFails = 0;
