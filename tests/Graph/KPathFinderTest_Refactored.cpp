@@ -54,15 +54,13 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-
-class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
-  
-  //using KPathFinder =
-  //    TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
-   
-
+class KPathFinderTest_Refactored
+    : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   using KPathFinder =
-      TwoSidedEnumerator<QueueTracer<FifoQueue<MockGraphProvider::Step>>, PathStoreTracer<PathStore<MockGraphProvider::Step>>, MockGraphProvider>;
+      TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
+
+  /*using KPathFinder =
+      TwoSidedEnumerator<QueueTracer<FifoQueue<MockGraphProvider::Step>>, PathStoreTracer<PathStore<MockGraphProvider::Step>>, MockGraphProvider>;*/
 
  protected:
   bool activateLogging{false};
@@ -115,12 +113,12 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
   auto looseEndBehaviour() const -> MockGraphProvider::LooseEndBehaviour {
     return GetParam();
   }
-  
+
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
     return KPathFinder{MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), false),
-      MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), true),
-      std::move(options), resourceMonitor};
+                       MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), true),
+                       std::move(options), resourceMonitor};
   }
 
   auto vId(size_t nr) -> std::string {
@@ -129,7 +127,6 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
 
   auto pathStructureValid(VPackSlice path, size_t depth) -> void {
     ASSERT_TRUE(path.isObject());
-    LOG_DEVEL << path.toJson();  // TODO: remove me
     {
       // Check Vertices
       ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));
@@ -199,7 +196,7 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
 
 INSTANTIATE_TEST_CASE_P(KPathFinderTestRunner, KPathFinderTest_Refactored,
                         ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
-                                          MockGraphProvider::LooseEndBehaviour::ALLWAYS));
+                                          MockGraphProvider::LooseEndBehaviour::ALWAYS));
 
 TEST_P(KPathFinderTest_Refactored, no_path_exists) {
   VPackBuilder result;
