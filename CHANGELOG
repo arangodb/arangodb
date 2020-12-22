@@ -2,14 +2,21 @@ devel
 -----
 
 * Make DB servers report storage engine errors to the agency, via a new "healthy"
-  attribute in sent to requests to Sync/ServerStates/<id>.
-  The supervision will check this attribute if it is posted, and if it contains
-  a value of `false`, will mark the server as BAD.
+  attribute in requests sent to Sync/ServerStates/<id>.
+  The supervision can in the future check this attribute if it is posted,
+  and mark servers as BAD or FAILED in case an unhealthy status is
+  reported.
   DB server health is currently determined by whether or not the storage engine
   (RocksDB) has reported a background error, and by whether or not the free disk 
   space has reached a critical low amount. The current threshold for free disk
-  space is set at 2% of the disk capacity (the disk is considered that contains
-  the RocksDB database directory).
+  space is set at 1% of the disk capacity (only the disk is considered that 
+  contains the RocksDB database directory).
+  The minimum required free disk space percentage can be configured using the new
+  startup option `--rocksdb.minimum-disk-free-percent`, which needs to be between
+  0 and 1 (including). A value of 0 disables the check.
+  The minimum required free disk space can also be configured in bytes using the
+  new startup option `--rocksdb.minimum-disk-free-bytes`. A value of 0 disables
+  this check, too.
 
 * Failed servers are now reported consistently in the web interface, at 
   approximately the same time in the navigation bar and in the nodes view. 

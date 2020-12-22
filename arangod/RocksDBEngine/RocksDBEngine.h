@@ -466,6 +466,15 @@ class RocksDBEngine final : public StorageEngine {
   // will trigger a warning (in milliseconds)
   uint64_t _syncDelayThreshold;
 
+  /// @brief minimum required percentage of free disk space for considering the
+  /// server "healthy". this is expressed as a floating point value between 0 and 1!
+  /// if set to 0.0, the % amount of free disk is ignored in checks.
+  double _requiredDiskFreePercentage;
+
+  /// @brief minimum number of free bytes on disk for considering the server healthy.
+  /// if set to 0, the number of free bytes on disk is ignored in checks.
+  uint64_t _requiredDiskFreeBytes;
+
   // use write-throttling
   bool _useThrottle;
 
@@ -478,8 +487,13 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
   
-  // activate generation of SHA256 files to parallel .sst files
+  /// @brief activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;
+
+  /// @brief whether or not the last health check was successful.
+  /// this is used to determine when to execute the potentially expensive
+  /// checks for free disk space
+  bool _lastHealthCheckSuccessful;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes
@@ -495,7 +509,10 @@ class RocksDBEngine final : public StorageEngine {
   std::shared_ptr<RocksDBBackgroundErrorListener> _errorListener;
 
   arangodb::basics::ReadWriteLock _purgeLock;
-  
+
+  /// @brief mutex that protects the storage engine health check
+  arangodb::Mutex _healthCheckMutex;
+
   std::chrono::steady_clock::time_point _lastHealthCheckTimestamp;
 };
 

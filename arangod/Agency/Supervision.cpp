@@ -624,11 +624,17 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Sync.status is copied to Health.syncStatus
       std::string syncTime;
       std::string syncStatus;
-      // the default assumption is that a server that reports back without any
-      // health data can be considered healthy. only more recent versions and
-      // only also some types of servers (DB servers) actually report their
-      // health separately.
-      bool isHealthy = true;
+
+      // in recent versions of ArangoDB, servers can also report back
+      // whether they are healthy or not, by sending in the "healthy"
+      // flag here. currently on DB servers do this, and older versions
+      // don't send this at all. so it is an optional flag, and we cannot
+      // rely on it being present. the assumption is thus that servers that
+      // does not send back any health data should be considered healthy.
+      // TODO: decide on how to exactly handle the "isHealthy" value, and
+      // then make use of it in this code. until then, it remains an
+      // unused variable and is thus specially marked.
+      [[maybe_unused]] bool isHealthy = true;
 
       bool heartbeatVisible = _transient.has(syncPrefix + serverID);
       if (heartbeatVisible) {
@@ -640,6 +646,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
         if (healthData.second) {
           isHealthy = healthData.first;
         }
+        TRI_ASSERT(healthData.second || isHealthy);
       } else {
         syncTime = timepointToString(std::chrono::system_clock::time_point()); // beginning of time
         syncStatus = "UNKNOWN";
@@ -681,19 +688,20 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       if (transientHealthRecordFound) {
         // Calculate elapsed since lastAcked
         auto elapsed = std::chrono::duration<double>(startTimeLoop - lastAckedTime);
+        
+        // if there is an agreement on how to handle unhealthy servers,
+        // the "healthy" flag could be used here in the future to downgrade
+        // the health of servers that report back to us, but with an
+        // unhealthy status
+        // TODO: figure this out and add to design document - until then
+        // isHealthy remains unused here!
 
-        if (elapsed.count() <= _okThreshold) {
+        if (elapsed.count() <= _okThreshold /*&& isHealthy*/) {
           transist.status = Supervision::HEALTH_STATUS_GOOD;
         } else if (elapsed.count() <= _gracePeriod) {
           transist.status = Supervision::HEALTH_STATUS_BAD;
         } else {
           transist.status = Supervision::HEALTH_STATUS_FAILED;
-        }
-
-        // forcefully downgrade the status from GOOD to BAD for servers that have
-        // reported back, but have reported that they are not healthy.
-        if (transist.status == Supervision::HEALTH_STATUS_GOOD && !isHealthy) {
-          transist.status = Supervision::HEALTH_STATUS_BAD;
         }
 
         // Status changed?
