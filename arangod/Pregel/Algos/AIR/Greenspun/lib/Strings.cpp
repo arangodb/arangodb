@@ -124,6 +124,5 @@ void arangodb::greenspun::RegisterAllStringFunctions(Machine& ctx) {
   ctx.setFunction("string-set", Prim_StringSet);
   ctx.setFunction("string-copy", Prim_StringCopy);
   ctx.setFunction("string-append", Prim_StringAppend);
-  ctx.setFunction("string-cat", Prim_StringAppend);
   ctx.setFunction("list-join", Prim_ListJoin);
 }

@@ -162,7 +162,8 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/,
                       SCCValue& targetPtr, uint64_t& vertexIdRange) override {
     targetPtr.vertexID = vertexIdRange++;
   }

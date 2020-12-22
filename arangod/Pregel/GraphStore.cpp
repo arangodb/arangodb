@@ -379,7 +379,8 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     documentId = trx.extractIdString(slice);
     if (_graphFormat->estimatedVertexSize() > 0) {
       // note: ventry->_data and vertexIdRange may be modified by copyVertexData!
-      _graphFormat->copyVertexData(documentId, slice, ventry->data(), vertexIdRange);
+      _graphFormat->copyVertexData(*ctx->getVPackOptions(), documentId, slice,
+                                   ventry->data(), vertexIdRange);
     }
     // load edges
     for (std::size_t i = 0; i < edgeShards.size(); ++i) {
@@ -519,7 +520,8 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
       Edge<E>* edge = edgeBuff->appendElement();
       int res = buildEdge(edge, toValue);
       if (res == TRI_ERROR_NO_ERROR) {
-        _graphFormat->copyEdgeData(slice, edge->data());
+        _graphFormat->copyEdgeData(*trx.transactionContext()->getVPackOptions(),
+                                   slice, edge->data());
       }
       return true;
     }, 1000)) { /* continue loading */ }

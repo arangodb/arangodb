@@ -97,8 +97,9 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
-                      ECValue& /*targetPtr*/, uint64_t& /*vertexIdRange*/) override {}
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/, ECValue& /*targetPtr*/,
+                      uint64_t& /*vertexIdRange*/) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, ECValue const* ptr) const override {
     size_t numVerticesReachable = 0;
