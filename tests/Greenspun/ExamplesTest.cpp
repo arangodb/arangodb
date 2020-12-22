@@ -145,6 +145,14 @@ TEST_F(GreenspunExamplesTest, join_three) {
 
 TEST_F(GreenspunExamplesTest, y_combinator_naive_to_json) {
   // Test a simple recursive program via the Y combinator
+  // It's basically
+  //   let join = ...
+  //   let Y = ...
+  //   let toJsonBase = ...
+  // define recursive function:
+  //   let toJson = Y toJsonBase
+  // and then a call to it
+
   auto program = arangodb::velocypack::Parser::fromJson(R"air(
     ["let", [["join", )air"s + snippet::join + R"air(]],
       ["let", [
