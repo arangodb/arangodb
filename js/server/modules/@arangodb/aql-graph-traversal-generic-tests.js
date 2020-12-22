@@ -4708,7 +4708,7 @@ function testEasyPathShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testEasyPathKPaths(testGraph) {
+function testEasyPathKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const query = aql`
         FOR path IN 1..9 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}
@@ -4718,6 +4718,24 @@ function testEasyPathKPaths(testGraph) {
 
   const necessaryPaths = [
     ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testEasyPathKPathsInbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const query = aql`
+        FOR path IN 1..9 OUTBOUND K_PATHS ${testGraph.vertex('J')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["J" ,"I" ,"H" ,"G" ,"F" ,"E" ,"D" ,"C" ,"B" ,"A"]
   ];
 
   const res = db._query(query);
@@ -5665,7 +5683,8 @@ const testsByGraph = {
     testEasyPathAllCombinations,
     testEasyPathPruning,
     testEasyPathShortestPath,
-    testEasyPathKPaths,
+    testEasyPathKPathsOutbound,
+    testEasyPathKPathsInbound,
     testEasyPathShortestPathEnabledWeightCheck,
     testEasyPathKShortestPathMultipleLimits,
     testEasyPathKShortestPathMultipleLimitsWT,
