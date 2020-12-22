@@ -52,9 +52,6 @@ class PathResult {
   
   auto isEmpty() const -> bool;
 
-  // Check uniqueness
-  auto isValid() const -> bool;
-
  private:
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;

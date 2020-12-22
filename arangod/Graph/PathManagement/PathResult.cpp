@@ -124,11 +124,6 @@ auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
 
-template <class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::isValid() const -> bool {
-  return _uniqueVertices.size() == _vertices.size();
-}
-
 template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider,
                                              ::arangodb::graph::SingleServerProvider::Step>;
 
