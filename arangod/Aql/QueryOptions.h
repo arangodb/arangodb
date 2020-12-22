@@ -61,12 +61,12 @@ enum class TraversalProfileLevel : uint8_t {
 };
 
 struct QueryOptions {
-  explicit QueryOptions();
-  explicit QueryOptions(arangodb::velocypack::Slice const);
+  QueryOptions();
+  explicit QueryOptions(arangodb::velocypack::Slice);
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice const slice);
-  void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
+  void fromVelocyPack(arangodb::velocypack::Slice slice);
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
   TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const { return traversalProfile; }
 
@@ -90,6 +90,7 @@ struct QueryOptions {
   bool count;
   bool verboseErrors;
   bool inspectSimplePlans;
+  bool skipAudit; // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 
   /// @brief hack to be used only for /_api/export, contains the name of

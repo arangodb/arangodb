@@ -111,7 +111,7 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
       _isInitialized(false),
       _aggregatorFactories() {
   _aggregatorFactories = createAggregatorFactories(_infos);
-  _nextGroupValues.reserve(_infos.getGroupRegisters().size());
+  _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 };
 
 HashedCollectExecutor::~HashedCollectExecutor() {
@@ -123,7 +123,7 @@ HashedCollectExecutor::~HashedCollectExecutor() {
 
 void HashedCollectExecutor::destroyAllGroupsAqlValues() {
   for (auto& it : _allGroups) {
-    for (auto& it2 : it.first) {
+    for (auto& it2 : it.first.values) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
@@ -163,7 +163,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
   // build the result
   TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != RegisterPlan::MaxRegisterId);
 
-  auto& keys = _currentGroup->first;
+  auto& keys = _currentGroup->first.values;
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
   size_t i = 0;
@@ -303,22 +303,25 @@ auto HashedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 // _allGroups. additionally, .second is true iff a new group was emplaced.
 decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::findOrEmplaceGroup(
     InputAqlItemRow& input) {
-  _nextGroupValues.clear();
+  _nextGroup.values.clear();
+  TRI_ASSERT(_nextGroup.values.capacity() == _infos.getGroupRegisters().size());
 
   // for hashing simply re-use the aggregate registers, without cloning
   // their contents
   for (auto const& reg : _infos.getGroupRegisters()) {
-    _nextGroupValues.emplace_back(input.getValue(reg.second));
+    _nextGroup.values.emplace_back(input.getValue(reg.second));
   }
 
-  auto it = _allGroups.find(_nextGroupValues);
+  AqlValueGroupHash hasher(_nextGroup.values.size());
+  _nextGroup.hash = hasher(_nextGroup.values);
 
+  auto it = _allGroups.find(_nextGroup);
   if (it != _allGroups.end()) {
     // group already exists
     return it;
   }
 
-  _nextGroupValues.clear();
+  _nextGroup.values.clear();
 
   if (_infos.getGroupRegisters().size() == 1) {
     auto const& reg = _infos.getGroupRegisters().back();
@@ -327,7 +330,7 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
     // where it is unclear who is responsible for the data
     AqlValue a = input.stealValue(reg.second);
     AqlValueGuard guard{a, true};
-    _nextGroupValues.emplace_back(a);
+    _nextGroup.values.emplace_back(a);
     guard.steal();
   } else {
     for (auto const& reg : _infos.getGroupRegisters()) {
@@ -342,23 +345,24 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
       // of responsibilities of tuples.
       AqlValue a = input.getValue(reg.second).clone();
       AqlValueGuard guard{a, true};
-      _nextGroupValues.emplace_back(a);
+      _nextGroup.values.emplace_back(a);
       guard.steal();
     }
   }
+  TRI_ASSERT(_nextGroup.hash == hasher(_nextGroup.values));
 
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = makeAggregateValues();
 
   // note: aggregateValues may be a nullptr!
   auto [result, emplaced] =
-      _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
+      _allGroups.try_emplace(std::move(_nextGroup), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 
-  // Moving _nextGroupValues left us with an empty vector of minimum capacity.
+  // Moving _nextGroup left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
-  _nextGroupValues.reserve(_infos.getGroupRegisters().size());
+  _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 
   return result;
 };

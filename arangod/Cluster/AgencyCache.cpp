@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "GeneralServer/RestHandler.h"
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -37,9 +38,15 @@ using namespace arangodb::consensus;
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
   AgencyCallbackRegistry& callbackRegistry)
-  : Thread(server, "AgencyCache"), _commitIndex(0), _readDB(server, nullptr, "readDB"),
-    _initialized(false), _callbackRegistry(callbackRegistry), _lastSnapshot(0) {}
-
+  : Thread(server, "AgencyCache"), 
+    _commitIndex(0), 
+    _readDB(server, nullptr, "readDB"),
+    _initialized(false), 
+    _callbackRegistry(callbackRegistry), 
+    _lastSnapshot(0),
+    _callbacksCount(
+      _server.getFeature<MetricsFeature>().gauge(
+        "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {}
 
 AgencyCache::~AgencyCache() {
   beginShutdown();
@@ -49,11 +56,10 @@ bool AgencyCache::isSystem() const { return true; }
 
 /// Start all agent thread
 bool AgencyCache::start() {
-  LOG_TOPIC("9a90f", DEBUG, Logger::AGENCY) << "Starting agency cache worker.";
+  LOG_TOPIC("9a90f", DEBUG, Logger::AGENCY) << "Starting agency cache worker";
   Thread::start();
   return true;
 }
-
 
 // Fill existing Builder from readDB, mainly /Plan /Current
 index_t AgencyCache::get(VPackBuilder& result, std::string const& path) const {
@@ -490,8 +496,10 @@ bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
     size = _callbacks.size();
   }
 
+  _callbacksCount = uint64_t(size);
+
   LOG_TOPIC("31415", TRACE, Logger::CLUSTER)
-    << "Registered callback for " << ckey << " " << size;
+    << "Registered callback for key " << ckey << " with id " << id << ", callbacks: " << size;
   // this method always returns ok.
   return true;
 }
@@ -516,8 +524,10 @@ void AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id)
     size = _callbacks.size();
   }
 
+  _callbacksCount = uint64_t(size);
+
   LOG_TOPIC("034cc", TRACE, Logger::CLUSTER)
-    << "Unregistered callback for " << ckey << " " << size;
+    << "Unregistered callback for key " << ckey << " with id " << id << ", callbacks: " << size;
 }
 
 /// Orderly shutdown
@@ -553,6 +563,7 @@ void AgencyCache::beginShutdown() {
     }
     _callbacks.clear();
   }
+  _callbacksCount = 0;
 
   Thread::beginShutdown();
 }

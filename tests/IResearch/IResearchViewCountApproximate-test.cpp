@@ -271,8 +271,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     ASSERT_EQ(expectedApproximation, actualApproximate);
 
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                               arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"));
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), queryString, nullptr, expectedFullCount >= 0 ? "{\"fullCount\":true}" : "{}");
     ASSERT_TRUE(queryResult.result.ok());
@@ -474,8 +473,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       "\"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                             arangodb::aql::QueryString(queryString), nullptr,
-                             arangodb::velocypack::Parser::fromJson("{}"));
+                             arangodb::aql::QueryString(queryString), nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query.ast());
   auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
@@ -537,8 +535,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
       " SEARCH d.value >= 1000000 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                               arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"));
+                             arangodb::aql::QueryString(queryString), nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query.ast());
   auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
@@ -608,8 +605,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                               arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"));
+                             arangodb::aql::QueryString(queryString), nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query.ast());
   auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());

@@ -152,14 +152,17 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
     // Will throw all network errors here
+    /*
     auto&& preparedEnds = futureEnds.get();
     LOG_DEVEL << "needs to be implemented: " << preparedEnds;
+    */
     // TODO we somehow need to handover those looseends to - (future - not yet implemented and not relevant yet)
     // the queue again, in order to remove them from the loosend list.
   }
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
+    // TODO:
     // [ok, prune, filter, filterAndPrune] = _interior.validate(n);
     // ok => continue
     // prune => not add to _shell
@@ -323,7 +326,8 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPa
       auto const& [leftVertex, rightVertex] = _results.back();
 
       _resultPath.clear();
-      if (_left.buildPath(leftVertex, _resultPath) && _right.buildPath(rightVertex, _resultPath)) {
+      if (_left.buildPath(leftVertex, _resultPath) &&
+          _right.buildPath(rightVertex, _resultPath)) {
         _results.pop_back();
         _resultPath.toVelocyPack(result);
         return true;

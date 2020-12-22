@@ -19,37 +19,22 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_QUERIES_H
-#define ARANGOD_VOC_BASE_API_QUERIES_H 1
+#include "gtest/gtest.h"
 
-#include "VocBase/vocbase.h"
-#include "Basics/Result.h"
+#include "RestServer/MetricsFeature.h"
+#include "Mocks/Servers.h"
 
-namespace arangodb {
-namespace velocypack {
-class Builder;
+using namespace arangodb;
+
+TEST(MetricsServerTest, test_setup) {
+  tests::mocks::MockMetricsServer server;
+  MetricsFeature& feature = server.getFeature<MetricsFeature>();
+
+  auto& counter = feature.counter("counter", 0, "one counter");
+  ASSERT_EQ(counter.load(), 0);
+  counter.count();
+  ASSERT_EQ(counter.load(), 1);
 }
-
-namespace methods {
-
-struct Queries {
-  /// @brief return the list of slow queries
-  static Result listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout);
-  
-  /// @brief return the list of currently running queries
-  static Result listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases,  bool fanout);
-  
-  /// @brief clears the list of slow queries
-  static Result clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout);
-  
-  /// @brief kills the given query
-  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabases); 
-
-};
-
-}  // namespace methods
-}  // namespace arangodb
-
-#endif

@@ -47,13 +47,7 @@ using namespace arangodb;
 static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
                                                std::string const& queryString,
                                                std::shared_ptr<transaction::Context> ctx) {
-  auto options = std::make_shared<VPackBuilder>();
-  options->openObject();
-  options->close();
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                             bindVars, options);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   arangodb::aql::QueryResult result;
   while (true) {

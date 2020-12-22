@@ -315,7 +315,7 @@ class TtlThread final : public Thread {
           bindVars->close();
 
           aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                           aql::QueryString(::removeQuery), bindVars, nullptr);
+                           aql::QueryString(::removeQuery), bindVars);
           query.collections().add(collection->name(), AccessMode::Type::WRITE, aql::Collection::Hint::Shard);
           aql::QueryResult queryResult = query.executeSync();
 
