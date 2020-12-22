@@ -85,7 +85,6 @@ class GraphProviderTest : public ::testing::Test {
       auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
       auto tmpVar = singleServer->generateTempVar(query.get());
       auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
-      indexCondition->dump(0);
 
       std::vector<IndexAccessor> usedIndexes{
           IndexAccessor{edgeIndexHandle, indexCondition, 0}};
