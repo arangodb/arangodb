@@ -133,7 +133,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
 
   ASSERT_EQ(result.size(), 1);
   auto const& f = result.at(0);
-  EXPECT_EQ(f.getVertex().data().toString(), "v/1");
+  EXPECT_EQ(f.getVertex().getID().toString(), "v/1");
   EXPECT_EQ(f.getPrevious(), 0);
 }
 
@@ -159,7 +159,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   for (auto const& f : result) {
     // All expand of the same previous
     EXPECT_EQ(f.getPrevious(), 0);
-    auto const& v = f.getVertex().data().toString();
+    auto const& v = f.getVertex().getID().toString();
     // We can only range from 1 to 3
     EXPECT_GE(v, "v/1");
     EXPECT_LE(v, "v/3");

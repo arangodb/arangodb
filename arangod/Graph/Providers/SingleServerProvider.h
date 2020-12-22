@@ -66,7 +66,7 @@ struct SingleServerProvider {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
-      VertexType const& data() const;
+      VertexType const& getID() const;
 
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
@@ -87,7 +87,7 @@ struct SingleServerProvider {
 
       void addToBuilder(SingleServerProvider& provider,
                         arangodb::velocypack::Builder& builder) const;
-      EdgeDocumentToken const& data() const;
+      EdgeDocumentToken const& getID() const;
       bool isValid() const;
 
      private:
@@ -106,7 +106,7 @@ struct SingleServerProvider {
     Edge const& getEdge() const { return _edge; }
 
     std::string toString() const {
-      return "<Step><Vertex>: " + _vertex.data().toString();
+      return "<Step><Vertex>: " + _vertex.getID().toString();
     }
     bool isProcessable() const { return !isLooseEnd(); }
     bool isLooseEnd() const { return false; }

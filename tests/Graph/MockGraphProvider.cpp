@@ -43,7 +43,7 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 auto operator<<(std::ostream& out, MockGraphProvider::Step const& step) -> std::ostream& {
-  out << step._vertex.data();
+  out << step._vertex.getID();
   return out;
 }
 }
@@ -63,10 +63,6 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProc
       _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::~Step() {}
-
-arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() const {
-  return _vertex;
-}
 
 MockGraphProvider::MockGraphProvider(MockGraph const& data,
                                      arangodb::aql::QueryContext& queryContext,
@@ -118,7 +114,7 @@ auto MockGraphProvider::expand(Step const& step, size_t previous, std::function<
 }
 
 auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex, arangodb::velocypack::Builder& builder) -> void {
-  std::string id = vertex.getId().toString();
+  std::string id = vertex.getID().toString();
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
   builder.add(StaticStrings::IdString, VPackValue(id));
@@ -146,13 +142,13 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   std::vector<Step> result{};
 
   LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Searching: " << source.getVertex().data().toString();
+      << "<MockGraphProvider> Searching: " << source.getVertex().getID().toString();
 
   if (_reverse) {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
         << "<MockGraphProvider - reverse> _toIndex size: " << _toIndex.size();
-    if (_toIndex.find(source.getVertex().data().toString()) != _toIndex.end()) {
-      for (auto const& edge : _toIndex[source.getVertex().data().toString()]) {
+    if (_toIndex.find(source.getVertex().getID().toString()) != _toIndex.end()) {
+      for (auto const& edge : _toIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
         result.push_back(Step{previousIndex, fromH, edge, decideProcessable()});
@@ -165,8 +161,8 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   } else {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
         << "<MockGraphProvider - default> _fromIndex size: " << _fromIndex.size();
-    if (_fromIndex.find(source.getVertex().data().toString()) != _fromIndex.end()) {
-      for (auto const& edge : _fromIndex[source.getVertex().data().toString()]) {
+    if (_fromIndex.find(source.getVertex().getID().toString()) != _fromIndex.end()) {
+      for (auto const& edge : _fromIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
         result.push_back(Step{previousIndex, toH, edge, decideProcessable()});

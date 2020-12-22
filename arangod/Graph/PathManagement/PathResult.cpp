@@ -51,7 +51,7 @@ auto PathResult<ProviderType, Step>::clear() -> void {
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> bool {
-  auto [it, success] = _uniqueVertices.emplace(v.data());
+  auto [it, success] = _uniqueVertices.emplace(v.getID());
   if (!success) {
     return false;
   }
@@ -63,7 +63,7 @@ auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> bo
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v) -> bool {
   _numVerticesFromSourceProvider++;
-  auto [it, success] = _uniqueVertices.emplace(v.data());
+  auto [it, success] = _uniqueVertices.emplace(v.getID());
   if (!success) {
     return false;
   }

@@ -58,7 +58,6 @@ namespace graph {
 class MockGraphProvider {
   using VertexType = arangodb::velocypack::HashedStringRef;
   using EdgeType = MockGraph::EdgeDef;
-  using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
   enum class LooseEndBehaviour { NEVER, ALWAYS };
@@ -69,12 +68,7 @@ class MockGraphProvider {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
-      VertexRef getId() const;
-
-      // This is only internal for the mock.
-      // For some reason I did not manage to get this Class as the unordered_map
-      // key. Although it is a trivial wrapper around a size_t...
-      VertexType data() const { return _vertex; }
+      VertexType getID() const { return _vertex; }
 
       // Make the set work on the VertexRef attribute only
       bool operator<(Vertex const& other) const noexcept {
@@ -120,11 +114,11 @@ class MockGraphProvider {
 
     std::string toString() const {
       if (_edge.isValid()) {
-        return "<Step><Vertex>: " + _vertex.data().toString() +
+        return "<Step><Vertex>: " + _vertex.getID().toString() +
                ", <Edge>:" + _edge.toString() +
                ", previous: " + basics::StringUtils::itoa(getPrevious());
       } else {
-        return "<Step><Vertex>: " + _vertex.data().toString() +
+        return "<Step><Vertex>: " + _vertex.getID().toString() +
                ", previous: " + basics::StringUtils::itoa(getPrevious());
       }
     }

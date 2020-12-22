@@ -39,7 +39,7 @@ using namespace arangodb::graph;
 namespace arangodb {
 namespace graph {
 auto operator<<(std::ostream& out, SingleServerProvider::Step const& step) -> std::ostream& {
-  out << step._vertex.data();
+  out << step._vertex.getID();
   return out;
 }
 }  // namespace graph
@@ -64,24 +64,24 @@ SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t pr
 
 SingleServerProvider::Step::~Step() = default;
 
-VertexType const& SingleServerProvider::Step::Vertex::data() const {
+VertexType const& SingleServerProvider::Step::Vertex::getID() const {
   return _vertex;
 }
-EdgeDocumentToken const& SingleServerProvider::Step::Edge::data() const {
+EdgeDocumentToken const& SingleServerProvider::Step::Edge::getID() const {
   return _token;
 }
 bool SingleServerProvider::Step::Edge::isValid() const {
-  return data().localDocumentId() != DataSourceId::none();
+  return getID().localDocumentId() != DataSourceId::none();
 };
 
 void SingleServerProvider::addEdgeToBuilder(Step::Edge const& edge,
                                             arangodb::velocypack::Builder& builder) {
-  insertEdgeIntoResult(edge.data(), builder);
+  insertEdgeIntoResult(edge.getID(), builder);
 };
 
 void SingleServerProvider::Step::Edge::addToBuilder(SingleServerProvider& provider,
                                                     arangodb::velocypack::Builder& builder) const {
-  provider.insertEdgeIntoResult(data(), builder);
+  provider.insertEdgeIntoResult(getID(), builder);
 }
 
 SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
@@ -141,14 +141,14 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
   TRI_ASSERT(_cursor != nullptr);
-  _cursor->rearm(vertex.data(), 0);
+  _cursor->rearm(vertex.getID(), 0);
   _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
     VertexType id = _cache.persistString(([&]() -> auto {
       if (edge.isString()) {
         return VertexType(edge);
       } else {
         VertexType other(transaction::helpers::extractFromFromDocument(edge));
-        if (other == vertex.data()) {  // TODO: Check getId - discuss
+        if (other == vertex.getID()) {  // TODO: Check getId - discuss
           other = VertexType(transaction::helpers::extractToFromDocument(edge));
         }
         return other;
@@ -160,7 +160,7 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
 
 void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex,
                                               arangodb::velocypack::Builder& builder) {
-  _cache.insertVertexIntoResult(vertex.data(), builder);
+  _cache.insertVertexIntoResult(vertex.getID(), builder);
 };
 
 void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
