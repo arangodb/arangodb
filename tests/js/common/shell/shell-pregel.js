@@ -55,7 +55,7 @@ function testAlgo(a, p) {
         attrs.push("storageTime");
       }
       attrs.forEach((k) => {
-        assertTrue(stats.hasOwnProperty(k));
+        assertTrue(stats.hasOwnProperty(k), { p, stats });
         assertEqual("number", typeof stats[k]);
       });
 
