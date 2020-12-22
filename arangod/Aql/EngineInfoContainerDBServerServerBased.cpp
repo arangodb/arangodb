@@ -481,7 +481,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     // set back to default lock timeout for slow path fallback
     _query.setLockTimeout(oldLockTimeout);
-    LOG_TOPIC("f5022", INFO, Logger::AQL)
+    LOG_TOPIC("f5022", DEBUG, Logger::AQL)
         << "Potential deadlock detected, using slow path for locking. This "
            "is expected if exclusive locks are used.";
 

@@ -31,6 +31,17 @@ let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 const request = require('@arangodb/request');
 const graphModule = require('@arangodb/general-graph');
+const { expect } = require('chai');
+
+const getMetric = (name) => {
+  let res = arango.GET_RAW("/_admin/metrics");
+  let re = new RegExp("^" + name + "({[^}]*})?");
+  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+  if (!matches.length) {
+    throw "Metric " + name + " not found";
+  }
+  return Number(matches[0].replace(/^.*? (\d+.*?)$/, '$1'));
+};
 
 const endpointToURL = (endpoint) => {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -655,22 +666,26 @@ function GenericAqlSetupPathSuite(type) {
 
   // This is list of pairs [name, arnagosh-code, writesData]
   // We need to run all non-duplicate permutations of these pairs
+  const USE_EXCLUSIVE = 1;
+  const NON_EXCLUSIVE = 2;
+  const NO_SHARD_SYNC = 3;
+
   const testCases = [
-    ["Exclusive", exclusiveQuery, true],
-    ["Write", writeQuery, true],
-    ["Read", readQuery, false],
-    ["JSExclusive", jsExclusive, true],
-    ["JSWrite", jsWrite, true],
-    ["JSRead", jsRead, false],
-    ["APIExclusive", apiExclusive, true],
-    ["APIWrite", apiWrite, true],
-    ["APIRead", apiRead, false],
-    ["DocumentWrite", documentWrite, true]
+    ["Exclusive", exclusiveQuery, true, USE_EXCLUSIVE],
+    ["Write", writeQuery, true, NON_EXCLUSIVE],
+    ["Read", readQuery, false, NON_EXCLUSIVE],
+    ["JSExclusive", jsExclusive, true, USE_EXCLUSIVE],
+    ["JSWrite", jsWrite, true, NON_EXCLUSIVE],
+    ["JSRead", jsRead, false, NON_EXCLUSIVE],
+    ["APIExclusive", apiExclusive, true, USE_EXCLUSIVE],
+    ["APIWrite", apiWrite, true, NON_EXCLUSIVE],
+    ["APIRead", apiRead, false, NON_EXCLUSIVE],
+    ["DocumentWrite", documentWrite, true, NO_SHARD_SYNC]
   ];
 
   const addTestCase = (suite, first, second) => {
-    const [fName, fCode, fWrites] = first;
-    const [sName, sCode, sWrites] = second;
+    const [fName, fCode, fWrites, fExclusive] = first;
+    const [sName, sCode, sWrites, sExclusive] = second;
     suite[`testAqlSetupPathDeadLock${fName}${sName}${type}`] = function () {
       assertEqual(db[twoShardColName].count(), 0);
       let tests = [
@@ -685,9 +700,32 @@ function GenericAqlSetupPathSuite(type) {
       if (sWrites) {
         numWriters++;
       }
-
+      const seqLocksBefore = getMetric("arangodb_sequential_collection_locks");
       // run both queries in parallel
       singleRun(tests);
+
+      const seqLocksAfter = getMetric("arangodb_sequential_collection_locks");
+      const expectsSequentialLock = () => {
+        if (!fWrites || !sWrites) {
+          // Both transactions need to write
+          return false;
+        }
+        if (sExclusive === NO_SHARD_SYNC || fExclusive == NO_SHARD_SYNC) {
+          // We do not sync shard-locks, so no deadlock possible
+          return false;
+        }
+        // If any of the writes is exclusive we enfoce sequential locking
+        return fExclusive === USE_EXCLUSIVE || sExclusive == USE_EXCLUSIVE;
+      };
+
+      if (expectsSequentialLock()) {
+        // Only If both tests try to write, and at least one is exclusive
+        // we enforced deadlock case, and had to do sequential locking.
+        assertTrue(seqLocksAfter > seqLocksBefore);
+      } else {
+        // Otherwise we can get away with parallel locking
+        assertEqual(seqLocksAfter, seqLocksBefore);
+      }
       assertEqual(db[twoShardColName].count(), numWriters * docsPerWrite);
     };
   };

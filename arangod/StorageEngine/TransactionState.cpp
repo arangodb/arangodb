@@ -458,6 +458,8 @@ void TransactionState::coordinatorRerollTransactionId() {
   LOG_TOPIC("a565a", DEBUG, Logger::TRANSACTIONS)
       << "Rerolling transaction id from " << old << " to " << _id;
   clearKnownServers();
+  // Increase sequential lock by one.
+  statistics()._sequentialLocks.count();
 }
 
 /// @brief return a reference to the global transaction statistics

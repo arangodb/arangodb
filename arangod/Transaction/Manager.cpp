@@ -343,7 +343,7 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
 }
 
 Result Manager::beginTransaction(transaction::Hints hints,
-                                 std::shared_ptr<TransactionState> state) {
+                                 std::shared_ptr<TransactionState>& state) {
   Result res{};
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
