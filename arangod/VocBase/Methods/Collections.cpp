@@ -971,7 +971,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     binds->add("@coll", VPackValue(cname));
     binds->close();
     arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(q), binds, std::make_shared<VPackBuilder>());
+                               aql::QueryString(q), binds);
     aql::QueryResult queryResult = query.executeSync();
 
     Result res = queryResult.result;

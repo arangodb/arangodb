@@ -59,7 +59,7 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
       "{ }");
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                             bindVars, options);
+                             bindVars, options->slice());
 
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 

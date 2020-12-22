@@ -41,7 +41,7 @@ namespace cache {
 /// pointers. Most querying and manipulation can be handled via the exposed
 /// methods. Bucket must be locked before doing anything else to ensure proper
 /// synchronization. Data entries are carefully laid out to ensure the structure
-/// fits in a single cacheline.
+/// fits in two cachelines.
 ////////////////////////////////////////////////////////////////////////////////
 struct PlainBucket {
   BucketState _state;

@@ -103,10 +103,8 @@ void RestExplainHandler::explainQuery() {
 
   auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
-  auto optionsBuilder = std::make_shared<VPackBuilder>(optionsSlice);
-
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase), aql::QueryString(queryString),
-                             bindBuilder, optionsBuilder);
+                             bindBuilder, optionsSlice);
   auto queryResult = query.explain();
 
   if (queryResult.result.fail()) {

@@ -56,12 +56,12 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
-                            std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
+                            std::string const& aql, std::shared_ptr<VPackBuilder> const& bindVars) {
   TRI_ASSERT(col != nullptr);
 
   arangodb::aql::Query query(transaction::V8Context::Create(col->vocbase(), true),
                              arangodb::aql::QueryString(aql),
-                             bindVars, nullptr);
+                             bindVars);
 
   arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
   if (queryResult.result.fail()) {

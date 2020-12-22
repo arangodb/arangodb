@@ -95,6 +95,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _queryHash(DontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
+      _resultCode(-1), // -1 = "not set" yet
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
       _queryKilled(false),
@@ -157,10 +158,10 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             std::shared_ptr<VPackBuilder> const& options)
+             VPackSlice options)
     : Query(ctx, queryString, bindParameters,
-            QueryOptions(options != nullptr ? options->slice() : VPackSlice()),
-                         std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
+            QueryOptions(options),
+            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
 Query::~Query() {
@@ -228,46 +229,58 @@ void Query::kill() {
 double Query::startTime() const noexcept { return _startTime; }
 
 void Query::prepareQuery(SerializationFormat format) {
-  init(/*createProfile*/ true);
-  enterState(QueryExecutionState::ValueType::PARSING);
-
-  std::unique_ptr<ExecutionPlan> plan = preparePlan();
-  TRI_ASSERT(plan != nullptr);
-  plan->findVarUsage();
-
-  TRI_ASSERT(_trx != nullptr);
-  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
-  
-  // keep serialized copy of unchanged plan to include in query profile
-  // necessary because instantiate / execution replace vars and blocks
-  const bool keepPlan = _queryOptions.profile >= ProfileLevel::Blocks &&
-  ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
-  if (keepPlan) {
-    _planSliceCopy = std::make_unique<VPackBufferUInt8>();
-    VPackBuilder b(*_planSliceCopy);
-    plan->toVelocyPack(b, _ast.get(), false, ExplainRegisterPlan::No);
-  }
-
-  // simon: assumption is _queryString is empty for DBServer snippets
-  const bool planRegisters = !_queryString.empty();
-  ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
-
-  _plans.push_back(std::move(plan));
-
-  if (_snippets.size() > 1) {  // register coordinator snippets
-    TRI_ASSERT(_trx->state()->isCoordinator());
-    QueryRegistry* registry = QueryRegistryFeature::registry();
-    if (!registry) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "query registry not available");
+  try {
+    init(/*createProfile*/ true);
+    
+    if (_queryProfile) {
+      _queryProfile->registerInQueryList();
     }
-    registry->registerSnippets(_snippets);
-  }
-  
-  if (_queryProfile) {
-    _queryProfile->registerInQueryList();
-  }
 
-  enterState(QueryExecutionState::ValueType::EXECUTION);
+    enterState(QueryExecutionState::ValueType::PARSING);
+
+    std::unique_ptr<ExecutionPlan> plan = preparePlan();
+    TRI_ASSERT(plan != nullptr);
+    plan->findVarUsage();
+
+    TRI_ASSERT(_trx != nullptr);
+    TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+    
+    // keep serialized copy of unchanged plan to include in query profile
+    // necessary because instantiate / execution replace vars and blocks
+    bool const keepPlan = _queryOptions.profile >= ProfileLevel::Blocks &&
+    ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
+    if (keepPlan) {
+      _planSliceCopy = std::make_unique<VPackBufferUInt8>();
+      VPackBuilder b(*_planSliceCopy);
+      plan->toVelocyPack(b, _ast.get(), false, ExplainRegisterPlan::No);
+    }
+
+    // simon: assumption is _queryString is empty for DBServer snippets
+    bool const planRegisters = !_queryString.empty();
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+
+    _plans.push_back(std::move(plan));
+
+    if (_snippets.size() > 1) {  // register coordinator snippets
+      TRI_ASSERT(_trx->state()->isCoordinator());
+      QueryRegistry* registry = QueryRegistryFeature::registry();
+      if (!registry) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "query registry not available");
+      }
+      registry->registerSnippets(_snippets);
+    }
+    
+    enterState(QueryExecutionState::ValueType::EXECUTION);
+  } catch (arangodb::basics::Exception const& ex) {
+    _resultCode = ex.code();
+    throw;
+  } catch (std::bad_alloc const&) {
+    _resultCode = TRI_ERROR_OUT_OF_MEMORY;
+    throw;
+  } catch (...) {
+    _resultCode = TRI_ERROR_INTERNAL;
+    throw;
+  }
 }
 
 /// @brief prepare an AQL query, this is a preparation for execute, but
@@ -369,7 +382,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
-
               return ExecutionState::DONE;
             }
             // if no permissions, fall through to regular querying
@@ -1080,6 +1092,11 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
+int Query::resultCode() const noexcept {
+  // never return negative value from here
+  return std::max<int>(TRI_ERROR_NO_ERROR, _resultCode);
+}
+
 /// @brief enter a new state
 void Query::enterState(QueryExecutionState::ValueType state) {
   LOG_TOPIC("d8767", DEBUG, Logger::QUERIES)
@@ -1096,6 +1113,15 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync) {
+  // set the final result code (either 0 = no error, or a specific error code).
+  // this can only be changed from "not set" to either 0 ("no error") or 
+  // > 0 (a specific error)
+  TRI_ASSERT(errorCode >= TRI_ERROR_NO_ERROR);
+  if (_resultCode < TRI_ERROR_NO_ERROR) {
+    // result code not yet set.
+    _resultCode = errorCode;
+  }
+
   if (sync && _sharedState) {
     _sharedState->resetWakeupHandler();
     auto state = cleanupTrxAndEngines(errorCode);
