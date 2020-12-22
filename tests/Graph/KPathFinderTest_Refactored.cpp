@@ -35,15 +35,14 @@
 #include "Basics/StringUtils.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
-#include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Queues/FifoQueue.h"
+
+// Needed in case of enabled tracing
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Queues/QueueTracer.h"
 
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
