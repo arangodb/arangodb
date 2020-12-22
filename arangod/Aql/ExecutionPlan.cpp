@@ -1586,66 +1586,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST COLLECT node, COUNT
-/// note that also a sort plan node will be added in front of the collect plan
-/// node
-ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
-                                                   AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_COUNT);
-  TRI_ASSERT(node->numMembers() == 3);
-
-  auto options = createCollectOptions(node->getMember(0));
-
-  auto list = node->getMember(1);
-  size_t const numVars = list->numMembers();
-
-  std::vector<GroupVarInfo> groupVariables;
-  groupVariables.reserve(numVars);
-  for (size_t i = 0; i < numVars; ++i) {
-    auto assigner = list->getMember(i);
-
-    if (assigner == nullptr) {
-      continue;
-    }
-
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
-    TRI_ASSERT(out != nullptr);
-    auto v = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(v != nullptr);
-
-    auto expression = assigner->getMember(1);
-
-    if (expression->type == NODE_TYPE_REFERENCE) {
-      // operand is a variable
-      auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(GroupVarInfo{v, e});
-    } else {
-      // operand is some misc expression
-      auto calc = createTemporaryCalculation(expression, previous);
-      previous = calc;
-      groupVariables.emplace_back(GroupVarInfo{v, getOutVariable(calc)});
-    }
-  }
-
-  // output variable
-  auto v = node->getMember(2);
-  // handle out variable
-  Variable* outVariable = static_cast<Variable*>(v->getData());
-
-  TRI_ASSERT(outVariable != nullptr);
-
-  std::vector<AggregateVarInfo> const aggregateVariables{};
-
-  auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
-                      nullptr, outVariable, std::vector<Variable const*>(),
-                      _ast->variables()->variables(false), true, false);
-  auto en = registerNode(collectNode);
-
-  return addDependency(previous, en);
-}
-
 /// @brief create an execution plan element from an AST LIMIT node
 ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
@@ -2136,11 +2076,6 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 
       case NODE_TYPE_COLLECT: {
         en = fromNodeCollect(en, member);
-        break;
-      }
-
-      case NODE_TYPE_COLLECT_COUNT: {
-        en = fromNodeCollectCount(en, member);
         break;
       }
 
