@@ -88,9 +88,7 @@ RestStatus RestDebugHandler::execute() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           basics::DebugRaceController::sharedInstance().reset();
           try {
-            VPackBuilder result;
-            result.add(VPackValue(true));
-            generateResult(rest::ResponseCode::OK, result.slice());
+            generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
           } catch (...) {
             // Ignore this error
           }
