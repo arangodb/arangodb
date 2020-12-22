@@ -57,6 +57,20 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
+    // force shutdown of Plan/Current syncers. under normal circumstances they
+    // have been shut down already when we get here, but there are rare cases in
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // something goes very wrong at startup)
+    if (_clusterInfo != nullptr) {
+      _clusterInfo->waitForSyncersToStop();
+    }
+
+    // force shutdown of AgencyCache. under normal circumstances the cache will
+    // have been shut down already when we get here, but there are rare cases in
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // something goes very wrong at startup)
+    shutdownAgencyCache();
+
     AgencyCommHelper::shutdown();
   }
 }
@@ -411,7 +425,7 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!_allocated) {
+  if (_agencyCache == nullptr || _clusterInfo == nullptr) {
     allocateMembers();
   }
 
@@ -725,6 +739,8 @@ void ClusterFeature::shutdownHeartbeatThread() {
   }
 }
 
+/// @brief wait for the AgencyCache to shut down
+/// note: this may be called multiple times during shutdown
 void ClusterFeature::shutdownAgencyCache() {
   if (_agencyCache == nullptr) {
     return;
@@ -780,7 +796,6 @@ void ClusterFeature::allocateMembers() {
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
   _agencyCache =
     std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
-  _allocated = true;
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {

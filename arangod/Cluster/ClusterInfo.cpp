@@ -5528,13 +5528,16 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
 
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(_server, "Plan", std::bind(&ClusterInfo::loadPlan, this), _agencyCallbackRegistry);
-  _planSyncer->start();
   _curSyncer = std::make_unique<SyncerThread>(_server, "Current", std::bind(&ClusterInfo::loadCurrent, this), _agencyCallbackRegistry);
-  _curSyncer->start();
+  
+  if (!_planSyncer->start() || !_curSyncer->start()) {
+    LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
+      << "unable to start PlanSyncer/CurrentSYncer";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void ClusterInfo::shutdownSyncers() {
-
   {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
@@ -5555,14 +5558,19 @@ void ClusterInfo::shutdownSyncers() {
     _waitCurrent.clear();
   }
 
-  _planSyncer->beginShutdown();
-  _curSyncer->beginShutdown();
+  if (_planSyncer != nullptr) {
+    _planSyncer->beginShutdown();
+  }
+  if (_curSyncer != nullptr) {
+    _curSyncer->beginShutdown();
+  }
 }
 
 
 void ClusterInfo::waitForSyncersToStop() {
   auto start = std::chrono::steady_clock::now();
-  while(_planSyncer->isRunning() || _curSyncer->isRunning()) {
+  while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
+         (_curSyncer != nullptr && _curSyncer->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
       LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
@@ -5621,9 +5629,9 @@ void ClusterInfo::SyncerThread::beginShutdown() {
   }
 }
 
-void ClusterInfo::SyncerThread::start() {
+bool ClusterInfo::SyncerThread::start() {
   LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << currentThreadName();
-  Thread::start();
+  return Thread::start();
 }
 
 void ClusterInfo::SyncerThread::run() {

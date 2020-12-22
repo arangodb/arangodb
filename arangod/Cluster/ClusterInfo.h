@@ -369,7 +369,7 @@ class ClusterInfo final {
     ~SyncerThread();
     void beginShutdown();
     void run();
-    void start();
+    bool start();
     bool notify(velocypack::Slice const&);
 
    private:
