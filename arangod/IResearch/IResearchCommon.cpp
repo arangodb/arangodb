@@ -58,6 +58,7 @@ arangodb::LogTopic& logTopic() { return TOPIC; }
 /*static*/ std::string const StaticStrings::AnalyzerTypeField("type");
 /*static*/ std::string const StaticStrings::PrimarySortField("primarySort");
 /*static*/ std::string const StaticStrings::StoredValuesField("storedValues");
+/*static*/ std::string const StaticStrings::CollectionNameField("collectionName");
 
 }  // namespace iresearch
 }  // namespace arangodb

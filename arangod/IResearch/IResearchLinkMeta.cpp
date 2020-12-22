@@ -770,10 +770,9 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     }
   }
 
-  static VPackStringRef const collectionNameField("collectionName");
-  if (slice.hasKey(collectionNameField)) {
+  if (slice.hasKey(StaticStrings::CollectionNameField)) {
     TRI_ASSERT(ServerState::instance()->isClusterRole());
-    auto const field = slice.get(collectionNameField);
+    auto const field = slice.get(StaticStrings::CollectionNameField);
     if (!field.isString()) {
       return false;
     }
@@ -827,7 +826,7 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
   }
 
   if (writeAnalyzerDefinition && ServerState::instance()->isClusterRole()) {
-     addStringRef(builder, "collectionName", _collectionName);
+     addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
 
   return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
