@@ -216,6 +216,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
+  Greenspun/ExamplesTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
