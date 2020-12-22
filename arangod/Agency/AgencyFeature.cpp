@@ -51,8 +51,6 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-consensus::Agent* AgencyFeature::AGENT = nullptr;
-
 AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
@@ -330,8 +328,6 @@ void AgencyFeature::prepare() {
                                     _supervisionFrequency, _compactionStepSize,
                                     _compactionKeepSize, _supervisionGracePeriod,
                                     _supervisionOkThreshold,_cmdLineTimings, _maxAppendSize)));
-
-  AGENT = _agent.get();
 }
 
 void AgencyFeature::start() {
@@ -381,8 +377,6 @@ void AgencyFeature::stop() {
     // server jobs from RestAgencyHandlers to complete without incident:
     _agent->waitForThreadsStop();
   }
-
-  AGENT = nullptr;
 }
 
 void AgencyFeature::unprepare() {
@@ -392,5 +386,7 @@ void AgencyFeature::unprepare() {
   // shutdown
   _agent.reset();
 }
+
+consensus::Agent* AgencyFeature::agent() const { return _agent.get(); }
 
 }  // namespace arangodb

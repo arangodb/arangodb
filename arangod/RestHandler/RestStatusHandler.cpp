@@ -138,7 +138,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 
     result.close();
 
-    auto* agent = AgencyFeature::AGENT;
+    auto* agent = server().getFeature<AgencyFeature>().agent();
 
     if (agent != nullptr) {
       result.add("agent", VPackValue(VPackValueType::Object));
