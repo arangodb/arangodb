@@ -40,11 +40,11 @@ class TransactionState;
 namespace ClusterTrxMethods {
 using arangodb::futures::Future;
 
-struct ServerSorter {
-  bool operator()(ServerID const& lhs, ServerID const& rhs) const;
+struct IsServerIdLessThan {
+  bool operator()(ServerID const& lhs, ServerID const& rhs) const noexcept;
 };
 
-using SortedServersSet = std::set<ServerID, ServerSorter>;
+using SortedServersSet = std::set<ServerID, IsServerIdLessThan>;
 
 /// @brief begin a transaction on all followers
 Future<arangodb::Result> beginTransactionOnLeaders(TransactionState&,

@@ -132,8 +132,8 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
       raceController.waitForOthers(2, _id);
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
+      std::vector<std::any> const& data = raceController.data();
       if (shardNum % 2 == 0) {
-        std::vector<std::any> const& data = raceController.data();
         auto min = *std::min_element(data.begin(), data.end(),
                                      [](std::any const& a, std::any const& b) {
                                        return std::any_cast<TransactionId>(a) <
@@ -143,7 +143,6 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
       } else {
-        std::vector<std::any> const& data = raceController.data();
         auto max = *std::max_element(data.begin(), data.end(),
                                      [](std::any const& a, std::any const& b) {
                                        return std::any_cast<TransactionId>(a) <

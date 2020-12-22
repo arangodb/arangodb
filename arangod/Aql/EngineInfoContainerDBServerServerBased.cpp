@@ -319,10 +319,11 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
           arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
     auto const& resolvedResponse = response.get();
     if (resolvedResponse.fail()) {
+      Result res = resolvedResponse.combinedResult();
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
-          << server << " responded with " << code << ": " 
-          << resolvedResponse.combinedResult().errorMessage();
-      return resolvedResponse.combinedResult();
+          << server << " responded with " << res.errorNumber() << ": "
+          << res.errorMessage();
+      return res;
     }
 
     VPackSlice responseSlice = resolvedResponse.slice();
@@ -529,7 +530,9 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     LOG_TOPIC("0c3f2", WARN, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
     if (response.hasKey(StaticStrings::ErrorNum) && response.hasKey(StaticStrings::ErrorMessage)) {
-      return network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION).appendErrorMessage(std::string(". Please check: ") + server);
+      auto res = network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+      res.appendErrorMessage(std::string(". Please check: ") + server);
+      return res;
     }
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unable to deploy query on all required "

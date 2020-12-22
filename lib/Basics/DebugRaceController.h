@@ -48,7 +48,7 @@ class DebugRaceController {
   bool didTrigger() const;
 
   // Access the data stored by waiting threads.
-  std::vector<std::any> const& data() const;
+  std::vector<std::any> data() const;
 
   // Caller is required to COPY the data to store here.
   // Otherwise a concurrent thread might try to read it,

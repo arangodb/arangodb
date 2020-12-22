@@ -574,7 +574,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
       << "managed trx creating: " << tid.id();
 
-  if (testIfTransactionIdExists(tid)) {
+  if (transactionIdExists(tid)) {
     if (isFollowerTransactionOnDBServer(options)) {
       // it is ok for two different leaders to try to create the same
       // follower transaction on a leader.
@@ -1247,7 +1247,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
   return res;
 }
 
-bool Manager::testIfTransactionIdExists(TransactionId const& tid) const {
+bool Manager::transactionIdExists(TransactionId const& tid) const {
   size_t const bucket = getBucket(tid);
   // quick check whether ID exists
   READ_LOCKER(readLocker, _transactions[bucket]._lock);

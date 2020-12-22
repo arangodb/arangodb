@@ -310,7 +310,7 @@ namespace arangodb {
 namespace ClusterTrxMethods {
 using namespace arangodb::futures;
 
-bool ServerSorter::operator()(ServerID const& lhs, ServerID const& rhs) const noexcept {
+bool IsServerIdLessThan::operator()(ServerID const& lhs, ServerID const& rhs) const noexcept {
   return TransactionState::SortServerIds(lhs, rhs);
 }
 
