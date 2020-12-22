@@ -23,6 +23,7 @@
 
 #include "H2CommTask.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
@@ -411,7 +412,8 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void H2CommTask<T>::setIOTimeout() {
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  auto& gs = this->_server.server().template getFeature<arangodb::GeneralServerFeature>();
+  double secs = gs.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }

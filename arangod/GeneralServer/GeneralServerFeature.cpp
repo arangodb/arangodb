@@ -121,10 +121,6 @@ namespace arangodb {
 
 static uint64_t const _maxIoThreads = 64;
 
-rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
-rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
-GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
-
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
@@ -241,17 +237,12 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
-  GENERAL_SERVER = this;
 }
 
 void GeneralServerFeature::start() {
   _jobManager.reset(new AsyncJobManager);
 
-  JOB_MANAGER = _jobManager.get();
-
   _handlerFactory.reset(new RestHandlerFactory());
-
-  HANDLER_FACTORY = _handlerFactory.get();
 
   defineHandlers();
   buildServers();
@@ -280,10 +271,43 @@ void GeneralServerFeature::unprepare() {
   }
   _servers.clear();
   _jobManager.reset();
+}
 
-  GENERAL_SERVER = nullptr;
-  JOB_MANAGER = nullptr;
-  HANDLER_FACTORY = nullptr;
+double GeneralServerFeature::keepAliveTimeout() const {
+  return _keepAliveTimeout;
+};
+
+bool GeneralServerFeature::proxyCheck() const { return _proxyCheck; }
+
+std::vector<std::string> GeneralServerFeature::trustedProxies() const {
+  return _trustedProxies;
+}
+
+bool GeneralServerFeature::allowMethodOverride() const {
+  return _allowMethodOverride;
+};
+
+std::vector<std::string> const& GeneralServerFeature::accessControlAllowOrigins() const {
+  return _accessControlAllowOrigins;
+}
+
+Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
+  Result res;
+  for (auto& up : _servers) {
+    Result res2 = up->reloadTLS();
+    if (!res2.fail()) {
+      res = res2;  // yes, we only report the last error if there is one
+    }
+  }
+  return res;
+}
+
+rest::RestHandlerFactory& GeneralServerFeature::handlerFactory() {
+  return *_handlerFactory;
+}
+
+rest::AsyncJobManager& GeneralServerFeature::jobManager() {
+  return *_jobManager;
 }
 
 void GeneralServerFeature::buildServers() {

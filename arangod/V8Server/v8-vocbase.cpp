@@ -1773,11 +1773,13 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
 
-  if (GeneralServerFeature::hasProxyCheck()) {
+  TRI_GET_GLOBALS();
+  auto& gs = v8g->_server.getFeature<GeneralServerFeature>();
+  if (gs.proxyCheck()) {
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
     uint32_t i = 0;
-    for (auto const& proxyDef : GeneralServerFeature::getTrustedProxies()) {
+    for (auto const& proxyDef : gs.trustedProxies()) {
       result->Set(context, i++, TRI_V8_STD_STRING(isolate, proxyDef)).FromMaybe(false);
     }
     TRI_V8_RETURN(result);

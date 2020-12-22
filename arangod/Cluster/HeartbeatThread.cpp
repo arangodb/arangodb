@@ -881,7 +881,8 @@ void HeartbeatThread::runSingleServer() {
         TRI_ASSERT(!applier->isActive());
         applier->forget();  // make sure applier is doing a resync
 
-        Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
+        auto& gs = _server.getFeature<GeneralServerFeature>();
+        Result res = gs.jobManager().clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC("e0817", WARN, Logger::HEARTBEAT)
               << "could not cancel all async jobs " << res.errorMessage();

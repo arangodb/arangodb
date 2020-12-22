@@ -261,7 +261,8 @@ void RestAdminServerHandler::handleTLS() {
       return;
     }
 
-    Result res = GeneralServerFeature::reloadTLS();
+    auto& gs = server().getFeature<GeneralServerFeature>();
+    Result res = gs.reloadTLS();
     if (res.fail()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
       return;

@@ -335,8 +335,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
-  auto handler = GeneralServerFeature::HANDLER_FACTORY->createHandler(server, std::move(request),
-                                                                      std::move(response));
+  auto& factory = server.getFeature<GeneralServerFeature>().handlerFactory();
+  auto handler = factory.createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
@@ -529,14 +529,15 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   auto const lane = handler->getRequestLane();
 
   if (jobId != nullptr) {
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
+    auto& jobManager = _server.server().getFeature<GeneralServerFeature>().jobManager();
+    jobManager.initAsyncJob(handler);
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
-      handler->runHandler([](RestHandler* h) {
-        GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
-      });
+    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler),
+                                                     manager(&jobManager)] {
+      handler->runHandler(
+          [manager](RestHandler* h) { manager->finishAsyncJob(h); });
     });
   } else {
     // here the response will just be ignored
@@ -643,8 +644,9 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
 
   // if the request asks to allow credentials, we'll check against the
   // configured allowed list of origins
+  auto const& gs = _server.server().getFeature<GeneralServerFeature>();
   std::vector<std::string> const& accessControlAllowOrigins =
-      GeneralServerFeature::accessControlAllowOrigins();
+      gs.accessControlAllowOrigins();
 
   if (!accessControlAllowOrigins.empty()) {
     if (accessControlAllowOrigins[0] == "*") {

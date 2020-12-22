@@ -23,6 +23,7 @@
 
 #include "HttpCommTask.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
@@ -206,7 +207,8 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageDone(false),
-      _allowMethodOverride(GeneralServerFeature::allowMethodOverride()) {
+      _allowMethodOverride(
+          server.server().getFeature<GeneralServerFeature>().allowMethodOverride()) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -295,7 +297,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void HttpCommTask<T>::setIOTimeout() {
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  auto& gs = this->_server.server().template getFeature<GeneralServerFeature>();
+  double secs = gs.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }
@@ -573,7 +576,8 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // turn on the keepAlive timer
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  auto& gs = this->_server.server().template getFeature<GeneralServerFeature>();
+  double secs = gs.keepAliveTimeout();
   if (_shouldKeepAlive && secs > 0) {
     _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
   } else {
