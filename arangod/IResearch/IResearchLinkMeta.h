@@ -189,15 +189,15 @@ struct IResearchLinkMeta : public FieldMeta {
         _analyzerDefinitions(mask),
         _sort(mask),
         _storedValues(mask),
-        _sortCompression(mask) {
+        _sortCompression(mask),
+        _collectionName(mask) {
     }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
     bool _sortCompression;
-    // intentionally missing collectionName here.
-    // it is internal field and never set/modified by user.
+    bool _collectionName;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
