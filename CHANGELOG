@@ -1,6 +1,10 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Remove HTTP "Connection" header when forwarding requests in the cluster
+  from one coordinator to another, and let the internal network layer
+  handle closing of connections and keep-alive.
+
 * Added "startupTime", "computationTime" and "storageTime" to Pregel result
   statistics.
 
