@@ -1800,7 +1800,7 @@ function testOpenDiamondShortestPathWT(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testOpenDiamondKPaths(testGraph) {
+function testOpenDiamondKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
@@ -1811,6 +1811,44 @@ function testOpenDiamondKPaths(testGraph) {
   const necessaryPaths = [
     ["A", "B", "D", "F"],
     ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testOpenDiamondKPathsAny(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR path IN 1..3 ANY K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testOpenDiamondKPathsInbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR path IN 1..3 INBOUND K_PATHS ${testGraph.vertex('F')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["F", "D", "B", "A"],
+    ["F", "D", "C", "A"]
   ];
 
   const res = db._query(query);
@@ -2289,7 +2327,7 @@ function testSmallCircleShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testSmallCircleKPaths(testGraph) {
+function testSmallCircleKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}
@@ -2299,6 +2337,42 @@ function testSmallCircleKPaths(testGraph) {
 
   const necessaryPaths = [
     ["A", "B", "C", "D"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testSmallCircleKPathsAny(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN 1..3 ANY K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "B", "C", "D"], ["A", "D"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testSmallCircleKPathsInbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN 1..3 INBOUND K_PATHS ${testGraph.vertex('D')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["D", "C", "B", "A"]
   ];
 
   const res = db._query(query);
@@ -5462,7 +5536,9 @@ const testsByGraph = {
     testOpenDiamondWeightedLabelVariableForwarding,
     testOpenDiamondShortestPath,
     testOpenDiamondShortestPathWT,
-    testOpenDiamondKPaths,
+    testOpenDiamondKPathsOutbound,
+    testOpenDiamondKPathsInbound,
+    testOpenDiamondKPathsAny,
     testOpenDiamondShortestPathEnabledWeightCheck,
     testOpenDiamondShortestPathEnabledWeightCheckWT,
     testOpenDiamondKShortestPathWithMultipleLimits,
@@ -5503,7 +5579,9 @@ const testsByGraph = {
     testSmallCircleWeightedUniqueEdgesPathUniqueVerticesGlobal,
     testSmallCircleWeightedUniqueEdgesNoneUniqueVerticesGlobal,
     testSmallCircleShortestPath,
-    testSmallCircleKPaths,
+    testSmallCircleKPathsOutbound,
+    testSmallCircleKPathsAny,
+    testSmallCircleKPathsInbound,
     testSmallCircleShortestPathEnabledWeightCheck,
     testSmallCircleKShortestPathWithMultipleLimits,
     testSmallCircleKShortestPathWithMultipleLimitsWT,
