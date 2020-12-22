@@ -270,7 +270,7 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isDBServer(role)) {
     runDBServer();
   } else if (ServerState::instance()->isSingleServer(role)) {
-    if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
+    if (_server.getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
       runSingleServer();
     }
   } else if (ServerState::instance()->isAgent(role)) {
@@ -666,10 +666,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 void HeartbeatThread::runSingleServer() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  TRI_ASSERT(replication != nullptr);
+  ReplicationFeature& replication = _server.getFeature<ReplicationFeature>();
 
-  GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  GlobalReplicationApplier* applier = replication.globalReplicationApplier();
   TRI_ASSERT(applier != nullptr && _server.hasFeature<ClusterFeature>());
   ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 

@@ -200,7 +200,8 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-        ReplicationFeature::prepareFollowerResponse(res.get(), mode);
+        auto& rf = _server.server().getFeature<ReplicationFeature>();
+        rf.prepareFollowerResponse(res.get(), mode);
         sendResponse(std::move(res), RequestStatistics::Item());
         return Flow::Abort;
       }
@@ -270,7 +271,8 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
 void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) const {
   ServerState::Mode mode = ServerState::mode();
   if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
-    ReplicationFeature::setEndpointHeader(&res, mode);
+    auto& rf = _server.server().getFeature<ReplicationFeature>();
+    rf.setEndpointHeader(&res, mode);
   }
   if (mode == ServerState::Mode::REDIRECT) {
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
