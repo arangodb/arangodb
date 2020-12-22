@@ -1,6 +1,24 @@
 devel
 -----
 
+* Make DB servers report storage engine errors to the agency, via a new "healthy"
+  attribute in sent to requests to Sync/ServerStates/<id>.
+  The supervision will check this attribute if it is posted, and if it contains
+  a value of `false`, will mark the server as BAD.
+  DB server health is currently determined by whether or not the storage engine
+  (RocksDB) has reported a background error, and by whether or not the free disk 
+  space has reached a critical low amount. The current threshold for free disk
+  space is set at 2% of the disk capacity (the disk is considered that contains
+  the RocksDB database directory).
+
+* Failed servers are now reported consistently in the web interface, at 
+  approximately the same time in the navigation bar and in the nodes view. 
+  Previously these two places had their own, independent poll mechanism for the
+  nodes' health, and they were updated independently, which could cause an 
+  inconsistent view of the nodes' availability.
+  Using only one poll mechanism instead also saves some period background requests
+  for the second availability check.
+
 * Reduce overhead of audit logging functionality if audit logging is turned
   off.
 
