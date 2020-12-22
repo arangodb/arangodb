@@ -218,6 +218,7 @@ set(ARANGODB_TESTS_SOURCES
   ${RCFILE}
   Metrics/MetricsTest.cpp
   Metrics/MetricsFeatureTest.cpp
+  Metrics/MetricsServerTest.cpp
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
