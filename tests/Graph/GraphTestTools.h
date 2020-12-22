@@ -314,9 +314,7 @@ struct MockGraphDatabase {
     auto queryString = arangodb::aql::QueryString(qry);
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query =
-        std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr,
-                                               arangodb::velocypack::Parser::fromJson("{}"));
+    auto query = std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);
