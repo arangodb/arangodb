@@ -598,24 +598,17 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   return node;
 }
 
-/// @brief create an AST collect node, COUNT INTO
+/// @brief create an AST collect node with a single COUNT aggregator
 AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
                                      size_t nameLength, AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
-  node->reserve(2);
+  auto args = createNodeArray(1);
+  args->addMember(createNodeValueNull());
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &_specialNodes.NopNode;
-  }
+  auto count = createNodeAssign(name, nameLength, createNodeFunctionCall("LENGTH", 6, args));
+  auto aggregators = createNodeArray(1);
+  aggregators->addMember(count);
 
-  node->addMember(options);
-  node->addMember(list);
-
-  AstNode* variable = createNodeVariable(name, nameLength, true);
-  node->addMember(variable);
-
-  return node;
+  return createNodeCollect(list, aggregators, nullptr, nullptr, nullptr, options);
 }
 
 /// @brief create an AST sort node
