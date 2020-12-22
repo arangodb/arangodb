@@ -4437,15 +4437,18 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           if (collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT) {
             TRI_ASSERT(collectNode->aggregateVariables().size() == 1);
             TRI_ASSERT(collectNode->hasOutVariable() == false);
-            // clone a COLLECT WITH COUNT operation from the coordinator to the
+            // clone a COLLECT AGGREGATE var=LENGTH(_) operation from the coordinator to the
             // DB server(s), and leave an aggregate COLLECT node on the
             // coordinator for total aggregation
 
             // add a new CollectNode on the DB server to do the actual counting
+            auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+            std::vector<AggregateVarInfo> aggregateVariables;
+            aggregateVariables.emplace_back(AggregateVarInfo{outVariable, collectNode->aggregateVariables()[0].inVar, "LENGTH"});
             auto dbCollectNode =
                 new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(),
                                 collectNode->groupVariables(),
-                                collectNode->aggregateVariables(), nullptr,
+                                aggregateVariables, nullptr,
                                 nullptr, std::vector<Variable const*>(),
                                 collectNode->variableMap(), false);
 
@@ -4460,6 +4463,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             // re-use the existing CollectNode on the coordinator to aggregate
             // the counts of the DB servers
             collectNode->aggregateVariables()[0].type = "SUM";
+            collectNode->aggregateVariables()[0].inVar = outVariable;
             collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
             
             removeGatherNodeSort = true;
