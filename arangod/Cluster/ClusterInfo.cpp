@@ -5021,7 +5021,7 @@ ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dir
 
   // We should never proceed here, until we have seen an
   // initial agency cache through loadPlan
-  waitForPlan(1);
+  waitForPlan(1).get();
 
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   READ_LOCKER(readLocker, _planProt.lock);

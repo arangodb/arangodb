@@ -1,6 +1,8 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
+
 * Added "startupTime", "computationTime" and "storageTime" to Pregel result
   statistics.
 
