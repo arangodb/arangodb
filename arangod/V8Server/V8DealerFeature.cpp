@@ -82,8 +82,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-V8DealerFeature* V8DealerFeature::DEALER = nullptr;
-
 namespace {
 class V8GcThread : public Thread {
  public:
@@ -433,9 +431,6 @@ void V8DealerFeature::start() {
         << "JavaScript using " << StringUtils::join(paths, ", ");
   }
 
-  // set singleton
-  DEALER = this;
-
   if (_nrMinContexts < 1) {
     _nrMinContexts = 1;
   }
@@ -675,8 +670,6 @@ void V8DealerFeature::unprepare() {
 
   // delete GC thread after all action threads have been stopped
   _gcThread.reset();
-
-  DEALER = nullptr;
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {

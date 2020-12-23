@@ -45,8 +45,6 @@ class V8Context;
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
-  static V8DealerFeature* DEALER;
-
   struct Statistics {
     size_t available;
     size_t busy;

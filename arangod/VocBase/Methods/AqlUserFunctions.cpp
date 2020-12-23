@@ -70,7 +70,7 @@ void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
   if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
       !server.getFeature<V8DealerFeature>().isEnabled()) {
     std::string const def("reloadAql");
-    V8DealerFeature::DEALER->addGlobalContextMethod(def);
+    server.getFeature<V8DealerFeature>().addGlobalContextMethod(def);
   }
 }
 
