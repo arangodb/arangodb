@@ -74,7 +74,7 @@ class TransactionState {
     virtual ~Cookie() = default;
   };
 
-  static bool SortServerIds(ServerID const& lhs, ServerID const& rhs) {
+  static bool ServerIdLessThan(ServerID const& lhs, ServerID const& rhs) {
     return lhs < rhs;
   }
 

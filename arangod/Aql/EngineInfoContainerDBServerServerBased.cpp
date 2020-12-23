@@ -491,7 +491,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::sort(engineInformation.begin(), engineInformation.end(),
               [](auto const& lhs, auto const& rhs) {
                 // Entry <0> is the Server
-                return TransactionState::SortServerIds(std::get<0>(lhs), std::get<0>(rhs));
+                return TransactionState::ServerIdLessThan(std::get<0>(lhs), std::get<0>(rhs));
               });
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Make sure we always maintain the correct ordering of servers
@@ -503,7 +503,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // If the serverBefore has a smaller ID we allways contact by increasing
       // ID here.
-      TRI_ASSERT(TransactionState::SortServerIds(serverBefore, server));
+      TRI_ASSERT(TransactionState::ServerIdLessThan(serverBefore, server));
       serverBefore = server;
 #endif
       VPackSlice infoSlice{buffer->data()};
