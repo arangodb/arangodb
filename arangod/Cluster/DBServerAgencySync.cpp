@@ -204,6 +204,17 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
 
+  if (plan.empty()) {
+    // this early exit is a safeguard against overzealous cleanup by 
+    // the maintenance. in case the plan is empty and compared to the
+    // local state, the maintenance may decide to drop everyting 💥
+    LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
+        << "DBServerAgencySync::execute no plan change set";
+    result.success = true;
+    result.errorMessage = "DBServerAgencySync::execute no reconciliation plan";
+    return result;
+  }
+
   auto serverId = arangodb::ServerState::instance()->getId();
 
   // It is crucial that the following happens before we do `getLocalCollections`!
