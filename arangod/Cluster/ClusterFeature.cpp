@@ -435,7 +435,7 @@ void ClusterFeature::prepare() {
     reportRole(_requestedRole);
   }
 
-  network::ConnectionPool::Config config;
+  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;

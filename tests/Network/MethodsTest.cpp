@@ -96,6 +96,7 @@ struct NetworkMethodsTest
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "NetworkMethodsTest";
     return config;
   }
 

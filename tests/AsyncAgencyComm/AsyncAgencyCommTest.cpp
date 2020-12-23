@@ -185,6 +185,7 @@ struct AsyncAgencyCommTest
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "AsyncAgencyCommTest";
     return config;
   }
 
