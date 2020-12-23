@@ -3,6 +3,17 @@ v3.7.6 (XXXX-XX-XX)
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 
+* Remove HTTP "Connection" header when forwarding requests in the cluster from
+  one coordinator to another, and let the internal network layer handle closing
+  of connections and keep-alive.
+
+* Prevent a write to RocksDB during recovery in the case that the database
+  already exists. The write at startup is potentially blocking, and will delay
+  the startup for servers that were shut down while in a write-stopped state.
+
+* Fix recovery of "clientId" values in Agency when restarting an agent from
+  persistence.
+
 * Added "startupTime", "computationTime" and "storageTime" to Pregel result
   statistics.
 
@@ -15,7 +26,7 @@ v3.7.6 (XXXX-XX-XX)
   Added new ArangoSearch view option 'countApproximate' for customizing view
   count strategy.
 
-* Fix ordering of followerinfo lists in maintainer mode.
+* Fix ordering of FollowerInfo lists in maintainer mode.
 
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
