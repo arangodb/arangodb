@@ -270,10 +270,10 @@ greenspun::EvalResult VertexComputation::air_outboundEdges(greenspun::Machine& c
     result.add(VPackValue("to-pregel-id"));
     {
       VPackObjectBuilder pidGuard(&result);
-      result.add(VPackValue("shard"));
-      result.add(VPackValue((*edgeIter)->targetShard()));
       result.add(VPackValue("key"));
       result.add(VPackValue((*edgeIter)->toKey().toString()));
+      result.add(VPackValue("shard"));
+      result.add(VPackValue((*edgeIter)->targetShard()));
     }
 
     result.add(VPackValue("document"));
