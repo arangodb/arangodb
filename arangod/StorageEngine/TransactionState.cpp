@@ -132,7 +132,7 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
       raceController.waitForOthers(2, _id, vocbase().server());
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
-      std::vector<std::any> const& data = raceController.data();
+      std::vector<std::any> const data = raceController.data();
       if (shardNum % 2 == 0) {
         auto min = *std::min_element(data.begin(), data.end(),
                                      [](std::any const& a, std::any const& b) {
