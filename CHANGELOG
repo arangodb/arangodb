@@ -10,8 +10,6 @@ devel
   time and exit code (0 = no error, other values correspond to general ArangoDB 
   error codes).
 
-* Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
-
 * Added "startupTime", "computationTime" and "storageTime" to Pregel result
   statistics.
 
