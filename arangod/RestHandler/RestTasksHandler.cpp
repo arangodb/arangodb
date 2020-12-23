@@ -227,7 +227,7 @@ void RestTasksHandler::registerTask(bool byId) {
       command = cmdSlice.copyString();
     }
 
-    if (!Task::tryCompile(isolate, command)) {
+    if (!Task::tryCompile(server(), isolate, command)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "cannot compile command");
       return;

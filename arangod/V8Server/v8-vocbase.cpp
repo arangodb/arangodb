@@ -2182,7 +2182,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_AgencyDump, true);
   
 #ifdef USE_ENTERPRISE
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+  if (v8g->_server.hasFeature<V8DealerFeature>() &&
+      v8g->_server.getFeature<V8DealerFeature>().allowAdminExecute()) {
     TRI_AddGlobalFunctionVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
                                  JS_EncryptionKeyReload, true);

@@ -203,7 +203,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  if (!Task::tryCompile(isolate, command)) {
+  if (!Task::tryCompile(v8g->_server, isolate, command)) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot compile command");
   }
 

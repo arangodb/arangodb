@@ -495,7 +495,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().getFeature<V8DealerFeature>().allowAdminExecute()) {
     // the /_admin/execute API depends on V8. only enable it if JavaScript is enabled
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);

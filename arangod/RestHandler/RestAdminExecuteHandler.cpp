@@ -57,7 +57,7 @@ RestStatus RestAdminExecuteHandler::execute() {
     return RestStatus::DONE;
   }
 
-  TRI_ASSERT(V8DealerFeature::DEALER->allowAdminExecute());
+  TRI_ASSERT(server().getFeature<V8DealerFeature>().allowAdminExecute());
 
   arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();

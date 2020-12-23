@@ -1187,8 +1187,9 @@ static void JS_ExecuteGlobalContextFunction(v8::FunctionCallbackInfo<v8::Value> 
 
   std::string const def = std::string(*utf8def, utf8def.length());
 
+  TRI_GET_GLOBALS();
   // and pass it to the V8 contexts
-  if (!V8DealerFeature::DEALER->addGlobalContextMethod(def)) {
+  if (!v8g->_server.getFeature<V8DealerFeature>().addGlobalContextMethod(def)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid action definition");
   }

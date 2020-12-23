@@ -188,6 +188,7 @@ class V8ContextGuard {
   V8Context* context() const { return _context; }
 
  private:
+  TRI_vocbase_t* _vocbase;
   v8::Isolate* _isolate;
   V8Context* _context;
 };
@@ -202,6 +203,7 @@ class V8ConditionalContextGuard {
   ~V8ConditionalContextGuard();
 
  private:
+  TRI_vocbase_t* _vocbase;
   v8::Isolate*& _isolate;
   V8Context* _context;
   bool _active;
