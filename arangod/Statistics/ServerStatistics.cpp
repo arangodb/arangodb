@@ -55,7 +55,7 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
                              log_scale_t(10., 0.0, 1000.0, 11),
                              "Collection lock acquisition time histogram [s]")),
       _sequentialLocks(
-          _metrics.counter("arangodb_sequential_collection_locks", 0,
+          _metrics.counter("arangodb_collection_lock_sequential_mode", 0,
                            "Number of transactions using sequential locking of "
                            "collections to avoid deadlocking.")) {}
 
