@@ -61,9 +61,7 @@ ClusterFeature::~ClusterFeature() {
     // have been shut down already when we get here, but there are rare cases in
     // which ClusterFeature::stop() isn't called (e.g. during testing or if 
     // something goes very wrong at startup)
-    if (_clusterInfo != nullptr) {
-      _clusterInfo->waitForSyncersToStop();
-    }
+    waitForSyncersToStop();
 
     // force shutdown of AgencyCache. under normal circumstances the cache will
     // have been shut down already when we get here, but there are rare cases in
@@ -685,7 +683,7 @@ void ClusterFeature::stop() {
   }
 
   // Make sure ClusterInfo's syncer threads have stopped.
-  _clusterInfo->waitForSyncersToStop();
+  waitForSyncersToStop();
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
@@ -736,6 +734,14 @@ void ClusterFeature::shutdownHeartbeatThread() {
         << "waiting for heartbeat thread to finish";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+}
+
+/// @brief wait for the Plan and Current syncer to shut down
+/// note: this may be called multiple times during shutdown
+void ClusterFeature::waitForSyncersToStop() {
+  if (_clusterInfo != nullptr) {
+    _clusterInfo->waitForSyncersToStop();
   }
 }
 
