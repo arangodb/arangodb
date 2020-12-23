@@ -326,7 +326,7 @@ void GeneralServerFeature::buildServers() {
       FATAL_ERROR_EXIT();
     }
     SslServerFeature& ssl = server().getFeature<SslServerFeature>();
-    ssl.SSL->verifySslOptions();
+    ssl.verifySslOptions();
   }
 
   auto server = std::make_unique<GeneralServer>(*this, _numIoThreads);
