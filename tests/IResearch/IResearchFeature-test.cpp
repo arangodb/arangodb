@@ -2641,3 +2641,103 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
   EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory removed after upgrade
 }
+
+// For link upgrade we need working Agency Mock
+// so create a separate fixture
+class IResearchFeatureTestMockDBServer : public ::testing::Test {
+ protected:
+  arangodb::tests::mocks::MockDBServer server;
+
+  IResearchFeatureTestMockDBServer() : server() {
+    }
+
+  void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
+    vocbase = server.createDatabase(name);
+    ASSERT_NE(nullptr, vocbase);
+    ASSERT_EQ(name, vocbase->name());
+    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, vocbase->type());
+  }
+
+
+  ~IResearchFeatureTestMockDBServer() = default;
+};
+
+
+TEST_F(IResearchFeatureTestMockDBServer, test_upgrade1_link_collectionName) {
+  // test db-server (with directory)
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection\", \"id\":999 }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 1 "
+      "}");
+
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
+      "\"includeAllFields\": true }");
+  // assume step 1 already finished
+  auto versionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"version\": 1, \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
+
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+
+  auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  auto versionFilename = StorageEngineMock::versionFilenameResult;
+  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  });
+  StorageEngineMock::versionFilenameResult =
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
+  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+
+  auto& engine = *static_cast<StorageEngineMock*>(
+      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+  engine.views.clear();
+
+  TRI_vocbase_t* vocbase;
+  createTestDatabase(vocbase);
+  auto& clusterInfo =
+      vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+
+  server.createCollection("testDatabase", "999", "testCollection");
+  auto logicalCollection = vocbase->createCollection(collectionJson->slice());
+  ASSERT_FALSE(!logicalCollection);
+  auto logicalView = vocbase->createView(viewJson->slice());
+  ASSERT_FALSE(!logicalView);
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  bool created;
+  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  ASSERT_TRUE(created);
+  ASSERT_FALSE(!index);
+  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  ASSERT_FALSE(!link);
+  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+
+  {
+    auto indexes = logicalCollection->getIndexes();
+    for (auto& index : indexes) {
+      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        VPackBuilder builder;
+        index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+        ASSERT_FALSE(builder.slice().hasKey("collectionName"));
+      }
+    }
+  }
+
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, true, false).ok());  // run upgrade
+
+  {
+    auto indexes = logicalCollection->getIndexes();
+    for (auto& index : indexes) {
+      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        VPackBuilder builder;
+        index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+        auto slice = builder.slice();
+        ASSERT_TRUE(slice.hasKey("collectionName"));
+        ASSERT_EQ("testCollection", slice.get("collectionName").copyString());
+      }
+    }
+  }
+}

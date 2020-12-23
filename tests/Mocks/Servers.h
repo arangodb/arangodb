@@ -162,6 +162,9 @@ class MockClusterServer : public MockServer,
   consensus::index_t agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
   void agencyDropDatabase(std::string const& name);
+  void agencyCreateCollection(std::string const& vocbaseName,
+                              std::string const& collId,
+                              std::string const& collectionName);
 
  private:
   arangodb::ServerState::RoleEnum _oldRole;
@@ -176,6 +179,13 @@ class MockDBServer : public MockClusterServer {
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  /// @brief Creates collection only in agency Plan. This make possible calls to
+  ///        ClusterInfo::getCollection and ClusterInfo::GetCollectionNT.
+  ///        Actual collection in vocbase should be created separately.
+  void createCollection(std::string const& vocbaseName,
+                        std::string const& collId,
+                        std::string const& collectionName);
 };
 
 class MockCoordinator : public MockClusterServer {

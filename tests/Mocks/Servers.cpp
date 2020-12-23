@@ -495,6 +495,53 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
     agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
 }
 
+/// @brief Single collection segment from Plan.
+/// copied from plan_colls_string. To make it 
+/// predictable has two placeholders $collectionName$ for
+/// collection name and $collectionId$ for collection id.
+/// Do not forget to reset placeholders if regenerating!
+char const* plan_new_col = R"=({"waitForSync":false,"type":2,"status":3,"shards":
+{"s10084":["PRMR-ab4cdcec-bae6-4998-af25-a93c0b4a3ada",
+"PRMR-8cb161bd-aa92-4d02-a0c3-9e48096e18a0"]},"statusString":
+"loaded","shardingStrategy":"hash","shardKeys":["_key"],
+"replicationFactor":2,"numberOfShards":1,"keyOptions":{"type":
+"traditional","allowUserKeys":true},"isSystem":true,"name":
+"$collectionName$","indexes":[{"id":"0","type":"primary","name":
+"primary","fields":["_key"],"unique":true,"sparse":false
+}],"isSmart":false,"id":"$collectionId$","distributeShardsLike":
+"10069","deleted":false,"minReplicationFactor":1,"cacheEnabled":
+false})=";
+
+
+namespace {
+// FIXME: find more standart way to do this
+void search_replace(std::string& str, const std::string& search,
+                    const std::string& replace) {
+  size_t pos = 0;
+  auto const repl_len = replace.length();
+  auto search_len = search.length();
+  while((pos = str.find(search, pos)) != std::string::npos) {
+    str.replace(pos, search_len, replace);
+    pos += repl_len;
+  }
+}
+}
+
+void MockClusterServer::agencyCreateCollection(std::string const& vocbaseName,
+                                               std::string const& collId,
+                                               std::string const& collectionName) {
+  TemplateSpecializer ts(vocbaseName);
+  std::string st = ts.specialize(plan_new_col);
+  search_replace(st, "$collectionName$", collectionName);
+  search_replace(st, "$collectionId$", collId);
+  agencyTrx("/arango/Plan/Collections/" + vocbaseName + "/" + collId, st);
+
+  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+  agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+  agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+}
+
 void MockClusterServer::agencyDropDatabase(std::string const& name) {
   std::string st = R"=({"op":"delete"}))=";
 
@@ -555,6 +602,22 @@ void MockDBServer::dropDatabase(std::string const& name) {
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
   dd.first();  // Does the job
+}
+
+void MockDBServer::createCollection(std::string const& vocbaseName,
+                                    std::string const& collId,
+                                    std::string const& collectionName) {
+
+  // A bit kludge. We just write collection to plan!
+  agencyCreateCollection(vocbaseName, collId, collectionName);
+  //// Now we must run a maintenance action to create the collection locally:
+  //maintenance::ActionDescription ad(
+  //  {{std::string(maintenance::NAME), std::string(maintenance::CREATE_COLLECTION)},
+  //   {std::string(maintenance::DATABASE), std::string(vocbaseName)}},
+  //  maintenance::HIGHER_PRIORITY, false);
+  //auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
+  //maintenance::CreateCollection cc(mf, ad);
+  //cc.first();  // Does the job
 }
 
 MockCoordinator::MockCoordinator(bool start) : MockClusterServer() {

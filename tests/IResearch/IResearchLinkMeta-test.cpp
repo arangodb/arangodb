@@ -1410,6 +1410,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
   {
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::iresearch::IResearchLinkMeta::Mask mask(true);
+    meta._collectionName = "Test"; // init to make it show in json
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -1429,6 +1430,31 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
     EXPECT_TRUE(slice.hasKey("storedValues"));
     EXPECT_TRUE(slice.hasKey("primarySortCompression"));
     EXPECT_TRUE(slice.hasKey("collectionName"));
+  }
+
+  // with fullAnalyzerDefinition without collection name
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::iresearch::IResearchLinkMeta::Mask mask(true);
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, true, nullptr, nullptr, &mask));
+    builder.close();
+
+    auto slice = builder.slice();
+
+    EXPECT_EQ(9, slice.length());
+    EXPECT_TRUE(slice.hasKey("fields"));
+    EXPECT_TRUE(slice.hasKey("includeAllFields"));
+    EXPECT_TRUE(slice.hasKey("trackListPositions"));
+    EXPECT_TRUE(slice.hasKey("storeValues"));
+    EXPECT_TRUE(slice.hasKey("analyzers"));
+    EXPECT_TRUE(slice.hasKey("analyzerDefinitions"));
+    EXPECT_TRUE(slice.hasKey("primarySort"));
+    EXPECT_TRUE(slice.hasKey("storedValues"));
+    EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+    EXPECT_FALSE(slice.hasKey("collectionName"));
   }
 }
 

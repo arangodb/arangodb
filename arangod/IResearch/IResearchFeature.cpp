@@ -295,8 +295,8 @@ uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit, uint32_t d
                            threads ? threads : uint32_t(arangodb::NumberOfCores::getValue()) / div));
 }
 
-bool upgradeClusterArangoSearchView1_2(TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice const& /*upgradeParams*/) {
+bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
+                                           arangodb::velocypack::Slice const& /*upgradeParams*/) {
   using arangodb::application_features::ApplicationServer;
   if (!arangodb::ServerState::instance()->isDBServer()) {
     return true;  // not applicable for other ServerState roles
@@ -304,7 +304,6 @@ bool upgradeClusterArangoSearchView1_2(TRI_vocbase_t& vocbase,
   auto& selector = vocbase.server().getFeature<arangodb::EngineSelectorFeature>();
   auto& clusterInfo =
       vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
-  auto& engine = selector.engine<arangodb::RocksDBEngine>();
   // persist collection names in links
   for (auto& collection : vocbase.collections(false)) {
     auto indexes = collection->getIndexes();
@@ -330,10 +329,21 @@ bool upgradeClusterArangoSearchView1_2(TRI_vocbase_t& vocbase,
               auto builder =
                   collection->toVelocyPackIgnore({"path", "statusString"},
                                                  arangodb::LogicalDataSource::Serialization::PersistenceWithInProgress);
-              auto res =
-                  engine.writeCreateCollectionMarker(vocbase.id(), collection->id(),
-                                                     builder.slice(),
-                                                     arangodb::RocksDBLogValue::Empty());
+              if (selector.engineName() == arangodb::RocksDBEngine::EngineName) {
+                auto& engine = selector.engine<arangodb::RocksDBEngine>();
+                auto res =
+                    engine.writeCreateCollectionMarker(vocbase.id(), collection->id(),
+                                                       builder.slice(),
+                                                       arangodb::RocksDBLogValue::Empty());
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+              } else if (selector.engineName() != "Mock") { // for unit tests just ignore write to storage
+#else
+              } else {
+#endif
+                 TRI_ASSERT(false);
+                 LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
+                   << "Unsupported engine '" << selector.engineName() << "' for link upgrade task";
+              }
             }
           }
         }
@@ -611,13 +621,14 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
   {
     arangodb::methods::Upgrade::Task task;
 
-    task.name = "upgradeArangoSearch1_2";
+    task.name = "upgradeArangoSearchLinkCollectionName";
     task.description = "store collection name in ArangoSearch Link`s metadata";
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL;  // db-server
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL |
+                        arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;  // db-server
     task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
                          arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
-    task.action = &upgradeClusterArangoSearchView1_2;
+    task.action = &upgradeArangoSearchLinkCollectionName;
     upgrade.addTask(std::move(task));
   }
 }
