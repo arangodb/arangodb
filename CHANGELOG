@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added new metric: "arangodb_sequential_collection_locks" this will count
+  how many times we need to do a sequential locking of collections. If this
+  metric increases this indicates lock contention in transaction setup.
+  Most likely this is caused by exlcusive locks used on collections with
+  more than one shard.
+
 * Fix for BTS-213
   Changed the transaction locking mechanism in the cluster case.
   For all installations that do not use "exclusive" collection locks this change
