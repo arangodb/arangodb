@@ -48,7 +48,12 @@ AgencyCache::AgencyCache(
         "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {}
 
 AgencyCache::~AgencyCache() {
-  beginShutdown();
+  try {
+    beginShutdown();
+  } catch (...) {
+    // unfortunately there is not much we can do here
+  }
+  shutdown();
 }
 
 bool AgencyCache::isSystem() const { return true; }
@@ -558,9 +563,11 @@ void AgencyCache::beginShutdown() {
         }
       }
     }
-    _callbacks.clear();
+    if (!_callbacks.empty()) {
+      _callbacks.clear();
+      _callbacksCount = 0;
+    }
   }
-  _callbacksCount = 0;
 
   Thread::beginShutdown();
 }
