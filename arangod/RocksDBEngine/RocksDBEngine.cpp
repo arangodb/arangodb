@@ -108,6 +108,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <iomanip>
 #include <limits>
 
 using namespace arangodb;
@@ -199,8 +200,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #else
       _createShaFiles(false),
 #endif
-      _lastHealthCheckSuccessful(false),
-      _lastHealthCheckTimestamp(std::chrono::steady_clock::time_point()) {
+      _lastHealthCheckSuccessful(false) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -874,6 +874,12 @@ void RocksDBEngine::start() {
 
   if (!useEdgeCache()) {
     LOG_TOPIC("46557", INFO, Logger::ENGINES) << "in-memory cache for edges is disabled";
+  }
+
+  // to populate initial health check data
+  HealthData hd = healthCheck();
+  if (hd.res.fail()) {
+    LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
   }
 }
 
@@ -2580,7 +2586,7 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   }
 }
 
-bool RocksDBEngine::checkHealth() {
+HealthData RocksDBEngine::healthCheck() {
   auto now = std::chrono::steady_clock::now();
 
   // the following checks are executed under a mutex so that different
@@ -2588,63 +2594,88 @@ bool RocksDBEngine::checkHealth() {
   // in addition, serializing access to this function avoids stampedes
   // with multiple threads trying to calculate the free disk space 
   // capacity at the same time, which could be expensive.
-  MUTEX_LOCKER(guard, _healthCheckMutex);
+  MUTEX_LOCKER(guard, _healthMutex);
+  
+  TRI_IF_FAILURE("RocksDBEngine::healthCheck") {
+    _healthData.res.reset(TRI_ERROR_DEBUG, "peng! 💥");
+    return _healthData;
+  }
 
-  bool lastCheckLongAgo = (now - _lastHealthCheckTimestamp > std::chrono::seconds(30));
+  bool lastCheckLongAgo = (_healthData.lastCheckTimestamp.time_since_epoch().count() == 0) ||
+                          ((now - _healthData.lastCheckTimestamp) >= std::chrono::seconds(30)); 
   if (lastCheckLongAgo) {
-    _lastHealthCheckTimestamp = now;
+    _healthData.lastCheckTimestamp = now;
+  }
+  
+  // only log about once every 24 hours, to reduce log spam
+  bool lastLogMessageLongAgo = (_lastHealthLogMessageTimestamp.time_since_epoch().count() == 0) ||
+                               ((now - _lastHealthLogMessageTimestamp) >= std::chrono::hours(24));
+
+  _healthData.backgroundError = hasBackgroundError();
+
+  if (_healthData.backgroundError) {
+    // go into failed state
+    _healthData.res.reset(TRI_ERROR_FAILED,
+                          "storage engine reports background error. please check the logs "
+                          "for the error reason and take action");
+  } else if (_lastHealthCheckSuccessful) { 
+    _healthData.res.reset();
   }
 
-  TRI_IF_FAILURE("RocksDBEngine::checkHealth") {
-    return false;
-  }
-
-  if (hasBackgroundError()) {
-    // log only every x seconds to prevent log spamming in case the 
-    // unhealthiness persists
-    LOG_TOPIC_IF("8bd8c", ERR, Logger::ENGINES, lastCheckLongAgo)
-        << "storage engine reports background error. please check the logs "
-        << "for the error reason and take action";
-    // not important to set _lastHealthCheckSuccessful here
-    return false;
-  }
-
-  // check the amount of free disk space. this may be expensive to do, so
-  // we only execute the check every once in a while, or when the last check
-  // failed too (so that we don't report success only because we skipped the
-  // checks)
   if (lastCheckLongAgo || !_lastHealthCheckSuccessful) {
-    bool isHealthy = true;
-
+    // check the amount of free disk space. this may be expensive to do, so
+    // we only execute the check every once in a while, or when the last check
+    // failed too (so that we don't report success only because we skipped the
+    // checks)
+    //
     // total disk space in database directory
     uint64_t totalSpace = 0;
     // free disk space in database directory
     uint64_t freeSpace = 0;
-    Result res = TRI_GetDiskSpaceInfo(_basePath, totalSpace, freeSpace);
-    if (res.ok() && totalSpace >= 1024 * 1024) {
+  
+    if (TRI_GetDiskSpaceInfo(_basePath, totalSpace, freeSpace).ok() &&
+        totalSpace >= 1024 * 1024) {
+    
       // only carry out the following if we get a disk size of at least 1MB back.
       // everything else seems to be very unreasonable and not trustworthy.
       double diskFreePercentage = double(freeSpace) / double(totalSpace);
-      if ((_requiredDiskFreePercentage > 0.0 && diskFreePercentage < _requiredDiskFreePercentage) ||
-          (_requiredDiskFreeBytes > 0 && freeSpace < _requiredDiskFreeBytes)) {
-        LOG_TOPIC_IF("ead1f", ERR, Logger::ENGINES, lastCheckLongAgo)
-            << "free disk space capacity has reached critical level, "
-            << "bytes free: " << freeSpace 
-            << ", % free: " << Logger::FIXED(diskFreePercentage * 100.0, 1);
+      _healthData.freeDiskSpaceBytes = freeSpace;
+      _healthData.freeDiskSpacePercent = diskFreePercentage;
+
+      if (_healthData.res.ok() &&
+          ((_requiredDiskFreePercentage > 0.0 && diskFreePercentage < _requiredDiskFreePercentage) ||
+           (_requiredDiskFreeBytes > 0 && freeSpace < _requiredDiskFreeBytes))) {
+        std::stringstream ss;
+        ss << "free disk space capacity has reached critical level, "
+           << "bytes free: " << freeSpace 
+           << ", % free: " << std::setprecision(1) << std::fixed << (diskFreePercentage * 100.0);
         // go into failed state
-        isHealthy = false;
+        _healthData.res.reset(TRI_ERROR_FAILED, ss.str());
       } else if (diskFreePercentage < 0.05 || freeSpace < 256 * 1024 * 1024) {
-        LOG_TOPIC_IF("54e7f", WARN, Logger::ENGINES, lastCheckLongAgo)
-            << "free disk space capacity is low, "
-            << "bytes free: " << freeSpace 
-            << ", % free: " << Logger::FIXED(diskFreePercentage * 100.0, 1);
+        // warnings about disk space only every 15 minutes
+        bool lastLogWarningLongAgo = (now - _lastHealthLogWarningTimestamp >= std::chrono::minutes(15));
+        if (lastLogWarningLongAgo) {
+          LOG_TOPIC("54e7f", WARN, Logger::ENGINES)
+              << "free disk space capacity is low, "
+              << "bytes free: " << freeSpace 
+              << ", % free: " << std::setprecision(1) << std::fixed << (diskFreePercentage * 100.0);
+          _lastHealthLogWarningTimestamp = now;
+        }
         // don't go into failed state (yet)
       }
     }
-    _lastHealthCheckSuccessful = isHealthy;
+  }
+  
+  _lastHealthCheckSuccessful = _healthData.res.ok();
+
+  if (_healthData.res.fail() && lastLogMessageLongAgo) {
+    LOG_TOPIC("ead1f", ERR, Logger::ENGINES) << _healthData.res.errorMessage();
+    
+    // update timestamp of last log message
+    _lastHealthLogMessageTimestamp = now;
   }
 
-  return _lastHealthCheckSuccessful;
+  return _healthData;
 }
 
 }  // namespace arangodb

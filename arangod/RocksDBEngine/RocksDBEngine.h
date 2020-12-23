@@ -145,7 +145,7 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
-  bool checkHealth() override;
+  HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
@@ -511,11 +511,20 @@ class RocksDBEngine final : public StorageEngine {
   std::shared_ptr<RocksDBBackgroundErrorListener> _errorListener;
 
   arangodb::basics::ReadWriteLock _purgeLock;
-
+  
   /// @brief mutex that protects the storage engine health check
-  arangodb::Mutex _healthCheckMutex;
+  arangodb::Mutex _healthMutex;
 
-  std::chrono::steady_clock::time_point _lastHealthCheckTimestamp;
+  /// @brief timestamp of last health check log message. we only log health check
+  /// errors every so often, in order to prevent log spamming
+  std::chrono::steady_clock::time_point _lastHealthLogMessageTimestamp;
+  
+  /// @brief timestamp of last health check warning message. we only log health check
+  /// warnings every so often, in order to prevent log spamming
+  std::chrono::steady_clock::time_point _lastHealthLogWarningTimestamp;
+
+  /// @brief global health data, updated periodically
+  HealthData _healthData;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

@@ -82,8 +82,8 @@ bool ClusterEngine::isMock() const {
          (_actualEngine && _actualEngine->name() == "Mock");
 }
 
-bool ClusterEngine::checkHealth() {
-  return true;
+HealthData ClusterEngine::healthCheck() {
+  return {};
 }
 
 ClusterEngineType ClusterEngine::engineType() const {

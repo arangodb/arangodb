@@ -111,7 +111,7 @@ function storageEngineErrorSuite() {
       });
     
       // set failure point that triggers a storage engine error
-      debugSetFailAt(getEndpointById(dbservers[0].id), "RocksDBEngine::checkHealth");
+      debugSetFailAt(getEndpointById(dbservers[0].id), "RocksDBEngine::healthCheck");
       try {
         // wait until the DB server went into status BAD
         let result = waitUntil(coordinators[0], "BAD", dbservers[0].id, 20);

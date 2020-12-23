@@ -153,7 +153,7 @@ void RestAdminServerHandler::handleAvailability() {
       if (available) {
         // also ask storage engine for its health
         StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-        available = engine.checkHealth();
+        available = engine.healthCheck().res.ok();
       }
       break;
     }

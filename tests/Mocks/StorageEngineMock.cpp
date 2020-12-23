@@ -1427,8 +1427,8 @@ StorageEngineMock::StorageEngineMock(arangodb::application_features::Application
       vocbaseCount(1),
       _releasedTick(0) {}
 
-bool StorageEngineMock::checkHealth() {
-  return true;
+HealthData StorageEngineMock::healthCheck() {
+  return {};
 }
 
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {

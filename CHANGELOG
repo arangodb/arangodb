@@ -1,11 +1,10 @@
 devel
 -----
 
-* Make DB servers report storage engine errors to the agency, via a new "healthy"
+* Make DB servers report storage engine health to the agency, via a new "health"
   attribute in requests sent to Sync/ServerStates/<id>.
   The supervision can in the future check this attribute if it is posted,
-  and mark servers as BAD or FAILED in case an unhealthy status is
-  reported.
+  and mark servers as BAD or FAILED in case an unhealthy status is reported.
   DB server health is currently determined by whether or not the storage engine
   (RocksDB) has reported a background error, and by whether or not the free disk 
   space has reached a critical low amount. The current threshold for free disk

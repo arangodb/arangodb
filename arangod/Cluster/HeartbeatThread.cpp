@@ -1280,22 +1280,7 @@ bool HeartbeatThread::sendServerState() {
     timeout = 5.0;
   }
 
-  bool isHealthy = true;
-  if (ServerState::instance()->isDBServer()) {
-    // use storage engine health self-assessment and send it to agency too
-    isHealthy = _server.getFeature<EngineSelectorFeature>().engine().checkHealth();
-    if (!isHealthy) {
-      auto now = std::chrono::steady_clock::now();
-      if (now - _lastUnhealthyTimestamp > std::chrono::seconds(60)) {
-        // log only every 60 seconds to prevent log spamming in case the 
-        // unhealthiness persists
-        _lastUnhealthyTimestamp = now;
-        LOG_TOPIC("e4742", WARN, Logger::HEARTBEAT)
-          << "reporting storage engine unhealthiness to agency"; 
-      }
-    }
-  }
-  AgencyCommResult const result = _agency.sendServerState(timeout, isHealthy);
+  AgencyCommResult const result = _agency.sendServerState(timeout);
 
   if (result.successful()) {
     _numFails = 0;
