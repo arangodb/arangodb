@@ -1,8 +1,12 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Prevent a write to RocksDB during recovery in the case that the database
+  already exists. The write at startup is potentially blocking, and will delay
+  the startup for servers that were shut down while in a write-stopped state.
+
 * Fix recovery of "clientId" values in Agency when restarting an agent from
-  persistence. 
+  persistence.
 
 * Added "startupTime", "computationTime" and "storageTime" to Pregel result
   statistics.
