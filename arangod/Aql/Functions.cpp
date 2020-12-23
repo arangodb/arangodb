@@ -1124,7 +1124,8 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, AstNode const& n
   arangodb::aql::Function const* func = nullptr;
   if (ucInvokeFN.find("::") == std::string::npos) {
     // built-in C++ function
-    func = AqlFunctionFeature::getFunctionByName(ucInvokeFN);
+    auto& server = trx.vocbase().server();
+    func = server.getFeature<AqlFunctionFeature>().byName(ucInvokeFN);
     if (func->hasCxxImplementation()) {
       std::pair<size_t, size_t> numExpectedArguments = func->numArguments();
 

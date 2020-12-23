@@ -39,8 +39,6 @@ namespace aql {
 
 using FF = Function::Flags;
 
-AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
-
 AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
@@ -56,9 +54,6 @@ void AqlFunctionFeature::collectOptions(std::shared_ptr<options::ProgramOptions>
 void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 void AqlFunctionFeature::prepare() {
-  // set singleton
-  AQLFUNCTIONS = this;
-
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
   addTypeCastFunctions();
@@ -70,17 +65,6 @@ void AqlFunctionFeature::prepare() {
   addGeometryConstructors();
   addDateFunctions();
   addMiscFunctions();
-}
-
-void AqlFunctionFeature::unprepare() {
-  // Just unlink nothing more todo
-  AQLFUNCTIONS = nullptr;
-}
-
-/// @brief returns a reference to a built-in function
-Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
-  TRI_ASSERT(AQLFUNCTIONS != nullptr);
-  return AQLFUNCTIONS->byName(name);
 }
 
 void AqlFunctionFeature::add(Function const& func) {
