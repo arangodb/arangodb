@@ -171,7 +171,6 @@ void TRI_ClearFailurePointsDebugging() {
 
   ::failurePoints.clear();
 }
-
 #endif
 
 /// @brief appends a backtrace to the string provided

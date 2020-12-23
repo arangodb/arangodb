@@ -51,6 +51,7 @@ struct TransactionStatistics {
   Counter& _lockTimeMicros;
   // histogram for lock acquisition (in seconds)
   Histogram<log_scale_t<double>>& _lockTimes;
+  Counter& _sequentialLocks;
 };
 
 struct ServerStatistics {

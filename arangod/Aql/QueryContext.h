@@ -124,6 +124,9 @@ class QueryContext {
   /// @brief whether or not a query is a modification query
   virtual bool isModificationQuery() const noexcept = 0;
   virtual bool isAsyncQuery() const noexcept = 0;
+
+  virtual double getLockTimeout() const noexcept = 0;
+  virtual void setLockTimeout(double timeout) = 0;
   
  public:
   

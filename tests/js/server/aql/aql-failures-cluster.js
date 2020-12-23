@@ -80,13 +80,27 @@ function ahuacatlFailureSuite () {
     testQueryRegistryInsert1 : function () {
       internal.debugSetFailAt("QueryRegistryInsertException1");
       // we need a diamond-query to trigger an insertion into the q-registry
-      assertFailingQuery("FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key != doc2._key RETURN 1", internal.errors.ERROR_CLUSTER_AQL_COMMUNICATION);
+      assertFailingQuery(
+        "FOR doc1 IN " +
+          cn +
+          " FOR doc2 IN " +
+          cn +
+          " FILTER doc1._key != doc2._key RETURN 1",
+        internal.errors.ERROR_DEBUG
+      );
     },
     
     testQueryRegistryInsert2 : function () {
       internal.debugSetFailAt("QueryRegistryInsertException2");
       // we need a diamond-query to trigger an insertion into the q-registry
-      assertFailingQuery("FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key != doc2._key RETURN 1", internal.errors.ERROR_CLUSTER_AQL_COMMUNICATION);
+      assertFailingQuery(
+        "FOR doc1 IN " +
+          cn +
+          " FOR doc2 IN " +
+          cn +
+          " FILTER doc1._key != doc2._key RETURN 1",
+        internal.errors.ERROR_DEBUG
+      );
     },
     
     testShutdownSync : function () {

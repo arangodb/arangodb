@@ -115,6 +115,7 @@ add_library(arango STATIC
   Basics/ConditionVariable.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
