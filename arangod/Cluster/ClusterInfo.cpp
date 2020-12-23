@@ -445,8 +445,7 @@ void ClusterInfo::flush() {
 /// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
-
+bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID) {
   // Wait for sensible data in agency cache
   if (!_planProt.isValid) {
     waitForPlan(1).wait();
@@ -495,7 +494,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
+std::vector<DatabaseID> ClusterInfo::databases() {
   std::vector<DatabaseID> result;
 
   if (_clusterId.empty()) {
@@ -510,7 +509,7 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
     waitForCurrent(1).wait();
   }
 
-  if (reload || !_DBServersProt.isValid) {
+  if (!_DBServersProt.isValid) {
     loadCurrentDBServers();
   }
 
