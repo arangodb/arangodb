@@ -826,7 +826,8 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
   }
 
   if (writeAnalyzerDefinition && ServerState::instance()->isClusterRole()
-      && (!mask || mask->_collectionName)) {
+      && (!mask || mask->_collectionName)
+      && !_collectionName.empty()) { // for old-style link meta do not emit empty value to match stored definition
      addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
 
