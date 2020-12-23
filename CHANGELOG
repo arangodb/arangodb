@@ -4,13 +4,25 @@ v3.7.6 (XXXX-XX-XX)
 * Fix recovery of "clientId" values in Agency when restarting an agent from
   persistence. 
 
-* Fix ordering of followerInfo lists in maintainer mode.
+* Added "startupTime", "computationTime" and "storageTime" to Pregel result
+  statistics.
+
+* Add query execution time and query id to audit log query messages.
+
+* Fixed issue #13238 Thread naming API on Windows are now used only if
+  available in KERNEL32.DLL
+
+* Fix for issue #772: Optimized document counting for ArangoSearch views.
+  Added new ArangoSearch view option 'countApproximate' for customizing view
+  count strategy.
+
+* Fix ordering of FollowerInfo lists in maintainer mode.
 
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
 * Added SNI support for arangosh.
 
-* Fix agency restart with mismatching compation and log indexes
+* Fix agency restart with mismatching compation and log indexes.
 
 * Improve performance and memory efficiency of agency restart from persisted
   database directory.
