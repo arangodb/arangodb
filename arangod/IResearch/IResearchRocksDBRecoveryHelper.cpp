@@ -221,7 +221,7 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(application_featu
     : _server(server) {}
 
 void IResearchRocksDBRecoveryHelper::prepare() {
-  _dbFeature = DatabaseFeature::DATABASE;
+  _dbFeature = &_server.getFeature<DatabaseFeature>();
   _engine = &_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   _documentCF = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
                     ->GetID();

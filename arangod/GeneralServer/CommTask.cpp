@@ -88,7 +88,8 @@ CommTask::~CommTask() = default;
 // -----------------------------------------------------------------------------
 
 namespace {
-TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
+TRI_vocbase_t* lookupDatabaseFromRequest(application_features::ApplicationServer& server,
+                                         GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database name
@@ -96,13 +97,14 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
     req.setDatabaseName(StaticStrings::SystemDatabase);
   }
 
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-  return databaseFeature->useDatabase(req.databaseName());
+  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
+  return databaseFeature.useDatabase(req.databaseName());
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(GeneralRequest& req) {
-  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(req);
+bool resolveRequestContext(application_features::ApplicationServer& server,
+                           GeneralRequest& req) {
+  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -214,7 +216,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
   }
 
   // Step 3: Try to resolve vocbase and use
-  if (!::resolveRequestContext(req)) {  // false if db not found
+  if (!::resolveRequestContext(_server.server(), req)) {  // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;

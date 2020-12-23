@@ -126,8 +126,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   // required for AuthenticationFeature with USE_ENTERPRISE
   server.addFeature<arangodb::LdapFeature>(false);
 #endif
-
-  arangodb::DatabaseFeature::DATABASE = &server.getFeature<arangodb::DatabaseFeature>();
 }
 
 static void SetupClusterFeaturePhase(MockServer& server) {

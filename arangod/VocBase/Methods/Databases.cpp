@@ -64,13 +64,6 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
-  if (DatabaseFeature::DATABASE != nullptr) {
-    return DatabaseFeature::DATABASE->lookupDatabase(dbname);
-  }
-  return nullptr;
-}
-
 std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
                                          std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
@@ -357,10 +350,9 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
 }
 
 namespace {
-int dropDBCoordinator(std::string const& dbName) {
+int dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
   // Arguments are already checked, there is exactly one argument
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-  TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
+  TRI_vocbase_t* vocbase = df.useDatabase(dbName);
 
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
@@ -381,7 +373,7 @@ int dropDBCoordinator(std::string const& dbName) {
   int tries = 0;
 
   while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
+    TRI_vocbase_t* vocbase = df.useDatabase(id);
 
     if (vocbase == nullptr) {
       // object has vanished
@@ -430,9 +422,10 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
 
         if (ServerState::instance()->isCoordinator()) {
           // If we are a coordinator in a cluster, we have to behave differently:
-          res = ::dropDBCoordinator(dbName);
+          auto& df = server.getFeature<DatabaseFeature>();
+          res = ::dropDBCoordinator(df, dbName);
         } else {
-          res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
+          res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
 
           if (res.fail()) {
             events::DropDatabase(dbName, res, exec);
@@ -459,9 +452,10 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
   } else {
     if (ServerState::instance()->isCoordinator()) {
       // If we are a coordinator in a cluster, we have to behave differently:
-      res = ::dropDBCoordinator(dbName);
+      auto& df = server.getFeature<DatabaseFeature>();
+      res = ::dropDBCoordinator(df, dbName);
     } else {
-      res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
+      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
     }
   }
 

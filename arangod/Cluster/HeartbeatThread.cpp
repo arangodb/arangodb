@@ -705,7 +705,8 @@ void HeartbeatThread::runSingleServer() {
       // check current local version of database objects version, and bump
       // the global version number in the agency in case it changed. this
       // informs other listeners about our local DDL changes
-      uint64_t currentVersion = DatabaseFeature::DATABASE->versionTracker()->current();
+      uint64_t currentVersion =
+          _server.getFeature<DatabaseFeature>().versionTracker()->current();
       if (currentVersion != lastSentVersion) {
         AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
         AgencyWriteTransaction trx(incrementVersion);
