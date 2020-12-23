@@ -48,21 +48,18 @@ function aqlRegistersLimitTestSuite () {
 
   return {
     testBelowLimit : function () {
-      return;
       let query = buildQuery(maxRegisters - 1);
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(maxRegisters - 1, plan.variables.length);
     },
     
     testAtLimit : function () {
-      return;
       let query = buildQuery(maxRegisters);
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(maxRegisters, plan.variables.length);
     },
     
     testBeyondLimit : function () {
-      return;
       let query = buildQuery(maxRegisters + 1);
       try {
         AQL_EXPLAIN(query);
