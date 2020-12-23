@@ -4,6 +4,10 @@ devel
 * Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
   makes the API adhere better to the official Prometheus syntax.
 
+* Remove HTTP "Connection" header when forwarding requests in the cluster
+  from one coordinator to another, and let the internal network layer
+  handle closing of connections and keep-alive.
+
 * Added new metric: "arangodb_collection_lock_sequential_mode" this will count
   how many times we need to do a sequential locking of collections. If this
   metric increases this indicates lock contention in transaction setup.
