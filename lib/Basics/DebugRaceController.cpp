@@ -41,7 +41,10 @@ void DebugRaceController::reset() {
   _didTrigger = false;
 }
 
-bool DebugRaceController::didTrigger() const { return _didTrigger; }
+bool DebugRaceController::didTrigger() const { 
+  std::unique_lock<std::mutex> guard(_mutex);
+  return _didTrigger; 
+}
 
 std::vector<std::any> DebugRaceController::data() const { 
   std::unique_lock<std::mutex> guard(_mutex);
