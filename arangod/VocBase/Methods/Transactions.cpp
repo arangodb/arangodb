@@ -358,6 +358,10 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
                                                     exclusiveCollections, trxOptions);
   trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (ServerState::instance()->isCoordinator()) {
+    // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and potentialy reroll it.
+    trx->addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
+  }
 
   rv = trx->begin();
 
