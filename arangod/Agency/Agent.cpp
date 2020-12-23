@@ -707,7 +707,7 @@ void Agent::sendAppendEntriesRPC() {
       size_t toLog = 0;
       index_t highest = 0;
       for (size_t i = 0; i < unconfirmed.size(); ++i) {
-        auto const& entry = unconfirmed.at(i);
+        auto const& entry = unconfirmed[i];
         if (entry.index > lastConfirmed) {
           // This condition is crucial, because usually we have one more
           // entry than we need in unconfirmed, so we want to skip this. If,
@@ -715,14 +715,7 @@ void Agent::sendAppendEntriesRPC() {
           // with the same index than the snapshot along to retain the
           // invariant of our data structure that the _log in _state is
           // non-empty.
-          {
-            VPackObjectBuilder o(&builder);
-            builder.add("index", VPackValue(entry.index));
-            builder.add("term", VPackValue(entry.term));
-            builder.add("query", VPackSlice(entry.entry->data()));
-            builder.add("clientId", VPackValue(entry.clientId));
-            builder.add("timestamp", VPackValue(entry.timestamp.count()));
-          }
+          entry.toVelocyPack(builder);
           highest = entry.index;
           ++toLog;
         }
@@ -1347,7 +1340,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if ((!loaded() && wmode != WriteMode(true,true)) || (multihost && leader != id())) {
+  if ((!loaded() && wmode != WriteMode(true, true)) || (multihost && leader != id())) {
     ++_write_no_leader;
     return write_ret_t(false, leader);
   }
