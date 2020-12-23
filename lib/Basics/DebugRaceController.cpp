@@ -43,7 +43,10 @@ void DebugRaceController::reset() {
 
 bool DebugRaceController::didTrigger() const { return _didTrigger; }
 
-std::vector<std::any> DebugRaceController::data() const { return _data; }
+std::vector<std::any> DebugRaceController::data() const { 
+  std::unique_lock<std::mutex> guard(_mutex);
+  return _data; 
+}
 
 void DebugRaceController::waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
                                         arangodb::application_features::ApplicationServer const& server) {
