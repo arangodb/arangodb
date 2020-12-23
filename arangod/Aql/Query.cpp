@@ -200,6 +200,14 @@ std::string const& Query::user() const {
   return _user;
 }
 
+double Query::getLockTimeout() const noexcept {
+  return _queryOptions.transactionOptions.lockTimeout;
+}
+
+void Query::setLockTimeout(double timeout) noexcept {
+  _queryOptions.transactionOptions.lockTimeout = timeout;
+}
+
 bool Query::killed() const {
   if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
       elapsedSince(_startTime) > _queryOptions.maxRuntime) {
@@ -1340,4 +1348,3 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   
   return ExecutionState::WAITING;
 }
-
