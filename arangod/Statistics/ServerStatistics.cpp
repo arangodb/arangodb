@@ -57,7 +57,7 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
       _sequentialLocks(
           _metrics.counter("arangodb_collection_lock_sequential_mode", 0,
                            "Number of transactions using sequential locking of "
-                           "collections to avoid deadlocking.")) {}
+                           "collections to avoid deadlocking")) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
