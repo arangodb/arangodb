@@ -79,7 +79,7 @@ RestStatus RestAdminExecuteHandler::execute() {
     LOG_TOPIC("c838e", DEBUG, Logger::SECURITY) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
 
     // get a V8 context
-    bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+    bool const allowUseDatabase = server().getFeature<ActionFeature>().allowUseDatabase();
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestAdminScriptActionContext(allowUseDatabase);
     V8ContextGuard guard(&_vocbase, securityContext);
 
