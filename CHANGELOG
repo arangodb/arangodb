@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add some more metrics to the ConnectionPool.
+
 * Reduce overhead of audit logging functionality if audit logging is turned
   off.
 
