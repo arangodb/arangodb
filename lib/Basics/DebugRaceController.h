@@ -63,7 +63,7 @@ class DebugRaceController {
 
  private:
   bool _didTrigger{false};
-  std::mutex _mutex{};
+  std::mutex mutable _mutex{};
   std::vector<std::any> _data{};
   std::condition_variable _condVariable{};
 };
