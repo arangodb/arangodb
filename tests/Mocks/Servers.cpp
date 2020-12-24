@@ -212,15 +212,18 @@ void MockServer::startFeatures() {
   }
 
   for (ApplicationFeature& f : orderedFeatures) {
-    if (f.name() == "Endpoint") {
-      // We need this feature to be there but do not use it.
-      continue;
-    }
-    try {
-      f.prepare();
-    } catch (...) {
-      LOG_DEVEL << "unexpected exception in "
-                << boost::core::demangle(typeid(f).name()) << "::prepare";
+    auto info = _features.find(&f);
+    if(info != _features.end()) {
+      if (f.name() == "Endpoint") {
+        // We need this feature to be there but do not use it.
+        continue;
+      }
+      try {
+        f.prepare();
+      } catch (...) {
+        LOG_DEVEL << "unexpected exception in "
+                  << boost::core::demangle(typeid(f).name()) << "::prepare";
+      }
     }
   }
 
@@ -235,13 +238,14 @@ void MockServer::startFeatures() {
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     // We only start those features...
-    TRI_ASSERT(info != _features.end());
-    if (info->second) {
-      try {
-        f.start();
-      } catch (...) {
-        LOG_DEVEL << "unexpected exception in "
-                  << boost::core::demangle(typeid(f).name()) << "::start";
+    if(info != _features.end()) {
+      if (info->second) {
+        try {
+          f.start();
+        } catch (...) {
+          LOG_DEVEL << "unexpected exception in "
+                    << boost::core::demangle(typeid(f).name()) << "::start";
+        }
       }
     }
   }
@@ -273,23 +277,28 @@ void MockServer::stopFeatures() {
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     // We only start those features...
-    TRI_ASSERT(info != _features.end());
-    if (info->second) {
-      try {
-        f.stop();
-      } catch (...) {
-        LOG_DEVEL << "unexpected exception in "
-                  << boost::core::demangle(typeid(f).name()) << "::stop";
+    if(info != _features.end()) {
+      if (info->second) {
+        try {
+          f.stop();
+        } catch (...) {
+          LOG_DEVEL << "unexpected exception in "
+                    << boost::core::demangle(typeid(f).name()) << "::stop";
+        }
       }
     }
   }
 
   for (ApplicationFeature& f : orderedFeatures) {
-    try {
-      f.unprepare();
-    } catch (...) {
-      LOG_DEVEL << "unexpected exception in "
-                << boost::core::demangle(typeid(f).name()) << "::unprepare";
+    auto info = _features.find(&f);
+    // We only start those features...
+    if(info != _features.end()) {
+      try {
+        f.unprepare();
+      } catch (...) {
+        LOG_DEVEL << "unexpected exception in "
+                  << boost::core::demangle(typeid(f).name()) << "::unprepare";
+      }
     }
   }
 }
@@ -490,12 +499,8 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   std::string st = ts.specialize(plan_dbs_string);
 
   agencyTrx("/arango/Plan/Databases/" + name, st);
-  st = ts.specialize(plan_colls_string);
-  agencyTrx("/arango/Plan/Collections/" + name, st);
   st = ts.specialize(current_dbs_string);
   agencyTrx("/arango/Current/Databases/" + name, st);
-  st = ts.specialize(current_colls_string);
-  agencyTrx("/arango/Current/Collections/" + name, st);
 
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
     agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
@@ -503,51 +508,17 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
     agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
 }
 
-/// @brief Single collection segment from Plan.
-/// copied from plan_colls_string. To make it 
-/// predictable has two placeholders $collectionName$ for
-/// collection name and $collectionId$ for collection id.
-/// Do not forget to reset placeholders if regenerating!
-char const* plan_new_col = R"=({"waitForSync":false,"type":2,"status":3,"shards":
-{"s10084":["PRMR-ab4cdcec-bae6-4998-af25-a93c0b4a3ada",
-"PRMR-8cb161bd-aa92-4d02-a0c3-9e48096e18a0"]},"statusString":
-"loaded","shardingStrategy":"hash","shardKeys":["_key"],
-"replicationFactor":2,"numberOfShards":1,"keyOptions":{"type":
-"traditional","allowUserKeys":true},"isSystem":true,"name":
-"$collectionName$","indexes":[{"id":"0","type":"primary","name":
-"primary","fields":["_key"],"unique":true,"sparse":false
-}],"isSmart":false,"id":"$collectionId$","distributeShardsLike":
-"10069","deleted":false,"minReplicationFactor":1,"cacheEnabled":
-false})=";
-
-
-namespace {
-// FIXME: find more standart way to do this
-void search_replace(std::string& str, const std::string& search,
-                    const std::string& replace) {
-  size_t pos = 0;
-  auto const repl_len = replace.length();
-  auto search_len = search.length();
-  while((pos = str.find(search, pos)) != std::string::npos) {
-    str.replace(pos, search_len, replace);
-    pos += repl_len;
-  }
-}
-}
-
-void MockClusterServer::agencyCreateCollection(std::string const& vocbaseName,
-                                               std::string const& collId,
-                                               std::string const& collectionName) {
-  TemplateSpecializer ts(vocbaseName);
-  std::string st = ts.specialize(plan_new_col);
-  search_replace(st, "$collectionName$", collectionName);
-  search_replace(st, "$collectionId$", collId);
-  agencyTrx("/arango/Plan/Collections/" + vocbaseName + "/" + collId, st);
+void MockClusterServer::agencyCreateCollections(std::string const& name) {
+  TemplateSpecializer ts(name);
+  std::string st = ts.specialize(plan_colls_string);
+  agencyTrx("/arango/Plan/Collections/" + name, st);
+  st = ts.specialize(current_colls_string);
+  agencyTrx("/arango/Current/Collections/" + name, st);
 
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
-  agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
-  agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+    agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
 }
 
 void MockClusterServer::agencyDropDatabase(std::string const& name) {
@@ -589,6 +560,7 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
     maintenance::CreateDatabase cd(mf, ad);
     cd.first();  // Does the job
   }
+  agencyCreateCollections(name);
 
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
@@ -612,21 +584,6 @@ void MockDBServer::dropDatabase(std::string const& name) {
   dd.first();  // Does the job
 }
 
-void MockDBServer::createCollection(std::string const& vocbaseName,
-                                    std::string const& collId,
-                                    std::string const& collectionName) {
-
-  // A bit kludge. We just write collection to plan!
-  agencyCreateCollection(vocbaseName, collId, collectionName);
-  //// Now we must run a maintenance action to create the collection locally:
-  //maintenance::ActionDescription ad(
-  //  {{std::string(maintenance::NAME), std::string(maintenance::CREATE_COLLECTION)},
-  //   {std::string(maintenance::DATABASE), std::string(vocbaseName)}},
-  //  maintenance::HIGHER_PRIORITY, false);
-  //auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
-  //maintenance::CreateCollection cc(mf, ad);
-  //cc.first();  // Does the job
-}
 
 MockCoordinator::MockCoordinator(bool start) : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
@@ -640,6 +597,7 @@ MockCoordinator::~MockCoordinator() = default;
 
 TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);
+  agencyCreateCollections(name);
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase != nullptr);
