@@ -866,7 +866,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"virtualSize",
    {"arangodb_process_statistics_virtual_memory_size ", "gauge", "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.\n"}},
   {"clientHttpConnections",
-   {"arangodb_client_connection_statistics_client_connections ", "guage",
+   {"arangodb_client_connection_statistics_client_connections ", "gauge",
     "The number of client connections that are currently open.\n"}},
   {"connectionTimeCounts",
    {"arangodb_client_connection_statistics_connection_time_bucket", "gauge",
