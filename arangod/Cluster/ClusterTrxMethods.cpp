@@ -272,18 +272,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                     << resp.combinedResult().errorMessage();
 
                 Result r = cc->followers()->remove(follower);
-                if (r.ok()) {
-                  // TODO: what happens if a server is re-added during a transaction ?
-                  LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                      << "synchronous replication: dropped follower "
-                      << follower << " for shard " << tc.collectionName()
-                      << " in database " << cc->vocbase().name();
-                  LOG_TOPIC("b071c", WARN, Logger::DEVEL)
-                      << "synchronous replication: dropping follower "
-                      << follower << " for shard " << tc.collectionName()
-                      << " in database " << cc->vocbase().name()
-                      << ": " << resp.combinedResult().errorMessage();
-                } else {
+                if (r.fail()) {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
                       << "synchronous replication: could not drop follower "
                       << follower << " for shard " << tc.collectionName()
