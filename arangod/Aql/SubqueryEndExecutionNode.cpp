@@ -91,7 +91,9 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                  getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                 calcRegsToKeep(), vpackOptions, inReg, outReg);
+                                 calcRegsToKeep(), vpackOptions, 
+                                 _plan->getAst()->query()->resourceMonitor(), 
+                                 inReg, outReg);
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
                                                                    std::move(infos));
@@ -121,6 +123,11 @@ CostEstimate SubqueryEndNode::estimateCost() const {
   TRI_ASSERT(_dependencies.size() == 1);
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  // Restore the nrItems that were saved at the corresponding SubqueryStartNode.
+  estimate.restoreEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
 
   return estimate;
 }

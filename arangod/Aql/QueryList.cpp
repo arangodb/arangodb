@@ -169,7 +169,7 @@ void QueryList::remove(Query* query) {
 
   try {
     // check if we need to push the query into the list of slow queries
-    if (elapsed >= threshold && !query->killed()) {
+    if (elapsed >= threshold) {
       // yes.
   
       _queryRegistryFeature.trackSlowQuery(elapsed);

@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Aql/AqlValue.h"
-#include "Aql/ResourceUsage.h"
+#include "Basics/ResourceUsage.h"
 
 #include <set>
 #include <unordered_map>
@@ -83,7 +83,7 @@ class AqlItemBlock {
  private:
   void destroy() noexcept;
 
-  ResourceMonitor& resourceMonitor() noexcept;
+  arangodb::ResourceMonitor& resourceMonitor() noexcept;
 
   void increaseMemoryUsage(size_t value);
 
