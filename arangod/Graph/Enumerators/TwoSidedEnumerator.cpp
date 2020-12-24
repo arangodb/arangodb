@@ -37,6 +37,7 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
+#include "Graph/algorithm-aliases.h"
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>

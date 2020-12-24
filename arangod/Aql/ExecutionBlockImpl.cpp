@@ -81,6 +81,7 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
+#include "Graph/algorithm-aliases.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
@@ -89,14 +90,11 @@
 
 #include <type_traits>
 
-using KPathRefactored = arangodb::graph::TwoSidedEnumerator<
-    arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>,
-    arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>, arangodb::graph::SingleServerProvider>;
+using KPathRefactored =
+    arangodb::graph::KPathEnumerator<arangodb::graph::SingleServerProvider>;
 
-using KPathRefactoredTracer = arangodb::graph::TwoSidedEnumerator<
-    arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>>,
-    arangodb::graph::PathStoreTracer<arangodb::graph::PathStore<arangodb::graph::SingleServerProvider::Step>>,
-    arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider>>;
+using KPathRefactoredTracer =
+    arangodb::graph::TracedKPathEnumerator<arangodb::graph::SingleServerProvider>;
 
 using namespace arangodb;
 using namespace arangodb::aql;
