@@ -710,12 +710,12 @@ function GenericAqlSetupPathSuite(type) {
           // Both transactions need to write
           return false;
         }
-        if (sExclusive === NO_SHARD_SYNC || fExclusive == NO_SHARD_SYNC) {
+        if (sExclusive === NO_SHARD_SYNC || fExclusive === NO_SHARD_SYNC) {
           // We do not sync shard-locks, so no deadlock possible
           return false;
         }
         // If any of the writes is exclusive we enfoce sequential locking
-        return fExclusive === USE_EXCLUSIVE || sExclusive == USE_EXCLUSIVE;
+        return fExclusive === USE_EXCLUSIVE || sExclusive === USE_EXCLUSIVE;
       };
 
       if (expectsSequentialLock()) {
