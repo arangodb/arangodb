@@ -1,7 +1,11 @@
-v3.6.10 (XXXX-XX-XX)
+v3.6.11 (XXXX-XX-XX)
 --------------------
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+
+v3.6.10 (XXXX-XX-XX)
+--------------------
 
 * Updated ArangoDB Starter to 0.14.15-1.
 
