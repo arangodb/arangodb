@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
@@ -280,6 +281,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   if (!AccessMode::isWriteOrExclusive(type)) {
+    // read operations do not require any locks in RocksDB
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
   }
@@ -321,10 +323,20 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC("4512c", WARN, Logger::QUERIES)
-        << "timed out after " << timeout << " s waiting for "
-        << AccessMode::typeString(type) << "-lock on collection '"
-        << _collection->name() << "'";
+    char const* actor = _transaction->actorName();
+    TRI_ASSERT(actor != nullptr);
+    std::string message = "timed out after " + std::to_string(timeout) + " s waiting for "
+         + AccessMode::typeString(type) + "-lock on collection "
+         + _transaction->vocbase().name() + "/" + _collection->name() + " on " + actor;
+    LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
+
+    // increase counter for lock timeouts
+    auto& stats = _transaction->statistics();
+    if (AccessMode::isExclusive(type)) {
+      ++stats._exclusiveLockTimeouts;
+    } else {
+      ++stats._writeLockTimeouts;
+    }
   }
 
   return res;

@@ -124,6 +124,11 @@ CostEstimate SubqueryEndNode::estimateCost() const {
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
 
+  // Restore the nrItems that were saved at the corresponding SubqueryStartNode.
+  estimate.restoreEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
+
   return estimate;
 }
 
