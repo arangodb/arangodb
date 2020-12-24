@@ -623,6 +623,31 @@ TEST_P(KPathFinderTest_Refactored, triangle_loop) {
   }
 }
 
+TEST_P(KPathFinderTest_Refactored, triangle_loop_skip) {
+  auto finder = pathFinder(1, 10);
+
+  // Source and target are direkt neighbors, there is only one path between them
+  auto source = vId(30);
+  auto target = vId(34);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    auto skippedPath = finder.skipPath();
+    EXPECT_TRUE(skippedPath);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    // Try to skip again to make sure we are not looping here
+    auto skippedPath = finder.skipPath();
+    EXPECT_FALSE(skippedPath);
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
 TEST_P(KPathFinderTest_Refactored, many_neighbours_source) {
   VPackBuilder result;
   auto finder = pathFinder(1, 10);
