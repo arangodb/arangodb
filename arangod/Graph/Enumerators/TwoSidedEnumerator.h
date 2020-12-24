@@ -176,6 +176,10 @@ class TwoSidedEnumerator {
   // generate the resulting path
   auto fetchResults() -> void;
 
+  // Ensure that we have more valid paths in the _result stock.
+  // May be a noop if _result is not empty.
+  auto searchMoreResults() -> void;
+
  private:
   GraphOptions _options;
   Ball _left;

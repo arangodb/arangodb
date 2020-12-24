@@ -304,24 +304,7 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef
 template <class QueueType, class PathStoreType, class ProviderType>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPackBuilder& result) {
   while (!isDone()) {
-    while (_results.empty() && !searchDone()) {
-      _resultsFetched = false;
-      if (_searchLeft) {
-        if (ADB_UNLIKELY(_left.doneWithDepth())) {
-          startNextDepth();
-        } else {
-          _left.computeNeighbourhoodOfNextVertex(_right, _results);
-        }
-      } else {
-        if (ADB_UNLIKELY(_right.doneWithDepth())) {
-          startNextDepth();
-        } else {
-          _right.computeNeighbourhoodOfNextVertex(_left, _results);
-        }
-      }
-    }
-
-    fetchResults();
+    searchMoreResults();
 
     while (!_results.empty()) {
       auto const& [leftVertex, rightVertex] = _results.back();
@@ -341,6 +324,28 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPa
   return false;
 }
 
+template <class QueueType, class PathStoreType, class ProviderType>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::searchMoreResults() {
+  while (_results.empty() && !searchDone()) {
+    _resultsFetched = false;
+    if (_searchLeft) {
+      if (ADB_UNLIKELY(_left.doneWithDepth())) {
+        startNextDepth();
+      } else {
+        _left.computeNeighbourhoodOfNextVertex(_right, _results);
+      }
+    } else {
+      if (ADB_UNLIKELY(_right.doneWithDepth())) {
+        startNextDepth();
+      } else {
+        _right.computeNeighbourhoodOfNextVertex(_left, _results);
+      }
+    }
+  }
+
+  fetchResults();
+}
+
 /**
  * @brief Skip the next Path, like getNextPath, but does not return the path.
  *
@@ -350,6 +355,15 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(VPa
 
 template <class QueueType, class PathStoreType, class ProviderType>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::skipPath() {
+  while (!isDone()) {
+    searchMoreResults();
+
+    while (!_results.empty()) {
+      // just drop one result for skipping
+      _results.pop_back();
+      return true;
+    }
+  }
   return false;
 }
 

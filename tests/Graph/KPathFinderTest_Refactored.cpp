@@ -107,6 +107,49 @@ class KPathFinderTest_Refactored
     mockGraph.addEdge(32, 33);
     mockGraph.addEdge(33, 31);
     mockGraph.addEdge(32, 34);
+
+    /* many neighbors at source (35 -> 40) */
+    /* neighbors at start loop back to start */
+    mockGraph.addEdge(35, 36);
+    mockGraph.addEdge(36, 37);
+    mockGraph.addEdge(37, 38);
+    mockGraph.addEdge(38, 39);
+    mockGraph.addEdge(39, 40);
+    mockGraph.addEdge(35, 41);
+    mockGraph.addEdge(35, 42);
+    mockGraph.addEdge(35, 43);
+    mockGraph.addEdge(35, 44);
+    mockGraph.addEdge(35, 45);
+    mockGraph.addEdge(35, 46);
+    mockGraph.addEdge(35, 47);
+    mockGraph.addEdge(41, 35);
+    mockGraph.addEdge(42, 35);
+    mockGraph.addEdge(43, 35);
+    mockGraph.addEdge(44, 35);
+    mockGraph.addEdge(45, 35);
+    mockGraph.addEdge(46, 35);
+    mockGraph.addEdge(47, 35);
+
+    /* many neighbors at target (48 -> 53) */
+    /* neighbors at target loop back to target */
+    mockGraph.addEdge(48, 49);
+    mockGraph.addEdge(49, 50);
+    mockGraph.addEdge(50, 51);
+    mockGraph.addEdge(51, 52);
+    mockGraph.addEdge(52, 53);
+    mockGraph.addEdge(54, 53);
+    mockGraph.addEdge(55, 53);
+    mockGraph.addEdge(56, 53);
+    mockGraph.addEdge(57, 53);
+    mockGraph.addEdge(58, 53);
+    mockGraph.addEdge(59, 53);
+    mockGraph.addEdge(53, 52);
+    mockGraph.addEdge(53, 54);
+    mockGraph.addEdge(53, 55);
+    mockGraph.addEdge(53, 56);
+    mockGraph.addEdge(53, 57);
+    mockGraph.addEdge(53, 58);
+    mockGraph.addEdge(53, 59);
   }
 
   auto looseEndBehaviour() const -> MockGraphProvider::LooseEndBehaviour {
@@ -479,6 +522,45 @@ TEST_P(KPathFinderTest_Refactored, path_depth_2_to_3) {
   }
 }
 
+TEST_P(KPathFinderTest_Refactored, path_depth_2_to_3_skip) {
+  VPackBuilder result;
+  auto finder = pathFinder(2, 3);
+
+  // Source and target are direkt neighbors, there is only one path between them
+  auto source = vId(10);
+  auto target = vId(11);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    // Skip one path.
+    // We still have another one
+    result.clear();
+    auto skipped = finder.skipPath();
+    EXPECT_TRUE(skipped);
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 3);
+    pathEquals(result.slice(), {10, 12, 13, 11});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
 TEST_P(KPathFinderTest_Refactored, path_loop) {
   VPackBuilder result;
   auto finder = pathFinder(1, 10);
@@ -527,6 +609,68 @@ TEST_P(KPathFinderTest_Refactored, triangle_loop) {
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 3);
     pathEquals(result.slice(), {30, 31, 32, 34});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(KPathFinderTest_Refactored, many_neighbours_source) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+
+  // source has a lot of neighbors, it is better to start at target
+  auto source = vId(35);
+  auto target = vId(40);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 5);
+    pathEquals(result.slice(), {35, 36, 37, 38, 39, 40});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(KPathFinderTest_Refactored, many_neighbours_target) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+
+  // target has a lot of neighbors, it is better to start at source
+  auto source = vId(48);
+  auto target = vId(53);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 5);
+    pathEquals(result.slice(), {48, 49, 50, 51, 52, 53});
 
     EXPECT_FALSE(finder.isDone());
   }
