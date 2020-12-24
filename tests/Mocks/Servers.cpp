@@ -134,6 +134,11 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<arangodb::application_features::ClusterFeaturePhase>(false);
   server.addFeature<arangodb::ClusterFeature>(false);
+ 
+  // fake the exit code with which unresolved futures are returned on
+  // shutdown. if we don't do this lots of places in ClusterInfo will
+  // report failures during testing
+  server.getFeature<ClusterFeature>().setSyncerShutdownCode(TRI_ERROR_NO_ERROR);
 }
 
 static void SetupCommunicationFeaturePhase(MockServer& server) {

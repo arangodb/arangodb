@@ -37,16 +37,25 @@ using namespace arangodb::consensus;
 
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
-  AgencyCallbackRegistry& callbackRegistry)
+  AgencyCallbackRegistry& callbackRegistry,
+  int shutdownCode)
   : Thread(server, "AgencyCache"), 
     _commitIndex(0), 
     _readDB(server, nullptr, "readDB"),
+    _shutdownCode(shutdownCode),
     _initialized(false), 
     _callbackRegistry(callbackRegistry), 
     _lastSnapshot(0),
     _callbacksCount(
       _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {}
+        "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#else
+  TRI_ASSERT(_shutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#endif
+}
 
 AgencyCache::~AgencyCache() {
   try {
@@ -482,7 +491,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
         pp->setValue(Result());
       }
     } else {
-      pp->setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pp->setValue(Result(_shutdownCode));
     }
     pit = _waiting.erase(pit);
   }
@@ -544,7 +553,7 @@ void AgencyCache::beginShutdown() {
     std::lock_guard g(_waitLock);
     auto pit = _waiting.begin();
     while (pit != _waiting.end()) {
-      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pit->second.setValue(Result(_shutdownCode));
       ++pit;
     }
     _waiting.clear();
