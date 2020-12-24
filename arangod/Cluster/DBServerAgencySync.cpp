@@ -203,7 +203,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
-
+  
   auto serverId = arangodb::ServerState::instance()->getId();
 
   // It is crucial that the following happens before we do `getLocalCollections`!
