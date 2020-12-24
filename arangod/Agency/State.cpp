@@ -796,16 +796,21 @@ void State::dropCollection(std::string const& colName) {
 
 /// Create collection by name
 bool State::createCollection(std::string const& name, bool drop) {
+  if (_vocbase->lookupCollection(name) != nullptr) {
+    // collection already exists
+    if (!drop) {
+      // nothing to do!
+      return true;
+    }
+    dropCollection(name);
+  }
+  
   Builder body;
   {
     VPackObjectBuilder b(&body);
     body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
     body.add("name", VPackValue(name));
     body.add("isSystem", VPackValue(TRI_vocbase_t::IsSystemName(name)));
-  }
-
-  if (drop && _vocbase->lookupCollection(name) != nullptr) {
-    dropCollection(name);
   }
 
   auto collection = _vocbase->createCollection(body.slice());
@@ -1179,7 +1184,7 @@ bool State::loadRemaining(index_t cind) {
           buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
           tmp->append(req.startAs<char const>(), req.byteSize());
 
-          clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
+          clientId = ii.hasKey("clientId") ? ii.get("clientId").copyString()
                                             : std::string();
 
           uint64_t millis = 0;
