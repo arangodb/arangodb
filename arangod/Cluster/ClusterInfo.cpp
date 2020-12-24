@@ -200,15 +200,6 @@ class PlanCollectionReader {
 } // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a local helper to report errors and messages
-////////////////////////////////////////////////////////////////////////////////
-
-static inline int setErrormsg(int ourerrno, std::string& errorMsg) {
-  errorMsg = TRI_errno_string(ourerrno);
-  return ourerrno;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the JSON returns an error
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,11 +248,13 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
-                         AgencyCallbackRegistry* agencyCallbackRegistry)
+                         AgencyCallbackRegistry* agencyCallbackRegistry,
+                         int syncerShutdownCode)
   : _server(server),
     _agency(server),
     _agencyCallbackRegistry(agencyCallbackRegistry),
     _rebootTracker(SchedulerFeature::SCHEDULER),
+    _syncerShutdownCode(syncerShutdownCode),
     _planVersion(0),
     _planIndex(0),
     _currentVersion(0),
@@ -284,6 +277,12 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
   _uniqid._nextUpperValue = 0ULL;
   _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
+  
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_NO_ERROR || _syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#else
+  TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1964,7 +1963,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(
                               std::memory_order_release);
         return true;
       }
-      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+      dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
     }
     return true;
   };
@@ -2268,7 +2267,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
       if (TRI_microtime() > endTime) {
         logAgencyDump();
-              return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
       {
@@ -2277,7 +2276,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       }
 
       if (_server.isStopping()) {
-              return Result(TRI_ERROR_SHUTTING_DOWN);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -3880,7 +3879,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
     }
 
     if (found == (size_t)numberOfShards) {
-      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+      dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
     }
 
     return true;
@@ -5611,18 +5610,21 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
 
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(_server, "Plan", std::bind(&ClusterInfo::loadPlan, this), _agencyCallbackRegistry);
-  _planSyncer->start();
   _curSyncer = std::make_unique<SyncerThread>(_server, "Current", std::bind(&ClusterInfo::loadCurrent, this), _agencyCallbackRegistry);
-  _curSyncer->start();
+
+  if (!_planSyncer->start() || !_curSyncer->start()) {
+    LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
+      << "unable to start PlanSyncer/CurrentSYncer";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void ClusterInfo::shutdownSyncers() {
-
   {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
     while (pit != _waitPlan.end()) {
-      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
     _waitPlan.clear();
@@ -5632,20 +5634,25 @@ void ClusterInfo::shutdownSyncers() {
     std::lock_guard g(_waitCurrentLock);
     auto pit = _waitCurrent.begin();
     while (pit != _waitCurrent.end()) {
-      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
     _waitCurrent.clear();
   }
 
-  _planSyncer->beginShutdown();
-  _curSyncer->beginShutdown();
+  if (_planSyncer != nullptr) {
+    _planSyncer->beginShutdown();
+  }
+  if (_curSyncer != nullptr) {
+    _curSyncer->beginShutdown();
+  }
 }
 
 
 void ClusterInfo::waitForSyncersToStop() {
   auto start = std::chrono::steady_clock::now();
-  while(_planSyncer->isRunning() || _curSyncer->isRunning()) {
+  while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
+         (_curSyncer != nullptr && _curSyncer->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
       LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
@@ -5704,9 +5711,9 @@ void ClusterInfo::SyncerThread::beginShutdown() {
   }
 }
 
-void ClusterInfo::SyncerThread::start() {
+bool ClusterInfo::SyncerThread::start() {
   LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << currentThreadName();
-  Thread::start();
+  return Thread::start();
 }
 
 void ClusterInfo::SyncerThread::run() {
@@ -5798,7 +5805,6 @@ futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(uint64_t cu
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
-
   READ_LOCKER(readLocker, _planProt.lock);
   if (raftIndex <= _planIndex) {
     return futures::makeFuture(arangodb::Result());
@@ -5952,7 +5958,7 @@ void ClusterInfo::triggerWaiting(
         pp->setValue(Result());
       }
     } else {
-      pp->setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pp->setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }
