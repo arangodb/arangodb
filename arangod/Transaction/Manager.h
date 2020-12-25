@@ -73,12 +73,16 @@ class Manager final {
     ManagedTrx(MetaType t, TransactionState* st);
     ~ManagedTrx();
 
+    bool hasPerformedIntermediateCommits() const;
     bool expired() const;
 
    public:
     MetaType type;            /// managed, AQL or tombstone
+    /// @brief whether or not the transaction has performed any intermediate
+    /// commits
+    bool intermediateCommits;
     /// @brief  final TRX state that is valid if this is a tombstone
-    /// necessary to avoid getting error on a 'diamond' commit or accidantally
+    /// necessary to avoid getting error on a 'diamond' commit or accidentally
     /// repeated commit / abort messages
     transaction::Status finalStatus;
     double usedTimeSecs;      /// last time used
