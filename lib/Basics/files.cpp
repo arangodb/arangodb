@@ -543,8 +543,6 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr) {
-  TRI_ERRORBUF;
-
   // reset error flag
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
@@ -555,10 +553,9 @@ int TRI_CreateDirectory(char const* path, long& systemError, std::string& system
   }
 
   // check errno
-  TRI_SYSTEM_ERROR();
   res = errno;
   if (res != TRI_ERROR_NO_ERROR) {
-    systemErrorStr = std::string("failed to create directory '") + path + "': " + TRI_GET_ERRORBUF;
+    systemErrorStr = std::string("failed to create directory '") + path + "': " + TRI_LAST_ERROR_STR;
     systemError = res;
 
     if (res == ENOENT) {
