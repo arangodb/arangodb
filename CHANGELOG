@@ -1,6 +1,9 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
 * Change serialized "term" value from double to integer value after persisting a
   compaction snapshot, so there is no truncation for larger term values.
 
