@@ -1,6 +1,9 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* When querying the list of currently running or slow AQL queries, ignore
+  not-yet created databases on other coordinators.
+
 * Fix Windows directory creation error handling.
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
