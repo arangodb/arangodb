@@ -1,6 +1,9 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Change serialized "term" value from double to integer value after persisting a
+  compaction snapshot, so there is no truncation for larger term values.
+
 * When querying the list of currently running or slow AQL queries, ignore
   not-yet created databases on other coordinators.
 
