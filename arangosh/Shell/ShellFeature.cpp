@@ -70,6 +70,9 @@ void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
 
   options->addOption("--javascript.unit-test-filter",
                      "filter testcases in suite", new StringParameter(&_unitTestFilter));
+
+  options->addOption("--javascript.script-parameter", "script parameter",
+                     new VectorParameter<StringParameter>(&_scriptParameters));
 }
 
 void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -141,7 +144,7 @@ void ShellFeature::start() {
         break;
 
       case RunMode::EXECUTE_SCRIPT:
-        ok = shell.runScript(_executeScripts, _positionals, true);
+        ok = shell.runScript(_executeScripts, _positionals, true, _scriptParameters);
         break;
 
       case RunMode::EXECUTE_STRING:
@@ -149,7 +152,7 @@ void ShellFeature::start() {
         break;
 
       case RunMode::CHECK_SYNTAX:
-        ok = shell.runScript(_checkSyntaxFiles, _positionals, false);
+        ok = shell.runScript(_checkSyntaxFiles, _positionals, false, _scriptParameters);
         break;
 
       case RunMode::UNIT_TESTS:
