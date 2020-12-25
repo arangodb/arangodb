@@ -23,15 +23,19 @@
 
 #include "TransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
@@ -162,7 +166,9 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   // collection not found.
 
-  if (nestingLevel > 0 && AccessMode::isWriteOrExclusive(accessType)) {
+  if (nestingLevel > 0 && 
+      AccessMode::isWriteOrExclusive(accessType) &&
+      !_options.allowImplicitCollectionsForWrite) {
     // trying to write access a collection in an embedded transaction
     return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname + 
@@ -409,4 +415,23 @@ void TransactionState::updateStatus(transaction::Status status) {
   }
 
   _status = status;
+}
+
+/// @brief returns the name of the actor the transaction runs on:
+/// - leader
+/// - follower
+/// - coordinator
+/// - single
+char const* TransactionState::actorName() const noexcept {
+  if (isDBServer()) {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX) ? "follower" : "leader";
+  } else if (isCoordinator()) {
+    return "coordinator";
+  } 
+  return "single";
+}
+
+/// @brief return a reference to the global transaction statistics
+TransactionStatistics& TransactionState::statistics() noexcept {
+  return _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
 }

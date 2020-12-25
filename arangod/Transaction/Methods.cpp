@@ -2497,7 +2497,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-                << "truncateLocal: dropping follower " << (*followers)[i]
+                << "truncateLocal: dropped follower " << (*followers)[i]
                 << " for shard " << collectionName;
           } else {
             LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
@@ -3180,7 +3180,7 @@ Future<Result> Methods::replicateOperations(
     url.push_back('/');
     VPackValueLength len;
     const char* ptr = value.get(StaticStrings::KeyString).getString(len);
-    url.append(ptr, len);
+    basics::StringUtils::encodeURIComponent(url, ptr, len);
   }
 
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -3310,6 +3310,11 @@ Future<Result> Methods::replicateOperations(
 
       if (!replicationWorked) {
         ServerID const& deadFollower = (*followerList)[i];
+        LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
+            << "synchronous replication: dropping follower "
+            << deadFollower << " for shard " << collection->name()
+            << ", status code: " << static_cast<int>(resp.statusCode())
+            << ", message: " << network::fuerteToArangoErrorMessage(resp);
         
         vocbase().server().getFeature<ClusterFeature>().trackFollowerDropped();
         Result res = collection->followers()->remove(deadFollower);
@@ -3317,14 +3322,9 @@ Future<Result> Methods::replicateOperations(
           // TODO: what happens if a server is re-added during a transaction ?
           _state->removeKnownServer(deadFollower);
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropping follower "
+              << "synchronous replication: dropped follower "
               << deadFollower << " for shard " << collection->name()
               << " in database " << collection->vocbase().name(); 
-          LOG_TOPIC("a4c06", WARN, Logger::DEVEL)
-              << "synchronous replication: dropping follower "
-              << deadFollower << " for shard " << collection->name()
-              << " in database " << collection->vocbase().name()
-              << ": " << resp.combinedResult().errorMessage();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
