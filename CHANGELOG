@@ -7,6 +7,8 @@ v3.6.11 (XXXX-XX-XX)
 
 * Added more metrics around connection pool.
 
+* Fix Gauge class' assignment operators.
+
 * Fix Windows directory creation error handling.
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.
