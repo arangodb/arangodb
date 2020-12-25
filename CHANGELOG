@@ -1,8 +1,11 @@
-v3.6.10 (XXXX-XX-XX)
+v3.6.11 (XXXX-XX-XX)
 --------------------
 
-
 * Fix Gauge class' assignment operators.
+
+
+v3.6.10 (XXXX-XX-XX)
+--------------------
 
 * Updated ArangoDB Starter to 0.14.15-1.
 
