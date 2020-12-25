@@ -1,8 +1,12 @@
-v3.6.10 (XXXX-XX-XX)
+v3.6.11 (XXXX-XX-XX)
 --------------------
 
-* When querying the list of currently running or slow AQL queries, ignore not-yet
-  created databases on other coordinators.
+* When querying the list of currently running or slow AQL queries, ignore
+  not-yet created databases on other coordinators.
+
+
+v3.6.10 (XXXX-XX-XX)
+--------------------
 
 * Updated ArangoDB Starter to 0.14.15-1.
 
