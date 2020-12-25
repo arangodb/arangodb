@@ -60,12 +60,12 @@ MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t& vocbase, TRI_voc
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
-      _hasOperations(false) {
-}
+      _hasOperations(false) {}
 
 /// @brief free a transaction container
 MMFilesTransactionState::~MMFilesTransactionState() {
   delete _rocksTransaction;
+  _status = transaction::Status::ABORTED;
 }
 
 /// @brief get (or create) a rocksdb WriteTransaction
@@ -219,6 +219,13 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
   unuseCollections(nestingLevel());
 
   return result;
+}
+
+// @brief return number of commits
+uint64_t MMFilesTransactionState::numCommits() const {
+  // there are no intermediate commits for a cluster transaction, so we can
+  // return 1 for a committed transaction and 0 otherwise
+  return _status == transaction::Status::COMMITTED ? 1 : 0;
 }
 
 /// @brief add a WAL operation for a transaction collection

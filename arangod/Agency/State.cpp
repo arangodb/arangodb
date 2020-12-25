@@ -1288,7 +1288,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
         VPackArrayBuilder a(&store);
         snapshot.dumpToBuilder(store);
       }
-      store.add("term", VPackValue(static_cast<double>(term)));
+      store.add("term", VPackValue(term));
       store.add("_key", VPackValue(i_str.str()));
       store.add("version", VPackValue(2));
     }
