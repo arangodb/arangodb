@@ -41,12 +41,20 @@ Options::Options()
       intermediateCommitSize(defaultIntermediateCommitSize),
       intermediateCommitCount(defaultIntermediateCommitCount),
       allowImplicitCollections(true),
+      allowImplicitCollectionsForWrite(false),
       waitForSync(false),
 #ifdef USE_ENTERPRISE
       skipInaccessibleCollections(false),
 #endif
-      isFollowerTransaction(false)
-{
+      isFollowerTransaction(false) {}
+
+Options Options::replicationDefaults() {
+  Options options;
+  // this is important, because when we get a "transaction begin" marker
+  // we don't know which collections will participate in the transaction later.
+  options.allowImplicitCollectionsForWrite = true;
+  options.waitForSync = false;
+  return options;
 }
 
 void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,

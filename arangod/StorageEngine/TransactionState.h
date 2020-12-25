@@ -60,6 +60,7 @@ struct Options;
 }  // namespace transaction
 
 class TransactionCollection;
+struct TransactionStatistics;
 
 /// @brief transaction type
 class TransactionState {
@@ -116,6 +117,16 @@ class TransactionState {
   }
   bool isTopLevelTransaction() const { return nestingLevel() == 0; }
   bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
+
+  /// @brief returns the name of the actor the transaction runs on:
+  /// - leader
+  /// - follower
+  /// - coordinator
+  /// - single
+  char const* actorName() const noexcept; 
+  
+  /// @brief return a reference to the global transaction statistics/counters
+  TransactionStatistics& statistics() noexcept;
 
   double timeout() const { return _options.lockTimeout; }
   void timeout(double value) {
@@ -185,6 +196,12 @@ class TransactionState {
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual bool hasFailedOperations() const = 0;
+
+  /// @brief return number of commits.
+  /// for cluster transactions on coordinator, this either returns 0 or 1.
+  /// for leader, follower or single-server transactions, this can include any
+  /// number, because it will also include intermediate commits.
+  virtual uint64_t numCommits() const = 0;
 
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 

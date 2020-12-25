@@ -415,6 +415,8 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   }
   // to is ignored because the snapshot time is the latest point in time
 
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+
   RocksDBReplicationContext* ctx = nullptr;
   // get batchId from url parameters
   bool found;

@@ -376,6 +376,10 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
+  if (ADB_UNLIKELY(_numScanned % 1024 == 0 && _query->killed())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   DocumentExpressionContext ctx(_query, slice);
 
   bool mustDestroy;  // will get filled by execution

@@ -3,8 +3,34 @@ v3.6.11 (XXXX-XX-XX)
 
 * Fix Gauge class' assignment operators.
 
+* Fix Windows directory creation error handling.
 
-v3.6.10 (XXXX-XX-XX)
+* Add an AQL query kill check during early pruning. Fixes issue #13141.
+
+* Reduce the number of dropped followers when running larger (>= 128 MB) write
+  transactions in the RocksDB storage engine.
+
+* Added metrics for collection locks:
+  - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts when
+    trying to acquire collection exclusive locks
+  - `arangodb_collection_lock_timeouts_write`: Number of lock timeouts when
+    trying to acquire collection write locks
+  - `arangodb_collection_lock_acquisition_micros`: Total amount of collection
+    lock acquisition time [μs]
+  - `arangodb_collection_lock_acquisition_time`: Total collection lock
+    acquisition time histogram [s]
+
+* Reduce lock timeout on followers to 15 seconds.
+  Rationale: we should not have any locking conflicts on followers, generally.
+  Any shard locking should be performed on leaders first, which will then,
+  eventually replicate changes to followers. replication to followers is only
+  done once the locks have been acquired on the leader(s).
+
+* Fix AQL cost estimate of spliced subqueries which could lead to overly large
+  numbers in the explain output of such queries.
+
+
+v3.6.10 (2020-12-08)
 --------------------
 
 * Updated ArangoDB Starter to 0.14.15-1.
