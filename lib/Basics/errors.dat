@@ -169,6 +169,7 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ## ArangoDB cluster errors
 ################################################################################
 
+ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,1447,"follower transaction intermediate commit already performed","Will be raised when a follower transaction has already performed an intermediate commit and must be rolled back."
 ERROR_CLUSTER_SERVER_UNKNOWN,1449,"got a request from an unkown server","Will be raised on some occasions when one server gets a request from another, which has not (yet?) been made known via the agency."
 ERROR_CLUSTER_TOO_MANY_SHARDS,1450,"too many shards","Will be raised when the number of shards for a collection is higher than allowed."
 ERROR_CLUSTER_COLLECTION_ID_EXISTS,1453,"collection ID already exists","Will be raised when a coordinator in a cluster tries to create a collection and the collection ID already exists."
