@@ -1,6 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Added SNI support for arangosh.
+
 * Fix cluster-internal replication of documents with special keys (percent
   character, which has a special meaning when used inside URLs).
 
