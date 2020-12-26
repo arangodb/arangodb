@@ -44,8 +44,9 @@ add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include") # for rocksdb
+  link_directories("${JEMALLOC_HOME}/lib") # for rocksdb
+  set(JEMALLOC_INCLUDE_DIR "${JEMALLOC_HOME}/include" PARENT_SCOPE)
   set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
 endif ()
 
@@ -55,7 +56,6 @@ endif ()
 
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
-
 set(V8_VERSION
   "7.1.302.28"
   CACHE INTERNAL
@@ -64,8 +64,8 @@ set(V8_VERSION
   )
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
-if (USE_PRECOMPILED_V8)
 
+if (USE_PRECOMPILED_V8)
   set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/${V8_SUB_DIR})
   set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_SUB_DIR})
 

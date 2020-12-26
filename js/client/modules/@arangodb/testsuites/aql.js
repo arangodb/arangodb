@@ -48,6 +48,16 @@ const testPaths = {
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ]
 };
 
+/// ensure that we have enough db servers in cluster tests
+function ensureServers(options, numServers) {
+  if (options.cluster && options.dbServers < numServers) {
+    let localOptions = _.clone(options);
+    localOptions.dbServers = numServers;
+    return localOptions;
+  }
+  return options;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client
 // //////////////////////////////////////////////////////////////////////////////
@@ -57,7 +67,7 @@ function shellClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(options, testCases, 'shell_client', tu.runInLocalArangosh);
+  return tu.performTests(ensureServers(options, 3), testCases, 'shell_client', tu.runInLocalArangosh);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -71,7 +81,7 @@ function shellServer (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(options, testCases, 'shell_server', tu.runThere);
+  return tu.performTests(ensureServers(options, 3), testCases, 'shell_server', tu.runThere);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -83,7 +93,7 @@ function shellServerOnly (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(options, testCases, 'shell_server_only', tu.runThere);
+  return tu.performTests(ensureServers(options, 3), testCases, 'shell_server_only', tu.runThere);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -104,7 +114,7 @@ function shellServerAql (options) {
 
     testCases = tu.splitBuckets(options, testCases);
 
-    return tu.performTests(options, testCases, name, tu.runThere);
+    return tu.performTests(ensureServers(options, 3), testCases, name, tu.runThere);
   }
 
   return {
@@ -133,7 +143,7 @@ function shellClientAql (options) {
 
     testCases = tu.splitBuckets(options, testCases);
 
-    return tu.performTests(options, testCases, name, tu.runInLocalArangosh);
+    return tu.performTests(ensureServers(options, 3), testCases, name, tu.runInLocalArangosh);
   }
 
   return {

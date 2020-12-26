@@ -38,6 +38,9 @@ namespace transaction {
 
 struct Options {
   Options();
+  
+  /// @brief returns default options used in tailing sync replication
+  static Options replicationDefaults();
 
   /// @brief adjust the global default values for transactions
   static void setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
@@ -60,6 +63,7 @@ struct Options {
   uint64_t intermediateCommitSize;
   uint64_t intermediateCommitCount;
   bool allowImplicitCollections;
+  bool allowImplicitCollectionsForWrite; // replication only!
   bool waitForSync;
 #ifdef USE_ENTERPRISE
   bool skipInaccessibleCollections;
