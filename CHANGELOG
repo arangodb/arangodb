@@ -1,6 +1,9 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fix recovery of "clientId" values in Agency when restarting an agent from
+  persistence.
+
 * Add query execution time and query id to audit log query messages.
 
 * Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.

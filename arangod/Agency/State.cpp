@@ -765,6 +765,11 @@ bool State::checkCollection(std::string const& name) {
 
 /// Create collection by name
 bool State::createCollection(std::string const& name) {
+  if (_vocbase->lookupCollection(name) != nullptr) {
+    // collection already exists. nothing to do
+    return true;
+  }
+  
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -1075,8 +1080,8 @@ bool State::loadRemaining() {
       auto req = ii.get("request");
       tmp->append(req.startAs<char const>(), req.byteSize());
 
-      clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
-                                        : std::string();
+      clientId = ii.hasKey("clientId") ? ii.get("clientId").copyString()
+                                       : std::string();
 
       // Dummy fill missing entries (Not good at all.)
       index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
