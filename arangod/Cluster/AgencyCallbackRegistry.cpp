@@ -37,11 +37,17 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
-AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePath)
-    : _agency(), _callbackBasePath(callbackBasePath) {}
+AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server, std::string const& callbackBasePath)
+    : _agency(), 
+      _callbackBasePath(callbackBasePath),
+      _callbacksCount(
+          server.getFeature<arangodb::MetricsFeature>().gauge(
+           "arangodb_agency_callback_count", uint64_t(0), "Current number of agency callbacks registered")) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
@@ -62,6 +68,8 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
     if (!ok) {
       LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
+    } else {
+      _callbacksCount += 1;
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("f5330", ERR, Logger::CLUSTER) << "Couldn't register callback " << e.what();
@@ -104,6 +112,7 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
   if (found) {
     WRITE_LOCKER(locker, _lock);
     _endpoints.erase(endpointToDelete);
+    _callbacksCount -= 1;
     return true;
   }
   return false;

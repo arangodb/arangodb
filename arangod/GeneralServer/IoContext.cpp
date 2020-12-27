@@ -23,6 +23,9 @@
 #include "IoContext.h"
 
 #include "Basics/cpu-relax.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -38,7 +41,12 @@ IoContext::IoThread::~IoThread() { shutdown(); }
 
 void IoContext::IoThread::run() {
   // run the asio io context
-  _iocontext.io_context.run();
+  try {
+    _iocontext.io_context.run();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("6794f", WARN, Logger::THREADS)
+      << "caught exception in IO thread: " << ex.what();
+  }
 }
 
 IoContext::IoContext(application_features::ApplicationServer& server)
