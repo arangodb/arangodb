@@ -376,7 +376,7 @@ void ClusterFeature::prepare() {
   }
 
   // create callback registery
-  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(agencyCallbacksPath()));
+  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
 
   // Initialize ClusterInfo library:
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());

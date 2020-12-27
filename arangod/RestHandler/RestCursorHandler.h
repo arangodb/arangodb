@@ -215,6 +215,12 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   ///        to reparse and set default options
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<arangodb::velocypack::Builder> _options;
+
+  /// @brief timestamp of query start time, used for audit-logging only
+  double _start;
+
+  /// @brief query id, used for audit-logging only
+  uint64_t _id;
 };
 }  // namespace arangodb
 
