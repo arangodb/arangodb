@@ -1,6 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
+
 * Added the following agency-related metrics:
   - `arangodb_agency_client_lookup_table_size`: current number of entries in
     agency client id lookup table. This gauge is available only on agent
