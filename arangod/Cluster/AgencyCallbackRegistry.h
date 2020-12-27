@@ -24,8 +24,10 @@
 #ifndef CLUSTER_AGENCY_CALLBACK_REGISTRY_H
 #define CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyCallback.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 
@@ -34,7 +36,7 @@ class AgencyCallbackRegistry {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
-  explicit AgencyCallbackRegistry(std::string const&);
+  explicit AgencyCallbackRegistry(application_features::ApplicationServer& server, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dtor
@@ -66,6 +68,9 @@ class AgencyCallbackRegistry {
   std::string const _callbackBasePath;
 
   std::unordered_map<uint32_t, std::shared_ptr<AgencyCallback>> _endpoints;
+
+  /// @brief current number of callbacks registered
+  Gauge<uint64_t>& _callbacksCount;
 };
 
 }  // namespace arangodb
