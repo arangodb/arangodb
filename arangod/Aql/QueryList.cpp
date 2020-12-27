@@ -225,13 +225,15 @@ void QueryList::remove(Query* query) {
         LOG_TOPIC("d728e", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
             << bindParameters << dataSources << ", database: " << query->vocbase().name()
-            << ", user: " << query->user() << ", took: " << Logger::FIXED(now - started) 
+            << ", user: " << query->user() << ", token: QRY" << query->id()
+            <<", took: " << Logger::FIXED(now - started) 
             << " s, loading took: " << Logger::FIXED(loadTime) << " s";
       } else {
         LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
             << bindParameters << dataSources << ", database: " << query->vocbase().name()
-            << ", user: " << query->user() << ", took: " << Logger::FIXED(elapsed) << " s";
+            << ", user: " << query->user() << ", token: QRY" << query->id() 
+            << ", took: " << Logger::FIXED(elapsed) << " s";
       }
 
       _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),

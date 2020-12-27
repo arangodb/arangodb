@@ -202,6 +202,9 @@ std::string urlDecode(std::string const& str);
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t len);
 
+/// @brief url encodes the string into the result buffer
+void encodeURIComponent(std::string& result, char const* src, size_t len);
+
 /// @brief uri encodes the component string
 std::string encodeURIComponent(std::string const& str);
 
