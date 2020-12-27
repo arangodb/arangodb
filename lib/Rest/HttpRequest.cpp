@@ -449,7 +449,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
   for (size_t i = 0; i < length; ++i) {
     tmp.push_back(path[i]);
     if (path[i] == '/') {
-      while (i + 1 < length && path[i+1] == '/') {
+      while (i + 1 < length && path[i + 1] == '/') {
         ++i;
       }
     }
@@ -485,6 +485,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
     }
   } else {
     _fullUrl.assign(start, end - start);
+  }
+
+  if (_fullUrl.empty()) {
+    _fullUrl.push_back('/');
   }
   TRI_ASSERT(!_fullUrl.empty());
 
