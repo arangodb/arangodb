@@ -888,8 +888,8 @@ bool State::loadPersisted() {
   // in log and compact cannot be mitigated after this point. We are here because
   // of the above missing / incomplete log / compaction. Including the case of only
   // one of the two collections being present.
-  createCollection("log", true);
-  createCollection("compact", true);
+  ensureCollection("log", true);
+  ensureCollection("compact", true);
 
   return true;
 }
