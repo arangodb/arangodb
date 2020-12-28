@@ -25,14 +25,13 @@
 #define ARANGOD_GRAPH_PATH_STORE_H 1
 
 #include <queue>
+#include <unordered_set>
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-
-using namespace arangodb;
 
 namespace arangodb {
 
@@ -65,11 +64,6 @@ class PathStore {
   explicit PathStore(arangodb::ResourceMonitor& resourceMonitor);
   ~PathStore();
 
-  /// @brief schreier vector to store the visited vertices
-  std::vector<Step> _schreier;
-
-  arangodb::ResourceMonitor& _resourceMonitor;
-
   // @brief Method to verify whether path is needed
   auto testPath(Step) -> ValidationResult;
 
@@ -88,6 +82,12 @@ class PathStore {
 
   template <class ProviderType>
   auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
+
+ private:
+  /// @brief schreier vector to store the visited vertices
+  std::vector<Step> _schreier;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace graph
