@@ -154,7 +154,6 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
   if (!hasShadowRow()) {
     if (_aqlItemMatrix->stoppedOnShadowRow()) {
       _shadowRow = _aqlItemMatrix->popShadowRow();
-      TRI_ASSERT(_shadowRow.isRelevant());
     } else {
       // This can happen if we are either DONE.
       // or if the executor above produced
