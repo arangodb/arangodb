@@ -1104,7 +1104,7 @@ bool State::loadRemaining(index_t cind) {
     std::string clientId;
     // We know that _cur has been set in loadCompacted to the index of the
     // snapshot that was loaded or to 0 if there is no snapshot.
-    index_t lastIndex = _cur;
+    lastIndex = _cur;
 
     for (auto const& i : VPackArrayIterator(result)) {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
