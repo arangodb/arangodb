@@ -9,6 +9,39 @@ v3.6.11 (XXXX-XX-XX)
 
 * Fix Gauge class' assignment operators.
 
+* Remove HTTP "Connection" header when forwarding requests in the cluster from
+  one coordinator to another, and let the internal network layer handle closing
+  of connections and keep-alive.
+
+* Prevent a write to RocksDB during recovery in the case that the database
+  already exists. The write at startup is potentially blocking, and will delay
+  the startup for servers that were shut down while in a write-stopped state.
+
+* Fix recovery of "clientId" values in Agency when restarting an agent from
+  persistence.
+
+* Add query execution time and query id to audit log query messages.
+
+* Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
+
+* Added the following agency-related metrics:
+  - `arangodb_agency_client_lookup_table_size`: current number of entries in
+    agency client id lookup table. This gauge is available only on agent
+    instances.
+  - `arangodb_agency_callback_count`: current number of agency callbacks
+    registered. This gauge will be effecitive on coordinators and DB servers.
+
+* Added SNI support for arangosh.
+
+* Fix cluster-internal replication of documents with special keys (percent
+  character, which has a special meaning when used inside URLs).
+
+* Change serialized "term" value from double to integer value after persisting a
+  compaction snapshot, so there is no truncation for larger term values.
+
+* When querying the list of currently running or slow AQL queries, ignore
+  not-yet created databases on other coordinators.
+
 * Fix Windows directory creation error handling.
 
 * Add an AQL query kill check during early pruning. Fixes issue #13141.

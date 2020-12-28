@@ -72,7 +72,10 @@ State::State(application_features::ApplicationServer& server)
     _cur(0),
     _log_size(
       _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")) {}
+        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")),
+    _clientIdLookupCount(
+      _server.getFeature<MetricsFeature>().gauge(
+        "arangodb_agency_client_lookup_table_size", uint64_t(0), "Current number of entries in agency client id lookup table")) {}
 
 /// Default dtor
 State::~State() = default;
@@ -324,6 +327,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
         std::pair<std::string, index_t>{l.clientId, l.index});
+      _clientIdLookupCount += 1;
     } catch (...) {
       LOG_TOPIC("f5ade", FATAL, Logger::AGENCY)
         << "RAFT member fails to expand client lookup table!";
@@ -538,6 +542,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
 
+  size_t numRemoved = 0;
   uint64_t delSize = 0;
 
   for (auto lit = rbegin; lit != rend; lit++) {
@@ -548,12 +553,15 @@ void State::logEraseNoLock(
       for (auto it = ret.first; it != ret.second;) {
         if (it->second == lit->index) {
           it = _clientIdLookupTable.erase(it);
+          ++numRemoved;
         } else {
           it++;
         }
       }
     }
   }
+
+  _clientIdLookupCount -= numRemoved;
 
   _log.erase(rbegin, rend);
   TRI_ASSERT(delSize <= _log_size.load());
@@ -757,6 +765,11 @@ bool State::checkCollection(std::string const& name) {
 
 /// Create collection by name
 bool State::createCollection(std::string const& name) {
+  if (_vocbase->lookupCollection(name) != nullptr) {
+    // collection already exists. nothing to do
+    return true;
+  }
+  
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -913,6 +926,7 @@ bool State::loadCompacted() {
       _log.clear();  // will be filled in loadRemaining
       _log_size = 0;
       _clientIdLookupTable.clear();
+      _clientIdLookupCount = 0;
       // Schedule next compaction:
       _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
@@ -1066,8 +1080,8 @@ bool State::loadRemaining() {
       auto req = ii.get("request");
       tmp->append(req.startAs<char const>(), req.byteSize());
 
-      clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
-                                        : std::string();
+      clientId = ii.hasKey("clientId") ? ii.get("clientId").copyString()
+                                       : std::string();
 
       // Dummy fill missing entries (Not good at all.)
       index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
@@ -1288,7 +1302,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
         VPackArrayBuilder a(&store);
         snapshot.dumpToBuilder(store);
       }
-      store.add("term", VPackValue(static_cast<double>(term)));
+      store.add("term", VPackValue(term));
       store.add("_key", VPackValue(i_str.str()));
       store.add("version", VPackValue(2));
     }
@@ -1370,6 +1384,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   _log.clear();
   _log_size = 0;
   _clientIdLookupTable.clear();
+  _clientIdLookupCount = 0;
   _cur = index;
   // This empty log should soon be rectified!
   return true;
