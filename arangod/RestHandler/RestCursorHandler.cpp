@@ -29,6 +29,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -56,7 +57,9 @@ RestCursorHandler::RestCursorHandler(application_features::ApplicationServer& se
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false),
-      _auditLogged(false) {}
+      _auditLogged(false),
+      _start(-1), // used for audit-logging only
+      _id(0) {}
 
 RestCursorHandler::~RestCursorHandler() {
   if (_cursor) {
@@ -69,6 +72,9 @@ RestCursorHandler::~RestCursorHandler() {
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
+
+  // used only for audit logging
+  _start = TRI_microtime();
 
   if (type == rest::RequestType::POST) {
     return createQueryCursor();
@@ -146,7 +152,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
     bool success = true;
     VPackSlice body = parseVPackBody(success);
     if (success) {
-      events::QueryDocument(*_request, _response.get(), body);
+      events::QueryDocument(*_request, _response.get(), body, _id, TRI_microtime() - _start);
     }
     _auditLogged = true;
   } catch (...) {
@@ -169,7 +175,7 @@ void RestCursorHandler::handleError(basics::Exception const& ex) {
     bool success = true;
      VPackSlice body = parseVPackBody(success);
      if (success) {
-       events::QueryDocument(*_request, _response.get(), body);
+       events::QueryDocument(*_request, _response.get(), body, _id, TRI_microtime() - _start);
      }
     _auditLogged = true;
   } catch (...) {
@@ -255,6 +261,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
       bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
   query->setTransactionContext(createTransactionContext(mode));
+
+  // used only for audit-logging
+  _id = query->id();
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   ss->setWakeupHandler([self = shared_from_this()] {
