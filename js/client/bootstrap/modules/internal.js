@@ -95,8 +95,8 @@
   
   exports.debugClearFailAt = function(failAt) {
     const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    instanceInfo.arangods.forEach((a)=>{
+    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
+    instanceInfo.arangods.forEach((a) => {
       let res = request.delete({
         url: endpointToURL(a.endpoint) + '/_admin/debug/failat' + (failAt === undefined ? '' : '/' + failAt),
         body: ""});
@@ -104,12 +104,12 @@
         throw "Error removing failure point";
       }
     });
-  }
+  };
   
   exports.debugSetFailAt = function(failAt) {
     const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    instanceInfo.arangods.forEach((a)=>{
+    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
+    instanceInfo.arangods.forEach((a) => {
       let res = request.put({
         url: endpointToURL(a.endpoint) + '/_admin/debug/failat/' + failAt,
         body: ""});
@@ -117,16 +117,16 @@
         throw "Error setting failure point";
       }
     });
-  }
+  };
   
   exports.debugTerminate = function() {
     // NOOP. Terminate should be executed
     // by tests framework not by client
-  }
+  };
   
   exports.debugCanUseFailAt = function() {
     const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     let res = request.get({
       url: endpointToURL(instanceInfo.arangods[0].endpoint) + '/_admin/debug/failat',
       body: ""
@@ -135,7 +135,8 @@
       return false;
     }
     return res.body === "true";
-  }
+  };
+  
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief are we talking to a single server or cluster?
   // //////////////////////////////////////////////////////////////////////////////

@@ -32,6 +32,7 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
+const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const _ = require('lodash');
@@ -97,7 +98,7 @@ function runArangodRecovery (params) {
   
   if (params.options.cluster) {
     // arangosh has different name for parameter :(
-    additionalTestParams['javascript.execute'] =  params.script
+    additionalTestParams['javascript.execute'] =  params.script;
   } else {
     additionalTestParams['javascript.script'] =  params.script;
   }

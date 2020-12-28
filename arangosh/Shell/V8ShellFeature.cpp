@@ -702,15 +702,15 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
           ok = TRI_ObjectToDouble(isolate, result) == 0;
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG_TOPIC("ad237", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("525a4", ERR, arangodb::Logger::FIXME)
             << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
         ok = false;
       } catch (std::bad_alloc const&) {
-        LOG_TOPIC("f13ec", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("abc8b", ERR, arangodb::Logger::FIXME)
             << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
         ok = false;
       } catch (...) {
-        LOG_TOPIC("66ac9", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("4da99", ERR, arangodb::Logger::FIXME)
             << "caught unknown exception";
         ok = false;
       }
