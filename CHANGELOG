@@ -15,6 +15,12 @@ v3.7.6 (XXXX-XX-XX)
   It is still possible to get into the LOCK_TIMEOUT case, especially if
   the "exclusive" operation(s) are long-running.
 
+* Fixed an endless busy loop which could happen if a coordinator tries to roll
+  back a database creation, but the database has already been dropped by other
+  means.
+
+* Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
+
 * Remove HTTP "Connection" header when forwarding requests in the cluster from
   one coordinator to another, and let the internal network layer handle closing
   of connections and keep-alive.

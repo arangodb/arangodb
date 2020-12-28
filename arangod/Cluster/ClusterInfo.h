@@ -369,7 +369,7 @@ class ClusterInfo final {
     ~SyncerThread();
     void beginShutdown();
     void run();
-    void start();
+    bool start();
     bool notify(velocypack::Slice const&);
 
    private:
@@ -420,7 +420,8 @@ public:
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*, 
+                       int syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -1093,6 +1094,10 @@ public:
   };
 
   cluster::RebootTracker _rebootTracker;
+
+  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
+  int const _syncerShutdownCode;
 
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
