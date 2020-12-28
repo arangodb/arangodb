@@ -31,6 +31,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -58,7 +59,9 @@ RestCursorHandler::RestCursorHandler(application_features::ApplicationServer& se
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false),
-      _auditLogged(false) {}
+      _auditLogged(false),
+      _start(-1), // used for audit-logging only
+      _id(0) {}
 
 RestCursorHandler::~RestCursorHandler() {
   if (_cursor) {
@@ -71,6 +74,9 @@ RestCursorHandler::~RestCursorHandler() {
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
+  
+  // used only for audit logging
+  _start = TRI_microtime();
 
   if (type == rest::RequestType::POST) {
     return createQueryCursor();
@@ -149,7 +155,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
     bool success = true;
     VPackSlice body = parseVPackBody(success);
     if (success) {
-      events::QueryDocument(*_request, _response.get(), body);
+      events::QueryDocument(*_request, _response.get(), body, _id, TRI_microtime() - _start);
     }
     _auditLogged = true;
   } catch (...) {
@@ -172,7 +178,7 @@ void RestCursorHandler::handleError(basics::Exception const& ex) {
     bool success = true;
      VPackSlice body = parseVPackBody(success);
      if (success) {
-       events::QueryDocument(*_request, _response.get(), body);
+       events::QueryDocument(*_request, _response.get(), body, _id, TRI_microtime() - _start);
      }
     _auditLogged = true;
   } catch (...) {
@@ -228,12 +234,15 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
-  
+
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
   auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
       arangodb::aql::QueryString(querySlice.copyString()),
       bindVarsBuilder, _options);
+
+  // used only for audit-logging
+  _id = query->id();
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());

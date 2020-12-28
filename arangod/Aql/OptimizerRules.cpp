@@ -2086,14 +2086,14 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   void replaceInView(ExecutionNode* en) {
     auto view = ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(en);
-    if (view->filterConditionIsEmpty()) {
+    AstNode const& search = view->filterCondition();
+    if (filterConditionIsEmpty(&search)) {
       // nothing to do
       return;
     }
-    AstNode const& search = view->filterCondition();
+
     VarSet variables;
     Ast::getReferencedVariables(&search, variables);
-
     // check if the search condition uses any of the variables that we want to
     // replace
     AstNode* cloned = nullptr;
@@ -4357,17 +4357,40 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           bool hasFoundMultipleShards = false;
           auto p = previous;
           while (p != nullptr) {
-            if (p->getType() == ExecutionNode::REMOTE) {
-              hasFoundMultipleShards = true;
-            } else if (p->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-                       p->getType() == ExecutionNode::INDEX) {
-              auto col = getCollection(p);
-              if (col->numberOfShards() > 1) {
+            switch(p->getType()) {
+              case ExecutionNode::REMOTE:
                 hasFoundMultipleShards = true;
-              }
-            } else if (p->getType() == ExecutionNode::TRAVERSAL) {
-              hasFoundMultipleShards = true;
+                break;
+              case ExecutionNode::ENUMERATE_COLLECTION:
+              case ExecutionNode::INDEX:
+                {
+                  auto col = getCollection(p);
+                  if (col->numberOfShards() > 1) {
+                    hasFoundMultipleShards = true;
+                  }
+                }
+                break;
+              case ExecutionNode::TRAVERSAL:
+                hasFoundMultipleShards = true;
+                break;
+              case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+                {
+                  auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(p);
+                  auto collections = viewNode.collections();
+                  auto const collCount = collections.size();
+                  TRI_ASSERT(collCount > 0);
+                  if (collCount > 1) {
+                    hasFoundMultipleShards = true;
+                  } else if (1 == collCount) {
+                    hasFoundMultipleShards = collections.front().get().numberOfShards() > 1;
+                  }
+                }
+                break;
+              default:
+                break;
             }
+
+
             if (hasFoundMultipleShards) {
               break;
             }
@@ -6475,10 +6498,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool isValueOrReference(AstNode const* node) {
-  return node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_REFERENCE;
-}
-
 /// Essentially mirrors the geo::QueryParams struct, but with
 /// abstracts AstNode value objects
 struct GeoIndexInfo {
@@ -6782,7 +6801,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   // checks @first `smaller` @second
   // note: this only modifies "info" if the function returns true
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool {
-    if (isValueOrReference(second) &&       // no attribute access
+    if (second->type == NODE_TYPE_VALUE &&  // only constants allowed
         info.maxDistanceExpr == nullptr &&  // max distance is not yet set
         checkDistanceFunc(plan, first, /*legacy*/ true, info)) {
       TRI_ASSERT(info.index);
@@ -6790,7 +6809,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
       info.maxInclusive = info.maxInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
-    } else if (isValueOrReference(first) &&        // no attribute access
+    } else if (first->type == NODE_TYPE_VALUE &&   // only constants allowed
                info.minDistanceExpr == nullptr &&  // min distance is not yet set
                checkDistanceFunc(plan, second, /*legacy*/ true, info)) {
       info.minDistanceExpr = first;

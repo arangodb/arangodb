@@ -130,6 +130,15 @@ struct Socket<fuerte::SocketType::Ssl> {
           try {
             // Perform SSL handshake and verify the remote host's certificate.
             socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+
+            // Set SNI Hostname (many hosts need this to handshake successfully)
+            if (!SSL_set_tlsext_host_name(socket.native_handle(), config._host.c_str())) {
+              boost::system::error_code ec{
+                static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
+              done(ec);
+              return;
+            }
+
             if (verify) {
               socket.set_verify_mode(asio_ns::ssl::verify_peer);
               socket.set_verify_callback(
