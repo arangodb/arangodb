@@ -312,6 +312,15 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
                                     std::to_string(collection->planId().id()));
     if (clusterCollection) {
       auto name = clusterCollection->name();
+#ifdef USE_ENTERPRISE
+      if (name.compare(0, 7, "_local_") == 0) {
+        name.erase(0, 7);
+      } else if (name.compare(0, 6, "_from_") == 0) {
+        name.erase(0, 6);
+      } else if (name.compare(0, 4, "_to_") == 0) {
+        name.erase(0, 4);
+      }
+#endif
       LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)
           << " Processing collection " << name;
       for (auto& index : indexes) {
