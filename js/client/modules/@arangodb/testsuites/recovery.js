@@ -193,6 +193,11 @@ function runArangodRecovery (params) {
     } else {
       print(BLUE + "Restarting cluster " + RESET);
       pu.reStartInstance(params.options, params.instanceInfo, {});
+      let tryCount = 10;
+      while(tryCount > 0 && !pu.arangod.check.instanceAlive(params.instanceInfo, params.options)) {
+        internal.sleep(3); // give agency time to bootstrap DBServers
+        --tryCount;
+      }
     }
     let agentArgs = pu.makeArgs.arangosh(params.options);
     agentArgs['server.endpoint'] = tu.findEndpoint(params.options, params.instanceInfo);
