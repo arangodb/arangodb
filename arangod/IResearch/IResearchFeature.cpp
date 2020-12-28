@@ -313,6 +313,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
     if (clusterCollection) {
       auto name = clusterCollection->name();
 #ifdef USE_ENTERPRISE
+      TRI_ASSERT(!name.empty());
       if (name.compare(0, 7, "_local_") == 0) {
         name.erase(0, 7);
       } else if (name.compare(0, 6, "_from_") == 0) {

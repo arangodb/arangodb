@@ -1079,6 +1079,13 @@ Result IResearchLink::init(
         LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
           << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
       }
+      
+#if defined(USE_ENTERPRISE) && defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+      // enterprise name is not used in _id so should not be here!
+      TRI_ASSERT(meta._collectionName.compare(0, 7, "_local_") != 0);
+      TRI_ASSERT(meta._collectionName.compare(0, 6, "_from_") != 0);
+      TRI_ASSERT(meta._collectionName.compare(0, 4, "_to_") != 0);
+#endif
     }
 
     if (!clusterWideLink) {
