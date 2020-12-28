@@ -759,15 +759,6 @@ void State::dropCollection(std::string const& colName) {
       << "unable to drop collection '" << colName << "': " << e.what();
     FATAL_ERROR_EXIT();
   }
-  return _collectionsChecked;
-}
-
-/// Check collection by name
-bool State::checkCollection(std::string const& name) {
-  if (!_collectionsChecked) {
-    return (_vocbase->lookupCollection(name) != nullptr);
-  }
-  return true;
 }
 
 /// Create collection by name
