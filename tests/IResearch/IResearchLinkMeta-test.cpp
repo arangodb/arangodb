@@ -432,7 +432,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
 TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
   auto restoreRole  = irs::make_finally(
-    [this, oldRole](){
+    [oldRole](){
       arangodb::ServerState::instance()->setRole(oldRole);});
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   auto json = VPackParser::fromJson(
@@ -1383,7 +1383,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
   auto restoreRole  = irs::make_finally(
-    [this, oldRole](){
+    [oldRole](){
       arangodb::ServerState::instance()->setRole(oldRole);});
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   // not fullAnalyzerDefinition
