@@ -1,6 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fix agency restart with mismatching compation and log indexes
+
 * Remove HTTP "Connection" header when forwarding requests in the cluster from
   one coordinator to another, and let the internal network layer handle closing
   of connections and keep-alive.
