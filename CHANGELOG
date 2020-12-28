@@ -1,6 +1,10 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed an endless busy loop which could happen if a coordinator tries to roll
+  back a database creation, but the database has already been dropped by other
+  means.
+
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 
 * Remove HTTP "Connection" header when forwarding requests in the cluster from
