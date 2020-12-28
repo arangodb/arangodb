@@ -26,6 +26,7 @@
 
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Types/ValidationResult.h"
 
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
@@ -133,10 +134,9 @@ auto PathStore<Step>::reverseBuildPath(Step const& vertex,
 }
 
 template <class Step>
-bool PathStore<Step>::testPath(Step step) {
+auto PathStore<Step>::testPath(Step step) -> ValidationResult {
   LOG_TOPIC("2ff8d", TRACE, Logger::GRAPHS) << "<PathStore> Testing path:";
-  // TODO: needs to be implemented - discuss (this is a feature we need in the future)
-  return true;
+  return ValidationResult{ValidationResult::Type::TAKE};
 }
 
 template class PathStore<SingleServerProvider::Step>;

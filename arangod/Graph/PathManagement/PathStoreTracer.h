@@ -43,6 +43,8 @@ class QueryContext;
 
 namespace graph {
 
+class ValidationResult;
+
 template <class PathStoreImpl>
 class PathStoreTracer {
  public:
@@ -53,7 +55,7 @@ class PathStoreTracer {
   ~PathStoreTracer();
 
   // @brief Method to verify whether path is needed
-  bool testPath(Step);
+  auto testPath(Step) -> ValidationResult;
 
   // @brief reset
   void reset();

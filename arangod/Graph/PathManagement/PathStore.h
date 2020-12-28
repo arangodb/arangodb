@@ -45,6 +45,8 @@ namespace graph {
 template <class ProviderType, class Step>
 class PathResult;
 
+class ValidationResult;
+
 /*
  * Schreier element:
  * {
@@ -69,7 +71,7 @@ class PathStore {
   arangodb::ResourceMonitor& _resourceMonitor;
 
   // @brief Method to verify whether path is needed
-  bool testPath(Step);
+  auto testPath(Step) -> ValidationResult;
 
   // @brief reset
   void reset();

@@ -30,6 +30,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Types/ValidationResult.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -47,7 +48,7 @@ PathStoreTracer<PathStoreImpl>::~PathStoreTracer() {
 }
 
 template <class PathStoreImpl>
-bool PathStoreTracer<PathStoreImpl>::testPath(Step step) {
+auto PathStoreTracer<PathStoreImpl>::testPath(Step step) -> ValidationResult {
   double start = TRI_microtime();
   TRI_DEFER(_stats["testPath"].addTiming(TRI_microtime() - start));
   return _impl.testPath(step);
