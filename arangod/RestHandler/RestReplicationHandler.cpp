@@ -1143,19 +1143,17 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
                     VPackValue(_vocbase.shardingPrototypeName()));
       }
     } else {
-      size_t numberOfShards = 1;
       // Number of shards. Will be overwritten if not existent
       VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
       if (!numberOfShardsSlice.isInteger()) {
         // The information does not contain numberOfShards. Overwrite it.
+        size_t numberOfShards = 1;
         VPackSlice const shards = parameters.get("shards");
         if (shards.isObject()) {
           numberOfShards = static_cast<uint64_t>(shards.length());
         }
         TRI_ASSERT(numberOfShards > 0);
         toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
-      } else {
-        numberOfShards = numberOfShardsSlice.getUInt();
       }
     }
 
@@ -1579,7 +1577,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
   bindVars->close();  // bindVars
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars, nullptr);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars);
   aql::QueryResult queryResult = query.executeSync();
 
   // neither agency nor dbserver should get here
@@ -3481,7 +3479,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   
   transaction::Options opts;
   opts.lockTimeout = ttl; // not sure if appropriate ?
-  Result res = mgr->createManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
+  Result res = mgr->ensureManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
 
   if (res.fail()) {
     return res;

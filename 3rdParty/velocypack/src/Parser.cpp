@@ -51,24 +51,21 @@ ValueLength Parser::parseInternal(bool multi) {
   do {
     bool haveReported = false;
     if (!_builderPtr->_stack.empty()) {
-      ValueLength const tos = _builderPtr->_stack.back();
+      ValueLength const tos = _builderPtr->_stack.back().startPos;
       if (_builderPtr->_start[tos] == 0x0b || _builderPtr->_start[tos] == 0x14) {
         if (!_builderPtr->_keyWritten) {
           throw Exception(Exception::BuilderKeyMustBeString);
-        }
-        else {
+        } else {
           _builderPtr->_keyWritten = false;
         }
-      }
-      else {
+      } else {
         _builderPtr->reportAdd();
         haveReported = true;
       }
     }
     try {
       parseJson();
-    }
-    catch (...) {
+    } catch (...) {
       if (haveReported) {
         _builderPtr->cleanupAdd();
       }

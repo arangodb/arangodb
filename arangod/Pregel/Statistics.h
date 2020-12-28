@@ -39,7 +39,7 @@ struct MessageStats {
   size_t receivedCount = 0;
   double superstepRuntimeSecs = 0;
 
-  MessageStats() {}
+  MessageStats() = default;
   explicit MessageStats(VPackSlice statValues) { accumulate(statValues); }
   MessageStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
 

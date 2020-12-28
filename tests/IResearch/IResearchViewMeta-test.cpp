@@ -71,7 +71,7 @@ TEST_F(IResearchViewMetaTest, test_defaults) {
   EXPECT_TRUE(true == metaState._collections.empty());
   EXPECT_TRUE(true == (2 == meta._cleanupIntervalStep));
   EXPECT_TRUE(true == (1000 == meta._commitIntervalMsec));
-  EXPECT_TRUE(true == (10 * 1000 == meta._consolidationIntervalMsec));
+  EXPECT_TRUE(true == (1000 == meta._consolidationIntervalMsec));
   EXPECT_TRUE(std::string("tier") ==
               meta._consolidationPolicy.properties().get("type").copyString());
   EXPECT_TRUE(false == !meta._consolidationPolicy.policy());
@@ -157,7 +157,7 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
     EXPECT_TRUE((true == metaState._collections.empty()));
     EXPECT_TRUE(2 == meta._cleanupIntervalStep);
     EXPECT_TRUE((1000 == meta._commitIntervalMsec));
-    EXPECT_TRUE(10 * 1000 == meta._consolidationIntervalMsec);
+    EXPECT_TRUE(1000 == meta._consolidationIntervalMsec);
     EXPECT_TRUE((std::string("tier") ==
                  meta._consolidationPolicy.properties().get("type").copyString()));
     EXPECT_TRUE((false == !meta._consolidationPolicy.policy()));
@@ -568,7 +568,7 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
   tmpSlice = slice.get("commitIntervalMsec");
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 1000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationIntervalMsec");
-  EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 10000 == tmpSlice.getNumber<size_t>()));
+  EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 1000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
   EXPECT_TRUE((true == tmpSlice.isObject() && 6 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("type");

@@ -70,8 +70,7 @@ var runInDatabase = function () {
           var now = Date.now();
           var max = queue.maxWorkers - numBusy;
           var queueName = queue._key;
-          var query = global.aqlQuery`
-          FOR job IN _jobs
+          var query = global.aqlQuery`/*findPendingJobs*/ FOR job IN _jobs
             FILTER ((job.queue      == ${queueName}) &&
                     (job.status     == 'pending') &&
                     (job.delayUntil <= ${now}))
@@ -139,8 +138,7 @@ var runInDatabase = function () {
 //
 const resetDeadJobs = function () {
   const queues = require('@arangodb/foxx/queues');
-  var query = global.aqlQuery`
-      FOR doc IN _jobs
+  var query = global.aqlQuery`/*resetDeadJobs*/ FOR doc IN _jobs
         FILTER doc.status == 'progress'
           UPDATE doc
         WITH { status: 'pending' }

@@ -116,7 +116,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(graph != nullptr);
-    
+
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
@@ -571,11 +571,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   }
 
   // Out variables
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     nodes.add(VPackValue("vertexOutVariable"));
     vertexOutVariable()->toVelocyPack(nodes);
   }
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     nodes.add(VPackValue("edgeOutVariable"));
     edgeOutVariable()->toVelocyPack(nodes);
   }
@@ -646,6 +646,15 @@ void GraphNode::addEngine(aql::EngineId engineId, ServerID const& server) {
 std::unordered_map<ServerID, aql::EngineId> const* GraphNode::engines() const {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   return &_engines;
+}
+
+/// @brief Clears the graph Engines. (CLUSTER ONLY)
+/// NOTE: Use with care, if you do not refill
+/// the engines this graph node cannot communicate.
+/// and will yield no results.
+void GraphNode::clearEngines() {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  _engines.clear();
 }
 
 BaseOptions* GraphNode::options() const { return _options.get(); }
@@ -791,7 +800,7 @@ Variable const* GraphNode::vertexOutVariable() const {
   return _vertexOutVariable;
 }
 
-bool GraphNode::usesVertexOutVariable() const {
+bool GraphNode::isVertexOutVariableUsedLater() const {
   return _vertexOutVariable != nullptr && _options->produceVertices();
 }
 
@@ -801,7 +810,7 @@ void GraphNode::setVertexOutput(Variable const* outVar) {
 
 Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
 
-bool GraphNode::usesEdgeOutVariable() const {
+bool GraphNode::isEdgeOutVariableUsedLater() const {
   return _edgeOutVariable != nullptr && _options->produceEdges();
 }
 

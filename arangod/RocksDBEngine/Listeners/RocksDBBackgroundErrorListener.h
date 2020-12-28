@@ -18,40 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_MANAGER_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_MANAGER_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
 
-#include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "StorageEngine/TransactionManager.h"
-#include "VocBase/voc-types.h"
+// public rocksdb headers
+#include <rocksdb/db.h>
+#include <rocksdb/listener.h>
 
 namespace arangodb {
 
-class ClusterTransactionManager final : public TransactionManager {
+class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
  public:
-  ClusterTransactionManager() : TransactionManager(), _nrRunning(0) {}
-  ~ClusterTransactionManager() = default;
+  virtual ~RocksDBBackgroundErrorListener();
 
-  // register a transaction
-  void registerTransaction(TransactionId /*transactionId*/,
-                           bool /*isReadOnlyTransaction*/) override {
-    ++_nrRunning;
-  }
-
-  // unregister a transaction
-  void unregisterTransaction(TransactionId transactionId, bool /*isReadOnlyTransaction*/) override {
-    --_nrRunning;
-  }
-
-  uint64_t getActiveTransactionCount() override { return _nrRunning; }
+  void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
  private:
-  std::atomic<uint64_t> _nrRunning;
+  bool _called = false;
 };
+
 }  // namespace arangodb
 
 #endif

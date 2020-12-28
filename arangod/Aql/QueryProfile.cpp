@@ -44,6 +44,7 @@ QueryProfile::QueryProfile(Query* query)
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
+  TRI_ASSERT(_query != nullptr);
 }
 
 /// @brief destroy a profile
@@ -53,6 +54,7 @@ QueryProfile::~QueryProfile() {
 
 void QueryProfile::registerInQueryList() {
   TRI_ASSERT(!_tracked);
+  TRI_ASSERT(_query != nullptr);
   auto queryList = _query->vocbase().queryList();
   if (queryList) {
     _tracked = queryList->insert(_query);
@@ -60,6 +62,8 @@ void QueryProfile::registerInQueryList() {
 }
 
 void QueryProfile::unregisterFromQueryList() noexcept {
+  TRI_ASSERT(_query != nullptr);
+
   // only remove from list when the query was inserted into it...
   if (_tracked) {
     auto queryList = _query->vocbase().queryList();

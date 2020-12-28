@@ -158,7 +158,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   auto res = response.combinedResult();
 
   if (res.ok()) {
-    auto const idSlice = response.response->slice();
+    auto const idSlice = response.slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
@@ -356,22 +356,11 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
                                   std::move(*body.steal()), options)
                  .get();
 
-  if (response.ok() && response.response &&
-      response.statusCode() == fuerte::StatusNotFound) {
-    auto const slice = response.response->slice();
-    if (slice.isObject()) {
-      VPackSlice s = slice.get(StaticStrings::ErrorNum);
-      if (s.isNumber()) {
-        int errorNum = s.getNumber<int>();
-        if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-          // database is gone. that means our lock is also gone
-          return arangodb::Result();
-        }
-      }
-    }
-  }
-
   auto res = response.combinedResult();
+  if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+    // database is gone. that means our lock is also gone
+    return arangodb::Result();
+  }
 
   if (res.fail()) {
     // rebuild body since we stole it earlier
@@ -403,9 +392,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   // The servers (<=3.3) with lower versions hold the POST request for as long
   // as the corresponding DELETE_REQ has not been successfully submitted.
   
-  using namespace std::chrono;
-  auto const start = steady_clock::now();
-
   // nullptr only happens during controlled shutdown
   if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
@@ -413,13 +399,15 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
 
   VPackBuilder body;
-  { VPackObjectBuilder o(&body);
+  { 
+    VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); 
+  }
   auto buf = body.steal();
 
   // Try to POST the lock body. If POST fails, we should just exit and retry
@@ -448,12 +436,6 @@ arangodb::Result SynchronizeShard::getReadLock(
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       "startReadLockOnLeader: couldn't POST lock body, giving up.");
-  }
-
-  double timeLeft =
-      double(timeout) - duration<double>(steady_clock::now() - start).count();
-  if (timeLeft < 60.0) {
-    timeLeft = 60.0;
   }
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
@@ -748,7 +730,7 @@ bool SynchronizeShard::first() {
     }
 
     auto ep = clusterInfo.getServerEndpoint(leader);
-    uint64_t docCount;
+    uint64_t docCount = 0;
     if (!collectionCount(*collection, docCount).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << database << "/" << shard;
@@ -760,7 +742,7 @@ bool SynchronizeShard::first() {
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
       _clientInfoString =
-          std::string{"follower "} + ServerState::instance()->getPersistedId() +
+          std::string{"follower "} + ServerState::instance()->getId() +
           " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
@@ -1140,7 +1122,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
        << "recalculating collection count on follower for "
        << database << "/" << shard;
 
-    uint64_t docCount;
+    uint64_t docCount = 0;
     Result countRes = collectionCount(collection, docCount);
     if (countRes.fail()) {
       return countRes;

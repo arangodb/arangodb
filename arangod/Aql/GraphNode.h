@@ -130,7 +130,7 @@ class GraphNode : public ExecutionNode {
   Variable const* vertexOutVariable() const;
 
   /// @brief checks if the vertex out variable is used
-  bool usesVertexOutVariable() const;
+  bool isVertexOutVariableUsedLater() const;
 
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
@@ -139,7 +139,7 @@ class GraphNode : public ExecutionNode {
   Variable const* edgeOutVariable() const;
 
   /// @brief checks if the edge out variable is used
-  bool usesEdgeOutVariable() const;
+  bool isEdgeOutVariableUsedLater() const;
 
   /// @brief set the edge out variable
   void setEdgeOutput(Variable const* outVar);
@@ -167,6 +167,12 @@ class GraphNode : public ExecutionNode {
 
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
   std::unordered_map<ServerID, aql::EngineId> const* engines() const;
+
+  /// @brief Clears the graph Engines. (CLUSTER ONLY)
+  /// NOTE: Use with care, if you do not refill
+  /// the engines this graph node cannot communicate.
+  /// and will yield no results.
+  void clearEngines();
 
   std::vector<aql::Collection*> const& edgeColls() const;
 
@@ -239,7 +245,7 @@ class GraphNode : public ExecutionNode {
 
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;
-  
+
   /// @brief Flag if the options have been built.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuilt;

@@ -19,19 +19,22 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PRIME__NUMBERS_H
-#define ARANGODB_BASICS_PRIME__NUMBERS_H 1
+#include "gtest/gtest.h"
 
-#include <cstdint>
+#include "RestServer/MetricsFeature.h"
+#include "Mocks/Servers.h"
 
-#include "Basics/Common.h"
+using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a prime number not lower than value
-////////////////////////////////////////////////////////////////////////////////
+TEST(MetricsServerTest, test_setup) {
+  tests::mocks::MockMetricsServer server;
+  MetricsFeature& feature = server.getFeature<MetricsFeature>();
 
-uint64_t TRI_NearPrime(uint64_t);
-
-#endif
+  auto& counter = feature.counter("counter", 0, "one counter");
+  ASSERT_EQ(counter.load(), 0);
+  counter.count();
+  ASSERT_EQ(counter.load(), 1);
+}

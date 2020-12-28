@@ -133,6 +133,7 @@ set(IResearch_core_sources
   ./store/store_utils.cpp
   ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
+  ./utils/thread_utils.cpp
   ./utils/attributes.cpp
   ./utils/attribute_store.cpp
   ./utils/automaton_utils.cpp

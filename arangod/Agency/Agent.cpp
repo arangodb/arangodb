@@ -279,7 +279,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     _waitForCV.wait(static_cast<uint64_t>(1.0e6 * (timeout - d.count())));
 
     // shutting down
-    if (this->isStopping()) {
+    if (isStopping()) {
       return Agent::raft_commit_t::UNKNOWN;
     }
   }
@@ -707,7 +707,7 @@ void Agent::sendAppendEntriesRPC() {
       size_t toLog = 0;
       index_t highest = 0;
       for (size_t i = 0; i < unconfirmed.size(); ++i) {
-        auto const& entry = unconfirmed.at(i);
+        auto const& entry = unconfirmed[i];
         if (entry.index > lastConfirmed) {
           // This condition is crucial, because usually we have one more
           // entry than we need in unconfirmed, so we want to skip this. If,
@@ -715,14 +715,7 @@ void Agent::sendAppendEntriesRPC() {
           // with the same index than the snapshot along to retain the
           // invariant of our data structure that the _log in _state is
           // non-empty.
-          {
-            VPackObjectBuilder o(&builder);
-            builder.add("index", VPackValue(entry.index));
-            builder.add("term", VPackValue(entry.term));
-            builder.add("query", VPackSlice(entry.entry->data()));
-            builder.add("clientId", VPackValue(entry.clientId));
-            builder.add("timestamp", VPackValue(entry.timestamp.count()));
-          }
+          entry.toVelocyPack(builder);
           highest = entry.index;
           ++toLog;
         }
@@ -907,7 +900,7 @@ void Agent::advanceCommitIndex() {
 
 }
 
-futures::Future<query_t> Agent::poll(
+std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
   index_t const& index, double const& timeout) {
 
   using namespace std::chrono;
@@ -919,9 +912,23 @@ futures::Future<query_t> Agent::poll(
   // lead to immediate deletion of data. Therefore, it is critical that this
   // code here answers with a current snapshot of the readDB, whenever it is
   // asked for updates since index 0!
-
+  
   std::vector<log_t> logs;
   query_t builder;
+
+  std::string leader = _constituent.leaderID();
+  if (!loaded() || (size() > 1 && leader != id())) {
+    return std::tuple<futures::Future<query_t>, bool, std::string const&>{
+      futures::makeFuture(std::move(builder)), false, std::move(leader)};
+  }
+
+  {
+    CONDITION_LOCKER(guard, _waitForCV);
+    while (getPrepareLeadership() != 0 && !isStopping()) {
+      _waitForCV.wait(100);
+    }
+  }
+  
   {
     READ_LOCKER(oLocker, _outputLock);
     if (index == 0 || index < _state.firstIndex()) {  // deliver as if index = 0
@@ -952,7 +959,8 @@ futures::Future<query_t> Agent::poll(
       }
     }
     if (builder != nullptr) {
-      return futures::makeFuture(std::move(builder));
+      return std::tuple<futures::Future<query_t>, bool, std::string>{
+        futures::makeFuture(std::move(builder)),true,std::string()};
     }
   }
 
@@ -965,7 +973,8 @@ futures::Future<query_t> Agent::poll(
     if (_lowestPromise > index) {
       _lowestPromise = index;
     }
-    return res->second.getFuture();
+    return std::tuple<futures::Future<query_t>, bool, std::string>{
+      res->second.getFuture(), true, std::string()};
   } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "Failed to add promise for polling");
@@ -1021,7 +1030,7 @@ void Agent::load() {
   // one agent, since no AppendEntriesRPC have to be issued. Therefore,
   // this thread is almost certainly terminated (and thus isStopping() returns
   // true), when we get here.
-  if (size() > 1 && this->isStopping()) {
+  if (size() > 1 && isStopping()) {
     return;
   }
 
@@ -1158,7 +1167,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (getPrepareLeadership() != 0) {
+    while (getPrepareLeadership() != 0 && !isStopping()) {
       _waitForCV.wait(100);
     }
   }
@@ -1240,7 +1249,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (getPrepareLeadership() != 0) {
+    while (getPrepareLeadership() != 0 && !isStopping()) {
       _waitForCV.wait(100);
     }
   }
@@ -1331,14 +1340,14 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if ((!loaded() && wmode != WriteMode(true,true)) || (multihost && leader != id())) {
+  if ((!loaded() && wmode != WriteMode(true, true)) || (multihost && leader != id())) {
     ++_write_no_leader;
     return write_ret_t(false, leader);
   }
 
   if (!wmode.discardStartup()) {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (getPrepareLeadership() != 0) {
+    while (getPrepareLeadership() != 0 && !isStopping()) {
       _waitForCV.wait(100);
     }
   }
@@ -1435,7 +1444,7 @@ read_ret_t Agent::read(query_t const& query) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (getPrepareLeadership() != 0) {
+    while (getPrepareLeadership() != 0 && !isStopping()) {
       _waitForCV.wait(100);
     }
   }
@@ -1517,7 +1526,7 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
   // Only run in case we are in multi-host mode
-  while (!this->isStopping() && size() > 1) {
+  while (!isStopping() && size() > 1) {
     {
       // We set the variable to false here, if any change happens during
       // or after the calls in this loop, this will be set to true to

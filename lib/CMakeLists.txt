@@ -126,6 +126,7 @@ add_library(arango STATIC
   Basics/CpuUsageSnapshot.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
@@ -169,7 +170,6 @@ add_library(arango STATIC
   Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
-  Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/signals.cpp
   Basics/socket-utils.cpp
@@ -233,6 +233,7 @@ add_library(arango STATIC
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp
+  Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp

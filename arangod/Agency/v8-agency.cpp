@@ -41,6 +41,27 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 
+static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  Agent* agent = nullptr;
+  try {
+    TRI_GET_GLOBALS();
+    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    agent = feature.agent();
+    VPackBuilder builder;
+    agent->state().toVelocyPack(builder);
+
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+  } catch (std::exception const& e) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -176,6 +197,7 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "leading"), JS_LeadingAgent);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"), JS_ReadAgent);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"), JS_WriteAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "state"), JS_StateAgent);
 
   v8g->AgentTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"));

@@ -1642,8 +1642,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
         if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
           TRI_ASSERT(!stack.empty());
+          // unfortunately we cannot move here, because clientCall can still be
+          // read-from later
+          AqlCall copyCall = clientCall;
+          ensureOutputBlock(std::move(copyCall), _lastRange);
+        } else {
+          ensureOutputBlock(std::move(clientCall), _lastRange);
         }
-        ensureOutputBlock(std::move(clientCall), _lastRange);
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
         if constexpr (executorHasSideEffects<Executor>) {
@@ -1719,12 +1724,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   // We return skipped here, reset member
   SkipResult skipped = _skipped;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (!stack.is36Compatible()) {
-    if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-      TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we inected a call*/);
-    } else {
-      TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() + 1 /*we took our call*/);
-    }
+  if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+    TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we inected a call*/);
+  } else {
+    TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() + 1 /*we took our call*/);
   }
 #endif
   _skipped.reset();

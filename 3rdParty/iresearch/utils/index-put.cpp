@@ -73,6 +73,12 @@ const std::string CONS_THR = "consolidation-threads";
 const std::string CPR = "commit-period";
 const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
+const std::string ANALYZER_TYPE = "analyzer-type";
+const std::string ANALYZER_OPTIONS = "analyzer-options";
+
+const std::string DEFAULT_ANALYZER_TYPE = "text";
+const std::string DEFAULT_ANALYZER_OPTIONS
+  = R"({"locale":"en", "stopwords":["abc", "def", "ghi"] })";
 
 typedef std::unique_ptr<std::string> ustringp;
 
@@ -96,6 +102,8 @@ const irs::flags numeric_features{
 }
 
 struct Doc {
+  virtual ~Doc() = default;
+
   static std::atomic<uint64_t> next_id;
 
   /**
@@ -154,7 +162,7 @@ struct Doc {
 
     virtual bool write(irs::data_output& out) const = 0;
 
-    virtual ~Field() {}
+    virtual ~Field() = default;
   };
 
   struct StringField : public Field {
@@ -183,18 +191,10 @@ struct Doc {
   struct TextField : public Field {
     std::string f;
     mutable irs::analysis::analyzer::ptr stream;
-    static const std::string& aname;
-    static const std::string& aignore;
-    static constexpr auto aignore_format = irs::type<irs::text_format::json>::get();
 
-    TextField(const std::string& n, const irs::flags& flags)
-      : Field(n, flags) {
-      stream = irs::analysis::analyzers::get(aname, aignore_format, aignore);
-    }
-
-    TextField(const std::string& n, const irs::flags& flags, std::string& a)
-      : Field(n, flags), f(a) {
-      stream = irs::analysis::analyzers::get(aname, aignore_format, aignore);
+    TextField(const std::string& n, const irs::flags& flags,
+              irs::analysis::analyzer::ptr stream)
+      : Field(n, flags), stream(std::move(stream)) {
     }
 
     irs::token_stream& get_tokens() const override {
@@ -240,51 +240,14 @@ struct Doc {
    * @param line
    * @return 
    */
-  virtual void fill(std::string* line) {
-    std::stringstream lineStream(*line);
-    std::string cell;
-
-    // id: uint64_t to string, base 36
-    uint64_t id = next_id++; // atomic fetch and get
-    char str[10];
-    itoa(id, str, 36);
-    char str2[10];
-    snprintf(str2, sizeof (str2), "%6s", str);
-    std::string s(str2);
-    std::replace(s.begin(), s.end(), ' ', '0');
-    elements.emplace_back(std::make_shared<StringField>(n_id, irs::flags{irs::type<irs::granularity_prefix>::get()}, s));
-    store.emplace_back(elements.back());
-
-    // title: string
-    std::getline(lineStream, cell, '\t');
-    elements.emplace_back(std::make_shared<StringField>(n_title, irs::flags::empty_instance(), cell));
-
-    // date: string
-    std::getline(lineStream, cell, '\t');
-    elements.emplace_back(std::make_shared<StringField>(n_date, irs::flags::empty_instance(), cell));
-    store.emplace_back(elements.back());
-
-    // +date: uint64_t
-    uint64_t t = 0; //boost::posix_time::microsec_clock::local_time().total_milliseconds();
-    elements.emplace_back(
-      std::make_shared<NumericField>(n_timesecnum, irs::flags{irs::type<irs::granularity_prefix>::get()}, t)
-    );
-
-    // body: text
-    std::getline(lineStream, cell, '\t');
-    elements.emplace_back(
-      std::make_shared<TextField>(n_body, irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::norm>::get()}, cell)
-    );
-  }
+  virtual void fill(std::string* line) = 0;
 };
 
 std::atomic<uint64_t> Doc::next_id(0);
-const std::string& Doc::TextField::aname = std::string("text");
-const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"] }");
-
+using analyzer_factory_f = std::function<irs::analysis::analyzer::ptr()>;
 
 struct WikiDoc : Doc {
-  WikiDoc() {
+  explicit WikiDoc(const analyzer_factory_f& analyzer_factory) {
     // id
     elements.emplace_back(id = std::make_shared<StringField>(n_id, irs::flags::empty_instance()));
     store.emplace_back(elements.back());
@@ -300,7 +263,7 @@ struct WikiDoc : Doc {
     elements.push_back(ndate = std::make_shared<NumericField>(n_timesecnum, numeric_features));
 
     // body: text
-    elements.push_back(body = std::make_shared<TextField>(n_body, text_features));
+    elements.push_back(body = std::make_shared<TextField>(n_body, text_features, analyzer_factory()));
   }
 
   virtual void fill(std::string* line) {
@@ -341,6 +304,8 @@ int put(
     const std::string& path,
     const std::string& dir_type,
     const std::string& format,
+    const std::string& analyzer_type,
+    const std::string& analyzer_options,
     std::istream& stream,
     size_t lines_max,
     size_t indexer_threads,
@@ -358,7 +323,27 @@ int put(
   auto codec = irs::formats::get(format);
 
   if (!codec) {
-    std::cerr << "Unable to find format of type '" << format<< "'" << std::endl;
+    std::cerr << "Unable to find format of type '" << format << "'" << std::endl;
+    return 1;
+  }
+
+  analyzer_factory_f analyzer_factory = [&analyzer_type, &analyzer_options](){
+    irs::analysis::analyzer::ptr analyzer;
+
+    const auto res = irs::analysis::analyzers::get(
+      analyzer, analyzer_type,
+      irs::type<irs::text_format::json>::get(),
+      analyzer_options);
+
+    if (!res) {
+      std::cerr << "Unable to load an analyzer of type '" << analyzer_type
+                << "', error '" << res.c_str() << "'\n";
+    }
+
+    return analyzer;
+  };
+
+  if (!analyzer_factory()) {
     return 1;
   }
 
@@ -370,16 +355,18 @@ int put(
   irs::async_utils::thread_pool thread_pool(indexer_threads + consolidation_threads + 1); // +1 for commiter thread
 
   SCOPED_TIMER("Total Time");
-  std::cout << "Configuration: " << std::endl;
-  std::cout << INDEX_DIR << "=" << path << std::endl;
-  std::cout << DIR_TYPE << "=" << dir_type << std::endl;
-  std::cout << FORMAT << "=" << format << std::endl;
-  std::cout << MAX << "=" << lines_max << std::endl;
-  std::cout << THR << "=" << indexer_threads << std::endl;
-  std::cout << CONS_THR << "=" << consolidation_threads << std::endl;
-  std::cout << CPR << "=" << commit_interval_ms << std::endl;
-  std::cout << BATCH_SIZE << "=" << batch_size << std::endl;
-  std::cout << CONSOLIDATE_ALL << "=" << consolidate_all << std::endl;
+  std::cout << "Configuration:\n"
+            << INDEX_DIR << "=" << path << '\n'
+            << DIR_TYPE << "=" << dir_type << '\n'
+            << FORMAT << "=" << format << '\n'
+            << MAX << "=" << lines_max << '\n'
+            << THR << "=" << indexer_threads << '\n'
+            << CONS_THR << "=" << consolidation_threads << '\n'
+            << CPR << "=" << commit_interval_ms << '\n'
+            << BATCH_SIZE << "=" << batch_size << '\n'
+            << CONSOLIDATE_ALL << "=" << consolidate_all << '\n'
+            << ANALYZER_TYPE << "=" << analyzer_type << '\n'
+            << ANALYZER_OPTIONS << "=" << analyzer_options << '\n';
 
   struct {
     std::condition_variable cond_;
@@ -389,7 +376,7 @@ int put(
     std::vector<std::string> buf_;
 
     bool swap(std::vector<std::string>& buf) {
-      SCOPED_LOCK_NAMED(mutex_, lock);
+      auto lock = irs::make_unique_lock(mutex_);
 
       for (;;) {
         buf_.swap(buf);
@@ -419,7 +406,7 @@ int put(
   // stream reader thread
   thread_pool.run([&batch_provider, lines_max, batch_size, &stream]()->void {
     SCOPED_TIMER("Stream read total time");
-    SCOPED_LOCK_NAMED(batch_provider.mutex_, lock);
+    auto lock = irs::make_unique_lock(batch_provider.mutex_);
 
     for (auto i = lines_max ? lines_max : (std::numeric_limits<size_t>::max)(); i; --i) {
       batch_provider.buf_.resize(batch_provider.buf_.size() + 1);
@@ -457,7 +444,7 @@ int put(
 
         // notify consolidation threads
         if (consolidation_threads) {
-          SCOPED_LOCK(consolidation_mutex);
+          auto lock = irs::make_unique_lock(consolidation_mutex);
           consolidation_cv.notify_all();
         }
 
@@ -474,7 +461,7 @@ int put(
     thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, &writer]()->void {
       while (!batch_provider.done_.load()) {
         {
-          SCOPED_LOCK_NAMED(consolidation_mutex, lock);
+          auto lock = irs::make_unique_lock(consolidation_mutex);
           if (std::cv_status::timeout ==
               consolidation_cv.wait_for(lock, std::chrono::seconds(5))) {
             continue;
@@ -496,9 +483,9 @@ int put(
 
   // indexer threads
   for (size_t i = indexer_threads; i; --i) {
-    thread_pool.run([&batch_provider, &writer]()->void {
+    thread_pool.run([&analyzer_factory, &batch_provider, &writer]()->void {
       std::vector<std::string> buf;
-      WikiDoc doc;
+      WikiDoc doc(analyzer_factory);
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
@@ -569,21 +556,32 @@ int put(const cmdline::parser& args) {
   const auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
   const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
+  const auto analyzer_type = args.exist(ANALYZER_TYPE)
+    ? args.get<std::string>(ANALYZER_TYPE)
+    : DEFAULT_ANALYZER_TYPE;
+  const auto analyzer_options = args.exist(ANALYZER_TYPE)
+    ? args.get<std::string>(ANALYZER_OPTIONS)
+    : DEFAULT_ANALYZER_OPTIONS;
 
+
+  std::fstream fin;
+  std::istream* in;
   if (args.exist(INPUT)) {
     const auto& file = args.get<std::string>(INPUT);
-    std::fstream in(file, std::fstream::in);
+    fin.open(file, std::fstream::in);
 
-    if (!in) {
+    if (!fin) {
       return 1;
     }
 
-    return put(path, dir_type, format, in, lines_max, indexer_threads,
-               consolidation_threads, commit_interval_ms, batch_size, consolidate);
+    in = &fin;
+  } else {
+    in = &std::cin;
   }
 
-  return put(path, dir_type, format, std::cin, lines_max, indexer_threads, 
-             consolidation_threads, commit_interval_ms, batch_size, consolidate);
+  return put(path, dir_type, format, analyzer_type, analyzer_options,
+             *in, lines_max, indexer_threads, consolidation_threads,
+             commit_interval_ms, batch_size, consolidate);
 }
 
 int put(int argc, char* argv[]) {
@@ -600,6 +598,8 @@ int put(int argc, char* argv[]) {
   cmdput.add(THR, 0, "Number of insert threads", false, size_t(0));
   cmdput.add(CONS_THR, 0, "Number of consolidation threads", false, size_t(0));
   cmdput.add(CPR, 0, "Commit period in lines", false, size_t(0));
+  cmdput.add(ANALYZER_TYPE, 0, "Text analyzer type", false, DEFAULT_ANALYZER_TYPE);
+  cmdput.add(ANALYZER_OPTIONS, 0, "Text analyzer options", false, DEFAULT_ANALYZER_OPTIONS);
 
   cmdput.parse(argc, argv);
 

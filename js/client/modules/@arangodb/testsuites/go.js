@@ -64,7 +64,7 @@ const testPaths = {
 
 function goDriver (options) {
   function runInGoTest (options, instanceInfo, file, addArgs) {
-    process.env['TEST_ENDPOINTS'] = instanceInfo.url;
+    process.env['TEST_ENDPOINTS'] = instanceInfo.urls.join(',');
     process.env['TEST_AUTHENTICATION'] = 'basic:root:';
     let jwt = pu.getJwtSecret(options);
     if (jwt) {

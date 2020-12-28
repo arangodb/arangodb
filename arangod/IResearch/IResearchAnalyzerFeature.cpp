@@ -810,7 +810,7 @@ arangodb::Result visitAnalyzers(
       const auto oneShardQueryString = arangodb::aql::QueryString(
         "FOR d IN "s + shards->begin()->first + " RETURN d");
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-        oneShardQueryString, nullptr, nullptr);
+        oneShardQueryString, nullptr);
 
       auto result = query.executeSync();
 
@@ -895,7 +895,7 @@ arangodb::Result visitAnalyzers(
   }
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                             queryString, nullptr, nullptr);
+                             queryString, nullptr);
 
   auto result = query.executeSync();
 
@@ -1065,8 +1065,7 @@ bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
   return false;
 }
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+using irs::async_utils::read_write_mutex;
 
 arangodb::AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
   arangodb::application_features::ApplicationServer& server,
@@ -1275,17 +1274,14 @@ bool AnalyzerPool::init(
     LOG_TOPIC("62062", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '" << _type
         << "' properties '" << _properties << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC("a9196", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "': " << e.what();
-    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC("7524a", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "'";
-    IR_LOG_EXCEPTION();
   }
 
   _config.clear();                        // set as uninitialized
@@ -1340,19 +1336,16 @@ irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
            "'"
         << _type << "' properties '" << _properties << "': " << e.code() << " "
         << e.what();
-    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC("93baf", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "': " << e.what();
-    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC("08db9", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "'";
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -1667,8 +1660,7 @@ Result IResearchAnalyzerFeature::emplace(
       }
     }
 
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    WRITE_LOCKER(lock, _mutex);
 
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
@@ -1800,7 +1792,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       if (res.fail()) {
         return res;
       }
-      arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), nullptr, nullptr);
+      arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), nullptr);
       aql::QueryResult queryResult = query.executeSync();
       if (queryResult.fail()) {
         return queryResult.result;
@@ -1862,8 +1854,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
       return res;
     }
 
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    WRITE_LOCKER(lock, _mutex);
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     TRI_ASSERT(!engine.inRecovery());
@@ -1999,8 +1990,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             break; // we don`t care about specific revision.
           }
           {
-            ReadMutex mutex(_mutex);
-            SCOPED_LOCK(mutex);
+            READ_LOCKER(lock, _mutex);
             auto itr = _lastLoad.find(name.first);
             if (itr != _lastLoad.end() && itr->second >= revision) {
               break; // expected or later revision is loaded
@@ -2019,8 +2009,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       }
     }
 
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    READ_LOCKER(lock, _mutex);
     auto itr = _analyzers.find(irs::make_hashed_ref(normalizedName, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
@@ -2223,7 +2212,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
     trx.begin();
 
-    arangodb::aql::Query queryDelete(ctx, queryDeleteString, bindBuilder, nullptr);
+    arangodb::aql::Query queryDelete(ctx, queryDeleteString, bindBuilder);
 
     auto deleteResult = queryDelete.executeSync();
     if (deleteResult.fail()) {
@@ -2241,7 +2230,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
       arangodb::StaticStrings::AnalyzersDeletedRevision + " >= @rev) " +
       "UPDATE d WITH UNSET(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision  + "') IN " +
       arangodb::StaticStrings::AnalyzersCollection);
-    arangodb::aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder, nullptr);
+    arangodb::aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder);
 
     auto updateResult = queryUpdate.executeSync();
     if (updateResult.fail()) {
@@ -2296,8 +2285,8 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   auto& dbFeature = server().getFeature<DatabaseFeature>();
 
   try {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_analyzers'/'_lastLoad' can be asynchronously read
+    // '_analyzers'/'_lastLoad' can be asynchronously read
+    WRITE_LOCKER(lock, _mutex);
 
     // load all databases
     if (database.null()) {
@@ -2759,8 +2748,7 @@ Result IResearchAnalyzerFeature::remove(
     //  }
     //}
 
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    WRITE_LOCKER(lock, _mutex);
 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
@@ -2963,8 +2951,8 @@ void IResearchAnalyzerFeature::stop() {
   }
 
   {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously read
+    // '_analyzers' can be asynchronously read
+    WRITE_LOCKER(lock, _mutex);
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
@@ -3080,8 +3068,7 @@ bool IResearchAnalyzerFeature::visit(
   Analyzers analyzers;
 
   {
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    READ_LOCKER(lock, _mutex);
     analyzers = _analyzers;
   }
 
@@ -3121,8 +3108,7 @@ bool IResearchAnalyzerFeature::visit(
   Analyzers analyzers;
 
   {
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    READ_LOCKER(lock, _mutex);
     analyzers = _analyzers;
   }
 
@@ -3154,8 +3140,7 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref const& database)
 }
 
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
-  WriteMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);
+  WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
   auto itr = _lastLoad.find(
       irs::make_hashed_ref(database, std::hash<irs::string_ref>()));
