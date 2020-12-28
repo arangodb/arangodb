@@ -134,53 +134,59 @@ void RestTransactionHandler::executeGetState() {
 void RestTransactionHandler::executeBegin() {
   TRI_ASSERT(_request->suffixes().size() == 1 &&
              _request->suffixes()[0] == "begin");
-  
-  // figure out the transaction ID
-  TRI_voc_tid_t tid = 0;
-  bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  if (found) {
-    if (!ServerState::isDBServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
-      return;
-    }
-    tid = basics::StringUtils::uint64(value);
-    if (tid == 0 || !transaction::isChildTransactionId(tid)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                    "invalid transaction ID on DBServer");
-      return;
-    }
-    TRI_ASSERT(tid != 0);
-    TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
-  } else {
-    if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
-      return;
-    }
-    tid = ServerState::isSingleServer(role) ? TRI_NewTickServer() :
-                                              TRI_NewServerSpecificTickMod4();
-  }
-  TRI_ASSERT(tid != 0);
-  
-  
+
   bool parseSuccess = false;
   VPackSlice slice = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return;
   }
-  
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-    
-  Result res = mgr->createManagedTrx(_vocbase, tid, slice, false);
-  if (res.fail()) {
-    generateError(res);
+
+  bool found = false;
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+  if (found) {
+    if (!ServerState::isDBServer(role)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "Not supported on this server type");
+      return;
+    }
+    TRI_voc_tid_t tid = basics::StringUtils::uint64(value);
+    if (tid == 0 || !transaction::isChildTransactionId(tid)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "invalid transaction ID on DBServer");
+      return;
+    }
+
+    TRI_ASSERT(tid != 0);
+    TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
+
+    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice, false);
+    if (res.fail()) {
+      generateError(res);
+    } else {
+      generateTransactionResult(rest::ResponseCode::CREATED, tid,
+                                transaction::Status::RUNNING);
+    }
   } else {
-    generateTransactionResult(rest::ResponseCode::CREATED, tid, transaction::Status::RUNNING);
+    if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "Not supported on this server type");
+      return;
+    }
+
+    // start
+    ResultT<TRI_voc_tid_t> res = mgr->createManagedTrx(_vocbase, slice);
+    if (res.fail()) {
+      generateError(res.result());
+    } else {
+      generateTransactionResult(rest::ResponseCode::CREATED, res.get(),
+                                transaction::Status::RUNNING);
+    }
   }
 }
 

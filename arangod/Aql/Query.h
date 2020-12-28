@@ -106,6 +106,10 @@ class Query : public QueryContext {
   /// @brief set the query to killed
   void kill();
 
+  /// @brief setter and getter methods for the query lockTimeout. 
+  void setLockTimeout(double timeout) noexcept override;
+  double getLockTimeout() const noexcept override;
+
   QueryString const& queryString() const { return _queryString; }
   
   QueryProfile* profile() const { return _profile.get(); }

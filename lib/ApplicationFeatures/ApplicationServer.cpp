@@ -86,12 +86,12 @@ bool ApplicationServer::isPrepared() {
          tmp == State::IN_STOP;
 }
 
-bool ApplicationServer::isStopping() {
+bool ApplicationServer::isStopping() const {
   auto tmp = state();
   return isStoppingState(tmp);
 }
 
-bool ApplicationServer::isStoppingState(State state) {
+bool ApplicationServer::isStoppingState(State state) const {
   return state == State::IN_SHUTDOWN ||
          state == State::IN_STOP ||
          state == State::IN_UNPREPARE ||

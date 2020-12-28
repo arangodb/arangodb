@@ -1811,8 +1811,7 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
 //  releaseUsage();
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<TRI_voc_tid_t&>(_id) = 0;
+  resetTransactionId();
 
   return arangodb::Result();
 }
@@ -1829,8 +1828,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    const_cast<TRI_voc_tid_t&>(_id) = 0;
+    resetTransactionId();
     return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
@@ -1840,9 +1838,8 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<TRI_voc_tid_t&>(_id) = 0;
-//  releaseUsage();
+  resetTransactionId();
+  //  releaseUsage();
 
   return arangodb::Result();
 }

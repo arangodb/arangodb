@@ -1,6 +1,20 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Added new metric: "arangodb_collection_lock_sequential_mode" this will count
+  how many times we need to do a sequential locking of collections. If this
+  metric increases this indicates lock contention in transaction setup.
+  Most likely this is caused by exlcusive locks used on collections with more
+  than one shard.
+  
+* Fix for BTS-213
+  Changed the transaction locking mechanism in the cluster case.
+  For all installations that do not use "exclusive" collection locks this change
+  will not be noticable. In case of "exclusive" locks, and collections with more
+  than one shard, it is now less likely to get a LOCK_TIMEOUT (ErrorNum 18).
+  It is still possible to get into the LOCK_TIMEOUT case, especially if the
+  "exclusive" operation(s) are long-running.
+
 * Fixed an endless busy loop which could happen if a coordinator tries to roll
   back a database creation, but the database has already been dropped by other
   means.
