@@ -188,12 +188,15 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
    *
    * @return RegisterInfo
    */
-  auto buildRegisterInfos(size_t nestingLevel) -> RegisterInfos {
+  auto buildRegisterInfos(size_t nestingLevel, bool canWrite = true) -> RegisterInfos {
     RegIdSetStack regStack{};
     for (size_t i = 0; i <= nestingLevel; ++i) {
       regStack.emplace_back(RegIdSet{0});
     }
-    return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {}, std::move(regStack));
+    if (canWrite) {
+      return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {}, std::move(regStack));
+    }
+    return RegisterInfos(RegIdSet{0}, RegIdSet{}, 1, 1, {}, std::move(regStack));
   }
 
   auto emptyProducer() -> WaitingExecutionBlockMock {
@@ -204,10 +207,9 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
 
   auto leftoverProducer(size_t nestingLevel) -> ExecutionBlockImpl<FilterExecutor> {
     FilterExecutorInfos execInfos{0};
-    return ExecutionBlockImpl<FilterExecutor>{fakedQuery->rootEngine(),
-                                              generateNodeDummy(),
-                                              std::move(buildRegisterInfos(nestingLevel)),
-                                              std::move(execInfos)};
+    return ExecutionBlockImpl<FilterExecutor>{
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        std::move(buildRegisterInfos(nestingLevel, false)), std::move(execInfos)};
   }
 
   auto buildExecBlock(size_t nestingLevel) -> ExecutionBlockImpl<ExecutorType> {
