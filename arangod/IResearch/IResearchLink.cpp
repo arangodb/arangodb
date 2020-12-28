@@ -1809,6 +1809,20 @@ char const* IResearchLink::typeName() const {
   return IResearchLinkHelper::type().c_str();
 }
 
+bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
+  TRI_ASSERT(!name.empty());
+  if (_meta._collectionName.empty()) {
+    auto nonConstMeta = const_cast<IResearchLinkMeta*>(&_meta);
+    nonConstMeta->_collectionName = name;
+    return true;
+  }
+  LOG_TOPIC_IF("5573c", ERR, iresearch::TOPIC, name != _meta._collectionName)
+        << "Collection name mismatch for arangosearch link '" << id() << "'."
+        << " Meta name '" << _meta._collectionName << "' setting name '" << name << "'";
+  TRI_ASSERT(name == _meta._collectionName);
+  return false;
+}
+
 Result IResearchLink::unload() {
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
