@@ -397,9 +397,11 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
       auto const reportedFullCount = _maximumSkipReport.getFullCount(reportLevel);
 
       auto const branchSkip = branchReport.getSkipped(reportLevel);
-      auto const branchFullCount = branchReport.getFullCount(reportLevel);
+      // NOTE: Unused, only used in assert which is disabled for now.
+      // auto const branchFullCount = branchReport.getFullCount(reportLevel);
 
       auto const branchSkipNext = branchSkip + (std::max)(call.getOffset(), skipped);
+
       branchReport.setSkipped(reportLevel, branchSkipNext);
 
       if (branchSkipNext > reportedSkip) {
@@ -408,9 +410,15 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
 
       if (skipped > call.getOffset()) {
         // In the current implementation we get the fullCount guaranteed in
-        // one go. If this assert triggers, we can easily transform the following code
-        // into an increment of branchFullCount instead of assignement
-        TRI_ASSERT(branchFullCount == 0);
+        // one go. If this assert triggers, we can easily transform the
+        // following code into an increment of branchFullCount instead of
+        // assignement.
+
+        // NOTE: The following assert does not hold true in all
+        // FILTER LIMIT cases over subqueries. We may have buffered subquery
+        // executions, which are discarded and transformed to fullCount insted
+        // TRI_ASSERT(branchFullCount == 0);
+
         // If this assert kicks in, the counters are off, too many rows are skipped
         TRI_ASSERT(call.needsFullCount());
         auto const branchFullCountNext = skipped - call.getOffset();
@@ -418,7 +426,11 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
         branchReport.setFullCount(reportLevel, branchFullCountNext);
         if (reportedFullCount < branchFullCountNext) {
           // We can only have one fullCount value.
-          TRI_ASSERT(reportedFullCount == 0);
+          // NOTE: The following assert does not hold true
+          // in all FILTER LIMIT cases over subqueries.
+          // We may have buffered subquery executions, which are discarded
+          // and transformed to fullCount insted
+          // TRI_ASSERT(reportedFullCount == 0);
           _maximumSkipReport.setFullCount(reportLevel, branchFullCountNext);
         } else {
           // WE cannot have different fullCounts on different Branches
