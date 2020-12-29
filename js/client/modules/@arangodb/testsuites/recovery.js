@@ -43,6 +43,8 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 
+const termSignal = 15;
+
 const testPaths = {
   'recovery': [tu.pathForTesting('server/recovery')]
 };
@@ -217,7 +219,7 @@ function runArangodRecovery (params) {
     if (params.setup) {
       let dbServers = params.instanceInfo.arangods.slice().filter((a) => {return a.role === 'dbserver' || a.role === 'coordinator';});
       print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
-      dbServers.forEach((arangod) => {arangod.exitStatus = internal.killExternal(arangod.pid); arangod.pid = 0;});
+      dbServers.forEach((arangod) => {arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); arangod.pid = 0;});
     } else {
       pu.shutdownInstance(params.instanceInfo, params.options, false);
     }
