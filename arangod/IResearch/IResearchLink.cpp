@@ -571,7 +571,7 @@ AsyncLinkHandle::AsyncLinkHandle(IResearchLink* link)
 }
 
 AsyncLinkHandle::~AsyncLinkHandle() {
- --LinksCount;
+  --LinksCount;
 }
 
 void AsyncLinkHandle::reset() {
@@ -1079,12 +1079,10 @@ Result IResearchLink::init(
         LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
           << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
       }
-      
-#if defined(USE_ENTERPRISE) && defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+
+#ifdef USE_ENTERPRISE
       // enterprise name is not used in _id so should not be here!
-      TRI_ASSERT(meta._collectionName.compare(0, 7, "_local_") != 0);
-      TRI_ASSERT(meta._collectionName.compare(0, 6, "_from_") != 0);
-      TRI_ASSERT(meta._collectionName.compare(0, 4, "_to_") != 0);
+      IResearchLinkHelper::realNameFromSmartName(meta._collectionName);
 #endif
     }
 
@@ -1741,8 +1739,7 @@ Result IResearchLink::remove(
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
     auto ptr = irs::memory::make_unique<LinkTrxState>(
-      std::move(lock), *(_dataStore._writer)
-    );
+      std::move(lock), *(_dataStore._writer));
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));

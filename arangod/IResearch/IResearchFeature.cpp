@@ -312,18 +312,11 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
                                     std::to_string(collection->planId().id()));
     if (clusterCollection) {
       auto name = clusterCollection->name();
-#ifdef USE_ENTERPRISE
-      TRI_ASSERT(!name.empty());
-      if (name.compare(0, 7, "_local_") == 0) {
-        name.erase(0, 7);
-      } else if (name.compare(0, 6, "_from_") == 0) {
-        name.erase(0, 6);
-      } else if (name.compare(0, 4, "_to_") == 0) {
-        name.erase(0, 4);
-      }
-#endif
       LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)
           << " Processing collection " << name;
+#ifdef USE_ENTERPRISE
+      arangodb::iresearch::IResearchLinkHelper::realNameFromSmartName(name);
+#endif
       for (auto& index : indexes) {
         if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
           auto indexPtr =
@@ -336,11 +329,11 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
               LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
                   << "Setting collection name '" << name << "' for link "
                   << indexPtr->id().id();
-              auto builder =
-                  collection->toVelocyPackIgnore({"path", "statusString"},
-                                                 arangodb::LogicalDataSource::Serialization::PersistenceWithInProgress);
               if (selector.engineName() == arangodb::RocksDBEngine::EngineName) {
                 auto& engine = selector.engine<arangodb::RocksDBEngine>();
+                auto builder =
+                  collection->toVelocyPackIgnore({"path", "statusString"},
+                                                 arangodb::LogicalDataSource::Serialization::PersistenceWithInProgress);
                 auto res =
                     engine.writeCreateCollectionMarker(vocbase.id(), collection->id(),
                                                        builder.slice(),
@@ -719,7 +712,7 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function, co
                                      irs::logger::level_t level, const char* message,
                                      size_t message_len) {
   auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
-  std::string msg(message, message_len); 
+  std::string msg(message, message_len);
   arangodb::Logger::log(function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
 }
 
@@ -958,8 +951,6 @@ void IResearchFeature::start() {
     auto lock = irs::make_unique_lock(_startState->mtx);
     if (!_startState->cv.wait_for(lock, 60s,
                                   [this](){ return _startState->counter == 2; })) {
-
-
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_SYS_ERROR,
         "failed to start ArangoSearch maintenance threads");
@@ -987,7 +978,6 @@ bool IResearchFeature::queue(
     std::chrono::steady_clock::duration delay,
     std::function<void()>&& fn) {
   try {
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("IResearchFeature::queue") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
