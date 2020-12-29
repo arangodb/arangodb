@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add some more metrics to the ConnectionPool.
+
 * Remove HTTP "Connection" header when forwarding requests in the cluster
   from one coordinator to another, and let the internal network layer
   handle closing of connections and keep-alive.
