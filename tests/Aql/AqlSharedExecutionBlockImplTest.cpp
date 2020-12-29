@@ -72,13 +72,18 @@ using InsertExecutor =
  *   IdExecutor => SingleRowFetcher, passthrough
  *   SortExecutor => AllRowsFetcher;
  *   UnsortedGatherExecutor => MultiDependencySingleRowFetcher
+ *   Insert/Update => SideEffectExecutor
+ */
+
+
+/*
+ *   NOTE: We have removed COUNT collect, as it cannot have results in flight.
  *   CountCollectExecutor => Reports even if no data is present,
  *                           needs to handle this skip correctly.
- *   Insert/Update => SideEffectExecutor
  */
 using ExecutorsToTest =
     ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
-                     SortExecutor, UnsortedGatherExecutor, CountCollectExecutor, InsertExecutor>;
+                     SortExecutor, UnsortedGatherExecutor, InsertExecutor>;
 
 template <class ExecutorType>
 class AqlSharedExecutionBlockImplTest : public ::testing::Test {
