@@ -64,7 +64,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   int runShell(std::vector<std::string> const&);
   bool runScript(std::vector<std::string> const& files,
                  std::vector<std::string> const&, bool,
-                 std::vector<std::string> const& mainArgs);
+                 std::vector<std::string> const& mainArgs, bool);
   bool runString(std::vector<std::string> const& files, std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,
                     std::vector<std::string> const& positionals,

@@ -101,6 +101,7 @@ function runArangodRecovery (params) {
   if (params.options.cluster) {
     // arangosh has different name for parameter :(
     additionalTestParams['javascript.execute'] =  params.script;
+    additionalTestParams['javascript.run-main'] = true;
   } else {
     additionalTestParams['javascript.script'] =  params.script;
   }
