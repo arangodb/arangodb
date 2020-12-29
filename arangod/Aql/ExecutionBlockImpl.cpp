@@ -1867,6 +1867,10 @@ auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack, s
   }
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// This is a helper method to inject a prepared
+// input range in the tests. It should simulate
+// an ongoing query in a specific state.
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range, SkipResult skipped) -> void {
   if (range.finalState() == ExecutorState::DONE) {
@@ -1884,6 +1888,7 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range, SkipRes
     _rowFetcher.initialize(skipped.subqueryDepth());
   }
 }
+#endif
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
