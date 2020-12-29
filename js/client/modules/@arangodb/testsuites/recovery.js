@@ -215,8 +215,8 @@ function runArangodRecovery (params) {
       return; // without test server test will for sure fail
     }
     if (params.setup) {
-      let dbServers = params.instanceInfo.arangods.slice().filter((a) => {return a.role === 'dbserver';});
-      print(BLUE + "killing " + dbServers.length + " DBServers " + RESET);
+      let dbServers = params.instanceInfo.arangods.slice().filter((a) => {return a.role === 'dbserver' || a.role === 'coordinator';});
+      print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
       dbServers.forEach((arangod) => {arangod.exitStatus = internal.killExternal(arangod.pid); arangod.pid = 0;});
     } else {
       pu.shutdownInstance(params.instanceInfo, params.options, false);
