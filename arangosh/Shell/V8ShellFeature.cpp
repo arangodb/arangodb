@@ -592,7 +592,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
 bool V8ShellFeature::runScript(std::vector<std::string> const& files,
                                std::vector<std::string> const& positionals, bool execute,
-                               std::vector<std::string> const& mainArgs) {
+                               std::vector<std::string> const& mainArgs, bool runMain) {
   auto isolate = _isolate;
   v8::Locker locker{_isolate};
 
@@ -662,7 +662,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
     }
   }
-  if (execute && !mainArgs.empty()) {
+  if (execute && runMain) {
     v8::TryCatch tryCatch(isolate);
     // run the garbage collection for at most 30 seconds
     TRI_RunGarbageCollectionV8(isolate, 30.0);
@@ -713,6 +713,10 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
             << "caught unknown exception";
         ok = false;
       }
+    } else {
+      LOG_TOPIC("5da99", ERR, arangodb::Logger::FIXME)
+            << "Function 'main' was not found";
+      ok = false;
     }
   }
   ConsoleFeature& console = server().getFeature<ConsoleFeature>();
