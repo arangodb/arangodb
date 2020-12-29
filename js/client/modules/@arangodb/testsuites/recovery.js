@@ -198,6 +198,7 @@ function runArangodRecovery (params) {
       pu.reStartInstance(params.options, params.instanceInfo, {});
       let tryCount = 10;
       while(tryCount > 0 && !pu.arangod.check.instanceAlive(params.instanceInfo, params.options)) {
+        print(RESET + "Waiting for all servers to go GOOD");
         internal.sleep(3); // give agency time to bootstrap DBServers
         --tryCount;
       }
@@ -220,7 +221,12 @@ function runArangodRecovery (params) {
     if (params.setup) {
       let dbServers = params.instanceInfo.arangods.slice().filter((a) => {return a.role === 'dbserver' || a.role === 'coordinator';});
       print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
-      dbServers.forEach((arangod) => {arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); arangod.pid = 0;});
+      dbServers.forEach((arangod) => {
+        internal.debugTerminateInstance(arangod.endpoint);
+        // need this to properly mark spawned process as killed in internal test data
+        arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); 
+        arangod.pid = 0;
+      });
     } else {
       pu.shutdownInstance(params.instanceInfo, params.options, false);
     }

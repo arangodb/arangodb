@@ -124,6 +124,14 @@
     // by tests framework not by client
   };
   
+  exports.debugTerminateInstance = function(endpoint) {
+    const request = require('@arangodb/request');
+    let res = request.put({
+      url: endpointToURL(endpoint) + '/_admin/debug/crash',
+      body: ""
+    });
+  };
+  
   exports.debugCanUseFailAt = function() {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
