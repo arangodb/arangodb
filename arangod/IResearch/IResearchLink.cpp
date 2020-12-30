@@ -1082,7 +1082,7 @@ Result IResearchLink::init(
 
 #ifdef USE_ENTERPRISE
       // enterprise name is not used in _id so should not be here!
-      if (ADB_UNLIKELY(!meta._collectionName.empty())) {
+      if (ADB_LIKELY(!meta._collectionName.empty())) {
         IResearchLinkHelper::realNameFromSmartName(meta._collectionName);
       }
 #endif
