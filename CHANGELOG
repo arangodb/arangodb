@@ -1,6 +1,14 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed bug in the connection pool which could prevent connection reusage under
+  high load and lead to lots of new connection creations, in particular with
+  TLS.
+
+* Added more metrics around connection pool.
+
+* Fix Gauge class' assignment operators.
+
 * Fixed an endless busy loop which could happen if a coordinator tries to roll
   back a database creation, but the database has already been dropped by other
   means.

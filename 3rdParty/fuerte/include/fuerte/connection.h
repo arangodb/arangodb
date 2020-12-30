@@ -95,6 +95,10 @@ class Connection : public std::enable_shared_from_this<Connection> {
 
   /// @brief lease a connection (prevent idle timeout)
   virtual bool lease() = 0;
+  
+  /// @brief unlease a connection, if no sendRequest was done
+  /// after the lease
+  virtual void unlease() = 0;
 
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}

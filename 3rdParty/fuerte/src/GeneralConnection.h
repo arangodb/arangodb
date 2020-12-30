@@ -56,6 +56,9 @@ class GeneralConnection : public fuerte::Connection {
   // If false is retured the connection is broken beyond repair.
   virtual bool lease() override;
 
+  // Give back lease, if no sendRequest was called on it.
+  virtual void unlease() override;
+
  protected:
   // shutdown connection, cancel async operations
   void shutdownConnection(const fuerte::Error, std::string const& msg = "");
