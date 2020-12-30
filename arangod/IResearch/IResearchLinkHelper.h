@@ -59,7 +59,7 @@ struct IResearchLinkHelper {
   /// @brief return a reference to a static VPackSlice of an empty index
   ///        definition
   //////////////////////////////////////////////////////////////////////////////
-  static velocypack::Slice const& emptyIndexSlice();
+  static arangodb::velocypack::Builder emptyIndexSlice(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare two link definitions for equivalience if used to create a

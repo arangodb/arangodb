@@ -41,7 +41,7 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
  public:
-  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection);
+  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId);
 
   void afterTruncate(TRI_voc_tick_t tick,
                      transaction::Methods* trx) override {
