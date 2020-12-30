@@ -1,6 +1,8 @@
 devel
 -----
 
+* Stabilize a Foxx cleanup test.
+
 * Add some more metrics to the ConnectionPool.
 
 * Remove HTTP "Connection" header when forwarding requests in the cluster
