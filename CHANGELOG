@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed rare objectId conflict for indexes
+
+* Fix for OASIS-409. Fixed indexing _id attribute at recovery
+
 * Stabilize a Foxx cleanup test.
 
 * Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
