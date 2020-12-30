@@ -1,6 +1,8 @@
 devel
 -----
 
+* Stabilize a Foxx cleanup test.
+
 * Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
   makes the API adhere better to the official Prometheus syntax.
 
