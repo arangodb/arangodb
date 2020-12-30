@@ -59,6 +59,30 @@ function ensureServers(options, numServers) {
   return options;
 }
 
+function checkServersGOOD(instanceInfo) {
+  try {
+    let health = require('internal').clusterHealth();
+    let rc = instanceInfo.arangods.reduce((previous, arangod) => {
+        if (arangod.role === "agent") return true;
+        if (health.hasOwnProperty(arangod.id)) {
+          if (health[arangod.id].Status === "GOOD") {
+            return previous;
+          } else {
+            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
+            return false;
+          }
+        } else {
+          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
+          return false;
+        }
+      }, true);
+    return rc;
+  } catch(e) {
+    print("Error checking cluster health " + e);
+    return false;
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
@@ -197,7 +221,7 @@ function runArangodRecovery (params) {
       print(BLUE + "Restarting cluster " + RESET);
       pu.reStartInstance(params.options, params.instanceInfo, {});
       let tryCount = 10;
-      while(tryCount > 0 && !pu.arangod.check.instanceAlive(params.instanceInfo, params.options)) {
+      while(tryCount > 0 && !checkServersGOOD(params.instanceInfo)) {
         print(RESET + "Waiting for all servers to go GOOD");
         internal.sleep(3); // give agency time to bootstrap DBServers
         --tryCount;

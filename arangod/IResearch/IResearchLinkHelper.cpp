@@ -554,28 +554,23 @@ arangodb::Result modifyLinks(                              // modify links
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ VPackSlice const& IResearchLinkHelper::emptyIndexSlice() {
-  static const struct EmptySlice {
-    VPackBuilder _builder;
-    VPackSlice _slice;
-    EmptySlice() {
-      VPackBuilder fieldsBuilder;
+/*static*/ VPackBuilder IResearchLinkHelper::emptyIndexSlice(uint64_t objectId) {
+  VPackBuilder builder;
+  VPackBuilder fieldsBuilder;
 
-      fieldsBuilder.openArray();
-      fieldsBuilder.close();  // empty array
-      _builder.openObject();
-      _builder.add(arangodb::StaticStrings::IndexFields,
-                   fieldsBuilder.slice());  // empty array
-      _builder.add(arangodb::StaticStrings::IndexType,
-                   arangodb::velocypack::Value(LINK_TYPE));  // the index type required by Index
-      _builder.close();  // object with just one field required by the Index
-                         // constructor
-      _slice = _builder.slice();
-    }
-  } emptySlice;
-
-  // cppcheck-suppress returnReference
-  return emptySlice._slice;
+  fieldsBuilder.openArray();
+  fieldsBuilder.close();  // empty array
+  builder.openObject();
+  if (objectId) {
+    builder.add(arangodb::StaticStrings::ObjectId, VPackValue(std::to_string(objectId)));
+  }
+  builder.add(arangodb::StaticStrings::IndexFields,
+              fieldsBuilder.slice());  // empty array
+  builder.add(arangodb::StaticStrings::IndexType,
+              arangodb::velocypack::Value(LINK_TYPE));  // the index type required by Index
+  builder.close();  // object with just one field required by the Index
+                    // constructor
+  return builder;
 }
 
 /*static*/ bool IResearchLinkHelper::equal(  // are link definitions equal
