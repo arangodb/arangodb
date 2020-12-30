@@ -23,11 +23,18 @@
 #ifndef ARANGOD_GRAPH_PATH_VALIDATOR_H
 #define ARANGOD_GRAPH_PATH_VALIDATOR_H 1
 
+#include <velocypack/HashedStringRef.h>
+#include "Containers/HashSet.h"
+
 namespace arangodb {
 namespace graph {
 
+class ValidationResult;
+
 template <class PathStore>
 class PathValidator {
+  using VertexRef = arangodb::velocypack::HashedStringRef;
+
  public:
   PathValidator(PathStore const& store);
 
@@ -40,7 +47,7 @@ class PathValidator {
   // Only for applied vertex uniqueness
   // TODO: Figure out if we can make this Member template dependend
   //       e.g. std::enable_if<vertexUniqueness != NONE>
-  std::unordered_set<typename Step::Vertex> _uniqueVertices;
+  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 };
 }  // namespace graph
 }  // namespace arangodb

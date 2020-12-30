@@ -215,6 +215,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/KShortestPathsFinder.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
+  Graph/PathValidatorTest.cpp
   Graph/QueueTest.cpp
   Graph/SingleServerProviderTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
