@@ -721,7 +721,7 @@ namespace iresearch {
 
   if (ServerState::instance()->isClusterRole() && 
       isCreation &&
-      !collectionName.null() &&
+      !collectionName.empty() &&
       meta._collectionName.empty()) {
     meta._collectionName  = collectionName;
 #ifdef USE_ENTERPRISE
