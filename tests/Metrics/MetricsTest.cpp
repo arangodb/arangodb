@@ -334,9 +334,14 @@ template<typename T> void gauge_test() {
 }
 
 
+#if 0
+// Currently disabled because of a compiler bug in (at least) clang++-11
+// on Linux and Mac. The compare_exchange_weak function does not load
+// the value which is found in the atomic.
 TEST_F(MetricsTest, long_double) {
   gauge_test<long double>();
 }
+#endif
 
 TEST_F(MetricsTest, test_gauge_double) {
   gauge_test<double>();
