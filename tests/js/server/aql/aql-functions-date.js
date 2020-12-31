@@ -2457,6 +2457,22 @@ function ahuacatlDateFunctionsTestSuite () {
 	  assertEqual([ "2020-02-29T23:00:00.000Z" ], 
 		getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));	  
     },
+	
+	// //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_timezone
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testDateTimeZone: function () {
+	  getQueryResults("RETURN DATE_TIMEZONE()", {});
+    },
+	
+	// //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_timezones
+    // //////////////////////////////////////////////////////////////////////////////
+	
+	testDateTimeZones: function () {
+	  getQueryResults("RETURN DATE_TIMEZONES()", {});
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_iso8601 function
