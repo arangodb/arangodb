@@ -37,6 +37,8 @@ namespace arangodb {
 namespace tests {
 namespace graph_path_validator_test {
 
+static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
+
 class Step : public arangodb::graph::BaseStep<Step> {
  public:
   using Vertex = size_t;
@@ -69,24 +71,37 @@ class Step : public arangodb::graph::BaseStep<Step> {
   size_t getEdge() const { return _id; }    // TODO: adjust
 };
 
-class PathValidatorTest : public ::testing::TestWithParam<VertexUniquenessLevel> {
+using TypesToTest =
+    ::testing::Types<PathValidator<PathStore<Step>, VertexUniquenessLevel::NONE>,
+                     PathValidator<PathStore<Step>, VertexUniquenessLevel::PATH>>;
+
+template <class ValidatorType>
+class PathValidatorTest : public ::testing::Test {
   arangodb::ResourceMonitor _resourceMonitor{};
 
   PathStore<Step> _pathStore{_resourceMonitor};
 
  protected:
-  VertexUniquenessLevel getVertexUniquness() { return GetParam(); }
+  VertexUniquenessLevel getVertexUniquness() {
+    if constexpr (std::is_same_v<ValidatorType, PathValidator<PathStore<Step>, VertexUniquenessLevel::NONE>>) {
+      return VertexUniquenessLevel::NONE;
+    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<PathStore<Step>, VertexUniquenessLevel::PATH>>) {
+      return VertexUniquenessLevel::PATH;
+    } else {
+      return VertexUniquenessLevel::GLOBAL;
+    }
+  }
 
   PathStore<Step>& store() { return _pathStore; }
 
-  PathValidator<PathStore<Step>> testee() {
-    return PathValidator<PathStore<Step>>(store());
-  }
+  ValidatorType testee() { return ValidatorType{this->store()}; }
 };
 
-TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_duplicate) {
-  auto ps = store();
-  auto validator = testee();
+TYPED_TEST_CASE(PathValidatorTest, TypesToTest);
+
+TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_duplicate) {
+  auto ps = this->store();
+  auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
@@ -121,7 +136,7 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_duplic
   {
     Step s{0, 1, lastIndex, false};
     auto res = validator.validatePath(s);
-    if (getVertexUniquness() == VertexUniquenessLevel::NONE) {
+    if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
@@ -133,9 +148,9 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_duplic
   }
 }
 
-TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_duplicate) {
-  auto ps = store();
-  auto validator = testee();
+TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_duplicate) {
+  auto ps = this->store();
+  auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
@@ -170,7 +185,7 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_duplica
   {
     Step s{3, 1, lastIndex, false};
     auto res = validator.validatePath(s);
-    if (getVertexUniquness() == VertexUniquenessLevel::NONE) {
+    if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
@@ -182,9 +197,9 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_duplica
   }
 }
 
-TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior_duplicate) {
-  auto ps = store();
-  auto validator = testee();
+TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior_duplicate) {
+  auto ps = this->store();
+  auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
@@ -219,7 +234,7 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior_dup
   {
     Step s{2, 1, lastIndex, false};
     auto res = validator.validatePath(s);
-    if (getVertexUniquness() == VertexUniquenessLevel::NONE) {
+    if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
@@ -231,9 +246,9 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior_dup
   }
 }
 
-TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_duplicate) {
-  auto ps = store();
-  auto validator = testee();
+TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_duplicate) {
+  auto ps = this->store();
+  auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
@@ -290,7 +305,7 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_duplic
   {
     Step s{3, 1, lastIndex, false};
     auto res = validator.validatePath(s);
-    if (getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
+    if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
       // The vertex is visited twice, but not on same path.
       // As long as we are not GLOBAL this is okay.
       EXPECT_FALSE(res.isFiltered());
@@ -303,9 +318,9 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_duplic
   }
 }
 
-TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interior_duplicate) {
-  auto ps = store();
-  auto validator = testee();
+TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interior_duplicate) {
+  auto ps = this->store();
+  auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
@@ -362,7 +377,7 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interior_du
   {
     Step s{1, 1, lastIndex, false};
     auto res = validator.validatePath(s);
-    if (getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
+    if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
       // The vertex is visited twice, but not on same path.
       // As long as we are not GLOBAL this is okay.
       EXPECT_FALSE(res.isFiltered());
@@ -374,11 +389,6 @@ TEST_P(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interior_du
     }
   }
 }
-
-INSTANTIATE_TEST_CASE_P(PathValidatorTestSuite, PathValidatorTest,
-                        ::testing::Values(VertexUniquenessLevel::NONE,
-                                          VertexUniquenessLevel::PATH,
-                                          VertexUniquenessLevel::GLOBAL));
 
 }  // namespace graph_path_validator_test
 }  // namespace tests

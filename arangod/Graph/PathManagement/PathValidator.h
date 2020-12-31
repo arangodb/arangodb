@@ -25,13 +25,14 @@
 
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
+#include "Graph/Types/UniquenessLevel.h"
 
 namespace arangodb {
 namespace graph {
 
 class ValidationResult;
 
-template <class PathStore>
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 

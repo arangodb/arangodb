@@ -30,23 +30,29 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class PathStore>
-PathValidator<PathStore>::PathValidator(PathStore const& store)
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+PathValidator<PathStore, vertexUniqueness>::PathValidator(PathStore const& store)
     : _store(store) {}
 
-template <class PathStore>
-auto PathValidator<PathStore>::track(typename PathStore::Step const& step) -> void {
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+auto PathValidator<PathStore, vertexUniqueness>::track(typename PathStore::Step const& step)
+    -> void {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-template <class PathStore>
-auto PathValidator<PathStore>::validatePath(typename PathStore::Step const& step)
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+auto PathValidator<PathStore, vertexUniqueness>::validatePath(typename PathStore::Step const& step)
     -> ValidationResult {
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
+    return ValidationResult{ValidationResult::Type::FILTER};
+  }
   return ValidationResult{ValidationResult::Type::TAKE};
 }
 
 namespace arangodb {
 namespace graph {
-template class PathValidator<PathStore<SingleServerProvider::Step>>;
+template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::GLOBAL>;
+template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>;
+template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::NONE>;
 }
 }  // namespace arangodb
