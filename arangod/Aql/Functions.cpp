@@ -3851,10 +3851,8 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
   return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
 }
 
-
 /// @brief function DATE_LOCALTOUTC
-AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
-                                   AstNode const&,
+AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_LOCALTOUTC";
   using namespace std::chrono;
@@ -3875,11 +3873,47 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
 
   const std::string tz = timeZoneParam.slice().copyString();
 
-  const auto local = local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
+  const auto local =
+      local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
   const auto zoned = make_zoned(tz, local);
   const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
 
   return ::timeAqlValue(expressionContext, AFN, tp_utc);
+}
+
+/// @brief function DATE_TIMEZONE
+AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
+                                   AstNode const&,
+                                   VPackFunctionParameters const& parameters) {
+  using namespace date;
+
+  const auto* zone = current_zone();
+
+  if (zone != nullptr) {
+    return AqlValue(zone->name());
+  }
+
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function DATE_TIMEZONES
+AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode const&,
+                                        VPackFunctionParameters const& parameters) {
+  using namespace date;
+
+  auto& list = get_tzdb_list();
+  auto& db = list.front();
+  
+  transaction::Methods* trx = &expressionContext->trx();
+  transaction::BuilderLeaser result(trx);
+  result->openArray();
+
+  for (auto& zone : db.zones) {
+    result->add(VPackValue(zone.name()));
+  }
+
+  result->close();
+  return AqlValue(result->slice(), result->size());
 }
 
 /// @brief function DATE_ADD
