@@ -1,6 +1,11 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed rare objectId conflict for indexes
+
+* Fix for OASIS-409. Fixed indexing _id attribute at recovery
+
+
 * Added new metric: "arangodb_collection_lock_sequential_mode" this will count
   how many times we need to do a sequential locking of collections. If this
   metric increases this indicates lock contention in transaction setup.
