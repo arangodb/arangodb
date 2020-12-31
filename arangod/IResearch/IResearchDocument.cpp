@@ -450,34 +450,23 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
       // base object isn't set
       return false;
     }
-/*--------------------------
     auto const baseSlice = _stack.front().it.slice();
     auto& buffer = valueBuffer();
-
-    buffer = transaction::helpers::extractIdString(  // extract id
-        _trx->resolver(),                            // resolver
-        value,                                       // value
-        baseSlice                                    // base slice
-    );
-
-    valueRef = buffer;
------------------------------*/
-      if (_isDBServer) {
-        if (!_collection.empty()) {
-          buffer = getDocumentId(_collection, baseSlice);
-        } else {
-          LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
-            << "Value for `_id` attribute could not be indexed for document "
-            << transaction::helpers::extractKeyFromDocument(_slice).toString()
-            << ". To recover please recreate corresponding ArangoSearch links.";
-          return false;
-        }
+    if (_isDBServer) {
+      if (!_collection.empty()) {
+        buffer = getDocumentId(_collection, baseSlice);
       } else {
-         buffer = transaction::helpers::extractIdString(
-             _trx->resolver(), value, baseSlice);
+        LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
+          << "Value for `_id` attribute could not be indexed for document "
+          << transaction::helpers::extractKeyFromDocument(baseSlice).toString()
+          << ". To recover please recreate corresponding ArangoSearch links.";
+        return false;
       }
-      valueRef = buffer;
-
+    } else {
+        buffer = transaction::helpers::extractIdString(
+            _trx->resolver(), value, baseSlice);
+    }
+    valueRef = buffer;
   } else {
     valueRef = iresearch::getStringRef(value);
   }
@@ -680,7 +669,7 @@ void FieldIterator::next() {
   return true;
 }
 
- StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const& doc)
+StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const& doc)
     : trx(t), document(doc), collection(cn),
       isDBServer(ServerState::instance()->isDBServer()) {}
 
