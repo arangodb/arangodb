@@ -309,7 +309,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
     auto indexes = collection->getIndexes();
     auto clusterCollection =
         clusterInfo.getCollectionNT(vocbase.name(),
-                                    std::to_string(collection->planId().id()));
+                                    collection->name());
     if (clusterCollection) {
       auto name = clusterCollection->name();
       LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)

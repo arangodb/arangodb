@@ -201,7 +201,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
   } else {
     LOG_TOPIC("ed031", WARN, arangodb::iresearch::TOPIC)
         << "Missing objectId in jSON definition for link '" << iid.id()
-        << "' to the collection '" << cid.id() << "' in the database '" << dbId
+        << "' to the collection '" << cid << "' in the database '" << dbId
         << "'. ObjectId will be regenerated";
   }
   

@@ -2621,7 +2621,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   // FIXME: remove this as soon as proper DBServer mock will be ready
   // and  createTestDatabase will actually fill collections in vocbase
   std::string collectionJson = "{ \"isSystem\":true, \"name\": \"_analyzers\", \"id\":";
-  collectionJson.append(std::to_string(logicalCollectionCluster->id().id())).append("}");
+  collectionJson.append(std::to_string(logicalCollectionCluster->id())).append("}");
   auto logicalCollection = vocbase->createCollection(VPackParser::fromJson(collectionJson)->slice());
 
   auto logicalView = vocbase->createView(viewJson->slice());

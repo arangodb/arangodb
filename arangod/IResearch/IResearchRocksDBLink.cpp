@@ -44,7 +44,7 @@ namespace iresearch {
 
 IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId)
     : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
-                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
+                   RocksDBColumnFamily::invalid(),
                    false),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
