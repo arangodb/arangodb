@@ -3912,6 +3912,10 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
     result->add(VPackValue(zone.name()));
   }
 
+  for (auto& link : db.links) {
+    result->add(VPackValue(link.name()));
+  }
+
   result->close();
   return AqlValue(result->slice(), result->size());
 }
