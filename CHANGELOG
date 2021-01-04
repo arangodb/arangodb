@@ -1,7 +1,21 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
-* Fix agency restart with mismatching compation and log indexes
+* Fix agency restart with mismatching compation and log indexes.
+
+* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
+* Fixed bug in the connection pool which could prevent connection reusage under
+  high load and lead to lots of new connection creations, in particular with
+  TLS.
+
+* Added more metrics around connection pool.
+
+* Fix Gauge class' assignment operators.
+
+* Fixed an endless busy loop which could happen if a coordinator tries to roll
+  back a database creation, but the database has already been dropped by other
+  means.
 
 * Remove HTTP "Connection" header when forwarding requests in the cluster from
   one coordinator to another, and let the internal network layer handle closing
