@@ -74,7 +74,7 @@ std::vector<std::string> Databases::list(application_features::ApplicationServer
   if (user.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
-      return ci.databases(false);
+      return ci.databases();
     } else {
       // list of all databases
       return databaseFeature.getDatabaseNames();

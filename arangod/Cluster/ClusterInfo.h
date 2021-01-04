@@ -421,7 +421,8 @@ public:
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*,
+                       int syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -530,13 +531,13 @@ public:
   /// @brief ask whether a cluster database exists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool doesDatabaseExist(DatabaseID const&, bool reload = false);
+  bool doesDatabaseExist(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> databases(bool reload = false);
+  std::vector<DatabaseID> databases();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -1094,6 +1095,10 @@ public:
   };
 
   cluster::RebootTracker _rebootTracker;
+
+  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
+  int const _syncerShutdownCode;
 
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered

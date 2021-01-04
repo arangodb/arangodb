@@ -566,7 +566,7 @@ static void JS_DoesDatabaseExistClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
 
   TRI_GET_GLOBALS();
   auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
-  bool const result = ci.doesDatabaseExist(TRI_ObjectToString(isolate, args[0]), true);
+  bool const result = ci.doesDatabaseExist(TRI_ObjectToString(isolate, args[0]));
 
   if (result) {
     TRI_V8_RETURN_TRUE();
@@ -591,7 +591,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
-  std::vector<DatabaseID> res = ci.databases(false);
+  std::vector<DatabaseID> res = ci.databases();
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
   std::vector<DatabaseID>::iterator it;
   int count = 0;

@@ -801,9 +801,9 @@ void ClusterFeature::allocateMembers() {
       "Request time for Agency requests");
   } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
-  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
   _agencyCache =
-    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
+    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
