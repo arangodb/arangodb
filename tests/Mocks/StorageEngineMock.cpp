@@ -1427,7 +1427,7 @@ StorageEngineMock::StorageEngineMock(arangodb::application_features::Application
       vocbaseCount(1),
       _releasedTick(0) {}
 
-HealthData StorageEngineMock::healthCheck() {
+arangodb::HealthData StorageEngineMock::healthCheck() {
   return {};
 }
 
