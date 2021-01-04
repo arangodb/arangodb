@@ -18,32 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
-#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_HEALTH_DATA_H
+#define ARANGOD_STORAGE_ENGINE_HEALTH_DATA_H 1
 
-// public rocksdb headers
-#include <rocksdb/db.h>
-#include <rocksdb/listener.h>
+#include "Basics/Result.h"
 
-#include <atomic>
+#include <chrono>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+  
+struct HealthData {
+  Result res;
+  /// @brief timestamp of full last health check execution. we only execute the
+  /// full health checks every so often in order to reduce load
+  std::chrono::steady_clock::time_point lastCheckTimestamp;
+  bool backgroundError = false;
+  uint64_t freeDiskSpaceBytes = 0;
+  double freeDiskSpacePercent = 0.0;
 
-class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
- public:
-  virtual ~RocksDBBackgroundErrorListener();
-
-  void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
-
-  bool called() const { return _called.load(std::memory_order_relaxed); }
-
- private:
-  std::atomic<bool> _called{false};
+  static HealthData fromVelocyPack(velocypack::Slice slice);
+  void toVelocyPack(velocypack::Builder& builder) const;
 };
 
-}  // namespace arangodb
+}
 
 #endif
