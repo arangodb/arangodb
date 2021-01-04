@@ -1,6 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
 * Fixed bug in the connection pool which could prevent connection reusage under
   high load and lead to lots of new connection creations, in particular with
   TLS.
