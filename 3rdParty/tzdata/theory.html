@@ -33,7 +33,7 @@
 The <a
 href="https://www.iana.org/time-zones"><code><abbr>tz</abbr></code>
 database</a> attempts to record the history and predicted future of
-all computer-based clocks that track civil time.
+civil time scales.
 It organizes <a href="tz-link.html">time zone and daylight saving time
 data</a> by partitioning the world into <a
 href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"><dfn>timezones</dfn></a>
@@ -115,17 +115,15 @@ Each timezone has a name that uniquely identifies the timezone.
 Inexperienced users are not expected to select these names unaided.
 Distributors should provide documentation and/or a simple selection
 interface that explains each name via a map or via descriptive text like
-"Ruthenia" instead of the timezone name "<code>Europe/Uzhgorod</code>".
+"Czech Republic" instead of the timezone name "<code>Europe/Prague</code>".
 If geolocation information is available, a selection interface can
 locate the user on a timezone map or prioritize names that are
 geographically close. For an example selection interface, see the
 <code>tzselect</code> program in the <code><abbr>tz</abbr></code> code.
-The <a href="http://cldr.unicode.org/">Unicode Common Locale Data
+The <a href="http://cldr.unicode.org">Unicode Common Locale Data
 Repository</a> contains data that may be useful for other selection
-interfaces; it maps timezone names like <code>Europe/Uzhgorod</code>
-to CLDR names like <code>uauzh</code> which are in turn mapped to
-locale-dependent strings like "Uzhhorod", "Ungvár", "Ужгород", and
-"乌日哥罗德".
+interfaces; it maps timezone names like <code>Europe/Prague</code> to
+locale-dependent strings like "Prague", "Praha", "Прага", and "布拉格".
 </p>
 
 <p>
@@ -476,8 +474,8 @@ in decreasing order of importance:
     <p>
     <small>These abbreviations are:
       AMT Amsterdam, Asunción, Athens;
-      BMT Baghdad, Bangkok, Batavia, Bern, Bogotá, Bridgetown, Brussels,
-	Bucharest;
+      BMT Baghdad, Bangkok, Batavia, Bermuda, Bern, Bogotá, Bridgetown,
+        Brussels, Bucharest;
       CMT Calamarca, Caracas, Chisinau, Colón, Copenhagen, Córdoba;
       DMT Dublin/Dunsink;
       EMT Easter;
@@ -508,6 +506,7 @@ in decreasing order of importance:
     <small>A few abbreviations also follow the pattern that
     <abbr>GMT</abbr>/<abbr>BST</abbr> established for time in the UK.
     They are:
+      BMT/BST for Bermuda 1890&ndash;1930,
       CMT/BST for Calamarca Mean Time and Bolivian Summer Time
 	1890&ndash;1932,
       DMT/IST for Dublin/Dunsink Mean Time and Irish Summer Time
@@ -691,6 +690,14 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     Early timekeeping practices, even assuming perfect clocks, were
     often not specified to the accuracy that the
     <code><abbr>tz</abbr></code> database requires.
+  </li>
+  <li>
+    The <code><abbr>tz</abbr></code> database cannot represent stopped clocks.
+    However, on 1911-03-11 at 00:00, some public-facing French clocks
+    were changed by stopping them for a few minutes to effect a transition.
+    The <code><abbr>tz</abbr></code> database models this via a
+    backward transition; the relevant French legislation does not
+    specify exactly how the transition was to occur.
   </li>
   <li>
     Sometimes historical timekeeping was specified more precisely
@@ -1321,17 +1328,21 @@ They sometimes disagree.
 <section>
   <h2 id="planets">Time and time zones on other planets</h2>
 <p>
-Some people's work schedules
-use <a href="https://en.wikipedia.org/wiki/Timekeeping_on_Mars">Mars time</a>.
+Some people's work schedules have used
+<a href="https://en.wikipedia.org/wiki/Timekeeping_on_Mars">Mars time</a>.
 Jet Propulsion Laboratory (JPL) coordinators kept Mars time on
 and off during the
 <a href="https://en.wikipedia.org/wiki/Mars_Pathfinder">Mars
-Pathfinder</a> mission.
+Pathfinder</a> mission (1997).
 Some of their family members also adapted to Mars time.
 Dozens of special Mars watches were built for JPL workers who kept
-Mars time during the Mars Exploration Rovers mission (2004).
-These timepieces look like normal Seikos and Citizens but use Mars
-seconds rather than terrestrial seconds.
+Mars time during the
+<a href="https://en.wikipedia.org/wiki/Mars_Exploration_Rover">Mars
+Exploration Rovers (MER)</a> mission (2004&ndash;2018).
+These timepieces looked like normal Seikos and Citizens but were adjusted
+to use Mars seconds rather than terrestrial seconds, although
+unfortunately the adjusted watches were unreliable and appear to have
+had only limited use.
 </p>
 
 <p>
@@ -1339,6 +1350,8 @@ A Mars solar day is called a "sol" and has a mean period equal to
 about 24 hours 39 minutes 35.244 seconds in terrestrial time.
 It is divided into a conventional 24-hour clock, so each Mars second
 equals about 1.02749125 terrestrial seconds.
+(One MER worker noted, "If I am working Mars hours, and Mars hours are
+2.5% more than Earth hours, shouldn't I get an extra 2.5% pay raise?")
 </p>
 
 <p>
@@ -1354,12 +1367,12 @@ called Mars Coordinated Time (<abbr>MTC</abbr>).
 <p>
 Each landed mission on Mars has adopted a different reference for
 solar timekeeping, so there is no real standard for Mars time zones.
-For example, the
-<a href="https://en.wikipedia.org/wiki/Mars_Exploration_Rover">Mars
-Exploration Rover</a> project (2004) defined two time zones "Local
+For example, the MER mission defined two time zones "Local
 Solar Time A" and "Local Solar Time B" for its two missions, each zone
 designed so that its time equals local true solar time at
 approximately the middle of the nominal mission.
+The A and B zones differ enough so that an MER worker assigned to
+the A zone might suffer "Mars lag" when switching to work in the B zone.
 Such a "time zone" is not particularly suited for any application
 other than the mission itself.
 </p>
@@ -1408,7 +1421,12 @@ Sources for time on other planets:
     Michael Allison and Robert Schmunk,
     "<a href="https://www.giss.nasa.gov/tools/mars24/help/notes.html">Technical
       Notes on Mars Solar Time as Adopted by the Mars24 Sunclock</a>"
-    (2018-12-13).
+    (2020-03-08).
+  </li>
+  <li>
+    Zara Mirmalek,
+    <em><a href="https://mitpress.mit.edu/books/making-time-mars">Making
+	Time on Mars</a></em>, MIT Press (March 2020), ISBN 978-0262043854.
   </li>
   <li>
     Jia-Rui Chong,

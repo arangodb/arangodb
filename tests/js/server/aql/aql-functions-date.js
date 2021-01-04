@@ -2457,6 +2457,37 @@ function ahuacatlDateFunctionsTestSuite () {
 	  assertEqual([ "2020-02-29T23:00:00.000Z" ], 
 		getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));	  
     },
+	
+	// //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_timezone
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testDateTimeZone: function () {
+	  var systemtz = null;
+	  var res = getQueryResults("RETURN DATE_TIMEZONE()", {})[0];
+	  
+	  try {
+	    systemtz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	  } catch {
+	  }
+		
+	  if (systemtz) {
+	    assertEqual(systemtz, res);
+	  } else {
+		assertTrue(res != null);
+	  }
+    },
+	
+	// //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_timezones
+    // //////////////////////////////////////////////////////////////////////////////
+	
+	testDateTimeZones: function () {
+	  var res = getQueryResults("RETURN DATE_TIMEZONES()", {})[0];
+	  assertTrue(res.indexOf("America/New_York") !== -1);
+	  assertTrue(res.indexOf("Europe/Berlin") !== -1);
+	  assertTrue(res.indexOf("Asia/Shanghai") !== -1);
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_iso8601 function
