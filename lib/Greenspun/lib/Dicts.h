@@ -20,13 +20,13 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GREENSPUN_LISTS_H
-#define ARANGODB_GREENSPUN_LISTS_H
+#ifndef ARANGODB_GREENSPUN_DICTS_H
+#define ARANGODB_GREENSPUN_DICTS_H
 #include <Greenspun/Interpreter.h>
 
 namespace arangodb::greenspun {
-void RegisterAllListFunctions(Machine& ctx);
+void RegisterAllDictFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
 
 
-#endif  // ARANGODB_GREENSPUN_LISTS_H
+#endif  // ARANGODB_GREENSPUN_DICTS_H

@@ -27,6 +27,7 @@
 #include "Greenspun/lib/Math.h"
 #include "Greenspun/lib/Strings.h"
 #include "Greenspun/lib/Lists.h"
+#include "Greenspun/lib/Dicts.h"
 #include "Primitives.h"
 
 #include <iostream>
@@ -82,6 +83,7 @@ void InitMachine(Machine& m) {
   RegisterAllMathFunctions(m);
   RegisterAllStringFunctions(m);
   RegisterAllListFunctions(m);
+  RegisterAllDictFunctions(m);
 }
 
 EvalResult Apply(Machine& ctx, std::string const& function,

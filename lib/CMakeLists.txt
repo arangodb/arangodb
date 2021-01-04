@@ -283,7 +283,11 @@ set(LIB_ARANGO_AIR_SOURCES
   Greenspun/Primitives.cpp
   Greenspun/lib/DateTime.cpp
   Greenspun/lib/Math.cpp
-  Greenspun/lib/Strings.cpp Greenspun/lib/Lists.cpp Greenspun/lib/Lists.h)
+  Greenspun/lib/Strings.cpp
+  Greenspun/lib/Lists.cpp
+  Greenspun/lib/Lists.h
+  Greenspun/lib/Dicts.cpp
+  Greenspun/lib/Dicts.h)
 
 add_library(arango_greenspun STATIC
         ${LIB_ARANGO_AIR_SOURCES})
