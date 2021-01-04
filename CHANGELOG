@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 
 * Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
