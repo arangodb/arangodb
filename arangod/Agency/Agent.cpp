@@ -1633,7 +1633,7 @@ void Agent::run() {
           }
         }
       } catch (std::exception const& e) {
-        LOG_TOPIC("70efa", Logger::AGENCY, WARN) << "Caught exception in multi-host agent thread " << e.what();
+        LOG_TOPIC("70efa", WARN, Logger::AGENCY) << "Caught exception in multi-host agent thread " << e.what();
       }
 
     }
