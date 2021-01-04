@@ -29,7 +29,6 @@
 namespace arangodb {
 
 namespace consensus {
-
 class Agent;
 }
 
@@ -47,6 +46,8 @@ class AgencyFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  bool activated() const noexcept { return _activated; }
 
  private:
   bool _activated;

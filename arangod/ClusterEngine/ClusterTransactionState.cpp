@@ -83,6 +83,31 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
+  if (AccessMode::isWriteOrExclusive(this->_type) &&
+      hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    TRI_ASSERT(isCoordinator());
+
+    ClusterTrxMethods::SortedServersSet leaders{};
+    allCollections([&](TransactionCollection& c) {
+      auto shardIds = c.collection()->shardIds();
+      for (auto const& pair : *shardIds) {
+        std::vector<arangodb::ShardID> const& servers = pair.second;
+        if (!servers.empty()) {
+          leaders.emplace(servers[0]);
+        }
+      }
+      return true;  // continue
+    });
+
+    // if there is only one server we may defer the lazy locking
+    // until the first actual operation (should save one request)
+    if (leaders.size() > 1) {
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
+      if (res.fail()) {  // something is wrong
+        return res;
+      }
+    }
+  }
 
   cleanup.cancel();
   return res;
