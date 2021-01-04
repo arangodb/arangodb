@@ -134,6 +134,26 @@ auto PathStore<Step>::reverseBuildPath(Step const& vertex,
 }
 
 template <class Step>
+auto PathStore<Step>::visitReversePath(Step const& step,
+                                       std::function<bool(Step const&)> const& visitor) const
+    -> bool {
+  Step const* walker = &step;
+  // Guaranteed to make progress, as the schreier vector contains a loop-free tree.
+  while (true) {
+    bool cont = visitor(*walker);
+    if (!cont) {
+      // Aborted
+      return false;
+    }
+    if (walker->isFirst()) {
+      // Visited the full path
+      return true;
+    }
+    walker = &_schreier.at(walker->getPrevious());
+  }
+}
+
+template <class Step>
 auto PathStore<Step>::testPath(Step step) -> ValidationResult {
   LOG_TOPIC("2ff8d", TRACE, Logger::GRAPHS) << "<PathStore> Testing path:";
   return ValidationResult{ValidationResult::Type::TAKE};

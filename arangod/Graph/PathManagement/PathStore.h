@@ -77,6 +77,9 @@ class PathStore {
   // @brief returns the current vector size
   size_t size() const { return _schreier.size(); }
 
+  auto visitReversePath(Step const& step,
+                        std::function<bool(Step const&)> const& visitor) const -> bool;
+
   template <class ProviderType>
   auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
 
