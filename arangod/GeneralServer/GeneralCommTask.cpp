@@ -23,7 +23,9 @@
 
 #include "GeneralCommTask.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -37,6 +39,7 @@ GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
                                     std::unique_ptr<AsioSocket<T>> socket)
 : CommTask(server, std::move(info)),
   _protocol(std::move(socket)),
+  _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
   _reading(false),
   _writing(false),
   _stopped(false) {

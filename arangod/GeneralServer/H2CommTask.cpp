@@ -412,8 +412,7 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void H2CommTask<T>::setIOTimeout() {
-  auto& gs = this->_server.server().template getFeature<arangodb::GeneralServerFeature>();
-  double secs = gs.keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }

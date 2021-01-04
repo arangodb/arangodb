@@ -207,8 +207,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageDone(false),
-      _allowMethodOverride(
-          server.server().getFeature<GeneralServerFeature>().allowMethodOverride()) {
+      _allowMethodOverride(this->_generalServerFeature.allowMethodOverride()) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -297,8 +296,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void HttpCommTask<T>::setIOTimeout() {
-  auto& gs = this->_server.server().template getFeature<GeneralServerFeature>();
-  double secs = gs.keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }
@@ -576,8 +574,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // turn on the keepAlive timer
-  auto& gs = this->_server.server().template getFeature<GeneralServerFeature>();
-  double secs = gs.keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (_shouldKeepAlive && secs > 0) {
     _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
   } else {

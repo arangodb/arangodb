@@ -253,10 +253,9 @@ void AgencyCache::handleCallbacksNoLock(
 }
 
 
-
 void AgencyCache::run() {
-
   using namespace std::chrono;
+  
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
   {
@@ -421,7 +420,7 @@ void AgencyCache::run() {
               triggerWaiting(commitIndex);
               if (firstIndex > 0) {
                 if (!toCall.empty()) {
-                invokeCallbacks(toCall);
+                  invokeCallbacks(toCall);
                 }
               } else {
                 invokeAllCallbacks();

@@ -139,8 +139,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void VstCommTask<T>::setIOTimeout() {
-  auto& gs = this->_server.server().template getFeature<GeneralServerFeature>();
-  double secs = gs.keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }
