@@ -30,7 +30,7 @@
 #include <Pregel/WorkerContext.h>
 
 #include <Pregel/Algos/AIR/AIR.h>
-#include <Pregel/Algos/AIR/Greenspun/Primitives.h>
+#include <Greenspun/Primitives.h>
 
 namespace arangodb {
 namespace pregel {

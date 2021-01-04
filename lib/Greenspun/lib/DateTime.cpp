@@ -30,11 +30,10 @@
 
 #include <iostream>
 
-#include "../Extractor.h"
-#include "../Interpreter.h"
-#include "../Primitives.h"
 #include "DateTime.h"
-
+#include "Greenspun/Extractor.h"
+#include "Greenspun/Interpreter.h"
+#include "Greenspun/Primitives.h"
 
 /*  WARNING! HACK HACK HACK HACK
 

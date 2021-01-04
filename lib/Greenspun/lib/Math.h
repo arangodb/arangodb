@@ -25,7 +25,7 @@
 #ifndef ARANGODB_PREGEL_GREENSPUN_MATH_H
 #define ARANGODB_PREGEL_GREENSPUN_MATH_H 1
 
-#include <Pregel/Algos/AIR/Greenspun/Interpreter.h>
+#include <Greenspun/Interpreter.h>
 
 namespace arangodb::greenspun {
 void RegisterAllMathFunctions(Machine& ctx);

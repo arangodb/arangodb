@@ -26,16 +26,13 @@
 
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H 1
-#include <Pregel/Algos/AIR/Greenspun/Interpreter.h>
+#include <Greenspun/Interpreter.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <iostream>
 #include "AbstractAccumulator.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
-namespace accumulators {
+namespace arangodb::pregel::algos::accumulators {
 
 template <typename T>
 class MinAccumulator : public Accumulator<T> {
@@ -284,9 +281,6 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   greenspun::Machine _machine;
 };
 
-}  // namespace accumulators
-}  // namespace algos
-}  // namespace pregel
 }  // namespace arangodb
 
 #endif

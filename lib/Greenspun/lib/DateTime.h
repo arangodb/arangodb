@@ -22,13 +22,21 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_STRINGS_MATH_H
-#define ARANGODB_PREGEL_STRINGS_MATH_H
-#include <Pregel/Algos/AIR/Greenspun/Interpreter.h>
+#ifndef ARANGODB_PREGEL_GREENSPUN_DATETIME_H
+#define ARANGODB_PREGEL_GREENSPUN_DATETIME_H 1
 
-namespace arangodb::greenspun {
-void RegisterAllStringFunctions(Machine& ctx);
-}  // namespace arangodb::greenspun
+#include <Greenspun/Interpreter.h>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
-#endif  // ARANGODB_PREGEL_STRINGS_MATH_H
+namespace arangodb {
+namespace greenspun {
+
+void RegisterAllDateTimeFunctions(Machine& ctx);
+
+}  // namespace greenspun
+}  // namespace arangodb
+
+#endif

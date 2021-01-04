@@ -24,8 +24,8 @@
 
 #include "GraphFormat.h"
 
-#include "Pregel/Algos/AIR/Greenspun/Extractor.h"
-#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
+#include "Greenspun/Extractor.h"
+#include "Greenspun/Interpreter.h"
 
 #include "Basics/overload.h"
 

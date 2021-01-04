@@ -29,6 +29,8 @@
 #include <map>
 #include <variant>
 
+#include <immer/map.hpp>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -39,12 +41,15 @@
 
 namespace arangodb::greenspun {
 
-struct StackFrame {
-  std::unordered_map<std::string, VPackSlice> bindings;
-  bool noParentScope = false;
+using VariableBindings = immer::map<std::string, VPackSlice>;
 
-  EvalResult setVariable(std::string const& name, VPackSlice value);
-  EvalResult getVariable(std::string const& name, VPackBuilder& result);
+struct StackFrame {
+  VariableBindings bindings;
+
+  StackFrame() = default;
+  explicit StackFrame(VariableBindings bindings) : bindings(std::move(bindings)) {}
+
+  EvalResult getVariable(std::string const& name, VPackBuilder& result) const;
 };
 
 struct Machine {
@@ -63,9 +68,9 @@ struct Machine {
 
   EvalResult applyFunction(std::string name, VPackSlice slice, VPackBuilder& result);
 
-  template<typename T>
+  template <typename T>
   using member_function_type =
-    std::function<EvalResult(T*, Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
+      std::function<EvalResult(T*, Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
 
   template <typename T, typename F>
   EvalResult setFunctionMember(std::string_view name, F&& f, T* ptr) {
@@ -78,35 +83,32 @@ struct Machine {
   }
 
   using print_callback_type = std::function<void(std::string)>;
-  template<typename F>
+  template <typename F>
   void setPrintCallback(F&& f) {
     printCallback = std::forward<F>(f);
   }
 
   void print(std::string const& msg) const;
+  VariableBindings getAllVariables();
 
  private:
-  std::vector<StackFrame> variables;
+  std::vector<StackFrame> frames;
   std::unordered_map<std::string, function_type> functions;
 
   print_callback_type printCallback;
 };
 
-enum class StackFrameGuardMode {
-  KEEP_SCOPE,
-  NEW_SCOPE,
-  NEW_SCOPE_HIDE_PARENT
-};
+enum class StackFrameGuardMode { KEEP_SCOPE, NEW_SCOPE, NEW_SCOPE_HIDE_PARENT };
 
 template <StackFrameGuardMode mode>
 struct StackFrameGuard {
-  template<StackFrameGuardMode U>
-  static constexpr bool isNewScope = U == StackFrameGuardMode::NEW_SCOPE || U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
-  template<StackFrameGuardMode U>
+  template <StackFrameGuardMode U>
+  static constexpr bool isNewScope =
+      U == StackFrameGuardMode::NEW_SCOPE || U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
+  template <StackFrameGuardMode U>
   static constexpr bool noParentScope = U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
 
-  template <StackFrameGuardMode U = mode,
-            std::enable_if_t<isNewScope<U>, int> = 0>
+  template <StackFrameGuardMode U = mode, std::enable_if_t<isNewScope<U>, int> = 0>
   StackFrameGuard(Machine& ctx, StackFrame sf) : _ctx(ctx) {
     ctx.emplaceStack(std::move(sf));
   }

@@ -45,16 +45,11 @@
 
 #include "Pregel/Algos/AIR/AccumulatorOptionsDeserializer.h"
 
-#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
-
-#include <Pregel/Algos/AIR/Greenspun/Primitives.h>
+#include "Greenspun/Interpreter.h"
+#include "Greenspun/Primitives.h"
 
 #include <set>
 
-#define LOG_VERTEXACC(logId, level) \
-  LOG_DEVEL << "[" << pregel_algorithm_name << "] "
-
-// LOG_TOPIC(logId, level, Logger::QUERIES) << "[AIR] "
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -90,19 +85,9 @@ message_combiner* VertexAccumulators::messageCombiner() const {
 }
 
 void VertexAccumulators::parseUserParams(VPackSlice userParams) {
-  LOG_VERTEXACC("", DEBUG) << "parsing user params: " << userParams;
   auto result = parseVertexAccumulatorOptions(userParams);
   if (result) {
     _options = std::move(result).get();
-
-    LOG_VERTEXACC("", DEBUG) << "declared accumulators";
-    for (auto&& acc : _options.vertexAccumulators) {
-      LOG_VERTEXACC("", DEBUG) << acc.first << " " << acc.second;
-    }
-    LOG_VERTEXACC("", DEBUG) << "declared global accumulators";
-    for(auto&& acc : _options.globalAccumulators) {
-      LOG_VERTEXACC("", DEBUG) << acc.first << " " << acc.second;
-    }
   } else {
     // What do we do on error? std::terminate()
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, result.error().as_string());

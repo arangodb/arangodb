@@ -29,7 +29,7 @@
 
 #include <Pregel/MasterContext.h>
 
-#include <Pregel/Algos/AIR/Greenspun/Primitives.h>
+#include <Greenspun/Primitives.h>
 #include <Pregel/Algos/AIR/AIR.h>
 
 namespace arangodb {

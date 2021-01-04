@@ -23,14 +23,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Interpreter.h"
+#include "Greenspun/lib/DateTime.h"
+#include "Greenspun/lib/Math.h"
+#include "Greenspun/lib/Strings.h"
 #include "Primitives.h"
-#include "lib/DateTime.h"
-#include "lib/Math.h"
-#include "lib/Strings.h"
 
 #include <iostream>
-#include <sstream>
 #include <numeric>
+#include <sstream>
 
 #include <Basics/VelocyPackHelper.h>
 #include <velocypack/Iterator.h>
@@ -66,7 +66,7 @@ int calc_levenshtein(std::string const& lhs, std::string const& rhs) {
 
   return result;
 }
-}
+}  // namespace
 
 using namespace arangodb::velocypack;
 
@@ -378,8 +378,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
                       VPackBuilder& result, bool isEvaluateParams) {
   if (!paramNames.isArray()) {
     return EvalError(
-        "bad lambda format: expected parameter name array, found: " +
-        paramNames.toJson());
+        "bad lambda format: expected parameter name array, found: " + paramNames.toJson());
   }
 
   VPackBuilder paramBuilder;
@@ -442,7 +441,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
     return EvalError("Expected list of bindings, found: " + bindings.toJson());
   }
 
-  StackFrame frame;
+  auto frame = ctx.getAllVariables();  // immer_map does not support transient
 
   for (VPackArrayIterator iter(bindings); iter.valid(); ++iter) {
     auto&& pair = *iter;
@@ -462,16 +461,14 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
         });
       }
 
-      if (auto res = frame.setVariable(nameSlice.copyString(), builder.slice()); res.fail()) {
-        return res;
-      }
+      frame = frame.set(nameSlice.copyString(), builder.slice());
     } else {
       return EvalError("expected pair at position " + std::to_string(iter.index()) +
                        " at list of bindings, found: " + pair.toJson());
     }
   }
 
-  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> guard(ctx, std::move(frame));
+  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> guard(ctx, StackFrame{std::move(frame)});
 
   // Now do a seq evaluation of the remaining parameter
   return SpecialSeq(ctx, paramIterator, result).mapError([](EvalError& err) {
@@ -643,29 +640,19 @@ Machine::Machine() {
 }
 
 EvalResult Machine::getVariable(const std::string& name, VPackBuilder& result) {
-  for (auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
-    auto iter = scope->bindings.find(name);
-    if (iter != std::end(scope->bindings)) {
-      result.add(iter->second);
+  if (!frames.empty()) {
+    if (auto* iter = frames.back().bindings.find(name); iter) {
+      result.add(*iter);
       return {};
-    }
-    if (scope->noParentScope) {
-      break;
     }
   }
   result.add(VPackSlice::noneSlice());
   return EvalError("variable `" + name + "` not found");
 }
 
-EvalResult StackFrame::setVariable(std::string const& name, VPackSlice value) {
-  bindings.operator[](name) = value;
-  return {};
-}
-
-EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result) {
-  auto iter = bindings.find(name);
-  if (iter != std::end(bindings)) {
-    result.add(iter->second);
+EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result) const {
+  if (auto* iter = bindings.find(name); iter) {
+    result.add(*iter);
     return {};
   }
   result.add(VPackSlice::noneSlice());
@@ -673,24 +660,25 @@ EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result
 }
 
 EvalResult Machine::setVariable(std::string const& name, VPackSlice value) {
-  TRI_ASSERT(!variables.empty());
-  variables.back().bindings.operator[](name) = value;  // insert or create
+  TRI_ASSERT(!frames.empty());
+  auto& bindings = frames.back().bindings;
+  bindings = bindings.set(name, value);  // insert or create
   return {};
 }
 
 void Machine::pushStack(bool noParentScope) {
-  variables.emplace_back().noParentScope = noParentScope;
+  frames.emplace_back(noParentScope ? VariableBindings{} : getAllVariables());
 }
 
 void Machine::emplaceStack(StackFrame sf) {
-  variables.emplace_back(std::move(sf));
+  frames.emplace_back(std::move(sf));
 }
 
 void Machine::popStack() {
   // Top level variables must not be popped
-  TRI_ASSERT(variables.size() > 1);
+  TRI_ASSERT(frames.size() > 1);
 
-  variables.pop_back();
+  frames.pop_back();
 }
 
 EvalResult Machine::setFunction(std::string_view name, function_type&& f) {
@@ -728,6 +716,14 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
   return EvalError(
       "function not found `" + function + "`" +
       (!minFunctionName.empty() ? ", did you mean `" + minFunctionName + "`?" : ""));
+}
+
+VariableBindings Machine::getAllVariables() {
+  if (frames.empty()) {
+    return VariableBindings{};
+  } else {
+    return frames.back().bindings;
+  }
 }
 
 std::string EvalError::toString() const {

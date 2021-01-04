@@ -26,7 +26,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <cmath>
 
-#include "../Extractor.h"
+#include "Greenspun/Extractor.h"
 #include "Math.h"
 
 namespace arangodb::greenspun {

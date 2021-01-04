@@ -2,9 +2,9 @@
 #include <iostream>
 
 
-#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
-#include "Pregel/Algos/AIR/Greenspun/Primitives.h"
-#include "Pregel/Algos/AIR/Greenspun/EvalResult.h"
+#include "Greenspun/Interpreter.h"
+#include "Greenspun/Primitives.h"
+#include "Greenspun/EvalResult.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"

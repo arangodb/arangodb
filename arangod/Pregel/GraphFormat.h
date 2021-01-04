@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
 #include "Pregel/Graph.h"
-#include "Pregel/Algos/AIR/Greenspun/EvalResult.h"
+#include "Greenspun/EvalResult.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {

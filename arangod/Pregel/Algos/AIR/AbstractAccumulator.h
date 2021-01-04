@@ -26,7 +26,7 @@
 
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
-#include <Pregel/Algos/AIR/Greenspun/EvalResult.h>
+#include <Greenspun/EvalResult.h>
 #include <iostream>
 #include <numeric>
 

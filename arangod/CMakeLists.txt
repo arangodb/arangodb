@@ -188,13 +188,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestHandler/RestGraphHandler.cpp
 )
 
-set(LIB_ARANGO_AIR_SOURCES
-  Pregel/Algos/AIR/Greenspun/Interpreter.cpp
-  Pregel/Algos/AIR/Greenspun/Primitives.cpp
-  Pregel/Algos/AIR/Greenspun/lib/DateTime.cpp
-  Pregel/Algos/AIR/Greenspun/lib/Math.cpp
-  Pregel/Algos/AIR/Greenspun/lib/Strings.cpp)
-
 set(LIB_ARANGO_PREGEL_AIR_SOURCES
   Pregel/Algos/AIR/AIR.cpp
   Pregel/Algos/AIR/AbstractAccumulator.cpp
@@ -791,9 +784,6 @@ endif()
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 
-add_library(arango_greenspun STATIC
-        ${LIB_ARANGO_AIR_SOURCES})
-
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
@@ -950,8 +940,6 @@ target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
-
-target_link_libraries(arango_greenspun arango)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
