@@ -275,7 +275,7 @@ void GeneralServerFeature::unprepare() {
 
 double GeneralServerFeature::keepAliveTimeout() const {
   return _keepAliveTimeout;
-};
+}
 
 bool GeneralServerFeature::proxyCheck() const { return _proxyCheck; }
 
@@ -285,7 +285,7 @@ std::vector<std::string> GeneralServerFeature::trustedProxies() const {
 
 bool GeneralServerFeature::allowMethodOverride() const {
   return _allowMethodOverride;
-};
+}
 
 std::vector<std::string> const& GeneralServerFeature::accessControlAllowOrigins() const {
   return _accessControlAllowOrigins;

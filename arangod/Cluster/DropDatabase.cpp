@@ -68,7 +68,7 @@ bool DropDatabase::first() {
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
-    DatabaseGuard guard(df, "_system");
+    DatabaseGuard guard(df, StaticStrings::SystemDatabase);
     auto vocbase = &guard.database();
 
     _result = Databases::drop(ExecContext::current(), vocbase, database);
