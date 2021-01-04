@@ -535,7 +535,7 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
     std::string message =
     "aborting transaction because maximal transaction size limit of " +
     std::to_string(_options.maxTransactionSize) + " bytes is reached";
-    return Result(Result(TRI_ERROR_RESOURCE_LIMIT, message));
+    return Result(TRI_ERROR_RESOURCE_LIMIT, message);
   }
 
   auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
