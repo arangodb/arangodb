@@ -145,6 +145,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   inline bool isShutdown() const { return _shutdown.load(); }
 
+  struct Inserter {
+    Inserter(Cache& cache, void const* key, std::size_t keySize, void const* value,
+             std::size_t valueSize, std::function<bool(Result const&)> retry);
+    Result status;
+  };
+
  protected:
   static constexpr std::uint64_t triesFast = 200;
   static constexpr std::uint64_t triesSlow = 10000;

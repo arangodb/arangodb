@@ -1821,7 +1821,7 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
                 ", chunk size " + std::to_string(_state.applier._chunkSize));
 
     // stringify list of open transactions
-    std::string body = VPackSlice::emptyArraySlice().toJson();
+    std::string body = "[]";
 
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     double time = TRI_microtime();
