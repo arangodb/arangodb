@@ -45,15 +45,12 @@ class Step : public arangodb::graph::BaseStep<Step> {
   using Edge = size_t;
 
   size_t _id;
+  std::string _idStr;
   double _weight;
   bool _isLooseEnd;
 
   Step(size_t id, double weight, size_t previous, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{previous} {
-    _id = id;
-    _weight = weight;
-    _isLooseEnd = isLooseEnd;  // TODO: needed here?
-  };
+      : arangodb::graph::BaseStep<Step>{previous}, _id{id}, _idStr{basics::StringUtils::itoa(id)}, _weight{weight}, _isLooseEnd{isLooseEnd} {};
 
   ~Step() = default;
 
@@ -69,6 +66,11 @@ class Step : public arangodb::graph::BaseStep<Step> {
   bool isProcessable() const { return _isLooseEnd ? false : true; }
   size_t getVertex() const { return _id; }  // TODO: adjust
   size_t getEdge() const { return _id; }    // TODO: adjust
+
+  arangodb::velocypack::HashedStringRef getVertexIdentifier() const {
+    return arangodb::velocypack::HashedStringRef{_idStr.data(),
+                                                 static_cast<uint32_t>(_idStr.length())};
+  }
 };
 
 using TypesToTest =
@@ -100,7 +102,7 @@ class PathValidatorTest : public ::testing::Test {
 TYPED_TEST_CASE(PathValidatorTest, TypesToTest);
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_duplicate) {
-  auto ps = this->store();
+  auto&& ps = this->store();
   auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
@@ -149,7 +151,7 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_first_du
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_duplicate) {
-  auto ps = this->store();
+  auto&& ps = this->store();
   auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
@@ -198,7 +200,7 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_last_dup
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior_duplicate) {
-  auto ps = this->store();
+  auto&& ps = this->store();
   auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
@@ -247,7 +249,7 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_single_path_interior
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_duplicate) {
-  auto ps = this->store();
+  auto&& ps = this->store();
   auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
@@ -319,7 +321,7 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_du
 }
 
 TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interior_duplicate) {
-  auto ps = this->store();
+  auto&& ps = this->store();
   auto validator = this->testee();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();

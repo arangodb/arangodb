@@ -154,6 +154,104 @@ TEST_F(PathStoreTest, it_should_not_be_empty_if_values_will_be_inserted) {
   EXPECT_EQ(ps.size(), 4);
 }
 
+TEST_F(PathStoreTest, it_should_provide_a_path_visitor) {
+  auto ps = testee();
+
+  size_t lastIndex = std::numeric_limits<size_t>::max();
+  // Start at Id 1 to simplify test loop
+  lastIndex = ps.append({1, 1, lastIndex, false});
+
+  lastIndex = ps.append({2, 1, lastIndex, false});
+
+  lastIndex = ps.append({3, 1, lastIndex, false});
+
+  Step last{4, 1, lastIndex, false};
+  ps.append(last);
+
+  EXPECT_EQ(ps.size(), 4);
+  size_t expectedId = 4;
+  auto visitor = [&](Step const& step) -> bool {
+    EXPECT_EQ(expectedId, step.getVertex());
+    expectedId--;
+    return true;
+  };
+  ps.visitReversePath(last, visitor);
+  // We started at 1 so, we need to end up at expected == 0
+  EXPECT_EQ(expectedId, 0);
+}
+
+TEST_F(PathStoreTest, it_should_abort_a_path_visitor_if_it_returns_false) {
+  auto ps = testee();
+
+  size_t lastIndex = std::numeric_limits<size_t>::max();
+  // Start at Id 1 to simplify test loop
+  lastIndex = ps.append({1, 1, lastIndex, false});
+
+  lastIndex = ps.append({2, 1, lastIndex, false});
+
+  lastIndex = ps.append({3, 1, lastIndex, false});
+
+  Step last{4, 1, lastIndex, false};
+  ps.append(last);
+
+  EXPECT_EQ(ps.size(), 4);
+  size_t expectedId = 4;
+  auto visitor = [&](Step const& step) -> bool {
+    EXPECT_EQ(expectedId, step.getVertex());
+    expectedId--;
+    if (expectedId == 2) {
+      return false;
+    }
+    return true;
+  };
+  ps.visitReversePath(last, visitor);
+  // We aborted at 2 so, we need to end up at expected == 2
+  EXPECT_EQ(expectedId, 2);
+}
+
+TEST_F(PathStoreTest, it_should_only_visit_one_path) {
+  auto ps = testee();
+
+  size_t lastIndex = std::numeric_limits<size_t>::max();
+  // Start at Id 1 to simplify test loop
+  lastIndex = ps.append({1, 1, lastIndex, false});
+
+  // Add some noise
+  ps.append({41, 1, lastIndex, false});
+  ps.append({42, 1, lastIndex, false});
+
+  lastIndex = ps.append({2, 1, lastIndex, false});
+
+  // Add some noise
+  ps.append({43, 1, lastIndex, false});
+  ps.append({44, 1, lastIndex, false});
+
+  lastIndex = ps.append({3, 1, lastIndex, false});
+
+  // Add some noise
+  ps.append({45, 1, lastIndex, false});
+  ps.append({46, 1, lastIndex, false});
+
+  Step last{4, 1, lastIndex, false};
+  lastIndex = ps.append(last);
+
+  // Add some noise
+  ps.append({47, 1, lastIndex, false});
+  ps.append({48, 1, lastIndex, false});
+
+  // 4 on path, + 8 times noise.
+  EXPECT_EQ(ps.size(), 12);
+  size_t expectedId = 4;
+  auto visitor = [&](Step const& step) -> bool {
+    EXPECT_EQ(expectedId, step.getVertex());
+    expectedId--;
+    return true;
+  };
+  ps.visitReversePath(last, visitor);
+  // We started at 1 so, we need to end up at expected == 0
+  EXPECT_EQ(expectedId, 0);
+}
+
 }  // namespace graph_path_store_test
 }  // namespace tests
 }  // namespace arangodb

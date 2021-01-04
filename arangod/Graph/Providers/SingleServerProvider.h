@@ -111,6 +111,8 @@ struct SingleServerProvider {
     bool isProcessable() const { return !isLooseEnd(); }
     bool isLooseEnd() const { return false; }
 
+    VertexType getVertexIdentifier() const { return _vertex.getID(); }
+
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:
@@ -131,7 +133,8 @@ struct SingleServerProvider {
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void; // index
+  auto expand(Step const& from, size_t previous,
+              std::function<void(Step)> const& callback) -> void;  // index
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 

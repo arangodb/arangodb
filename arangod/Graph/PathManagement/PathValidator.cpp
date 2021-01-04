@@ -44,7 +44,28 @@ template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<PathStore, vertexUniqueness>::validatePath(typename PathStore::Step const& step)
     -> ValidationResult {
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
-    return ValidationResult{ValidationResult::Type::FILTER};
+    _uniqueVertices.clear();
+    // Reserving here is pointless, we will test paths that increase by at most 1 entry.
+
+    bool success =
+        _store.visitReversePath(step, [&](typename PathStore::Step const& step) -> bool {
+          auto const& [unused, added] =
+              _uniqueVertices.emplace(step.getVertexIdentifier());
+          // If this add fails, we need to exclude this path
+          return added;
+        });
+    if (!success) {
+      return ValidationResult{ValidationResult::Type::FILTER};
+    }
+    return ValidationResult{ValidationResult::Type::TAKE};
+  }
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
+    auto const& [unused, added] = _uniqueVertices.emplace(step.getVertexIdentifier());
+    // If this add fails, we need to exclude this path
+    if (!added) {
+      return ValidationResult{ValidationResult::Type::FILTER};
+    }
+    return ValidationResult{ValidationResult::Type::TAKE};
   }
   return ValidationResult{ValidationResult::Type::TAKE};
 }

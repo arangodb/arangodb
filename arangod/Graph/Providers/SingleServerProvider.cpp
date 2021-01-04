@@ -137,7 +137,7 @@ auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
 }
 
 auto SingleServerProvider::expand(Step const& step, size_t previous,
-                                  std::function<void(Step)> callback) -> void {
+                                  std::function<void(Step)> const& callback) -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
   TRI_ASSERT(_cursor != nullptr);
