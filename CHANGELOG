@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
 * Updated arangosync to 1.2.1.
 
 * Clean up callback bin and empty promises in single-host-agency.
