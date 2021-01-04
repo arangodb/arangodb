@@ -1,6 +1,8 @@
 devel
 -----
 
+* Clean up callback bin and empty promises in single-host-agency.
+
 * Stabilize a Foxx cleanup test.
 
 * Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
