@@ -662,6 +662,22 @@ TEST_F(GreenspunTest, ne_string_not_equal) {
  * List operators
  */
 
+TEST_F(GreenspunTest, list_huh) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["list?", ["quote", [1, 2, 3]]]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isTrue());
+
+  program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["list?", 12]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isFalse()) << result.slice().toJson();
+}
+
 TEST_F(GreenspunTest, list_cat_single_list) {
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["list-cat", ["quote", [1, 2, 3]]]

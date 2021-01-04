@@ -94,7 +94,7 @@ EvalResult Prim_StringAppend(Machine& ctx, VPackSlice const slice, VPackBuilder&
   return EvalError("not implemented");
 }
 
-EvalResult Prim_ListJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
   auto res = extract<VPackArrayIterator, std::string_view>(slice);
   if (res.fail()) {
     return res.error();
@@ -117,6 +117,22 @@ EvalResult Prim_ListJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& res
   return {};
 }
 
+EvalResult Prim_StringCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  std::string str;
+
+  for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
+    VPackSlice p = *iter;
+    if (p.isString()) {
+      str += p.stringView();
+    } else {
+      return EvalError("expected string, found " + p.toJson());
+    }
+  }
+
+  result.add(VPackValue(str));
+  return {};
+}
+
 void arangodb::greenspun::RegisterAllStringFunctions(Machine& ctx) {
   ctx.setFunction("string?", Prim_StringHuh);
   ctx.setFunction("string-length", Prim_StringLength);
@@ -124,6 +140,6 @@ void arangodb::greenspun::RegisterAllStringFunctions(Machine& ctx) {
   ctx.setFunction("string-set", Prim_StringSet);
   ctx.setFunction("string-copy", Prim_StringCopy);
   ctx.setFunction("string-append", Prim_StringAppend);
-  ctx.setFunction("string-cat", Prim_StringAppend);
-  ctx.setFunction("list-join", Prim_ListJoin);
+  ctx.setFunction("string-join", Prim_StringJoin);
+  ctx.setFunction("string-cat", Prim_StringCat);
 }

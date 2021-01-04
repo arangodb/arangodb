@@ -26,6 +26,7 @@
 #include "Greenspun/lib/DateTime.h"
 #include "Greenspun/lib/Math.h"
 #include "Greenspun/lib/Strings.h"
+#include "Greenspun/lib/Lists.h"
 #include "Primitives.h"
 
 #include <iostream>
@@ -80,6 +81,7 @@ void InitMachine(Machine& m) {
   RegisterAllDateTimeFunctions(m);
   RegisterAllMathFunctions(m);
   RegisterAllStringFunctions(m);
+  RegisterAllListFunctions(m);
 }
 
 EvalResult Apply(Machine& ctx, std::string const& function,

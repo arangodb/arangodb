@@ -22,13 +22,13 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GREENSPUN_MATH_H
-#define ARANGODB_GREENSPUN_MATH_H 1
-
+#ifndef ARANGODB_GREENSPUN_LISTS_H
+#define ARANGODB_GREENSPUN_LISTS_H
 #include <Greenspun/Interpreter.h>
 
 namespace arangodb::greenspun {
-void RegisterAllMathFunctions(Machine& ctx);
+void RegisterAllListFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
 
-#endif
+
+#endif  // ARANGODB_GREENSPUN_LISTS_H

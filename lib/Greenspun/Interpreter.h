@@ -133,6 +133,8 @@ bool ValueConsideredFalse(VPackSlice value);
 
 EvalResult Evaluate(Machine& ctx, VPackSlice slice, VPackBuilder& result);
 void InitMachine(Machine& ctx);
+EvalResult EvaluateApply(Machine& ctx, VPackSlice functionSlice, VPackArrayIterator paramIterator,
+                         VPackBuilder& result, bool isEvaluateParameter);
 
 std::string paramsToString(VPackArrayIterator iter);
 std::string paramsToString(VPackSlice params);

@@ -394,36 +394,6 @@ EvalResult Prim_MergeDict(Machine& ctx, VPackSlice const params, VPackBuilder& r
   return {};
 }
 
-EvalResult Prim_StringCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  std::string str;
-
-  for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
-    VPackSlice p = *iter;
-    if (p.isString()) {
-      str += p.stringView();
-    } else {
-      return EvalError("expected string, found " + p.toJson());
-    }
-  }
-
-  result.add(VPackValue(str));
-  return {};
-}
-
-EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  VPackArrayBuilder array(&result);
-  for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
-    VPackSlice p = *iter;
-    if (p.isArray()) {
-      result.add(VPackArrayIterator(p));
-    } else {
-      return EvalError("expected array, found " + p.toJson());
-    }
-  }
-
-  return {};
-}
-
 EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
@@ -485,80 +455,6 @@ void Machine::print(const std::string& msg) const {
 
 EvalResult Prim_Error(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   return EvalError(paramsToString(params));
-}
-
-EvalResult Prim_List(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  VPackArrayBuilder ab(&result);
-  result.add(VPackArrayIterator(params));
-  return {};
-}
-
-EvalResult checkArrayParams(VPackSlice const& arr, VPackSlice const& index) {
-  if (!arr.isArray()) {
-    return EvalError("expect first parameter to be an array");
-  }
-
-  if (!index.isNumber()) {
-    return EvalError("expect second parameter to be a number");
-  }
-
-  if (index.getInt() < 0) {
-    return EvalError("number cannot be less than zero");
-  }
-
-  if (index.getUInt() > (arr.length() - 1)) {
-    return EvalError("array index is out of bounds");
-  }
-
-  return {};
-}
-
-EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 2) {
-    return EvalError("expected exactly two parameters");
-  }
-
-  auto&& arr = params.at(0);
-  auto&& index = params.at(1);
-
-  auto check = checkArrayParams(arr, index);
-  if (check.fail()) {
-    return check;
-  }
-
-  result.add(arr.at(index.getUInt()));
-
-  return {};
-}
-
-EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 3) {
-    return EvalError("expected exactly two parameters");
-  }
-
-  auto&& arr = params.at(0);
-  auto&& index = params.at(1);
-  auto&& value = params.at(2);
-
-  auto check = checkArrayParams(arr, index);
-  if (check.fail()) {
-    return check;
-  }
-
-  uint64_t pos = 0;
-  result.openArray();
-  for (auto&& element : VPackArrayIterator(arr)) {
-    if (pos == index.getUInt()) {
-      result.add(value);
-    } else {
-      result.add(element);
-    }
-
-    pos++;
-  }
-  result.close();
-
-  return {};
 }
 
 namespace {
@@ -746,7 +642,7 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
 
   auto body = *paramIterator++;
   if (paramIterator.valid()) {
-    return EvalError("to many arguments to lambda constructor");
+    return EvalError("too many arguments to lambda constructor");
   }
 
   {
@@ -765,10 +661,6 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   }
   return {};
 }
-
-EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
-                         VPackArrayIterator paramIterator, VPackBuilder& result,
-                         bool isEvaluateParameter);
 
 EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
@@ -796,7 +688,7 @@ EvalResult Prim_Identity(Machine& ctx, VPackSlice const paramsList, VPackBuilder
 
 EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
-    return EvalError("expecting to arguments, a function and a list");
+    return EvalError("expecting two arguments, a function and a list");
   }
 
   auto functionSlice = paramsList.at(0);
@@ -1001,32 +893,6 @@ EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return EvalError("Prim_Foldl1 not implemented");
 }
 
-EvalResult Prim_ListEmptyHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  auto res = extract<VPackSlice>(paramsList);
-  if (!res) {
-    return std::move(res).asResult();
-  }
-
-  auto&& [array] = res.value();
-  result.add(VPackValue(array.isEmptyArray()));
-  return {};
-}
-
-EvalResult Prim_ListLength(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  auto res = extract<VPackSlice>(paramsList);
-  if (!res) {
-    return std::move(res).asResult();
-  }
-
-  auto&& [array] = res.value();
-  if (!array.isArray()) {
-    return EvalError("expected array, found " + array.toJson());
-  }
-
-  result.add(VPackValue(array.length()));
-  return {};
-}
-
 template <bool ignoreMissing>
 EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (paramsList.length() < 1) {
@@ -1063,25 +929,6 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
   return {};
 }
 
-EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  VPackArrayBuilder ab(&result);
-
-  VPackArrayIterator iter(paramsList);
-  if (iter.valid()) {
-    VPackSlice list = *iter;
-    if (!list.isArray()) {
-      return EvalError("expected array as first parameter, found: " + list.toJson());
-    }
-
-    result.add(VPackArrayIterator(list));
-    for (iter.next(); iter.valid(); iter.next()) {
-      result.add(*iter);
-    }
-  }
-
-  return {};
-}
-
 EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   VPackArrayIterator iter(paramsList);
   if (!iter.valid()) {
@@ -1099,60 +946,6 @@ EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   }
 
   result.add(VPackSlice::noneSlice());
-  return {};
-}
-
-EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  auto res = extract<VPackSlice, VPackSlice>(paramsList);
-  if (!res) {
-    return std::move(res).asResult();
-  }
-
-  auto&& [func, list] = res.value();
-  if (!list.isArray()) {
-    return EvalError("expected list as second parameter, found: " + list.toJson());
-  }
-
-  VPackArrayIterator iter(list);
-  std::vector<VPackSlice> v;
-  v.reserve(list.length());
-  v.assign(iter.begin(), iter.end());
-
-  struct Compare {
-    Machine& ctx;
-    VPackSlice func;
-
-    // return true if A is _less_ than B
-    bool operator()(VPackSlice A, VPackSlice B) {
-      VPackBuilder parameter;
-      {
-        VPackArrayBuilder pb(&parameter);
-        parameter.add(A);
-        parameter.add(B);
-      }
-
-      VPackBuilder tempBuffer;
-
-      auto res = EvaluateApply(ctx, func, VPackArrayIterator(parameter.slice()),
-                               tempBuffer, false);
-      if (res.fail()) {
-        throw res.error().wrapMessage("when mapping pair " + parameter.toJson());
-      }
-
-      return ValueConsideredTrue(tempBuffer.slice());
-    }
-  };
-
-  try {
-    std::sort(v.begin(), v.end(), Compare{ctx, func});
-  } catch (EvalError& err) {
-    return err.wrapMessage("in compare function");
-  }
-
-  VPackArrayBuilder ab(&result);
-  for (auto&& slice : v) {
-    result.add(slice);
-  }
   return {};
 }
 
@@ -1204,21 +997,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("lt?", Prim_CmpHuh<std::less<>>);
   ctx.setFunction("ne?", Prim_CmpHuh<std::not_equal_to<>>);
 
-  // Lists
-  ctx.setFunction("list", Prim_List);
-  ctx.setFunction("list-cat", Prim_ListCat);
-  ctx.setFunction("list-append", Prim_ListAppend);
-  ctx.setFunction("list-ref", Prim_ListRef);
-  ctx.setFunction("list-set", Prim_ListSet);
-  ctx.setFunction("list-empty?", Prim_ListEmptyHuh);
-  ctx.setFunction("list-length", Prim_ListLength);
-  ctx.setFunction("sort", Prim_Sort);
 
-  // deprecated list functions
-  ctx.setFunction("array-ref", Prim_ListRef);
-  ctx.setFunction("array-set", Prim_ListSet);
-  ctx.setFunction("array-empty?", Prim_ListEmptyHuh);
-  ctx.setFunction("array-length", Prim_ListLength);
 
   // Misc
   ctx.setFunction("min", Prim_Min);
@@ -1240,7 +1019,6 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("lambda", Prim_Lambda);
 
   // Utilities
-  ctx.setFunction("string-cat", Prim_StringCat);
   ctx.setFunction("int-to-str", Prim_IntToStr);
 
   // Functional stuff

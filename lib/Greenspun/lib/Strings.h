@@ -22,8 +22,8 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_STRINGS_MATH_H
-#define ARANGODB_PREGEL_STRINGS_MATH_H
+#ifndef ARANGODB_GREENSPUN_STRINGS_H
+#define ARANGODB_GREENSPUN_STRINGS_H
 #include <Greenspun/Interpreter.h>
 
 namespace arangodb::greenspun {
@@ -31,4 +31,4 @@ void RegisterAllStringFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
 
 
-#endif  // ARANGODB_PREGEL_STRINGS_MATH_H
+#endif  // ARANGODB_GREENSPUN_STRINGS_H
