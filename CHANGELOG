@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
+
 * Updated arangosync to 1.2.1.
 
 * Clean up callback bin and empty promises in single-host-agency.
