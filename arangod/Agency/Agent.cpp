@@ -1533,9 +1533,9 @@ void Agent::run() {
         clearExpiredPolls();
         // Empty store callback trash bin
         emptyCbTrashBin();
-        std::this_thread::sleep_for(std::chrono::second(1));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
       } catch (std::exception const& e) {
-        LOG_TOPIC("a0ef7", Logger::AGENCY, WARN) << "Caught exception in single-host agent thread " << e.what();
+        LOG_TOPIC("a0ef7", WARN, Logger::AGENCY) << "Caught exception in single-host agent thread " << e.what();
       }
     }
   } else {
