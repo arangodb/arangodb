@@ -45,7 +45,7 @@ greenspun::EvalResult Func_VarSet(greenspun::Machine& ctx, VPackSlice const para
 
 void AddSomeFunctions(greenspun::Machine& m) {
   m.setFunction("this-id", Func_thisId);
-  m.setFunction("var-set", Func_VarSet);
+  m.setFunction("var-set!", Func_VarSet);
 }
 
 struct LispCompleter : arangodb::Completer {
