@@ -275,7 +275,7 @@ void GeneralServerFeature::unprepare() {
 
 double GeneralServerFeature::keepAliveTimeout() const {
   return _keepAliveTimeout;
-};
+}
 
 bool GeneralServerFeature::proxyCheck() const { return _proxyCheck; }
 
