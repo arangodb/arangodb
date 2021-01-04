@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
+
 * Make DB servers report storage engine health to the agency, via a new "health"
   attribute in requests sent to Sync/ServerStates/<id>.
   The supervision can in the future check this attribute if it is posted,
@@ -53,7 +55,6 @@ devel
   than one shard, it is now less likely to get a LOCK_TIMEOUT (ErrorNum 18).
   It is still possible to get into the LOCK_TIMEOUT case, especially if
   the "exclusive" operation(s) are long-running.
->>>>>>> c3fef3183aae228fe884f23cc531201d6239ea37
 
 * Reduce overhead of audit logging functionality if audit logging is turned
   off.
