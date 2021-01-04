@@ -130,6 +130,18 @@ struct log_t {
         clientId(clientId),
         timestamp(m) {}
 
+  void toVelocyPack(velocypack::Builder& builder) const {
+    builder.openObject();
+
+    builder.add("index", VPackValue(index));
+    builder.add("term", VPackValue(term));
+    builder.add("query", VPackSlice(entry->data()));
+    builder.add("clientId", VPackValue(clientId));
+    builder.add("timestamp", VPackValue(timestamp.count()));
+    
+    builder.close();
+  }
+
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
     o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "
       << " " << l.clientId << " " << l.timestamp.count();

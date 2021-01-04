@@ -1,6 +1,35 @@
 devel
 -----
 
+* Updated arangosync to 1.2.1.
+
+* Clean up callback bin and empty promises in single-host-agency.
+
+* Stabilize a Foxx cleanup test.
+
+* Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
+  makes the API adhere better to the official Prometheus syntax.
+
+* Add some more metrics to the ConnectionPool.
+
+* Remove HTTP "Connection" header when forwarding requests in the cluster
+  from one coordinator to another, and let the internal network layer
+  handle closing of connections and keep-alive.
+
+* Added new metric: "arangodb_collection_lock_sequential_mode" this will count
+  how many times we need to do a sequential locking of collections. If this
+  metric increases this indicates lock contention in transaction setup.
+  Most likely this is caused by exlcusive locks used on collections with
+  more than one shard.
+
+* Fix for BTS-213
+  Changed the transaction locking mechanism in the cluster case.
+  For all installations that do not use "exclusive" collection locks this change
+  will not be noticable. In case of "exclusive" locks, and collections with more
+  than one shard, it is now less likely to get a LOCK_TIMEOUT (ErrorNum 18).
+  It is still possible to get into the LOCK_TIMEOUT case, especially if
+  the "exclusive" operation(s) are long-running.
+
 * Reduce overhead of audit logging functionality if audit logging is turned
   off.
 
