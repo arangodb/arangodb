@@ -3,6 +3,17 @@ devel
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 
+* Updated arangosync to 1.2.1.
+
+* Clean up callback bin and empty promises in single-host-agency.
+
+* Stabilize a Foxx cleanup test.
+
+* Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
+  makes the API adhere better to the official Prometheus syntax.
+
+* Add some more metrics to the ConnectionPool.
+
 * Remove HTTP "Connection" header when forwarding requests in the cluster
   from one coordinator to another, and let the internal network layer
   handle closing of connections and keep-alive.
