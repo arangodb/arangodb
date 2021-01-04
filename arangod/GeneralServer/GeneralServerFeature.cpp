@@ -285,7 +285,7 @@ std::vector<std::string> GeneralServerFeature::trustedProxies() const {
 
 bool GeneralServerFeature::allowMethodOverride() const {
   return _allowMethodOverride;
-};
+}
 
 std::vector<std::string> const& GeneralServerFeature::accessControlAllowOrigins() const {
   return _accessControlAllowOrigins;
