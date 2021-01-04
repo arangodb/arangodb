@@ -319,8 +319,7 @@ void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
   if (state->isCoordinator() || state->isDBServer()) {
     req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
   } else if (state->isAgent() && agent != nullptr) {
-    LOG_DEVEL << "THE ID: AGENT-" << agent->id() << ", SERVERSTATE ID: " << state->getId();
-    req.header.addMeta(StaticStrings::ClusterCommSource, "AGENT-" + agent->id());
+    req.header.addMeta(StaticStrings::ClusterCommSource, agent->id());
   }
 }
 
