@@ -1,6 +1,8 @@
 devel
 -----
 
+* Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
+
 * Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
 
 * Make DB servers report storage engine health to the agency, via a new "health"
