@@ -596,6 +596,9 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     body.openObject();
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     body.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    body.add(VPackValue(Utils::reportsKey));
+    _reports.intoBuilder(body);
+    _reports.clear();
     body.close();
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();

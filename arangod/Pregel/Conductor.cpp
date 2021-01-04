@@ -771,6 +771,13 @@ int Conductor::_finalizeWorkers() {
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
+  {
+    auto reports = data.get(Utils::reportsKey);
+    if (reports.isArray()) {
+      _reports.appendFromSlice(reports);
+    }
+  }
+
   _ensureUniqueResponse(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
