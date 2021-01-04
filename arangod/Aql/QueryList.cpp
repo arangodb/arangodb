@@ -38,7 +38,6 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Utils/Events.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -169,11 +168,6 @@ void QueryList::remove(Query* query) {
   double const elapsed = elapsedSince(query->startTime());
 
   _queryRegistryFeature.trackQuery(elapsed);
-
-  // log to audit log
-  if (!query->queryOptions().skipAudit) {
-    events::AqlQuery(*query);
-  }
 
   if (!trackSlowQueries()) {
     return;
