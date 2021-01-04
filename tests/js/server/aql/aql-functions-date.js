@@ -2472,7 +2472,7 @@ function ahuacatlDateFunctionsTestSuite () {
 	  }
 		
 	  if (systemtz) {
-	    assertEqual([systemtz], res);
+	    assertEqual(systemtz, res);
 	  } else {
 		assertTrue(res != null);
 	  }
