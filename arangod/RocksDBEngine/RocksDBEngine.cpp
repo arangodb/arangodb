@@ -201,6 +201,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _createShaFiles(false),
 #endif
       _lastHealthCheckSuccessful(false) {
+  server.addFeature<RocksDBOptionFeature>();
+
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
