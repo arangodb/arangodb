@@ -2484,9 +2484,9 @@ function ahuacatlDateFunctionsTestSuite () {
 	
 	testDateTimeZones: function () {
 	  var res = getQueryResults("RETURN DATE_TIMEZONES()", {})[0];
-	  assertTrue(res.indexOf("America/New_York") !== -1);
-	  assertTrue(res.indexOf("Europe/Berlin") !== -1);
-	  assertTrue(res.indexOf("Asia/Shanghai") !== -1);
+	  assertNotEqual(-1, res.indexOf("America/New_York"));
+	  assertNotEqual(-1, res.indexOf("Europe/Berlin"));
+	  assertNotEqual(-1, res.indexOf("Asia/Shanghai"));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
