@@ -674,6 +674,7 @@ TEST_F(GreenspunTest, list_huh) {
       ["list?", 12]
     )aql");
 
+  result.clear();
   Evaluate(m, program->slice(), result);
   ASSERT_TRUE(result.slice().isFalse()) << result.slice().toJson();
 }
