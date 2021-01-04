@@ -70,7 +70,7 @@ size_t PathStore<Step>::append(Step step) {
 
   auto idx = _schreier.size();
   _resourceMonitor.increaseMemoryUsage(sizeof(step));
-  _schreier.emplace_back(step);
+  _schreier.emplace_back(std::move(step));
 
   return idx;
 }
