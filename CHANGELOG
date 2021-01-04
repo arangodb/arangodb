@@ -3,6 +3,34 @@ devel
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
 
+* Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
+
+* Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
+
+* Make DB servers report storage engine health to the agency, via a new "health"
+  attribute in requests sent to Sync/ServerStates/<id>.
+  The supervision can in the future check this attribute if it is posted,
+  and mark servers as BAD or FAILED in case an unhealthy status is reported.
+  DB server health is currently determined by whether or not the storage engine
+  (RocksDB) has reported a background error, and by whether or not the free disk 
+  space has reached a critical low amount. The current threshold for free disk
+  space is set at 1% of the disk capacity (only the disk is considered that 
+  contains the RocksDB database directory).
+  The minimum required free disk space percentage can be configured using the new
+  startup option `--rocksdb.minimum-disk-free-percent`, which needs to be between
+  0 and 1 (including). A value of 0 disables the check.
+  The minimum required free disk space can also be configured in bytes using the
+  new startup option `--rocksdb.minimum-disk-free-bytes`. A value of 0 disables
+  this check, too.
+
+* Failed servers are now reported consistently in the web interface, at 
+  approximately the same time in the navigation bar and in the nodes view. 
+  Previously these two places had their own, independent poll mechanism for the
+  nodes' health, and they were updated independently, which could cause an 
+  inconsistent view of the nodes' availability.
+  Using only one poll mechanism instead also saves some period background requests
+  for the second availability check.
+
 * Updated arangosync to 1.2.1.
 
 * Clean up callback bin and empty promises in single-host-agency.
