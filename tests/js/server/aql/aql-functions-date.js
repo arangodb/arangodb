@@ -2463,7 +2463,19 @@ function ahuacatlDateFunctionsTestSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDateTimeZone: function () {
-	  getQueryResults("RETURN DATE_TIMEZONE()", {});
+	  var systemtz = null;
+	  var res = getQueryResults("RETURN DATE_TIMEZONE()", {})[0];
+	  
+	  try {
+	    systemtz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	  } catch {
+	  }
+		
+	  if (systemtz) {
+	    assertEqual([systemtz], res);
+	  } else {
+		assertTrue(res != null);
+	  }
     },
 	
 	// //////////////////////////////////////////////////////////////////////////////
@@ -2471,7 +2483,10 @@ function ahuacatlDateFunctionsTestSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 	
 	testDateTimeZones: function () {
-	  getQueryResults("RETURN DATE_TIMEZONES()", {});
+	  var res = getQueryResults("RETURN DATE_TIMEZONES()", {})[0];
+	  assertTrue(res.find("America/New_York") !== -1);
+	  assertTrue(res.find("Europe/Berlin") !== -1);
+	  assertTrue(res.find("Asia/Shanghai") !== -1);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
