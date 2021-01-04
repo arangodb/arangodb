@@ -226,7 +226,7 @@ void RocksDBTransactionState::createTransaction() {
 
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-    auto header = RocksDBLogValue::BeginTransaction(_vocbase.id(), _id);
+    auto header = RocksDBLogValue::BeginTransaction(_vocbase.id(), id());
 
     _rocksTransaction->PutLogData(header.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

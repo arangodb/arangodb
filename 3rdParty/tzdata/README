@@ -20,6 +20,8 @@ substituting your desired installation directory for "$HOME/tzdir":
 	make TOPDIR=$HOME/tzdir install
 	$HOME/tzdir/usr/bin/zdump -v America/Los_Angeles
 
+See the file tz-how-to.html for examples of how to read the data files.
+
 This database of historical local time information has several goals:
 
  * Provide a compendium of data about the history of civil time that

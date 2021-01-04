@@ -370,7 +370,7 @@ class ClusterInfo final {
     ~SyncerThread();
     void beginShutdown() override;
     void run() override;
-    void start();
+    bool start();
     bool notify(velocypack::Slice const&);
 
    private:

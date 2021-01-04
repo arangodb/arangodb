@@ -426,7 +426,7 @@ MockClusterServer::MockClusterServer() : MockServer() {
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
 
-  arangodb::network::ConnectionPool::Config config;
+  arangodb::network::ConnectionPool::Config config(_server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
@@ -442,7 +442,7 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  arangodb::network::ConnectionPool::Config poolConfig;
+  arangodb::network::ConnectionPool::Config poolConfig(_server.getFeature<MetricsFeature>());
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;

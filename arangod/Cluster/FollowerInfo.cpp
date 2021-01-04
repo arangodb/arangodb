@@ -58,12 +58,18 @@ void checkDifference(std::vector<ServerID> const& followers,
   if (!diff.empty()) {
     std::stringstream s;
     s << "Symmetric difference alert: ";
-    for (auto const& d : diff) { s << d << " "; }
+    for (auto const& d : diff) { 
+      s << d << " "; 
+    }
     s << "failoverCandidates: ";
-    for (auto const& d : failoverCandidates) { s << d << " "; }
+    for (auto const& d : failoverCandidates) { 
+      s << d << " "; 
+    }
     s << "followers: ";
-    for (auto const& d : followers) { s << d << " "; }
-    LOG_DEVEL << s.str();
+    for (auto const& d : followers) { 
+      s << d << " "; 
+    }
+    LOG_TOPIC("9d8ec", ERR, Logger::CLUSTER) << s.str();
   }
   TRI_ASSERT(diff.empty());
 }

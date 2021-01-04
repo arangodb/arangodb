@@ -28,6 +28,8 @@
 #include <rocksdb/db.h>
 #include <rocksdb/listener.h>
 
+#include <atomic>
+
 namespace arangodb {
 
 class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
@@ -36,8 +38,10 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 
   void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
+  bool called() const { return _called.load(std::memory_order_relaxed); }
+
  private:
-  bool _called = false;
+  std::atomic<bool> _called{false};
 };
 
 }  // namespace arangodb

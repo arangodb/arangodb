@@ -62,6 +62,8 @@ class ClusterEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
+  
+  HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,

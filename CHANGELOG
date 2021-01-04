@@ -1,6 +1,61 @@
 devel
 -----
 
+* Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
+
+* Make DB servers report storage engine health to the agency, via a new "health"
+  attribute in requests sent to Sync/ServerStates/<id>.
+  The supervision can in the future check this attribute if it is posted,
+  and mark servers as BAD or FAILED in case an unhealthy status is reported.
+  DB server health is currently determined by whether or not the storage engine
+  (RocksDB) has reported a background error, and by whether or not the free disk 
+  space has reached a critical low amount. The current threshold for free disk
+  space is set at 1% of the disk capacity (only the disk is considered that 
+  contains the RocksDB database directory).
+  The minimum required free disk space percentage can be configured using the new
+  startup option `--rocksdb.minimum-disk-free-percent`, which needs to be between
+  0 and 1 (including). A value of 0 disables the check.
+  The minimum required free disk space can also be configured in bytes using the
+  new startup option `--rocksdb.minimum-disk-free-bytes`. A value of 0 disables
+  this check, too.
+
+* Failed servers are now reported consistently in the web interface, at 
+  approximately the same time in the navigation bar and in the nodes view. 
+  Previously these two places had their own, independent poll mechanism for the
+  nodes' health, and they were updated independently, which could cause an 
+  inconsistent view of the nodes' availability.
+  Using only one poll mechanism instead also saves some period background requests
+  for the second availability check.
+
+* Updated arangosync to 1.2.1.
+
+* Clean up callback bin and empty promises in single-host-agency.
+
+* Stabilize a Foxx cleanup test.
+
+* Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
+  makes the API adhere better to the official Prometheus syntax.
+
+* Add some more metrics to the ConnectionPool.
+
+* Remove HTTP "Connection" header when forwarding requests in the cluster
+  from one coordinator to another, and let the internal network layer
+  handle closing of connections and keep-alive.
+
+* Added new metric: "arangodb_collection_lock_sequential_mode" this will count
+  how many times we need to do a sequential locking of collections. If this
+  metric increases this indicates lock contention in transaction setup.
+  Most likely this is caused by exlcusive locks used on collections with
+  more than one shard.
+
+* Fix for BTS-213
+  Changed the transaction locking mechanism in the cluster case.
+  For all installations that do not use "exclusive" collection locks this change
+  will not be noticable. In case of "exclusive" locks, and collections with more
+  than one shard, it is now less likely to get a LOCK_TIMEOUT (ErrorNum 18).
+  It is still possible to get into the LOCK_TIMEOUT case, especially if
+  the "exclusive" operation(s) are long-running.
+
 * Reduce overhead of audit logging functionality if audit logging is turned
   off.
 

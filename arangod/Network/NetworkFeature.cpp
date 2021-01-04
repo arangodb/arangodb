@@ -74,7 +74,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
-    : NetworkFeature(server, network::ConnectionPool::Config{}) {
+    : NetworkFeature(server, network::ConnectionPool::Config{server.getFeature<MetricsFeature>()}) {
   this->_numIOThreads = 2; // override default
 }
 
@@ -170,7 +170,7 @@ void NetworkFeature::prepare() {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
-  network::ConnectionPool::Config config;
+  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
   config.idleConnectionMilli = _idleTtlMilli;
