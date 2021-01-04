@@ -140,7 +140,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
   std::shared_ptr<ShardMap> shardMap = coll.shardIds();
-  std::vector<std::string> leaders;
+  ClusterTrxMethods::SortedServersSet leaders{};
 
   for (auto const& pair : shards) {
     auto const& it = shardMap->find(pair.first);
@@ -150,7 +150,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
     // now we got the shard leader
     std::string const& leader = it->second[0];
     if (!state.knowsServer(leader)) {
-      leaders.emplace_back(leader);
+      leaders.emplace(leader);
     }
   }
   return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
@@ -160,11 +160,11 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
 Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
-  std::vector<ServerID> leaders;
+  ClusterTrxMethods::SortedServersSet leaders{};
   for (auto const& shardServers : shards) {
     ServerID const& srv = shardServers.second.at(0);
     if (!trx.state()->knowsServer(srv)) {
-      leaders.emplace_back(srv);
+      leaders.emplace(srv);
     }
   }
   return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);

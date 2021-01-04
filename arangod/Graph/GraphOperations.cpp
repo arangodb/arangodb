@@ -920,7 +920,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
   {
     aql::QueryString const queryString{
-        "FOR e IN @@collection "
+        "/*removeEdgeOrVertex*/ FOR e IN @@collection "
         "FILTER e._from == @toDeleteId "
         "OR e._to == @toDeleteId "
         "REMOVE e IN @@collection"};
@@ -934,7 +934,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
       bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
-      arangodb::aql::Query query(ctx(), queryString, bindVars, nullptr);
+      arangodb::aql::Query query(ctx(), queryString, bindVars);
       auto queryResult = query.executeSync();
 
       if (queryResult.result.fail()) {

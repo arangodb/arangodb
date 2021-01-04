@@ -145,7 +145,10 @@ template<typename T> class Gauge : public Metric {
   virtual void toPrometheus(std::string& result, bool withDocs = false) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + (withDocs ? docs() : help()) + "\n";
-    result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
+    if (!labels().empty()) {
+      result += "{" + labels() + "}";
+    }
+    result += " " + std::to_string(load()) + "\n";
   };
  private:
   std::atomic<T> _g;
@@ -458,7 +461,11 @@ template<typename Scale> class Histogram : public Metric {
       }
       result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
     }
-    result += name() + "_count{" + labels() + "} " + std::to_string(sum) + "\n";
+    result += name() + "_count";
+    if (!labels().empty()) {
+      result += "{" + labels() + "}";
+    }
+    result += " " + std::to_string(sum) + "\n";
   }
 
   std::ostream& print(std::ostream& o) const {

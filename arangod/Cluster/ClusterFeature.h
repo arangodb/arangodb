@@ -119,14 +119,22 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void pruneAsyncAgencyConnectionPool() {
     _asyncAgencyCommPool->pruneConnections();
   }
+  
+  /// the following methods may also be called from tests
+  
+  void shutdownHeartbeatThread();
+  /// @brief wait for the AgencyCache to shut down
+  /// note: this may be called multiple times during shutdown
+  void shutdownAgencyCache();
+  /// @brief wait for the Plan and Current syncer to shut down
+  /// note: this may be called multiple times during shutdown
+  void waitForSyncersToStop();
+
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                             std::string const& endpoints);
-
-  void shutdownHeartbeatThread();
-  void shutdownAgencyCache();
 
  private:
   void reportRole(ServerState::RoleEnum);
@@ -147,7 +155,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
-  bool _allocated = false;
   double _indexCreationTimeout = 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;

@@ -268,14 +268,16 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       {std::type_index(typeid(iresearch::IResearchFeature)),
        std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
        std::type_index(typeid(ActionFeature)),
-       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxFeature)),
+       std::type_index(typeid(FoxxFeature)),
        std::type_index(typeid(FrontendFeature))});
 
-  if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
+  if ((!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) &&
+      (!result.touched("javascript.enabled") || !*(options->get<BooleanParameter>("javascript.enabled")->ptr))) {
     // specifying --console requires JavaScript, so we can only turn it off
     // if not specified
 
     // console mode inactive. so we can turn off V8
+    disabledFeatures.emplace_back(std::type_index(typeid(ScriptFeature)));
     disabledFeatures.emplace_back(std::type_index(typeid(V8PlatformFeature)));
     disabledFeatures.emplace_back(std::type_index(typeid(V8DealerFeature)));
   }

@@ -49,9 +49,48 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& na
 
 } // iresearch
 
-#elif defined(_WIN32) && (_WIN32_WINNT >= _WIN32_WINNT_WIN10)
+#elif defined(_WIN32)
 
 #include <windows.h>
+
+namespace {
+
+typedef HRESULT (WINAPI *name_set_ptr)(HANDLE, PCWSTR);
+
+typedef HRESULT (WINAPI *name_get_ptr)(HANDLE, PWSTR*);
+
+HRESULT WINAPI set_thread_description_noop(HANDLE, PCWSTR) {
+  return E_NOTIMPL;
+}
+
+HRESULT WINAPI get_thread_description_noop(HANDLE, PWSTR*) {
+  return E_NOTIMPL;
+}
+
+std::atomic<name_get_ptr> get_thread_description;
+std::atomic<name_set_ptr> set_thread_description;
+std::mutex name_api_mutex;
+
+/// @brief tries to find out if the current host supports thread namings
+void init_thread_name_api() {
+  if (!get_thread_description.load() || !set_thread_description.load()) {
+    std::lock_guard lock(name_api_mutex);
+    if (!get_thread_description.load() && !set_thread_description.load()) {
+      auto kernel32 = LoadLibraryW(L"KERNEL32.DLL");
+      if (kernel32) {
+        get_thread_description = reinterpret_cast<name_get_ptr>(GetProcAddress(kernel32, "GetThreadDescription"));
+        set_thread_description = reinterpret_cast<name_set_ptr>(GetProcAddress(kernel32, "SetThreadDescription"));
+      }
+      if (!get_thread_description) {
+        get_thread_description = get_thread_description_noop;
+      }
+      if (!set_thread_description) {
+        set_thread_description = set_thread_description_noop;
+      }
+    }
+  }
+}
+} // namespace
 
 namespace iresearch {
 
@@ -62,13 +101,15 @@ struct local_deleter {
 };
 
 bool set_thread_name(const thread_name_t name) noexcept {
-  return SUCCEEDED(SetThreadDescription(GetCurrentThread(), name));
+  init_thread_name_api();
+  return SUCCEEDED(set_thread_description.load()(GetCurrentThread(), name));
 }
 
 bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
+  init_thread_name_api();
   std::unique_ptr<void, local_deleter> guard;
   thread_name_t tmp;
-  auto const res = GetThreadDescription(GetCurrentThread(), &tmp);
+  auto const res = get_thread_description.load()(GetCurrentThread(), &tmp);
   guard.reset(tmp);
   if (SUCCEEDED(res)) {
     name = tmp;
