@@ -402,52 +402,50 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
   auto& server = systemVocbase->server();
   if (server.hasFeature<V8DealerFeature>() && server.isEnabled<V8DealerFeature>()) {
     V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
-    if (dealer.isEnabled()) {
-      try {
-        JavaScriptSecurityContext securityContext =
-            JavaScriptSecurityContext::createInternalContext();
+    try {
+      JavaScriptSecurityContext securityContext =
+          JavaScriptSecurityContext::createInternalContext();
 
-        v8::Isolate* isolate = v8::Isolate::GetCurrent();
-        V8ConditionalContextGuard guard(res, isolate, systemVocbase, securityContext);
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      V8ConditionalContextGuard guard(res, isolate, systemVocbase, securityContext);
+
+      if (res.fail()) {
+        events::DropDatabase(dbName, res, exec);
+        return res;
+      }
+
+      v8::HandleScope scope(isolate);
+
+      // clear collections in cache object
+      TRI_ClearObjectCacheV8(isolate);
+
+      if (ServerState::instance()->isCoordinator()) {
+        // If we are a coordinator in a cluster, we have to behave differently:
+        auto& df = server.getFeature<DatabaseFeature>();
+        res = ::dropDBCoordinator(df, dbName);
+      } else {
+        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res, exec);
           return res;
         }
 
-        v8::HandleScope scope(isolate);
-
-        // clear collections in cache object
-        TRI_ClearObjectCacheV8(isolate);
-
-        if (ServerState::instance()->isCoordinator()) {
-          // If we are a coordinator in a cluster, we have to behave differently:
-          auto& df = server.getFeature<DatabaseFeature>();
-          res = ::dropDBCoordinator(df, dbName);
-        } else {
-          res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
-
-          if (res.fail()) {
-            events::DropDatabase(dbName, res, exec);
-            return Result(res);
-          }
-
-          arangodb::Task::removeTasksForDatabase(dbName);
-          // run the garbage collection in case the database held some objects
-          // which can now be freed
-          TRI_RunGarbageCollectionV8(isolate, 0.25);
-          dealer.addGlobalContextMethod("reloadRouting");
-        }
-      } catch (arangodb::basics::Exception const& ex) {
-        events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
-        return Result(ex.code(), dropError + ex.message());
-      } catch (std::exception const& ex) {
-        events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-        return Result(TRI_ERROR_INTERNAL, dropError + ex.what());
-      } catch (...) {
-        events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-        return Result(TRI_ERROR_INTERNAL, dropError);
+        arangodb::Task::removeTasksForDatabase(dbName);
+        // run the garbage collection in case the database held some objects
+        // which can now be freed
+        TRI_RunGarbageCollectionV8(isolate, 0.25);
+        dealer.addGlobalContextMethod("reloadRouting");
       }
+    } catch (arangodb::basics::Exception const& ex) {
+      events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
+      return Result(ex.code(), dropError + ex.message());
+    } catch (std::exception const& ex) {
+      events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
+      return Result(TRI_ERROR_INTERNAL, dropError + ex.what());
+    } catch (...) {
+      events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
+      return Result(TRI_ERROR_INTERNAL, dropError);
     }
   } else {
     if (ServerState::instance()->isCoordinator()) {

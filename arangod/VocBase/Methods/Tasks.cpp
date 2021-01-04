@@ -373,8 +373,7 @@ void Task::start() {
 
 bool Task::queue(std::chrono::microseconds offset) {
   auto& server = _dbGuard->database().server();
-  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
-      !server.getFeature<V8DealerFeature>().isEnabled()) {
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>()) {
     return false;
   }
 

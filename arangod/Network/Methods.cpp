@@ -164,13 +164,15 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
   req->header.addMeta(StaticStrings::HLCHeader,
                       arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
 
+  consensus::Agent* agent = nullptr;
   if (pool && pool->config().clusterInfo) {
     auto& server = pool->config().clusterInfo->server();
     if (server.hasFeature<AgencyFeature>() && server.isEnabled<AgencyFeature>()) {
-      auto* agent = server.getFeature<AgencyFeature>().agent();
-      network::addSourceHeader(agent, *req);
+      agent = server.getFeature<AgencyFeature>().agent();
     }
   }
+  // note: agent can be a nullptr here
+  network::addSourceHeader(agent, *req);
 
   return req;
 }

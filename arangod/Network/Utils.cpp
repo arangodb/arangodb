@@ -314,10 +314,12 @@ std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
 }
 
 void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
+  // note: agent can be a nullptr here
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
     req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
   } else if (state->isAgent() && agent != nullptr) {
+    LOG_DEVEL << "THE ID: AGENT-" << agent->id() << ", SERVERSTATE ID: " << state->getId();
     req.header.addMeta(StaticStrings::ClusterCommSource, "AGENT-" + agent->id());
   }
 }
