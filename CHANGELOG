@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 1.2.1.
+
 * Clean up callback bin and empty promises in single-host-agency.
 
 * Stabilize a Foxx cleanup test.
