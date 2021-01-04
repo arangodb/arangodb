@@ -3883,8 +3883,8 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
 
 /// @brief function DATE_TIMEZONE
 AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
-                                   AstNode const&,
-                                   VPackFunctionParameters const& parameters) {
+                                 AstNode const&,
+                                 VPackFunctionParameters const& parameters) {
   using namespace date;
 
   const auto* zone = current_zone();
@@ -3898,7 +3898,7 @@ AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
 
 /// @brief function DATE_TIMEZONES
 AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode const&,
-                                        VPackFunctionParameters const& parameters) {
+                                  VPackFunctionParameters const& parameters) {
   using namespace date;
 
   auto& list = get_tzdb_list();
@@ -8235,4 +8235,3 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
-
