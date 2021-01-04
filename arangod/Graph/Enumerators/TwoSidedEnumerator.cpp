@@ -173,6 +173,14 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
     // Check if other Ball knows this Vertex.
     // Include it in results.
     if (getDepth() + other.getDepth() >= _minDepth) {
+      // One side of the path is checked.
+      // Other side is unclear.
+      // Now we need to combine the test of both sides.
+      // combinedValidate(step, otherValidator&)
+      // For NONE: ignoreOtherValidator return TAKE
+      // For PATH: take _uniqueVertices of otherValidator, and run Visitor of other side, check if one vertex is duplicate.
+      // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match as result, clear both sides. => This will give the shortest path.
+      // TODO: Check if the GLOBAL holds true for weightedEdges
       other.matchResultsInShell(n, results);
     }
 
