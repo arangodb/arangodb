@@ -185,7 +185,7 @@ function strongly_connected_components_program(resultField) {
 
 function strongly_connected_components(graphName, resultField) {
   return pregel.start(
-    "air",
+    "ppa",
     graphName,
     strongly_connected_components_program(resultField)
   );

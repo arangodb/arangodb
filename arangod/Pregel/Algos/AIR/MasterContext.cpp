@@ -31,7 +31,7 @@
 
 namespace arangodb::pregel::algos::accumulators {
 
-MasterContext::MasterContext(VertexAccumulators const* algorithm)
+MasterContext::MasterContext(ProgrammablePregelAlgorithm const* algorithm)
     : _algo(algorithm) {
   CustomAccumulatorDefinitions const& customDefinitions = _algo->options().customAccumulators;
   AccumulatorsDeclaration const& globalAccumulatorsDeclarations =

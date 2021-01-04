@@ -62,7 +62,7 @@ function data_access_write_vertex_program() {
 function write_vertex(
   graphName) {
   return pregel.start(
-    "air",
+    "ppa",
     graphName,
     data_access_write_vertex_program()
   );
@@ -109,7 +109,7 @@ function data_access_read_vertex_program(expectedKeys, nested) {
 function read_vertex(
   graphName, expectedKeys, nested) {
   return pregel.start(
-    "air",
+    "ppa",
     graphName,
     data_access_read_vertex_program(expectedKeys, nested)
   );

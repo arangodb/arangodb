@@ -40,12 +40,12 @@ struct WorkerContext;
 
 class VertexComputation : public vertex_computation {
  public:
-  explicit VertexComputation(VertexAccumulators const& algorithm);
+  explicit VertexComputation(ProgrammablePregelAlgorithm const& algorithm);
   VertexComputation(VertexComputation&&) = delete;
   VertexComputation& operator=(VertexComputation&&) = delete;
 
   void compute(MessageIterator<message_type> const& messages) override;
-  VertexAccumulators const& algorithm() const;
+  ProgrammablePregelAlgorithm const& algorithm() const;
   WorkerContext const& workerContext() const;
 
  private:
@@ -125,7 +125,7 @@ class VertexComputation : public vertex_computation {
                                             VPackSlice const params, VPackBuilder& result);
 
  private:
-  VertexAccumulators const& _algorithm;
+  ProgrammablePregelAlgorithm const& _algorithm;
   greenspun::Machine _airMachine;
 };
 

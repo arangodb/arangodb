@@ -47,7 +47,7 @@ function test_custom_global_accumulator_not_defined() {
   examplegraphs.create_line_graph(tgname, 100, 5);
   try {
     const res = testhelpers.wait_for_pregel(pregel.start(
-      "air",
+      "ppa",
       tgname,
       {
         resultField: "",
@@ -85,7 +85,7 @@ function test_custom_vertex_accumulator_not_defined() {
   examplegraphs.create_line_graph(tgname, 100, 5);
   try {
     const res = testhelpers.wait_for_pregel(pregel.start(
-      "air",
+      "ppa",
       tgname,
       {
         resultField: "",
@@ -204,7 +204,7 @@ function global_accumulators_test_program(resultField) {
 
 function global_accumulators_test(graphName, resultField) {
   return pregel.start(
-    "air",
+    "ppa",
     graphName,
     global_accumulators_test_program(resultField)
   );

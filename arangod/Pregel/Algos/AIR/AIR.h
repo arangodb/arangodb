@@ -40,14 +40,9 @@
 #include "MessageData.h"
 #include "VertexData.h"
 
-using namespace arangodb::pregel;
+namespace arangodb::pregel::algos::accumulators {
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
-namespace accumulators {
-
-constexpr const char pregel_algorithm_name[] = "air";
+constexpr const char pregel_algorithm_name[] = "ppa";
 
 using vertex_type = VertexData;
 using edge_type = EdgeData;
@@ -61,9 +56,9 @@ using message_combiner = MessageCombiner<message_type>;
 
 using AccumulatorMap = std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>;
 
-struct VertexAccumulators : public algorithm {
+struct ProgrammablePregelAlgorithm : public algorithm {
  public:
-  explicit VertexAccumulators(application_features::ApplicationServer& server,
+  explicit ProgrammablePregelAlgorithm(application_features::ApplicationServer& server,
                               VPackSlice userParams);
 
   bool supportsAsyncMode() const override;
@@ -91,8 +86,5 @@ struct VertexAccumulators : public algorithm {
   VertexAccumulatorOptions _options;
 };
 
-}  // namespace accumulators
-}  // namespace algos
-}  // namespace pregel
 }  // namespace arangodb
 #endif

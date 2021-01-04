@@ -74,7 +74,7 @@ IAlgorithm* AlgoRegistry::createAlgorithm(application_features::ApplicationServe
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
   } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return new algos::accumulators::VertexAccumulators(server, userParams);
+    return new algos::accumulators::ProgrammablePregelAlgorithm(server, userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -132,7 +132,7 @@ template <typename V, typename E, typename M>
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body);
   } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return createWorker(vocbase, new algos::accumulators::VertexAccumulators(server, userParams), body);
+    return createWorker(vocbase, new algos::accumulators::ProgrammablePregelAlgorithm(server, userParams), body);
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

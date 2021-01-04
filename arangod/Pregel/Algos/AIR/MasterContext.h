@@ -38,7 +38,7 @@ namespace algos {
 namespace accumulators {
 
 struct MasterContext : ::arangodb::pregel::MasterContext {
-  MasterContext(VertexAccumulators const* algorithm);
+  MasterContext(ProgrammablePregelAlgorithm const* algorithm);
 
   MasterContext(MasterContext&&) = delete;
   MasterContext(MasterContext const&) = delete;
@@ -68,7 +68,7 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
 
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
 private:
-  VertexAccumulators const* _algo;
+ ProgrammablePregelAlgorithm const* _algo;
   greenspun::Machine _airMachine;
 
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;

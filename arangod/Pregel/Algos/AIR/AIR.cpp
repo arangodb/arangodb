@@ -56,35 +56,35 @@ using namespace arangodb::pregel;
 
 namespace arangodb::pregel::algos::accumulators {
 
-VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& server,
+ProgrammablePregelAlgorithm::ProgrammablePregelAlgorithm(application_features::ApplicationServer& server,
                                        VPackSlice userParams)
     : Algorithm(server, pregel_algorithm_name) {
   parseUserParams(userParams);
 }
 
-bool VertexAccumulators::supportsAsyncMode() const { return false; }
-bool VertexAccumulators::supportsCompensation() const { return false; }
+bool ProgrammablePregelAlgorithm::supportsAsyncMode() const { return false; }
+bool ProgrammablePregelAlgorithm::supportsCompensation() const { return false; }
 
-auto VertexAccumulators::createComputation(WorkerConfig const* config) const
+auto ProgrammablePregelAlgorithm::createComputation(WorkerConfig const* config) const
     -> vertex_computation* {
   return new VertexComputation(*this);
 }
 
-auto VertexAccumulators::inputFormat() const -> graph_format* {
+auto ProgrammablePregelAlgorithm::inputFormat() const -> graph_format* {
   // TODO: pass *this - (i.e. a reference to the algorithm object, and make accessor functions for the declarations in there.
   return new GraphFormat(_server, _options.resultField, _options.globalAccumulators,
                          _options.vertexAccumulators, _options.customAccumulators, _options.dataAccess);
 }
 
-message_format* VertexAccumulators::messageFormat() const {
+message_format* ProgrammablePregelAlgorithm::messageFormat() const {
   return new MessageFormat();
 }
 
-message_combiner* VertexAccumulators::messageCombiner() const {
+message_combiner* ProgrammablePregelAlgorithm::messageCombiner() const {
   return nullptr;
 }
 
-void VertexAccumulators::parseUserParams(VPackSlice userParams) {
+void ProgrammablePregelAlgorithm::parseUserParams(VPackSlice userParams) {
   auto result = parseVertexAccumulatorOptions(userParams);
   if (result) {
     _options = std::move(result).get();
@@ -94,11 +94,11 @@ void VertexAccumulators::parseUserParams(VPackSlice userParams) {
   }
 }
 
-VertexAccumulatorOptions const& VertexAccumulators::options() const {
+VertexAccumulatorOptions const& ProgrammablePregelAlgorithm::options() const {
   return _options;
 }
 
-bool VertexAccumulators::getBindParameter(std::string_view name, VPackBuilder& into) const {
+bool ProgrammablePregelAlgorithm::getBindParameter(std::string_view name, VPackBuilder& into) const {
   std::string nameStr(name);  // TODO remove this in c++20 (then this method will be noexcept)
   if (auto iter = options().bindings.find(nameStr); iter != std::end(options().bindings)) {
     into.add(iter->second.slice());
@@ -108,15 +108,15 @@ bool VertexAccumulators::getBindParameter(std::string_view name, VPackBuilder& i
   return false;
 }
 
-::arangodb::pregel::MasterContext* VertexAccumulators::masterContext(VPackSlice userParams) const {
+::arangodb::pregel::MasterContext* ProgrammablePregelAlgorithm::masterContext(VPackSlice userParams) const {
   return new MasterContext(this);
 }
 
-::arangodb::pregel::WorkerContext* VertexAccumulators::workerContext(VPackSlice userParams) const {
+::arangodb::pregel::WorkerContext* ProgrammablePregelAlgorithm::workerContext(VPackSlice userParams) const {
   return new WorkerContext(this);
 }
 
-IAggregator* VertexAccumulators::aggregator(std::string const& name) const {
+IAggregator* ProgrammablePregelAlgorithm::aggregator(std::string const& name) const {
   if (name == "phase") {  // permanent value
     return new OverwriteAggregator<uint32_t>(0, true);
   } else if (name == Utils::phaseFirstStepKey) {

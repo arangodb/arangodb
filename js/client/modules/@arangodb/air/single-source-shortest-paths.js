@@ -106,7 +106,7 @@ function single_source_shortest_paths(
   startVertexId
 ) {
   return pregel.start(
-    "air",
+    "ppa",
     graphName,
     single_source_shortest_paths_program(
       resultField,

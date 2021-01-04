@@ -38,7 +38,7 @@ namespace algos {
 namespace accumulators {
 
 struct WorkerContext : public ::arangodb::pregel::WorkerContext {
-  explicit WorkerContext(VertexAccumulators const* algorithm);
+  explicit WorkerContext(ProgrammablePregelAlgorithm const* algorithm);
 
   void preGlobalSuperstep(uint64_t gss) override;
   void preGlobalSuperstepMasterMessage(VPackSlice msg) override;
@@ -59,7 +59,7 @@ private:
   std::unordered_map<std::string, MutexAccumPair> const& globalAccumulatorsUpdates();
   std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& globalAccumulators();
 
-  VertexAccumulators const* _algo;
+  ProgrammablePregelAlgorithm const* _algo;
 
   // This map contains the values of the global accumulators
   // from the last GSS

@@ -26,19 +26,19 @@
 
 #include <Pregel/Algos/AIR/AbstractAccumulator.h>
 
-#include "velocypack/velocypack-aliases.h"
+#include <velocypack/velocypack-aliases.h>
+
+#include <utility>
 
 using namespace arangodb::pregel::algos::accumulators;
 
 void VertexData::reset(AccumulatorsDeclaration const& vertexAccumulatorsDeclaration,
                        CustomAccumulatorDefinitions const& customDefinitions,
-                       DataAccessDefinitions const& dataAccessDefinitions,
                        std::string documentId, VPackSlice const& doc, std::size_t vertexId) {
-  _documentId = documentId;
+  _documentId = std::move(documentId);
   _document.clear();
   _document.add(doc);
   _vertexId = vertexId;
-  _dataAccess = dataAccessDefinitions;
 
   for (auto&& acc : vertexAccumulatorsDeclaration) {
     _vertexAccumulators.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
@@ -46,5 +46,5 @@ void VertexData::reset(AccumulatorsDeclaration const& vertexAccumulatorsDeclarat
 }
 
 std::unique_ptr<AccumulatorBase> const& VertexData::accumulatorByName(std::string_view name) const {
-  return _vertexAccumulators.at(std::string{name}); // FIXME C++20
+  return _vertexAccumulators.at(std::string{name}); // C++20 use string_view to lookup in map
 }

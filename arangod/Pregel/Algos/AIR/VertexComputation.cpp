@@ -37,7 +37,7 @@ using namespace arangodb::pregel;
 
 namespace arangodb::pregel::algos::accumulators {
 
-VertexComputation::VertexComputation(VertexAccumulators const& algorithm)
+VertexComputation::VertexComputation(ProgrammablePregelAlgorithm const& algorithm)
     : _algorithm(algorithm) {
   InitMachine(_airMachine);
 
@@ -381,7 +381,7 @@ greenspun::EvalResult VertexComputation::air_globalSuperstep(greenspun::Machine&
   return {};
 }
 
-VertexAccumulators const& VertexComputation::algorithm() const {
+ProgrammablePregelAlgorithm const& VertexComputation::algorithm() const {
   return _algorithm;
 };
 

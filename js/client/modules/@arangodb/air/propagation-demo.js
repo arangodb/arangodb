@@ -244,7 +244,7 @@ function demo() {
   return testhelpers.wait_for_pregel(
     "propagation demo",
     pregel.start(
-      "air",
+      "ppa",
       "Propagation_Demo",
       demand_propagation_demo_program("propagation")));
 }

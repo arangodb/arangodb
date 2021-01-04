@@ -40,12 +40,11 @@ namespace algos {
 namespace accumulators {
 
 // Graph Format
-GraphFormat::GraphFormat(application_features::ApplicationServer& server,
-                         std::string  resultField,
-                         AccumulatorsDeclaration  globalAccumulatorDeclarations,
-                         AccumulatorsDeclaration  vertexAccumulatorDeclarations,
+GraphFormat::GraphFormat(application_features::ApplicationServer& server, std::string resultField,
+                         AccumulatorsDeclaration globalAccumulatorDeclarations,
+                         AccumulatorsDeclaration vertexAccumulatorDeclarations,
                          CustomAccumulatorDefinitions customDefinitions,
-                         DataAccessDefinition  dataAccess)
+                         DataAccessDefinition dataAccess)
     : graph_format(server),
       _resultField(std::move(resultField)),
       _globalAccumulatorDeclarations(std::move(globalAccumulatorDeclarations)),
@@ -134,11 +133,11 @@ void GraphFormat::copyVertexData(std::string const& documentId,
     VPackBuilder tmpBuilder;
     filterDocumentData(tmpBuilder, *_dataAccess.readVertex, doc.slice());
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
-                    _dataAccess, documentId, tmpBuilder.slice(), _vertexIdRange++);
+                    documentId, tmpBuilder.slice(), _vertexIdRange++);
   } else {
     // copy all
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
-                    _dataAccess, documentId, doc.slice(), _vertexIdRange++);
+                    documentId, doc.slice(), _vertexIdRange++);
   }
 }
 
@@ -200,7 +199,7 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
       // (copy all) this is the default if no writeVertex program is set
       b.add(VPackValue(acc.first));
       if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
-        return res.mapError([&](greenspun::EvalError &err) {
+        return res.mapError([&](greenspun::EvalError& err) {
           err.wrapMessage("when finalizing accumulator " + acc.first);
         });
       }

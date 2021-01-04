@@ -73,7 +73,7 @@ function vertex_degrees(
     graphName,
     resultField) {
     return pregel.start(
-        "air",
+        "ppa",
         graphName,
         vertex_degrees_program(resultField)
     );

@@ -128,7 +128,7 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
 
 function pagerank(graphName, resultField, dampingFactor, vertex) {
   return pregel.start(
-    "air",
+    "ppa",
     graphName,
     pagerank_program(resultField, dampingFactor, vertex)
   );
