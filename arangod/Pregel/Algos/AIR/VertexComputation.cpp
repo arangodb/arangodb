@@ -173,11 +173,11 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx,
                                                          VPackSlice const params,
                                                          VPackBuilder& result) {
-  auto res = greenspun::extract<VPackSlice, std::string, VPackSlice>(params);
+  auto res = greenspun::extract<std::string, VPackSlice, VPackSlice>(params);
   if (res.fail()) {
     return res.error();
   }
-  auto&& [destination, accumId, value] = res.value();
+  auto&& [accumId, destination, value] = res.value();
   auto const& accums = algorithm().options().vertexAccumulators;
 
   if (auto i = accums.find(std::string{accumId}); i != accums.end()) {

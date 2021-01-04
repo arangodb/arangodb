@@ -180,9 +180,8 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     auto res = greenspun::Evaluate(_airMachine, phase.onPostStep.slice(), onPostStepResult);
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
-          << "onPreStep program of phase `" << phase.name
-          << "` returned and error: " << res.error().toString();
-      LOG_DEVEL << res.error().toString();
+          << "onPostStep program of phase `" << phase.name
+          << "` returned an error: " << res.error().toString();
       return ContinuationResult::ERROR_ABORT;
     }
     if (userSelectedNext == ContinuationResult::ABORT) {
@@ -204,7 +203,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onHalt program of phase `" << phase.name
-          << "` returned and error: " << res.error().toString();
+          << "` returned an error: " << res.error().toString();
       return ContinuationResult::ABORT;
     }
 
@@ -301,7 +300,7 @@ bool MasterContext::preGlobalSuperstepWithResult() {
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onPreStep program of phase `" << phase.name
-          << "` returned and error: " << res.error().toString();
+          << "` returned an error: " << res.error().toString();
       return false;
     }
     if (userSelectedNext == ContinuationResult::ABORT) {

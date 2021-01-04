@@ -156,7 +156,7 @@ void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_ty
 }
 
 greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
-    arangodb::velocypack::Builder& b, const vertex_type* ptr) const {
+    arangodb::velocypack::Builder& b, vertex_type const* ptr) const {
   if (_dataAccess.writeVertex && _dataAccess.writeVertex->slice().isArray()) {
     greenspun::Machine m;
     InitMachine(m);

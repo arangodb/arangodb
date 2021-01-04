@@ -45,13 +45,13 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   MasterContext& operator=(MasterContext&&) = delete;
   MasterContext& operator=(MasterContext const&) = delete;
 
-  greenspun::EvalResult air_GotoPhase(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_Finish(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_VertexCount(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_AccumRef(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_AccumSet(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_GotoPhase(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_Finish(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_VertexCount(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumRef(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumSet(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
+  greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
 
   ContinuationResult userSelectedNext = ContinuationResult::DONT_CARE;
   bool allowPhaseModifications = false;
