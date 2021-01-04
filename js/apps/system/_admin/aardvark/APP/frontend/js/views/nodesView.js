@@ -171,24 +171,9 @@
           });
         };
 
-        $.ajax({
-          type: 'GET',
-          cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-          contentType: 'application/json',
-          processData: false,
-          async: true,
-          success: function (data) {
-            if (window.location.hash === '#nodes') {
-              scalingFunc(data.Health);
-            }
-          },
-          error: function () {
-            if (window.location.hash === '#nodes') {
-              arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
-            }
-          }
-        });
+        if (window.App && window.App.lastHealthCheckResult) {
+          scalingFunc(window.App.lastHealthCheckResult.Health);
+        }
       }
     },
 
@@ -414,16 +399,9 @@
         });
       };
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callbackFunction(data.Health);
-        }
-      });
+      if (window.App && window.App.lastHealthCheckResult) {
+        callbackFunction(window.App.lastHealthCheckResult.Health);
+      }
     },
 
     isPlanFinished: function () {

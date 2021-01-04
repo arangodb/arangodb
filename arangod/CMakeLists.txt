@@ -441,6 +441,10 @@ set(LIB_ARANGO_UTILS_SOURCES
   ${ENTERPRISE_FILES}
 )
 
+set(LIB_ARANGO_HEALTH_SOURCES
+  StorageEngine/HealthData.cpp
+)
+
 set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
@@ -780,6 +784,10 @@ add_library(arango_aql STATIC
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
 )
 
+add_library(arango_health STATIC
+  ${LIB_ARANGO_HEALTH_SOURCES}
+)
+
 add_library(arango_vocbase STATIC
   ${LIB_ARANGO_VOCBASE_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
@@ -874,6 +882,7 @@ target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/
 # .
 
 target_link_libraries(arango_agency arango)
+target_link_libraries(arango_agency arango_health)
 target_link_libraries(arango_agency arango_iresearch)
 target_link_libraries(arango_agency arango_metrics)
 
@@ -888,6 +897,7 @@ target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)
 target_link_libraries(arango_cache arango::validation)
 
+target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
 
@@ -934,6 +944,7 @@ target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 target_link_libraries(arango_rocksdb arango_cache)
 target_link_libraries(arango_rocksdb arango_common_rest_handler)
 target_link_libraries(arango_rocksdb arango_geo)
+target_link_libraries(arango_rocksdb arango_health)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
@@ -1059,6 +1070,7 @@ foreach(TARGET
   arango_cluster_methods
   arango_common_rest_handler
   arango_graph
+  arango_health
   arango_indexes
   arango_metrics
   arango_pregel
