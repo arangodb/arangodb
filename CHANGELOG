@@ -1,6 +1,9 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then upgraded to 3.7.5
+  the DOCUMENT method in AQL will now return documents again.
+
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.45.6.
 
 * Added new metric: "arangodb_collection_lock_sequential_mode" this will count
