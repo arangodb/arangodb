@@ -359,7 +359,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     // We copy a skip of correct size here
     auto prod = leftoverProducer(skip.subqueryDepth());
     {
-      // Create the fake intenral state for leftoverProducer
+      // Create the fake internal state for leftoverProducer
       AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0,
                                                 dependencyLeftover, 0};
       // We want to copy Skip here, we need it twice

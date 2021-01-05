@@ -1186,8 +1186,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   }
 
   if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable && !executorHasSideEffects<Executor>) {
-    // Passthroughblocks can never leave anything behind,
-    // side-effect Executors need to Work through everything themselfes even if skipped.
+    // Passthroughblocks can never leave anything behind.
+    // Side-effect: Executors need to Work through everything themselves even if skipped.
     if ((_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS) && !stack.empty()) {
       // We need to check inside a subquery if the outer query has been skipped.
       // But we only need to do this if we were not in WAITING state.

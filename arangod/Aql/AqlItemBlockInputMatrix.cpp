@@ -171,7 +171,7 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
 size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
   if (_aqlItemMatrix == nullptr) {
     // Have not been initialized.
-    // We need to be called before.
+    // Needs to be initialized before.
     TRI_ASSERT(!hasShadowRow());
     TRI_ASSERT(!hasDataRow());
     return 0;
