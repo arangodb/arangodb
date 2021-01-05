@@ -22,9 +22,9 @@
 
 #include <list>
 
-#include "Dicts.h"
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
+#include "Dicts.h"
 
 #include "Greenspun/Extractor.h"
 #include "Greenspun/Interpreter.h"
@@ -238,7 +238,7 @@ EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder&
   }
 
   auto&& [slice, key, defaultValue] =
-  unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
+      unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -336,9 +336,20 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& r
   return {};
 }
 
+EvalResult Prim_DictHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+  auto&& [value] = res.value();
+  result.add(VPackValue(value.isObject()));
+  return {};
+}
+
 void arangodb::greenspun::RegisterAllDictFunctions(Machine& ctx) {
   // Constructors
   ctx.setFunction("dict", Prim_Dict);
+  ctx.setFunction("dict?", Prim_DictHuh);
   ctx.setFunction("dict-merge", Prim_MergeDict);
   ctx.setFunction("dict-keys", Prim_DictKeys);
   ctx.setFunction("dict-directory", Prim_DictDirectory);

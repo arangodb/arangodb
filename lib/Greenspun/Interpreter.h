@@ -50,6 +50,7 @@ struct StackFrame {
   explicit StackFrame(VariableBindings bindings) : bindings(std::move(bindings)) {}
 
   EvalResult getVariable(std::string const& name, VPackBuilder& result) const;
+  EvalResult setVariable(std::string const& name, VPackSlice value);
 };
 
 struct Machine {

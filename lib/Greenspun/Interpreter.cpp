@@ -24,10 +24,10 @@
 
 #include "Interpreter.h"
 #include "Greenspun/lib/DateTime.h"
+#include "Greenspun/lib/Dicts.h"
+#include "Greenspun/lib/Lists.h"
 #include "Greenspun/lib/Math.h"
 #include "Greenspun/lib/Strings.h"
-#include "Greenspun/lib/Lists.h"
-#include "Greenspun/lib/Dicts.h"
 #include "Primitives.h"
 
 #include <iostream>
@@ -445,7 +445,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
     return EvalError("Expected list of bindings, found: " + bindings.toJson());
   }
 
-  auto frame = ctx.getAllVariables();  // immer_map does not support transient
+  StackFrame frame(ctx.getAllVariables());  // immer_map does not support transient
 
   for (VPackArrayIterator iter(bindings); iter.valid(); ++iter) {
     auto&& pair = *iter;
@@ -465,14 +465,17 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
         });
       }
 
-      frame = frame.set(nameSlice.copyString(), builder.slice());
+      if (auto res = frame.setVariable(nameSlice.copyString(), builder.slice());
+          res.fail()) {
+        return res;
+      }
     } else {
       return EvalError("expected pair at position " + std::to_string(iter.index()) +
                        " at list of bindings, found: " + pair.toJson());
     }
   }
 
-  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> guard(ctx, StackFrame{std::move(frame)});
+  StackFrameGuard<StackFrameGuardMode::NEW_SCOPE> guard(ctx, std::move(frame));
 
   // Now do a seq evaluation of the remaining parameter
   return SpecialSeq(ctx, paramIterator, result).mapError([](EvalError& err) {
@@ -663,11 +666,18 @@ EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result
   return EvalError("variable `" + name + "` not found");
 }
 
+EvalResult StackFrame::setVariable(const std::string& name, VPackSlice value) {
+  if (auto i = bindings.find(name); i) {
+    return EvalError("duplicate variable `" + name + "`");
+  }
+
+  bindings = bindings.set(name, value);
+  return {};
+}
+
 EvalResult Machine::setVariable(std::string const& name, VPackSlice value) {
   TRI_ASSERT(!frames.empty());
-  auto& bindings = frames.back().bindings;
-  bindings = bindings.set(name, value);  // insert or create
-  return {};
+  return frames.back().setVariable(name, value);
 }
 
 void Machine::pushStack(bool noParentScope) {

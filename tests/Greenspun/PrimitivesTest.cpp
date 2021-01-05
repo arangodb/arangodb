@@ -1103,6 +1103,23 @@ TEST_F(GreenspunTest, filter_dict_keys) {
   ASSERT_EQ(result.slice().toJson(), "{\"d\":4}");
 }
 
+TEST_F(GreenspunTest, dict_huh) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict?", {"a":"b"}]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isTrue());
+
+  program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict?", 12]
+    )aql");
+
+  result.clear();
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isFalse()) << result.slice().toJson();
+}
+
 TEST_F(GreenspunTest, dict_empty) {
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict"]

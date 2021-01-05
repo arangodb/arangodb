@@ -27,6 +27,7 @@
 #include <Basics/VelocyPackHelper.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
@@ -666,6 +667,33 @@ EvalResult Prim_RandRange(Machine& ctx, VPackSlice const paramsList, VPackBuilde
   return {};
 }
 
+EvalResult Prim_ToJson(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (res.fail()) {
+    return res.error();
+  }
+
+  auto&& [slice] = res.value();
+  result.add(VPackValue(slice.toJson()));
+  return {};
+}
+
+EvalResult Prim_FromJson(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<std::string>(paramsList);
+  if (res.fail()) {
+    return res.error();
+  }
+
+  auto&& [json] = res.value();
+  try {
+    VPackParser parser(result);
+    parser.parse(json);
+    return {};
+  } catch(VPackException const& e) {
+    return EvalError(std::string{"failed to parse json: "} + e.what());
+  }
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -722,6 +750,9 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   ctx.setFunction("rand", Prim_Rand);
   ctx.setFunction("rand-range", Prim_RandRange);
+
+  ctx.setFunction("to-json", Prim_ToJson);
+  ctx.setFunction("from-json", Prim_FromJson);
 }
 
 }  // namespace arangodb::greenspun
