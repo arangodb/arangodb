@@ -967,10 +967,7 @@ TEST_F(GreenspunTest, let_double_naming) {
     )aql");
 
   auto res = Evaluate(m, program->slice(), result);
-  if (res.fail()) {
-    FAIL() << res.error().toString();
-  }
-  ASSERT_EQ(result.slice().getNumericValue<double>(), 12.);
+  ASSERT_TRUE(res.fail());
 }
 
 TEST_F(GreenspunTest, let_multi_binding) {
