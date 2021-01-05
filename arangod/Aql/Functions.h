@@ -421,6 +421,14 @@ struct Functions {
                           AstNode const&, VPackFunctionParameters const&);
   static AqlValue Pi(arangodb::aql::ExpressionContext*, AstNode const&,
                      VPackFunctionParameters const&);
+  static AqlValue BitAnd(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParameters const&);
+  static AqlValue BitOr(arangodb::aql::ExpressionContext*, AstNode const&,
+                        VPackFunctionParameters const&);
+  static AqlValue BitXOr(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParameters const&);
+  static AqlValue BitCount(arangodb::aql::ExpressionContext*, AstNode const&,
+                           VPackFunctionParameters const&);
   static AqlValue Rand(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const&);
   static AqlValue FirstDocument(arangodb::aql::ExpressionContext*,

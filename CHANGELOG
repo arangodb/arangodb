@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added AQL bit handling functions BIT_AND, BIT_OR, BIT_XOR and BIT_COUNT.
+
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.

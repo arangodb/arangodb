@@ -237,6 +237,11 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", flags, &Functions::Radians});
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
+  
+  add({"BIT_AND", ".", flags, &Functions::BitAnd});
+  add({"BIT_OR", ".", flags, &Functions::BitOr});
+  add({"BIT_XOR", ".", flags, &Functions::BitXOr});
+  add({"BIT_COUNT", ".", flags, &Functions::BitCount});
 
   // special flags:
   // not deterministic and not cacheable
