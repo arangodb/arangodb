@@ -119,6 +119,9 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _sharding;
   }
+  void sharding(std::string const& sharding) {
+    _sharding = sharding;
+  }
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
