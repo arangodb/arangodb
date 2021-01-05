@@ -515,7 +515,7 @@ function optimizerCountTestSuite () {
       // expectation is that we exactly get one result
       // count will be 0, start will be undefined
       assertEqual(1, results.length);
-      assertEqual(null, results[0].sum);
+      assertNull(results[0].sum);
       assertEqual(undefined, results[0].start);
     },
 
