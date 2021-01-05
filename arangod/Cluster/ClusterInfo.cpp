@@ -5001,26 +5001,22 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
-  int tries = 0;
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
-    // Simulate 3 failed tries below.
+    // Simulate no results
     return std::make_shared<std::vector<ShardID>>();
   }
-  while (true) {
-    {
-      // Get the sharding keys and the number of shards:
-      READ_LOCKER(readLocker, _planProt.lock);
-      // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
-      auto it = _shards.find(collectionID);
 
-      if (it != _shards.end()) {
-        return it->second;
-      }
-    }
-    if (++tries >= 2) {
-      return std::make_shared<std::vector<ShardID>>();
+  {
+    // Get the sharding keys and the number of shards:
+    READ_LOCKER(readLocker, _planProt.lock);
+    // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
+    auto it = _shards.find(collectionID);
+
+    if (it != _shards.end()) {
+      return it->second;
     }
   }
+  return std::make_shared<std::vector<ShardID>>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
