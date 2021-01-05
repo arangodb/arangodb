@@ -48,7 +48,7 @@ struct TwoSidedEnumeratorOptions;
 template <class ProviderType, class Step>
 class PathResult;
 
-template <class QueueType, class PathStoreType, class ProviderType>
+template <class QueueType, class PathStoreType, class ProviderType, class PathValidatorType>
 class TwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access

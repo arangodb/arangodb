@@ -39,7 +39,7 @@ class PathValidator {
  public:
   PathValidator(PathStore const& store);
 
-  auto track(typename PathStore::Step const& step) -> void;
+  //auto track(typename PathStore::Step const& step) -> void;
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
 
  private:

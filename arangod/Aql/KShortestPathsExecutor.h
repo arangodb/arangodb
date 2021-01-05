@@ -33,7 +33,6 @@
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/KPathFinder.h"
 
-
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -60,12 +59,12 @@ class OutputAqlItemRow;
 class NoStats;
 class QueryContext;
 
-template<class FinderType>
+template <class FinderType>
 class KShortestPathsExecutorInfos {
   using InputVertex = GraphNode::InputVertex;
+
  public:
-  KShortestPathsExecutorInfos(RegisterId outputRegister,
-                              QueryContext& query,
+  KShortestPathsExecutorInfos(RegisterId outputRegister, QueryContext& query,
                               std::unique_ptr<FinderType>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
@@ -114,9 +113,8 @@ class KShortestPathsExecutorInfos {
   [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 
  private:
-  
   QueryContext& _query;
-  
+
   /// @brief the shortest path finder.
   std::unique_ptr<FinderType> _finder;
 

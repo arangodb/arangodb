@@ -39,21 +39,25 @@ template class ::arangodb::graph::PathResult<::arangodb::tests::graph::MockGraph
 
 template class ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>;
 
+template class ::arangodb::graph::PathValidator<
+    ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>;
+
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>,
-    ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>,
-    ::arangodb::tests::graph::MockGraphProvider>;
+    ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, ::arangodb::tests::graph::MockGraphProvider,
+    ::arangodb::graph::PathValidator<::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>>,
-    ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>,
-    ::arangodb::tests::graph::MockGraphProvider>;
+    ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, ::arangodb::tests::graph::MockGraphProvider,
+    ::arangodb::graph::PathValidator<::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>>,
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>>,
-    ::arangodb::tests::graph::MockGraphProvider>;
+    ::arangodb::tests::graph::MockGraphProvider,
+    ::arangodb::graph::PathValidator<::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>>;

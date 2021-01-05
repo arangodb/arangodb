@@ -41,6 +41,7 @@
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
+#include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -50,6 +51,8 @@
 #include "Indexes/Index.h"
 #include "OptimizerUtils.h"
 #include "Utils/CollectionNameResolver.h"
+
+#include "Graph/algorithm-aliases.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -351,8 +354,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       arangodb::ResourceMonitor resourceMonitor{};
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
-        using KPathRefactored =
-            TwoSidedEnumerator<FifoQueue<SingleServerProvider::Step>, PathStore<SingleServerProvider::Step>, SingleServerProvider>;
+        using KPathRefactored = KPathEnumerator<SingleServerProvider>;
+
         auto kPathUnique = std::make_unique<KPathRefactored>(
             SingleServerProvider{opts->query(), forwardProviderOptions, resourceMonitor},
             SingleServerProvider{opts->query(), backwardProviderOptions, resourceMonitor},
@@ -365,11 +368,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       } else {
-        using KPathRefactored =
-            TwoSidedEnumerator<QueueTracer<FifoQueue<SingleServerProvider::Step>>,
-                               PathStoreTracer<PathStore<SingleServerProvider::Step>>, ProviderTracer<SingleServerProvider>>;
+        using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
         // TODO: below copy paste from above. clean this up later.
-        auto kPathUnique = std::make_unique<KPathRefactored>(
+        auto kPathUnique = std::make_unique<TracedKPathRefactored>(
             ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions, resourceMonitor},
             ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions, resourceMonitor},
             std::move(enumeratorOptions), resourceMonitor);
@@ -378,7 +379,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
                                         std::move(kPathUnique), std::move(sourceInput),
                                         std::move(targetInput));
-        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<TracedKPathRefactored>>>(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
     } else {
@@ -452,9 +453,9 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         case TRI_EDGE_IN: {
           std::shared_ptr<Index> indexToUse{nullptr};
           aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], toCondition,
-                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
-                                                                      indexToUse, onlyEdgeIndexes);
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(
+              *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
           if (!res) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "expected edge index not found");
@@ -467,9 +468,9 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         case TRI_EDGE_OUT: {
           std::shared_ptr<Index> indexToUse{nullptr};
           aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], fromCondition,
-                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
-                                                                      indexToUse, onlyEdgeIndexes);
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(
+              *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
           if (!res) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "expected edge index not found");
@@ -505,9 +506,9 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
         case TRI_EDGE_IN: {
           std::shared_ptr<Index> indexToUse{nullptr};
           aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], fromCondition,
-                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
-                                                                      indexToUse, onlyEdgeIndexes);
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(
+              *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
           if (!res) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "expected edge index not found");
@@ -520,9 +521,9 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
         case TRI_EDGE_OUT: {
           std::shared_ptr<Index> indexToUse{nullptr};
           aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(*_edgeColls[i], toCondition,
-                                                                      options()->tmpVar(), 1000, aql::IndexHint(),
-                                                                      indexToUse, onlyEdgeIndexes);
+          bool res = aql::utils::getBestIndexHandleForFilterCondition(
+              *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
           if (!res) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "expected edge index not found");

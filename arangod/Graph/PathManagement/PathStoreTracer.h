@@ -71,7 +71,11 @@ class PathStoreTracer {
   auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
 
   template <class ProviderType>
-  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
+  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
+      -> bool;
+
+  auto visitReversePath(Step const& step, std::function<bool(Step const&)> const& visitor) const
+      -> bool;
 
  private:
   PathStoreImpl _impl;

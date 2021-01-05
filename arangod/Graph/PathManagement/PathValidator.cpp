@@ -22,6 +22,7 @@
 
 #include "PathValidator.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Types/ValidationResult.h"
 
@@ -34,11 +35,11 @@ template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 PathValidator<PathStore, vertexUniqueness>::PathValidator(PathStore const& store)
     : _store(store) {}
 
-template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+/*template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<PathStore, vertexUniqueness>::track(typename PathStore::Step const& step)
     -> void {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+}*/
 
 template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<PathStore, vertexUniqueness>::validatePath(typename PathStore::Step const& step)
@@ -72,8 +73,7 @@ auto PathValidator<PathStore, vertexUniqueness>::validatePath(typename PathStore
 
 namespace arangodb {
 namespace graph {
-template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::GLOBAL>;
 template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>;
-template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::NONE>;
-}
+template class PathValidator<PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>;
+}  // namespace graph
 }  // namespace arangodb

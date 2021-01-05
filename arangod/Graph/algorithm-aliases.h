@@ -23,19 +23,25 @@
 #ifndef ARANGOD_GRAPH_ALGORITHM_ALIASES_H
 #define ARANGOD_GRAPH_ALGORITHM_ALIASES_H 1
 
+#include <Graph/PathManagement/PathValidator.h>
+#include <Graph/Providers/ProviderTracer.h>
+#include <Graph/Types/UniquenessLevel.h>
+
 namespace arangodb {
 namespace graph {
 
 // K_PATH implementation
 template <class Provider>
 using KPathEnumerator =
-    TwoSidedEnumerator<FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider>;
+    TwoSidedEnumerator<FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
+                       PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;
 
 // K_PATH implementation using Tracing
 template <class Provider>
 using TracedKPathEnumerator =
     TwoSidedEnumerator<QueueTracer<FifoQueue<typename Provider::Step>>,
-                       PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>>;
+                       PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
+                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
 }  // namespace graph
 }  // namespace arangodb
 
