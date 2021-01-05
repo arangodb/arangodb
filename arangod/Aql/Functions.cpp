@@ -3924,6 +3924,57 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
   return AqlValue(result->slice(), result->size());
 }
 
+/// @brief function DATE_TIMEZONEINFO
+AqlValue Functions::DateTimeZoneInfo(ExpressionContext* expressionContext, AstNode const&,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_TIMEZONEINFO";
+  using namespace date;
+
+  tp_sys_clock_ms tp_utc;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp_utc, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+
+  if (!timeZoneParam.isString()) {  // timezone type must be string
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  const std::string tz = timeZoneParam.slice().copyString();
+  const auto utc = floor<milliseconds>(tp_utc);
+  const auto zoned = make_zoned(tz, utc);
+
+  const auto info = zoned.get_info();
+
+  const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  const auto p_local = ::timeAqlValue(expressionContext, AFN, tp_local,
+                        info.offset.count() == 0 && info.save.count() == 0);
+
+  const auto tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
+  const auto p_begin = ::timeAqlValue(expressionContext, AFN, tp_begin);
+
+
+  const auto tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
+  const auto p_end = ::timeAqlValue(expressionContext, AFN, tp_end);
+
+  transaction::Methods* trx = &expressionContext->trx();
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("begin", p_begin.slice());
+  builder->add("end", p_end.slice());
+  builder->add("local", p_local.slice());
+  builder->add("abbrev", VPackValue(info.abbrev));
+  builder->add("save", VPackValue(info.save.count()));
+  builder->add("offset", VPackValue(info.offset.count()));
+  builder->add("version", VPackValue(get_tzdb().version));
+  builder->close();
+
+  return AqlValue(builder->slice(), builder->size());
+}
+
 /// @brief function DATE_ADD
 AqlValue Functions::DateAdd(ExpressionContext* expressionContext, AstNode const&,
                             VPackFunctionParameters const& parameters) {
