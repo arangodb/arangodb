@@ -429,7 +429,6 @@ void ClusterFeature::prepare() {
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
-    // nullptr happens only during shutdown
     if (af->isActive() && !af->hasUserdefinedJwt()) {
       LOG_TOPIC("6e615", FATAL, arangodb::Logger::CLUSTER)
           << "Cluster authentication enabled but JWT not set via command line. "
@@ -443,9 +442,9 @@ void ClusterFeature::prepare() {
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
     return;
-  } else {
-    reportRole(_requestedRole);
-  }
+  } 
+    
+  reportRole(_requestedRole);
 
   network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
   config.numIOThreads = 2u;
@@ -483,7 +482,6 @@ void ClusterFeature::prepare() {
       << "structures " << (ok ? "are" : "failed to") << " initialize";
 
   if (!ok) {
-
     LOG_TOPIC("54560", FATAL, arangodb::Logger::CLUSTER)
         << "Could not connect to any agency endpoints ("
         << AsyncAgencyCommManager::INSTANCE->endpointsString() << ")";

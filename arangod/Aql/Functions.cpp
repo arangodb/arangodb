@@ -1124,7 +1124,8 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, AstNode const& n
   arangodb::aql::Function const* func = nullptr;
   if (ucInvokeFN.find("::") == std::string::npos) {
     // built-in C++ function
-    func = AqlFunctionFeature::getFunctionByName(ucInvokeFN);
+    auto& server = trx.vocbase().server();
+    func = server.getFeature<AqlFunctionFeature>().byName(ucInvokeFN);
     if (func->hasCxxImplementation()) {
       std::pair<size_t, size_t> numExpectedArguments = func->numArguments();
 
@@ -2036,7 +2037,8 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto locale = LanguageFeature::instance()->getLocale();
+  auto& server = trx->vocbase().server();
+  auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
@@ -2106,7 +2108,8 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext, AstNode const
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto locale = LanguageFeature::instance()->getLocale();
+  auto& server = trx->vocbase().server();
+  auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
@@ -2664,7 +2667,8 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
-  auto locale = LanguageFeature::instance()->getLocale();
+  auto& server = trx->vocbase().server();
+  auto locale = server.getFeature<LanguageFeature>().getLocale();
   // we can't copy the search instances, thus use pointers:
   std::vector<std::unique_ptr<icu::StringSearch>> searchVec;
   searchVec.reserve(matchPatterns.size());

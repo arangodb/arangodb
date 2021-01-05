@@ -103,7 +103,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
  public:
   MyWALDumper(RocksDBEngine& engine, WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f, size_t maxResponseSize)
-      : WalAccessContext(filter, f),
+      : WalAccessContext(engine.server(), filter, f),
         _engine(engine),
         _definitionsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                            ->GetID()),

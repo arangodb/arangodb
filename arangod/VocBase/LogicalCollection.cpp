@@ -977,9 +977,9 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 
   engine.changeCollection(vocbase(), *this, doSync);
 
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("change collection");
+  auto& df = vocbase().server().getFeature<DatabaseFeature>();
+  if (df.versionTracker() != nullptr) {
+    df.versionTracker()->track("change collection");
   }
 
   return {};
@@ -1012,9 +1012,9 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) co
 std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info, bool& created) {
   auto idx = _physical->createIndex(info, /*restore*/ false, created);
   if (idx) {
-    if (DatabaseFeature::DATABASE != nullptr &&
-        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-      DatabaseFeature::DATABASE->versionTracker()->track("create index");
+    auto& df = vocbase().server().getFeature<DatabaseFeature>();
+    if (df.versionTracker() != nullptr) {
+      df.versionTracker()->track("create index");
     }
   }
   return idx;
@@ -1032,9 +1032,9 @@ bool LogicalCollection::dropIndex(IndexId iid) {
   bool result = _physical->dropIndex(iid);
 
   if (result) {
-    if (DatabaseFeature::DATABASE != nullptr &&
-        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-      DatabaseFeature::DATABASE->versionTracker()->track("drop index");
+    auto& df = vocbase().server().getFeature<DatabaseFeature>();
+    if (df.versionTracker() != nullptr) {
+      df.versionTracker()->track("drop index");
     }
   }
 

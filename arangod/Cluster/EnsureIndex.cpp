@@ -34,6 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -98,8 +99,8 @@ bool EnsureIndex::first() {
   VPackBuilder body;
 
   try {  // now try to guard the database
-
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
     auto col = vocbase->lookupCollection(shard);

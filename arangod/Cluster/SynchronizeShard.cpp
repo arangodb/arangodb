@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
@@ -233,7 +234,8 @@ static arangodb::Result addShardFollower(
   }
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = pool->config().clusterInfo->server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
     auto collection = vocbase->lookupCollection(shard);
@@ -569,7 +571,8 @@ static arangodb::Result replicationSynchronizeCatchup(
   // will throw if invalid
   configuration.validate();
 
-  DatabaseGuard guard(database);
+  auto& df = server.getFeature<DatabaseFeature>();
+  DatabaseGuard guard(df, database);
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
@@ -608,7 +611,8 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
   // will throw if invalid
   configuration.validate();
 
-  DatabaseGuard guard(database);
+  auto& df = server.getFeature<DatabaseFeature>();
+  DatabaseGuard guard(df, database);
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
@@ -717,7 +721,8 @@ bool SynchronizeShard::first() {
   // a try:
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
     auto collection = vocbase->lookupCollection(shard);

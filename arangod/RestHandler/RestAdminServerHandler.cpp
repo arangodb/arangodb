@@ -108,8 +108,8 @@ void RestAdminServerHandler::handleRole() {
   }
   auto state = ServerState::instance();
   bool hasFailover = false;
-  if (ReplicationFeature::INSTANCE != nullptr &&
-      ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
+  if (server().hasFeature<ReplicationFeature>() &&
+      server().getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
     hasFailover = true;
   }
   VPackBuilder builder;
@@ -253,10 +253,10 @@ void RestAdminServerHandler::handleDatabaseDefaults() {
 void RestAdminServerHandler::handleTLS() {
   auto const requestType = _request->requestType();
   VPackBuilder builder;
-  auto* sslServerFeature = arangodb::SslServerFeature::SSL;
+  auto& sslServerFeature = server().getFeature<SslServerFeature>();
   if (requestType == rest::RequestType::GET) {
     // Put together a TLS-based cocktail:
-    sslServerFeature->dumpTLSData(builder);
+    sslServerFeature.dumpTLSData(builder);
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
 
@@ -268,12 +268,13 @@ void RestAdminServerHandler::handleTLS() {
       return;
     }
 
-    Result res = GeneralServerFeature::reloadTLS();
+    auto& gs = server().getFeature<GeneralServerFeature>();
+    Result res = gs.reloadTLS();
     if (res.fail()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
       return;
     }
-    sslServerFeature->dumpTLSData(builder);
+    sslServerFeature.dumpTLSData(builder);
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);

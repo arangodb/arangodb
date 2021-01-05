@@ -2372,7 +2372,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                 VPackValue( (0 != userWrite) ? ((walWrite + flushWrite + compactionWrite) * 100) / userWrite : 100));
   }
 
-  cache::Manager* manager = CacheManagerFeature::MANAGER;
+  cache::Manager* manager = server().getFeature<CacheManagerFeature>().manager();
   if (manager != nullptr) {
     // cache turned on
     auto rates = manager->globalHitRates();
