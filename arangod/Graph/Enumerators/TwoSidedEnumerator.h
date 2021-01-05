@@ -104,6 +104,8 @@ class TwoSidedEnumerator {
 
     ProviderType _provider;
 
+    PathValidatorType _validator;
+
     size_t _depth{0};
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
     Direction _direction;

@@ -56,6 +56,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball:
       _interior(resourceMonitor),
       _queue(resourceMonitor),
       _provider(std::move(provider)),
+      _validator(_interior),
       _direction(dir),
       _minDepth(options.getMinDepth()) {}
 
