@@ -49,7 +49,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
-#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -66,7 +65,6 @@ static VPackValue const VP_SET("set");
 
 static VPackStringRef const PRIMARY("primary");
 static VPackStringRef const EDGE("edge");
-
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
