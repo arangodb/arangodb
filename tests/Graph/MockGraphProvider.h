@@ -31,10 +31,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Transaction/Methods.h"
 
 #include "Graph/Providers/BaseStep.h"
 
-#include <Transaction/Methods.h>
 #include <velocypack/HashedStringRef.h>
 
 namespace arangodb {
@@ -141,6 +141,8 @@ class MockGraphProvider {
       return _edge;
     }
 
+    VertexType getVertexIdentifier() const { return getVertex().getID(); }
+
     bool isProcessable() const { return _isProcessable; }
 
     void resolve() {
@@ -166,15 +168,13 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider const&) = delete;
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
-  void destroyEngines() {};
+  void destroyEngines(){};
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
-      -> void;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
 
-  void addVertexToBuilder(Step::Vertex const& vertex,
-                          arangodb::velocypack::Builder& builder);
+  void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
   [[nodiscard]] transaction::Methods* trx();
