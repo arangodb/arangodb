@@ -58,8 +58,7 @@ template <class Step>
 void PathStore<Step>::reset() {
   LOG_TOPIC("8f726", TRACE, Logger::GRAPHS) << "<PathStore> Resetting.";
   if (!_schreier.empty()) {
-    LOG_DEVEL << "path store reset.";
-    //_resourceMonitor.decreaseMemoryUsage(_schreier.size() * sizeof(Step));
+    _resourceMonitor.decreaseMemoryUsage(_schreier.size() * sizeof(Step));
     _schreier.clear();
   }
 }
@@ -70,8 +69,7 @@ size_t PathStore<Step>::append(Step step) {
       << "<PathStore> Adding step: " << step.toString();
 
   auto idx = _schreier.size();
-  LOG_DEVEL << "path store increase.";
-  //_resourceMonitor.increaseMemoryUsage(sizeof(Step));
+  _resourceMonitor.increaseMemoryUsage(sizeof(Step));
   _schreier.emplace_back(std::move(step));
 
   return idx;

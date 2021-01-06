@@ -350,16 +350,14 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                    opts->maxDepth};
 
-      // TODO: After ResourceMonitor Feature this needs to be replaced and read by the query here.
-      arangodb::ResourceMonitor resourceMonitor{};
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
         using KPathRefactored = KPathEnumerator<SingleServerProvider>;
 
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider{opts->query(), forwardProviderOptions, resourceMonitor},
-            SingleServerProvider{opts->query(), backwardProviderOptions, resourceMonitor},
-            std::move(enumeratorOptions), resourceMonitor);
+            SingleServerProvider{opts->query(), forwardProviderOptions, opts->query().tmpResourceMonitor()},
+            SingleServerProvider{opts->query(), backwardProviderOptions, opts->query().tmpResourceMonitor()},
+            std::move(enumeratorOptions), opts->query().tmpResourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -371,9 +369,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
         // TODO: below copy paste from above. clean this up later.
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
-            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions, resourceMonitor},
-            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions, resourceMonitor},
-            std::move(enumeratorOptions), resourceMonitor);
+            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions, opts->query().tmpResourceMonitor()},
+            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions, opts->query().tmpResourceMonitor()},
+            std::move(enumeratorOptions), opts->query().tmpResourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),

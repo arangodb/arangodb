@@ -45,15 +45,13 @@ class FifoQueue {
 
   void clear() {
     if (_queue.size() > 0) {
-      LOG_DEVEL << "decreasing in queue clear, qzeie size is: " << _queue.size();
-      //_resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
+      _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
       _queue.clear();
     }
   };
 
   void append(Step step) {
-    LOG_DEVEL << "incr in queue: " << sizeof(Step);
-    //_resourceMonitor.increaseMemoryUsage(sizeof(Step));
+    _resourceMonitor.increaseMemoryUsage(sizeof(Step));
     _queue.push_back(std::move(step));
   };
 
@@ -86,8 +84,7 @@ class FifoQueue {
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
-    LOG_DEVEL << "decreasing in queue pop: " << sizeof(Step) << " , queue size is: " << _queue.size();
-    //_resourceMonitor.decreaseMemoryUsage(sizeof(Step));
+    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS) << "<FifoQueue> Pop: " << first.toString();
     _queue.pop_front();
     return first;
