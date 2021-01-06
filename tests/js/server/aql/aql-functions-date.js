@@ -2490,6 +2490,47 @@ function ahuacatlDateFunctionsTestSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_timezoneinfo
+    // //////////////////////////////////////////////////////////////////////////////
+    
+    testDateTimeZoneInfo: function () {
+      const values = [
+        [ "2021-01-01", "Europe/Berlin", {
+            begin: "2020-10-25T01:00:00.000Z",
+            end: "2021-03-28T01:00:00.000Z",
+            local: "2021-01-01T01:00:00.000",
+            abbrev: "CET",
+            save: 0,
+            offset: 3600
+          }
+        ], [ "2021-07-01", "Europe/Berlin", {
+            begin: "2021-03-28T01:00:00.000Z",
+            end: "2021-10-31T01:00:00.000Z",
+            local: "2021-07-01T02:00:00.000",
+            abbrev: "CEST",
+            save: 60,
+            offset: 7200
+          }
+        ], [ "2021-01-01", "Etc/UTC", {
+            begin: null,
+            end: null,
+            local: "2021-01-01T00:00:00.000Z",
+            abbrev: "UTC",
+            save: 0,
+            offset: 0
+          }
+        ]
+      ];
+
+      values.forEach(function (value) {
+        var res = getQueryResults("RETURN DATE_TIMEZONEINFO(@value,@tz)", { value: value[0], tz: value[1] })[0];
+        // ignore tzdata version
+		delete res.version;
+        assertEqual(value[2], res);
+      });
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_iso8601 function
     // //////////////////////////////////////////////////////////////////////////////
 

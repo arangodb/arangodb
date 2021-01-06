@@ -3926,7 +3926,7 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
 
 /// @brief function DATE_TIMEZONEINFO
 AqlValue Functions::DateTimeZoneInfo(ExpressionContext* expressionContext, AstNode const&,
-                                  VPackFunctionParameters const& parameters) {
+                                     VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_TIMEZONEINFO";
   using namespace date;
 
@@ -3950,15 +3950,23 @@ AqlValue Functions::DateTimeZoneInfo(ExpressionContext* expressionContext, AstNo
   const auto info = zoned.get_info();
 
   const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
-  const auto p_local = ::timeAqlValue(expressionContext, AFN, tp_local,
-                        info.offset.count() == 0 && info.save.count() == 0);
+  const auto p_local =
+      ::timeAqlValue(expressionContext, AFN, tp_local,
+                     info.offset.count() == 0 && info.save.count() == 0);
 
   const auto tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
-  const auto p_begin = ::timeAqlValue(expressionContext, AFN, tp_begin);
-
+  const year_month_day ymd_begin{floor<days>(tp_begin)};
+  const auto year_begin = static_cast<int>(ymd_begin.year());
+  const auto p_begin = year_begin < 0 || year_begin > 9999
+                           ? AqlValue(AqlValueHintNull())
+                           : ::timeAqlValue(expressionContext, AFN, tp_begin);
 
   const auto tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
-  const auto p_end = ::timeAqlValue(expressionContext, AFN, tp_end);
+  const year_month_day ymd_end{floor<days>(tp_end)};
+  const auto year_end = static_cast<int>(ymd_end.year());
+  const auto p_end = year_end < 0 || year_end > 9999
+                         ? AqlValue(AqlValueHintNull())
+                         : ::timeAqlValue(expressionContext, AFN, tp_end);
 
   transaction::Methods* trx = &expressionContext->trx();
   transaction::BuilderLeaser builder(trx);
