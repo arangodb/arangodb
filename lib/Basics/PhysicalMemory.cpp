@@ -100,7 +100,7 @@ struct PhysicalMemoryCache {
       if (!value.empty()) {
         uint64_t multiplier = 1;
         if (value.back() == 'G' || value.back() == 'g') {
-          multiplier = 1024*1024*1024;
+          multiplier = 1024 * 1024 * 1024;
           value.pop_back();
         } else if (value.back() == 'M' || value.back() == 'm') {
           multiplier = 1024 * 1024;
@@ -111,6 +111,7 @@ struct PhysicalMemoryCache {
         }
         uint64_t v = arangodb::basics::StringUtils::uint64(value) * multiplier;
         if (v != 0) {
+          // value in environment variable must always be > 0
           cachedValue = v;
           overridden = true;
         }
