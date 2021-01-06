@@ -251,21 +251,12 @@
         }
       }.bind(this);
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        processData: false,
-        async: true,
-        success: function (data) {
-          callbackFunction(data.Health);
-        },
-        error: function () {
-          self.renderValue('#clusterCoordinators', 'N/A', true);
-          self.renderValue('#clusterDBServers', 'N/A', true);
-        }
-      });
+      if (window.App && window.App.lastHealthCheckResult) {
+        callbackFunction(window.App.lastHealthCheckResult.Health);
+      } else {
+        self.renderValue('#clusterCoordinators', 'N/A', true);
+        self.renderValue('#clusterDBServers', 'N/A', true);
+      }
     },
 
     initValues: function () {

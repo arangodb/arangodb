@@ -31,6 +31,17 @@
 let internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 
+exports.getServerById = function (id) {
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter((d) => (d.id === id))[0];
+};
+
+exports.getServersByType = function (type) {
+  const isType = (d) => (d.role.toLowerCase() === type);
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType);
+};
+
 exports.getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {

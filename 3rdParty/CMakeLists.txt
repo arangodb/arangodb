@@ -274,9 +274,7 @@ LIST(APPEND TZ_DATA_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/europe"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/NEWS"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/northamerica"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/pacificnew"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/southamerica"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/systemv"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/version"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/windowsZones.xml")
 

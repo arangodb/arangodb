@@ -220,7 +220,7 @@ class ClusterInfoTest : public ::testing::Test,
 // -----------------------------------------------------------------------------
 
 TEST_F(ClusterInfoTest, test_drop_database) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
+  auto& database = server.getFeature<arangodb::DatabaseFeature>();
   ASSERT_NE(nullptr, database);
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_NE(nullptr, ci);
@@ -232,7 +232,9 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     // create database
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
+                 database.createDatabase(1, "testDatabase",
+                                         arangodb::velocypack::Slice::emptyObjectSlice(),
+                                         vocbase)));
     ASSERT_NE(nullptr, vocbase);
 
     // simulate heartbeat thread

@@ -487,7 +487,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       break;
     }
     case NODE_TYPE_FCALL: {
-      setData(AqlFunctionFeature::getFunctionByName(slice.get("name").copyString()));
+      auto& server = ast->query().vocbase().server();
+      setData(server.getFeature<AqlFunctionFeature>().byName(slice.get("name").copyString()));
       break;
     }
     case NODE_TYPE_OBJECT_ELEMENT: {
