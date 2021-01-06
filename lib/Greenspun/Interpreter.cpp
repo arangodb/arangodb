@@ -76,9 +76,6 @@ namespace arangodb::greenspun {
 
 void InitMachine(Machine& m) {
   RegisterAllPrimitives(m);
-  // FIXME: Demo hack. better provide real libraries!
-  // Also adds a dependency on Basics which is just a whole lot of pain I don't
-  // want right now.
   RegisterAllDateTimeFunctions(m);
   RegisterAllMathFunctions(m);
   RegisterAllStringFunctions(m);
@@ -99,7 +96,7 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
                        ", expected pair, found: " + pair.toJson());
     }
 
-    auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
+    auto&& [cond, body] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder condResult;
     {
       StackFrameGuard<StackFrameGuardMode::KEEP_SCOPE> guard(ctx);
@@ -118,7 +115,7 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
     }
   }
 
-  result.add(VPackSlice::noneSlice());
+  result.add(VPackSlice::nullSlice());
   return {};
 }
 
@@ -156,7 +153,7 @@ EvalResult SpecialQuoteSplice(Machine& ctx, ArrayIterator paramIterator, VPackBu
 }
 
 EvalResult SpecialCons(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  auto&& [head, list] = unpackTuple<VPackSlice, VPackSlice>(paramIterator);
+  auto&& [head, list] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(paramIterator);
   if (paramIterator.valid()) {
     return EvalError("Excess elements in cons call");
   }
@@ -212,7 +209,7 @@ EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
 EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder store;
   if (!paramIterator.valid()) {
-    result.add(VPackSlice::noneSlice());
+    result.add(VPackSlice::nullSlice());
     return {};
   }
 
@@ -255,7 +252,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
       return EvalError("in case " + std::to_string(paramIterator.index()) +
                        ", expected pair, found: " + pair.toJson());
     }
-    auto&& [cmp, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
+    auto&& [cmp, body] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder cmpValue;
     if (auto res = Evaluate(ctx, cmp, cmpValue); !res) {
       return res.mapError([&](EvalError& err) {
@@ -275,7 +272,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
     }
   }
 
-  result.add(VPackSlice::noneSlice());
+  result.add(VPackSlice::nullSlice());
   return {};
 }
 
@@ -301,7 +298,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
     if (!pair.isArray() || pair.length() != 2) {
       return EvalError("Expected pair, found: " + pair.toJson());
     }
-    auto&& [var, array] = unpackTuple<VPackSlice, VPackSlice>(pair);
+    auto&& [var, array] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(pair);
     if (!var.isString()) {
       return EvalError("Expected string as first entry, found: " + var.toJson());
     }
@@ -353,7 +350,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
       return {};
     }
   };
-  result.add(VPackSlice::noneSlice());
+  result.add(VPackSlice::nullSlice());
   return runIterators(ctx, 0, runIterators);
 }
 
@@ -653,7 +650,7 @@ EvalResult Machine::getVariable(const std::string& name, VPackBuilder& result) {
       return {};
     }
   }
-  result.add(VPackSlice::noneSlice());
+  result.add(VPackSlice::nullSlice());
   return EvalError("variable `" + name + "` not found");
 }
 
@@ -662,7 +659,7 @@ EvalResult StackFrame::getVariable(std::string const& name, VPackBuilder& result
     result.add(*iter);
     return {};
   }
-  result.add(VPackSlice::noneSlice());
+  result.add(VPackSlice::nullSlice());
   return EvalError("variable `" + name + "` not found");
 }
 

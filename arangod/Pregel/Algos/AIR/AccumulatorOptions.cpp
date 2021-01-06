@@ -22,7 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AccumulatorOptionsDeserializer.h"
+#include "AccumulatorOptions.h"
 #include <unordered_set>
 
 #include <VPackDeserializer/deserializer.h>

@@ -241,7 +241,7 @@ EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& resu
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  auto&& [key, slice] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -292,14 +292,6 @@ EvalResult Prim_TrueHuh(Machine& ctx, VPackSlice const params, VPackBuilder& res
     return EvalError("expected a single argument");
   }
   result.add(VPackValue(ValueConsideredTrue(params.at(0))));
-  return {};
-}
-
-EvalResult Prim_NoneHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (params.length() != 1) {
-    return EvalError("expected a single argument");
-  }
-  result.add(VPackValue(params.at(0).isNone()));
   return {};
 }
 
@@ -700,7 +692,6 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("not", Prim_Not);  // unary
   ctx.setFunction("false?", Prim_FalseHuh);
   ctx.setFunction("true?", Prim_TrueHuh);
-  ctx.setFunction("none?", Prim_NoneHuh);
 
   // Comparison operators
   ctx.setFunction("eq?", Prim_CmpHuh<std::equal_to<>>);

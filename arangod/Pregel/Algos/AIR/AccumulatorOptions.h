@@ -24,8 +24,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_H
+#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_H 1
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

@@ -98,7 +98,7 @@ greenspun::EvalResult MasterContext::air_VertexCount(greenspun::Machine& ctx,
 greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
                                                   VPackSlice const params,
                                                   VPackBuilder& result) {
-  auto&& [accumId] = unpackTuple<std::string_view>(params);
+  auto&& [accumId] = basics::VelocyPackHelper::unpackTuple<std::string_view>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
     auto inner = iter->second->getIntoBuilder(result);
@@ -115,7 +115,7 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
 greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
                                                   VPackSlice const params,
                                                   VPackBuilder& result) {
-  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
+  auto&& [accumId, value] = arangodb::basics::VelocyPackHelper::unpackTuple<std::string_view, VPackSlice>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
     auto inner = iter->second->setBySlice(value);
@@ -132,7 +132,7 @@ greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
 greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
                                                     VPackSlice const params,
                                                     VPackBuilder& result) {
-  auto&& [accumId] = unpackTuple<std::string_view>(params);
+  auto&& [accumId] = arangodb::basics::VelocyPackHelper::unpackTuple<std::string_view>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
     auto inner = iter->second->clear();

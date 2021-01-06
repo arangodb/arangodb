@@ -33,7 +33,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
-#include "AccumulatorOptionsDeserializer.h"
+#include "AccumulatorOptions.h"
 #include "MessageData.h"
 
 namespace arangodb {

@@ -222,7 +222,7 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [slice, key] = unpackTuple<VPackSlice, VPackSlice>(params);
+  auto&& [slice, key] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   auto res = ReadAttribute(slice, key);
   if (res.fail()) {
     return res.error();
@@ -238,7 +238,7 @@ EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder&
   }
 
   auto&& [slice, key, defaultValue] =
-      unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
+      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -262,7 +262,7 @@ EvalResult Prim_AttribRefOrFail(Machine& ctx, VPackSlice const params, VPackBuil
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [slice, key] = unpackTuple<VPackSlice, VPackSlice>(params);
+  auto&& [slice, key] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -323,10 +323,9 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& r
       iterationStep++;
     }
 
-    for (uint64_t step = 0; step < (length - 1); step++) {
+    for (uint64_t step = 0; step < length; step++) {
       tmp.close();
     }
-    tmp.close();
 
     MergeObjectSlice(result, obj, tmp.slice());
   } else {

@@ -191,7 +191,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
 set(LIB_ARANGO_PREGEL_AIR_SOURCES
   Pregel/Algos/AIR/AIR.cpp
   Pregel/Algos/AIR/AbstractAccumulator.cpp
-  Pregel/Algos/AIR/AccumulatorOptionsDeserializer.cpp
+        Pregel/Algos/AIR/AccumulatorOptions.cpp
   Pregel/Algos/AIR/Accumulators.cpp
   Pregel/Algos/AIR/EdgeData.cpp
   Pregel/Algos/AIR/GraphFormat.cpp

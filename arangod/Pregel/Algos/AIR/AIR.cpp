@@ -43,7 +43,7 @@
 #include "Pregel/Algos/AIR/VertexComputation.h"
 #include "Pregel/Algos/AIR/WorkerContext.h"
 
-#include "Pregel/Algos/AIR/AccumulatorOptionsDeserializer.h"
+#include "Pregel/Algos/AIR/AccumulatorOptions.h"
 
 #include "Greenspun/Interpreter.h"
 #include "Greenspun/Primitives.h"
@@ -71,7 +71,6 @@ auto ProgrammablePregelAlgorithm::createComputation(WorkerConfig const* config) 
 }
 
 auto ProgrammablePregelAlgorithm::inputFormat() const -> graph_format* {
-  // TODO: pass *this - (i.e. a reference to the algorithm object, and make accessor functions for the declarations in there.
   return new GraphFormat(_server, _options.resultField, _options.globalAccumulators,
                          _options.vertexAccumulators, _options.customAccumulators, _options.dataAccess);
 }

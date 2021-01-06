@@ -35,8 +35,6 @@ namespace algos {
 namespace accumulators {
 
 struct GraphFormat final : public graph_format {
-  // FIXME: passing of options? Maybe a struct? The complete struct that comes
-  //        out of the deserializer, or just a view of it?
   explicit GraphFormat(application_features::ApplicationServer& server,
                        std::string resultField,
                        AccumulatorsDeclaration globalAccumulatorDeclarations,

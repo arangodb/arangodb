@@ -217,6 +217,9 @@ int main(int argc, char** argv) {
   greenspun::Machine m;
   InitMachine(m);
   AddSomeFunctions(m);
+  m.setPrintCallback([](std::string const& msg) {
+    std::cout << msg << std::endl;
+  });
 
   LispLineEditor lineEditor(".arangolisphist");
   lineEditor.open(true);

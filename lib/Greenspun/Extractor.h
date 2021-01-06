@@ -27,14 +27,16 @@
 
 #include "EvalResult.h"
 #include "Interpreter.h"
-#include "template-stuff.h"
+#include "Basics/VelocyPackHelper.h"
 
 
 namespace arangodb::greenspun {
 
 template<typename T, typename C = void>
 struct extractor {
-  static_assert(detail::always_false_v<T>, "no extractor for that type available");
+  template<typename E>
+  static inline constexpr auto always_false_v = std::false_type::value;
+  static_assert(always_false_v<T>, "no extractor for that type available");
 };
 
 template<>
