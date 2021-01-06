@@ -274,7 +274,7 @@ AqlValue numberValue(double value, bool nullify) {
 /// @brief optimized version of datetime stringification
 /// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
 AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
-                      tp_sys_clock_ms const& tp, bool utc = true) {
+                      tp_sys_clock_ms const& tp, bool utc = true, bool registerWarning = true) {
   char formatted[24];
 
   year_month_day ymd{floor<days>(tp)};
@@ -283,7 +283,9 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   auto y = static_cast<int>(ymd.year());
   // quick basic check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
-    arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    if (registerWarning) {
+      arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    }
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3825,8 +3827,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_UTCTOLOCAL
-AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
-                                   AstNode const&,
+AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_UTCTOLOCAL";
   using namespace std::chrono;
@@ -3845,14 +3846,50 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  auto showDetail = false;
+
+  if (parameters.size() == 3) {
+    AqlValue const& detailParam = extractFunctionParameterValue(parameters, 2);
+    if (!detailParam.isBoolean()) {  // detail type must be bool
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    showDetail = detailParam.slice().getBoolean();
+  }
+
   const std::string tz = timeZoneParam.slice().copyString();
   const auto utc = floor<milliseconds>(tp_utc);
   const auto zoned = make_zoned(tz, utc);
+  const auto info = zoned.get_info();
   const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  const auto aql_local =
+      ::timeAqlValue(expressionContext, AFN, tp_local,
+                     info.offset.count() == 0 && info.save.count() == 0);
 
-  auto info = zoned.get_info();
+  if (showDetail) {
+    const auto tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
+    const auto aql_begin = ::timeAqlValue(expressionContext, AFN, tp_begin, true, false);
 
-  return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
+    const auto tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
+    const auto aql_end = ::timeAqlValue(expressionContext, AFN, tp_end, true, false);
+
+    transaction::Methods* trx = &expressionContext->trx();
+    transaction::BuilderLeaser builder(trx);
+    builder->openObject();
+    builder->add("effectBegin", aql_begin.slice());
+    builder->add("effectEnd", aql_end.slice());
+    builder->add("local", aql_local.slice());
+    builder->add("timezone", VPackValue(info.abbrev));
+    builder->add("daylightSaveMinutes", VPackValue(info.save.count()));
+    builder->add("offsetToUTCSeconds", VPackValue(info.offset.count()));
+    builder->add("tzdbVersion", VPackValue(get_tzdb().version));
+    builder->close();
+
+    return AqlValue(builder->slice(), builder->size());
+  }
+
+  return aql_local;
 }
 
 /// @brief function DATE_LOCALTOUTC
@@ -3875,14 +3912,49 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     return AqlValue(AqlValueHintNull());
   }
 
-  const std::string tz = timeZoneParam.slice().copyString();
+  auto showDetail = false;
 
+  if (parameters.size() == 3) {
+    AqlValue const& detailParam = extractFunctionParameterValue(parameters, 2);
+    if (!detailParam.isBoolean()) {  // detail type must be bool
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    showDetail = detailParam.slice().getBoolean();
+  }
+
+  const std::string tz = timeZoneParam.slice().copyString();
   const auto local =
       local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
   const auto zoned = make_zoned(tz, local);
+  const auto info = zoned.get_info();
   const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+  const auto aql_utc = ::timeAqlValue(expressionContext, AFN, tp_utc);
 
-  return ::timeAqlValue(expressionContext, AFN, tp_utc);
+  if (showDetail) {
+    const auto tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
+    const auto aql_begin = ::timeAqlValue(expressionContext, AFN, tp_begin, true, false);
+
+    const auto tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
+    const auto aql_end = ::timeAqlValue(expressionContext, AFN, tp_end, true, false);
+
+    transaction::Methods* trx = &expressionContext->trx();
+    transaction::BuilderLeaser builder(trx);
+    builder->openObject();
+    builder->add("effectBegin", aql_begin.slice());
+    builder->add("effectEnd", aql_end.slice());
+    builder->add("utc", aql_utc.slice());
+    builder->add("timezone", VPackValue(info.abbrev));
+    builder->add("daylightSaveMinutes", VPackValue(info.save.count()));
+    builder->add("offsetToUTCSeconds", VPackValue(info.offset.count()));
+    builder->add("tzdbVersion", VPackValue(get_tzdb().version));
+    builder->close();
+
+    return AqlValue(builder->slice(), builder->size());
+  }
+
+  return aql_utc;
 }
 
 /// @brief function DATE_TIMEZONE
@@ -3907,7 +3979,7 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
 
   auto& list = get_tzdb_list();
   auto& db = list.front();
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   transaction::BuilderLeaser result(trx);
   result->openArray();
@@ -3922,65 +3994,6 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
 
   result->close();
   return AqlValue(result->slice(), result->size());
-}
-
-/// @brief function DATE_TIMEZONEINFO
-AqlValue Functions::DateTimeZoneInfo(ExpressionContext* expressionContext, AstNode const&,
-                                     VPackFunctionParameters const& parameters) {
-  static char const* AFN = "DATE_TIMEZONEINFO";
-  using namespace date;
-
-  tp_sys_clock_ms tp_utc;
-
-  if (!::parameterToTimePoint(expressionContext, parameters, tp_utc, AFN, 0)) {
-    return AqlValue(AqlValueHintNull());
-  }
-
-  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
-
-  if (!timeZoneParam.isString()) {  // timezone type must be string
-    registerInvalidArgumentWarning(expressionContext, AFN);
-    return AqlValue(AqlValueHintNull());
-  }
-
-  const std::string tz = timeZoneParam.slice().copyString();
-  const auto utc = floor<milliseconds>(tp_utc);
-  const auto zoned = make_zoned(tz, utc);
-
-  const auto info = zoned.get_info();
-
-  const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
-  const auto p_local =
-      ::timeAqlValue(expressionContext, AFN, tp_local,
-                     info.offset.count() == 0 && info.save.count() == 0);
-
-  const auto tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
-  const year_month_day ymd_begin{floor<days>(tp_begin)};
-  const auto year_begin = static_cast<int>(ymd_begin.year());
-  const auto p_begin = year_begin < 0 || year_begin > 9999
-                           ? AqlValue(AqlValueHintNull())
-                           : ::timeAqlValue(expressionContext, AFN, tp_begin);
-
-  const auto tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
-  const year_month_day ymd_end{floor<days>(tp_end)};
-  const auto year_end = static_cast<int>(ymd_end.year());
-  const auto p_end = year_end < 0 || year_end > 9999
-                         ? AqlValue(AqlValueHintNull())
-                         : ::timeAqlValue(expressionContext, AFN, tp_end);
-
-  transaction::Methods* trx = &expressionContext->trx();
-  transaction::BuilderLeaser builder(trx);
-  builder->openObject();
-  builder->add("begin", p_begin.slice());
-  builder->add("end", p_end.slice());
-  builder->add("local", p_local.slice());
-  builder->add("abbrev", VPackValue(info.abbrev));
-  builder->add("save", VPackValue(info.save.count()));
-  builder->add("offset", VPackValue(info.offset.count()));
-  builder->add("version", VPackValue(get_tzdb().version));
-  builder->close();
-
-  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief function DATE_ADD
