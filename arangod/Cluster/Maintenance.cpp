@@ -25,6 +25,7 @@
 #include "Cluster/Maintenance.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -44,6 +45,7 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
@@ -493,10 +495,22 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
+        // copy relevant db properties from Plan onto the db servers
+        auto props = std::make_shared<VPackBuilder>();
+        props->openObject();
+        if (pdb.value.isObject()) {
+          if (VPackSlice s = pdb.value.get(StaticStrings::Sharding); s.isString()) {
+            VPackStringRef shardString = s.stringRef();
+            if (shardString == "single") {
+              props->add(StaticStrings::Sharding, VPackValuePair(shardString.data(), shardString.size(), VPackValueType::String));
+            }
+          }
+        }
+        props->close();
         actions.emplace_back(ActionDescription(
               std::map<std::string, std::string>{{std::string(NAME), std::string(CREATE_DATABASE)},
                {std::string(DATABASE), std::move(dbname)}},
-              HIGHER_PRIORITY, false));
+              HIGHER_PRIORITY, false, std::move(props)));
       } else {
         LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for creating database " << dbname << "skipping";

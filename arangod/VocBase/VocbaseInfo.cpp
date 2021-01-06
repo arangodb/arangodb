@@ -148,7 +148,8 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
   builder.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(_name)));
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isDBServer()) {
     addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
   }
 
