@@ -3877,13 +3877,15 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
     transaction::Methods* trx = &expressionContext->trx();
     transaction::BuilderLeaser builder(trx);
     builder->openObject();
-    builder->add("effectBegin", aql_begin.slice());
-    builder->add("effectEnd", aql_end.slice());
     builder->add("local", aql_local.slice());
-    builder->add("timezone", VPackValue(info.abbrev));
-    builder->add("daylightSaveMinutes", VPackValue(info.save.count()));
-    builder->add("offsetToUTCSeconds", VPackValue(info.offset.count()));
-    builder->add("tzdbVersion", VPackValue(get_tzdb().version));
+    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("zoneInfo", VPackValue(VPackValueType::Object));
+    builder->add("name", VPackValue(info.abbrev));
+    builder->add("begin", aql_begin.slice());
+    builder->add("end", aql_end.slice());  
+    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("offset", VPackValue(info.offset.count()));
+    builder->close();
     builder->close();
 
     return AqlValue(builder->slice(), builder->size());
@@ -3942,13 +3944,15 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     transaction::Methods* trx = &expressionContext->trx();
     transaction::BuilderLeaser builder(trx);
     builder->openObject();
-    builder->add("effectBegin", aql_begin.slice());
-    builder->add("effectEnd", aql_end.slice());
     builder->add("utc", aql_utc.slice());
-    builder->add("timezone", VPackValue(info.abbrev));
-    builder->add("daylightSaveMinutes", VPackValue(info.save.count()));
-    builder->add("offsetToUTCSeconds", VPackValue(info.offset.count()));
-    builder->add("tzdbVersion", VPackValue(get_tzdb().version));
+    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("zoneInfo", VPackValue(VPackValueType::Object));
+    builder->add("name", VPackValue(info.abbrev));
+    builder->add("begin", aql_begin.slice());
+    builder->add("end", aql_end.slice());
+    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("offset", VPackValue(info.offset.count()));
+    builder->close();
     builder->close();
 
     return AqlValue(builder->slice(), builder->size());
