@@ -802,8 +802,9 @@ TEST_F(GreenspunTest, var_ref_non_existing) {
       ["var-ref", "peter"]
     )aql");
 
-  Evaluate(m, program->slice(), result);
-  ASSERT_TRUE(result.slice().isNone());
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isNull());
+  ASSERT_TRUE(res.fail());
 }
 
 TEST_F(GreenspunTest, lambda_constant) {
@@ -1550,7 +1551,7 @@ TEST_F(GreenspunTest, min_empty) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-  ASSERT_TRUE(result.slice().isNone());
+  ASSERT_TRUE(result.slice().isNull());
 }
 
 TEST_F(GreenspunTest, min_one) {
