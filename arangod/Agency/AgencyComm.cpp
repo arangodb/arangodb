@@ -24,19 +24,9 @@
 
 #include "AgencyComm.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
-#include "RestServer/ServerFeature.h"
-
-#include <memory>
-#include <thread>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-#include <set>
-
-#include "Agency/AsyncAgencyComm.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -45,6 +35,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
@@ -53,6 +44,18 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/MetricsFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngine.h"
+
+#include <memory>
+#include <set>
+#include <thread>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -633,9 +636,9 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
           StaticStrings::AgencyCommRequestTimeMs)) {}
 
 AgencyCommResult AgencyComm::sendServerState(double timeout) {
-  // construct JSON value { "status": "...", "time": "..." }
+  // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
-
+  
   try {
     builder.openObject();
     std::string const status =
@@ -643,7 +646,15 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
     builder.add("status", VPackValue(status));
     std::string const stamp = AgencyCommHelper::generateStamp();
     builder.add("time", VPackValue(stamp));
+
+    if (ServerState::instance()->isDBServer()) {
+      // use storage engine health self-assessment and send it to agency too
+      arangodb::HealthData hd = _server.getFeature<EngineSelectorFeature>().engine().healthCheck();
+      hd.toVelocyPack(builder);
+    }
+
     builder.close();
+
   } catch (...) {
     return AgencyCommResult();
   }

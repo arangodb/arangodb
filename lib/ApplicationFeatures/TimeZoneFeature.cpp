@@ -50,18 +50,13 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-static TimeZoneFeature* Instance = nullptr;
-
 TimeZoneFeature::TimeZoneFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TimeZone"), _binaryPath(server.getBinaryPath()) {
-  Instance = this;
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 TimeZoneFeature::~TimeZoneFeature() = default;
-
-TimeZoneFeature* TimeZoneFeature::instance() { return Instance; }
 
 void TimeZoneFeature::prepareTimeZoneData(std::string const& binaryPath,
                                           std::string const& binaryExecutionPath,

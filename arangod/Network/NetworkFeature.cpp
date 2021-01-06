@@ -148,7 +148,8 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
     _maxOpenConnections = 8;
   }
   if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
-    _idleTtlMilli = uint64_t(GeneralServerFeature::keepAliveTimeout() * 1000 / 2);
+    auto& gs = server().getFeature<GeneralServerFeature>();
+    _idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
   }
   if (_idleTtlMilli < 10000) {
     _idleTtlMilli = 10000;

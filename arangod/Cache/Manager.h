@@ -68,7 +68,7 @@ class Rebalancer;      // forward declaration
 /// have more space.
 ///
 /// There should be a single Manager instance exposed via
-/// CacheManagerFeature::MANAGER --- use this unless you are very certain you
+/// CacheManagerFeature::manager() --- use this unless you are very certain you
 /// need a different instance.
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
