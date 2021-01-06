@@ -67,7 +67,7 @@ struct GraphFormat final : public graph_format {
       arangodb::velocypack::Builder& b, const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const VertexData* targetPtr) const override {
+                           VertexData const* targetPtr) const override {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
