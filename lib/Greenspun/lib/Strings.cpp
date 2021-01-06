@@ -82,7 +82,7 @@ EvalResult Prim_StringSet(Machine& ctx, VPackSlice const slice, VPackBuilder& re
   }
 
   str.operator[](idx) = c.at(0);
-  result.add(VPackValue(std::move(str)));
+  result.add(VPackValue(str));
   return {};
 }
 

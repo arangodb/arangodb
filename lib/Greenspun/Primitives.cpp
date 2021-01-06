@@ -57,7 +57,7 @@ EvalResult Prim_Min(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   if (set) {
     result.add(VPackValue(tmp));
   } else {
-    result.add(VPackSlice::noneSlice());
+    result.add(VPackSlice::nullSlice());
   }
   return {};
 }
@@ -80,7 +80,7 @@ EvalResult Prim_Max(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   if (set) {
     result.add(VPackValue(tmp));
   } else {
-    result.add(VPackSlice::noneSlice());
+    result.add(VPackSlice::nullSlice());
   }
   return {};
 }
@@ -266,16 +266,6 @@ std::list<std::string> createObjectPaths(velocypack::Slice object,
   return currentPath;
 }
 
-void printPath(std::list<std::string>& path) {
-  // TODO: can be removed - internal debugging method
-  std::cout << "Printing current path: " << std::endl;
-  std::cout << " [ ";
-  for (auto const& pathElement : path) {
-    std::cout << " " << pathElement << " ";
-  }
-  std::cout << " ] " << std::endl;
-}
-
 EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
@@ -321,17 +311,17 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  ctx.print(paramsToString(params));
-  result.add(VPackSlice::noneSlice());
-  return {};
+EvalResult Prim_Report(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  result.add(VPackSlice::nullSlice());
+  return ctx.print(paramsToString(params));;
 }
 
-void Machine::print(const std::string& msg) const {
+EvalResult Machine::print(const std::string& msg) const {
   if (printCallback) {
     printCallback(msg);
+    return {};
   } else {
-    std::cerr << msg << std::endl;
+    return EvalError("reporting not supported in this context (message was `" + msg + "`)");
   }
 }
 
@@ -641,7 +631,7 @@ EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
     return EvalError(errorMessage);
   }
 
-  result.add(VPackSlice::noneSlice());
+  result.add(VPackSlice::nullSlice());
   return {};
 }
 
@@ -726,7 +716,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("avg", Prim_Avg);
 
   // Debug operators
-  ctx.setFunction("print", Prim_PrintLn);
+  ctx.setFunction("report", Prim_Report);
   ctx.setFunction("error", Prim_Error);
   ctx.setFunction("assert", Prim_Assert);
 

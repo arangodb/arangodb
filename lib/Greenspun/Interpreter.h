@@ -89,7 +89,7 @@ struct Machine {
     printCallback = std::forward<F>(f);
   }
 
-  void print(std::string const& msg) const;
+  EvalResult print(std::string const& msg) const;
   VariableBindings getAllVariables();
 
  private:
