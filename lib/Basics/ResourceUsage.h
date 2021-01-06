@@ -29,6 +29,9 @@
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
 
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+
 #include <algorithm>
 #include <atomic>
 
@@ -64,6 +67,7 @@ struct ResourceMonitor final {
 
   inline void increaseMemoryUsage(size_t value) {
     size_t current = currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
+    LOG_DEVEL << "curent mem value is: " << current << " new to add is: "  << value;
     current += value;
 
     if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
@@ -82,7 +86,9 @@ struct ResourceMonitor final {
   }
 
   inline void decreaseMemoryUsage(size_t value) noexcept {
+    LOG_DEVEL << "want to decrease by: " << value;
     [[maybe_unused]] size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+    LOG_DEVEL << "prev value is: " << previous;
     TRI_ASSERT(previous >= value);
   }
 

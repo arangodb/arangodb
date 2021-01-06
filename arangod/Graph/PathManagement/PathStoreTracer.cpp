@@ -79,20 +79,20 @@ template <class PathStoreImpl>
 template <class ProviderType>
 auto PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex,
                                                PathResult<ProviderType, Step>& path) const
-    -> bool {
+    -> void {
   double start = TRI_microtime();
   TRI_DEFER(_stats["buildPath"].addTiming(TRI_microtime() - start));
-  return _impl.buildPath(vertex, path);
+  _impl.buildPath(vertex, path);
 }
 
 template <class PathStoreImpl>
 template <class ProviderType>
 auto PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex,
                                                       PathResult<ProviderType, Step>& path) const
-    -> bool {
+    -> void {
   double start = TRI_microtime();
   TRI_DEFER(_stats["reverseBuildPath"].addTiming(TRI_microtime() - start));
-  return _impl.reverseBuildPath(vertex, path);
+  _impl.reverseBuildPath(vertex, path);
 }
 
 template <class PathStoreImpl>
@@ -106,10 +106,10 @@ auto PathStoreTracer<PathStoreImpl>::visitReversePath(
 template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>;
 
 // Tracing
-template bool ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<ProviderTracer<SingleServerProvider>>(
+template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
 
-template bool arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
+template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;

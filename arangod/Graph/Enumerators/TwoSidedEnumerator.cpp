@@ -225,11 +225,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::buildPath(
-    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> bool {
+    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
-    return _interior.buildPath(vertexInShell, path);
+    _interior.buildPath(vertexInShell, path);
   } else {
-    return _interior.reverseBuildPath(vertexInShell, path);
+    _interior.reverseBuildPath(vertexInShell, path);
   }
 }
 
@@ -324,8 +324,11 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       auto const& [leftVertex, rightVertex] = _results.back();
 
       _resultPath.clear();
-      if (_left.buildPath(leftVertex, _resultPath) &&
-          _right.buildPath(rightVertex, _resultPath)) {
+      _left.buildPath(leftVertex, _resultPath);
+      _right.buildPath(rightVertex, _resultPath);
+
+      // TODO: CHECK
+      if (!_resultPath.isEmpty()) {
         _results.pop_back();
         _resultPath.toVelocyPack(result);
         return true;

@@ -58,7 +58,8 @@ template <class Step>
 void PathStore<Step>::reset() {
   LOG_TOPIC("8f726", TRACE, Logger::GRAPHS) << "<PathStore> Resetting.";
   if (!_schreier.empty()) {
-    _resourceMonitor.decreaseMemoryUsage(_schreier.size() * sizeof(Step));
+    LOG_DEVEL << "path store reset.";
+    //_resourceMonitor.decreaseMemoryUsage(_schreier.size() * sizeof(Step));
     _schreier.clear();
   }
 }
@@ -69,7 +70,8 @@ size_t PathStore<Step>::append(Step step) {
       << "<PathStore> Adding step: " << step.toString();
 
   auto idx = _schreier.size();
-  _resourceMonitor.increaseMemoryUsage(sizeof(step));
+  LOG_DEVEL << "path store increase.";
+  //_resourceMonitor.increaseMemoryUsage(sizeof(Step));
   _schreier.emplace_back(std::move(step));
 
   return idx;
@@ -153,18 +155,18 @@ auto PathStore<Step>::testPath(Step step) -> ValidationResult {
 }
 
 template class PathStore<SingleServerProvider::Step>;
-template bool PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(
+template void PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(
     SingleServerProvider::Step const& vertex,
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
-template bool PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(
+template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(
     SingleServerProvider::Step const& vertex,
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
 
 // Tracing
-template bool PathStore<SingleServerProvider::Step>::buildPath<ProviderTracer<SingleServerProvider>>(
+template void PathStore<SingleServerProvider::Step>::buildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
-template bool PathStore<SingleServerProvider::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
+template void PathStore<SingleServerProvider::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
 
