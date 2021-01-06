@@ -77,29 +77,24 @@ size_t PathStore<Step>::append(Step step) {
 
 template <class Step>
 template <class ProviderType>
-auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool {
+auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void {
   Step const* myStep = &vertex;
 
   while (!myStep->isFirst()) {
-    bool isUnique = path.prependVertex(myStep->getVertex());
-    if (!isUnique) {
-      //return false;
-    }
+    path.prependVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
     path.prependEdge(myStep->getEdge());
 
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }
-  //return
   path.prependVertex(myStep->getVertex());
-  return true;
 }
 
 template <class Step>
 template <class ProviderType>
 auto PathStore<Step>::reverseBuildPath(Step const& vertex,
-                                       PathResult<ProviderType, Step>& path) const -> bool {
+                                       PathResult<ProviderType, Step>& path) const -> void {
   // For backward we just need to attach ourself
   // So everything until here should be done.
   // We never start with an empty path here, the other side should at least have
@@ -109,7 +104,7 @@ auto PathStore<Step>::reverseBuildPath(Step const& vertex,
     // already started at the center.
     // Can stop here
     // The buildPath of the other side has included the vertex already
-    return true;
+    return;
   }
 
   TRI_ASSERT(size() > vertex.getPrevious());
@@ -121,20 +116,14 @@ auto PathStore<Step>::reverseBuildPath(Step const& vertex,
   Step const* myStep = &_schreier[vertex.getPrevious()];
 
   while (!myStep->isFirst()) {
-    bool isUnique = path.appendVertex(myStep->getVertex());
-    if (!isUnique) {
-  //    return false;
-    }
-
+    path.appendVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
     path.appendEdge(myStep->getEdge());
 
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }
-  //return
   path.appendVertex(myStep->getVertex());
-  return true;
 }
 
 template <class Step>

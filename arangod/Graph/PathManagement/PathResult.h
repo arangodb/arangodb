@@ -44,8 +44,8 @@ class PathResult {
  public:
   PathResult(ProviderType& sourceProvider, ProviderType& targetProvider);
   auto clear() -> void;
-  auto appendVertex(typename Step::Vertex v) -> bool;
-  auto prependVertex(typename Step::Vertex v) -> bool;
+  auto appendVertex(typename Step::Vertex v) -> void;
+  auto prependVertex(typename Step::Vertex v) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;

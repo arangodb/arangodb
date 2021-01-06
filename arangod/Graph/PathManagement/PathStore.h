@@ -81,10 +81,10 @@ class PathStore {
                         std::function<bool(Step const&)> const& visitor) const -> bool;
 
   template <class ProviderType>
-  auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
+  auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void;
 
   template <class ProviderType>
-  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> bool;
+  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void;
 
  private:
   /// @brief schreier vector to store the visited vertices
