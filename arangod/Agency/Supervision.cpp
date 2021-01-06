@@ -2235,8 +2235,6 @@ void Supervision::enforceReplication() {
 
   // We will loop over plannedDBs, so we use hasAsChildren
   auto const& plannedDBs = snapshot().hasAsChildren(planColPrefix).first;
-  // We will lookup in currentDBs, so we use hasAsNode
-  auto const& currentDBs = snapshot().hasAsNode(curColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
     auto const& db = *(db_.second);
@@ -2289,16 +2287,6 @@ void Supervision::enforceReplication() {
 
           if (actualReplicationFactor != replicationFactor ||
               apparentReplicationFactor != replicationFactor) {
-            // First check the case that not all are in sync:
-            std::string curPath =
-                db_.first + "/" + col_.first + "/" + shard_.first + "/servers";
-            auto const& currentServers = currentDBs.hasAsArray(curPath);
-            size_t inSyncReplicationFactor = actualReplicationFactor;
-            if (currentServers.second) {
-              // Only count non-FAILED servers:
-              inSyncReplicationFactor = (std::min)(Job::countGoodOrBadServersInList(snapshot(), currentServers.first), actualReplicationFactor);
-            }
-
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
             auto const& todo = snapshot().hasAsChildren(toDoPrefix).first;
@@ -2325,6 +2313,13 @@ void Supervision::enforceReplication() {
               found = true;
             }
             if (!found) {
+              auto shardsLikeMe = Job::clones(snapshot(), db_.first,
+                                              col_.first, shard_.first);
+              auto inSyncReplicas = Job::findAllInSyncReplicas(
+                  snapshot(), db_.first, shardsLikeMe);
+              size_t inSyncReplicationFactor 
+                = Job::countGoodOrBadServersInList(snapshot(), inSyncReplicas);
+
               if (actualReplicationFactor < replicationFactor &&
                   apparentReplicationFactor < 2 + replicationFactor) {
                 AddFollower(snapshot(), _agent, std::to_string(_jobId++),
