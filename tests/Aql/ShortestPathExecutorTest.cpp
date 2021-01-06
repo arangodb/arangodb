@@ -255,7 +255,7 @@ class ShortestPathExecutorTest
 
   MockAqlServer server;
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::aql::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   TestShortestPathOptions options;

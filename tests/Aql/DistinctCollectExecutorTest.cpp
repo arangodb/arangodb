@@ -60,7 +60,7 @@ class DistinctCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<std::tuple<DistinctCollectSplitType>> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::aql::ResourceMonitor monitor;
   // arangodb::transaction::Methods* trx;
 
   RegIdSet readableInputRegisters = RegIdSet{0};

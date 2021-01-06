@@ -281,7 +281,7 @@ struct ExecutorTestHelper {
   }
 
   auto run(bool const loop = false) -> void {
-    ResourceMonitor monitor;
+    //arangodb::aql::ResourceMonitor monitor;
 
     auto inputBlock = generateInputRanges(_itemBlockManager);
 

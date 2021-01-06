@@ -59,7 +59,7 @@ class EnumerateListExecutorTest : public ::testing::Test {
   NoStats stats;
   AqlCall call;
 
-  ResourceMonitor monitor;
+  arangodb::aql::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   EnumerateListExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}

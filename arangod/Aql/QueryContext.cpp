@@ -53,6 +53,7 @@ using namespace arangodb::aql;
 QueryContext::QueryContext(TRI_vocbase_t& vocbase)
     : _queryId(TRI_NewServerSpecificTick()),
       _resourceMonitor(),
+      _tmpResourceMonitor(),
       _collections(&vocbase),
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),

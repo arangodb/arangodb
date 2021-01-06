@@ -180,7 +180,7 @@ class KShortestPathsExecutorTest
 
   MockAqlServer server;
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::aql::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 

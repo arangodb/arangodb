@@ -37,6 +37,8 @@
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
 
+#include <Basics/ResourceUsage.h>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -73,7 +75,8 @@ class QueryContext {
 
   virtual ~QueryContext();
 
-  ResourceMonitor& resourceMonitor() { return _resourceMonitor; }
+  arangodb::aql::ResourceMonitor& resourceMonitor() { return _resourceMonitor; }
+  arangodb::ResourceMonitor& tmpResourceMonitor() { return _tmpResourceMonitor; }
   
   /// @brief get the vocbase
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
@@ -139,7 +142,8 @@ public:
   const TRI_voc_tick_t _queryId;
 
   /// @brief current resources and limits used by query
-  ResourceMonitor _resourceMonitor;
+  arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _tmpResourceMonitor;
   
   /// @brief thread-safe query warnings collector
   QueryWarnings _warnings;

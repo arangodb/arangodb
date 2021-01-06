@@ -45,7 +45,7 @@ namespace arangodb::tests::aql {
 class SharedScatterExecutionBlockTest {
  protected:
   mocks::MockAqlServer server{};
-  ResourceMonitor monitor{};
+  arangodb::aql::ResourceMonitor monitor{};
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
