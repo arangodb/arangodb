@@ -35,12 +35,6 @@ template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 PathValidator<PathStore, vertexUniqueness>::PathValidator(PathStore const& store)
     : _store(store) {}
 
-/*template <class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<PathStore, vertexUniqueness>::track(typename PathStore::Step const& step)
-    -> void {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}*/
-
 template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<PathStore, vertexUniqueness>::validatePath(typename PathStore::Step const& step)
     -> ValidationResult {
@@ -70,6 +64,50 @@ auto PathValidator<PathStore, vertexUniqueness>::validatePath(typename PathStore
   }
   return ValidationResult{ValidationResult::Type::TAKE};
 }
+
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+auto PathValidator<PathStore, vertexUniqueness>::validatePath(
+    typename PathStore::Step const& step,
+    PathValidator<PathStore, vertexUniqueness> const& otherValidator) -> ValidationResult {
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
+    // For PATH: take _uniqueVertices of otherValidator, and run Visitor of other side, check if one vertex is duplicate.
+    auto const& otherUniqueVertices = otherValidator.exposeUniqueVertices();
+
+    bool success =
+        _store.visitReversePath(step, [&](typename PathStore::Step const& innerStep) -> bool {
+          // compare memory address for equality (instead of comparing their values)
+          if (&step == &innerStep) {
+            return true;
+          }
+
+          // If otherUniqueVertices has our step, we will return false and abort.
+          // Otherwise we'll return true here.
+          // This guarantees we have no vertex on both sides of the path twice.
+          return otherUniqueVertices.find(innerStep.getVertexIdentifier()) == otherUniqueVertices.end();
+        });
+    if (!success) {
+      return ValidationResult{ValidationResult::Type::FILTER};
+    }
+    return ValidationResult{ValidationResult::Type::TAKE};
+  }
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
+    auto const& [unused, added] = _uniqueVertices.emplace(step.getVertexIdentifier());
+    // If this add fails, we need to exclude this path
+    if (!added) {
+      return ValidationResult{ValidationResult::Type::FILTER};
+    }
+    return ValidationResult{ValidationResult::Type::TAKE};
+  }
+
+  // For NONE: ignoreOtherValidator return TAKE
+  return ValidationResult{ValidationResult::Type::TAKE};
+};
+
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+auto PathValidator<PathStore, vertexUniqueness>::exposeUniqueVertices() const
+    -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const& {
+  return _uniqueVertices;
+};
 
 namespace arangodb {
 namespace graph {

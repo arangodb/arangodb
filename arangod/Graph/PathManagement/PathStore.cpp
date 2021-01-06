@@ -83,7 +83,7 @@ auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Ste
   while (!myStep->isFirst()) {
     bool isUnique = path.prependVertex(myStep->getVertex());
     if (!isUnique) {
-      return false;
+      //return false;
     }
     TRI_ASSERT(myStep->getEdge().isValid());
     path.prependEdge(myStep->getEdge());
@@ -91,7 +91,9 @@ auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Ste
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }
-  return path.prependVertex(myStep->getVertex());
+  //return
+  path.prependVertex(myStep->getVertex());
+  return true;
 }
 
 template <class Step>
@@ -121,7 +123,7 @@ auto PathStore<Step>::reverseBuildPath(Step const& vertex,
   while (!myStep->isFirst()) {
     bool isUnique = path.appendVertex(myStep->getVertex());
     if (!isUnique) {
-      return false;
+  //    return false;
     }
 
     TRI_ASSERT(myStep->getEdge().isValid());
@@ -130,7 +132,9 @@ auto PathStore<Step>::reverseBuildPath(Step const& vertex,
     TRI_ASSERT(size() > myStep->getPrevious());
     myStep = &_schreier[myStep->getPrevious()];
   }
-  return path.appendVertex(myStep->getVertex());
+  //return
+  path.appendVertex(myStep->getVertex());
+  return true;
 }
 
 template <class Step>

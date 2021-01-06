@@ -39,8 +39,10 @@ class PathValidator {
  public:
   PathValidator(PathStore const& store);
 
-  //auto track(typename PathStore::Step const& step) -> void;
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
+  auto validatePath(typename PathStore::Step const& step,
+                    PathValidator<PathStore, vertexUniqueness> const& otherValidator)
+      -> ValidationResult;
 
  private:
   PathStore const& _store;
@@ -49,6 +51,10 @@ class PathValidator {
   // TODO: Figure out if we can make this Member template dependend
   //       e.g. std::enable_if<vertexUniqueness != NONE>
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
+
+ private:
+  auto exposeUniqueVertices() const
+      -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;
 };
 }  // namespace graph
 }  // namespace arangodb

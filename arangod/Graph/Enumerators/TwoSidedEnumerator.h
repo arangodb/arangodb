@@ -74,12 +74,12 @@ class TwoSidedEnumerator {
     [[nodiscard]] auto getDepth() const -> size_t;
     [[nodiscard]] auto shellSize() const -> size_t;
     [[nodiscard]] auto doneWithDepth() const -> bool;
-    auto testDepthZero(Ball const& other, ResultList& results) const -> void;
+    auto testDepthZero(Ball& other, ResultList& results) -> void;
 
     auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> bool;
 
-    auto matchResultsInShell(Step const& match, ResultList& results) const -> void;
-    auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
+    auto matchResultsInShell(Step const& match, ResultList& results, PathValidatorType const& otherSideValidator) -> void;
+    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results) -> void;
 
     // Ensure that we have fetched all vertices
     // in the _results list.

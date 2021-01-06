@@ -40,6 +40,7 @@
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
 
+#include <Graph/Types/ValidationResult.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -147,7 +148,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::computeNeighbourhoodOfNextVertex(
-    Ball const& other, ResultList& results) -> void {
+    Ball& other, ResultList& results) -> void {
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
@@ -165,56 +166,58 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
-    // TODO:
-    // [ok, prune, filter, filterAndPrune] = _interior.validate(n);
-    // ok => continue
-    // prune => not add to _shell
-    // filter => not match results in _shell
-    // filterAndPrune => prune & filter
+    ValidationResult res = _validator.validatePath(n);
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
-    if (getDepth() + other.getDepth() >= _minDepth) {
-      // One side of the path is checked.
-      // Other side is unclear.
-      // Now we need to combine the test of both sides.
-      // combinedValidate(step, otherValidator&)
-      // For NONE: ignoreOtherValidator return TAKE
-      // For PATH: take _uniqueVertices of otherValidator, and run Visitor of other side, check if one vertex is duplicate.
+
+    if ((getDepth() + other.getDepth() >= _minDepth) && !res.isFiltered()) {
+      // One side of the path is checked, the other side is unclear:
+      // We need to combine the test of both sides.
+
       // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match as result, clear both sides. => This will give the shortest path.
       // TODO: Check if the GLOBAL holds true for weightedEdges
-      other.matchResultsInShell(n, results);
+      other.matchResultsInShell(n, results, _validator);
     }
 
-    // Add the step to our shell
-    _shell.emplace(std::move(n));
+    if (!res.isPruned()) {
+      // Add the step to our shell
+      _shell.emplace(std::move(n));
+    }
   });
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::testDepthZero(
-    Ball const& other, ResultList& results) const {
+    Ball& other, ResultList& results) {
   for (auto const& step : _shell) {
-    other.matchResultsInShell(step, results);
+    other.matchResultsInShell(step, results, _validator);
   }
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::matchResultsInShell(
-    Step const& match, ResultList& results) const -> void {
+    Step const& match, ResultList& results, PathValidator const& otherSideValidator)
+    -> void {
   auto [first, last] = _shell.equal_range(match);
   if (_direction == FORWARD) {
     while (first != last) {
-      LOG_TOPIC("6a01b", DEBUG, Logger::GRAPHS)
-          << "Found path " << *first << " and " << match;
-      results.push_back(std::make_pair(*first, match));
+      auto res = _validator.validatePath(*first, otherSideValidator);
+      if (!res.isFiltered()) {
+        LOG_TOPIC("6a01b", DEBUG, Logger::GRAPHS)
+            << "Found path " << *first << " and " << match;
+        results.push_back(std::make_pair(*first, match));
+      }
       first++;
     }
   } else {
     while (first != last) {
-      LOG_TOPIC("d1830", DEBUG, Logger::GRAPHS)
-          << "Found path " << match << " and " << *first;
-      results.push_back(std::make_pair(match, *first));
+      auto res = _validator.validatePath(*first, otherSideValidator);
+      if (!res.isFiltered()) {
+        LOG_TOPIC("d1830", DEBUG, Logger::GRAPHS)
+            << "Found path " << match << " and " << *first;
+        results.push_back(std::make_pair(match, *first));
+      }
       first++;
     }
   }
