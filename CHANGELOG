@@ -1,6 +1,16 @@
 devel
 -----
 
+* Removed server-side JavaScript object `ArangoClusterComm`, so it cannot be
+  used from inside JavaScript operations or Foxx.
+  The `ArangoClusterComm` object was previously used inside a few internal 
+  JavaScript operations, but was not part of the public APIs.
+
+* Restrict access to functions inside JavaScript objects `ArangoAgency` and
+  `ArangoAgent` to JavaScript code that is running in privileged mode, i.e.
+  via the server's emergency console, the `/_admin/execute` API (if turned on)
+  or internal bootstrap scripts.
+
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.

@@ -1,4 +1,4 @@
-/*global ArangoServerState, ArangoClusterComm*/
+/*global ArangoServerState*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,9 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const download = internal.clusterDownload;
 const cluster = require('@arangodb/cluster');
-
 const db = require('@arangodb').db;
 const _ = require('lodash');
 
@@ -345,7 +343,6 @@ function computeStatisticsValues (result, values, attrs) {
   }
 }
 
-
 function computeStatisticsLong (attrs, clusterId) {
   const short = { times: [] };
   let filter = "";
@@ -407,7 +404,7 @@ router.use((req, res, next) => {
 });
 
 router.get('/coordshort', function (req, res) {
-  var merged = { };
+  let merged = { };
 
   const coordinators = global.ArangoClusterInfo.getCoordinators();
   try {
@@ -467,94 +464,10 @@ router.get("/short", function (req, res) {
   const start = req.queryParams.start;
   const clusterId = req.queryParams.DBserver;
   const series = computeStatisticsShort(start, clusterId);
+
   res.json(series);
 })
 .queryParam("start", startOffsetSchema)
 .queryParam("DBserver", clusterIdSchema)
 .summary("Short term history")
 .description("This function is used to get the statistics history.");
-
-
-router.get("/long", function (req, res) {
-  const filter = req.queryParams.filter;
-  const clusterId = req.queryParams.DBserver;
-
-  const attrs = {};
-  const s = filter.split(",");
-
-  for (let i = 0;  i < s.length; i++) {
-    attrs[s[i]] = true;
-  }
-
-  const series = computeStatisticsLong(attrs, clusterId);
-  res.json(series);
-})
-.queryParam("filter", joi.string().required())
-.queryParam("DBserver", clusterIdSchema)
-.summary("Long term history")
-.description("This function is used to get the aggregated statistics history.");
-
-
-router.get("/cluster", function (req, res) {
-  if (!cluster.isCoordinator()) {
-    throw new httperr.Forbidden("only allowed on coordinator");
-  }
-
-  const DBserver = req.queryParams.DBserver;
-  let type = req.queryParams.type;
-  const options = { timeout: 10 };
-
-  if (type !== "short" && type !== "long") {
-    type = "short";
-  }
-
-  let url = "/_admin/statistics/" + type;
-  let sep = "?";
-
-  if (req.queryParams.start) {
-    url += sep + "start=" + encodeURIComponent(req.queryParams.start);
-    sep = "&";
-  }
-
-  if (req.queryParams.filter) {
-    url += sep + "filter=" + encodeURIComponent(req.queryParams.filter);
-    sep = "&";
-  }
-
-  url += sep + "DBserver=" + encodeURIComponent(DBserver);
-
-  const op = ArangoClusterComm.asyncRequest(
-    "GET",
-    "server:" + DBserver,
-    "_system",
-    url,
-    "",
-    {},
-    options
-  );
-
-  const r = ArangoClusterComm.wait(op);
-
-  if (r.status === "RECEIVED") {
-    res.set("content-type", "application/json; charset=utf-8");
-    res.body = r.body;
-  } else if (r.status === "TIMEOUT") {
-    throw new httperr.BadRequest("operation timed out");
-  } else {
-    let body;
-
-    try {
-      body = JSON.parse(r.body);
-    } catch (e) {
-      // noop
-    }
-
-    throw Object.assign(
-      new httperr.BadRequest("error from DBserver '" + DBserver + "', possibly DBserver unknown or down"),
-      {extra: {body}}
-    );
-  }
-})
-.queryParam("DBserver", joi.string().required())
-.summary("Cluster statistics history")
-.description("This function is used to get the complete or partial statistics history of a cluster member.");

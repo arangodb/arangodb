@@ -120,6 +120,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
+      _allowJavaScriptTransactions(true),
       _enableJS(true),
       _nextId(0),
       _stopping(false),
@@ -254,6 +255,16 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::Flags::OnCoordinator,
       arangodb::options::Flags::OnSingle,
       arangodb::options::Flags::Hidden));
+  
+  options->addOption(
+      "--javascript.transactions",
+      "enable JavaScript transactions",
+      new BooleanParameter(&_allowJavaScriptTransactions),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
 
   options->addOption(
       "--javascript.enabled", "enable the V8 JavaScript engine",
@@ -365,6 +376,9 @@ void V8DealerFeature::prepare() {
 }
 
 void V8DealerFeature::start() {
+  TRI_ASSERT(_enableJS);
+  TRI_ASSERT(isEnabled());
+
   if (_copyInstallation) {
     copyInstallationFiles();  // will exit process if it fails
   } else {
