@@ -24,50 +24,94 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <utility>
 #include "AbstractAccumulator.h"
+#include <utility>
 #include "Accumulators.h"
 
 namespace arangodb::pregel::algos::accumulators {
 
+template <typename... Ts>
+struct type_list;
+struct type_any;
+template <template <typename...> typename A, auto V, typename Restriction = type_any>
+struct accum_value_pair;
+template <typename...>
+struct accum_mapping;
+template <auto V, typename T>
+struct value_type_pair {};
+template <typename...>
+struct value_type_mapping;
 
-template<typename... Ts>
+
+
+/*
+ * INSERT NEW ACCUMULATOR HERE.
+ */
+using integral_restriction = type_list<int, double>;
+using bool_restriction = type_list<bool>;
+using no_restriction = type_any;
+using slice_restriction = type_list<VPackSlice>;
+
+using my_accum_mapping =
+    accum_mapping<accum_value_pair<MinAccumulator, AccumulatorType::MIN, integral_restriction>,
+                  accum_value_pair<MaxAccumulator, AccumulatorType::MAX, integral_restriction>,
+                  accum_value_pair<SumAccumulator, AccumulatorType::SUM, integral_restriction>,
+                  accum_value_pair<AndAccumulator, AccumulatorType::AND, bool_restriction>,
+                  accum_value_pair<OrAccumulator, AccumulatorType::OR, bool_restriction>,
+                  accum_value_pair<StoreAccumulator, AccumulatorType::STORE, no_restriction>,
+                  accum_value_pair<ListAccumulator, AccumulatorType::LIST, no_restriction>,
+                  accum_value_pair<CustomAccumulator, AccumulatorType::CUSTOM, slice_restriction>>;
+
+using my_type_mapping =
+    value_type_mapping<value_type_pair<AccumulatorValueType::INT, int>,
+                       value_type_pair<AccumulatorValueType::BOOL, bool>,
+                       value_type_pair<AccumulatorValueType::DOUBLE, double>,
+                       value_type_pair<AccumulatorValueType::STRING, std::string>,
+                       value_type_pair<AccumulatorValueType::SLICE, VPackSlice>>;
+
+
+/*
+ * YOU DO NOT NEED TO UNDERSTAND THE CODE BELOW.
+ */
+
+
+
+template <typename... Ts>
 struct type_list {
-  template<typename T>
+  template <typename T>
   static constexpr bool contains = (std::is_same_v<Ts, T> || ...);
 };
 
 struct type_any {
-  template<typename>
+  template <typename>
   static constexpr bool contains = true;
 };
 
-template<template <typename...> typename A, auto V, typename Restriction = type_any>
-struct accum_value_pair{
-  template<typename... Ts>
+template <template <typename...> typename A, auto V, typename Restriction>
+struct accum_value_pair {
+  template <typename... Ts>
   using instance = A<Ts...>;
   static constexpr auto value = V;
 };
 
-template<typename...>
-struct accum_mapping;
-template<typename E, template <typename> typename... accums, E... values, typename... Rs>
+template <typename E, template <typename> typename... accums, E... values, typename... Rs>
 struct accum_mapping<accum_value_pair<accums, values, Rs>...> {
   static constexpr auto size = sizeof...(values);
 
-  template<typename T, typename B, typename... Ps>
+  template <typename T, typename B, typename... Ps>
   static auto make_unique(E type, Ps&&... ps) -> std::unique_ptr<B> {
     std::unique_ptr<B> result = nullptr;
 
-    ([&]{
-      if(type == values) {
+    ([&] {
+      if (type == values) {
         if constexpr (Rs::template contains<T>) {
           result = std::make_unique<accums<T>>(std::forward<Ps>(ps)...);
           return true;
         }
       }
       return false;
-    }() || ...);
+    }() ||
+     ...);
 
     return result;
   }
@@ -85,17 +129,9 @@ struct accum_mapping<accum_value_pair<accums, values, Rs>...> {
   }
 };
 
-
-
-template<auto V, typename T>
-struct value_type_pair {};
-
-template<typename...>
-struct value_type_mapping;
-
-template<typename E, typename Type, E Value, typename... Types, E... Values>
+template <typename E, typename Type, E Value, typename... Types, E... Values>
 struct value_type_mapping<value_type_pair<Value, Type>, value_type_pair<Values, Types>...> {
-  template<typename T>
+  template <typename T>
   struct type_tag {
     static constexpr bool found = true;
     using type = T;
@@ -105,51 +141,44 @@ struct value_type_mapping<value_type_pair<Value, Type>, value_type_pair<Values, 
     static constexpr bool found = false;
   };
 
-  template<typename F>
+  /**
+   * Will invoke `f` either with a type_tag<T> where is the type that translates
+   * from E. Or type_tag_not_found, if it was not found.
+   * @tparam F
+   * @param value
+   * @param f
+   * @return
+   */
+  template <typename F>
   static auto invoke(E value, F&& f) {
     if (value == Value) {
       return std::forward<F>(f)(type_tag<Type>{});
     } else if constexpr (sizeof...(Values) > 0) {
-      return value_type_mapping<value_type_pair<Values, Types>...>
-      ::invoke(value, std::forward<F>(f));
+      return value_type_mapping<value_type_pair<Values, Types>...>::invoke(
+          value, std::forward<F>(f));
     } else {
       return std::forward<F>(f)(type_tag_not_found{});
     }
   }
 };
 
-
-using integral_restriction = type_list<int, double>;
-using bool_restriction = type_list<bool>;
-using no_restriction = type_any;
-using slice_restriction = type_list<VPackSlice>;
-
-using my_accum_mapping = accum_mapping<
-    accum_value_pair<MinAccumulator, AccumulatorType::MIN, integral_restriction>,
-    accum_value_pair<MaxAccumulator, AccumulatorType::MAX, integral_restriction>,
-    accum_value_pair<SumAccumulator, AccumulatorType::SUM, integral_restriction>,
-    accum_value_pair<AndAccumulator, AccumulatorType::AND, bool_restriction>,
-    accum_value_pair<OrAccumulator, AccumulatorType::OR, bool_restriction>,
-    accum_value_pair<StoreAccumulator, AccumulatorType::STORE, no_restriction>,
-    accum_value_pair<ListAccumulator, AccumulatorType::LIST, no_restriction>,
-    accum_value_pair<CustomAccumulator, AccumulatorType::CUSTOM, slice_restriction>
->;
-
-using my_type_mapping = value_type_mapping<
-    value_type_pair<AccumulatorValueType::INT, int>,
-    value_type_pair<AccumulatorValueType::BOOL, bool>,
-    value_type_pair<AccumulatorValueType::DOUBLE, double>,
-    value_type_pair<AccumulatorValueType::STRING, std::string>,
-    value_type_pair<AccumulatorValueType::SLICE, VPackSlice>
->;
-
-
+/**
+ * Instantiates the correct type of accumulator.
+ * @param options
+ * @param customDefinitions
+ * @return unique pointer to AccumulatorBase
+ */
 std::unique_ptr<AccumulatorBase> instantiateAccumulator(AccumulatorOptions const& options,
                                                         CustomAccumulatorDefinitions const& customDefinitions) {
+  /*
+   * WARNING: if you want to add a new accumulator see definition of `my_accum_mapping`. Just put it in there
+   * and everything will happen automagically.
+   */
   auto ptr = my_type_mapping::invoke(options.valueType, [&](auto type_tag) -> std::unique_ptr<AccumulatorBase> {
     using used_type = decltype(type_tag);
     if constexpr (used_type::found) {
-      return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(options.type, options, customDefinitions);
+      return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(
+          options.type, options, customDefinitions);
     }
 
     return nullptr;
@@ -158,6 +187,11 @@ std::unique_ptr<AccumulatorBase> instantiateAccumulator(AccumulatorOptions const
   return ptr;
 }
 
+/**
+ * Returns true if the given combination of type and accumulator is valid.
+ * @param options
+ * @return
+ */
 bool isValidAccumulatorOptions(const AccumulatorOptions& options) {
   return my_type_mapping::invoke(options.valueType, [&](auto type_tag) -> bool {
     using used_type = decltype(type_tag);
@@ -169,4 +203,4 @@ bool isValidAccumulatorOptions(const AccumulatorOptions& options) {
   });
 }
 
-}
+}  // namespace arangodb::pregel::algos::accumulators
