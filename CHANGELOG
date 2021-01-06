@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix a bug in the agency Supervision which could lead to removeFollower
+  jobs constantly being created and immediately stopped again.
+
+* Limit additional replicas in failover cases to +2.
+
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
