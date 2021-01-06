@@ -2284,7 +2284,7 @@ void Supervision::enforceReplication() {
           }
           size_t actualReplicationFactor =
               1 + Job::countGoodOrBadServersInList(snapshot(), onlyFollowers.slice());
-          // leader plus GOOD followers
+          // leader plus GOOD or BAD followers (not FAILED)
           size_t apparentReplicationFactor = shard.slice().length();
 
           if (actualReplicationFactor != replicationFactor ||
@@ -2295,9 +2295,8 @@ void Supervision::enforceReplication() {
             auto const& currentServers = currentDBs.hasAsArray(curPath);
             size_t inSyncReplicationFactor = actualReplicationFactor;
             if (currentServers.second) {
-              if (currentServers.first.length() < actualReplicationFactor) {
-                inSyncReplicationFactor = currentServers.first.length();
-              }
+              // Only count non-FAILED servers:
+              inSyncReplicationFactor = (std::min)(Job::countGoodOrBadServersInList(snapshot(), currentServers.first), actualReplicationFactor);
             }
 
             // Check that there is not yet an addFollower or removeFollower
@@ -2326,7 +2325,8 @@ void Supervision::enforceReplication() {
               found = true;
             }
             if (!found) {
-              if (actualReplicationFactor < replicationFactor) {
+              if (actualReplicationFactor < replicationFactor &&
+                  apparentReplicationFactor < 2 + replicationFactor) {
                 AddFollower(snapshot(), _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .create();
