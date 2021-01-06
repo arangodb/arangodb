@@ -64,7 +64,6 @@ State::State(application_features::ApplicationServer& server)
     _agent(nullptr),
     _vocbase(nullptr),
     _ready(false),
-    _collectionsChecked(false),
     _collectionsLoaded(false),
     _nextCompactionAfter(0),
     _lastCompactionAt(0),
@@ -734,42 +733,36 @@ log_t State::lastLog() const {
 bool State::configure(Agent* agent) {
   _agent = agent;
   _nextCompactionAfter = _agent->config().compactionStepSize();
-  _collectionsChecked = false;
   return true;
-}
-
-/// Check if collections exist otherwise create them
-bool State::checkCollections() {
-  if (!_collectionsChecked) {
-    _collectionsChecked = checkCollection("log") && checkCollection("election");
-  }
-  return _collectionsChecked;
-}
-
-/// Create agency collections
-bool State::createCollections() {
-  if (!_collectionsChecked) {
-    return (createCollection("log") && createCollection("election") &&
-            createCollection("compact"));
-  }
-  return _collectionsChecked;
 }
 
 /// Check collection by name
 bool State::checkCollection(std::string const& name) {
-  if (!_collectionsChecked) {
-    return (_vocbase->lookupCollection(name) != nullptr);
+  return (_vocbase->lookupCollection(name) != nullptr);
+}
+
+/// Drop
+void State::dropCollection(std::string const& colName) {
+  try {
+    auto col = _vocbase->lookupCollection(colName);
+    if (col == nullptr) {
+      return;
+    }
+    auto res = _vocbase->dropCollection(col->id(), false, -1.0);
+    if (res.fail()) {
+      LOG_TOPIC("ba841", FATAL, Logger::AGENCY)
+        << "unable to drop collection '" << colName << "': " << res.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("69f4c", FATAL, Logger::AGENCY)
+      << "unable to drop collection '" << colName << "': " << e.what();
+    FATAL_ERROR_EXIT();
   }
-  return true;
 }
 
 /// Create collection by name
-bool State::createCollection(std::string const& name) {
-  if (_vocbase->lookupCollection(name) != nullptr) {
-    // collection already exists. nothing to do
-    return true;
-  }
-  
+bool State::createCollection(std::string const& name, bool drop) {
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -778,8 +771,11 @@ bool State::createCollection(std::string const& name) {
     body.add("isSystem", VPackValue(TRI_vocbase_t::IsSystemName(name)));
   }
 
-  auto collection = _vocbase->createCollection(body.slice());
+  if (drop && _vocbase->lookupCollection(name) != nullptr) {
+    dropCollection(name);
+  }
 
+  auto collection = _vocbase->createCollection(body.slice());
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
   }
@@ -823,19 +819,38 @@ bool State::loadPersisted() {
   TRI_ASSERT(_vocbase != nullptr);
 
   if (!checkCollection("configuration")) {
-    createCollection("configuration");
+    createCollection("configuration", false);
   }
 
   loadOrPersistConfiguration();
 
-  if (checkCollection("log") && checkCollection("compact")) {
-    bool lc = loadCompacted();
-    bool lr = loadRemaining();
-    return (lc && lr);
+  if (!checkCollection("election")) {
+    createCollection("election", false);
   }
 
-  LOG_TOPIC("9e72a", DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
-  createCollections();
+  if (checkCollection("log") && checkCollection("compact")) {
+    index_t lastCompactionIndex = loadCompacted();
+    if (loadRemaining(lastCompactionIndex)) {
+      return true;
+    } else {
+      LOG_TOPIC("1a476", INFO, Logger::AGENCY)
+        << "Non matching compaction and log indexes. Dropping both collections";
+      _log.clear();
+      _cur = 0;
+      dropCollection("log");
+      dropCollection("compact");
+
+    }
+  }
+
+  LOG_TOPIC("9e72a", DEBUG, Logger::AGENCY) << "No persisted log: creating collections.";
+
+  // This is a combined create of logs and compact, as otherwise inconsistencies
+  // in log and compact cannot be mitigated after this point. We are here because
+  // of the above missing / incomplete log / compaction. Including the case of only
+  // one of the two collections being present.
+  createCollection("log", true);
+  createCollection("compact", true);
 
   return true;
 }
@@ -894,7 +909,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
 }
 
 /// Load compaction collection
-bool State::loadCompacted() {
+index_t State::loadCompacted() {
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
@@ -931,11 +946,12 @@ bool State::loadCompacted() {
       _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
+      _cur = 0;
       LOG_TOPIC("bc330", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
   }
 
-  return true;
+  return _cur;
 }
 
 /// Load persisted configuration
@@ -1045,11 +1061,28 @@ bool State::loadOrPersistConfiguration() {
   return true;
 }
 
-/// Load beyond last compaction
-bool State::loadRemaining() {
+/// Load beyond last compaction and check if compaction index
+/// matches any log entry
+bool State::loadRemaining(index_t cind) {
+  index_t lastIndex;
+  {
+    // read current index initially, which should be the last compacted
+    // state. we can this as the lower bound of log entries we will be
+    // interested in, because we will skip anything with a lower index
+    // value anyway.
+    // note that further down below we will fetch _cur once again, and
+    // that it may have moved forward then. this does not matter, because
+    // we are using the initial _cur value only as a lower bound in the
+    // AQL query, but use the second _cur value for the actual, per-log
+    // entry filtering.
+    MUTEX_LOCKER(logLock, _logLock);
+    lastIndex = _cur;
+  }
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
+  bool match = false;
 
   std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
 
@@ -1071,7 +1104,7 @@ bool State::loadRemaining() {
     std::string clientId;
     // We know that _cur has been set in loadCompacted to the index of the
     // snapshot that was loaded or to 0 if there is no snapshot.
-    index_t lastIndex = _cur;
+    lastIndex = _cur;
 
     for (auto const& i : VPackArrayIterator(result)) {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
@@ -1110,12 +1143,15 @@ bool State::loadRemaining() {
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
                   ii.get("term").getNumber<uint64_t>(), tmp, clientId));
+          if (index == cind) {
+            match = true;
+          }
           lastIndex = index;
         }
       }
     }
   }
-  if (_log.empty()) {
+  if (_log.empty() || !match) {
     return false;
   }
 
