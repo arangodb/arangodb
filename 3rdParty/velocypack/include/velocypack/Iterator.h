@@ -26,6 +26,7 @@
 #define VELOCYPACK_ITERATOR_H 1
 
 #include <iosfwd>
+#include <tuple>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -49,8 +50,8 @@ class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
 
   explicit ArrayIterator(Slice slice)
       : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
-    
-    uint8_t const head = slice.head();     
+
+    uint8_t const head = slice.head();
 
     if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Array)) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
@@ -102,13 +103,13 @@ class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
     // be performed by Slice::getNthOffset()
     return Slice(_slice.begin() + _slice.getNthOffset(_position));
   }
-  
-  ArrayIterator begin() const { 
+
+  ArrayIterator begin() const {
     auto it = ArrayIterator(*this);
     it._position = 0;
     return it;
   }
-  
+
   ArrayIterator end() const {
     auto it = ArrayIterator(*this);
     it._position = it._size;
@@ -148,16 +149,35 @@ class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
       } else {
         _position += count;
         _current = _slice.at(_position).start();
-      } 
+      }
     }
   }
-    
+
   inline void reset() {
     _position = 0;
     _current = _first;
   }
 
+  template<typename... Ts>
+  std::tuple<Ts...> unpackPrefixAsTuple() {
+    return unpackTupleInternal(unpack_helper<Ts...>{});
+  }
+
  private:
+  template<typename...>
+  struct unpack_helper {};
+
+  template<typename T, typename... Ts>
+  std::tuple<T, Ts...> unpackTupleInternal(unpack_helper<T, Ts...>) {
+    auto slice = value(); // this does out-of-bounds checking
+    next();
+    return std::tuple_cat(std::make_tuple(slice.extract<T>()), unpackTupleInternal(unpack_helper<Ts...>{}));
+  }
+
+  std::tuple<> unpackTupleInternal(unpack_helper<>) const {
+    return std::make_tuple<>();
+  }
+
   Slice _slice;
   ValueLength _size;
   ValueLength _position;
@@ -183,8 +203,8 @@ class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIte
   // index. The default `false` is to use the index if it is there.
   explicit ObjectIterator(Slice slice, bool useSequentialIteration = false)
       : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
-    
-    uint8_t const head = slice.head();     
+
+    uint8_t const head = slice.head();
 
     if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Object)) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
@@ -240,8 +260,8 @@ class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIte
     Slice key(_slice.getNthKeyUntranslated(_position));
     return ObjectPair(key.makeKey(), Slice(key.begin() + key.byteSize()));
   }
-  
-  ObjectIterator begin() const { 
+
+  ObjectIterator begin() const {
     auto it = ObjectIterator(*this);
     it._position = 0;
     return it;
@@ -288,7 +308,7 @@ class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIte
   inline bool isFirst() const noexcept { return (_position == 0); }
 
   inline bool isLast() const noexcept { return (_position + 1 >= _size); }
-  
+
   inline void reset() {
     _position = 0;
     _current = _first;
