@@ -127,7 +127,6 @@ void GraphFormat::copyVertexData(std::string const& documentId,
     parser.parse(vertexDocument.toJson());
   }
 
-  // TODO: change GraphFormat interface here. Work with builder instead of Slice
   if (_dataAccess.readVertex) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
