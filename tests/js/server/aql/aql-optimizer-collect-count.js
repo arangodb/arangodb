@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, assertNull, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -94,7 +94,7 @@ function optimizerCountTestSuite () {
         assertEqual("count", collectNode.collectOptions.method);
         assertEqual(1, collectNode.aggregates.length);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
-        clusterCollectNode = plan.nodes[5];
+        let clusterCollectNode = plan.nodes[5];
         assertEqual("CollectNode", clusterCollectNode.type);
         assertEqual("sorted", clusterCollectNode.collectOptions.method);
         assertEqual(1, clusterCollectNode.aggregates.length);
