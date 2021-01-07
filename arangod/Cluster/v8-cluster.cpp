@@ -131,6 +131,13 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() < 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -160,7 +167,6 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     shouldThrow = TRI_ObjectToBoolean(isolate, args[5]);
   }
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
@@ -186,6 +192,13 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
@@ -193,7 +206,6 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.createDirectory(key);
 
@@ -234,6 +246,13 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("increaseVersion(<key>)");
@@ -241,7 +260,6 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   if (!comm.increaseVersion(key)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -262,13 +280,19 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
   }
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.getValues(key);
 

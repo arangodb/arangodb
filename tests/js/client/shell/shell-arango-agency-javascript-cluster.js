@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
+/* global assertEqual, assertTrue, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -24,33 +24,43 @@
 ///
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
+/// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-if (getOptions === true) {
-  return {
-    'javascript.allow-admin-execute': 'false',
-  };
-}
-
 const jsunity = require('jsunity');
+const errors = require('@arangodb').errors;
+const db = require('internal').db;
+const FoxxManager = require('@arangodb/foxx/manager');
+const path = require('path');
+const internal = require('internal');
+const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'arango-agency');
+
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function testSuite() {
-  const errors = require('@arangodb').errors;
+  const cn = "UnitTestsTransaction";
 
   return {
-    setUp: function() {},
-    tearDown: function() {},
+    testAccessFromFoxx : function() {
+      const mount = '/test';
 
-    testCanExecuteAction : function() {
-      let data = "return 'test!'";
-      let result = arango.POST("/_admin/execute", data);
-      assertTrue(result.error);
-      assertEqual(404, result.code);
+      FoxxManager.install(basePath, mount);
+      try { 
+        let res = arango.GET(`/_db/_system/${mount}/run`);
+        let results = res.results;
+        let cases = Object.keys(results);
+        assertEqual(19, cases.length);
+        cases.forEach((c) => {
+          assertTrue(results[c], results);
+        });
+      } finally {
+        FoxxManager.uninstall(mount, {force: true});
+      } 
     },
-    
+
   };
 }
+
 jsunity.run(testSuite);
 return jsunity.done();
