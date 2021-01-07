@@ -1066,8 +1066,8 @@ class Slice {
     }
     auto offset = getNthOffset(0);
     auto length = arrayLength();
-    if (length < sizeof...(Ts)) {
-      throw Exception(Exception::IndexOutOfBounds);
+    if (length != sizeof...(Ts)) {
+      throw Exception(Exception::BadTupleSize);
     }
 
     return unpackTupleInternal(unpack_helper<Ts...>{}, offset);
@@ -1410,6 +1410,13 @@ template<typename T>
 struct Extractor<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
   static T extract(Slice slice) {
     return slice.template getNumericValue<T>();
+  }
+};
+
+template<typename... Ts>
+struct Extractor<std::tuple<Ts...>> {
+  static std::tuple<Ts...> extract(Slice slice) {
+    return slice.unpackTuple<Ts...>();
   }
 };
 
