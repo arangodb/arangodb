@@ -64,9 +64,6 @@ class PathStore {
   explicit PathStore(arangodb::ResourceMonitor& resourceMonitor);
   ~PathStore();
 
-  // @brief Method to verify whether path is needed
-  auto testPath(Step) -> ValidationResult;
-
   // @brief reset
   void reset();
 

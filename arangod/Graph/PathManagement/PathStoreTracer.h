@@ -54,9 +54,6 @@ class PathStoreTracer {
   explicit PathStoreTracer(arangodb::ResourceMonitor& resourceMonitor);
   ~PathStoreTracer();
 
-  // @brief Method to verify whether path is needed
-  auto testPath(Step) -> ValidationResult;
-
   // @brief reset
   void reset();
 

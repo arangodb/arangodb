@@ -48,13 +48,6 @@ PathStoreTracer<PathStoreImpl>::~PathStoreTracer() {
 }
 
 template <class PathStoreImpl>
-auto PathStoreTracer<PathStoreImpl>::testPath(Step step) -> ValidationResult {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["testPath"].addTiming(TRI_microtime() - start));
-  return _impl.testPath(step);
-}
-
-template <class PathStoreImpl>
 void PathStoreTracer<PathStoreImpl>::reset() {
   double start = TRI_microtime();
   TRI_DEFER(_stats["reset"].addTiming(TRI_microtime() - start));

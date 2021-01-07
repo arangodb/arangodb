@@ -146,12 +146,6 @@ auto PathStore<Step>::visitReversePath(Step const& step,
   }
 }
 
-template <class Step>
-auto PathStore<Step>::testPath(Step step) -> ValidationResult {
-  LOG_TOPIC("2ff8d", TRACE, Logger::GRAPHS) << "<PathStore> Testing path:";
-  return ValidationResult{ValidationResult::Type::TAKE};
-}
-
 template class PathStore<SingleServerProvider::Step>;
 template void PathStore<SingleServerProvider::Step>::buildPath<SingleServerProvider>(
     SingleServerProvider::Step const& vertex,
