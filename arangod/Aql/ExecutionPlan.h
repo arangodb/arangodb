@@ -347,9 +347,6 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST COLLECT node
   ExecutionNode* fromNodeCollect(ExecutionNode*, AstNode const*);
 
-  /// @brief create an execution plan element from an AST COLLECT node, COUNT
-  ExecutionNode* fromNodeCollectCount(ExecutionNode*, AstNode const*);
-
   /// @brief create an execution plan element from an AST LIMIT node
   ExecutionNode* fromNodeLimit(ExecutionNode*, AstNode const*);
 

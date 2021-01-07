@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, assertNull, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -78,6 +78,35 @@ function optimizerCountTestSuite () {
 
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE doc = MIN(i.group) WITH COUNT INTO group RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE doc = MIN(i.group) WITH COUNT INTO group RETURN 1");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountIsTransformedToAggregate : function () {
+      var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO cnt RETURN cnt";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var collectNode = plan.nodes[2];
+      assertEqual("CollectNode", collectNode.type);
+      if (isCluster) {
+        assertEqual("count", collectNode.collectOptions.method);
+        assertEqual(1, collectNode.aggregates.length);
+        assertEqual("LENGTH", collectNode.aggregates[0].type);
+        let clusterCollectNode = plan.nodes[5];
+        assertEqual("CollectNode", clusterCollectNode.type);
+        assertEqual("sorted", clusterCollectNode.collectOptions.method);
+        assertEqual(1, clusterCollectNode.aggregates.length);
+        assertEqual("SUM", clusterCollectNode.aggregates[0].type);
+        assertEqual("cnt", clusterCollectNode.aggregates[0].outVariable.name);
+        assertEqual(clusterCollectNode.aggregates[0].inVariable.name, collectNode.aggregates[0].outVariable.name);
+      } else {
+        assertEqual("count", collectNode.collectOptions.method);
+        assertEqual(1, collectNode.aggregates.length);
+        assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
+        assertEqual("LENGTH", collectNode.aggregates[0].type);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,7 +501,7 @@ function optimizerCountTestSuite () {
     // be used without group variables.
     testCollectSortedUndefined: function () {
       const randomDocumentID = db["UnitTestsCollection"].any()._id;
-      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE count = count(i) RETURN {count, start}';
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE sum = SUM(i) RETURN {sum, start}';
       const bindParams = {};
       const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
 
@@ -487,17 +516,18 @@ function optimizerCountTestSuite () {
       // expectation is that we exactly get one result
       // count will be 0, start will be undefined
       assertEqual(1, results.length);
-      assertEqual(0, results[0].count);
+      assertNull(results[0].sum);
       assertEqual(undefined, results[0].start);
     },
 
     testCollectCountUndefined: function () {
       const randomDocumentID = db["UnitTestsCollection"].any()._id;
-      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT WITH COUNT INTO count RETURN {count, start}';
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE count = count(i) RETURN {count, start}';
       const bindParams = {};
       const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
 
       const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
+
       assertEqual(
         [ "SingletonNode", "CalculationNode", "CalculationNode",
           "EnumerateListNode", "CollectNode", "CalculationNode", "ReturnNode" ],
@@ -511,7 +541,6 @@ function optimizerCountTestSuite () {
       assertEqual(0, results[0].count);
       assertEqual(undefined, results[0].start);
     }
-
   };
 }
 

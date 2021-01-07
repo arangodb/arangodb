@@ -1,6 +1,16 @@
 devel
 -----
 
+* `COLLECT WITH COUNT INTO x` and `COLLECT var = expr WITH COUNT INTO x` are now
+  internally transformed into `COLLECT AGGREGATE x = LENGTH(null)` and
+  `COLLECT var = expr AGGREGATE x = LENGTH(null)` respectively. This not only
+  simplified the code, but also allows more query optimizations:
+    - If the variable in `COLLECT WITH COUNT INTO var` is not used, the implicit
+      aggregator is now removed.
+    - All queries of the form `COLLECT AGGREGATE x = LENGTH(_)` are now executed
+      using the count executor, which can result in significantly improved
+      performance.
+
 * Minor and rare AQL performance improvement, in nested subqueries:
   LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
   where sq1 produces no data (e.g. by the above filter) for sq2,
