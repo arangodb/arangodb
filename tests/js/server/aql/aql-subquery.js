@@ -367,7 +367,7 @@ function ahuacatlSubqueryTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(expected, actual);
-        assertEqual(db[colName].count(), 1);
+        assertEqual(db[colName].count(), 0);
       } finally {
         db._drop(colName);
       }

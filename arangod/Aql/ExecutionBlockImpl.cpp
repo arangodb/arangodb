@@ -1674,6 +1674,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
 
         if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
+          // Nothing relevant fetched for this Executor, we are not going to ask it again.
+          localExecutorState = ExecutorState::DONE;
           _execState = ExecState::SHADOWROWS;
         } else {
           _execState = ExecState::CHECKCALL;
