@@ -103,7 +103,6 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::
     return false;
   }
 
-  // TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid
@@ -173,7 +172,6 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::
     return false;
   }
 
-  // TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid

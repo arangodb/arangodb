@@ -91,15 +91,16 @@ class ResourceUsageScope {
   explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value);
 
   ~ResourceUsageScope();
+  
+  /// @brief steal responsibility for decreasing the memory 
+  /// usage on destruction
+  void steal() noexcept;
 
+ private:
   /// @brief track <value> bytes of memory, may throw!
   void increase(size_t value);
   
   void decrease(size_t value) noexcept;
-
-  /// @brief steal responsibility for decreasing the memory 
-  /// usage on destruction
-  void steal() noexcept;
 
  private:
   ResourceMonitor& _resourceMonitor;

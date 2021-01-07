@@ -64,6 +64,10 @@ ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t 
 ResourceUsageScope::~ResourceUsageScope() {
   decrease(_value);
 }
+
+void ResourceUsageScope::steal() noexcept {
+  _value = 0;
+}
   
 void ResourceUsageScope::increase(size_t value) {
   if (value > 0) {
@@ -76,8 +80,4 @@ void ResourceUsageScope::decrease(size_t value) noexcept {
   if (value > 0) {
     _resourceMonitor.decreaseMemoryUsage(value);
   }
-}
-
-void ResourceUsageScope::steal() noexcept {
-  _value = 0;
 }

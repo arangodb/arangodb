@@ -850,14 +850,14 @@ Result RocksDBCollection::read(transaction::Methods* trx,
   return res;
 }
 
-// read using a token!
+// read using a local document id
 bool RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb) const {
   return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
 }
 
-// read using a token!
+// read using a local document id
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
