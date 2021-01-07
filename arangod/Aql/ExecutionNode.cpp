@@ -292,11 +292,13 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
         }
       }
 
+      // TODO - this can be removed in 3.9
+      bool count = slice.get("count").getBoolean();
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
       auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
                                   plan->getAst()->variables()->variables(false), groupVariables,
-                                  aggregateVariables, isDistinctCommand);
+                                  aggregateVariables, isDistinctCommand, count);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();

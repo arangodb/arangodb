@@ -52,9 +52,36 @@ CollectNode::CollectNode(
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables,
-    bool isDistinctCommand)
+    bool isDistinctCommand, bool count)
     : ExecutionNode(plan, base),
       _options(base),
+      _groupVariables(groupVariables),
+      _aggregateVariables(aggregateVariables),
+      _expressionVariable(expressionVariable),
+      _outVariable(outVariable),
+      _keepVariables(keepVariables),
+      _variableMap(variableMap),
+      _isDistinctCommand(isDistinctCommand),
+      _specialized(false) {
+      // TODO - this is only relevant for backwards compatibility in cluster upgrade 3.7 -> 3.8
+      // and can be removed in 3.9.
+      if (count) {
+        TRI_ASSERT(aggregateVariables.empty());
+        _aggregateVariables.push_back({outVariable, nullptr, "COUNT"});
+        _outVariable = nullptr;
+      }
+    }
+
+CollectNode::CollectNode(
+    ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
+    std::vector<GroupVarInfo> const& groupVariables,
+    std::vector<AggregateVarInfo> const& aggregateVariables,
+    Variable const* expressionVariable, Variable const* outVariable,
+    std::vector<Variable const*> const& keepVariables,
+    std::unordered_map<VariableId, std::string const> const& variableMap,
+    bool isDistinctCommand)
+    : ExecutionNode(plan, id),
+      _options(options),
       _groupVariables(groupVariables),
       _aggregateVariables(aggregateVariables),
       _expressionVariable(expressionVariable),
@@ -125,6 +152,7 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
   }
 
+  // TODO - this can be removed in 3.9
   nodes.add("count", VPackValue(false));
   nodes.add("isDistinctCommand", VPackValue(_isDistinctCommand));
   nodes.add("specialized", VPackValue(_specialized));
@@ -684,25 +712,6 @@ CostEstimate CollectNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
-
-CollectNode::CollectNode(
-    ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
-    std::vector<GroupVarInfo> const& groupVariables,
-    std::vector<AggregateVarInfo> const& aggregateVariables,
-    Variable const* expressionVariable, Variable const* outVariable,
-    std::vector<Variable const*> const& keepVariables,
-    std::unordered_map<VariableId, std::string const> const& variableMap,
-    bool isDistinctCommand)
-    : ExecutionNode(plan, id),
-      _options(options),
-      _groupVariables(groupVariables),
-      _aggregateVariables(aggregateVariables),
-      _expressionVariable(expressionVariable),
-      _outVariable(outVariable),
-      _keepVariables(keepVariables),
-      _variableMap(variableMap),
-      _isDistinctCommand(isDistinctCommand),
-      _specialized(false) {}
 
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
 
