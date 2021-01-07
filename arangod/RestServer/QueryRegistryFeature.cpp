@@ -52,28 +52,28 @@ uint64_t defaultMemoryLimit(uint64_t available) {
   // this function will produce the following results for some
   // common available memory values:
   //
-  //    Available memory:    134217728    (128MB)  Limit:            0      (0MB), %mem:  0.0
-  //    Available memory:    268435456    (256MB)  Limit:            0      (0MB), %mem:  0.0
-  //    Available memory:    536870912    (512MB)  Limit:    201326592    (192MB), %mem: 37.5
-  //    Available memory:    805306368    (768MB)  Limit:    402653184    (384MB), %mem: 50.0
-  //    Available memory:   1073741824   (1024MB)  Limit:    603979776    (576MB), %mem: 56.2
-  //    Available memory:   2147483648   (2048MB)  Limit:   1288490189   (1228MB), %mem: 60.0
-  //    Available memory:   4294967296   (4096MB)  Limit:   2576980377   (2457MB), %mem: 60.0
-  //    Available memory:   8589934592   (8192MB)  Limit:   5153960755   (4915MB), %mem: 60.0
-  //    Available memory:  17179869184  (16384MB)  Limit:  10307921511   (9830MB), %mem: 60.0
-  //    Available memory:  25769803776  (24576MB)  Limit:  15461882265  (14745MB), %mem: 60.0
-  //    Available memory:  34359738368  (32768MB)  Limit:  20615843021  (19660MB), %mem: 60.0
-  //    Available memory:  42949672960  (40960MB)  Limit:  25769803776  (24576MB), %mem: 60.0
-  //    Available memory:  68719476736  (65536MB)  Limit:  41231686041  (39321MB), %mem: 60.0
-  //    Available memory: 103079215104  (98304MB)  Limit:  61847529063  (58982MB), %mem: 60.0
-  //    Available memory: 137438953472 (131072MB)  Limit:  82463372083  (78643MB), %mem: 60.0
-  //    Available memory: 274877906944 (262144MB)  Limit: 164926744167 (157286MB), %mem: 60.0
-  //    Available memory: 549755813888 (524288MB)  Limit: 329853488333 (314572MB), %mem: 60.0
+  //    Available memory:    134217728    (128MiB)  Limit:            0      (0MiB), %mem:  0.0
+  //    Available memory:    268435456    (256MiB)  Limit:            0      (0MiB), %mem:  0.0
+  //    Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
+  //    Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
+  //    Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
+  //    Available memory:   2147483648   (2048MiB)  Limit:   1288490189   (1228MiB), %mem: 60.0
+  //    Available memory:   4294967296   (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0
+  //    Available memory:   8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
+  //    Available memory:  17179869184  (16384MiB)  Limit:  10307921511   (9830MiB), %mem: 60.0
+  //    Available memory:  25769803776  (24576MiB)  Limit:  15461882265  (14745MiB), %mem: 60.0
+  //    Available memory:  34359738368  (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0
+  //    Available memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB), %mem: 60.0
+  //    Available memory:  68719476736  (65536MiB)  Limit:  41231686041  (39321MiB), %mem: 60.0
+  //    Available memory: 103079215104  (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0
+  //    Available memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB), %mem: 60.0
+  //    Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
+  //    Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
   
   // 20% of RAM will be considered as a reserve
   uint64_t reserve = static_cast<uint64_t>(available * 0.2);
 
-  // minimum reserve memory is 256MB
+  // minimum reserve memory is 256MiB
   reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
 
   if (available <= reserve) {
