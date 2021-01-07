@@ -497,6 +497,10 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
     if (collections.isObject()) {
       for (auto collection : VPackObjectIterator(collections)) {
         TRI_ASSERT(collection.value.isObject());
+        if (!collection.value.get(SHARDS).isObject()) {
+          continue;
+        }
+
         for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
           shardMap.add(shard.key.stringRef(), shard.value);
         }
