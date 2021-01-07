@@ -126,14 +126,17 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   // required for AuthenticationFeature with USE_ENTERPRISE
   server.addFeature<arangodb::LdapFeature>(false);
 #endif
-
-  arangodb::DatabaseFeature::DATABASE = &server.getFeature<arangodb::DatabaseFeature>();
 }
 
 static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<arangodb::application_features::ClusterFeaturePhase>(false);
   server.addFeature<arangodb::ClusterFeature>(false);
+ 
+  // fake the exit code with which unresolved futures are returned on
+  // shutdown. if we don't do this lots of places in ClusterInfo will
+  // report failures during testing
+  server.getFeature<ClusterFeature>().setSyncerShutdownCode(TRI_ERROR_NO_ERROR);
 }
 
 static void SetupCommunicationFeaturePhase(MockServer& server) {
@@ -302,6 +305,16 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
   return *system;
 }
 
+MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
+  // setup required application features
+  SetupGreetingsPhase(*this);
+  addFeature<arangodb::EngineSelectorFeature>(false);
+
+  if (start) {
+    startFeatures();
+  }
+}
+
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
@@ -418,7 +431,7 @@ MockClusterServer::MockClusterServer() : MockServer() {
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
 
-  arangodb::network::ConnectionPool::Config config;
+  arangodb::network::ConnectionPool::Config config(_server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
@@ -434,7 +447,7 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  arangodb::network::ConnectionPool::Config poolConfig;
+  arangodb::network::ConnectionPool::Config poolConfig(_server.getFeature<MetricsFeature>());
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;

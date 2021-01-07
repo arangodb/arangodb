@@ -81,7 +81,12 @@ class State {
   ///        Default: [first, last]
   std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
+  /// @brief load a compacted snapshot, returns the number of entries read.
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
+
+  /// @brief dump the entire in-memory state to velocypacj
+  /// should be used for testing only
+  void toVelocyPack(velocypack::Builder& builder) const;
 
  private:
   /// @brief Get complete log entries bound by lower and upper bounds.
@@ -244,8 +249,8 @@ class State {
   /// @brief Create collections
   bool createCollections();
 
-  /// @brief Create collection
-  bool createCollection(std::string const& name);
+  /// @brief Create collection if it does not yet exist
+  bool ensureCollection(std::string const& name);
 
   /// @brief Compact persisted logs
   bool compactPersisted(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);

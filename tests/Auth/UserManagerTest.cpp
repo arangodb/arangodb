@@ -53,17 +53,15 @@ class UserManagerTest : public ::testing::Test {
   application_features::ApplicationServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
-  Mock<DatabaseFeature> databaseFeatureMock;
-  DatabaseFeature& databaseFeature;
   auth::UserManager um;
 
   UserManagerTest()
       : server(nullptr, nullptr),
         state(ServerState::instance()),
-        databaseFeature(databaseFeatureMock.get()),
         um(server) {
     state->setRole(ServerState::ROLE_SINGLE);
-    DatabaseFeature::DATABASE = &databaseFeature;
+
+    server.addFeature<DatabaseFeature>();
   }
 
   ~UserManagerTest() {

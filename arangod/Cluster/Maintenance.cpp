@@ -25,6 +25,7 @@
 #include "Cluster/Maintenance.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -34,6 +35,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -44,10 +46,10 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
-#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -64,7 +66,6 @@ static VPackValue const VP_SET("set");
 
 static VPackStringRef const PRIMARY("primary");
 static VPackStringRef const EDGE("edge");
-
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
@@ -934,13 +935,13 @@ static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
 }
 
 static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
-    VPackSlice const& info, VPackSlice const& planServers,
+    DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
     std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors) {
   VPackBuilder ret;
 
   try {
-    DatabaseGuard guard(database);
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
     bool shardInSync;
     bool shardReplicated;
@@ -1033,7 +1034,7 @@ bool equivalent(VPackSlice const& local, VPackSlice const& current) {
   return true;
 }
 
-static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
+static VPackBuilder assembleLocalDatabaseInfo(DatabaseFeature& df, std::string const& database,
                                               MaintenanceFeature::errors_t const& allErrors) {
   // This creates the VelocyPack that is put into
   // /Current/Databases/<dbname>/<serverID>  for a database.
@@ -1041,7 +1042,7 @@ static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
   VPackBuilder ret;
 
   try {
-    DatabaseGuard guard(database);
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
     {
@@ -1079,13 +1080,13 @@ static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
 // diff current and local and prepare agency transactions or whatever
 // to update current. Will report the errors created locally to the agency
 arangodb::Result arangodb::maintenance::reportInCurrent(
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  std::unordered_set<std::string> const& dirty,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& current,
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
-  MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-  VPackBuilder& report, ShardStatistics& shardStats) {
-
+    MaintenanceFeature& feature,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    std::unordered_set<std::string> const& dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& current,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
+    VPackBuilder& report, ShardStatistics& shardStats) {
   for (auto const& dbName : dirty) {
 
     auto lit = local.find(dbName);
@@ -1132,9 +1133,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       AgencyCommHelper::path(), CURRENT, DATABASES, dbName, serverId};
 
     if (ldb.isObject()) {
-
+      auto& df = feature.server().getFeature<DatabaseFeature>();
       if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
-        auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
+        auto const localDatabaseInfo = assembleLocalDatabaseInfo(df, dbName, allErrors);
         TRI_ASSERT(!localDatabaseInfo.slice().isNone());
         if (!localDatabaseInfo.slice().isEmptyObject() &&
             !localDatabaseInfo.slice().isNone()) {
@@ -1183,8 +1184,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
 
           auto const [localCollectionInfo, shardInSync, shardReplicated] =
-            assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
-                                        dbName, shName, serverId, allErrors);
+              assembleLocalCollectionInfo(df, shSlice, shardMap.slice().get(shName),
+                                          dbName, shName, serverId, allErrors);
           // Collection no longer exists
           TRI_ASSERT(!localCollectionInfo.slice().isNone());
           if (localCollectionInfo.slice().isEmptyObject() ||
@@ -1603,7 +1604,8 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       VPackObjectBuilder agency(&report);
       // Update Current
       try {
-        result = reportInCurrent(plan, dirty, cur, local, allErrors, serverId, report, shardStats);
+        result = reportInCurrent(feature, plan, dirty, cur, local, allErrors,
+                                 serverId, report, shardStats);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
           << "Error reporting in current: " << e.what() << ". " << __FILE__ << ":" << __LINE__;

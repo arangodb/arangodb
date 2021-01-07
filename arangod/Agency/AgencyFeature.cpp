@@ -51,8 +51,6 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-consensus::Agent* AgencyFeature::AGENT = nullptr;
-
 AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
@@ -268,14 +266,16 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       {std::type_index(typeid(iresearch::IResearchFeature)),
        std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
        std::type_index(typeid(ActionFeature)),
-       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxFeature)),
+       std::type_index(typeid(FoxxFeature)),
        std::type_index(typeid(FrontendFeature))});
 
-  if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
+  if ((!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) &&
+      (!result.touched("javascript.enabled") || !*(options->get<BooleanParameter>("javascript.enabled")->ptr))) {
     // specifying --console requires JavaScript, so we can only turn it off
     // if not specified
 
     // console mode inactive. so we can turn off V8
+    disabledFeatures.emplace_back(std::type_index(typeid(ScriptFeature)));
     disabledFeatures.emplace_back(std::type_index(typeid(V8PlatformFeature)));
     disabledFeatures.emplace_back(std::type_index(typeid(V8DealerFeature)));
   }
@@ -330,8 +330,6 @@ void AgencyFeature::prepare() {
                                     _supervisionFrequency, _compactionStepSize,
                                     _compactionKeepSize, _supervisionGracePeriod,
                                     _supervisionOkThreshold,_cmdLineTimings, _maxAppendSize)));
-
-  AGENT = _agent.get();
 }
 
 void AgencyFeature::start() {
@@ -381,8 +379,6 @@ void AgencyFeature::stop() {
     // server jobs from RestAgencyHandlers to complete without incident:
     _agent->waitForThreadsStop();
   }
-
-  AGENT = nullptr;
 }
 
 void AgencyFeature::unprepare() {
@@ -392,5 +388,7 @@ void AgencyFeature::unprepare() {
   // shutdown
   _agent.reset();
 }
+
+consensus::Agent* AgencyFeature::agent() const { return _agent.get(); }
 
 }  // namespace arangodb

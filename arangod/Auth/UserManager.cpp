@@ -785,7 +785,8 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   TRI_ASSERT(!coll.empty());
   auth::Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
-    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    std::string tmpColl =
+        _server.getFeature<DatabaseFeature>().translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);

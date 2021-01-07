@@ -168,6 +168,12 @@ class GraphNode : public ExecutionNode {
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
   std::unordered_map<ServerID, aql::EngineId> const* engines() const;
 
+  /// @brief Clears the graph Engines. (CLUSTER ONLY)
+  /// NOTE: Use with care, if you do not refill
+  /// the engines this graph node cannot communicate.
+  /// and will yield no results.
+  void clearEngines();
+
   std::vector<aql::Collection*> const& edgeColls() const;
 
   std::vector<aql::Collection*> const& vertexColls() const;

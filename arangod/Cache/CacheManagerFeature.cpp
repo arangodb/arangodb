@@ -48,9 +48,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-Manager* CacheManagerFeature::MANAGER = nullptr;
-const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
-
 CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
@@ -110,7 +107,6 @@ void CacheManagerFeature::start() {
     }
   };
   _manager.reset(new Manager(postFn, _cacheSize));
-  MANAGER = _manager.get();
   _rebalancer.reset(new CacheRebalancerThread(server(), _manager.get(), _rebalancingInterval));
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
@@ -129,6 +125,6 @@ void CacheManagerFeature::stop() {
   }
 }
 
-void CacheManagerFeature::unprepare() { MANAGER = nullptr; }
+cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
 
 }  // namespace arangodb

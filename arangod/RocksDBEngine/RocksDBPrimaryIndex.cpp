@@ -530,23 +530,15 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   if (useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
-
     // write entry back to cache
-    auto entry =
-        cache::CachedValue::construct(key->string().data(),
-                                      static_cast<uint32_t>(key->string().size()),
-                                      val.data(), static_cast<uint64_t>(val.size()));
-    if (entry) {
-      Result status = _cache->insert(entry);
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        // the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
-      }
-    }
+    std::size_t attempts = 0;
+    cache::Cache::Inserter inserter(*_cache, key->string().data(),
+                                    static_cast<uint32_t>(key->string().size()),
+                                    val.data(), static_cast<uint64_t>(val.size()),
+                                    [&attempts](Result const& res) -> bool {
+                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                             ++attempts < 2;
+                                    });
   }
 
   return RocksDBValue::documentId(val);

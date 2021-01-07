@@ -648,6 +648,15 @@ std::unordered_map<ServerID, aql::EngineId> const* GraphNode::engines() const {
   return &_engines;
 }
 
+/// @brief Clears the graph Engines. (CLUSTER ONLY)
+/// NOTE: Use with care, if you do not refill
+/// the engines this graph node cannot communicate.
+/// and will yield no results.
+void GraphNode::clearEngines() {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  _engines.clear();
+}
+
 BaseOptions* GraphNode::options() const { return _options.get(); }
 
 AstNode* GraphNode::getTemporaryRefNode() const { return _tmpObjVarNode; }

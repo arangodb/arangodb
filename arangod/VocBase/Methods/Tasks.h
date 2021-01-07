@@ -55,7 +55,8 @@ class Task : public std::enable_shared_from_this<Task> {
   static std::shared_ptr<velocypack::Builder> registeredTasks();
   static void shutdownTasks();
   static void removeTasksForDatabase(std::string const&);
-  static bool tryCompile(v8::Isolate* isolate, std::string const& command);
+  static bool tryCompile(application_features::ApplicationServer& server,
+                         v8::Isolate* isolate, std::string const& command);
 
  private:
   static Mutex _tasksLock;
