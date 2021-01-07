@@ -1571,7 +1571,8 @@ AstNode* Ast::createNodeAggregateFunctionCall(char const* functionName, AstNode 
   // Register a pointer to the function.
   // However, this function is never called, but the function name is later translated to an aggregator.
   // This also implies that ATM we can only support aggregator functions that also have a matching AQL function.
-  auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
+  auto& server = query().vocbase().server();
+  auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
   TRI_ASSERT(func != nullptr);
   node->setData(static_cast<void const*>(func));
 
