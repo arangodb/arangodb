@@ -162,42 +162,50 @@ void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_ty
 
 greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
     arangodb::velocypack::Builder& b, vertex_type const* ptr) const {
-  if (_dataAccess.writeVertex && _dataAccess.writeVertex->slice().isArray()) {
-    greenspun::Machine m;
-    InitMachine(m);
+  if (_dataAccess.writeVertex) {
+    if (_dataAccess.writeVertex->slice().isArray()) {
+      greenspun::Machine m;
+      InitMachine(m);
 
-    // TODO: Try to use "air_accumRef" here instead (Source: VertexData)
-    m.setFunction("accum-ref",
-                  [ptr](greenspun::Machine& ctx, VPackSlice const params,
-                        VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
-                    auto res = greenspun::extract<std::string>(params);
-                    if (res.fail()) {
-                      return std::move(res).error();
-                    }
+      // TODO: Try to use "air_accumRef" here instead (Source: VertexData)
+      m.setFunction("accum-ref",
+                    [ptr](greenspun::Machine& ctx, VPackSlice const params,
+                          VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
+                      auto res = greenspun::extract<std::string>(params);
+                      if (res.fail()) {
+                        return std::move(res).error();
+                      }
 
-                    auto&& [accumId] = res.value();
+                      auto&& [accumId] = res.value();
 
-                    if (auto iter = ptr->_vertexAccumulators.find(accumId);
-                        iter != std::end(ptr->_vertexAccumulators)) {
-                      return iter->second->getIntoBuilder(tmpBuilder);
-                    }
-                    return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
-                                                "` not found");
-                  });
+                      if (auto iter = ptr->_vertexAccumulators.find(accumId);
+                          iter != std::end(ptr->_vertexAccumulators)) {
+                        return iter->second->getIntoBuilder(tmpBuilder);
+                      }
+                      return greenspun::EvalError("vertex accumulator `" +
+                                                  std::string{accumId} +
+                                                  "` not found");
+                    });
 
-    VPackBuilder tmpBuilder;
-    auto res = Evaluate(m, _dataAccess.writeVertex->slice(), tmpBuilder);
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
+      VPackBuilder tmpBuilder;
+      auto res = Evaluate(m, _dataAccess.writeVertex->slice(), tmpBuilder);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
 
-    if (tmpBuilder.slice().isObject()) {
-      for (auto&& entry : VPackObjectIterator(tmpBuilder.slice())) {
-        b.add(entry.key);
-        b.add(entry.value);
+      if (tmpBuilder.slice().isObject()) {
+        for (auto&& entry : VPackObjectIterator(tmpBuilder.slice())) {
+          b.add(entry.key);
+          b.add(entry.value);
+        }
+      } else {
+        return {};  // will not write as tmpBuilder is not a valid (object) result
       }
     } else {
-      return {};  // will not write as tmpBuilder is not a valid (object) result
+      return greenspun::EvalError(
+          "writeVertex needs to be an array, but found: " +
+          std::string{_dataAccess.writeVertex->slice().typeName()} +
+          " instead.");
     }
   } else {
     VPackObjectBuilder guard(&b, _resultField);
