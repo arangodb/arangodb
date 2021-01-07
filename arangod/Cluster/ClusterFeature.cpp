@@ -57,6 +57,18 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
+    // force shutdown of Plan/Current syncers. under normal circumstances they
+    // have been shut down already when we get here, but there are rare cases in
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // something goes very wrong at startup)
+    waitForSyncersToStop();
+
+    // force shutdown of AgencyCache. under normal circumstances the cache will
+    // have been shut down already when we get here, but there are rare cases in
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // something goes very wrong at startup)
+    shutdownAgencyCache();
+
     AgencyCommHelper::shutdown();
   }
 }
@@ -411,13 +423,12 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!_allocated) {
+  if (_agencyCache == nullptr || _clusterInfo == nullptr) {
     allocateMembers();
   }
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
-    // nullptr happens only during shutdown
     if (af->isActive() && !af->hasUserdefinedJwt()) {
       LOG_TOPIC("6e615", FATAL, arangodb::Logger::CLUSTER)
           << "Cluster authentication enabled but JWT not set via command line. "
@@ -431,11 +442,11 @@ void ClusterFeature::prepare() {
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
     return;
-  } else {
-    reportRole(_requestedRole);
-  }
+  } 
+    
+  reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config;
+  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
@@ -471,7 +482,6 @@ void ClusterFeature::prepare() {
       << "structures " << (ok ? "are" : "failed to") << " initialize";
 
   if (!ok) {
-
     LOG_TOPIC("54560", FATAL, arangodb::Logger::CLUSTER)
         << "Could not connect to any agency endpoints ("
         << AsyncAgencyCommManager::INSTANCE->endpointsString() << ")";
@@ -671,7 +681,7 @@ void ClusterFeature::stop() {
   }
 
   // Make sure ClusterInfo's syncer threads have stopped.
-  _clusterInfo->waitForSyncersToStop();
+  waitForSyncersToStop();
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
@@ -725,6 +735,16 @@ void ClusterFeature::shutdownHeartbeatThread() {
   }
 }
 
+/// @brief wait for the Plan and Current syncer to shut down
+/// note: this may be called multiple times during shutdown
+void ClusterFeature::waitForSyncersToStop() {
+  if (_clusterInfo != nullptr) {
+    _clusterInfo->waitForSyncersToStop();
+  }
+}
+
+/// @brief wait for the AgencyCache to shut down
+/// note: this may be called multiple times during shutdown
 void ClusterFeature::shutdownAgencyCache() {
   if (_agencyCache == nullptr) {
     return;
@@ -781,10 +801,9 @@ void ClusterFeature::allocateMembers() {
       "Request time for Agency requests");
   } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
-  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
   _agencyCache =
-    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
-  _allocated = true;
+    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {

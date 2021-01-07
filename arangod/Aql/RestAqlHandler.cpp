@@ -204,7 +204,7 @@ void RestAqlHandler::setupClusterQuery() {
   //   "WRITE"} ], initialize: false, nodes: <one of snippets[*].value>,
   //   variables: <variables slice>
   // }
-  
+
   QueryOptions options(optionsSlice);
   if (options.ttl <= 0) { // patch TTL value
     options.ttl = _queryRegistry->defaultTTL();

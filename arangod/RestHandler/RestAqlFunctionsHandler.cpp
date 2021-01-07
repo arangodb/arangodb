@@ -44,9 +44,8 @@ RestStatus RestAqlFunctionsHandler::execute() {
 
     builder.openObject();
     builder.add(VPackValue("functions"));
-    auto functions = aql::AqlFunctionFeature::AQLFUNCTIONS;
-    TRI_ASSERT(functions != nullptr);
-    functions->toVelocyPack(builder);
+    auto& functions = server().getFeature<aql::AqlFunctionFeature>();
+    functions.toVelocyPack(builder);
     builder.close();
 
     generateResult(rest::ResponseCode::OK, builder.slice());

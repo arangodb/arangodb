@@ -7879,7 +7879,8 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
       returnNode->inVariable(outVariable);
    
       // replace COUNT/LENGTH with SUM, as we are getting an array from the subquery
-      auto func = AqlFunctionFeature::getFunctionByName("SUM");
+      auto& server = plan->getAst()->query().vocbase().server();
+      auto func = server.getFeature<AqlFunctionFeature>().byName("SUM");
       for (AstNode const* funcNode : it.second.second) {
         const_cast<AstNode*>(funcNode)->setData(static_cast<void const*>(func));
       }
