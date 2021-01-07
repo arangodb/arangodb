@@ -98,13 +98,13 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
-                                arangodb::ManagedDocumentResult& result) override;
+                                arangodb::IndexIterator::DocumentCallback const& cb) const override;
+  virtual bool read(arangodb::transaction::Methods* trx,
+                    arangodb::LocalDocumentId const& token,
+                    arangodb::IndexIterator::DocumentCallback const& cb) const override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,
                             arangodb::LocalDocumentId const& token,
                             arangodb::ManagedDocumentResult& result) const override;
-  virtual bool readDocumentWithCallback(arangodb::transaction::Methods* trx,
-                                        arangodb::LocalDocumentId const& token,
-                                        arangodb::IndexIterator::DocumentCallback const& cb) const override;
   virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::velocypack::Slice slice,
                                   arangodb::ManagedDocumentResult& previous,

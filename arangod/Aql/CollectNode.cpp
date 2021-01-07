@@ -269,7 +269,9 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      std::move(aggregateTypes),
                                      std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(), _count);
+                                     &_plan->getAst()->query().vpackOptions(), 
+                                     _plan->getAst()->query().resourceMonitor(),
+                                     _count);
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -356,7 +358,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       TRI_ASSERT(groupRegisters.size() == 1);
       auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(),
-                                                        &_plan->getAst()->query().vpackOptions());
+                                                        &_plan->getAst()->query().vpackOptions(),
+                                                        _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));

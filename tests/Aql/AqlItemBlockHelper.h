@@ -29,8 +29,8 @@
 #include <variant>
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/overload.h"
 
 #include "AqlHelper.h"
