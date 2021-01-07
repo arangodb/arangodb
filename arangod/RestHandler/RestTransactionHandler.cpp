@@ -289,9 +289,10 @@ void RestTransactionHandler::executeJSTransaction() {
 
   std::string portType = _request->connectionInfo().portType();
 
-  bool allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+  bool allowUseDatabase = server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  V8Context* v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
+  V8Context* v8Context =
+      server().getFeature<V8DealerFeature>().enterContext(&_vocbase, securityContext);
 
   if (!v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
@@ -302,7 +303,7 @@ void RestTransactionHandler::executeJSTransaction() {
   auto guard = scopeGuard([this]() {
     WRITE_LOCKER(lock, _lock);
     if (_v8Context != nullptr) {
-      V8DealerFeature::DEALER->exitContext(_v8Context);
+      server().getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
   });

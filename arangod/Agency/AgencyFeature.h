@@ -34,8 +34,6 @@ class Agent;
 
 class AgencyFeature : public application_features::ApplicationFeature {
  public:
-  static consensus::Agent* AGENT;
-
   explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
 
@@ -48,6 +46,8 @@ class AgencyFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   bool activated() const noexcept { return _activated; }
+
+  consensus::Agent* agent() const;
 
  private:
   bool _activated;
@@ -69,10 +69,6 @@ class AgencyFeature : public application_features::ApplicationFeature {
   bool _cmdLineTimings;
   std::string _recoveryId;
 
- public:
-  consensus::Agent* agent() const { return _agent.get(); }
-
- private:
   std::unique_ptr<consensus::Agent> _agent;
 };
 

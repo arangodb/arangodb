@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -88,7 +89,8 @@ bool UpdateCollection::first() {
   auto const& props = properties();
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
     
     std::shared_ptr<LogicalCollection> coll;

@@ -114,7 +114,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cacheEnabled(
           !collection.system() &&
           basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::CacheEnabled, false) &&
-          CacheManagerFeature::MANAGER != nullptr),
+          collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
@@ -126,8 +126,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      PhysicalCollection const* physical)
     : RocksDBMetaCollection(collection, VPackSlice::emptyObjectSlice()),
       _primaryIndex(nullptr),
-      _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
-                    CacheManagerFeature::MANAGER != nullptr),
+      _cacheEnabled(
+          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
+          collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0) {
   if (_cacheEnabled) {
     createCache();
@@ -149,7 +150,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
   _cacheEnabled =
       !isSys &&
       basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::CacheEnabled, _cacheEnabled) &&
-      CacheManagerFeature::MANAGER != nullptr;
+      _logicalCollection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr;
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
   if (_cacheEnabled) {
@@ -1696,9 +1697,11 @@ void RocksDBCollection::createCache() const {
 
   TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cache.get() == nullptr);
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  auto* manager =
+      _logicalCollection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+  TRI_ASSERT(manager != nullptr);
   LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
-  _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
+  _cache = manager->createCache(cache::CacheType::Transactional);
   TRI_ASSERT(_cacheEnabled);
 }
 
@@ -1706,11 +1709,13 @@ void RocksDBCollection::destroyCache() const {
   if (!_cache) {
     return;
   }
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  auto* manager =
+      _logicalCollection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+  TRI_ASSERT(manager != nullptr);
   // must have a cache...
   TRI_ASSERT(_cache.get() != nullptr);
   LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-  CacheManagerFeature::MANAGER->destroyCache(_cache);
+  manager->destroyCache(_cache);
   _cache.reset();
 }
 

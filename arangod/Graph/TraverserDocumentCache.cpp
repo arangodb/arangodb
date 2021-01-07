@@ -24,6 +24,7 @@
 #include "TraverserDocumentCache.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/QueryContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Cache/Cache.h"
@@ -54,7 +55,8 @@ TraverserDocumentCache::TraverserDocumentCache(aql::QueryContext& query,
 
 TraverserDocumentCache::~TraverserDocumentCache() {
   TRI_ASSERT(_cache != nullptr);
-  auto cacheManager = CacheManagerFeature::MANAGER;
+  auto cacheManager =
+      _query.vocbase().server().getFeature<CacheManagerFeature>().manager();
   if (cacheManager != nullptr) {
     try {
       cacheManager->destroyCache(_cache);

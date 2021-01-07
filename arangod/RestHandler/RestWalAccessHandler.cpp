@@ -356,7 +356,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 
-  DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+  server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
     vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
                                        replutils::BatchInfo::DefaultTimeout);
   });

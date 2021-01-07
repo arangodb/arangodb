@@ -75,7 +75,7 @@ bool DropCollection::first() {
   auto* vocbase = _feature.server().getFeature<DatabaseFeature>().lookupDatabase(database);
   if (vocbase != nullptr) {
     try {
-      DatabaseGuard guard(database);
+      DatabaseGuard guard(*vocbase);
       auto& vocbase = guard.database();
 
       std::shared_ptr<LogicalCollection> coll;

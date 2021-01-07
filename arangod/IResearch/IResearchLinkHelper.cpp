@@ -112,9 +112,10 @@ arangodb::Result createLink( // create link
 
     // ensure link is synchronized after upgrade in single-server
     if (arangodb::ServerState::instance()->isSingleServer()) {
-      auto* db = arangodb::DatabaseFeature::DATABASE;
+      auto& server = collection.vocbase().server();
+      auto& db = server.getFeature<arangodb::DatabaseFeature>();
 
-      if (db && (db->checkVersion() || db->upgrade())) {
+      if (db.checkVersion() || db.upgrade()) {
         // FIXME find a better way to retrieve an IResearch Link
         // cannot use static_cast/reinterpret_cast since Index is not related to
         // IResearchLink

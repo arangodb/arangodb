@@ -22,13 +22,13 @@ BUGEMAIL=	tz@iana.org
 #	DATAFORM=	main
 # To wait even longer for new features, use:
 #	DATAFORM=	rearguard
+# Rearguard users might also want "ZFLAGS = -b fat"; see below.
 DATAFORM=		main
 
 # Change the line below for your timezone (after finding the one you want in
 # one of the $(TDATA) source files, or adding it to a source file).
 # Alternatively, if you discover you've got the wrong timezone, you can just
-#	zic -l rightzone
-# to correct things.
+# 'zic -l -' to remove it, or 'zic -l rightzone' to change it.
 # Use the command
 #	make zonenames
 # to get a list of the values you can use for LOCALTIME.
@@ -37,33 +37,30 @@ LOCALTIME=	GMT
 
 # The POSIXRULES macro controls interpretation of nonstandard and obsolete
 # POSIX-like TZ settings like TZ='EET-2EEST' that lack DST transition rules.
-# In the reference implementation, if you want something other than Eastern
-# United States time as a template for handling these settings, you can
-# change the line below (after finding the timezone you want in the
-# one of the $(TDATA) source files, or adding it to a source file).
-# A setting like TZ='EET-2EEST' is supposed to use the rules in the
-# template file to determine "spring forward" and "fall back" days and
-# times; the environment variable itself specifies UT offsets of standard and
-# daylight saving time.
-# Alternatively, if you discover you've got the wrong timezone, you can just
-#	zic -p rightzone
-# to correct things.
-# Use the command
-#	make zonenames
-# to get a list of the values you can use for POSIXRULES.
+# Such a setting uses the rules in a template file to determine
+# "spring forward" and "fall back" days and times; the environment
+# variable itself specifies UT offsets of standard and daylight saving time.
 #
-# If POSIXRULES is empty, no template is installed; this is the intended
-# future default for POSIXRULES.
+# If POSIXRULES is '-', no template is installed; this is the default.
 #
-# Nonempty POSIXRULES is obsolete and should not be relied on, because:
+# Any other value for POSIXRULES is obsolete and should not be relied on, as:
 # * It does not work correctly in popular implementations such as GNU/Linux.
 # * It does not work in the tzdb implementation for timestamps after 2037.
 # * It is incompatible with 'zic -b slim' if POSIXRULES specifies transitions
 #   at standard time or UT rather than at local time.
 # In short, software should avoid ruleless settings like TZ='EET-2EEST'
 # and so should not depend on the value of POSIXRULES.
+#
+# If, despite the above, you want a template for handling these settings,
+# you can change the line below (after finding the timezone you want in the
+# one of the $(TDATA) source files, or adding it to a source file).
+# Alternatively, if you discover you've got the wrong timezone, you can just
+# 'zic -p -' to remove it, or 'zic -p rightzone' to change it.
+# Use the command
+#	make zonenames
+# to get a list of the values you can use for POSIXRULES.
 
-POSIXRULES=	America/New_York
+POSIXRULES=	-
 
 # Also see TZDEFRULESTRING below, which takes effect only
 # if the time zone files cannot be accessed.
@@ -172,9 +169,6 @@ TZDATA_TEXT=	leapseconds tzdata.zi
 
 # For backward-compatibility links for old zone names, use
 #	BACKWARD=	backward
-# If you also want the link US/Pacific-New, even though it is confusing
-# and is planned to be removed from the database eventually, use
-#	BACKWARD=	backward pacificnew
 # To omit these links, use
 #	BACKWARD=
 
@@ -191,10 +185,6 @@ PACKRATDATA=
 # The tests are skipped if the name does not appear to work on this system.
 
 UTF8_LOCALE=	en_US.utf8
-
-# Since "." may not be in PATH...
-
-YEARISTYPE=	./yearistype
 
 # Non-default libraries needed to link.
 LDLIBS=
@@ -253,13 +243,12 @@ LDLIBS=
 #	other than simply getting garbage data
 #  -DUSE_LTZ=0 to build zdump with the system time zone library
 #	Also set TZDOBJS=zdump.o and CHECK_TIME_T_ALTERNATIVES= below.
-#  -DZIC_BLOAT_DEFAULT=\"slim\" to default zic's -b option to "slim", and
-#	similarly for "fat".  Fat TZif files work around incompatibilities
+#  -DZIC_BLOAT_DEFAULT=\"fat\" to default zic's -b option to "fat", and
+#	similarly for "slim".  Fat TZif files work around incompatibilities
 #	and bugs in some TZif readers, notably readers that mishandle 64-bit
 #	data in TZif files.  Slim TZif files are more efficient and do not
 #	work around these incompatibilities and bugs.  If not given, the
-#	current default is "fat" but this is intended to change as readers
-#	requiring fat files often mishandle timestamps after 2037 anyway.
+#	default is "slim".
 #  -DZIC_MAX_ABBR_LEN_WO_WARN=3
 #	(or some other number) to set the maximum time zone abbreviation length
 #	that zic will accept without a warning (the default is 6)
@@ -333,9 +322,8 @@ GCC_DEBUG_FLAGS = -DGCC_LINT -g3 -O3 -fno-common \
 # add
 #	-DSTD_INSPIRED
 # to the end of the "CFLAGS=" line.  This arranges for the functions
-# "tzsetwall", "offtime", "timelocal", "timegm", "timeoff",
+# "offtime", "timelocal", "timegm", "timeoff",
 # "posix2time", and "time2posix" to be added to the time conversion library.
-# "tzsetwall" is deprecated and is intended to be removed soon; see NEWS.
 # "offtime" is like "gmtime" except that it accepts a second (long) argument
 # that gives an offset to add to the time_t when converting it.
 # "timelocal" is equivalent to "mktime".
@@ -395,7 +383,7 @@ ZIC=		$(zic) $(ZFLAGS)
 
 # To shrink the size of installed TZif files,
 # append "-r @N" to omit data before N-seconds-after-the-Epoch.
-# You can also append "-b slim" if that is not already the default;
+# To grow the files and work around older application bugs, append "-b fat";
 # see ZIC_BLOAT_DEFAULT above.
 # See the zic man page for more about -b and -r.
 ZFLAGS=
@@ -423,26 +411,6 @@ CURL=		curl
 
 # Name of GNU Privacy Guard <https://gnupg.org/>, used to sign distributions.
 GPG=		gpg
-
-# The path where SGML DTDs are kept and the catalog file(s) to use when
-# validating HTML 4.01.  The default should work on both Debian and Red Hat.
-SGML_TOPDIR= /usr
-SGML_DTDDIR= $(SGML_TOPDIR)/share/xml/w3c-sgml-lib/schema/dtd
-SGML_SEARCH_PATH= $(SGML_DTDDIR)/REC-html401-19991224
-SGML_CATALOG_FILES= \
-  $(SGML_TOPDIR)/share/doc/w3-recs/html/www.w3.org/TR/1999/REC-html401-19991224/HTML4.cat:$(SGML_TOPDIR)/share/sgml/html/4.01/HTML4.cat
-
-# The name, arguments and environment of a program to validate HTML 4.01.
-# See <http://openjade.sourceforge.net/doc/> for a validator, and
-# <https://validator.w3.org/source/> for a validation library.
-# Set VALIDATE=':' if you do not have such a program.
-VALIDATE = nsgmls
-VALIDATE_FLAGS = -s -B -wall -wno-unused-param
-VALIDATE_ENV = \
-  SGML_CATALOG_FILES='$(SGML_CATALOG_FILES)' \
-  SGML_SEARCH_PATH='$(SGML_SEARCH_PATH)' \
-  SP_CHARSET_FIXED=YES \
-  SP_ENCODING=UTF-8
 
 # This expensive test requires USE_LTZ.
 # To suppress it, define this macro to be empty.
@@ -538,8 +506,8 @@ DOCS=		$(MANS) date.1 $(MANTXTS) $(WEB_PAGES)
 PRIMARY_YDATA=	africa antarctica asia australasia \
 		europe northamerica southamerica
 YDATA=		$(PRIMARY_YDATA) etcetera
-NDATA=		systemv factory
-TDATA_TO_CHECK=	$(YDATA) $(NDATA) backward pacificnew
+NDATA=		factory
+TDATA_TO_CHECK=	$(YDATA) $(NDATA) backward
 TDATA=		$(YDATA) $(NDATA) $(BACKWARD)
 ZONETABLES=	zone1970.tab zone.tab
 TABDATA=	iso3166.tab $(TZDATA_TEXT) $(ZONETABLES)
@@ -547,7 +515,7 @@ LEAP_DEPS=	leapseconds.awk leap-seconds.list
 TZDATA_ZI_DEPS=	ziguard.awk zishrink.awk version $(TDATA) $(PACKRATDATA)
 DSTDATA_ZI_DEPS= ziguard.awk $(TDATA) $(PACKRATDATA)
 DATA=		$(TDATA_TO_CHECK) backzone iso3166.tab leap-seconds.list \
-			leapseconds yearistype.sh $(ZONETABLES)
+			leapseconds $(ZONETABLES)
 AWK_SCRIPTS=	checklinks.awk checktab.awk leapseconds.awk \
 			ziguard.awk zishrink.awk
 MISC=		$(AWK_SCRIPTS) zoneinfo2tdf.pl
@@ -573,12 +541,10 @@ VERSION_DEPS= \
 		etcetera europe factory iso3166.tab \
 		leap-seconds.list leapseconds.awk localtime.c \
 		newctime.3 newstrftime.3 newtzset.3 northamerica \
-		pacificnew private.h \
-		southamerica strftime.c systemv theory.html \
+		private.h southamerica strftime.c theory.html \
 		time2posix.3 tz-art.html tz-how-to.html tz-link.html \
 		tzfile.5 tzfile.h tzselect.8 tzselect.ksh \
-		workman.sh yearistype.sh \
-		zdump.8 zdump.c zic.8 zic.c \
+		workman.sh zdump.8 zdump.c zic.8 zic.c \
 		ziguard.awk zishrink.awk \
 		zone.tab zone1970.tab zoneinfo2tdf.pl
 
@@ -587,7 +553,7 @@ VERSION_DEPS= \
 
 SHELL=		/bin/sh
 
-all:		tzselect yearistype zic zdump libtz.a $(TABDATA) \
+all:		tzselect zic zdump libtz.a $(TABDATA) \
 		  vanguard.zi main.zi rearguard.zi
 
 ALL:		all date $(ENCHILADA)
@@ -617,11 +583,19 @@ INSTALL:	ALL install date.1
 		cp date '$(DESTDIR)$(BINDIR)/.'
 		cp -f date.1 '$(DESTDIR)$(MANDIR)/man1/.'
 
+# Calculate version number from git, if available.
+# Otherwise, use $(VERSION) unless it is "unknown" and there is already
+# a 'version' file, in which case reuse the existing 'version' contents
+# and append "-dirty" if the contents do not already end in "-dirty".
 version:	$(VERSION_DEPS)
 		{ (type git) >/dev/null 2>&1 && \
 		  V=`git describe --match '[0-9][0-9][0-9][0-9][a-z]*' \
 				--abbrev=7 --dirty` || \
-		  V='$(VERSION)'; } && \
+		  if test '$(VERSION)' = unknown && V=`cat $@`; then \
+		    case $$V in *-dirty);; *) V=$$V-dirty;; esac; \
+		  else \
+		    V='$(VERSION)'; \
+		  fi; } && \
 		printf '%s\n' "$$V" >$@.out
 		mv $@.out $@
 
@@ -657,10 +631,6 @@ zdump:		$(TZDOBJS)
 zic:		$(TZCOBJS)
 		$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(TZCOBJS) $(LDLIBS)
 
-yearistype:	yearistype.sh
-		cp yearistype.sh yearistype
-		chmod +x yearistype
-
 leapseconds:	$(LEAP_DEPS)
 		$(AWK) -v EXPIRES_LINE=$(EXPIRES_LINE) \
 		  -f leapseconds.awk leap-seconds.list >$@.out
@@ -675,10 +645,9 @@ INSTALLARGS = \
  PACKRATDATA='$(PACKRATDATA)' \
  TZDEFAULT='$(TZDEFAULT)' \
  TZDIR='$(TZDIR)' \
- YEARISTYPE='$(YEARISTYPE)' \
  ZIC='$(ZIC)'
 
-INSTALL_DATA_DEPS = zic leapseconds yearistype tzdata.zi
+INSTALL_DATA_DEPS = zic leapseconds tzdata.zi
 
 # 'make install_data' installs one set of TZif files.
 install_data: $(INSTALL_DATA_DEPS)
@@ -793,7 +762,7 @@ check_character_set: $(ENCHILADA)
 		! grep -Env $(SAFE_LINE)'|^UNUSUAL_OK_'$(OK_CHAR)'*$$' \
 			Makefile && \
 		! grep -Env $(SAFE_SHARP_LINE) $(TDATA_TO_CHECK) backzone \
-			leapseconds yearistype.sh zone.tab && \
+			leapseconds zone.tab && \
 		! grep -Env $(OK_LINE) $(ENCHILADA); \
 	}
 	touch $@
@@ -845,15 +814,13 @@ check_tzs:	$(TZS) $(TZS_NEW)
 check_web:	$(CHECK_WEB_PAGES)
 check_theory.html: theory.html
 check_tz-art.html: tz-art.html
+check_tz-how-to.html: tz-how-to.html
 check_tz-link.html: tz-link.html
-check_theory.html check_tz-art.html check_tz-link.html:
+check_theory.html check_tz-art.html check_tz-how-to.html check_tz-link.html:
 		$(CURL) -sS --url https://validator.w3.org/nu/ -F out=gnu \
 		    -F file=@$$(expr $@ : 'check_\(.*\)') -o $@.out && \
 		  test ! -s $@.out || { cat $@.out; exit 1; }
 		mv $@.out $@
-check_tz-how-to.html: tz-how-to.html
-		$(VALIDATE_ENV) $(VALIDATE) $(VALIDATE_FLAGS) tz-how-to.html
-		touch $@
 
 # Check that zishrink.awk does not alter the data, and that ziguard.awk
 # preserves main-format data.
@@ -883,7 +850,7 @@ clean_misc:
 		rm -fr check_*.dir
 		rm -f *.o *.out $(TIME_T_ALTERNATIVES) \
 		  check_* core typecheck_* \
-		  date tzselect version.h zdump zic yearistype libtz.a
+		  date tzselect version.h zdump zic libtz.a
 clean:		clean_misc
 		rm -fr *.dir tzdb-*/
 		rm -f *.zi $(TZS_NEW)
@@ -913,11 +880,34 @@ $(MANTXTS):	workman.sh
 		LC_ALL=C sh workman.sh `expr $@ : '\(.*\)\.txt$$'` >$@.out
 		mv $@.out $@
 
+# Set file timestamps deterministically if possible,
+# so that tarballs containing the timestamps are reproducible.
+#
+# '$(SET_TIMESTAMP_N) N DEST A B C ...' sets the timestamp of the
+# file DEST to the maximum of the timestamps of the files A B C ...,
+# plus N if GNU ls and touch are available.
+SET_TIMESTAMP_N = sh -c '\
+  n=$$0 dest=$$1; shift; \
+  touch -cmr `ls -t "$$@" | sed 1q` "$$dest" && \
+  if test $$n != 0 && \
+     lsout=`ls -n --time-style="+%s" "$$dest" 2>/dev/null`; then \
+    set x $$lsout && \
+    touch -cmd @`expr $$7 + $$n` "$$dest"; \
+  else :; fi'
+# If DEST depends on A B C ... in this Makefile, callers should use
+# $(SET_TIMESTAMP_DEP) DEST A B C ..., for the benefit of any
+# downstream 'make' that considers equal timestamps to be out of date.
+# POSIX allows this 'make' behavior, and HP-UX 'make' does it.
+# If all that matters is that the timestamp be reproducible
+# and plausible, use $(SET_TIMESTAMP).
+SET_TIMESTAMP = $(SET_TIMESTAMP_N) 0
+SET_TIMESTAMP_DEP = $(SET_TIMESTAMP_N) 1
+
 # Set the timestamps to those of the git repository, if available,
 # and if the files have not changed since then.
-# This uses GNU 'touch' syntax 'touch -d@N FILE',
-# where N is the number of seconds since 1970.
-# If git or GNU 'touch' is absent, don't bother to sync with git timestamps.
+# This uses GNU 'ls --time-style=+%s', which outputs the seconds count,
+# and GNU 'touch -d@N FILE', where N is the number of seconds since 1970.
+# If git or GNU is absent, don't bother to sync with git timestamps.
 # Also, set the timestamp of each prebuilt file like 'leapseconds'
 # to be the maximum of the files it depends on.
 set-timestamps.out: $(EIGHT_YARDS)
@@ -935,16 +925,16 @@ set-timestamps.out: $(EIGHT_YARDS)
 		    fi || exit; \
 		  done; \
 		fi
-		touch -cmr `ls -t $(LEAP_DEPS) | sed 1q` leapseconds
+		$(SET_TIMESTAMP_DEP) leapseconds $(LEAP_DEPS)
 		for file in `ls $(MANTXTS) | sed 's/\.txt$$//'`; do \
-		  touch -cmr `ls -t $$file workman.sh | sed 1q` $$file.txt || \
+		  $(SET_TIMESTAMP_DEP) $$file.txt $$file workman.sh || \
 		    exit; \
 		done
-		touch -cmr `ls -t $(TZDATA_ZI_DEPS) | sed 1q` tzdata.zi
-		touch -cmr `ls -t $(VERSION_DEPS) | sed 1q` version
+		$(SET_TIMESTAMP_DEP) version $(VERSION_DEPS)
+		$(SET_TIMESTAMP_DEP) tzdata.zi $(TZDATA_ZI_DEPS)
 		touch $@
 set-tzs-timestamp.out: $(TZS)
-		touch -cmr `ls -t $(TZS_DEPS) | sed 1q` $(TZS)
+		$(SET_TIMESTAMP_DEP) $(TZS) $(TZS_DEPS)
 		touch $@
 
 # The zics below ensure that each data file can stand on its own.
@@ -955,7 +945,10 @@ check_public: $(VERSION_DEPS)
 		mkdir public.dir
 		ln $(VERSION_DEPS) public.dir
 		cd public.dir && $(MAKE) CFLAGS='$(GCC_DEBUG_FLAGS)' ALL
-		for i in $(TDATA_TO_CHECK) public.dir/tzdata.zi; do \
+		for i in $(TDATA_TO_CHECK) public.dir/tzdata.zi \
+		    public.dir/vanguard.zi public.dir/main.zi \
+		    public.dir/rearguard.zi; \
+		do \
 		  public.dir/zic -v -d public.dir/zoneinfo $$i 2>&1 || exit; \
 		done
 		public.dir/zic -v -d public.dir/zoneinfo-all $(TDATA_TO_CHECK)
@@ -1022,7 +1015,7 @@ tarballs rearguard_tarballs traditional_tarballs \
 signatures rearguard_signatures traditional_signatures: \
   version set-timestamps.out rearguard.zi
 		VERSION=`cat version` && \
-		$(MAKE) VERSION="$$VERSION" $@_version
+		$(MAKE) AWK='$(AWK)' VERSION="$$VERSION" $@_version
 
 # These *_version rules are intended for use if VERSION is set by some
 # other means.  Ordinarily these rules are used only by the above
@@ -1059,14 +1052,18 @@ tzdata$(VERSION)-rearguard.tar.gz: rearguard.zi set-timestamps.out
 		for f in $(TDATA) $(PACKRATDATA); do \
 		  rearf=tzdata$(VERSION)-rearguard.dir/$$f; \
 		  $(AWK) -v DATAFORM=rearguard -f ziguard.awk $$f >$$rearf && \
-		  touch -cmr `ls -t ziguard.awk $$f` $$rearf || exit; \
+		  $(SET_TIMESTAMP_DEP) $$rearf ziguard.awk $$f || exit; \
 		done
 		sed '1s/$$/-rearguard/' \
 		  <version >tzdata$(VERSION)-rearguard.dir/version
+		: The dummy pacificnew pacifies TZUpdater 2.3.1 and earlier.
+		TZ=UTC0 touch -mt 202010122253.00 \
+		  tzdata$(VERSION)-rearguard.dir/pacificnew
 		touch -cmr version tzdata$(VERSION)-rearguard.dir/version
 		LC_ALL=C && export LC_ALL && \
 		  (cd tzdata$(VERSION)-rearguard.dir && \
-		   tar $(TARFLAGS) -cf - $(COMMON) $(DATA) $(MISC) | \
+		   tar $(TARFLAGS) -cf - \
+			$(COMMON) $(DATA) $(MISC) pacificnew | \
 		     gzip $(GZIPFLAGS)) >$@.out
 		mv $@.out $@
 
@@ -1074,7 +1071,7 @@ tzdb-$(VERSION).tar.lz: set-timestamps.out set-tzs-timestamp.out
 		rm -fr tzdb-$(VERSION)
 		mkdir tzdb-$(VERSION)
 		ln $(ENCHILADA) tzdb-$(VERSION)
-		touch -cmr `ls -t tzdb-$(VERSION)/* | sed 1q` tzdb-$(VERSION)
+		$(SET_TIMESTAMP) tzdb-$(VERSION) tzdb-$(VERSION)/*
 		LC_ALL=C && export LC_ALL && \
 		tar $(TARFLAGS) -cf - tzdb-$(VERSION) | lzip -9 >$@.out
 		mv $@.out $@
@@ -1115,8 +1112,6 @@ localtime.o:	private.h tzfile.h
 strftime.o:	private.h tzfile.h
 zdump.o:	version.h
 zic.o:		private.h tzfile.h version.h
-
-.KEEP_STATE:
 
 .PHONY: ALL INSTALL all
 .PHONY: check check_time_t_alternatives

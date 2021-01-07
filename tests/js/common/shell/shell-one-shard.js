@@ -35,6 +35,42 @@ const internal = require('internal');
 const ERRORS = arangodb.errors;
 const isEnterprise = internal.isEnterprise();
 const isCluster = internal.isCluster();
+const request = require('@arangodb/request');
+
+function getEndpointsByType(type) {
+  const isType = (d) => (d.role.toLowerCase() === type);
+  const toEndpoint = (d) => (d.endpoint);
+  const endpointToURL = (endpoint) => {
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
+  };
+
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType)
+                              .map(toEndpoint)
+                              .map(endpointToURL);
+}
+
+function checkDBServerSharding(db, expected) {
+  // connect to all db servers and check if they picked up the
+  // "sharding" attribute correctly
+  if (!require('@arangodb').isServer) {
+    // request module can only be used inside arangosh tests
+    let endpoints = getEndpointsByType("dbserver");
+    assertTrue(endpoints.length > 0);
+    endpoints.forEach((ep) => {
+      let res = request.get({ url: ep + "/_db/" + encodeURIComponent(db) + "/_api/database/current" });
+      assertEqual(200, res.status);
+      assertEqual(expected, res.json.result.sharding);
+    });
+  }
+}
 
 function OneShardPropertiesSuite () {
   var dn = "UnitTestsDB";
@@ -83,6 +119,8 @@ function OneShardPropertiesSuite () {
         assertEqual(2, props.writeConcern);
         assertEqual(2, props.replicationFactor);
         assertEqual(1, props.numberOfShards);
+     
+        checkDBServerSharding(dn, "single");
       } else {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
@@ -97,6 +135,8 @@ function OneShardPropertiesSuite () {
       if (isCluster) {
         assertEqual(props.sharding, "");
         assertEqual(props.replicationFactor, 1);
+        
+        checkDBServerSharding(dn, "");
       } else {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);

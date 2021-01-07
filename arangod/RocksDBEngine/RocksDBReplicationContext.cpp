@@ -270,7 +270,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
     // global inventory
-    DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
+    vocbase.server().getFeature<DatabaseFeature>().inventory(result, tick, nameFilter);
   } else {
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);

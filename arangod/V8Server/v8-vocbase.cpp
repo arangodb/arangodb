@@ -1773,11 +1773,13 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
 
-  if (GeneralServerFeature::hasProxyCheck()) {
+  TRI_GET_GLOBALS();
+  auto& gs = v8g->_server.getFeature<GeneralServerFeature>();
+  if (gs.proxyCheck()) {
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
     uint32_t i = 0;
-    for (auto const& proxyDef : GeneralServerFeature::getTrustedProxies()) {
+    for (auto const& proxyDef : gs.trustedProxies()) {
       result->Set(context, i++, TRI_V8_STD_STRING(isolate, proxyDef)).FromMaybe(false);
     }
     TRI_V8_RETURN(result);
@@ -2180,7 +2182,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_AgencyDump, true);
   
 #ifdef USE_ENTERPRISE
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+  if (v8g->_server.hasFeature<V8DealerFeature>() &&
+      v8g->_server.getFeature<V8DealerFeature>().allowAdminExecute()) {
     TRI_AddGlobalFunctionVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
                                  JS_EncryptionKeyReload, true);

@@ -981,14 +981,14 @@ void Query::enterV8Context() {
   
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
-      if (V8DealerFeature::DEALER == nullptr) {
+      auto& server = vocbase().server();
+      if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "V8 engine is disabled");
       }
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createQueryContext();
-      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
+      _v8Context = server.getFeature<V8DealerFeature>().enterContext(&_vocbase, securityContext);
 
       if (_v8Context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1022,8 +1022,10 @@ void Query::exitV8Context() {
       // unregister transaction in context
       unregister();
 
-      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      V8DealerFeature::DEALER->exitContext(_v8Context);
+      auto& server = vocbase().server();
+      TRI_ASSERT(server.hasFeature<V8DealerFeature>() &&
+                 server.isEnabled<V8DealerFeature>());
+      server.getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
   } else if (!_embeddedQuery) {
