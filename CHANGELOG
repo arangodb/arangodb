@@ -1,6 +1,9 @@
 devel
 -----
 
+* Internal Refactoring of K_PATH feature, with the goal to have all GraphAlgorithms on
+  the same framework. This change should not have any visible effect on users.
+
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
