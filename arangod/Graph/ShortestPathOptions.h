@@ -99,8 +99,6 @@ struct ShortestPathOptions : public BaseOptions {
   template<typename ListType>
   void fetchVerticesCoordinator(ListType const& vertexIds);
 
-  void isQueryKilledCallback() const;
-
   auto estimateDepth() const noexcept -> uint64_t override;
 
  private:

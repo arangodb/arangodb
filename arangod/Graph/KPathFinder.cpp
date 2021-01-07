@@ -73,7 +73,7 @@ auto KPathFinder::PathResult::toVelocyPack(ShortestPathOptions& options,
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
     for (auto const& v : _vertices) {
-      cache->insertVertexIntoResult(v.stringRef(), builder);
+      cache->appendVertex(v.stringRef(), builder);
     }
   }
 

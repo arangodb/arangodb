@@ -285,19 +285,20 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
           Variable* outVar =
               Variable::varFromVPack(plan->getAst(), it, "outVariable");
           Variable* inVar =
-              Variable::varFromVPack(plan->getAst(), it, "inVariable");
+              Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
           std::string const type = it.get("type").copyString();
           aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
         }
       }
 
+      // TODO - this can be removed in 3.9
       bool count = slice.get("count").getBoolean();
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
       auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
                                   plan->getAst()->variables()->variables(false), groupVariables,
-                                  aggregateVariables, count, isDistinctCommand);
+                                  aggregateVariables, isDistinctCommand, count);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();
