@@ -267,7 +267,6 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows) => [
         { type : SingletonBlock, calls : 1, items : 1 },
         { type : CalculationBlock, calls : 1, items : 1 },
-        { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : 1, items : rows },
         { type : CountCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
@@ -795,7 +794,6 @@ function ahuacatlProfilerTestSuite () {
         { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : 1, items : limit(rows) },
         { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
-        { type : CalculationBlock, calls : 1, items : limitMinusSkip(rows) },
         { type : CountCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
       ];
@@ -827,7 +825,6 @@ function ahuacatlProfilerTestSuite () {
         { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : 1, items : rows },
         { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
-        { type : CalculationBlock, calls : 1, items : limitMinusSkip(rows) },
         { type : CountCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
       ];

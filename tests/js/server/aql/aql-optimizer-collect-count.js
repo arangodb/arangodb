@@ -88,18 +88,19 @@ function optimizerCountTestSuite () {
       var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO cnt RETURN cnt";
 
       var plan = AQL_EXPLAIN(query).plan;
-      var collectNode = plan.nodes[3];
+      var collectNode = plan.nodes[2];
       assertEqual("CollectNode", collectNode.type);
       if (isCluster) {
         assertEqual("count", collectNode.collectOptions.method);
         assertEqual(1, collectNode.aggregates.length);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
-        collectNode = plan.nodes[4];
-        assertEqual("sorted", collectNode.collectOptions.method);
-        assertEqual(1, collectNode.aggregates.length);
-        assertEqual("LENGTH", collectNode.aggregates[0].type);
-        assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
-        assertEqual(collectNode.aggregates[0].inVariable.name, plan.nodes[3].aggregates[0].outVariable.name);
+        clusterCollectNode = plan.nodes[5];
+        assertEqual("CollectNode", clusterCollectNode.type);
+        assertEqual("sorted", clusterCollectNode.collectOptions.method);
+        assertEqual(1, clusterCollectNode.aggregates.length);
+        assertEqual("SUM", clusterCollectNode.aggregates[0].type);
+        assertEqual("cnt", clusterCollectNode.aggregates[0].outVariable.name);
+        assertEqual(clusterCollectNode.aggregates[0].inVariable.name, collectNode.aggregates[0].outVariable.name);
       } else {
         assertEqual("count", collectNode.collectOptions.method);
         assertEqual(1, collectNode.aggregates.length);

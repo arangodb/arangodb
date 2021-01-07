@@ -29,6 +29,7 @@
 #include "Ast.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
@@ -601,10 +602,8 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
 /// @brief create an AST collect node with a single COUNT aggregator
 AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
                                      size_t nameLength, AstNode const* options) {
-  auto args = createNodeArray(1);
-  args->addMember(createNodeValueNull());
-
-  auto count = createNodeAssign(name, nameLength, createNodeFunctionCall("LENGTH", 6, args));
+  auto count = createNodeAssign(name, nameLength,
+                                createNodeAggregateFunctionCall("COUNT", createNodeArray()));
   auto aggregators = createNodeArray(1);
   aggregators->addMember(count);
 
@@ -1539,6 +1538,46 @@ AstNode const* Ast::createNodeOptions(AstNode const* options) const {
     return options;
   }
   return &_specialNodes.NopNode;
+}
+
+/// @brief create an AST function call node for aggregate functions
+AstNode* Ast::createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments) {
+  if (functionName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  auto normalized = normalizeFunctionName(functionName, strlen(functionName));
+
+  if (!Aggregator::isValid(normalized.first)) {
+    // aggregate expression must be a call to MIN|MAX|LENGTH...
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
+  }
+
+  TRI_ASSERT(arguments != nullptr);
+  TRI_ASSERT(arguments->type == NODE_TYPE_ARRAY);
+
+  if (Aggregator::requiresInput(normalized.first)) {
+    // validate number of function call arguments
+    size_t numExpectedArguments = 1; // at the moment all aggregators take only a single argument
+    if (arguments->numMembers() != numExpectedArguments) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                                    functionName, 1, 1);
+    }
+  }
+
+  // TODO - we should consider to introduce a NODE_TYPE_AGGREATE_FCALL type
+  AstNode* node = createNode(NODE_TYPE_FCALL);
+
+  // Register a pointer to the function.
+  // However, this function is never called, but the function name is later translated to an aggregator.
+  // This also implies that ATM we can only support aggregator functions that also have a matching AQL function.
+  auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
+  TRI_ASSERT(func != nullptr);
+  node->setData(static_cast<void const*>(func));
+
+  node->addMember(arguments);
+
+  return node;
 }
 
 /// @brief create an AST function call node

@@ -93,8 +93,10 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
       aggregateVariable.outVar->toVelocyPack(nodes);
-      nodes.add(VPackValue("inVariable"));
-      aggregateVariable.inVar->toVelocyPack(nodes);
+      if (aggregateVariable.inVar) {
+        nodes.add(VPackValue("inVariable"));
+        aggregateVariable.inVar->toVelocyPack(nodes);
+      }
       nodes.add("type", VPackValue(aggregateVariable.type));
     }
   }
@@ -399,7 +401,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 
     for (auto& it : _aggregateVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = plan->getAst()->variables()->createVariable(it.inVar);
+      auto in = it.inVar == nullptr ? nullptr : plan->getAst()->variables()->createVariable(it.inVar);
       aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
     }
   }
@@ -629,7 +631,9 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
     vars.emplace(p.inVar);
   }
   for (auto const& p : _aggregateVariables) {
-    vars.emplace(p.inVar);
+    if (p.inVar) {
+      vars.emplace(p.inVar);
+    }
   }
 
   if (_expressionVariable != nullptr) {

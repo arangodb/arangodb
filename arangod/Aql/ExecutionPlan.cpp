@@ -2528,18 +2528,24 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
     // the number of arguments should also be one (note: this has been
     // validated before)
     TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
-    TRI_ASSERT(args->numMembers() == 1);
-
-    auto arg = args->getMember(0);
-
-    if (arg->type == NODE_TYPE_REFERENCE) {
-      // operand is a variable
-      auto e = static_cast<Variable*>(arg->getData());
-      aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
+    auto const& functionName = Aggregator::translateAlias(func->name);
+    if (args->numMembers() == 1) {
+      auto arg = args->getMember(0);
+      if (arg->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(arg->getData());
+        aggregateVariables.emplace_back(
+            AggregateVarInfo{outVar, e, functionName});
+      } else {
+        auto calc = createTemporaryCalculation(arg, *previous);
+        *previous = calc;
+        aggregateVariables.emplace_back(
+            AggregateVarInfo{outVar, getOutVariable(calc), functionName});
+      }
     } else {
-      auto calc = createTemporaryCalculation(arg, *previous);
-      *previous = calc;
-      aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
+      TRI_ASSERT(!Aggregator::requiresInput(func->name));
+      aggregateVariables.emplace_back(
+          AggregateVarInfo{outVar, nullptr, functionName});
     }
   }
   
