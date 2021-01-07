@@ -496,8 +496,10 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
     // But then shardMap can also be empty, so we are good.
     if (collections.isObject()) {
       for (auto collection : VPackObjectIterator(collections)) {
-        for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
-          shardMap.add(shard.key.stringRef(), shard.value);
+        if (collection.value.hasKey(SHARDS)) {
+          for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
+            shardMap.add(shard.key.stringRef(), shard.value);
+          }
         }
       }
     }
@@ -1119,6 +1121,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       TRI_ASSERT(pit->second->slice().isArray());
       TRI_ASSERT(pit->second->slice().length() == 1);
       pdb = pit->second->slice()[0];
+      TRI_ASSERT(pdb.isObject());
       std::vector<std::string> ppath{
         AgencyCommHelper::path(), PLAN, COLLECTIONS, dbName};
       if (pdb.hasKey(ppath)) {   // Plan of this database's collections
