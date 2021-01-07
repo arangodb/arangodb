@@ -54,7 +54,7 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMat
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // Fast forward to initialize the _shadowRow
-    skipAllRemainingDataRows();
+    advanceBlockIndexAndShadowRow();
   }
 }
 
@@ -143,14 +143,7 @@ bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
   return _shadowRow.isInitialized();
 }
 
-size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
-  if (_aqlItemMatrix == nullptr) {
-    // Have not been initialized.
-    // We need to be called before.
-    TRI_ASSERT(!hasShadowRow());
-    TRI_ASSERT(!hasDataRow());
-    return 0;
-  }
+void AqlItemBlockInputMatrix::advanceBlockIndexAndShadowRow() noexcept {
   if (!hasShadowRow()) {
     if (_aqlItemMatrix->stoppedOnShadowRow()) {
       _shadowRow = _aqlItemMatrix->popShadowRow();
@@ -163,6 +156,21 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
     }
     resetBlockIndex();
   }
+}
+
+size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
+  if (_aqlItemMatrix == nullptr) {
+    // Have not been initialized.
+    // We need to be called before.
+    TRI_ASSERT(!hasShadowRow());
+    TRI_ASSERT(!hasDataRow());
+    return 0;
+  }
+  advanceBlockIndexAndShadowRow();
+  // If we advance here, we either need more input (no shadowRow)
+  // Or we have a relevant shadowRow and only skipped the dataset
+  TRI_ASSERT(!hasShadowRow() || _shadowRow.isRelevant());
+
   // Else we did already skip once.
   // nothing to do
   return 0;

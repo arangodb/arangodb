@@ -86,6 +86,9 @@ class AqlItemBlockInputMatrix {
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
  private:
+  void advanceBlockIndexAndShadowRow() noexcept;
+
+ private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   ExecutorState _finalState{ExecutorState::HASMORE};
 
