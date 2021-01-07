@@ -1126,8 +1126,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         AgencyCommHelper::path(), PLAN, COLLECTIONS, dbName};
       TRI_ASSERT(pdb.isObject());
 
-      TRI_ASSERT(pdb.isObject());
-
       // Plan of this database's collections
       pdb = pdb.get(ppath);
       if (!pdb.isNone()) {
