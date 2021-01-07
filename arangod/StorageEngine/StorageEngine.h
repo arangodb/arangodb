@@ -32,7 +32,8 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngineFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -46,7 +47,6 @@
 #include <chrono>
 
 namespace arangodb {
-
 enum class RecoveryState : uint32_t {
   /// @brief recovery is not yet started
   BEFORE = 0,
@@ -106,6 +106,8 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter<transaction::ManagerFeature>();
     startsAfter<ViewTypesFeature>();
   }
+  
+  virtual HealthData healthCheck() = 0;
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(

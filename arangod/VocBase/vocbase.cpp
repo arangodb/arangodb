@@ -1071,9 +1071,9 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   auto collection = createCollectionWorker(parameters);
 
   if (collection != nullptr) {
-    if (DatabaseFeature::DATABASE != nullptr &&
-        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-      DatabaseFeature::DATABASE->versionTracker()->track("create collection");
+    auto& df = server().getFeature<DatabaseFeature>();
+    if (df.versionTracker() != nullptr) {
+      df.versionTracker()->track("create collection");
     }
   }
 
@@ -1180,9 +1180,9 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropS
         collection->deferDropCollection(dropCollectionCallback);
       }
 
-      if (DatabaseFeature::DATABASE != nullptr &&
-          DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-        DatabaseFeature::DATABASE->versionTracker()->track("drop collection");
+      auto& df = server().getFeature<DatabaseFeature>();
+      if (df.versionTracker() != nullptr) {
+        df.versionTracker()->track("drop collection");
       }
     }
 
@@ -1385,9 +1385,9 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid, std::string c
   locker.unlock();
   writeLocker.unlock();
 
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("rename collection");
+  auto& df = server().getFeature<DatabaseFeature>();
+  if (df.versionTracker() != nullptr) {
+    df.versionTracker()->track("rename collection");
   }
 
   // invalidate all entries for the two collections
@@ -1503,9 +1503,9 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
 
   events::CreateView(dbName, view->name(), TRI_ERROR_NO_ERROR);
 
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("create view");
+  auto& df = server().getFeature<DatabaseFeature>();
+  if (df.versionTracker() != nullptr) {
+    df.versionTracker()->track("create view");
   }
 
   view->open();  // And lets open it.
@@ -1587,9 +1587,9 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem)
 
   events::DropView(dbName, view->name(), TRI_ERROR_NO_ERROR);
 
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("drop view");
+  auto& df = server().getFeature<DatabaseFeature>();
+  if (df.versionTracker() != nullptr) {
+    df.versionTracker()->track("drop view");
   }
 
   return TRI_ERROR_NO_ERROR;

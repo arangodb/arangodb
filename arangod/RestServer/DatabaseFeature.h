@@ -69,8 +69,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   friend class DatabaseManagerThread;
 
  public:
-  static DatabaseFeature* DATABASE;
-
   explicit DatabaseFeature(application_features::ApplicationServer& server);
   ~DatabaseFeature();
 

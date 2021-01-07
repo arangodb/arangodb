@@ -168,7 +168,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   rocksdb::WriteBatch batch;
   _tmpBuilder.clear();  // recycle our builder
 
-  auto dbfeature = arangodb::DatabaseFeature::DATABASE;
+  auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
   TRI_ASSERT(!_engine.inRecovery());  // just don't
 
   bool didWork = false;
@@ -178,7 +178,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     DataSourceId cid = pair.second;
-    TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
+    TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbid);
     if (!vocbase) {
       continue;
     }
