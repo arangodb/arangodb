@@ -102,6 +102,11 @@ inline static std::string stringify(index_t index) {
 bool State::persist(index_t index, term_t term, uint64_t millis,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
+
+  TRI_IF_FAILURE("State::persist") {
+    return true;
+  }
+
   LOG_TOPIC("b735e", TRACE, Logger::AGENCY)
     << "persist index=" << index << " term=" << term << " entry: " << entry.toJson();
 
@@ -146,6 +151,10 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
 bool State::persistConf(index_t index, term_t term, uint64_t millis,
                         arangodb::velocypack::Slice const& entry,
                         std::string const& clientId) const {
+  TRI_IF_FAILURE("State::persistConf") {
+    return true;
+  }
+
   LOG_TOPIC("7d1c0", TRACE, Logger::AGENCY)
       << "persist configuration index=" << index << " term=" << term
       << " entry: " << entry.toJson();
@@ -776,8 +785,8 @@ bool State::checkCollections() {
 /// Create agency collections
 bool State::createCollections() {
   if (!_collectionsChecked) {
-    return (createCollection("log") && createCollection("election") &&
-            createCollection("compact"));
+    return (ensureCollection("log") && ensureCollection("election") &&
+            ensureCollection("compact"));
   }
   return _collectionsChecked;
 }
@@ -791,7 +800,12 @@ bool State::checkCollection(std::string const& name) {
 }
 
 /// Create collection by name
-bool State::createCollection(std::string const& name) {
+bool State::ensureCollection(std::string const& name) {
+  if (_vocbase->lookupCollection(name) != nullptr) {
+    // collection already exists
+    return true;
+  }
+
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -846,10 +860,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
 bool State::loadPersisted() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  if (!checkCollection("configuration")) {
-    createCollection("configuration");
-  }
-
+  ensureCollection("configuration");
   loadOrPersistConfiguration();
 
   if (checkCollection("log") && checkCollection("compact")) {
@@ -1107,7 +1118,7 @@ bool State::loadRemaining() {
       auto req = ii.get("request");
 
       // clientId
-      if (auto clientSlice = req.get("clientId"); clientSlice.isString()) {
+      if (auto clientSlice = ii.get("clientId"); clientSlice.isString()) {
         clientId = clientSlice.copyString();
       } else {
         clientId.clear();
@@ -1115,7 +1126,7 @@ bool State::loadRemaining() {
 
       // epoch_millis
       uint64_t millis = 0;
-      if (auto milliSlice = ii.get("epoch_millis"); milliSlice.isInteger()) {
+      if (auto milliSlice = ii.get("epoch_millis"); milliSlice.isNumber()) {
         try {
           millis = milliSlice.getNumber<uint64_t>();
         } catch (std::exception const& e) {
@@ -1174,6 +1185,10 @@ index_t State::lastCompactionAt() const { return _lastCompactionAt; }
 
 /// Log compaction
 bool State::compact(index_t cind, index_t keep) {
+  TRI_IF_FAILURE("State::compact") {
+    return true;
+  }
+
   // We need to compute the state at index cind and use:
   //   cind <= _commitIndex
   // We start at the latest compaction state and advance from there:
@@ -1320,6 +1335,10 @@ bool State::removeObsolete(index_t cind) {
 /// Persist a compaction snapshot
 bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t term,
                                       arangodb::consensus::Store& snapshot) {
+  TRI_IF_FAILURE("State::persistCompactionSnapshot") {
+    return true;
+  }
+
   if (checkCollection("compact")) {
     Builder store;
     {
@@ -1412,6 +1431,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   _clientIdLookupTable.clear();
   _clientIdLookupCount = 0;
   _cur = index;
+  
   // This empty log should soon be rectified!
   return true;
 }
@@ -1643,10 +1663,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   return builder;
 }
 
-/// @brief load a compacted snapshot, returns true if successfull and false
-/// otherwise. In case of success store and index are modified. The store
-/// is reset to the state after log index `index` has been applied. Sets
-/// `index` to 0 if there is no compacted snapshot.
+/// @brief load a compacted snapshot, returns the number of entries read.
 uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
@@ -1734,6 +1751,21 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   }
 
   return n;
+}
+
+/// @brief dump the entire in-memory state to velocypack.
+/// should be used for testing only
+void State::toVelocyPack(velocypack::Builder& builder) const {
+  MUTEX_LOCKER(mutexLocker, _logLock); 
+
+  builder.openObject();
+  builder.add("current", VPackValue(_cur));
+  builder.add("log", VPackValue(VPackValueType::Array));
+  for (auto const& it : _log) {
+    it.toVelocyPack(builder);
+  }
+  builder.close(); // log
+  builder.close();
 }
 
 /*static*/ index_t State::extractIndexFromKey(arangodb::velocypack::Slice data) {

@@ -59,6 +59,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "Utils/Events.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -172,6 +173,17 @@ Query::~Query() {
   }
 
   _queryProfile.reset(); // unregister from QueryList
+  
+  // log to audit log
+  if (!_queryOptions.skipAudit &&
+     (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isSingleServer())) {
+    try {
+      events::AqlQuery(*this);
+    } catch (...) {
+      // we must not make any exception escape from here!
+    }
+  }
 
   // this will reset _trx, so _trx is invalid after here
   try {
@@ -179,7 +191,7 @@ Query::~Query() {
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
     // unfortunately we cannot do anything here, as we are in 
-    // a destructor
+    // the destructor
   }
   
   unregisterSnippets();
@@ -198,6 +210,14 @@ Query::~Query() {
 /// @brief return the user that started the query
 std::string const& Query::user() const {
   return _user;
+}
+
+double Query::getLockTimeout() const noexcept {
+  return _queryOptions.transactionOptions.lockTimeout;
+}
+
+void Query::setLockTimeout(double timeout) noexcept {
+  _queryOptions.transactionOptions.lockTimeout = timeout;
 }
 
 bool Query::killed() const {
@@ -224,10 +244,6 @@ void Query::prepareQuery(SerializationFormat format) {
   try {
     init(/*createProfile*/ true);
     
-    if (_queryProfile) {
-      _queryProfile->registerInQueryList();
-    }
-
     enterState(QueryExecutionState::ValueType::PARSING);
 
     std::unique_ptr<ExecutionPlan> plan = preparePlan();
@@ -260,6 +276,10 @@ void Query::prepareQuery(SerializationFormat format) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "query registry not available");
       }
       registry->registerSnippets(_snippets);
+    }
+    
+    if (_queryProfile) {
+      _queryProfile->registerInQueryList();
     }
     
     enterState(QueryExecutionState::ValueType::EXECUTION);
@@ -939,14 +959,14 @@ void Query::enterV8Context() {
   
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
-      if (V8DealerFeature::DEALER == nullptr) {
+      auto& server = vocbase().server();
+      if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "V8 engine is disabled");
       }
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createQueryContext();
-      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
+      _v8Context = server.getFeature<V8DealerFeature>().enterContext(&_vocbase, securityContext);
 
       if (_v8Context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -980,8 +1000,10 @@ void Query::exitV8Context() {
       // unregister transaction in context
       unregister();
 
-      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      V8DealerFeature::DEALER->exitContext(_v8Context);
+      auto& server = vocbase().server();
+      TRI_ASSERT(server.hasFeature<V8DealerFeature>() &&
+                 server.isEnabled<V8DealerFeature>());
+      server.getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
   } else if (!_embeddedQuery) {
@@ -1340,4 +1362,3 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   
   return ExecutionState::WAITING;
 }
-

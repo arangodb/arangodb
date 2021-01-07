@@ -200,10 +200,11 @@ Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
     status.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  do {
-    status = cache.insert(cv.get());
+  status = cache.insert(cv.get());
+  while (status.fail() && retry(status)){
     basics::cpu_relax();
-  } while (status.fail() && retry(status));
+    status = cache.insert(cv.get());
+  }
 
   if (status.ok()) {
     cv.release();

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 500 */
-/* global assertEqual, assertNotEqual */
+/* global assertEqual, assertNotEqual, assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for query language, functions
 // /
@@ -27,12 +27,12 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var errors = require("internal").errors;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
-var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
+const errors = require("internal").errors;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
+const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 const _ = require("lodash");
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2427,35 +2427,66 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[1] ], getQueryResults("RETURN DATE_ISO8601(@value)", { value: value[0] }));
       });
     },
-	
-	// //////////////////////////////////////////////////////////////////////////////
+    
+    // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_utctolocal and date_localtoutc functions
     // //////////////////////////////////////////////////////////////////////////////
 
     testDateUtcToLocalAndLocalToUtc: function () {
-      var values = [
-		[ "2020-03-15T01:00:00.000", "Europe/Berlin", "2020-03-15T00:00:00.000Z"],
-		[ "2020-04-15T02:00:00.000", "Europe/Berlin", "2020-04-15T00:00:00.000Z"],
-		[ "2020-10-14T21:00:00.999", "America/New_York", "2020-10-15T01:00:00.999Z"],
-		[ "2020-11-14T20:00:00.999", "America/New_York", "2020-11-15T01:00:00.999Z"],
-		[ "1991-09-10T09:00:00.999", "Asia/Shanghai", "1991-09-10T00:00:00.999Z"],
-		[ "1991-09-20T08:00:00.999", "Asia/Shanghai", "1991-09-20T00:00:00.999Z"],
-		[ "1992-09-10T08:00:00.999", "Asia/Shanghai", "1992-09-10T00:00:00.999Z"],
-		[ "1992-09-20T08:00:00.999", "Asia/Shanghai", "1992-09-20T00:00:00.999Z"],		
-		[ "2020-07-07T09:30:00.333", "Australia/Darwin", "2020-07-07T00:00:00.333Z" ],
-		[ "2020-07-07T08:45:00.333", "Australia/Eucla", "2020-07-07T00:00:00.333Z" ],
-		[ "2020-04-15T06:06:06.111Z", "UTC", "2020-04-15T06:06:06.111Z" ],
-		[ "2020-07-06T18:00:00.333", "Etc/GMT+6", "2020-07-07T00:00:00.333Z" ],
-		[ "2020-07-07T06:00:00.333", "Etc/GMT-6", "2020-07-07T00:00:00.333Z" ]
+      const values = [
+        [ "2020-03-15T01:00:00.000", "Europe/Berlin", "2020-03-15T00:00:00.000Z"],
+        [ "2020-04-15T02:00:00.000", "Europe/Berlin", "2020-04-15T00:00:00.000Z"],
+        [ "2020-10-14T21:00:00.999", "America/New_York", "2020-10-15T01:00:00.999Z"],
+        [ "2020-11-14T20:00:00.999", "America/New_York", "2020-11-15T01:00:00.999Z"],
+        [ "1991-09-10T09:00:00.999", "Asia/Shanghai", "1991-09-10T00:00:00.999Z"],
+        [ "1991-09-20T08:00:00.999", "Asia/Shanghai", "1991-09-20T00:00:00.999Z"],
+        [ "1992-09-10T08:00:00.999", "Asia/Shanghai", "1992-09-10T00:00:00.999Z"],
+        [ "1992-09-20T08:00:00.999", "Asia/Shanghai", "1992-09-20T00:00:00.999Z"],        
+        [ "2020-07-07T09:30:00.333", "Australia/Darwin", "2020-07-07T00:00:00.333Z" ],
+        [ "2020-07-07T08:45:00.333", "Australia/Eucla", "2020-07-07T00:00:00.333Z" ],
+        [ "2020-04-15T06:06:06.111Z", "UTC", "2020-04-15T06:06:06.111Z" ],
+        [ "2020-07-06T18:00:00.333", "Etc/GMT+6", "2020-07-07T00:00:00.333Z" ],
+        [ "2020-07-07T06:00:00.333", "Etc/GMT-6", "2020-07-07T00:00:00.333Z" ]
       ];
 
       values.forEach(function (value) {
         assertEqual([ value[0] ], getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz)", { value: value[2], tz: value[1] }));
-		assertEqual([ value[2] ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", { value: value[0], tz: value[1] }));
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", { value: value[0], tz: value[1] }));
       });
-	  	  
-	  assertEqual([ "2020-02-29T23:00:00.000Z" ], 
-		getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));	  
+            
+      assertEqual([ "2020-02-29T23:00:00.000Z" ], 
+        getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));      
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_timezone
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testDateTimeZone: function () {
+      let systemtz = null;
+      let res = getQueryResults("RETURN DATE_TIMEZONE()", {})[0];
+      
+      try {
+        systemtz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch (err) {
+      }
+        
+      if (systemtz) {
+        assertEqual(systemtz, res);
+      } else {
+        assertNotNull(res);
+      }
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_timezones
+    // //////////////////////////////////////////////////////////////////////////////
+    
+    testDateTimeZones: function () {
+      let res = getQueryResults("RETURN DATE_TIMEZONES()", {})[0];
+      assertNotEqual(-1, res.indexOf("America/New_York"));
+      assertNotEqual(-1, res.indexOf("Europe/Berlin"));
+      assertNotEqual(-1, res.indexOf("Asia/Shanghai"));
     },
 
     // //////////////////////////////////////////////////////////////////////////////

@@ -1426,11 +1426,15 @@ StorageEngineMock::StorageEngineMock(arangodb::application_features::Application
       vocbaseCount(1),
       _releasedTick(0) {}
 
+arangodb::HealthData StorageEngineMock::healthCheck() {
+  return {};
+}
+
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   TRI_ASSERT(false);
   return nullptr;
 }
-
+  
 void StorageEngineMock::addOptimizerRules(arangodb::aql::OptimizerRulesFeature& /*feature*/) {
   before();
   // NOOP
@@ -1823,8 +1827,7 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
 //  releaseUsage();
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+  resetTransactionId();
 
   return arangodb::Result();
 }
@@ -1841,8 +1844,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+    resetTransactionId();
     return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
@@ -1852,8 +1854,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+  resetTransactionId();
   //  releaseUsage();
 
   return arangodb::Result();
