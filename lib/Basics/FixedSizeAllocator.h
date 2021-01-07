@@ -156,7 +156,9 @@ class FixedSizeAllocator {
     auto* data = reinterpret_cast<T*>(
       (reinterpret_cast<uintptr_t>(p) + sizeof(MemoryBlock) + 63u) & ~(uintptr_t(63u)));
 
+    // creating a MemoryBlock is noexcept, it should not fail
     new (p)MemoryBlock(numItems, data);
+
     MemoryBlock* block = static_cast<MemoryBlock*>(p);
     block->setNextBlock(_head);
     _head = block;

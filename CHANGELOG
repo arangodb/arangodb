@@ -259,6 +259,16 @@ devel
   Previously the local cache was populated from the agency using a commit index
   value of 1, whereas it should have been 0 to get the full agency snapshot.
 
+* Better tracking of memory used in AQL graph traversals, COLLECT and SORT
+  operations. From this version onwards, certain AQL queries can report a 
+  higher memory usage than in previous versions of ArangoDB. This is not
+  because the queries use more memory than before, but because the memory
+  usage tracking has been improved.
+  A side effect of this change is that queries with a memory limit set may
+  now be aborted whereas in previous versions they ran through successfully
+  (but actually violated the limit). In this case it may be necessary to
+  adjust (i.e. raise) query memory limits accordingly.
+
 * Increase background garbage-collection interval for cluster transactions
   from 1 second to 2 seconds. This change should reduce the amount of
   background task activity a tiny bit (though hardly measurable on an 

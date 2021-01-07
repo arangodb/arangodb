@@ -79,7 +79,9 @@ class BaseEngine {
   // The engine is NOT copyable.
   BaseEngine(BaseEngine const&) = delete;
 
-  void getVertexData(arangodb::velocypack::Slice, arangodb::velocypack::Builder&);
+  void getVertexData(arangodb::velocypack::Slice vertex, 
+                     arangodb::velocypack::Builder& builder,
+                     bool nestedOutput);
 
   std::shared_ptr<transaction::Context> context() const;
 
@@ -88,9 +90,9 @@ class BaseEngine {
   virtual bool produceVertices() const { return true; }
   
   arangodb::aql::EngineId engineId() const { return _engineId; }
-  
+
  protected:
-  const arangodb::aql::EngineId _engineId;
+  arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
   transaction::Methods* _trx;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
@@ -111,8 +113,6 @@ class BaseTraverserEngine : public BaseEngine {
   ~BaseTraverserEngine();
 
   void getEdges(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
-
-  void getVertexData(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
 
   graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
 

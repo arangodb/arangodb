@@ -108,6 +108,8 @@ class ConstrainedSortExecutor {
 
   ExecutorState consumeInput(AqlItemBlockInputRange& inputRange);
 
+  size_t memoryUsageForSort() const noexcept;
+
  private:
   Infos& _infos;
   size_t _returnNext;
