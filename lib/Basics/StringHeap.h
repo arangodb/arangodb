@@ -29,6 +29,8 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace velocypack {
 class HashedStringRef;
 class StringRef;
@@ -39,7 +41,7 @@ class StringHeap {
   StringHeap(StringHeap const&) = delete;
   StringHeap& operator=(StringHeap const&) = delete;
 
-  explicit StringHeap(size_t blockSize);
+  explicit StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize);
   ~StringHeap();
 
   /// @brief register a string - implemented for StringRef and HashedStringRef
@@ -49,9 +51,7 @@ class StringHeap {
   /// @brief clear all data from the StringHeap, not releasing any occupied memory 
   /// the caller must make sure that nothing points into the data of the StringHeap
   /// when calling this method
-  void clear();
-  
-  void merge(StringHeap&& heap);
+  void clear() noexcept;
   
  private:
   /// @brief allocate a new block of memory
@@ -61,6 +61,9 @@ class StringHeap {
   char const* registerString(char const* data, size_t length);
 
  private:
+  /// @brief memory usage tracker
+  ResourceMonitor& _resourceMonitor;
+
   /// @brief already allocated string blocks
   std::vector<char*> _blocks;
 

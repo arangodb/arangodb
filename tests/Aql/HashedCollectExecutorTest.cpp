@@ -118,7 +118,8 @@ class HashedCollectExecutorTest
     return HashedCollectExecutorInfos{std::move(groupRegisters), RegisterPlan::MaxRegisterId,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
-                                      &VPackOptions::Defaults};
+                                      &VPackOptions::Defaults,
+                                      monitor};
   };
 };
 
@@ -583,7 +584,7 @@ class HashedCollectExecutorTestAggregate
     auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                             std::move(aggregateTypes),
                                             std::move(aggregateRegisters),
-                                            &VPackOptions::Defaults);
+                                            &VPackOptions::Defaults, monitor);
     return infos;
   };
 };

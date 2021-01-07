@@ -217,19 +217,12 @@ void InternalRestTraverserHandler::queryEngine() {
     }
 
     VPackSlice depthSlice = body.get("depth");
-    if (depthSlice.isNone() || engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      engine->getVertexData(keysSlice, result);
-    } else {
-      if (!depthSlice.isInteger()) {
-        generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "expecting 'depth' to be an integer value");
-        return;
-      }
-      // Safe cast BaseTraverserEngines are all of type TRAVERSER
-      auto eng = static_cast<BaseTraverserEngine*>(engine);
-      TRI_ASSERT(eng != nullptr);
-      eng->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+    if (!depthSlice.isNone() && !depthSlice.isInteger()) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting 'depth' to be an integer value");
+      return;
     }
+    engine->getVertexData(keysSlice, result, !depthSlice.isNone());
   } else if (option == "smartSearch") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,

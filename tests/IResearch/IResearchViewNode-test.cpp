@@ -2931,7 +2931,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::ExecutionPlan plan(query.ast());
+  arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
   arangodb::aql::Variable const outVariable("variable", 0, false);
 
@@ -3024,7 +3024,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::ExecutionPlan plan(query.ast());
+  arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
   // dummy engine
   arangodb::aql::SingletonNode singleton(&plan, arangodb::aql::ExecutionNodeId{0});
