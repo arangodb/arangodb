@@ -1,8 +1,9 @@
 devel
 -----
-* `COLLECT WITH COUNT INTO x` and `COLLECT var=expr WITH COUNT INTO x` are now
+
+* `COLLECT WITH COUNT INTO x` and `COLLECT var = expr WITH COUNT INTO x` are now
   internally transformed into `COLLECT AGGREGATE x = LENGTH(null)` and
-  `COLLECT var=expr AGGREGATE x = LENGTH(null)` respectively. This not only
+  `COLLECT var = expr AGGREGATE x = LENGTH(null)` respectively. This not only
   simplified the code, but also allows more query optimizations:
     - If the variable in `COLLECT WITH COUNT INTO var` is not used, the implicit
       aggregator is now removed.
