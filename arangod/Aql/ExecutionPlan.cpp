@@ -280,9 +280,9 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   return options;
 }
 
-std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast,
-                                                              AstNode const* direction,
-                                                              AstNode const* optionsNode) {
+std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast, AstNode const* direction,
+                                                              AstNode const* optionsNode,
+                                                              bool defaultToRefactor = false) {
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -294,6 +294,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast,
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
   options->minDepth = minDepth;
   options->maxDepth = maxDepth;
+  options->setRefactor(defaultToRefactor);
 
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
@@ -1301,8 +1302,12 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   AstNode const* start = parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(3));
   AstNode const* graph = node->getMember(4);
-  
-  auto options = createShortestPathOptions(getAst(), direction, node->getMember(5));
+
+  // Refactored variant shall be default on SingleServer on KPaths
+  bool defaultToRefactor = type == arangodb::graph::ShortestPathType::Type::KPaths &&
+                           ServerState::instance()->isSingleServer();
+
+  auto options = createShortestPathOptions(getAst(), direction, node->getMember(5), defaultToRefactor);
 
   // First create the node
   auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query().vocbase()), type, direction,
