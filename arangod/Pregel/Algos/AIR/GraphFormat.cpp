@@ -141,15 +141,22 @@ void GraphFormat::copyVertexData(std::string const& documentId,
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
-  // TODO: change GraphFormat interface here. Work with builder instead of Slice
+  // HACK HACK HACK - we want to eliminate all custom types and work with
+  // the actual json document
+  VPackBuilder doc;
+  {
+    VPackParser parser(doc);
+    parser.parse(edgeDocument.toJson());
+  }
+
   if (_dataAccess.readEdge) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, *_dataAccess.readEdge, edgeDocument);
+    filterDocumentData(tmpBuilder, *_dataAccess.readEdge, doc.slice());
     targetPtr.reset(tmpBuilder.slice());
   } else {
     // copy all
-    targetPtr.reset(edgeDocument);
+    targetPtr.reset(doc.slice());
   }
 }
 
