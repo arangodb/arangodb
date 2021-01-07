@@ -59,14 +59,6 @@ using InsertExecutor =
     ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>;
 
 /*
- * TODO
- *   Add a test-case where the First Row in the Input is ShadowRow, and needs to be skipped
- *   Add a test-case where the fullBlock is skipped, and we fetch non-empty data from input.
- *   Add a test, where we skip over internal shadowRows.
- *   Add tests for multi dependencies, where the Inputs all have different splits.
- */
-
-/*
  * Right now we use the following Executors:
  *   FilterExecutor => SingleRowFetcher, non-passthrough
  *   IdExecutor => SingleRowFetcher, passthrough
