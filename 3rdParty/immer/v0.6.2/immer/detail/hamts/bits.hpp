@@ -87,7 +87,7 @@ inline count_t popcount(std::uint64_t x)
 {
 #if IMMER_HAS_BUILTIN_POPCOUNT
 #  if defined(_MSC_VER)
-    return  __popcnt64(x);
+    return static_cast<count_t>(__popcnt64(x));
 #  else
     return __builtin_popcountll(x);
 #  endif
