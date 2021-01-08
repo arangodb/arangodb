@@ -55,6 +55,7 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
+  arangodb::ResourceMonitor resourceMonitor{};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}
@@ -90,7 +91,6 @@ class GraphProviderTest : public ::testing::Test {
           IndexAccessor{edgeIndexHandle, indexCondition, 0}};
 
       BaseProviderOptions opts(tmpVar, std::move(usedIndexes));
-      arangodb::ResourceMonitor resourceMonitor{};
       return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
