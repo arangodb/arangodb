@@ -20,6 +20,16 @@ devel
   - github issue: #13305
   - DEVSUP-665
 
+* `COLLECT WITH COUNT INTO x` and `COLLECT var = expr WITH COUNT INTO x` are now
+  internally transformed into `COLLECT AGGREGATE x = LENGTH(null)` and
+  `COLLECT var = expr AGGREGATE x = LENGTH(null)` respectively. This not only
+  simplified the code, but also allows more query optimizations:
+    - If the variable in `COLLECT WITH COUNT INTO var` is not used, the implicit
+      aggregator is now removed.
+    - All queries of the form `COLLECT AGGREGATE x = LENGTH(_)` are now executed
+      using the count executor, which can result in significantly improved
+      performance.
+
 * Minor and rare AQL performance improvement, in nested subqueries:
   LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
   where sq1 produces no data (e.g. by the above filter) for sq2,
@@ -278,6 +288,16 @@ devel
 * Fixed initial population of local AgencyCache values after a server restart.
   Previously the local cache was populated from the agency using a commit index
   value of 1, whereas it should have been 0 to get the full agency snapshot.
+
+* Better tracking of memory used in AQL graph traversals, COLLECT and SORT
+  operations. From this version onwards, certain AQL queries can report a 
+  higher memory usage than in previous versions of ArangoDB. This is not
+  because the queries use more memory than before, but because the memory
+  usage tracking has been improved.
+  A side effect of this change is that queries with a memory limit set may
+  now be aborted whereas in previous versions they ran through successfully
+  (but actually violated the limit). In this case it may be necessary to
+  adjust (i.e. raise) query memory limits accordingly.
 
 * Increase background garbage-collection interval for cluster transactions
   from 1 second to 2 seconds. This change should reduce the amount of

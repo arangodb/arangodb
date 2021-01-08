@@ -23,6 +23,7 @@
 
 #include "IndexIterator.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
@@ -158,7 +159,7 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
-        return _collection->readDocumentWithCallback(_trx, token, cb);
+        return _collection->getPhysical()->read(_trx, token, cb);
       },
       limit);
 }

@@ -329,9 +329,10 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
 }  // namespace
 
 /// @brief create the plan
-ExecutionPlan::ExecutionPlan(Ast* ast)
+ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
     : _ids(),
       _root(nullptr),
+      _trackMemoryUsage(trackMemoryUsage),
       _planValid(true),
       _varUsageComputed(false),
       _nestingLevel(0),
@@ -365,14 +366,12 @@ ExecutionPlan::~ExecutionPlan() {
   }
 #endif
 
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // we are in the destructor here already. decreasing the memory usage counters
-  // will only provide a benefit (in terms of assertions) if we are in
-  // maintainer mode, so we can save all these operations in non-maintainer mode
-  _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
-#endif
-#endif
+  if (_trackMemoryUsage) {
+    // only track memory usage here and access ast/query if we are allowed to do so.
+    // this can be inherently unsafe from within the gtest unit tests, so it is 
+    // protected by an option here
+    _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
+  }
 
   for (auto& x : _ids) {
     delete x.second;
@@ -380,14 +379,14 @@ ExecutionPlan::~ExecutionPlan() {
 }
 
 /// @brief create an execution plan from an AST
-/*static*/ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
+/*static*/ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast, bool trackMemoryUsage) {
   TRI_ASSERT(ast != nullptr);
 
   auto root = ast->root();
   TRI_ASSERT(root != nullptr);
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
-  auto plan = std::make_unique<ExecutionPlan>(ast);
+  auto plan = std::make_unique<ExecutionPlan>(ast, trackMemoryUsage);
 
   plan->_root = plan->fromNode(root);
 
@@ -444,7 +443,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackS
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
-  auto plan = std::make_unique<ExecutionPlan>(ast);
+  auto plan = std::make_unique<ExecutionPlan>(ast, true);
   plan->_root = plan->fromSlice(slice);
   plan->setVarUsageComputed();
 
@@ -453,7 +452,7 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(Ast* ast
 
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
-  auto plan = std::make_unique<ExecutionPlan>(ast);
+  auto plan = std::make_unique<ExecutionPlan>(ast, _trackMemoryUsage);
   plan->_nextId = _nextId;
   plan->_root = _root->clone(plan.get(), true, false);
   plan->_appliedRules = _appliedRules;
@@ -764,7 +763,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
 
   auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables, aggregateVariables,
                             nullptr, nullptr, std::vector<Variable const*>(),
-                            _ast->variables()->variables(false), false, true);
+                            _ast->variables()->variables(false), true);
 
   registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
@@ -922,43 +921,26 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
-  // may throw
-  _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
+  {
+    ResourceUsageScope scope(_ast->query().resourceMonitor(), _trackMemoryUsage ? sizeof(ExecutionNode) : 0);
 
-  try {
     auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
     TRI_ASSERT(emplaced);
-    return node.release();
-  } catch (...) {
-    // clean up
-    _ast->query().resourceMonitor().decreaseMemoryUsage(sizeof(ExecutionNode));
-    throw;
-  }
-}
-
-/// @brief register a node with the plan, will delete node if addition fails
-ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->plan() == this);
-  TRI_ASSERT(node->id() > ExecutionNodeId{0});
-  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-
-  try {
-    // may throw
-    _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
-
-    auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to register node in plan");
     }
-    TRI_ASSERT(it != _ids.end());
-  } catch (...) {
-    delete node;
-    throw;
+    
+    // we are now responsible for tracking the memory usage
+    scope.steal();
   }
+    
+  return node.release();
+}
 
-  return node;
+/// @brief register a node with the plan, will delete node if addition fails
+ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
+  return registerNode(std::unique_ptr<ExecutionNode>(node));
 }
 
 SubqueryNode* ExecutionPlan::registerSubquery(SubqueryNode* node) {
@@ -1579,68 +1561,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   auto collectNode =
       new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
                       expressionVariable, outVariable, keepVariables,
-                      _ast->variables()->variables(false), false, false);
+                      _ast->variables()->variables(false), false);
 
-  auto en = registerNode(collectNode);
-
-  return addDependency(previous, en);
-}
-
-/// @brief create an execution plan element from an AST COLLECT node, COUNT
-/// note that also a sort plan node will be added in front of the collect plan
-/// node
-ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
-                                                   AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_COUNT);
-  TRI_ASSERT(node->numMembers() == 3);
-
-  auto options = createCollectOptions(node->getMember(0));
-
-  auto list = node->getMember(1);
-  size_t const numVars = list->numMembers();
-
-  std::vector<GroupVarInfo> groupVariables;
-  groupVariables.reserve(numVars);
-  for (size_t i = 0; i < numVars; ++i) {
-    auto assigner = list->getMember(i);
-
-    if (assigner == nullptr) {
-      continue;
-    }
-
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
-    TRI_ASSERT(out != nullptr);
-    auto v = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(v != nullptr);
-
-    auto expression = assigner->getMember(1);
-
-    if (expression->type == NODE_TYPE_REFERENCE) {
-      // operand is a variable
-      auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(GroupVarInfo{v, e});
-    } else {
-      // operand is some misc expression
-      auto calc = createTemporaryCalculation(expression, previous);
-      previous = calc;
-      groupVariables.emplace_back(GroupVarInfo{v, getOutVariable(calc)});
-    }
-  }
-
-  // output variable
-  auto v = node->getMember(2);
-  // handle out variable
-  Variable* outVariable = static_cast<Variable*>(v->getData());
-
-  TRI_ASSERT(outVariable != nullptr);
-
-  std::vector<AggregateVarInfo> const aggregateVariables{};
-
-  auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
-                      nullptr, outVariable, std::vector<Variable const*>(),
-                      _ast->variables()->variables(false), true, false);
   auto en = registerNode(collectNode);
 
   return addDependency(previous, en);
@@ -2139,11 +2061,6 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_COLLECT_COUNT: {
-        en = fromNodeCollectCount(en, member);
-        break;
-      }
-
       case NODE_TYPE_LIMIT: {
         en = fromNodeLimit(en, member);
         break;
@@ -2593,18 +2510,24 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
     // the number of arguments should also be one (note: this has been
     // validated before)
     TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
-    TRI_ASSERT(args->numMembers() == 1);
-
-    auto arg = args->getMember(0);
-
-    if (arg->type == NODE_TYPE_REFERENCE) {
-      // operand is a variable
-      auto e = static_cast<Variable*>(arg->getData());
-      aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
+    auto const& functionName = Aggregator::translateAlias(func->name);
+    if (args->numMembers() == 1) {
+      auto arg = args->getMember(0);
+      if (arg->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(arg->getData());
+        aggregateVariables.emplace_back(
+            AggregateVarInfo{outVar, e, functionName});
+      } else {
+        auto calc = createTemporaryCalculation(arg, *previous);
+        *previous = calc;
+        aggregateVariables.emplace_back(
+            AggregateVarInfo{outVar, getOutVariable(calc), functionName});
+      }
     } else {
-      auto calc = createTemporaryCalculation(arg, *previous);
-      *previous = calc;
-      aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
+      TRI_ASSERT(!Aggregator::requiresInput(func->name));
+      aggregateVariables.emplace_back(
+          AggregateVarInfo{outVar, nullptr, functionName});
     }
   }
   
