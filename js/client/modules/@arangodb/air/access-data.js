@@ -28,7 +28,10 @@ const _ = require("lodash");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
-const graphModule = require("@arangodb/smart-graph");
+
+// ee/ce check + gm selection
+const isEnterprise = require("internal").isEnterprise();
+const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.write_vertex_program = data_access_write_vertex_program;
 exports.write_vertex = write_vertex;

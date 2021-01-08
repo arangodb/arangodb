@@ -24,12 +24,15 @@
 
 const internal = require("internal");
 const db = internal.db;
-const graphModule = require("@arangodb/smart-graph");
 const pregel = require("@arangodb/pregel");
 const _ = require("lodash");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const accumulators = require("@arangodb/air/accumulators");
+
+// ee/ce check + gm selection
+const isEnterprise = require("internal").isEnterprise();
+const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.single_source_shortest_paths_program = single_source_shortest_paths_program;
 exports.single_source_shortest_paths = single_source_shortest_paths;

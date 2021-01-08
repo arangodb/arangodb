@@ -24,16 +24,16 @@
 
 const internal = require("internal");
 const pregel = require("@arangodb/pregel");
-const graphModule = require("@arangodb/smart-graph");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const {listAccumulator, orAccumulator, storeAccumulator, minAccumulator} = require("@arangodb/air/accumulators");
 const _ = require("lodash");
 const db = internal.db;
-/*
 
+// ee/ce check + gm selection
+const isEnterprise = require("internal").isEnterprise();
+const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
-*/
 exports.strongly_connected_components_program = strongly_connected_components_program;
 exports.strongly_connected_components = strongly_connected_components;
 exports.test = test;

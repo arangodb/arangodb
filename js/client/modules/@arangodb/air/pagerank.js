@@ -24,12 +24,15 @@
 
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const graphModule = require("@arangodb/smart-graph");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const {sumAccumulator, storeAccumulator, maxAccumulator} = require("./accumulators");
 const _ = require("lodash");
+
+// ee/ce check + gm selection
+const isEnterprise = require("internal").isEnterprise();
+const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.pagerank_program = pagerank_program;
 exports.pagerank = pagerank;

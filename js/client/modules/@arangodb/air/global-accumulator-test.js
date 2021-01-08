@@ -26,14 +26,12 @@ const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const accumulators = require("@arangodb/air/accumulators");
-const graphModule = require("@arangodb/smart-graph");
-
 const internal = require("internal");
 
-/*
+// ee/ce check + gm selection
+const isEnterprise = require("internal").isEnterprise();
+const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
-
-*/
 exports.global_accumulators_test_program = global_accumulators_test_program;
 exports.global_accumulators_test = global_accumulators_test;
 exports.test = test;

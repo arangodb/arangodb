@@ -23,13 +23,16 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const pregel = require("@arangodb/pregel");
-const graphModule = require("@arangodb/smart-graph");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 
 const _ = require("lodash");
 const internal = require("internal");
 const db = internal.db;
+
+// ee/ce check + gm selection
+const isEnterprise = require("internal").isEnterprise();
+const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.vertex_degrees_program = vertex_degrees_program;
 exports.vertex_degrees = vertex_degrees;
