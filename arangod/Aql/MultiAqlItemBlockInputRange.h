@@ -81,6 +81,11 @@ class MultiAqlItemBlockInputRange {
   // This discards all remaining data rows
   auto skipAllRemainingDataRows() -> size_t;
 
+  // Skips all ShadowRows of lower or equal depth then given in all
+  // locally known ranges. Reports the amount of skipped equal depth
+  // ShadowRows per depth.
+  auto skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t>;
+
   // Subtract up to count rows from the local _skipped state
   auto skipForDependency(size_t const dependency, size_t count) -> size_t;
   // Skipp all that is available

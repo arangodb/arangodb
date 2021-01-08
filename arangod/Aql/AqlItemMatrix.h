@@ -108,6 +108,16 @@ class AqlItemMatrix {
 
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
+  /**
+   * @brief Skip over all shadowRows with a Subquery-depth <= depth
+   *
+   * @return firstValue: The number of ShadowRows in depth Skipped
+   *         secondValue: The first shadowRow of Subquery-depth > depth, or not-initialize if no such row exists.
+   * Invariant: secondValue.initialized() <=> this.numberBlocks() > 0
+   */
+  [[nodiscard]] auto skipAllShadowRowsOfDepth(size_t depth)
+      -> std::tuple<size_t, ShadowAqlItemRow>;
+
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 

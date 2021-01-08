@@ -1,6 +1,25 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed some situations of
+  [...]
+  SUBQUERY
+  FILTER
+  LIMIT
+  [...]
+  in AQL queries, yielding incorrect responses. A distributed
+  state within the subquery was not resetted correctly.
+  This could also lead into "shrink" errors of AQL item blocks,
+  or much higher query runtimes.
+  Fixes:
+  - BTS-252
+  - ES-687
+  - github issue: #13099
+  - github issue: #13124
+  - github issue: #13147
+  - github issue: #13305
+  - DEVSUP-665
+
 * Minor and rare AQL performance improvement, in nested subqueries:
   LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
   where sq1 produces no data (e.g. by the above filter) for sq2, the part <X>

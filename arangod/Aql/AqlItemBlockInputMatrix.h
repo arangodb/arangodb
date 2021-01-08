@@ -59,6 +59,9 @@ class AqlItemBlockInputMatrix {
   bool upstreamHasMore() const noexcept;
   size_t skipAllRemainingDataRows() noexcept;
 
+  size_t skipAllShadowRowsOfDepth(size_t depth);
+
+
   // Will return HASMORE if we were able to increase the row index.
   // Otherwise will return DONE.
   ExecutorState incrBlockIndex();
