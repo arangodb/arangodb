@@ -2209,8 +2209,13 @@ void Supervision::readyOrphanedIndexCreations() {
   }
 }
 
-void Supervision::enforceReplication() {
-  _lock.assertLockedByCurrentThread();
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::enforceReplication and the
+// unit tests:
+void arangodb::consensus::enforceReplicationFunctional(
+    Node const& snapshot, 
+    uint64_t& jobId,
+    std::shared_ptr<VPackBuilder> envelope) {
 
   // First check the number of AddFollower and RemoveFollower jobs in ToDo:
   // We always maintain that we have at most maxNrAddRemoveJobsInTodo
@@ -2221,7 +2226,7 @@ void Supervision::enforceReplication() {
   // the function:
   int const maxNrAddRemoveJobsInTodo = 50;
 
-  auto const& todos = snapshot().hasAsChildren(toDoPrefix).first;
+  auto const& todos = snapshot.hasAsChildren(toDoPrefix).first;
   int nrAddRemoveJobsInTodo = 0;
   for (auto it = todos.begin(); it != todos.end(); ++it) {
     auto jobNode = *(it->second);
@@ -2234,7 +2239,7 @@ void Supervision::enforceReplication() {
   }
 
   // We will loop over plannedDBs, so we use hasAsChildren
-  auto const& plannedDBs = snapshot().hasAsChildren(planColPrefix).first;
+  auto const& plannedDBs = snapshot.hasAsChildren(planColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
     auto const& db = *(db_.second);
@@ -2249,8 +2254,8 @@ void Supervision::enforceReplication() {
         auto replFact2 = col.hasAsString(StaticStrings::ReplicationFactor);
         if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
           // satellites => distribute to every server
-          auto available = Job::availableServers(snapshot());
-          replicationFactor = Job::countGoodOrBadServersInList(snapshot(), available);
+          auto available = Job::availableServers(snapshot);
+          replicationFactor = Job::countGoodOrBadServersInList(snapshot, available);
         } else {
           LOG_TOPIC("d3b54", DEBUG, Logger::SUPERVISION)
               << "no replicationFactor entry in " << col.toJson();
@@ -2281,7 +2286,7 @@ void Supervision::enforceReplication() {
             }
           }
           size_t actualReplicationFactor =
-              1 + Job::countGoodOrBadServersInList(snapshot(), onlyFollowers.slice());
+              1 + Job::countGoodOrBadServersInList(snapshot, onlyFollowers.slice());
           // leader plus GOOD or BAD followers (not FAILED)
           size_t apparentReplicationFactor = shard.slice().length();
 
@@ -2289,7 +2294,7 @@ void Supervision::enforceReplication() {
               apparentReplicationFactor != replicationFactor) {
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
-            auto const& todo = snapshot().hasAsChildren(toDoPrefix).first;
+            auto const& todo = snapshot.hasAsChildren(toDoPrefix).first;
             bool found = false;
             for (auto const& pair : todo) {
               auto const& job = pair.second;
@@ -2309,30 +2314,30 @@ void Supervision::enforceReplication() {
               }
             }
             // Check that shard is not locked:
-            if (snapshot().has(blockedShardsPrefix + shard_.first)) {
+            if (snapshot.has(blockedShardsPrefix + shard_.first)) {
               found = true;
             }
             if (!found) {
-              auto shardsLikeMe = Job::clones(snapshot(), db_.first,
+              auto shardsLikeMe = Job::clones(snapshot, db_.first,
                                               col_.first, shard_.first);
               auto inSyncReplicas = Job::findAllInSyncReplicas(
-                  snapshot(), db_.first, shardsLikeMe);
+                  snapshot, db_.first, shardsLikeMe);
               size_t inSyncReplicationFactor 
-                = Job::countGoodOrBadServersInList(snapshot(), inSyncReplicas);
+                = Job::countGoodOrBadServersInList(snapshot, inSyncReplicas);
 
               if (actualReplicationFactor < replicationFactor &&
                   apparentReplicationFactor < 2 + replicationFactor) {
-                AddFollower(snapshot(), _agent, std::to_string(_jobId++),
+                AddFollower(snapshot, nullptr, std::to_string(jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
-                    .create();
+                    .create(envelope);
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
                 }
               } else if (apparentReplicationFactor > replicationFactor &&
                          inSyncReplicationFactor >= replicationFactor) {
-                RemoveFollower(snapshot(), _agent, std::to_string(_jobId++),
+                RemoveFollower(snapshot, nullptr, std::to_string(jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
-                    .create();
+                    .create(envelope);
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
                 }
@@ -2344,6 +2349,26 @@ void Supervision::enforceReplication() {
     }
   }
 }
+
+void Supervision::enforceReplication() {
+  _lock.assertLockedByCurrentThread();
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard1(envelope.get());
+    VPackObjectBuilder guard2(envelope.get());
+    arangodb::consensus::enforceReplicationFunctional(snapshot(),
+                                                      _jobId, envelope);
+  }
+  if (envelope->slice()[0].length() > 0) {
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232a", INFO, Logger::SUPERVISION) << "Failed to insert jobs: " << envelope->toJson();
+    }
+  }
+}
+
 
 void Supervision::fixPrototypeChain(Builder& migrate) {
   _lock.assertLockedByCurrentThread();
