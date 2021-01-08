@@ -263,44 +263,29 @@ auto KShortestPathsExecutor<FinderType>::fetchPaths(AqlItemBlockInputRange& inpu
 
 template <class FinderType>
 auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) -> void {
+  transaction::BuilderLeaser tmp{&_trx};
+  tmp->clear();
   if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
                 std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>>) {
-    transaction::BuilderLeaser tmp{&_trx};
-    tmp->clear();
-
-    if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
-      if (_finder.getNextPathAql(*tmp.builder())) {
-        AqlValue path{tmp->slice()};
-        AqlValueGuard guard{path, true};
-        output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-        output.advanceRow();
-      }
-    } else {
-      if (_finder.getNextPath(*tmp.builder())) {
-        AqlValue path{tmp->slice()};
-        AqlValueGuard guard{path, true};
-        output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-        output.advanceRow();
-      }
+    if (_finder.getNextPath(*tmp.builder())) {
+      AqlValue path{tmp->slice()};
+      AqlValueGuard guard{path, true};
+      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+      output.advanceRow();
+    }
+  } else if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
+    if (_finder.getNextPathAql(*tmp.builder())) {
+      AqlValue path{tmp->slice()};
+      AqlValueGuard guard{path, true};
+      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+      output.advanceRow();
     }
   } else {
-    transaction::BuilderLeaser tmp{&_trx};
-    tmp->clear();
-
-    if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
-      if (_finder.getNextPathAql(*tmp.builder())) {
-        AqlValue path{tmp->slice()};
-        AqlValueGuard guard{path, true};
-        output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-        output.advanceRow();
-      }
-    } else {
-      if (_finder.getNextPath(*tmp.builder())) {
-        AqlValue path{tmp->slice()};
-        AqlValueGuard guard{path, true};
-        output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-        output.advanceRow();
-      }
+    if (_finder.getNextPath(*tmp.builder())) {
+      AqlValue path{tmp->slice()};
+      AqlValueGuard guard{path, true};
+      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+      output.advanceRow();
     }
   }
 }
@@ -339,31 +324,20 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
         id = in.slice();
         // Validation
         if (!::isValidId(id)) {
-          if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
-                        std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>>) {
-            TRI_ASSERT(false);  // TODO: MISSING!
-          } else {
-            _finder.options().query().warnings().registerWarning(
+          _infos.query().warnings().registerWarning(
                 TRI_ERROR_BAD_PARAMETER,
                 "Invalid input for Shortest Path: "
                 "Only id strings or objects with "
                 "_id are allowed");
-          }
-
           return false;
         }
         return true;
       } else {
-        if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
-                      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>>) {
-          TRI_ASSERT(false);  // TODO: MISSING!
-        } else {
-          _finder.options().query().warnings().registerWarning(
-              TRI_ERROR_BAD_PARAMETER,
-              "Invalid input for Shortest Path: "
-              "Only id strings or objects with "
-              "_id are allowed");
-        }
+        _infos.query().warnings().registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for Shortest Path: "
+            "Only id strings or objects with "
+            "_id are allowed");
 
         return false;
       }
@@ -371,17 +345,11 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
     case InputVertex::Type::CONSTANT: {
       id = builder.slice();
       if (!::isValidId(id)) {
-        if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
-                      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>>) {
-          TRI_ASSERT(false);  // TODO: MISSING!
-        } else {
-          _finder.options().query().warnings().registerWarning(
-              TRI_ERROR_BAD_PARAMETER,
-              "Invalid input for Shortest Path: "
-              "Only id strings or objects with "
-              "_id are allowed");
-        }
-
+        _infos.query().warnings().registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for Shortest Path: "
+            "Only id strings or objects with "
+            "_id are allowed");
         return false;
       }
       return true;
