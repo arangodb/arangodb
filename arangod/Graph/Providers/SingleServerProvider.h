@@ -128,7 +128,7 @@ struct SingleServerProvider {
   ~SingleServerProvider() = default;
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
-  SingleServerProvider& operator=(SingleServerProvider&&) = default;
+  // SingleServerProvider& operator=(SingleServerProvider&&) = default;
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)

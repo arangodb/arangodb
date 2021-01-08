@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -54,7 +55,7 @@ RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Method
       _resourceMonitor(&resourceMonitor),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(4096) /* arbitrary block-size may be adjusted for performance */
+      _stringHeap(resourceMonitor, 4096) /* arbitrary block-size may be adjusted for performance */
 {}
 
 void RefactoredTraverserCache::clear() {
@@ -75,7 +76,7 @@ VPackSlice RefactoredTraverserCache::lookupToken(EdgeDocumentToken const& idToke
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  if (!col->readDocument(_trx, idToken.localDocumentId(), _mmdr)) {
+  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
@@ -88,9 +89,10 @@ VPackSlice RefactoredTraverserCache::lookupToken(EdgeDocumentToken const& idToke
   return VPackSlice(_mmdr.vpack());
 }
 
-VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
-    arangodb::velocypack::HashedStringRef const& idHashed) {
-  arangodb::velocypack::StringRef id{idHashed};
+template <typename ResultType>
+bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& idHashed,
+                                            ResultType& result) {
+  velocypack::StringRef id{idHashed};
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
@@ -98,16 +100,26 @@ VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
     // Invalid input. If we get here somehow we managed to store invalid
     // _from/_to values or the traverser did a let an illegal start through
     TRI_ASSERT(false);  // for maintainer mode
-    return arangodb::velocypack::Slice::nullSlice();
+    return false;
   }
 
   std::string collectionName = id.substr(0, pos).toString();
 
   try {
-    Result res = _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), _mmdr);
+    Result res = _trx->documentFastPathLocal(
+        collectionName, id.substr(pos + 1),
+        [&](LocalDocumentId const&, VPackSlice doc) -> bool {
+          ++_insertedDocuments;
+          // copying...
+          if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+            result = aql::AqlValue(doc);
+          } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+            result.add(doc);
+          }
+          return true;
+        });
     if (res.ok()) {
-      ++_insertedDocuments;
-      return VPackSlice(_mmdr.vpack());
+      return true;
     }
 
     if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -138,7 +150,7 @@ VPackSlice RefactoredTraverserCache::lookupVertexInCollection(
   std::string msg = "vertex '" + id.toString() + "' not found";
   _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
   // This is expected, we may have dangling edges. Interpret as NULL
-  return arangodb::velocypack::Slice::nullSlice();
+  return false;
 }
 
 void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
@@ -149,7 +161,9 @@ void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idT
 
 void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
                                                       VPackBuilder& builder) {
-  builder.add(lookupVertexInCollection(idString));
+  if (!appendVertex(idString, builder)) {
+    builder.add(VPackSlice::nullSlice());
+  }
 }
 
 aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
@@ -160,7 +174,11 @@ aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken con
 aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
   arangodb::velocypack::HashedStringRef hashedId{idString.begin(),
                                                  static_cast<uint32_t>(idString.length())};
-  return aql::AqlValue(lookupVertexInCollection(hashedId));
+  aql::AqlValue val;
+  if (!appendVertex(hashedId, val)) {
+    val = aql::AqlValue(aql::AqlValueHintNull{});
+  }
+  return val;
 }
 
 arangodb::velocypack::StringRef RefactoredTraverserCache::persistString(arangodb::velocypack::StringRef idString) {

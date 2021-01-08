@@ -79,7 +79,7 @@ class PathValidatorTest : public ::testing::Test {
   arangodb::ResourceMonitor _resourceMonitor{};
 
   PathStore<Step> _pathStore{_resourceMonitor};
-  StringHeap _heap{4096};
+  StringHeap _heap{_resourceMonitor, 4096};
 
  protected:
   VertexUniquenessLevel getVertexUniquness() {

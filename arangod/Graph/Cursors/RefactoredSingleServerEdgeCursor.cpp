@@ -27,6 +27,7 @@
 
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -146,27 +147,26 @@ void RefactoredSingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* curso
                                                             Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
-  collection->readDocumentWithCallback(
-      _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+  collection->getPhysical()->read(_trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-        if (_trx->skipInaccessible()) {
-          // TODO: we only need to check one of these
-          VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
-          VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-          if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-            return false;
-          }
-        }
+    if (_trx->skipInaccessible()) {
+      // TODO: we only need to check one of these
+      VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
+      VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+      if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+        return false;
+      }
+    }
 #endif
-        //_opts->cache()->increaseCounter(); TODO: Heiko check - Why?
-        if (_internalCursorMapping != nullptr) {
-          TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-          callback(std::move(etkn), edgeDoc, _internalCursorMapping->at(_currentCursor));
-        } else {
-          callback(std::move(etkn), edgeDoc, _currentCursor);
-        }
-        return true;
-      });
+    //_opts->cache()->increaseCounter(); TODO: Heiko check - Why?
+    if (_internalCursorMapping != nullptr) {
+      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+      callback(std::move(etkn), edgeDoc, _internalCursorMapping->at(_currentCursor));
+    } else {
+      callback(std::move(etkn), edgeDoc, _currentCursor);
+    }
+    return true;
+  });
 }
 
 #if 0
@@ -216,7 +216,7 @@ void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callb
       });
     } else {
       cursor.all([&](LocalDocumentId const& token) {
-        return collection->readDocumentWithCallback(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+        return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
           if (_trx->skipInaccessible()) {
             // TODO: we only need to check one of these

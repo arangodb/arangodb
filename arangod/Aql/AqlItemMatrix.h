@@ -64,6 +64,11 @@ class AqlItemMatrix {
   uint64_t size() const noexcept;
 
   /**
+   * @brief Calculate the memory usage for the row indexes of the matrix
+   */
+  size_t memoryUsageForRowIndexes() const noexcept;
+
+  /**
    * @brief Number of registers, i.e. width of the matrix.
    */
   RegisterCount getNumRegisters() const noexcept;

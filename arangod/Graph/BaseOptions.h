@@ -34,6 +34,7 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace aql {
 struct AstNode;
@@ -149,6 +150,8 @@ struct BaseOptions {
   virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
     return false;
   }
+  
+  arangodb::ResourceMonitor& resourceMonitor() const;
 
   TraverserCache* cache();
   TraverserCache* cache() const;
@@ -168,6 +171,8 @@ struct BaseOptions {
   }
 
   size_t parallelism() const { return _parallelism; }
+  
+  void isQueryKilledCallback() const;
 
   void setRefactor(bool r) noexcept {
     _refactor = r;
@@ -200,6 +205,7 @@ struct BaseOptions {
  protected:
   
   mutable arangodb::transaction::Methods _trx;
+
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 

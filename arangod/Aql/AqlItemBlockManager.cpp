@@ -33,11 +33,9 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
+AqlItemBlockManager::AqlItemBlockManager(arangodb::ResourceMonitor& resourceMonitor,
                                          SerializationFormat format)
-    : _resourceMonitor(resourceMonitor), _format(format) {
-  TRI_ASSERT(resourceMonitor != nullptr);
-}
+    : _resourceMonitor(resourceMonitor), _format(format) {}
 
 /// @brief destroy the manager
 AqlItemBlockManager::~AqlItemBlockManager() = default;
@@ -76,7 +74,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, Register
   TRI_ASSERT(block->numRows() == numRows);
   TRI_ASSERT(block->numRegisters() == numRegisters);
   TRI_ASSERT(block->numEntries() == targetSize);
-  TRI_ASSERT(block->numEffectiveEntries() == 0);
+  TRI_ASSERT(block->maxModifiedRowIndex() == 0);
   TRI_ASSERT(block->getRefCount() == 0);
   TRI_ASSERT(block->hasShadowRows() == false);
 
@@ -138,7 +136,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocyp
   return block;
 }
 
-ResourceMonitor* AqlItemBlockManager::resourceMonitor() const noexcept {
+arangodb::ResourceMonitor& AqlItemBlockManager::resourceMonitor() const noexcept {
   return _resourceMonitor;
 }
 

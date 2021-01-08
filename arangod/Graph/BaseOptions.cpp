@@ -241,6 +241,10 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VP
 
 BaseOptions::~BaseOptions() = default;
 
+arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
+  return _query.resourceMonitor();
+}
+
 void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.openObject();
   // base indexes
@@ -458,4 +462,10 @@ void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
 
 aql::Variable const* BaseOptions::tmpVar() {
   return _tmpVar;
+}
+
+void BaseOptions::isQueryKilledCallback() const {
+  if (query().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 }

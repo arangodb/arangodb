@@ -1594,6 +1594,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
 
         if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
+          // Nothing relevant fetched for this Executor, we are not going to ask it again.
+          localExecutorState = ExecutorState::DONE;
           _execState = ExecState::SHADOWROWS;
         } else {
           _execState = ExecState::CHECKCALL;
@@ -1704,7 +1706,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   SkipResult skipped = _skipped;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-    TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we inected a call*/);
+    TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() /*we injected a call*/);
   } else {
     TRI_ASSERT(skipped.subqueryDepth() == stack.subqueryLevel() + 1 /*we took our call*/);
   }

@@ -60,7 +60,7 @@ class KPathFinderTest_Refactored
   // using KPathFinder = TracedKPathEnumerator<MockGraphProvider>;
 
  protected:
-  bool activateLogging{true};
+  bool activateLogging{false};
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
   std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};

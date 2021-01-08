@@ -267,7 +267,7 @@ void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) 
                                 /*new*/ myIdBuilder.slice(),
                                 /*ttl*/ 0, /*timeout*/ 5.0);
         }
-        if (res.successful()) {  // sucessfull leadership takeover
+        if (res.successful()) {  // successful leadership takeover
           leader = myIdBuilder.slice();
         }  // ignore for now, heartbeat thread will handle it
       }

@@ -355,9 +355,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         using KPathRefactored = KPathEnumerator<SingleServerProvider>;
 
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider{opts->query(), forwardProviderOptions, opts->query().tmpResourceMonitor()},
-            SingleServerProvider{opts->query(), backwardProviderOptions, opts->query().tmpResourceMonitor()},
-            std::move(enumeratorOptions), opts->query().tmpResourceMonitor());
+            SingleServerProvider{opts->query(), forwardProviderOptions,
+                                 opts->query().resourceMonitor()},
+            SingleServerProvider{opts->query(), backwardProviderOptions,
+                                 opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -369,9 +371,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
         // TODO: below copy paste from above. clean this up later.
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
-            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions, opts->query().tmpResourceMonitor()},
-            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions, opts->query().tmpResourceMonitor()},
-            std::move(enumeratorOptions), opts->query().tmpResourceMonitor());
+            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions,
+                                                 opts->query().resourceMonitor()},
+            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions,
+                                                 opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),

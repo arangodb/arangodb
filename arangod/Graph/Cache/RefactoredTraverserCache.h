@@ -71,7 +71,7 @@ class RefactoredTraverserCache {
   RefactoredTraverserCache(RefactoredTraverserCache&&) = default;
 
   RefactoredTraverserCache& operator=(RefactoredTraverserCache const&) = delete;
-  RefactoredTraverserCache& operator=(RefactoredTraverserCache&&) = default;
+  // RefactoredTraverserCache& operator=(RefactoredTraverserCache&&) = default;
 
   /// @brief clears all allocated memory in the underlying StringHeap
   void clear();
@@ -130,10 +130,11 @@ class RefactoredTraverserCache {
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup a document from the database.
-  ///        The Slice returned here is only valid until the NEXT call of this
-  ///        function.
+  ///        if this returns false the result is unmodified
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::Slice lookupVertexInCollection(arangodb::velocypack::HashedStringRef const& idString);
+
+  template <typename ResultType>
+  bool appendVertex(arangodb::velocypack::HashedStringRef const& idString, ResultType& result);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
