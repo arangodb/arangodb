@@ -152,7 +152,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--query.memory-limit",
                      "memory threshold for AQL queries (in bytes, 0 = no limit)",
-                     new UInt64Parameter(&_queryMemoryLimit),
+                     new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
   
   options->addOption("--query.max-runtime",

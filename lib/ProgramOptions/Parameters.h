@@ -47,7 +47,7 @@ std::string removeCommentsFromNumber(std::string const& value);
 
 // convert a string into a number, base version for signed or unsigned integer types
 template <typename T>
-inline T toNumber(std::string value, T base) {
+inline T toNumber(std::string value, T base = 1) {
   // replace leading spaces, replace trailing spaces & comments
   value = removeCommentsFromNumber(value);
 
