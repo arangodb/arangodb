@@ -63,14 +63,14 @@ CollectNode::CollectNode(
       _variableMap(variableMap),
       _isDistinctCommand(isDistinctCommand),
       _specialized(false) {
-      // TODO - this is only relevant for backwards compatibility in cluster upgrade 3.7 -> 3.8
-      // and can be removed in 3.9.
-      if (count) {
-        TRI_ASSERT(aggregateVariables.empty());
-        _aggregateVariables.push_back({outVariable, nullptr, "COUNT"});
-        _outVariable = nullptr;
-      }
-    }
+  // TODO - this is only relevant for backwards compatibility in cluster upgrade 3.7 -> 3.8
+  // and can be removed in 3.9.
+  if (count) {
+    TRI_ASSERT(aggregateVariables.empty());
+    _aggregateVariables.push_back({outVariable, nullptr, "COUNT"});
+    _outVariable = nullptr;
+  }
+}
 
 CollectNode::CollectNode(
     ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
@@ -753,6 +753,11 @@ void CollectNode::clearAggregates(
     if (cb(*it)) {
       it = _aggregateVariables.erase(it);
     } else {
+      if (!Aggregator::requiresInput(it->type)) {
+        // aggregator has an input variable attached, but doesn't need it.
+        // remove the dependency, e.g.  COUNT(1) => COUNT()
+        it->inVar = nullptr;
+      }
       ++it;
     }
   }
