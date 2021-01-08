@@ -58,6 +58,10 @@ size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
 void filterDocumentData(VPackBuilder& finalBuilder, PathList paths,
                         arangodb::velocypack::Slice const& document) {
+  // necessary to be able to be merged later.
+  finalBuilder.openObject();
+  finalBuilder.close();
+
   for (auto&& path : paths) {
     std::visit(overload{[&](std::string const& key) {
                           VPackBuilder tmp;
@@ -66,10 +70,6 @@ void filterDocumentData(VPackBuilder& finalBuilder, PathList paths,
                           innerBuilder.add(key, document.get(key));
                           innerBuilder.close();
 
-                          if (!finalBuilder.slice().isObject()) {
-                            finalBuilder.openObject();
-                            finalBuilder.close();
-                          }
                           VPackCollection::merge(tmp, finalBuilder.slice(),
                                                  innerBuilder.slice(), true, false);
                           finalBuilder.clear();
