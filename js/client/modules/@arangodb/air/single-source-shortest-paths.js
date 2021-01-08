@@ -115,6 +115,22 @@ function single_source_shortest_paths(
   );
 }
 
+function reconstruct_path(graphSpec, from, to) {
+
+  let path = [to];
+
+  while (from !== to) {
+    let doc = db._collection(graphSpec.vname).document(to);
+    if (doc === null || doc.SSSP.distance === null) {
+      return [];
+    }
+    to = doc.SSSP.distance.sender;
+    path.unshift(to);
+  }
+
+  return [path];
+}
+
 function exec_test_shortest_path_impl(graphSpec) {
   // Find the ID of a vertex to start at.
   const [from_vertex, ...to_vertexes] = db
@@ -143,14 +159,15 @@ function exec_test_shortest_path_impl(graphSpec) {
       .toArray();
 
     internal.print(" -- collecting Pregel SSSP Path to ", to_vertex);
-    const found_path_result = db._query(`
+    /*const found_path_result = db._query(`
             FOR v, e, p in 0..10000 INBOUND @to GRAPH @graph
                 PRUNE v._id == @from || (e != null && e._from != p.vertices[-2].SSSP.distance.sender)
                 OPTIONS {uniqueVertices: "path"}
                 FILTER v._id == @from
                 LIMIT 1
                 RETURN REVERSE(p.vertices[*]._id)`,
-      {"from": from_vertex, "to": to_vertex, "graph": graphSpec.name}).toArray();
+      {"from": from_vertex, "to": to_vertex, "graph": graphSpec.name}).toArray();*/
+    const found_path_result = reconstruct_path(graphSpec, from_vertex, to_vertex);
 
     if ((found_path_result.length !== 0) !== (shortest_paths_result.length !== 0)) {
       internal.print("\u001b[31mFAIL: did not agree on the existance of a shortest path to ", to_vertex, "\u001b[0m");
@@ -164,6 +181,7 @@ function exec_test_shortest_path_impl(graphSpec) {
 
     if (shortest_paths.vertices.length !== found_path.length) {
       internal.print("\u001b[32mOK  : sssp path was not a shortest path, sssp: ", found_path.length, " all shortest paths: ", shortest_paths.vertices.length, "\u001b[0m");
+      internal.print(found_path, shortest_paths);
       return false;
     } else {
       internal.print("\u001b[32mOK  : shortest path is ok to ", to_vertex, "\u001b[0m");
