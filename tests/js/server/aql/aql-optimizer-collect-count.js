@@ -107,6 +107,9 @@ function optimizerCountTestSuite () {
         assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
       }
+
+      let output = require("@arangodb/aql/explainer").explain(query, {colors: false}, false);
+      assertTrue(/\COLLECT AGGREGATE cnt = LENGTH\(\)/.test(output));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
