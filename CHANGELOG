@@ -1,10 +1,20 @@
-v3.7.6 (XXXX-XX-XX)
+v3.7.7 (XXXX-XX-XX)
 -------------------
 
-* Fixed rare objectId conflict for indexes
+* Fixed rare objectId conflict for indexes.
 
-* Fix for OASIS-409. Fixed indexing _id attribute at recovery
+* Fix for OASIS-409: fixed indexing _id attribute at recovery
 
+* Improve internal error reporting by cluster maintenance.
+
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
+
+
+v3.7.6 (2021-01-04)
+-------------------
+
+* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.45.6.
 
 * Added new metric: "arangodb_collection_lock_sequential_mode" this will count
   how many times we need to do a sequential locking of collections. If this

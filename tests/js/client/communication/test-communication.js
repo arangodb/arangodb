@@ -831,7 +831,9 @@ if (internal.isCluster()) {
   jsunity.run(AqlGraphSetupPathSuite);
   jsunity.run(AqlNamedGraphSetupPathSuite);
   jsunity.run(AqlViewSetupPathSuite);
-  jsunity.run(AqlSatelliteSetupPathSuite);
+  if (internal.isEnterprise()) {
+    jsunity.run(AqlSatelliteSetupPathSuite);
+  }
 }
 
 return jsunity.done();
