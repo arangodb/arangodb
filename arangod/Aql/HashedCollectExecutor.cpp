@@ -49,15 +49,13 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     velocypack::Options const* opts, 
-    arangodb::ResourceMonitor& resourceMonitor,
-    bool count)
+    arangodb::ResourceMonitor& resourceMonitor)
     : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
       _vpackOptions(opts),
-      _resourceMonitor(resourceMonitor),
-      _count(count) {
+      _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -77,8 +75,6 @@ velocypack::Options const* HashedCollectExecutorInfos::getVPackOptions() const {
   return _vpackOptions;
 }
 
-bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
-
 RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
   return _collectRegister;
 }
@@ -91,13 +87,7 @@ std::vector<Aggregator::Factory const*>
 HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
   std::vector<Aggregator::Factory const*> aggregatorFactories;
 
-  if (infos.getAggregateTypes().empty()) {
-    // no aggregate registers. this means we'll only count the number of items
-    if (infos.getCount()) {
-      aggregatorFactories.emplace_back(
-          &Aggregator::factoryFromTypeString("LENGTH"));
-    }
-  } else {
+  if (!infos.getAggregateTypes().empty()) {
     // we do have aggregate registers. create them as empty AqlValues
     aggregatorFactories.reserve(infos.getAggregatedRegisters().size());
 
@@ -142,20 +132,13 @@ void HashedCollectExecutor::destroyAllGroupsAqlValues() {
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
   TRI_ASSERT(input.isInitialized());
-
+  
   decltype(_allGroups)::iterator currentGroupIt = findOrEmplaceGroup(input);
 
-  // reduce the aggregates
-  ValueAggregators* aggregateValues = currentGroupIt->second.get();
+  if (!_infos.getAggregateTypes().empty()) {
+    // reduce the aggregates
+    ValueAggregators* aggregateValues = currentGroupIt->second.get();
 
-  if (_infos.getAggregateTypes().empty()) {
-    // no aggregate registers. simply increase the counter
-    if (_infos.getCount()) {
-      // TODO get rid of this special case if possible
-      TRI_ASSERT(aggregateValues != nullptr && aggregateValues->size() == 1);
-      (*aggregateValues)[0].reduce(EmptyValue);
-    }
-  } else {
     // apply the aggregators for the group
     TRI_ASSERT(aggregateValues != nullptr && aggregateValues->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
@@ -172,8 +155,6 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 
 void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) {
   // build the result
-  TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != RegisterPlan::MaxRegisterId);
-
   size_t memoryUsage = memoryUsageForGroup(_currentGroup->first, false);
   auto& keys = _currentGroup->first.values;
 
@@ -187,27 +168,20 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
     key.erase();  // to prevent double-freeing later
   }
 
+
   _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 
-  if (!_infos.getCount()) {
-    if (!_infos.getAggregatedRegisters().empty()) {
-      TRI_ASSERT(_currentGroup->second != nullptr);
-      auto& aggregators = *_currentGroup->second;
-      TRI_ASSERT(aggregators.size() == _infos.getAggregatedRegisters().size());
-      size_t j = 0;
-      for (std::size_t aggregatorIdx = 0; aggregatorIdx < aggregators.size(); ++aggregatorIdx) {
-        AqlValue r = aggregators[aggregatorIdx].stealValue();
-        AqlValueGuard guard{r, true};
-        output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
-                            _lastInitializedInputRow, guard);
-      }
+  if (!_infos.getAggregatedRegisters().empty()) {
+    TRI_ASSERT(_currentGroup->second != nullptr);
+    auto& aggregators = *_currentGroup->second;
+    TRI_ASSERT(aggregators.size() == _infos.getAggregatedRegisters().size());
+    size_t j = 0;
+    for (std::size_t aggregatorIdx = 0; aggregatorIdx < aggregators.size(); ++aggregatorIdx) {
+      AqlValue r = aggregators[aggregatorIdx].stealValue();
+      AqlValueGuard guard{r, true};
+      output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
+                          _lastInitializedInputRow, guard);
     }
-  } else {
-    // set group count in result register
-    TRI_ASSERT(_currentGroup->second != nullptr && _currentGroup->second->size() == 1);
-    AqlValue r = (*_currentGroup->second)[0].stealValue();
-    AqlValueGuard guard{r, true};
-    output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow, guard);
   }
 }
 
