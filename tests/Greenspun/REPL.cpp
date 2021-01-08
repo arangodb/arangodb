@@ -1,10 +1,9 @@
 
 #include <iostream>
 
-
+#include "Greenspun/EvalResult.h"
 #include "Greenspun/Interpreter.h"
 #include "Greenspun/Primitives.h"
-#include "Greenspun/EvalResult.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -17,21 +16,24 @@
 
 using namespace arangodb;
 
-greenspun::EvalResult Func_thisId(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+greenspun::EvalResult Func_thisId(greenspun::Machine& ctx,
+                                  VPackSlice const params, VPackBuilder& result) {
   result.add(VPackValue("V/1"));
   return {};
 }
 
 std::unordered_map<std::string, VPackBuilder> variableValues;
 
-greenspun::EvalResult Func_VarSet(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+greenspun::EvalResult Func_VarSet(greenspun::Machine& ctx,
+                                  VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 2) {
     return greenspun::EvalError("expected two parameters");
   }
   VPackSlice name = params.at(0);
   VPackSlice value = params.at(1);
   if (!name.isString()) {
-    return greenspun::EvalError("expected string as first parameter, found: " + name.toJson());
+    return greenspun::EvalError("expected string as first parameter, found: " +
+                                name.toJson());
   }
 
   auto nameStr = name.copyString();
@@ -50,24 +52,15 @@ void AddSomeFunctions(greenspun::Machine& m) {
 
 struct LispCompleter : arangodb::Completer {
   bool isComplete(std::string const& source, size_t /*lineno*/) final {
-    int openParen = 0;
     int openBrackets = 0;
     int openBraces = 0;
     int openStrings = 0;  // only used for template strings, which can be multi-line
     int openComments = 0;
 
     enum line_parse_state_e {
-      NORMAL,            // start
-      NORMAL_1,          // from NORMAL: seen a single /
-      DOUBLE_QUOTE,      // from NORMAL: seen a single "
-      DOUBLE_QUOTE_ESC,  // from DOUBLE_QUOTE: seen a backslash
-      SINGLE_QUOTE,      // from NORMAL: seen a single '
-      SINGLE_QUOTE_ESC,  // from SINGLE_QUOTE: seen a backslash
-      BACKTICK,          // from NORMAL: seen a single `
-      BACKTICK_ESC,      // from BACKTICK: seen a backslash
-      MULTI_COMMENT,     // from NORMAL_1: seen a *
-      MULTI_COMMENT_1,   // from MULTI_COMMENT, seen a *
-      SINGLE_COMMENT     // from NORMAL_1; seen a /
+      NORMAL,           // start
+      DOUBLE_QUOTE,     // from NORMAL: seen a single "
+      DOUBLE_QUOTE_ESC  // from DOUBLE_QUOTE: seen a backslash
     };
 
     char const* ptr = source.c_str();
@@ -86,94 +79,10 @@ struct LispCompleter : arangodb::Completer {
       } else if (state == DOUBLE_QUOTE_ESC) {
         state = DOUBLE_QUOTE;
         ptr++;
-      } else if (state == SINGLE_QUOTE) {
-        if (*ptr == '\\') {
-          state = SINGLE_QUOTE_ESC;
-        } else if (*ptr == '\'') {
-          state = NORMAL;
-        }
-
-        ++ptr;
-      } else if (state == SINGLE_QUOTE_ESC) {
-        state = SINGLE_QUOTE;
-        ptr++;
-      } else if (state == BACKTICK) {
-        if (*ptr == '\\') {
-          state = BACKTICK_ESC;
-        } else if (*ptr == '`') {
-          state = NORMAL;
-          --openStrings;
-        }
-
-        ++ptr;
-      } else if (state == BACKTICK_ESC) {
-        state = BACKTICK;
-        ptr++;
-      } else if (state == MULTI_COMMENT) {
-        if (*ptr == '*') {
-          state = MULTI_COMMENT_1;
-        }
-
-        ++ptr;
-      } else if (state == MULTI_COMMENT_1) {
-        if (*ptr == '/') {
-          state = NORMAL;
-          --openComments;
-        } else if (*ptr != '*') {
-          state = MULTI_COMMENT;
-        }
-
-        ++ptr;
-      } else if (state == SINGLE_COMMENT) {
-        ++ptr;
-
-        if (ptr == end || *ptr == '\n') {
-          state = NORMAL;
-          --openComments;
-        }
-      } else if (state == NORMAL_1) {
-        switch (*ptr) {
-          case '/':
-            state = SINGLE_COMMENT;
-            ++openComments;
-            ++ptr;
-            break;
-
-          case '*':
-            state = MULTI_COMMENT;
-            ++openComments;
-            ++ptr;
-            break;
-
-          default:
-            state = NORMAL;  // try again, do not change ptr
-            break;
-        }
       } else {
         switch (*ptr) {
           case '"':
             state = DOUBLE_QUOTE;
-            break;
-
-          case '\'':
-            state = SINGLE_QUOTE;
-            break;
-
-          case '`':
-            state = BACKTICK;
-            ++openStrings;
-            break;
-
-          case '/':
-            state = NORMAL_1;
-            break;
-
-          case '(':
-            ++openParen;
-            break;
-
-          case ')':
-            --openParen;
             break;
 
           case '[':
@@ -201,8 +110,7 @@ struct LispCompleter : arangodb::Completer {
       }
     }
 
-    return (openParen <= 0 && openBrackets <= 0 && openBraces <= 0 &&
-            openStrings <= 0 && openComments <= 0);
+    return (openBrackets <= 0 && openBraces <= 0 && openStrings <= 0 && openComments <= 0);
   }
   std::vector<std::string> alternatives(char const*) override { return {}; }
 };
@@ -217,9 +125,8 @@ int main(int argc, char** argv) {
   greenspun::Machine m;
   InitMachine(m);
   AddSomeFunctions(m);
-  m.setPrintCallback([](std::string const& msg) {
-    std::cout << msg << std::endl;
-  });
+  m.setPrintCallback(
+      [](std::string const& msg) { std::cout << msg << std::endl; });
 
   LispLineEditor lineEditor(".arangolisphist");
   lineEditor.open(true);
@@ -238,9 +145,10 @@ int main(int argc, char** argv) {
       auto program = arangodb::velocypack::Parser::fromJson(line);
 
       VPackBuilder result;
-      auto res = greenspun::Evaluate(m, program->slice(), result).mapError([](greenspun::EvalError& err) {
-        err.wrapMessage("at top-level");
-      });
+      auto res =
+          greenspun::Evaluate(m, program->slice(), result).mapError([](greenspun::EvalError& err) {
+            err.wrapMessage("at top-level");
+          });
       if (res.fail()) {
         std::cerr << "error: " << res.error().toString() << std::endl;
       } else {
