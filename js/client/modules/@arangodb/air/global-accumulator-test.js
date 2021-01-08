@@ -160,11 +160,11 @@ function global_accumulators_test_program(resultField) {
         ],
         updateProgram:
         ["seq",
-         ["for-each", ["edge", ["this-outbound-edges"]],
+         ["for-each", [["edge", ["this-outbound-edges"]]],
           ["seq",
-           ["send-to-accum",
-            ["attrib-ref", ["var-ref", "edge"], "to-pregel-id"],
-            "forward", ["accum-ref", "forward"]]]],
+            ["send-to-accum", "forward",
+              ["attrib-ref", ["var-ref", "edge"], "to-pregel-id"],
+              ["accum-ref", "forward"]]]],
          "vote-halt",
         ],
         onHalt: [
