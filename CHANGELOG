@@ -1,4 +1,4 @@
-v3.7.6.1 (XXXX-XX-XX)
+v3.7.6.1 (2020-01-08)
 ---------------------
 
 * Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
