@@ -3,6 +3,32 @@ devel
 
 * Added AQL bit handling functions BIT_AND, BIT_OR, BIT_XOR and BIT_COUNT.
 
+* Fixed some situations of
+  [...]
+  SUBQUERY
+  FILTER
+  LIMIT
+  [...]
+  in AQL queries, yielding incorrect responses. A distributed
+  state within the subquery was not resetted correctly.
+  This could also lead into "shrink" errors of AQL item blocks,
+  or much higher query runtimes.
+  Fixes:
+  - BTS-252
+  - ES-687
+  - github issue: #13099
+  - github issue: #13124
+  - github issue: #13147
+  - github issue: #13305
+  - DEVSUP-665
+
+* Added metric `arangodb_server_statistics_cpu_cores` to provide the number of
+  CPU cores visibile to the arangod process. This is the number of CPU cores
+  reported by the operating system to the process.
+  If the environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES` is
+  set to a positive value at instance startup, this value will be returned
+  instead.
+
 * `COLLECT WITH COUNT INTO x` and `COLLECT var = expr WITH COUNT INTO x` are now
   internally transformed into `COLLECT AGGREGATE x = LENGTH(null)` and
   `COLLECT var = expr AGGREGATE x = LENGTH(null)` respectively. This not only
