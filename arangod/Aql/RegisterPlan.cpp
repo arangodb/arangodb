@@ -327,10 +327,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(regsToKeepStack == actual);
 #endif
   
-  if (en->getType() == ExecutionNode::COLLECT) {
-    LOG_DEVEL << "REGISTERPLAN REGS TO CLEAR: " << regsToClear;
-  }
-
   // We need to delete those variables that have been used here but are
   // not used any more later:
   en->setRegsToClear(std::move(regsToClear));
