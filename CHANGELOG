@@ -1,3 +1,10 @@
+v3.7.7 (XXXX-XX-XX)
+-------------------
+
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
+
+
 v3.7.6 (2021-01-04)
 -------------------
 
