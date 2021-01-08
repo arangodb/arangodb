@@ -21,19 +21,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_RESOURCE_USAGE_H
-#define ARANGOD_AQL_RESOURCE_USAGE_H 1
+#ifndef ARANGOD_BASICS_RESOURCE_USAGE_H
+#define ARANGOD_BASICS_RESOURCE_USAGE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
 
-#include <algorithm>
 #include <atomic>
 
 namespace arangodb {
-namespace aql {
 
 struct ResourceUsage final {
   constexpr ResourceUsage() 
@@ -50,36 +48,23 @@ struct ResourceUsage final {
 };
 
 struct ResourceMonitor final {
-  ResourceMonitor() : currentResources(), maxMemoryUsage(0) {}
+  ResourceMonitor(ResourceMonitor const&) = delete;
+  ResourceMonitor& operator=(ResourceMonitor const&) = delete;
+
+  ResourceMonitor() : 
+      currentResources(), 
+      maxMemoryUsage(0) {}
+
+  ~ResourceMonitor();
 
   void setMemoryLimit(size_t value) { maxMemoryUsage = value; }
 
   size_t memoryLimit() const { return maxMemoryUsage; }
 
-  inline void increaseMemoryUsage(size_t value) {
-    size_t current = currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
-    current += value;
+  /// @brief increase memory usage by <value> bytes. may throw!
+  void increaseMemoryUsage(size_t value);
 
-    if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
-      currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
-    }
-    
-    size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
-    while (peak < current) {
-      if (currentResources.peakMemoryUsage.compare_exchange_weak(peak, current,
-                                                                 std::memory_order_release,
-                                                                 std::memory_order_relaxed)) {
-        break;
-      }
-    }
-  }
-
-  inline void decreaseMemoryUsage(size_t value) noexcept {
-    TRI_ASSERT(currentResources.memoryUsage >= value);
-    currentResources.memoryUsage -= value;
-  }
+  void decreaseMemoryUsage(size_t value) noexcept;
 
   void clear() { currentResources.clear(); }
   
@@ -87,13 +72,41 @@ struct ResourceMonitor final {
     return currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
   }
   
-private:
+ private:
 
   ResourceUsage currentResources;
   std::size_t maxMemoryUsage;
 };
 
-}  // namespace aql
+/// @brief RAII object for temporary resource tracking
+/// will track the resource usage on creation, and untrack it
+/// on destruction, unless the responsibility is stolen
+/// from it.
+class ResourceUsageScope {
+ public:
+  ResourceUsageScope(ResourceUsageScope const&) = delete;
+  ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
+
+  /// @brief track <value> bytes of memory, may throw!
+  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value);
+
+  ~ResourceUsageScope();
+  
+  /// @brief steal responsibility for decreasing the memory 
+  /// usage on destruction
+  void steal() noexcept;
+
+ private:
+  /// @brief track <value> bytes of memory, may throw!
+  void increase(size_t value);
+  
+  void decrease(size_t value) noexcept;
+
+ private:
+  ResourceMonitor& _resourceMonitor;
+  size_t _value;
+};
+
 }  // namespace arangodb
 
 #endif

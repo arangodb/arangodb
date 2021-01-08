@@ -912,7 +912,7 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
 
   Result res;
   try {
-    res = trx->documentFastPath(collectionName, nullptr, searchBuilder->slice(), result);
+    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result);
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
   }

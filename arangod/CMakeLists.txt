@@ -163,6 +163,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
+  Graph/ClusterGraphDatalake.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/Graph.cpp
