@@ -25,21 +25,22 @@
 #define ARANGOD_AQL_SHORT_STRING_STORAGE_H 1
 
 #include <cstddef>
+#include <memory>
 #include <vector>
 
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace aql {
-
 struct ResourceMonitor;
+
+namespace aql {
 
 class ShortStringStorage {
  public:
   ShortStringStorage(ShortStringStorage const&) = delete;
   ShortStringStorage& operator=(ShortStringStorage const&) = delete;
 
-  ShortStringStorage(ResourceMonitor*, size_t);
+  ShortStringStorage(arangodb::ResourceMonitor& resourceMonitor, size_t);
 
   ~ShortStringStorage();
 
@@ -58,10 +59,10 @@ class ShortStringStorage {
   static constexpr size_t maxStringLength = 127;
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief already allocated string blocks
-  std::vector<char*> _blocks;
+  std::vector<std::unique_ptr<char[]>> _blocks;
 
   /// @brief size of each block
   size_t const _blockSize;

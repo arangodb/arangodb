@@ -48,9 +48,8 @@ using namespace arangodb::aql;
 
 static const AqlValue EmptyValue;
 
-SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
+SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
     : groupLength(0),
-      count(count),
       infos(infos),
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _builder(_buffer) {
@@ -126,7 +125,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    velocypack::Options const* opts, bool count)
+    velocypack::Options const* opts)
     : _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
       _groupRegisters(std::move(groupRegisters)),
@@ -134,11 +133,10 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _expressionRegister(expressionRegister),
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _vpackOptions(opts),
-      _count(count) {}
+      _vpackOptions(opts) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
-    : _infos(infos), _currentGroup(infos.getCount(), infos) {
+    : _infos(infos), _currentGroup(infos) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
   // reset and recreate new group
@@ -168,10 +166,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
-    if (count) {
-      // increase the count
-      groupLength++;
-    } else if (infos.getExpressionVariable() != nullptr) {
+    if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
       input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
                                                                  /*resolveExternals*/false,
@@ -268,21 +263,15 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
 
   // set the group values
   if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
-    if (infos.getCount()) {
-      // only set group count in result register
-      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,
-                            AqlValue(AqlValueHintUInt(static_cast<uint64_t>(this->groupLength))));
-    } else {
-      TRI_ASSERT(_builder.isOpenArray());
-      _builder.close();
+    TRI_ASSERT(_builder.isOpenArray());
+    _builder.close();
 
-      AqlValue val(std::move(_buffer)); // _buffer still usable after
-      AqlValueGuard guard{val, true};
-      TRI_ASSERT(_buffer.size() == 0);
-      _builder.clear(); // necessary
+    AqlValue val(std::move(_buffer)); // _buffer still usable after
+    AqlValueGuard guard{val, true};
+    TRI_ASSERT(_buffer.size() == 0);
+    _builder.clear(); // necessary
 
-      output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
-    }
+    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
   }
 
   output.advanceRow();
