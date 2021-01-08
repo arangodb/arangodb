@@ -231,7 +231,8 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       SortExecutorInfos execInfos{1,       1,
                                   {},      std::move(sortRegisters),
                                   0,       fakedQuery->itemBlockManager(),
-                                  nullptr, true};
+                                  nullptr, monitor,
+                                  true};
       return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
                                               generateNodeDummy(),
                                               std::move(buildRegisterInfos(nestingLevel)),
