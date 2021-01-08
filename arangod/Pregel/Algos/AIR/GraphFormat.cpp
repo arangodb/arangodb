@@ -24,8 +24,8 @@
 
 #include "GraphFormat.h"
 
-#include "Greenspun/Extractor.h"
 #include "Greenspun/Interpreter.h"
+#include "Pregel/Algos/AIR/VertexComputation.h"
 
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/overload.h"
@@ -136,7 +136,7 @@ void GraphFormat::copyVertexData(arangodb::velocypack::Options const& vpackOptio
   } else {
     // copy all
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
-                     documentId, sanitizedDocument.slice(), _vertexIdRange++);
+                    documentId, sanitizedDocument.slice(), _vertexIdRange++);
   }
 }
 
@@ -166,24 +166,10 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
       greenspun::Machine m;
       InitMachine(m);
 
-      // TODO: Try to use "air_accumRef" here instead (Source: VertexData)
       m.setFunction("accum-ref",
                     [ptr](greenspun::Machine& ctx, VPackSlice const params,
                           VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
-                      auto res = greenspun::extract<std::string>(params);
-                      if (res.fail()) {
-                        return std::move(res).error();
-                      }
-
-                      auto&& [accumId] = res.value();
-
-                      if (auto iter = ptr->_vertexAccumulators.find(accumId);
-                          iter != std::end(ptr->_vertexAccumulators)) {
-                        return iter->second->getIntoBuilder(tmpBuilder);
-                      }
-                      return greenspun::EvalError("vertex accumulator `" +
-                                                  std::string{accumId} +
-                                                  "` not found");
+                      return VertexComputation::air_accumRef_helper(params, tmpBuilder, ptr);
                     });
 
       VPackBuilder tmpBuilder;

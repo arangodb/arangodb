@@ -70,7 +70,6 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("send-to-global-accum",  // " name:id -> value:any -> void ",
                                 &VertexComputation::air_sendToGlobalAccum, this);
 
-
   //
   _airMachine.setFunctionMember("this-outbound-edges",  // " name:id -> value:any -> void ",
                                 &VertexComputation::air_outboundEdges, this);
@@ -113,8 +112,8 @@ void VertexComputation::registerLocalFunctions() {
 
 /* Vertex accumulators */
 greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
-                                                          VPackSlice const params,
-                                                          VPackBuilder& result) {
+                                                        VPackSlice const params,
+                                                        VPackBuilder& result) {
   auto res = greenspun::extract<std::string>(params);
   if (res.fail()) {
     return res.error();
@@ -124,7 +123,7 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
     return iter->second->clear().mapError(
-      [](auto& err) { err.wrapMessage("when clearing accumulator"); });
+        [](auto& err) { err.wrapMessage("when clearing accumulator"); });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -150,9 +149,11 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
-                                                      VPackSlice const params,
-                                                      VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_accumRef_helper(VPackSlice const params,
+                                                             VPackBuilder& result,
+                                                             vertex_type const* vertexDataPtr) {
+  // TODO: Currently this helper is needed to expose that method to GraphFormat.cpp
+  // In the future we should implement some reusable interface to do that properly for all methods if needed.
   auto res = greenspun::extract<std::string>(params);
   if (res.fail()) {
     return std::move(res).error();
@@ -160,14 +161,19 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 
   auto&& [accumId] = res.value();
 
-  if (auto iter = vertexData()._vertexAccumulators.find(accumId);
-      iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->getIntoBuilder(result).mapError([](auto &err) {
-      err.wrapMessage("when getting value of accumulator");
-    });
+  if (auto iter = vertexDataPtr->_vertexAccumulators.find(accumId);
+      iter != std::end(vertexDataPtr->_vertexAccumulators)) {
+    return iter->second->getIntoBuilder(result).mapError(
+        [](auto& err) { err.wrapMessage("when getting value of accumulator"); });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
+}
+
+greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
+                                                      VPackSlice const params,
+                                                      VPackBuilder& result) {
+  return air_accumRef_helper(params, result, &vertexData());
 }
 
 greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx,
@@ -205,8 +211,9 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_sendToAllNeighbors(
-    greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_sendToAllNeighbors(greenspun::Machine& ctx,
+                                                                VPackSlice const params,
+                                                                VPackBuilder& result) {
   auto res = greenspun::extract<std::string, VPackSlice>(params);
   if (res.fail()) {
     return res.error();
@@ -403,12 +410,11 @@ void VertexComputation::traceMessage(MessageData const* msg) {
         TraceMessagesFilterOptions const& filterOptions = traceOptions.filter.value();
         if (!filterOptions.byAccumulator.empty() &&
             filterOptions.byAccumulator.find(accumName) ==
-            std::end(filterOptions.byAccumulator)) {
+                std::end(filterOptions.byAccumulator)) {
           traceMessage = false;
         }
         if (!filterOptions.bySender.empty() &&
-            filterOptions.bySender.find(msg->sender()) ==
-            std::end(filterOptions.bySender)) {
+            filterOptions.bySender.find(msg->sender()) == std::end(filterOptions.bySender)) {
           traceMessage = false;
         }
       }
@@ -418,20 +424,19 @@ void VertexComputation::traceMessage(MessageData const* msg) {
         auto phase = _algorithm.options().phases.at(phase_index);
 
         getReportManager()
-            .report(ReportLevel::INFO)
-            .with("pregel-id", pregelId())
-            .with("vertex", vertexData()._documentId)
-            .with("phase", phase.name)
-            .with("global-superstep", globalSuperstep())
-            .with("phase-step", phaseGlobalSuperstep())
-            .with("message", msg->_value.toJson())
-            .with("sender", msg->_sender)
-            .with("accumulator", accumName)
+                .report(ReportLevel::INFO)
+                .with("pregel-id", pregelId())
+                .with("vertex", vertexData()._documentId)
+                .with("phase", phase.name)
+                .with("global-superstep", globalSuperstep())
+                .with("phase-step", phaseGlobalSuperstep())
+                .with("message", msg->_value.toJson())
+                .with("sender", msg->_sender)
+                .with("accumulator", accumName)
             << "debug trace";
       }
     }
   }
-
 }
 
 greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(

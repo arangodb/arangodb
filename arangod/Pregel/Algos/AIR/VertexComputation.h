@@ -48,13 +48,16 @@ class VertexComputation : public vertex_computation {
   ProgrammablePregelAlgorithm const& algorithm() const;
   WorkerContext const& workerContext() const;
 
+  static greenspun::EvalResult air_accumRef_helper(VPackSlice const params,
+                                                   VPackBuilder& result,
+                                                   vertex_type const*);
+
  private:
   greenspun::EvalResult clearAllVertexAccumulators();
   greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
   void traceMessage(MessageData const*);
 
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
-
 
   void registerLocalFunctions();
 
@@ -85,19 +88,15 @@ class VertexComputation : public vertex_computation {
   greenspun::EvalResult air_accumClear(greenspun::Machine& ctx,
                                        VPackSlice const params, VPackBuilder& result);
 
-
-
   greenspun::EvalResult air_sendToAccum(greenspun::Machine& ctx,
                                         VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_sendToAllNeighbors(greenspun::Machine& ctx,
-                                                VPackSlice const params,
-                                                VPackBuilder& result);
+  greenspun::EvalResult air_sendToAllNeighbors(greenspun::Machine& ctx, VPackSlice const params,
+                                               VPackBuilder& result);
 
-  greenspun::EvalResult air_globalAccumRef(greenspun::Machine& ctx,
-                                           VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_sendToGlobalAccum(greenspun::Machine& ctx,
-                                              VPackSlice const params, VPackBuilder& result);
-
+  greenspun::EvalResult air_globalAccumRef(greenspun::Machine& ctx, VPackSlice const params,
+                                           VPackBuilder& result);
+  greenspun::EvalResult air_sendToGlobalAccum(greenspun::Machine& ctx, VPackSlice const params,
+                                              VPackBuilder& result);
 
   greenspun::EvalResult air_outboundEdges(greenspun::Machine& ctx,
                                           VPackSlice const params, VPackBuilder& result);
@@ -115,14 +114,14 @@ class VertexComputation : public vertex_computation {
   greenspun::EvalResult air_thisDoc(greenspun::Machine& ctx,
                                     VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_thisVertexId(greenspun::Machine& ctx,
-                                    VPackSlice const params, VPackBuilder& result);
+                                         VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_thisUniqueId(greenspun::Machine& ctx,
-                                    VPackSlice const params, VPackBuilder& result);
+                                         VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_thisPregelId(greenspun::Machine& ctx,
-                                    VPackSlice const params, VPackBuilder& result);
+                                         VPackSlice const params, VPackBuilder& result);
 
-  greenspun::EvalResult air_globalSuperstep(greenspun::Machine& ctx,
-                                            VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_globalSuperstep(greenspun::Machine& ctx, VPackSlice const params,
+                                            VPackBuilder& result);
 
  private:
   ProgrammablePregelAlgorithm const& _algorithm;
