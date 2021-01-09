@@ -153,6 +153,9 @@ let optionsDocumentation = [
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
   '   - `testCase`: filter a jsunity testsuite for one special test case',
+  '   - `failed`: if set to true, re-runs only those tests that failed in the',
+  '     previous test run. The information which tests previously failed is taken',
+  '     from the "UNITTEST_RESULT.json" (if available).',
   ''
 ];
 
@@ -229,6 +232,7 @@ const optionsDefaults = {
   'disableClusterMonitor': true,
   'sleepBeforeStart' : 0,
   'sleepBeforeShutdown' : 0,
+  'failed': false,
 };
 
 let globalStatus = true;
@@ -484,11 +488,18 @@ function iterateTests(cases, options) {
   let results = {};
   let cleanup = true;
 
+  if (options.failed) {
+    // we are applying the failed filter -> only consider cases with failed tests
+    cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
+  }
   caselist = translateTestList(cases);
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
+    if (localOptions.failed) {
+      localOptions.failed = localOptions.failed[currentTest];
+    }
     let printTestName = currentTest;
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
@@ -553,6 +564,27 @@ function iterateTests(cases, options) {
   return results;
 }
 
+function getFailedTestCases(options) {
+  try {
+    let resultFile = fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json');
+    let lastRun = JSON.parse(fs.readFileSync(resultFile));
+    let filter;
+    filter = (obj) => {
+      return _.pickBy(_.mapValues(obj, v => {
+          if (typeof v === 'object' && v.status === false) {
+            return filter(v);
+          }
+          return undefined;
+        }),
+        v => v !== undefined);
+    };
+    return filter(lastRun);
+  } catch (err) {
+    print("Failed to read previous test results - omitting failed filter.", err);
+    return false;
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief framework to perform unittests
 // /
@@ -569,6 +601,10 @@ function unitTest (cases, options) {
   loadTestSuites(options);
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+  if (options.failed ||
+      (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
+    options.failed = getFailedTestCases(options);
+  }
 
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);

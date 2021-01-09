@@ -562,6 +562,10 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'skip when built with asan';
     return false;
   }
+
+  if (options.failed) {
+    return options.failed.hasOwnProperty(testname);
+  }
   return true;
 }
 
@@ -687,28 +691,34 @@ function loadClusterTestStabilityInfo(results, instanceInfo){
   }
 }
 
+function getTestCode(file, options, instanceInfo) {
+  let filter = undefined;
+  if (options.testCase) {
+    filter = JSON.stringify(options.testCase);
+  } else if (options.failed) {
+    let failed = options.failed[file] || options.failed;
+    filter = JSON.stringify(Object.keys(failed));
+  }
+
+  let runTest;
+  if (file.indexOf('-spec') === -1) {
+    filter = filter || '"undefined"';
+    runTest = 'const runTest = require("jsunity").runTest;\n';
+      
+  } else {
+    filter = filter || '';
+    runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
+  }
+  return 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + runTest +
+         'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a remote unittest file using /_admin/execute
 // //////////////////////////////////////////////////////////////////////////////
 
 function runThere (options, instanceInfo, file) {
   try {
-    let testCode;
-    if (file.indexOf('-spec') === -1) {
-      let testCase = JSON.stringify(options.testCase);
-      if (options.testCase === undefined) {
-        testCase = '"undefined"';
-      }
-      testCode = 'const runTest = require("jsunity").runTest; ' +
-        'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
-    } else {
-      let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
-      testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
-        'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
-    }
-
-    testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
-
+    let testCode = getTestCode(file, options, instanceInfo);
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
     
@@ -877,25 +887,12 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     }
   }
   
-  let testCode;
-  // \n's in testCode are required because of content could contain '//' at the very EOF
-  if (file.indexOf('-spec') === -1) {
-    let testCase = JSON.stringify(options.testCase);
-    if (options.testCase === undefined) {
-      testCase = '"undefined"';
-    }
-    testCode = 'const runTest = require("jsunity").runTest;\n ' +
-      'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
-  } else {
-    let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
-    testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
-      'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
-  }
-
+  let testCode = getTestCode(file, options, instanceInfo);
+  print(testCode);
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
   try {
-    eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
+    eval('testFunc = function () {\n' + testCode + "}");
   } catch (ex) {
     print(RED + 'test failed to parse:');
     print(ex);
