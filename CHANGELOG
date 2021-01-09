@@ -1,6 +1,17 @@
 devel
 -----
 
+* Added startup options `--audit.queue` to control audit logging queuing
+  behavior (Enterprise Edition only):
+
+  The option controls whether audit log messages are submitted to a queue 
+  and written to disk in batches or if they should be written to disk directly 
+  without being queued.
+  Queueing audit log entries may be beneficial for latency, but can lead to
+  unqueued messages being lost in case of a power loss or crash. Setting
+  this option to `false` mimics the behavior from 3.7 and before, where
+  audit log messages where not queued but written in a blocking fashion.
+
 * Fixed some situations of
   [...]
   SUBQUERY
