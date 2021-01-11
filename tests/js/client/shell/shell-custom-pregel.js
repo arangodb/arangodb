@@ -33,6 +33,7 @@ var jsunity = require("jsunity");
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
+const isCluster = require("internal").isCluster();
 const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 // Air Modules
@@ -73,26 +74,50 @@ function basicTestSuite() {
     },
 
     testVertexDegrees: function () {
+      if (!isEnterprise && isCluster) {
+        // we do not want to test general graphs module here
+        return;
+      }
       assertTrue(vd.test());
     },
 
     testPageRank: function () {
+      if (!isEnterprise && isCluster) {
+        // we do not want to test general graphs module here
+        return;
+      }
       assertTrue(pr.test());
     },
 
     testSSSP: function () {
+      if (!isEnterprise && isCluster) {
+        // we do not want to test general graphs module here
+        return;
+      }
       assertTrue(sssp.test());
     },
 
     testSCC: function () {
+      if (!isEnterprise && isCluster) {
+        // we do not want to test general graphs module here
+        return;
+      }
       assertTrue(scc.test());
     },
 
     testAccessData: function () {
+      if (!isEnterprise && isCluster) {
+        // we do not want to test general graphs module here
+        return;
+      }
       assertTrue(ad.test());
     },
 
     testGlobalAccumulator: function () {
+      if (!isEnterprise && isCluster) {
+        // we do not want to test general graphs module here
+        return;
+      }
       assertTrue(ga.test());
     }
   };
