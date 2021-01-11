@@ -32,6 +32,7 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 
+#include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 
 #include "Transaction/Methods.h"
@@ -146,6 +147,8 @@ struct SingleServerProvider {
   [[nodiscard]] transaction::Methods* trx();
   arangodb::ResourceMonitor* resourceMonitor();
 
+  aql::TraversalStats stealStats();
+
  private:
   void activateCache(bool enableDocumentCache);
 
@@ -167,6 +170,8 @@ struct SingleServerProvider {
   RefactoredTraverserCache _cache;
 
   BaseProviderOptions _opts;
+
+  arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph
 }  // namespace arangodb

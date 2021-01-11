@@ -114,6 +114,11 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   });
 
   EXPECT_EQ(result.size(), 0);
+  TraversalStats stats = testee.stealStats();
+  EXPECT_EQ(stats.getFiltered(), 0);
+  EXPECT_EQ(stats.getHttpRequests(), 0);
+  // We have no edges, so nothing scanned in the Index.
+  EXPECT_EQ(stats.getScannedIndex(), 0);
 }
 
 TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
@@ -134,6 +139,22 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   auto const& f = result.at(0);
   EXPECT_EQ(f.getVertex().getID().toString(), "v/1");
   EXPECT_EQ(f.getPrevious(), 0);
+
+  {
+    TraversalStats stats = testee.stealStats();
+    EXPECT_EQ(stats.getFiltered(), 0);
+    EXPECT_EQ(stats.getHttpRequests(), 0);
+    // We have 1 edge, this shall be counted
+    EXPECT_EQ(stats.getScannedIndex(), 1);
+  }
+  {
+    // Make sure stats are reset after we stole them
+    // So steal again works, but on empty statistics
+    TraversalStats stats = testee.stealStats();
+    EXPECT_EQ(stats.getFiltered(), 0);
+    EXPECT_EQ(stats.getHttpRequests(), 0);
+    EXPECT_EQ(stats.getScannedIndex(), 0);
+  }
 }
 
 TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
@@ -165,6 +186,14 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
     // We need to find each exactly once
     auto const [_, didInsert] = found.emplace(v);
     EXPECT_TRUE(didInsert);
+  }
+
+  {
+    TraversalStats stats = testee.stealStats();
+    EXPECT_EQ(stats.getFiltered(), 0);
+    EXPECT_EQ(stats.getHttpRequests(), 0);
+    // We have 3 edges, this shall be counted
+    EXPECT_EQ(stats.getScannedIndex(), 3);
   }
 }
 

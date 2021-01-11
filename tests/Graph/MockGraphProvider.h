@@ -32,6 +32,7 @@
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Transaction/Methods.h"
+#include "Aql/TraversalStats.h"
 
 #include "Graph/Providers/BaseStep.h"
 
@@ -179,6 +180,8 @@ class MockGraphProvider {
 
   [[nodiscard]] transaction::Methods* trx();
 
+  aql::TraversalStats stealStats();
+
  private:
   auto decideProcessable() const -> bool;
 
@@ -188,6 +191,7 @@ class MockGraphProvider {
   arangodb::transaction::Methods _trx;
   bool _reverse;
   LooseEndBehaviour _looseEnds;
+  arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph
 }  // namespace tests

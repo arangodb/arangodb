@@ -91,7 +91,8 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
       _query(&queryContext),
       _resourceMonitor(&resourceMonitor),
       _cache(_trx.get(), &queryContext, resourceMonitor),
-      _opts(std::move(opts)) {
+      _opts(std::move(opts)),
+      _stats{} {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
   _cursor = buildCursor();
 }
@@ -183,4 +184,8 @@ arangodb::ResourceMonitor* SingleServerProvider::resourceMonitor() {
 
 arangodb::aql::QueryContext* SingleServerProvider::query() const {
   return _query;
+}
+
+arangodb::aql::TraversalStats SingleServerProvider::stealStats() {
+  return std::move(_stats);
 }
