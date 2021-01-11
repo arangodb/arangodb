@@ -564,27 +564,6 @@ function iterateTests(cases, options) {
   return results;
 }
 
-function getFailedTestCases(options) {
-  try {
-    let resultFile = fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json');
-    let lastRun = JSON.parse(fs.readFileSync(resultFile));
-    let filter;
-    filter = (obj) => {
-      return _.pickBy(_.mapValues(obj, v => {
-          if (typeof v === 'object' && v.status === false) {
-            return filter(v);
-          }
-          return undefined;
-        }),
-        v => v !== undefined);
-    };
-    return filter(lastRun);
-  } catch (err) {
-    print("Failed to read previous test results - omitting failed filter.", err);
-    return false;
-  }
-}
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief framework to perform unittests
 // /
@@ -603,7 +582,7 @@ function unitTest (cases, options) {
   _.defaults(options, optionsDefaults);
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
-    options.failed = getFailedTestCases(options);
+    options.failed = rp.getFailedTestCases(options);
   }
 
   try {

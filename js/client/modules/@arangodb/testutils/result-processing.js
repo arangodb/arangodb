@@ -843,6 +843,27 @@ function yamlDumpResults(options, results) {
   }
 }
 
+function getFailedTestCases(options) {
+  try {
+    let resultFile = fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json');
+    let lastRun = JSON.parse(fs.readFileSync(resultFile));
+    let filter;
+    filter = (obj) => {
+      return _.pickBy(_.mapValues(obj, v => {
+          if (typeof v === 'object' && v.status === false) {
+            return filter(v);
+          }
+          return undefined;
+        }),
+        v => v !== undefined);
+    };
+    return filter(lastRun);
+  } catch (err) {
+    print("Failed to read previous test results");
+    throw err;
+  }
+}
+
 exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
@@ -850,6 +871,7 @@ exports.addFailRunsMessage = addFailRunsMessage;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;
+exports.getFailedTestCases = getFailedTestCases;
 
 exports.analyze = {
   unitTestPrettyPrintResults: unitTestPrettyPrintResults,
