@@ -257,7 +257,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
       Result res = physical->insert(&trx, masterDoc, mdr, options);
-      
+
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
@@ -275,7 +275,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
           res = physical->insert(&trx, masterDoc, mdr, options);
-          
+
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;
@@ -369,7 +369,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
   try {
     bool const preventMultiStart = !_isClusterRole;
     MultiStartPreventer p(vocbase(), preventMultiStart);
-      
+
     setAborted(false);
 
     _config.progress.set("fetching master state");
@@ -628,7 +628,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
-    
+
     VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
     try {
@@ -639,7 +639,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
         VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
         Result r = parseCollectionDumpMarker(trx, coll, marker);
-        
+
         TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
         if (r.fail()) {
           r.reset(r.errorNumber(),
@@ -1078,104 +1078,138 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     _config.barrier.extend(_config.connection);
   }
 
+  // We'll do one quick attempt at getting the keys on the leader.
+  // We might receive the keys or a count of the keys. In the first case we continue
+  // with the sync. If we get a coument count, we'll estimate a pessimistic wait and
+  // repeat the call without a quick option.
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
-  std::string url = baseUrl + "/keys" + "?collection=" + urlEncode(leaderColl) +
+  std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
                     "&to=" + std::to_string(maxTick) +
                     "&serverId=" + _state.localServerIdString +
                     "&batchId=" + std::to_string(_config.batch.id);
 
-  std::string msg =
+  VPackBuilder builder;
+  VPackSlice slice;
+  auto maxWaitTime = _config.applier._initialSyncMaxWaitTime;
+
+  auto keysCall = [&](bool quick) {
+
+    std::string msg =
       "fetching collection keys for collection '" + coll->name() + "' from " + url;
-  _config.progress.set(msg);
+    _config.progress.set(msg);
 
-  // send an initial async request to collect the collection keys on the other
-  // side
-  // sending this request in a blocking fashion may require very long to
-  // complete,
-  // so we're sending the x-arango-async header here
-  auto headers = replutils::createHeaders();
-  headers[StaticStrings::Async] = "store";
+    // send an initial async request to collect the collection keys on the other
+    // side
+    // sending this request in a blocking fashion may require very long to
+    // complete,
+    // so we're sending the x-arango-async header here
+    auto headers = replutils::createHeaders();
+    headers[StaticStrings::Async] = "store";
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response;
-  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
-  });
+    LOG_DEVEL << ((quick) ? url + "&quick=true" : url);
 
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _config.connection);
-  }
-
-  bool found = false;
-  std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
-
-  if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url +
-                      ": could not find 'X-Arango-Async' header");
-  }
-
-  double const startTime = TRI_microtime();
-
-  while (true) {
-    if (!_config.isChild()) {
-      batchExtend();
-      _config.barrier.extend(_config.connection);
-    }
-
-    std::string const jobUrl = "/_api/job/" + jobId;
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+      response.reset(client->retryRequest(rest::RequestType::POST, (quick) ? url + "&quick=true" : url, nullptr, 0, headers));
     });
 
-    if (response != nullptr && response->isComplete()) {
-      if (response->hasHeaderField("x-arango-async-id")) {
-        // job is done, got the actual response
-        break;
-      }
-      if (response->getHttpReturnCode() == 404) {
-        // unknown job, we can abort
-        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                      std::string("job not found on master at ") +
-                          _config.master.endpoint);
-      }
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    double waitTime = TRI_microtime() - startTime;
+    bool found = false;
+    std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
-    if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _config.applier._initialSyncMaxWaitTime) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                    std::string(
-                        "timed out waiting for response from master at ") +
+    if (!found) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                    _config.master.endpoint + url +
+                    ": could not find 'X-Arango-Async' header");
+    }
+
+    double const startTime = TRI_microtime();
+
+    while (true) {
+      if (!_config.isChild()) {
+        batchExtend();
+        _config.barrier.extend(_config.connection);
+      }
+
+      std::string const jobUrl = "/_api/job/" + jobId;
+      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+      });
+
+      if (response != nullptr && response->isComplete()) {
+        if (response->hasHeaderField("x-arango-async-id")) {
+          // job is done, got the actual response
+          break;
+        }
+        if (response->getHttpReturnCode() == 404) {
+          // unknown job, we can abort
+          return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                        std::string("job not found on master at ") +
                         _config.master.endpoint);
+        }
+      }
+
+      double waitTime = TRI_microtime() - startTime;
+
+      if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= maxWaitTime) {
+        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                      std::string(
+                        "timed out waiting for response from master at ") +
+                      _config.master.endpoint);
+      }
+
+      if (isAborted()) {
+        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+      }
+
+      std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
+      std::this_thread::sleep_for(sleepTime);
     }
 
-    if (isAborted()) {
-      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
-    std::this_thread::sleep_for(sleepTime);
+    Result r = replutils::parseResponse(builder, response.get());
+
+    if (r.fail()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                    _config.master.endpoint + url + ": " + r.errorMessage());
+    }
+
+    slice = builder.slice();
+    if (!slice.isObject()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                    _config.master.endpoint + url + ": response is no object");
+    }
+
+    return Result();
+
+  };
+
+  auto ck = keysCall(true);
+  if (!ck.ok()) {
+    return ck;
   }
-
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _config.connection);
-  }
-
-  VPackBuilder builder;
-  Result r = replutils::parseResponse(builder, response.get());
-
-  if (r.fail()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url + ": " + r.errorMessage());
-  }
-
-  VPackSlice const slice = builder.slice();
-  if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url + ": response is no object");
+  if (!slice.hasKey("id")) { // we only have count
+    VPackSlice const c = slice.get("count");
+    if (c.isNumber()) {
+      maxWaitTime = c.getNumber<uint64_t>() * 1.2e-5;
+      ck = keysCall(false);
+      if (!ck.ok()) {
+        return ck;
+      }
+    } else {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                    _config.master.endpoint + url + ": response count not a number");
+    }
   }
 
   VPackSlice const keysId = slice.get("id");
@@ -1391,7 +1425,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   std::string("unable to start transaction: ") + res.errorMessage());
   }
   auto guard = scopeGuard(
-      [trx = trx.get()]() -> void { 
+      [trx = trx.get()]() -> void {
         if (trx->status() == transaction::Status::RUNNING) {
           trx->abort();
         }
@@ -1868,7 +1902,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
-    auto res = incremental && hasDocuments(*col) 
+    auto res = incremental && hasDocuments(*col)
                    ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
                    : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
 

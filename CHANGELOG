@@ -1,6 +1,8 @@
 v3.7.6 (XXXX-XX-XX)
 -------------------
 
+* Fix too early stop of replication, when waiting for keys
+
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.45.6.
 
 * Added new metric: "arangodb_collection_lock_sequential_mode" this will count
@@ -8,7 +10,7 @@ v3.7.6 (XXXX-XX-XX)
   metric increases this indicates lock contention in transaction setup.
   Most likely this is caused by exlcusive locks used on collections with more
   than one shard.
-  
+
 * Fix for BTS-213
   Changed the transaction locking mechanism in the cluster case.
   For all installations that do not use "exclusive" collection locks this change

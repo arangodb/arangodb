@@ -256,7 +256,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   result.errorNumber(), result.errorMessage());
     return;
   }
-  
+
   TRI_ASSERT(latest >= result.maxTick());
 
   bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
@@ -409,8 +409,15 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "invalid collection parameter");
     return;
   }
+
+  std::string const& quick = _request->value("quick");
+  if (!quick.empty() && !(quick == "true" || quick == "false")) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::string("invalid quick parameter: must be booleaan got ") + quick);
+    return;
+  }
+
   // to is ignored because the snapshot time is the latest point in time
-  
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   RocksDBReplicationContext* ctx = nullptr;
@@ -437,6 +444,15 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   if (res.fail()) {
     generateError(res);
+    return;
+  }
+
+  if (numDocs > 1000000 && quick == "true") {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("count", VPackValue(numDocs));
+    result.close();
+    generateResult(rest::ResponseCode::OK, result.slice());
     return;
   }
 
@@ -693,9 +709,9 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   if (_request->contentTypeResponse() == ContentType::VPACK) {
     VPackBuffer<uint8_t> buffer;
     buffer.reserve(reserve);  // avoid reallocs
-    
+
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
-    
+
 
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
     // generate the result
@@ -748,7 +764,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            (res.hasMore ? "true" : "false"));
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa((dump.length() == 0) ? 0 : res.includedTick));
-    
+
     if (_request->transportType() == Endpoint::TransportType::HTTP) {
       auto response = dynamic_cast<HttpResponse*>(_response.get());
       if (response == nullptr) {
