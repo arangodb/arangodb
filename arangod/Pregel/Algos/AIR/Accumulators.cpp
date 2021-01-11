@@ -30,8 +30,8 @@
 
 using namespace arangodb::pregel::algos::accumulators;
 
-CustomAccumulator<VPackSlice>::CustomAccumulator(const AccumulatorOptions& options,
-                                                 const CustomAccumulatorDefinitions& defs)
+CustomAccumulator<VPackSlice>::CustomAccumulator(AccumulatorOptions const& options,
+                                                 CustomAccumulatorDefinitions const& defs)
     : Accumulator<VPackSlice>(options, defs) {
   _definition = defs.at(*options.customType);
   greenspun::InitMachine(_machine);
