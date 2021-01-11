@@ -81,7 +81,6 @@ class RefactoredSingleServerEdgeCursor {
 
  public:
   RefactoredSingleServerEdgeCursor(arangodb::transaction::Methods* trx,
-                                   arangodb::aql::QueryContext* queryContext,
                                    arangodb::aql::Variable const* tmpVar,
                                    std::vector<IndexAccessor> const& indexConditions);
   ~RefactoredSingleServerEdgeCursor();
@@ -95,7 +94,6 @@ class RefactoredSingleServerEdgeCursor {
   std::vector<LookupInfo> _lookupInfo;
 
   arangodb::transaction::Methods* _trx;
-  arangodb::aql::QueryContext* _queryContext;
 
  public:
   void readAll(Callback const& callback);

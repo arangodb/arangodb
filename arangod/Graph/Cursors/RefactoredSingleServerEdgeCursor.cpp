@@ -100,9 +100,9 @@ IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
 }
 
 RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
-    arangodb::transaction::Methods* trx, arangodb::aql::QueryContext* queryContext,
+    arangodb::transaction::Methods* trx,
     arangodb::aql::Variable const* tmpVar, std::vector<IndexAccessor> const& indexConditions)
-    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx), _queryContext(queryContext) {
+    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!indexConditions.empty());
   _lookupInfo.reserve(indexConditions.size());

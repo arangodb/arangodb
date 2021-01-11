@@ -169,8 +169,7 @@ void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
-  return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), query(),
-                                                            _opts.tmpVar(),
+  return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), _opts.tmpVar(),
                                                             _opts.indexInformations());
 }
 
