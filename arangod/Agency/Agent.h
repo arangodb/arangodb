@@ -34,10 +34,11 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
-#include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "RestServer/MetricsFeature.h"
+
+#include "Futures/Future.h"
 
 struct TRI_vocbase_t;
 

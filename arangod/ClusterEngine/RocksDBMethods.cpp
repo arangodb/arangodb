@@ -89,9 +89,9 @@ Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& 
     }
   }
 
-  auto responses = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(futures).await_unwrap();
   for (auto const& r : responses) {
-    Result res = r.get().combinedResult();
+    Result res = r.unwrap().combinedResult();
     if (res.fail()) {
       return res;
     }

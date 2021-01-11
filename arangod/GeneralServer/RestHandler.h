@@ -29,6 +29,7 @@
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
+#include "Futures/Future.h"
 
 #include <atomic>
 #include <string_view>
@@ -41,13 +42,6 @@ class ApplicationServer;
 namespace basics {
 class Exception;
 }
-
-namespace futures {
-template <typename T>
-class Future;
-template <typename T>
-class Try;
-}  // namespace futures
 
 class GeneralRequest;
 class RequestStatistics;

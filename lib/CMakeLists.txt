@@ -188,7 +188,6 @@ add_library(arango STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  Futures/Future.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
@@ -242,6 +241,7 @@ add_library(arango STATIC
 )
 
 target_link_libraries(arango
+  mellon
   s2
   boost_system
   boost_boost

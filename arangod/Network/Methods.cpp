@@ -50,17 +50,17 @@ using namespace arangodb::fuerte;
 
 using PromiseRes = arangodb::futures::Promise<network::Response>;
 
-Response::Response() noexcept 
+Response::Response() noexcept
   : error(fuerte::Error::ConnectionCanceled) {}
-  
+
 Response::Response(DestinationId&& destination, fuerte::Error error,
                    std::unique_ptr<arangodb::fuerte::Request>&& request,
                    std::unique_ptr<arangodb::fuerte::Response>&& response) noexcept
-  : destination(std::move(destination)), 
+  : destination(std::move(destination)),
     error(error),
-    _request(std::move(request)), 
+    _request(std::move(request)),
     _response(std::move(response)) {
-  TRI_ASSERT(_request != nullptr || error == fuerte::Error::ConnectionCanceled); 
+  TRI_ASSERT(_request != nullptr || error == fuerte::Error::ConnectionCanceled);
 }
 
 arangodb::fuerte::Request& Response::request() const {
@@ -70,7 +70,7 @@ arangodb::fuerte::Request& Response::request() const {
   }
   return *_request;
 }
-  
+
 arangodb::fuerte::Response& Response::response() const {
   TRI_ASSERT(hasResponse());
   if (_response == nullptr) {
@@ -85,13 +85,13 @@ void Response::setResponse(std::unique_ptr<arangodb::fuerte::Response> response)
   _response = std::move(response);
 }
 #endif
-  
+
 /// @brief steal the response from here. this may return a unique_ptr
 /// containing a nullptr. it is the caller's responsibility to check that.
 std::unique_ptr<arangodb::fuerte::Response> Response::stealResponse() noexcept {
   return std::unique_ptr<arangodb::fuerte::Response>(_response.release());
 }
-  
+
 // returns a slice of the payload if there was no error
 velocypack::Slice Response::slice() const {
   if (error == fuerte::Error::NoError && _response) {
@@ -99,7 +99,7 @@ velocypack::Slice Response::slice() const {
   }
   return velocypack::Slice();  // none slice
 }
-  
+
 std::size_t Response::payloadSize() const noexcept {
   if (_response != nullptr) {
     return _response->payloadSize();
@@ -118,7 +118,7 @@ Result Response::combinedResult() const {
   if (fail()) {
     // fuerte connection failed
     return Result{fuerteToArangoErrorCode(*this), fuerteToArangoErrorMessage(*this)};
-  } 
+  }
   if (!statusIsSuccess(_response->statusCode())) {
     // HTTP status error. Try to extract a precise error from the body, and
     // fall back to the HTTP status.
@@ -240,19 +240,19 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
       fuerte::Error tmp_err;
       RequestLane continuationLane;
       bool skipScheduler;
-      Pack(DestinationId&& dest, RequestLane lane, bool skip)
-          : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
+      Pack(DestinationId&& dest, RequestLane lane, bool skip, futures::Promise<network::Response> promise)
+          : dest(std::move(dest)), promise(std::move(promise)), continuationLane(lane), skipScheduler(skip) {}
     };
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
     auto& server = pool->config().clusterInfo->server();
+    auto&& [f, promise] = futures::makePromise<network::Response>();
     auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler);
-    FutureRes f = p->promise.getFuture();
+                                    options.skipScheduler, std::move(promise));
     NetworkFeature& nf = server.getFeature<NetworkFeature>();
     nf.sendRequest(*pool, options, spec.endpoint, std::move(req), [p(std::move(p))](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res) mutable {
-      TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled); 
+      TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled);
 
       auto* sch = SchedulerFeature::SCHEDULER;
       if (p->skipScheduler || sch == nullptr) {
@@ -277,7 +277,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
       }
     });
 
-    return f;
+    return std::move(f);
 
   } catch (std::exception const& e) {
     LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION)

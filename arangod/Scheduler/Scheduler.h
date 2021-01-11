@@ -32,9 +32,8 @@
 #include <mutex>
 #include <queue>
 
+#include <function2.hpp>
 #include "Futures/Future.h"
-#include "Futures/Unit.h"
-#include "Futures/Utilities.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
@@ -165,8 +164,7 @@ class Scheduler {
         return futures::makeFuture();
       }
 
-      futures::Promise<bool> p;
-      futures::Future<bool> f = p.getFuture();
+      auto&&[f, p] = futures::makePromise<bool>();
 
       auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
         [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });

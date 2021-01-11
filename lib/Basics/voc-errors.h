@@ -178,6 +178,11 @@ constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    
 /// Will be raised when a requested resource is not enabled.
 constexpr int TRI_ERROR_DISABLED                                                = 36;
 
+/// 36: ERROR_PROMISE_ABANDONED
+/// "promise abandoned"
+/// Will be raised when a promise was abandoned.
+constexpr int TRI_ERROR_PROMISE_ABANDONED                                       = 36;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.

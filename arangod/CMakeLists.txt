@@ -933,6 +933,7 @@ target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
+target_link_libraries(arango_network arango)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
@@ -941,6 +942,9 @@ target_link_libraries(arango_pregel boost_system)
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
+
+target_link_libraries(arango_storage_engine_common arango)
+target_link_libraries(arango_storage_engine_common arango::validation)
 
 target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 target_link_libraries(arango_rocksdb arango_cache)
@@ -951,7 +955,6 @@ target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango::validation)
-target_link_libraries(arango_storage_engine_common arango::validation)
 
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
@@ -967,6 +970,7 @@ target_link_libraries(arango_storage_engine arango::validation)
 
 target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
+target_link_libraries(arango_utils arango)
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_iresearch)
