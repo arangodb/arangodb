@@ -2064,28 +2064,28 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
         analyzersPath(database.getName()), AgencyPrecondition::Type::EMPTY, true)});
 
   // And wait for our database to show up in `Current/Databases`
-  auto waitresult = waitForDatabaseInCurrent(database, trx);
+  auto waitResult = waitForDatabaseInCurrent(database, trx);
 
-  if (waitresult.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME ||
-      waitresult.errorNumber() == TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN) {
+  if (waitResult.is(TRI_ERROR_ARANGO_DUPLICATE_NAME) ||
+      waitResult.is(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN)) {
     // Early exit without cancellation if we did not do anything
-    return waitresult;
+    return waitResult;
   }
 
-  if (waitresult.fail()) {
-    // cleanup: remove database from plan
-    auto ret = cancelCreateDatabaseCoordinator(database);
-
-    if (ret.ok()) {
-      // Creation failed
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
-                    "database creation failed");
-    } else {
-      // Cleanup failed too
-      return ret;
-    }
+  if (waitResult.ok()) {
+    return waitResult;
   }
-  return Result();
+
+  // cleanup: remove database from plan
+  auto ret = cancelCreateDatabaseCoordinator(database);
+
+  if (ret.fail()) {
+    // Cleanup failed too
+    return ret;
+  }
+  // Cleanup ok, but creation failed
+  return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                "database creation failed");
 }
 
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
