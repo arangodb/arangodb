@@ -26,8 +26,11 @@
 
 const internal = require("internal");
 const db = internal.db;
-const graphModule = require("@arangodb/smart-graph");
 const _ = require("lodash");
+
+// ee/ce check + gm selection
+const isEnterprise = require("internal").isEnterprise();
+const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 // graph
 //
