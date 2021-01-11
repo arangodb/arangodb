@@ -1200,7 +1200,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   if (!slice.hasKey("id")) { // we only have count
     VPackSlice const c = slice.get("count");
     if (c.isNumber()) {
-      maxWaitTime = c.getNumber<uint64_t>() * 1.2e-5;
+      maxWaitTime = c.getNumber<uint64_t>() * 8 / 100000;
       ck = keysCall(false);
       if (!ck.ok()) {
         return ck;
