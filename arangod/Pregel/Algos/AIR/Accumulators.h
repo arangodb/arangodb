@@ -167,7 +167,7 @@ class ListAccumulator : public Accumulator<T> {
     _list.clear();
     if (s.isArray()) {
       _list.reserve(s.length());
-      for (auto&& p : velocypack::ArrayIterator(s)) {
+      for (auto const& p : velocypack::ArrayIterator(s)) {
         if constexpr (std::is_same_v<T, std::string>) {
           _list.emplace_back(p.stringView());
         } else {
