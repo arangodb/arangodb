@@ -50,8 +50,8 @@ auto CustomAccumulator<VPackSlice>::clear() -> greenspun::EvalResult {
 
 auto CustomAccumulator<VPackSlice>::setBySlice(VPackSlice v)
     -> arangodb::greenspun::EvalResult {
-  inputSlice = v;
-  TRI_DEFER({ inputSlice = Slice::noneSlice(); })
+  _inputSlice = v;
+  TRI_DEFER({ _inputSlice = Slice::noneSlice(); })
 
   if (_definition.setProgram.isEmpty()) {
     _buffer.clear();
@@ -83,12 +83,12 @@ auto CustomAccumulator<VPackSlice>::getIntoBuilder(VPackBuilder& result)
 // FIXME: duplicate code here and below
 auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg)
     -> greenspun::EvalResultT<UpdateResult> {
-  this->inputSlice = msg.get("value");
-  this->inputSender = msg.get("sender");
+  this->_inputSlice = msg.get("value");
+  this->_inputSender = msg.get("sender");
 
   TRI_DEFER({
-    this->inputSlice = VPackSlice::noneSlice();
-    this->inputSender = VPackSlice::noneSlice();
+    this->_inputSlice = VPackSlice::noneSlice();
+    this->_inputSender = VPackSlice::noneSlice();
   })
 
   VPackBuilder result;
@@ -114,14 +114,14 @@ auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg)
 
 auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
     -> greenspun::EvalResultT<UpdateResult> {
-  this->inputSlice = msg._value.slice();
+  this->_inputSlice = msg._value.slice();
   VPackBuilder sender;
   sender.add(VPackValue(msg._sender));
-  this->inputSender = sender.slice();
+  this->_inputSender = sender.slice();
 
   TRI_DEFER({
-    this->inputSlice = VPackSlice::noneSlice();
-    this->inputSender = VPackSlice::noneSlice();
+    this->_inputSlice = VPackSlice::noneSlice();
+    this->_inputSender = VPackSlice::noneSlice();
   })
 
   VPackBuilder result;
@@ -153,8 +153,8 @@ auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun
     _buffer.add(msg);
   } else {
     VPackBuilder sink;
-    this->inputSlice = msg;
-    TRI_DEFER({ this->inputSlice = VPackSlice::noneSlice(); });
+    this->_inputSlice = msg;
+    TRI_DEFER({ this->_inputSlice = VPackSlice::noneSlice(); });
     result = greenspun::Evaluate(_machine, _definition.setStateProgram.slice(), sink);
   }
   _value = _buffer.slice();
@@ -164,8 +164,8 @@ auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun
 
 auto CustomAccumulator<VPackSlice>::aggregateStateBySlice(VPackSlice msg)
     -> greenspun::EvalResult {
-  this->inputState = msg;
-  TRI_DEFER({ this->inputState = VPackSlice::noneSlice(); });
+  this->_inputState = msg;
+  TRI_DEFER({ this->_inputState = VPackSlice::noneSlice(); });
 
   if (_definition.aggregateStateProgram.isEmpty()) {
     return greenspun::EvalError{
@@ -285,15 +285,15 @@ auto CustomAccumulator<VPackSlice>::AIR_CurrentValue(arangodb::greenspun::Machin
 auto CustomAccumulator<VPackSlice>::AIR_InputValue(arangodb::greenspun::Machine& ctx,
                                                    VPackSlice slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
-  result.add(inputSlice);
+  result.add(_inputSlice);
   return {};
 }
 
 auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine& ctx,
                                                     VPackSlice slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
-  if (!inputSender.isNone()) {
-    result.add(inputSender);
+  if (!_inputSender.isNone()) {
+    result.add(_inputSender);
     return {};
   }
   return greenspun::EvalError("input-sender not available here");
@@ -302,8 +302,8 @@ auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine
 auto CustomAccumulator<VPackSlice>::AIR_InputState(arangodb::greenspun::Machine& ctx,
                                                    VPackSlice slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
-  if (!inputState.isNone()) {
-    result.add(inputState);
+  if (!_inputState.isNone()) {
+    result.add(_inputState);
     return {};
   }
   return greenspun::EvalError("input-state not available here");

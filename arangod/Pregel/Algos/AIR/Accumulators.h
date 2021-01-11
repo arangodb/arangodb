@@ -269,9 +269,9 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
       -> greenspun::EvalResult;
 
-  VPackSlice inputSlice = VPackSlice::noneSlice();
-  VPackSlice inputSender = VPackSlice::noneSlice();
-  VPackSlice inputState = VPackSlice::noneSlice();
+  VPackSlice _inputSlice = VPackSlice::noneSlice();
+  VPackSlice _inputSender = VPackSlice::noneSlice();
+  VPackSlice _inputState = VPackSlice::noneSlice();
 
   VPackBuilder _buffer;
   VPackBuilder _parameters;
