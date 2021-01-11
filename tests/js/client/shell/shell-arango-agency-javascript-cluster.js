@@ -47,7 +47,8 @@ function testSuite() {
 
       FoxxManager.install(basePath, mount);
       try { 
-        let res = arango.GET(`/_db/_system/${mount}/run`);
+        // this executes all the calls from inside Foxx
+        let res = arango.GET(`/_db/_system/${mount}/runInsideFoxx`);
         let results = res.results;
         let cases = Object.keys(results);
         assertEqual(19, cases.length);
@@ -57,6 +58,162 @@ function testSuite() {
       } finally {
         FoxxManager.uninstall(mount, {force: true});
       } 
+    },
+    
+    testAccessFromFoxxTransaction : function() {
+      const mount = '/test';
+
+      FoxxManager.install(basePath, mount);
+      try {
+        // this executes a server-side transaction running inside Foxx
+        let res = arango.GET(`/_db/_system/${mount}/runInsideFoxxTransaction`);
+        let results = res.results;
+        let cases = Object.keys(results);
+        assertEqual(19, cases.length);
+        cases.forEach((c) => {
+          assertTrue(results[c], results);
+        });
+      } finally {
+        FoxxManager.uninstall(mount, {force: true});
+      } 
+    },
+    
+    testAccessFromTransaction : function() {
+      // this executes a server-side transaction with all the operations,
+      // not using Foxx
+      let results = db._executeTransaction({
+        collections: {},
+        action: function() {
+          const ERRORS = require('@arangodb').errors;
+          let agencyCall = function(f) {
+            let result = false;
+            try {
+              f();
+            } catch (err) {
+              result = (err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
+            }
+            return result;
+          };
+
+          let testCases = {};
+          // ArangoClusterInfo
+          testCases["AgencyClusterInfoUniqid"] = function() {
+            let testee = global.ArangoClusterInfo;
+            let result = false;
+            try {
+              testee.uniqid();
+            } catch (err) {
+              result = (err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
+            }
+            return result;
+          };
+
+          // ArangoAgency
+          ["agency", "read", "write", "transact", "transient", "cas", "get", "createDirectory",
+           "increaseVersion", "remove", "endpoints", "set", "uniqid"].forEach((func) => {
+            testCases["ArangoAgency" + func] = function() {
+              let testee = global.ArangoAgency;
+              return agencyCall(testee[func]);
+            };
+          });
+          // ArangoAgent
+          ["enabled", "leading", "read", "write", "state"].forEach((func) => {
+            testCases["ArangoAgent" + func] = function() {
+              let testee = global.ArangoAgent;
+              return agencyCall(testee[func]);
+            };
+          });
+          let results = {};
+          Object.keys(testCases).forEach((tc) => {
+            results[tc] = testCases[tc]();
+          });
+          return results;
+        }
+      });
+      let cases = Object.keys(results);
+      assertEqual(19, cases.length);
+      cases.forEach((c) => {
+        assertTrue(results[c], results);
+      });
+    },
+    
+    testAccessFromTask : function() {
+      // this executes all the operations server-side,
+      // inside a JavaScript task
+      const cn = "UnitTestsTaskResult";
+
+      db._drop(cn);
+      db._create(cn);
+
+      try {
+        let tasks = require("@arangodb/tasks");
+        tasks.register({
+          command: function() {
+            const db = require('@arangodb').db;
+
+            const ERRORS = require('@arangodb').errors;
+            let agencyCall = function(f) {
+              let result = false;
+              try {
+                f();
+              } catch (err) {
+                result = (err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
+              }
+              return result;
+            };
+
+            let testCases = {};
+            // ArangoClusterInfo
+            testCases["AgencyClusterInfoUniqid"] = function() {
+              let testee = global.ArangoClusterInfo;
+              let result = false;
+              try {
+                testee.uniqid();
+              } catch (err) {
+                result = (err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
+              }
+              return result;
+            };
+
+            // ArangoAgency
+            ["agency", "read", "write", "transact", "transient", "cas", "get", "createDirectory",
+             "increaseVersion", "remove", "endpoints", "set", "uniqid"].forEach((func) => {
+              testCases["ArangoAgency" + func] = function() {
+                let testee = global.ArangoAgency;
+                return agencyCall(testee[func]);
+              };
+            });
+            // ArangoAgent
+            ["enabled", "leading", "read", "write", "state"].forEach((func) => {
+              testCases["ArangoAgent" + func] = function() {
+                let testee = global.ArangoAgent;
+                return agencyCall(testee[func]);
+              };
+            });
+            let results = [];
+            Object.keys(testCases).forEach((tc) => {
+              results.push({ name: tc, result: testCases[tc]() });
+            });
+            
+            db.UnitTestsTaskResult.insert(results);
+          }
+        });
+
+        let tries = 0;
+        while (++tries < 60) {
+          if (db[cn].count() === 19) {
+            break;
+          }
+          internal.sleep(0.5);
+        }
+
+        assertEqual(19, db[cn].count());
+        db[cn].toArray().forEach((doc) => {
+          assertTrue(doc.result, doc);
+        });
+      } finally {
+        db._drop(cn);
+      }
     },
 
   };
