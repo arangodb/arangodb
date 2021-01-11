@@ -233,7 +233,7 @@ void CustomAccumulator<VPackSlice>::SetupFunctions() {
 }
 
 auto CustomAccumulator<VPackSlice>::AIR_Parameters(arangodb::greenspun::Machine& ctx,
-                                                   const VPackSlice slice,
+                                                   VPackSlice const slice,
                                                    VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
   result.add(_parameters.slice());
@@ -241,7 +241,7 @@ auto CustomAccumulator<VPackSlice>::AIR_Parameters(arangodb::greenspun::Machine&
 }
 
 auto CustomAccumulator<VPackSlice>::AIR_ThisSet(arangodb::greenspun::Machine& ctx,
-                                                const VPackSlice slice, VPackBuilder& result)
+                                                VPackSlice const slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
   if (!slice.isArray() || slice.length() != 1) {
     return greenspun::EvalError("expected a single argument");
