@@ -933,17 +933,8 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
 }
 runInLocalArangosh.info = 'runInLocalArangosh';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a unittest file using rspec
-// //////////////////////////////////////////////////////////////////////////////
-function camelize (str) {
-  return str.replace(/(?:^\w|[A-Z]|\b\w,)/g, function (letter, index) {
-    return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
-  }).replace(/\s+/g, '_');
-}
-
 const parseRspecJson = function (testCase, res, totalDuration) {
-  let tName = camelize(testCase.description);
+  let tName = testCase.description;
   let status = (testCase.status === 'passed');
 
   if (res.hasOwnProperty(tName)) {
@@ -969,6 +960,10 @@ const parseRspecJson = function (testCase, res, totalDuration) {
   }
   return status ? 0 : 1;
 };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs a unittest file using rspec
+// //////////////////////////////////////////////////////////////////////////////
 function runInRSpec (options, instanceInfo, file, addArgs) {
   const tmpname = fs.join(instanceInfo.rootDir, 'testconfig.rb');
   const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
@@ -1024,14 +1019,25 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
           '--format', 'd',
           '--format', 'j',
           '--out', jsonFN,
-          '--require', tmpname,
-          file
-         ];
+          '--require', tmpname];
+
+  if (options.testCase) {
+    args.push("--example-matches");
+    args.push(options.testCase + "$");
+  } else if (options.failed) {
+    let failed = Object.keys(options.failed[file]);
+    args.push("--example-matches");
+    let escapeRegExp = function(str) {
+      return str.replace(/([.*+?^${}()|[\]\/\\])/g, '\\$1');
+    };
+    args.push(failed.map(v => escapeRegExp(v)).join("$|") + "$");
+  }
+  args.push(file);
 
   if (rspec !== undefined) {
     args = [rspec].concat(args);
   }
-
+  
   let start = Date();
   const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, options.oneTestTimeout);
   let end = Date();

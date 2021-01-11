@@ -683,7 +683,7 @@ Re-running previously failed tests:
 
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
-This failed filter should work for all jsunity and mocha tests.
+This failed filter should work for all jsunity, mocha and rspec tests.
 
 #### Running Foxx Tests with a Fake Foxx Repo
 
