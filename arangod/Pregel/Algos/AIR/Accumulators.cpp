@@ -83,8 +83,8 @@ auto CustomAccumulator<VPackSlice>::getIntoBuilder(VPackBuilder& result)
 // FIXME: duplicate code here and below
 auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg)
     -> greenspun::EvalResultT<UpdateResult> {
-  this->_inputSlice = msg.get("value");
-  this->_inputSender = msg.get("sender");
+  this->_inputSlice = msg.get(StaticStrings::AccumulatorValue);
+  this->_inputSender = msg.get(StaticStrings::AccumulatorSender);
 
   TRI_DEFER({
     this->_inputSlice = VPackSlice::noneSlice();

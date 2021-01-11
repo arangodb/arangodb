@@ -260,6 +260,8 @@ class StaticStrings {
   // pregel attribute names
   static std::string const AccumulatorHot;
   static std::string const AccumulatorCold;
+  static std::string const AccumulatorValue;
+  static std::string const AccumulatorSender;
 
   // Query Strings
   static std::string const QuerySortASC;

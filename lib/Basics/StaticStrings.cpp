@@ -276,6 +276,8 @@ std::string const StaticStrings::GraphName("name");
 // pregel attribute names
 std::string const StaticStrings::AccumulatorHot("hot");
 std::string const StaticStrings::AccumulatorCold("cold");
+std::string const StaticStrings::AccumulatorValue("value");
+std::string const StaticStrings::AccumulatorSender("sender");
 
 // Query Strings
 std::string const StaticStrings::QuerySortASC("ASC");
