@@ -37,17 +37,11 @@ namespace aql {
 
 class AqlFunctionFeature final : public application_features::ApplicationFeature {
  public:
-  static AqlFunctionFeature* AQLFUNCTIONS;
-
   explicit AqlFunctionFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void unprepare() override final;
-
-  /// @brief returns a reference to a built-in function
-  static Function const* getFunctionByName(std::string const&);
 
   void add(Function const& func);
 

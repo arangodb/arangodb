@@ -153,9 +153,7 @@ void RestClusterHandler::handleClusterInfo() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   auto dump = ci.toVelocyPack();
 
-  LOG_DEVEL << dump.toJson();
   generateResult(rest::ResponseCode::OK, dump.slice());
-
 }
 
 /// @brief returns information about all coordinator endpoints
@@ -166,8 +164,8 @@ void RestClusterHandler::handleCommandEndpoints() {
   if (ServerState::instance()->isCoordinator()) {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
-    ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
+    ReplicationFeature& replication = server().getFeature<ReplicationFeature>();
+    if (!replication.isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
       generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
                            "automatic failover is not enabled"));
       return;

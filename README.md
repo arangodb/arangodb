@@ -15,8 +15,8 @@ Oasis is the simplest way to run ArangoDB. Users can make deployments on all maj
 Getting Started
 ------------------------
 
-- [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb) 
-- [Training Center](https://www.arangodb.com/arangodb-training-center/)
+- [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
+- [Training Center](https://www.arangodb.com/learn/)
 - [Documentation](https://www.arangodb.com/docs/stable/)
 
 For the impatient:
@@ -49,7 +49,7 @@ widely used in relational databases but lacking in many NoSQL products. However,
 there is no need to forgo them in ArangoDB. You decide how and when to use joins
 and strong consistency guarantees, without sacrificing performance and scalability. 
 
-Furthermore, ArangoDB offers a JavaScript framework called [Foxx](https://www.arangodb.com/foxx)
+Furthermore, ArangoDB offers a JavaScript framework called [Foxx](https://www.arangodb.com/community-server/foxx/)
 that is executed in the database server with direct access to the data. Build your
 own data-centric microservices with a few lines of code. By extending the HTTP API
 with user code written in JavaScript, ArangoDB can be turned into a strict
@@ -112,7 +112,7 @@ issue tracker for reporting them:
 
 You can use our Google group for improvements, feature requests, comments:
 
-[https://www.arangodb.com/community](https://www.arangodb.com/community)
+[https://www.arangodb.com/community](https://www.arangodb.com/community/)
 
 StackOverflow is great for questions about AQL, usage scenarios etc.
 

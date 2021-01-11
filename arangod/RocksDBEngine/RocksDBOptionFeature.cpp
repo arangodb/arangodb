@@ -28,6 +28,7 @@
 #include "RocksDBOptionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -40,8 +41,11 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/options.h>
+#include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -84,6 +88,29 @@ uint64_t defaultTotalWriteBufferSize() {
   return (static_cast<uint64_t>(256) << 20);
 }
 
+uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize, uint64_t sizePerBuffer, uint64_t maxBuffers) {
+  uint64_t safe = rocksDBDefaults.min_write_buffer_number_to_merge;
+  uint64_t test = safe + 1;
+
+  // increase it to as much as 4 if it makes sense
+  for (; test <= 4; ++test) {
+    // next make sure we have enough buffers for it to matter
+    uint64_t minBuffers = 1 + (2 * test);
+    if (maxBuffers < minBuffers) {
+      break;
+    }
+
+    // next make sure we have enough space for all the buffers
+    if (minBuffers * sizePerBuffer * RocksDBColumnFamilyManager::numberOfColumnFamilies > totalSize) {
+      break;
+    }
+
+    safe = test;
+  }
+
+  return safe;
+}
+
 }  // namespace
 
 RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServer& server)
@@ -95,7 +122,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _maxWriteBufferSizeToMaintain(0),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
-      _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
+      _minWriteBufferNumberToMerge(
+          defaultMinWriteBufferNumberToMerge(_totalWriteBufferSize, _writeBufferSize,
+                                             _maxWriteBufferNumber)),
       _numLevels(rocksDBDefaults.num_levels),
       _numUncompressedLevels(2),
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
@@ -119,8 +148,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
       _cacheIndexAndFilterBlocksWithHighPriority(
-        rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
-      _pinl0FilterAndIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
+          rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
+      _pinl0FilterAndIndexBlocksInCache(
+          rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
       _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
@@ -134,7 +164,10 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _useFileLogging(false),
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
-      _exclusiveWrites(false) {
+      _exclusiveWrites(false),
+      _vpackCmp(new RocksDBVPackComparator()),
+      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0},
+      _minWriteBufferNumberToMergeTouched(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<size_t>(2), std::min(NumberOfCores::getValue(), static_cast<size_t>(8))));
@@ -236,9 +269,9 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "minimum number of write buffers that will be merged "
-                     "together before writing "
-                     "to storage",
-                     new UInt64Parameter(&_minWriteBufferNumberToMerge));
+                     "together before writing to storage",
+                     new UInt64Parameter(&_minWriteBufferNumberToMerge),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.num-levels", "number of levels for the database",
                      new UInt64Parameter(&_numLevels));
@@ -436,6 +469,35 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   new BooleanParameter(&_exclusiveWrites),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30504);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// add column family-specific options now
+  //////////////////////////////////////////////////////////////////////////////
+  std::initializer_list<RocksDBColumnFamilyManager::Family> families = {
+      RocksDBColumnFamilyManager::Family::Definitions,
+      RocksDBColumnFamilyManager::Family::Documents,
+      RocksDBColumnFamilyManager::Family::PrimaryIndex,
+      RocksDBColumnFamilyManager::Family::EdgeIndex,
+      RocksDBColumnFamilyManager::Family::VPackIndex,
+      RocksDBColumnFamilyManager::Family::GeoIndex,
+      RocksDBColumnFamilyManager::Family::FulltextIndex};
+
+  auto addMaxWriteBufferNumberCf = [this, &options](RocksDBColumnFamilyManager::Family family) {
+    std::string name =
+        RocksDBColumnFamilyManager::name(family, RocksDBColumnFamilyManager::NameMode::External);
+    std::size_t index =
+        static_cast<std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
+    options->addOption("--rocksdb.max-write-buffer-number-" + name,
+                       "if non-zero, overrides the value of "
+                       "--rocksdb.max-write-buffer-number for the " +
+                           name + " column family",
+                       new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                       .setIntroducedIn(30800);
+  };
+  for (auto family : families) {
+    addMaxWriteBufferNumberCf(family);
+  }
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -489,6 +551,23 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
         << "invalid value for '--rocksdb.block-cache-shard-bits'";
     FATAL_ERROR_EXIT();
   }
+
+  _minWriteBufferNumberToMergeTouched = options->processingResult().touched(
+      "--rocksdb.min-write-buffer-number-to-merge");
+ 
+  // limit memory usage of agent instances, if not otherwise configured
+  AgencyFeature& feature = server().getEnabledFeature<AgencyFeature>();
+  if (feature.activated()) {
+    // if we are an agency instance...
+    if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
+      // restrict block cache size to 1 GB if not set explicitly
+      _blockCacheSize = std::min<uint64_t>(_blockCacheSize, uint64_t(1) << 30);
+    }
+    if (!options->processingResult().touched("--rocksdb.total-write-buffer-size")) {
+      // restrict total write buffer size to 512 MB if not set explicitly
+      _totalWriteBufferSize = std::min<uint64_t>(_totalWriteBufferSize, uint64_t(512) << 20);
+    }
+  }
 }
 
 void RocksDBOptionFeature::start() {
@@ -540,4 +619,60 @@ void RocksDBOptionFeature::start() {
       << _useFSync << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
       << ", max_open_files limit: " << std::boolalpha << _limitOpenFilesAtStartup
       << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
+}
+
+rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
+    RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
+    rocksdb::BlockBasedTableOptions const& tableBase) const {
+  rocksdb::ColumnFamilyOptions options(base);
+
+  switch (family) {
+    case RocksDBColumnFamilyManager::Family::Definitions:
+    case RocksDBColumnFamilyManager::Family::Invalid:
+      break;
+
+    case RocksDBColumnFamilyManager::Family::Documents:
+    case RocksDBColumnFamilyManager::Family::PrimaryIndex:
+    case RocksDBColumnFamilyManager::Family::GeoIndex:
+    case RocksDBColumnFamilyManager::Family::FulltextIndex: {
+      // fixed 8 byte object id prefix
+      options.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      break;
+    }
+
+    case RocksDBColumnFamilyManager::Family::EdgeIndex: {
+      options.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
+      // also use hash-search based SST file format
+      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
+      tableOptions.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
+      options.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+          rocksdb::NewBlockBasedTableFactory(tableOptions));
+      break;
+    }
+    case RocksDBColumnFamilyManager::Family::VPackIndex: {
+      // velocypack based index variants with custom comparator
+      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
+      tableOptions.filter_policy.reset();  // intentionally no bloom filter here
+      options.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+          rocksdb::NewBlockBasedTableFactory(tableOptions));
+      options.comparator = _vpackCmp.get();
+      break;
+    }
+  }
+
+  // override
+  std::size_t index =
+      static_cast<std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
+  TRI_ASSERT(index < _maxWriteBufferNumberCf.size());
+  if (_maxWriteBufferNumberCf[index] > 0) {
+    options.max_write_buffer_number = static_cast<int>(_maxWriteBufferNumberCf[index]);
+  }
+  if (!_minWriteBufferNumberToMergeTouched) {
+    options.min_write_buffer_number_to_merge = static_cast<int>(
+        defaultMinWriteBufferNumberToMerge(_totalWriteBufferSize, _writeBufferSize,
+                                           options.max_write_buffer_number));
+  }
+
+  return options;
 }

@@ -82,8 +82,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-V8DealerFeature* V8DealerFeature::DEALER = nullptr;
-
 namespace {
 class V8GcThread : public Thread {
  public:
@@ -433,9 +431,6 @@ void V8DealerFeature::start() {
         << "JavaScript using " << StringUtils::join(paths, ", ");
   }
 
-  // set singleton
-  DEALER = this;
-
   if (_nrMinContexts < 1) {
     _nrMinContexts = 1;
   }
@@ -675,8 +670,6 @@ void V8DealerFeature::unprepare() {
 
   // delete GC thread after all action threads have been stopped
   _gcThread.reset();
-
-  DEALER = nullptr;
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
@@ -1725,8 +1718,8 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
 V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
                                JavaScriptSecurityContext const& securityContext)
-    : _isolate(nullptr), _context(nullptr) {
-  _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
+    : _vocbase(vocbase), _isolate(nullptr), _context(nullptr) {
+  _context = vocbase->server().getFeature<V8DealerFeature>().enterContext(vocbase, securityContext);
   if (_context == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
                                    "unable to acquire V8 context in time");
@@ -1737,7 +1730,7 @@ V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
 V8ContextGuard::~V8ContextGuard() {
   if (_context) {
     try {
-      V8DealerFeature::DEALER->exitContext(_context);
+      _vocbase->server().getFeature<V8DealerFeature>().exitContext(_context);
     } catch (...) {
     }
   }
@@ -1746,12 +1739,10 @@ V8ContextGuard::~V8ContextGuard() {
 V8ConditionalContextGuard::V8ConditionalContextGuard(Result& res, v8::Isolate*& isolate,
                                                      TRI_vocbase_t* vocbase,
                                                      JavaScriptSecurityContext const& securityContext)
-    : _isolate(isolate),
-      _context(nullptr),
-      _active(isolate ? false : true) {
+    : _vocbase(vocbase), _isolate(isolate), _context(nullptr), _active(isolate ? false : true) {
   TRI_ASSERT(vocbase != nullptr);
   if (_active) {
-    _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
+    _context = vocbase->server().getFeature<V8DealerFeature>().enterContext(vocbase, securityContext);
     if (!_context) {
       res.reset(TRI_ERROR_INTERNAL,
                 "V8ConditionalContextGuard - could not acquire context");
@@ -1764,7 +1755,7 @@ V8ConditionalContextGuard::V8ConditionalContextGuard(Result& res, v8::Isolate*& 
 V8ConditionalContextGuard::~V8ConditionalContextGuard() {
   if (_active && _context) {
     try {
-      V8DealerFeature::DEALER->exitContext(_context);
+      _vocbase->server().getFeature<V8DealerFeature>().exitContext(_context);
     } catch (...) {
     }
     _isolate = nullptr;

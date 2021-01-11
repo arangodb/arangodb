@@ -21,12 +21,14 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
-#define ARANGO_ROCKSDB_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
+#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H
+#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_BACKGROUND_ERROR_LISTENER_H 1
 
 // public rocksdb headers
 #include <rocksdb/db.h>
 #include <rocksdb/listener.h>
+
+#include <atomic>
 
 namespace arangodb {
 
@@ -36,9 +38,11 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 
   void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
+  bool called() const { return _called.load(std::memory_order_relaxed); }
+
  private:
-  bool _called = false;
-};  // class RocksDBThrottle
+  std::atomic<bool> _called{false};
+};
 
 }  // namespace arangodb
 

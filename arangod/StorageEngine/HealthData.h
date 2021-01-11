@@ -21,17 +21,32 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PRIME__NUMBERS_H
-#define ARANGODB_BASICS_PRIME__NUMBERS_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_HEALTH_DATA_H
+#define ARANGOD_STORAGE_ENGINE_HEALTH_DATA_H 1
 
-#include <cstdint>
+#include "Basics/Result.h"
 
-#include "Basics/Common.h"
+#include <chrono>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a prime number not lower than value
-////////////////////////////////////////////////////////////////////////////////
+namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+  
+struct HealthData {
+  Result res;
+  /// @brief timestamp of full last health check execution. we only execute the
+  /// full health checks every so often in order to reduce load
+  std::chrono::steady_clock::time_point lastCheckTimestamp;
+  bool backgroundError = false;
+  uint64_t freeDiskSpaceBytes = 0;
+  double freeDiskSpacePercent = 0.0;
 
-uint64_t TRI_NearPrime(uint64_t);
+  static HealthData fromVelocyPack(velocypack::Slice slice);
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+}
 
 #endif

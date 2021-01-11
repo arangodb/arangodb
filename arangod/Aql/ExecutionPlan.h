@@ -54,14 +54,19 @@ class QueryContext;
 class ExecutionPlan {
  public:
   /// @brief create the plan
-  explicit ExecutionPlan(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  explicit ExecutionPlan(Ast* ast, bool trackMemoryUsage);
+  /// @brief whether or not memory usage should be tracked for this plan.
 
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
 
  public:
   /// @brief create an execution plan from an AST
-  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*, bool trackMemoryUsage);
 
   /// @brief process the list of collections in a VelocyPack
   static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
@@ -76,10 +81,6 @@ class ExecutionPlan {
 
   /// @brief clone the plan by recursively cloning starting from the root
   ExecutionPlan* clone();
-
-  /// @brief create an execution plan identical to this one
-  ///   keep the memory of the plan on the query object specified.
-//  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
@@ -346,9 +347,6 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST COLLECT node
   ExecutionNode* fromNodeCollect(ExecutionNode*, AstNode const*);
 
-  /// @brief create an execution plan element from an AST COLLECT node, COUNT
-  ExecutionNode* fromNodeCollectCount(ExecutionNode*, AstNode const*);
-
   /// @brief create an execution plan element from an AST LIMIT node
   ExecutionNode* fromNodeLimit(ExecutionNode*, AstNode const*);
 
@@ -393,6 +391,11 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were disabled for a plan
   ::arangodb::containers::HashSet<int> _disabledRules;
+
+  /// @brief whether or not memory usage should be tracked for this plan.
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  bool const _trackMemoryUsage;
 
   /// @brief if the plan is supposed to be in a valid state
   /// this will always be true, except while a plan is handed to

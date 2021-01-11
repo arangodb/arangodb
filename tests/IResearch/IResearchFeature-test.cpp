@@ -61,6 +61,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -1854,7 +1855,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 
       {
         auto scopedLock = irs::make_lock_guard(*mutex);
-        feature->queue(arangodb::iresearch::ThreadGroup::_1, 5000ms, *this);
+        feature->queue(arangodb::iresearch::ThreadGroup::_1, 10000ms, *this);
       }
 
       cond->notify_all();
@@ -1883,15 +1884,26 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   feature.queue(arangodb::iresearch::ThreadGroup::_1, 0ms,
                 Task(deallocated, mutex, cond, count, feature));
 
-  auto const end = std::chrono::steady_clock::now() + 10s;
-  while (!count) {
-    std::this_thread::sleep_for(10ms);
-    ASSERT_LE(std::chrono::steady_clock::now(), end);
+  {
+    auto const end = std::chrono::steady_clock::now() + 10s;
+    while (!count) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
   }
 
   EXPECT_EQ(1, count);
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));  // first run invoked immediately
   EXPECT_FALSE(deallocated);
+
+  {
+    auto const end = std::chrono::steady_clock::now() + 10s;
+    while (!std::get<1>(feature.stats(arangodb::iresearch::ThreadGroup::_1))) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  }
+
   EXPECT_EQ(std::cv_status::timeout, cond.wait_for(lock, 100ms));
   EXPECT_FALSE(deallocated); // still scheduled
   EXPECT_EQ(1, count);
@@ -2158,11 +2170,12 @@ class IResearchFeatureTestCoordinator
     server.startFeatures();
 
     arangodb::AgencyCommHelper::initialize("arango");
-    arangodb::network::ConnectionPool::Config poolConfig;
+    arangodb::network::ConnectionPool::Config poolConfig(server.getFeature<arangodb::MetricsFeature>());
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
+    poolConfig.name = "IResearchFeatureTest";
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
@@ -2410,11 +2423,12 @@ class IResearchFeatureTestDBServer
 
     arangodb::AgencyCommHelper::initialize("arango");
 
-    arangodb::network::ConnectionPool::Config poolConfig;
+    arangodb::network::ConnectionPool::Config poolConfig(server.getFeature<arangodb::MetricsFeature>());
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
+    poolConfig.name = "IResearchFeatureTest";
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");

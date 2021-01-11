@@ -39,6 +39,7 @@
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -113,7 +114,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cacheEnabled(
           !collection.system() &&
           basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::CacheEnabled, false) &&
-          CacheManagerFeature::MANAGER != nullptr),
+          collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
@@ -125,8 +126,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      PhysicalCollection const* physical)
     : RocksDBMetaCollection(collection, VPackSlice::emptyObjectSlice()),
       _primaryIndex(nullptr),
-      _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
-                    CacheManagerFeature::MANAGER != nullptr),
+      _cacheEnabled(
+          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
+          collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0) {
   if (_cacheEnabled) {
     createCache();
@@ -148,7 +150,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
   _cacheEnabled =
       !isSys &&
       basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::CacheEnabled, _cacheEnabled) &&
-      CacheManagerFeature::MANAGER != nullptr;
+      _logicalCollection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr;
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
   if (_cacheEnabled) {
@@ -384,7 +386,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       rocksdb::PinnableSlice ps;
       rocksdb::Status s =
           engine.db()->Get(rocksdb::ReadOptions(),
-                           RocksDBColumnFamily::definitions(), key.string(), &ps);
+                           RocksDBColumnFamilyManager::get(
+                               RocksDBColumnFamilyManager::Family::Definitions),
+                           key.string(), &ps);
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s));
         break;
@@ -696,7 +700,9 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // normal transactional truncate
   RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(objectId());
-  rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+  rocksdb::Comparator const* cmp =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+          ->GetComparator();
   // intentionally copy the read options so we can modify them
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
@@ -823,7 +829,10 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result) {
+                               IndexIterator::DocumentCallback const& cb) const {
+  TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
+  
+  rocksdb::PinnableSlice ps;
   Result res;
   do {
     LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
@@ -832,21 +841,23 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       break;
     }  // else found
 
-    std::string* buffer = result.setManaged();
-    rocksdb::PinnableSlice ps(buffer);
     res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true);
     if (res.ok()) {
-      if (ps.IsPinned()) {
-        buffer->assign(ps.data(), ps.size());
-      } // else value is already assigned
-      result.setRevisionId(); // extracts id from buffer
+      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
   return res;
 }
 
-// read using a token!
+// read using a local document id
+bool RocksDBCollection::read(transaction::Methods* trx,
+                             LocalDocumentId const& documentId,
+                             IndexIterator::DocumentCallback const& cb) const {
+  return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
+}
+
+// read using a local document id
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
@@ -860,16 +871,6 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       } // else value is already assigned
       return true;
     }
-  }
-  return false;
-}
-
-// read using a token!
-bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 LocalDocumentId const& documentId,
-                                                 IndexIterator::DocumentCallback const& cb) const {
-  if (documentId.isSet()) {
-    return lookupDocumentVPack(trx, documentId, cb, /*withCache*/true);
   }
   return false;
 }
@@ -1295,10 +1296,11 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
   rocksdb::Range r(bounds.start(), bounds.end());
 
   uint64_t out = 0;
-  db->GetApproximateSizes(RocksDBColumnFamily::documents(), &r, 1, &out,
-                          static_cast<uint8_t>(
-                              rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-                              rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  db->GetApproximateSizes(
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+      &r, 1, &out,
+      static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+                           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder.add("documentsSize", VPackValue(out));
   bool cacheInUse = useCache();
@@ -1406,10 +1408,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   IndexingDisabler disabler(mthds, state->isSingleOperation());
 
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
-  rocksdb::Status s =
-      mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
-                          rocksdb::Slice(doc.startAs<char>(),
-                                         static_cast<size_t>(doc.byteSize())));
+  rocksdb::Status s = mthds->PutUntracked(
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+      key.ref(),
+      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1459,7 +1461,10 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s =
+      mthds->SingleDelete(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1517,14 +1522,19 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
   invalidateCacheEntry(key.ref());
 
-  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s =
+      mthds->SingleDelete(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
+  s = mthds->PutUntracked(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref(),
                           rocksdb::Slice(newDoc.startAs<char>(),
                                          static_cast<size_t>(newDoc.byteSize())));
   if (!s.ok()) {
@@ -1597,7 +1607,9 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
+  rocksdb::Status s =
+      mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+                key->string(), &ps);
 
   if (!s.ok()) {
     LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
@@ -1610,21 +1622,14 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   if (fillCache && useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    auto entry =
-        cache::CachedValue::construct(key->string().data(),
-                                      static_cast<uint32_t>(key->string().size()),
-                                      ps.data(), static_cast<uint64_t>(ps.size()));
-    if (entry) {
-      auto status = _cache->insert(entry);
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        // the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
-      }
-    }
+    size_t attempts = 0;
+    cache::Cache::Inserter inserter(*_cache, key->string().data(),
+                                    static_cast<uint32_t>(key->string().size()),
+                                    ps.data(), static_cast<uint64_t>(ps.size()),
+                                    [&attempts](Result const& res) -> bool {
+                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                             ++attempts < 2;
+                                    });
   }
 
   return res;
@@ -1655,7 +1660,9 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   rocksdb::PinnableSlice ps(buffer.get());
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
+  rocksdb::Status s =
+      mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+                key->string(), &ps);
 
   if (!s.ok()) {
     return false;
@@ -1667,21 +1674,14 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
-    auto entry =
-        cache::CachedValue::construct(key->string().data(),
-                                      static_cast<uint32_t>(key->string().size()),
-                                      ps.data(), static_cast<uint64_t>(ps.size()));
-    if (entry) {
-      auto status = _cache->insert(entry);
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        // the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
-      }
-    }
+    size_t attempts = 0;
+    cache::Cache::Inserter inserter(*_cache, key->string().data(),
+                                    static_cast<uint32_t>(key->string().size()),
+                                    ps.data(), static_cast<uint64_t>(ps.size()),
+                                    [&attempts](Result const& res) -> bool {
+                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                             ++attempts < 2;
+                                    });
   }
 
   return true;
@@ -1697,9 +1697,11 @@ void RocksDBCollection::createCache() const {
 
   TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cache.get() == nullptr);
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  auto* manager =
+      _logicalCollection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+  TRI_ASSERT(manager != nullptr);
   LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
-  _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
+  _cache = manager->createCache(cache::CacheType::Transactional);
   TRI_ASSERT(_cacheEnabled);
 }
 
@@ -1707,11 +1709,13 @@ void RocksDBCollection::destroyCache() const {
   if (!_cache) {
     return;
   }
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  auto* manager =
+      _logicalCollection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+  TRI_ASSERT(manager != nullptr);
   // must have a cache...
   TRI_ASSERT(_cache.get() != nullptr);
   LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-  CacheManagerFeature::MANAGER->destroyCache(_cache);
+  manager->destroyCache(_cache);
   _cache.reset();
 }
 

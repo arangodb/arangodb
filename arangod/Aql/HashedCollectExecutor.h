@@ -39,6 +39,8 @@
 #include <unordered_map>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 
 struct AqlCall;
@@ -63,12 +65,12 @@ class HashedCollectExecutorInfos {
    * @param aggregateTypes Aggregation methods used
    * @param aggregateRegisters Input and output Register for Aggregation
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
-   * @param count Flag to enable count, will be written to collectRegister
    */
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             velocypack::Options const*, bool count);
+                             velocypack::Options const* vpackOptions, 
+                             arangodb::ResourceMonitor& resourceMonitor);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -79,9 +81,9 @@ class HashedCollectExecutorInfos {
   std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
   std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
   std::vector<std::string> const& getAggregateTypes() const;
-  bool getCount() const noexcept;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
+  arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief aggregate types
@@ -102,8 +104,8 @@ class HashedCollectExecutorInfos {
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
 
-  /// @brief COUNTing node?
-  bool _count;
+  /// @brief resource manager
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 /**
@@ -162,7 +164,7 @@ class HashedCollectExecutor {
    private:
     std::size_t _size;
   };
-  using GroupKeyType = std::vector<AqlValue>;
+  using GroupKeyType = HashedAqlValueGroup;
   using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
@@ -198,6 +200,8 @@ class HashedCollectExecutor {
 
   std::unique_ptr<ValueAggregators> makeAggregateValues() const;
 
+  size_t memoryUsageForGroup(GroupKeyType const& group, bool withBase) const;
+
  private:
   Infos const& _infos;
 
@@ -214,7 +218,7 @@ class HashedCollectExecutor {
 
   std::vector<Aggregator::Factory const*> _aggregatorFactories;
 
-  GroupKeyType _nextGroupValues;
+  GroupKeyType _nextGroup;
 
   size_t _returnedGroups = 0;
 };
