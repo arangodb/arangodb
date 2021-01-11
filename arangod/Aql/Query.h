@@ -33,13 +33,14 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "V8Server/V8Context.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 struct TRI_vocbase_t;
 
@@ -51,14 +52,6 @@ namespace transaction {
 class Context;
 class Methods;
 }  // namespace transaction
-
-namespace velocypack {
-class Builder;
-}
-
-namespace graph {
-class Graph;
-}
 
 namespace aql {
 
@@ -91,7 +84,7 @@ class Query : public QueryContext {
         aql::QueryOptions&& options);
   Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        std::shared_ptr<arangodb::velocypack::Builder> const& options);
+        arangodb::velocypack::Slice options = arangodb::velocypack::Slice());
 
   virtual ~Query();
 
@@ -108,6 +101,10 @@ class Query : public QueryContext {
 
   /// @brief set the query to killed
   void kill();
+
+  /// @brief setter and getter methods for the query lockTimeout. 
+  void setLockTimeout(double timeout) noexcept override;
+  double getLockTimeout() const noexcept override;
 
   QueryString const& queryString() const { return _queryString; }
     
@@ -156,6 +153,10 @@ class Query : public QueryContext {
     return (_contextOwnedByExterior || _v8Context != nullptr);
   }
 
+  /// @brief return the final query result status code (0 = no error,
+  /// > 0 = error, one of TRI_ERROR_...)
+  int resultCode() const noexcept;
+
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
     return _bindParameters.builder();
@@ -163,6 +164,7 @@ class Query : public QueryContext {
 
   /// @brief return the query's shared state
   std::shared_ptr<SharedQueryState> sharedState() const;
+ 
   ExecutionEngine* rootEngine() const;
   
   Ast* ast() {
@@ -288,6 +290,9 @@ class Query : public QueryContext {
   /// @brief query start time (steady clock value)
   double const _startTime;
 
+  /// @brief total memory used for building the (partial) result
+  size_t _resultMemoryUsage;
+
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
   
@@ -301,6 +306,10 @@ class Query : public QueryContext {
   /// Track in which phase of execution we are, in order to implement
   /// repeatability.
   ExecutionPhase _executionPhase;
+
+  /// @brief return the final query result status code (0 = no error,
+  /// > 0 = error, one of TRI_ERROR_...)
+  int _resultCode;
   
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;

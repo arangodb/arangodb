@@ -25,8 +25,7 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_METHODS_H 1
 
 #include "Basics/Result.h"
-#include "RocksDBColumnFamily.h"
-#include "RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 
 namespace rocksdb {
 class Transaction;

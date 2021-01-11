@@ -180,7 +180,7 @@ auto MakeSkipResult(size_t const i) -> SkipResult {
 TEST(DeSerializeAqlExecuteResultTest, test) {
   
   ResourceMonitor resourceMonitor{};
-  AqlItemBlockManager manager{&resourceMonitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager manager{resourceMonitor, SerializationFormat::SHADOWROWS};
 
   auto const testingAqlExecuteResults = std::array{
       AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},

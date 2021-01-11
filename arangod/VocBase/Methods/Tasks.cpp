@@ -218,8 +218,10 @@ void Task::removeTasksForDatabase(std::string const& name) {
   }
 }
 
-bool Task::tryCompile(v8::Isolate* isolate, std::string const& command) {
-  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+bool Task::tryCompile(application_features::ApplicationServer& server,
+                      v8::Isolate* isolate, std::string const& command) {
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
+      !server.getFeature<V8DealerFeature>().isEnabled()) {
     return false;
   }
 
@@ -370,7 +372,8 @@ void Task::start() {
 }
 
 bool Task::queue(std::chrono::microseconds offset) {
-  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+  auto& server = _dbGuard->database().server();
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>()) {
     return false;
   }
 

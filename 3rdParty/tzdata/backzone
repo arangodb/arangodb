@@ -150,7 +150,7 @@ Zone	Africa/Douala	0:38:48	-	LMT	1912
 # Whitman gives Mar 31 - Aug 31 for 1931 on.
 # The International Hydrographic Bulletin, 1932-33, p 63 says that
 # Sierra Leone would advance its clocks by 20 minutes on 1933-10-01.
-# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+# Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
 Rule	SL	1935	1942	-	Jun	 1	0:00	0:40	-0020
 Rule	SL	1935	1942	-	Oct	 1	0:00	0	-01
 Rule	SL	1957	1962	-	Jun	 1	0:00	1:00	+01
@@ -351,7 +351,7 @@ Zone America/Guadeloupe	-4:06:08 -	LMT	1911 Jun  8 # Pointe-à-Pitre
 # Pottenger data.  The post-1970 entries have been corrected, but the
 # pre-1970 entries are unchecked and probably have errors.
 #
-# Rule	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+# Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
 Rule	Mont	1917	only	-	Mar	25	2:00	1:00	D
 Rule	Mont	1917	only	-	Apr	24	0:00	0	S
 Rule	Mont	1919	only	-	Mar	31	2:30	1:00	D
@@ -459,7 +459,34 @@ Zone	Asia/Aden	2:59:54	-	LMT	1950
 			3:00	-	+03
 
 # Bahrain
-Zone	Asia/Bahrain	3:22:20 -	LMT	1920     # Manamah
+#
+# From Paul Eggert (2020-07-23):
+# Most of this data comes from:
+# Stewart A. Why Gulf Standard Time is far from standard: the fascinating story
+# behind the time zone's invention. The National (Abu Dhabi). 2020-07-22.
+# https://www.thenational.ae/arts-culture/why-gulf-standard-time-is-far-from-standard-the-fascinating-story-behind-the-time-zone-s-invention-1.1052589
+# Stewart writes that before 1941 some companies in Bahrain were at +0330 and
+# others at +0323.  Reginald George Alban, a British political agent based in
+# Manama, worked to standardize this, and from 1941-07-20 Bahrain was at
+# +0330.  However, BOAC asked that clocks be moved to gain more light at day's
+# end, so Bahrain switched to +04 on 1944-01-01.
+#
+# Re the 1941 transition, Stewart privately sent me this citation:
+# "File 16/53 Enquiries Re: Calculation of Local Time", British Library: India
+# Office Records and Private Papers, IOR/R/15/2/1564, in Qatar Digital Library
+# https://www.qdl.qa/archive/81055/vdc_100000000282.0x00012b
+# It says there was no real standard in Bahrain before 1941-07-20.
+# +0330 was used by steamers of the British India Co, by Petroleum Concessions
+# and by Cable & Wireless; +0323 was used by the Eastern Bank Ltd, BOAC, and
+# Bahrein Petroleum (Bapco), and California Arabian Standard Oil Co (Casoc)
+# adopted DST effective 1941-05-24.  Alban suggested adopting DST, R.B. Coomb
+# of C&W countersuggested +0330, and although C.A. Rodstrom of Casoc (formerly
+# of Bapco) stated that Bahrain had formerly used +0330 before Bapco arrived
+# but Bapco switched to +0323 because of "constant confusion", the consensus
+# was +0330.  The government adopted +0330 in 1941-07-20 and companies seem to
+# have switched by 08-01.  No time of day was given for the 1940s transitions.
+Zone	Asia/Bahrain	3:22:20 -	LMT	1941 Jul 20  # Manamah
+			3:30	-	+0330	1944 Jan  1
 			4:00	-	+04	1972 Jun
 			3:00	-	+03
 
@@ -595,6 +622,12 @@ Zone Atlantic/Jan_Mayen	-1:00	-	-01
 Zone Atlantic/St_Helena	-0:22:48 -	LMT	1890 # Jamestown
 			-0:22:48 -	JMT	1951 # Jamestown Mean Time
 			 0:00	-	GMT
+
+# King Island
+Zone Australia/Currie	9:35:28	-	LMT	1895 Sep
+			10:00	AT	AE%sT	1919 Oct 24
+			10:00	Aus	AE%sT	1968 Oct 15
+			10:00	AT	AE%sT
 
 # Northern Ireland
 Zone	Europe/Belfast	-0:23:40 -	LMT	1880 Aug  2

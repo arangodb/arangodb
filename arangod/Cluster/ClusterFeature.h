@@ -119,14 +119,25 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void pruneAsyncAgencyConnectionPool() {
     _asyncAgencyCommPool->pruneConnections();
   }
+  
+  /// the following methods may also be called from tests
+  
+  void shutdownHeartbeatThread();
+  /// @brief wait for the AgencyCache to shut down
+  /// note: this may be called multiple times during shutdown
+  void shutdownAgencyCache();
+  /// @brief wait for the Plan and Current syncer to shut down
+  /// note: this may be called multiple times during shutdown
+  void waitForSyncersToStop();
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setSyncerShutdownCode(int code) { _syncerShutdownCode = code; }
+#endif
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                             std::string const& endpoints);
-
-  void shutdownHeartbeatThread();
-  void shutdownAgencyCache();
 
  private:
   void reportRole(ServerState::RoleEnum);
@@ -142,12 +153,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
+  int _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
-  bool _allocated = false;
   double _indexCreationTimeout = 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;

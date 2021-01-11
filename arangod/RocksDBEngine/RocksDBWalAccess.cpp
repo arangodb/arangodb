@@ -21,15 +21,15 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Basics/StaticStrings.h"
 #include "Replication/TailingSyncer.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -103,11 +103,14 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
  public:
   MyWALDumper(RocksDBEngine& engine, WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f, size_t maxResponseSize)
-      : WalAccessContext(filter, f),
+      : WalAccessContext(engine.server(), filter, f),
         _engine(engine),
-        _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
-        _documentsCF(RocksDBColumnFamily::documents()->GetID()),
-        _primaryCF(RocksDBColumnFamily::primary()->GetID()),
+        _definitionsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+                           ->GetID()),
+        _documentsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                         ->GetID()),
+        _primaryCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex)
+                       ->GetID()),
         _maxResponseSize(maxResponseSize),
         _startSequence(0),
         _currentSequence(0),

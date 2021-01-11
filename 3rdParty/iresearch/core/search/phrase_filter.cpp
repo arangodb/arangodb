@@ -300,7 +300,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
   doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_provider* /*ctx*/) const {
+      const attribute_provider* /*ctx*/) const override {
     using conjunction_t = conjunction<doc_iterator::ptr>;
     using phrase_iterator_t = phrase_iterator<
       conjunction_t,

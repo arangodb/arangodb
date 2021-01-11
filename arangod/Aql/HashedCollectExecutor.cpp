@@ -35,6 +35,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 
 #include <utility>
 
@@ -47,13 +48,14 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    velocypack::Options const* opts, bool count)
+    velocypack::Options const* opts, 
+    arangodb::ResourceMonitor& resourceMonitor)
     : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
       _vpackOptions(opts),
-      _count(count) {
+      _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -73,23 +75,19 @@ velocypack::Options const* HashedCollectExecutorInfos::getVPackOptions() const {
   return _vpackOptions;
 }
 
-bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
-
 RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
   return _collectRegister;
+}
+
+arangodb::ResourceMonitor& HashedCollectExecutorInfos::getResourceMonitor() const {
+  return _resourceMonitor;
 }
 
 std::vector<Aggregator::Factory const*>
 HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
   std::vector<Aggregator::Factory const*> aggregatorFactories;
 
-  if (infos.getAggregateTypes().empty()) {
-    // no aggregate registers. this means we'll only count the number of items
-    if (infos.getCount()) {
-      aggregatorFactories.emplace_back(
-          &Aggregator::factoryFromTypeString("LENGTH"));
-    }
-  } else {
+  if (!infos.getAggregateTypes().empty()) {
     // we do have aggregate registers. create them as empty AqlValues
     aggregatorFactories.reserve(infos.getAggregatedRegisters().size());
 
@@ -111,7 +109,7 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
       _isInitialized(false),
       _aggregatorFactories() {
   _aggregatorFactories = createAggregatorFactories(_infos);
-  _nextGroupValues.reserve(_infos.getGroupRegisters().size());
+  _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 };
 
 HashedCollectExecutor::~HashedCollectExecutor() {
@@ -122,29 +120,25 @@ HashedCollectExecutor::~HashedCollectExecutor() {
 }
 
 void HashedCollectExecutor::destroyAllGroupsAqlValues() {
+  size_t memoryUsage = 0;
   for (auto& it : _allGroups) {
-    for (auto& it2 : it.first) {
+    memoryUsage += memoryUsageForGroup(it.first, true);
+    for (auto& it2 : it.first.values) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 }
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
   TRI_ASSERT(input.isInitialized());
-
+  
   decltype(_allGroups)::iterator currentGroupIt = findOrEmplaceGroup(input);
 
-  // reduce the aggregates
-  ValueAggregators* aggregateValues = currentGroupIt->second.get();
+  if (!_infos.getAggregateTypes().empty()) {
+    // reduce the aggregates
+    ValueAggregators* aggregateValues = currentGroupIt->second.get();
 
-  if (_infos.getAggregateTypes().empty()) {
-    // no aggregate registers. simply increase the counter
-    if (_infos.getCount()) {
-      // TODO get rid of this special case if possible
-      TRI_ASSERT(aggregateValues != nullptr && aggregateValues->size() == 1);
-      (*aggregateValues)[0].reduce(EmptyValue);
-    }
-  } else {
     // apply the aggregators for the group
     TRI_ASSERT(aggregateValues != nullptr && aggregateValues->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
@@ -161,9 +155,8 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 
 void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) {
   // build the result
-  TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != RegisterPlan::MaxRegisterId);
-
-  auto& keys = _currentGroup->first;
+  size_t memoryUsage = memoryUsageForGroup(_currentGroup->first, false);
+  auto& keys = _currentGroup->first.values;
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
   size_t i = 0;
@@ -175,25 +168,20 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
     key.erase();  // to prevent double-freeing later
   }
 
-  if (!_infos.getCount()) {
-    if (!_infos.getAggregatedRegisters().empty()) {
-      TRI_ASSERT(_currentGroup->second != nullptr);
-      auto& aggregators = *_currentGroup->second;
-      TRI_ASSERT(aggregators.size() == _infos.getAggregatedRegisters().size());
-      size_t j = 0;
-      for (std::size_t aggregatorIdx = 0; aggregatorIdx < aggregators.size(); ++aggregatorIdx) {
-        AqlValue r = aggregators[aggregatorIdx].stealValue();
-        AqlValueGuard guard{r, true};
-        output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
-                            _lastInitializedInputRow, guard);
-      }
+
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
+
+  if (!_infos.getAggregatedRegisters().empty()) {
+    TRI_ASSERT(_currentGroup->second != nullptr);
+    auto& aggregators = *_currentGroup->second;
+    TRI_ASSERT(aggregators.size() == _infos.getAggregatedRegisters().size());
+    size_t j = 0;
+    for (std::size_t aggregatorIdx = 0; aggregatorIdx < aggregators.size(); ++aggregatorIdx) {
+      AqlValue r = aggregators[aggregatorIdx].stealValue();
+      AqlValueGuard guard{r, true};
+      output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
+                          _lastInitializedInputRow, guard);
     }
-  } else {
-    // set group count in result register
-    TRI_ASSERT(_currentGroup->second != nullptr && _currentGroup->second->size() == 1);
-    AqlValue r = (*_currentGroup->second)[0].stealValue();
-    AqlValueGuard guard{r, true};
-    output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow, guard);
   }
 }
 
@@ -303,22 +291,25 @@ auto HashedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 // _allGroups. additionally, .second is true iff a new group was emplaced.
 decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::findOrEmplaceGroup(
     InputAqlItemRow& input) {
-  _nextGroupValues.clear();
+  _nextGroup.values.clear();
+  TRI_ASSERT(_nextGroup.values.capacity() == _infos.getGroupRegisters().size());
 
   // for hashing simply re-use the aggregate registers, without cloning
   // their contents
   for (auto const& reg : _infos.getGroupRegisters()) {
-    _nextGroupValues.emplace_back(input.getValue(reg.second));
+    _nextGroup.values.emplace_back(input.getValue(reg.second));
   }
 
-  auto it = _allGroups.find(_nextGroupValues);
+  AqlValueGroupHash hasher(_nextGroup.values.size());
+  _nextGroup.hash = hasher(_nextGroup.values);
 
+  auto it = _allGroups.find(_nextGroup);
   if (it != _allGroups.end()) {
     // group already exists
     return it;
   }
 
-  _nextGroupValues.clear();
+  _nextGroup.values.clear();
 
   if (_infos.getGroupRegisters().size() == 1) {
     auto const& reg = _infos.getGroupRegisters().back();
@@ -327,7 +318,7 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
     // where it is unclear who is responsible for the data
     AqlValue a = input.stealValue(reg.second);
     AqlValueGuard guard{a, true};
-    _nextGroupValues.emplace_back(a);
+    _nextGroup.values.emplace_back(a);
     guard.steal();
   } else {
     for (auto const& reg : _infos.getGroupRegisters()) {
@@ -342,26 +333,31 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
       // of responsibilities of tuples.
       AqlValue a = input.getValue(reg.second).clone();
       AqlValueGuard guard{a, true};
-      _nextGroupValues.emplace_back(a);
+      _nextGroup.values.emplace_back(a);
       guard.steal();
     }
   }
+  TRI_ASSERT(_nextGroup.hash == hasher(_nextGroup.values));
 
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = makeAggregateValues();
 
+  ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForGroup(_nextGroup, true));
+
   // note: aggregateValues may be a nullptr!
   auto [result, emplaced] =
-      _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
+      _allGroups.try_emplace(std::move(_nextGroup), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 
-  // Moving _nextGroupValues left us with an empty vector of minimum capacity.
+  guard.steal();
+
+  // Moving _nextGroup left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
-  _nextGroupValues.reserve(_infos.getGroupRegisters().size());
+  _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 
   return result;
-};
+}
 
 [[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
@@ -385,6 +381,27 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   return std::min<size_t>(call.getLimit(), _allGroups.size() - _returnedGroups);
 }
 
+HashedCollectExecutor::Infos const& HashedCollectExecutor::infos() const noexcept {
+  return _infos;
+}
+
+size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group, bool withBase) const {
+  // track memory usage of unordered_map entry (somewhat)
+  size_t memoryUsage = 0;
+  if (withBase) {
+    memoryUsage += 4 * sizeof(void*) + /* generic overhead */
+                   group.values.size() * sizeof(AqlValue) + 
+                   _aggregatorFactories.size() * sizeof(void*);
+  }
+
+  for (auto const& it : group.values) {
+    if (it.requiresDestruction()) {
+      memoryUsage += it.memoryUsage();
+    }
+  }
+  return memoryUsage;
+}
+
 std::unique_ptr<HashedCollectExecutor::ValueAggregators> HashedCollectExecutor::makeAggregateValues() const {
   if (_aggregatorFactories.empty()) {
     return {};
@@ -398,13 +415,8 @@ std::unique_ptr<HashedCollectExecutor::ValueAggregators> HashedCollectExecutor::
   return std::unique_ptr<ValueAggregators>(static_cast<ValueAggregators*>(p));
 }
 
-const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {
-  return _infos;
-}
-
-HashedCollectExecutor::ValueAggregators::ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts) :
-  _size(factories.size())
-{
+HashedCollectExecutor::ValueAggregators::ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts) 
+    : _size(factories.size()) {
   TRI_ASSERT(!factories.empty());
   auto* aggregatorPointers = reinterpret_cast<Aggregator**>(this + 1);
   void* aggregators = aggregatorPointers + _size;

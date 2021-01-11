@@ -1240,14 +1240,28 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
 
 arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
                                               arangodb::velocypack::StringRef const& key,
-                                              arangodb::ManagedDocumentResult& result) {
+                                              arangodb::IndexIterator::DocumentCallback const& cb) const {
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
-    result.setManaged(it->second.vptr());
+    cb(it->second.docId(), arangodb::velocypack::Slice(it->second.vptr()));
     return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+}
+
+bool PhysicalCollectionMock::read(
+    arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
+    arangodb::IndexIterator::DocumentCallback const& cb) const {
+  before();
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
+    if (doc.docId() == token) {
+      cb(token, doc.data());
+      return true;
+    }
+  }
+  return false;
 }
 
 bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
@@ -1258,20 +1272,6 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
     auto& doc = entry.second;
     if (doc.docId() == token) {
       result.setManaged(doc.vptr());
-      return true;
-    }
-  }
-  return false;
-}
-
-bool PhysicalCollectionMock::readDocumentWithCallback(
-    arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
-    arangodb::IndexIterator::DocumentCallback const& cb) const {
-  before();
-  for (auto const& entry : _documents) {
-    auto& doc = entry.second;
-    if (doc.docId() == token) {
-      cb(token, doc.data());
       return true;
     }
   }
@@ -1427,11 +1427,15 @@ StorageEngineMock::StorageEngineMock(arangodb::application_features::Application
       vocbaseCount(1),
       _releasedTick(0) {}
 
+arangodb::HealthData StorageEngineMock::healthCheck() {
+  return {};
+}
+
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   TRI_ASSERT(false);
   return nullptr;
 }
-
+  
 void StorageEngineMock::addOptimizerRules(arangodb::aql::OptimizerRulesFeature& /*feature*/) {
   before();
   // NOOP
@@ -1824,8 +1828,7 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
 //  releaseUsage();
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+  resetTransactionId();
 
   return arangodb::Result();
 }
@@ -1842,8 +1845,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+    resetTransactionId();
     return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
@@ -1853,8 +1855,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+  resetTransactionId();
   //  releaseUsage();
 
   return arangodb::Result();

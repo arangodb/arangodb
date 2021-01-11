@@ -252,7 +252,8 @@ void RocksDBThrottle::ThreadLoop() {
     _threadCondvar.signal();
   }  // lock
 
-  LOG_TOPIC("a4a57", DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() started";
+  LOG_TOPIC("a4a57", DEBUG, arangodb::Logger::ENGINES)
+      << "ThreadLoop() started";
 
   while (_threadRunning.load()) {
     //

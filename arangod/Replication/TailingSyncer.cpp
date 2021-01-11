@@ -327,7 +327,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
     TRI_ASSERT(basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    TRI_vocbase_t* vocbase =
+        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(name);
 
     if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       LOG_TOPIC("0a3a4", WARN, Logger::REPLICATION)
@@ -351,7 +352,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    TRI_vocbase_t* vocbase =
+        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(name);
 
     if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       // abort all ongoing transactions for the database to be dropped
@@ -1821,7 +1823,7 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
                 ", chunk size " + std::to_string(_state.applier._chunkSize));
 
     // stringify list of open transactions
-    std::string body = VPackSlice::emptyArraySlice().toJson();
+    std::string body = "[]";
 
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     double time = TRI_microtime();

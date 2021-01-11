@@ -204,7 +204,7 @@ void RestAqlHandler::setupClusterQuery() {
   //   "WRITE"} ], initialize: false, nodes: <one of snippets[*].value>,
   //   variables: <variables slice>
   // }
-  
+
   QueryOptions options(optionsSlice);
   if (options.ttl <= 0) { // patch TTL value
     options.ttl = _queryRegistry->defaultTTL();
@@ -304,7 +304,8 @@ void RestAqlHandler::setupClusterQuery() {
 }
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
-// simon: only used for <= 3.6
+// simon: only used for <= 3.7.
+// can be removed in 3.9
 bool RestAqlHandler::killQuery(std::string const& idString) {
   auto qid = arangodb::basics::StringUtils::uint64(idString);
   if (qid != 0) {

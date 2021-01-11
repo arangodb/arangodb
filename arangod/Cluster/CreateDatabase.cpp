@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -69,7 +70,8 @@ bool CreateDatabase::first() {
   LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
 
   try {
-    DatabaseGuard guard(StaticStrings::SystemDatabase);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, StaticStrings::SystemDatabase);
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
