@@ -117,6 +117,7 @@ auto MockGraphProvider::expand(Step const& step, size_t previous, std::function<
 
 auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex, arangodb::velocypack::Builder& builder) -> void {
   std::string id = vertex.getID().toString();
+  _stats.addScannedIndex(1);
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
   builder.add(StaticStrings::IdString, VPackValue(id));
@@ -177,6 +178,7 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   }
   LOG_TOPIC("78160", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Expansion length: " << result.size();
+  _stats.addScannedIndex(result.size());
   return result;
 }
 
@@ -185,5 +187,9 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
 }
 
 aql::TraversalStats MockGraphProvider::stealStats() {
-  return std::move(_stats);
+  auto t = _stats;
+  // Placement new of stats, do not reallocate space.
+  _stats.~TraversalStats();
+  new (&_stats) aql::TraversalStats{};
+  return t;
 }
