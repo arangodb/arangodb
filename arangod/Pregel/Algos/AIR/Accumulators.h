@@ -198,7 +198,7 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   }
   auto getIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
     VPackArrayBuilder array(&builder);
-    for (auto&& p : _list) {
+    for (auto const& p : _list) {
       builder.add(p.slice());
     }
     return {};
