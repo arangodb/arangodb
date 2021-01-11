@@ -82,9 +82,9 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
     options: options,
     grep (re) {
       if (typeof re === 'string') {
-        re = new RegExp(escapeRe(re))
+        re = new RegExp(escapeRe(re));
       } else if (Array.isArray(re)) {
-        re = new RegExp(re.map(v => escapeRe(v)).join("|"))
+        re = new RegExp(re.map(v => escapeRe(v)).join("|"));
       }
       this.options.grep = re;
       return this;

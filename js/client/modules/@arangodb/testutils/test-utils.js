@@ -692,7 +692,7 @@ function loadClusterTestStabilityInfo(results, instanceInfo){
 }
 
 function getTestCode(file, options, instanceInfo) {
-  let filter = undefined;
+  let filter;
   if (options.testCase) {
     filter = JSON.stringify(options.testCase);
   } else if (options.failed) {

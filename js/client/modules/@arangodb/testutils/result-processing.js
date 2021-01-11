@@ -35,6 +35,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const cu = require('@arangodb/testutils/crash-utils');
 const yaml = require('js-yaml');
+const _ = require('lodash');
 
 /* Constants: */
 const BLUE = internal.COLORS.COLOR_BLUE;
