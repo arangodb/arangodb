@@ -60,7 +60,7 @@ class StringRef;
 }  // namespace velocypack
 
 class CursorRepository;
-class DatabaseJavaScriptCache;
+struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;

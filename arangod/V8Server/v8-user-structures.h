@@ -35,7 +35,7 @@
 
 namespace arangodb {
 
-  namespace velocypack {
+namespace velocypack {
 template <typename T> class Buffer;
 }
 
