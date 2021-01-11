@@ -323,19 +323,18 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     while (!_results.empty()) {
       auto const& [leftVertex, rightVertex] = _results.back();
 
+      // Performance Optimization:
+      // It seems to be pointless to first push
+      // everything in to the _resultPath object
+      // and then iterate again to return the path
+      // we should be able to return the path in the first go.
       _resultPath.clear();
       _left.buildPath(leftVertex, _resultPath);
       _right.buildPath(rightVertex, _resultPath);
-
-      // TODO: CHECK
-      if (!_resultPath.isEmpty()) {
-        _results.pop_back();
-        _resultPath.toVelocyPack(result);
-        return true;
-      }
-
-      // result done
+      TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
+      _resultPath.toVelocyPack(result);
+      return true;
     }
   }
   return false;
