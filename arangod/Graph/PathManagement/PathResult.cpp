@@ -46,19 +46,16 @@ auto PathResult<ProviderType, Step>::clear() -> void {
   _numEdgesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
-  _uniqueVertices.clear();
 }
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> void {
-  _uniqueVertices.emplace(v.getID());
   _vertices.push_back(std::move(v));
 }
 
 template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v) -> void {
   _numVerticesFromSourceProvider++;
-  _uniqueVertices.emplace(v.getID());
   _vertices.insert(_vertices.begin(), std::move(v));
 }
 

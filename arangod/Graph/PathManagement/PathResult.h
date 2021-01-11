@@ -56,10 +56,6 @@ class PathResult {
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
 
-  // Anfang 0 -> n kommt aus "left" (in _vertices)
-  // n + 1 -> End kommt aus "right" (in _vertices)
-  // Anfang 0 -> n - 1 kommt aus "left" (in _edges)
-  // n - 1 + 1 -> End kommt aus "right" (in _edges)
   // The number of vertices delivered by the source provider in the vector.
   // We need to load this amount of vertices from source, all others from target
   // For edges we need to load one edge less from here.
@@ -70,9 +66,6 @@ class PathResult {
   ProviderType& _sourceProvider;
   // Provider for the end of the path (target)
   ProviderType& _targetProvider;
-  
-  // TODO: UniqueCheck will not be handled here in the future (will be handled in the future after other alrogithms will be ported to the refactored graph engine)
-  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 };
 }  // namespace graph
 }  // namespace arangodb
