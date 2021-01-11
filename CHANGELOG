@@ -186,9 +186,7 @@ devel
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.
 
-* Fix AR-113: Add a check in the AQL geo-index-optimizer rule that vars
-  referenced by a candidate index expression are actually available at the
-  candidate index node.
+* Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
 * Views on SmartGraph Edge collections do not contain some documents
   twice.
