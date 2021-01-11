@@ -382,7 +382,6 @@ void V8DealerFeature::prepare() {
 }
 
 void V8DealerFeature::start() {
-  LOG_DEVEL << "JS ENABLED!";
   TRI_ASSERT(_enableJS);
   TRI_ASSERT(isEnabled());
 
