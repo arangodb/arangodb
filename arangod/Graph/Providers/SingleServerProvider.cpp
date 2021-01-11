@@ -187,5 +187,9 @@ arangodb::aql::QueryContext* SingleServerProvider::query() const {
 }
 
 arangodb::aql::TraversalStats SingleServerProvider::stealStats() {
-  return std::move(_stats);
+  auto t = _stats;
+  // Placement new of stats, do not reallocate space.
+  _stats.~TraversalStats();
+  new (&_stats) aql::TraversalStats{};
+  return t;
 }
