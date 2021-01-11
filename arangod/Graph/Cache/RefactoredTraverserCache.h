@@ -47,6 +47,7 @@ class Slice;
 namespace aql {
 struct AqlValue;
 class QueryContext;
+class TraversalStats;
 }  // namespace aql
 
 namespace graph {
@@ -77,30 +78,28 @@ class RefactoredTraverserCache {
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
+  aql::AqlValue fetchEdgeAqlResult(aql::TraversalStats& stats,
+                                   graph::EdgeDocumentToken const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::HashedStringRef idString);
-
-  size_t getAndResetScannedIndex() {
-    size_t tmp = _scannedIndex;
-    _scannedIndex = 0;
-    return tmp;
-  }
+  aql::AqlValue fetchVertexAqlResult(aql::TraversalStats& stats,
+                                     arangodb::velocypack::HashedStringRef idString);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
   //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn, velocypack::Builder& builder);
+  void insertEdgeIntoResult(aql::TraversalStats& stats, graph::EdgeDocumentToken const& etkn,
+                            velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  void insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
+  void insertVertexIntoResult(aql::TraversalStats& stats,
+                              arangodb::velocypack::HashedStringRef const& idString,
                               velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +115,9 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename ResultType>
-  bool appendVertex(arangodb::velocypack::HashedStringRef const& idString, ResultType& result);
+  bool appendVertex(aql::TraversalStats& stats,
+                    arangodb::velocypack::HashedStringRef const& idString,
+                    ResultType& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup an edge document from the database.
@@ -124,7 +125,8 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename ResultType>
-  bool appendEdge(graph::EdgeDocumentToken const& etkn, ResultType& result);
+  bool appendEdge(aql::TraversalStats& stats,
+                  graph::EdgeDocumentToken const& etkn, ResultType& result);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -136,11 +138,6 @@ class RefactoredTraverserCache {
   /// @brief Transaction to access data, This class is NOT responsible for it.
   //////////////////////////////////////////////////////////////////////////////
   arangodb::transaction::Methods* _trx;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Times we had to scan the Primary Vertex Index
-  //////////////////////////////////////////////////////////////////////////////
-  size_t _scannedIndex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
