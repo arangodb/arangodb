@@ -190,7 +190,7 @@ auto KShortestPathsExecutor<FinderType>::produceRows(AqlItemBlockInputRange& inp
     if (_finder.isDone()) {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), NoStats{}, AqlCall{}};
+        return {input.upstreamState(), stats(), AqlCall{}};
       }
     } else {
       doOutputPath(output);
@@ -198,9 +198,9 @@ auto KShortestPathsExecutor<FinderType>::produceRows(AqlItemBlockInputRange& inp
   }
 
   if (_finder.isDone()) {
-    return {input.upstreamState(), NoStats{}, AqlCall{}};
+    return {input.upstreamState(), stats(), AqlCall{}};
   } else {
-    return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+    return {ExecutorState::HASMORE, stats(), AqlCall{}};
   }
 }
 
@@ -208,7 +208,6 @@ template <class FinderType>
 auto KShortestPathsExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& input,
                                                        AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  auto stats = NoStats{};
   auto skipped = size_t{0};
 
   while (call.shouldSkip()) {
@@ -218,7 +217,7 @@ auto KShortestPathsExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& i
     if (_finder.isDone()) {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), stats, skipped, AqlCall{}};
+        return {input.upstreamState(), stats(), skipped, AqlCall{}};
       }
     } else {
       if (_finder.skipPath()) {
@@ -229,9 +228,9 @@ auto KShortestPathsExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& i
   }
 
   if (_finder.isDone()) {
-    return {input.upstreamState(), stats, skipped, AqlCall{}};
+    return {input.upstreamState(), stats(), skipped, AqlCall{}};
   } else {
-    return {ExecutorState::HASMORE, stats, skipped, AqlCall{}};
+    return {ExecutorState::HASMORE, stats(), skipped, AqlCall{}};
   }
 }
 
@@ -356,6 +355,17 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
     }
   }
   return false;
+}
+
+template <class FinderType>
+[[nodiscard]] auto KShortestPathsExecutor<FinderType>::stats() -> Stats {
+  if constexpr (std::is_same_v<FinderType, arangodb::graph::KShortestPathsFinder> ||
+                std::is_same_v<FinderType, arangodb::graph::KPathFinder>) {
+    // No Stats available on original variant
+    return TraversalStats{};
+  } else {
+    return _finder.stealStats();
+  }
 }
 
 template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;

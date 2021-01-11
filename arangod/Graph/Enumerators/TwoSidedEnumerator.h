@@ -36,6 +36,10 @@
 
 namespace arangodb {
 
+namespace aql {
+class TraversalStats;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -167,6 +171,12 @@ class TwoSidedEnumerator {
 
   bool skipPath();
   auto destroyEngines() -> void;
+
+  /**
+   * @brief Return statistics generated since
+   * the last time this method was called.
+   */
+  auto stealStats() -> aql::TraversalStats;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;

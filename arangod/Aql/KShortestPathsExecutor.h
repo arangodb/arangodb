@@ -56,7 +56,7 @@ namespace aql {
 template <BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
-class NoStats;
+class TraversalStats;
 class QueryContext;
 
 template <class FinderType>
@@ -140,7 +140,7 @@ class KShortestPathsExecutor {
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = KShortestPathsExecutorInfos<FinderType>;
-  using Stats = NoStats;
+  using Stats = TraversalStats;
 
   using InputVertex = GraphNode::InputVertex;
 
@@ -182,6 +182,8 @@ class KShortestPathsExecutor {
   [[nodiscard]] auto getVertexId(InputVertex const& vertex, InputAqlItemRow& row,
                                  arangodb::velocypack::Builder& builder,
                                  arangodb::velocypack::Slice& id) -> bool;
+
+  [[nodiscard]] auto stats() -> Stats;
 
  private:
   Infos& _infos;

@@ -38,6 +38,7 @@ namespace arangodb {
 
 namespace aql {
 class QueryContext;
+class TraversalStats;
 }
 
 namespace graph {
@@ -72,7 +73,10 @@ class ProviderTracer {
   // Note: ClusterProvider will need to implement destroyEngines
   void destroyEngines(){};
 
+  aql::TraversalStats stealStats();
+
   [[nodiscard]] transaction::Methods* trx();
+
   arangodb::ResourceMonitor* resourceMonitor();
 
  private:

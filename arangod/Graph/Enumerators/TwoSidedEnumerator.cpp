@@ -416,6 +416,14 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   _resultsFetched = true;
 }
 
+template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::stealStats()
+    -> aql::TraversalStats {
+  aql::TraversalStats stats = _left.provider().stealStats();
+  stats += _right.provider().stealStats();
+  return stats;
+}
+
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>,
     ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider,

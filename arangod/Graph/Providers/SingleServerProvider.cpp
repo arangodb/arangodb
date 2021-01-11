@@ -143,7 +143,7 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
   auto const& vertex = step.getVertex();
   TRI_ASSERT(_cursor != nullptr);
   _cursor->rearm(vertex.getID(), 0);
-  _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+  _cursor->readAll(_stats, [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
     VertexType id = _cache.persistString(([&]() -> auto {
       if (edge.isString()) {
         return VertexType(edge);

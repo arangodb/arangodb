@@ -38,6 +38,10 @@ namespace arangodb {
 
 class LocalDocumentId;
 
+namespace aql {
+class TraversalStats;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -96,7 +100,7 @@ class RefactoredSingleServerEdgeCursor {
   arangodb::transaction::Methods* _trx;
 
  public:
-  void readAll(Callback const& callback);
+  void readAll(aql::TraversalStats& stats, Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 

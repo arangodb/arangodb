@@ -95,6 +95,13 @@ void ProviderTracer<ProviderImpl>::addEdgeToBuilder(typename Step::Edge const& e
 }
 
 template <class ProviderImpl>
+aql::TraversalStats ProviderTracer<ProviderImpl>::stealStats() {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["stealStats"].addTiming(TRI_microtime() - start));
+  return _impl.stealStats();
+}
+
+template <class ProviderImpl>
 transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
   double start = TRI_microtime();
   TRI_DEFER(_stats["trx"].addTiming(TRI_microtime() - start));

@@ -42,6 +42,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
@@ -322,7 +323,7 @@ class KShortestPathsExecutorTest
                     AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
-    auto stats = NoStats{};
+    auto stats = TraversalStats{};
     auto ourCall = AqlCall{parameters._call};
     auto skippedInitial = size_t{0};
     auto skippedFullCount = size_t{0};

@@ -133,7 +133,8 @@ void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth
   }
 }
 
-void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
+void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
+                                               Callback const& callback) {
   TRI_ASSERT(!_lookupInfo.empty());
   for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
     auto& cursor = _lookupInfo[_currentCursor].cursor();
@@ -141,6 +142,7 @@ void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callb
     auto cid = collection->id();
     if (cursor.hasExtra()) {
       cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
+        stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
           return false;
@@ -152,6 +154,7 @@ void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callb
     } else {
       cursor.all([&](LocalDocumentId const& token) {
         return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+          stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
           if (_trx->skipInaccessible()) {
             // TODO: we only need to check one of these
@@ -162,7 +165,6 @@ void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callb
             }
           }
 #endif
-          // _opts->cache()->increaseCounter(); TODO CHECK
           callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
           return true;
         });
