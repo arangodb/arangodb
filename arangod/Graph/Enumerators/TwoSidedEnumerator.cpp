@@ -121,6 +121,10 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     ResultList& results) -> void {
   std::vector<Step*> looseEnds{};
 #if 0
+// Please keep this for now.
+// This code needs to be activated and properly implemented as soon
+// as we have a Cluster Prodiver in plave, that can produce non-processable
+// steps
   if (_direction == Direction::FORWARD) {
     for (auto& [step, unused] : results) {
       if (!step.isProcessable()) {
