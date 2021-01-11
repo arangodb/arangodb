@@ -156,6 +156,7 @@ let optionsDocumentation = [
   '   - `failed`: if set to true, re-runs only those tests that failed in the',
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
+  '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
   ''
 ];
 
@@ -175,6 +176,7 @@ const optionsDefaults = {
   'coreDirectory': '/var/tmp',
   'dbServers': 2,
   'duration': 10,
+  'encryptionAtRest': false,
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
