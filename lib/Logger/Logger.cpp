@@ -588,6 +588,12 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
 
     if (!handled) {
       TRI_ASSERT(msg != nullptr);
+
+      TRI_IF_FAILURE("Logger::append") {
+        // cut off all logging
+        return;
+      }
+
       LogAppender::log(group, *msg);
     }
   }
