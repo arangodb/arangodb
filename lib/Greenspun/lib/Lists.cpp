@@ -102,12 +102,13 @@ EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList, VPackBuild
   VPackArrayIterator iter(paramsList);
   if (iter.valid()) {
     VPackSlice list = *iter;
+    iter.next();
     if (!list.isArray()) {
       return EvalError("expected array as first parameter, found: " + list.toJson());
     }
 
     result.add(VPackArrayIterator(list));
-    for (iter.next(); iter.valid(); iter.next()) {
+    for (; iter.valid(); iter.next()) {
       result.add(*iter);
     }
   }
