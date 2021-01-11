@@ -194,6 +194,7 @@ if (platform.substr(0, 3) === 'win') {
 let serverCrashedLocal = false;
 let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
+let isEnterpriseClient = false;
 
 let BIN_DIR;
 let ARANGOBACKUP_BIN;
@@ -318,6 +319,7 @@ function setupBinaries (builddir, buildType, configDir) {
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
+      isEnterpriseClient = true;
       checkFiles.push(ARANGOBACKUP_BIN);
     }
   }
@@ -2038,7 +2040,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.supervision-grace-period'] = '10.0';
     instanceArgs['agency.supervision-frequency'] = '1.0';
-
+    if (options.encryptionAtRest) {
+      instanceArgs['rocksdb.encryption-keyfile'] = instanceInfo.restKeyFile;
+    }
     if (i === N - 1) {
       let l = [];
       instanceInfo.arangods.forEach(arangod => {
@@ -2073,6 +2077,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
 
 function startInstanceSingleServer (instanceInfo, protocol, options,
   addArgs, rootDir, role) {
+  if (options.encryptionAtRest) {
+    addArgs['rocksdb.encryption-keyfile'] = instanceInfo.restKeyFile;
+  }
   instanceInfo.arangods.push(startArango(protocol, options, addArgs, rootDir, role));
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
@@ -2097,6 +2104,15 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     arangods: [],
     protocol: protocol
   };
+
+  if (options.encryptionAtRest && !isEnterpriseClient) {
+    options.encryptionAtRest = false;
+  }
+  if (options.encryptionAtRest) {
+    instanceInfo.restKeyFile = fs.join(rootDir, 'openSesame.txt');
+    fs.makeDirectoryRecursive(rootDir);
+    fs.write(instanceInfo.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
+  }
 
   const startTime = time();
   try {
