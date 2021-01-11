@@ -158,7 +158,7 @@ class ListAccumulator : public Accumulator<T> {
   }
   auto getIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
     VPackArrayBuilder array(&builder);
-    for (auto&& p : _list) {
+    for (auto const& p : _list) {
       builder.add(VPackValue(p));
     }
     return {};
