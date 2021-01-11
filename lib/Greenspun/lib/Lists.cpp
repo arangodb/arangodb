@@ -63,7 +63,7 @@ EvalResult checkArrayParams(VPackSlice const& arr, VPackSlice const& index) {
     return EvalError("number cannot be less than zero");
   }
 
-  if (index.getUInt() > (arr.length() - 1)) {
+  if (index.getUInt() + 1 > arr.length()) {
     return EvalError("array index is out of bounds");
   }
 
