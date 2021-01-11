@@ -2164,7 +2164,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
       break;
     }
     
-    if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
       auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
       auto [acb, index] = agencyCache.read(
         std::vector<std::string>{
