@@ -263,7 +263,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         }
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
-          continueTesting = true; 
+          continueTesting = true;
 
           // Check whether some collections & views were left behind, and if mark test as failed.
           let collectionsAfter = [];
@@ -292,7 +292,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
           let deltaViews = diffArray(viewsBefore, viewsAfter).filter(function(name) {
             return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                     || (name === "log")); 
+                     || (name === "log"));
           });
           if ((delta.length !== 0) || (deltaViews.length !== 0)){
             results[te] = {
@@ -353,7 +353,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             message: 'server is dead: ' + msg + instanceInfo.message
           };
         }
-        
+
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {
           customInstanceInfos['alive'] = startStopHandlers.alive(options,
                                                                  serverOptions,
@@ -445,7 +445,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   results.shutdown = results.shutdown && pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
 
   loadClusterTestStabilityInfo(results, instanceInfo);
-  
+
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
     customInstanceInfos['postStop'] = startStopHandlers.postStop(options,
                                                                  serverOptions,
@@ -704,7 +704,7 @@ function getTestCode(file, options, instanceInfo) {
   if (file.indexOf('-spec') === -1) {
     filter = filter || '"undefined"';
     runTest = 'const runTest = require("jsunity").runTest;\n';
-      
+
   } else {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
@@ -721,7 +721,7 @@ function runThere (options, instanceInfo, file) {
     let testCode = getTestCode(file, options, instanceInfo);
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    
+
     httpOptions.timeout = options.oneTestTimeout;
     if (options.isAsan) {
       httpOptions.timeout *= 2;
@@ -824,7 +824,7 @@ function readTestResult(path, rc, testCase) {
     rc.failed = rc.status ? 0 : 1;
     rc.message = "readTestResult: don't know howto handle '" + buf + "'";
     return rc;
-  }    
+  }
 }
 
 function writeTestResult(path, data) {
@@ -886,7 +886,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
       arango.reconnect(newEndpoint, '_system', 'root', '');
     }
   }
-  
+
   let testCode = getTestCode(file, options, instanceInfo);
   print(testCode);
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
@@ -1037,7 +1037,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   if (rspec !== undefined) {
     args = [rspec].concat(args);
   }
-  
+
   let start = Date();
   const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, options.oneTestTimeout);
   let end = Date();
