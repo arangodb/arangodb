@@ -54,8 +54,6 @@ struct LispCompleter : arangodb::Completer {
   bool isComplete(std::string const& source, size_t /*lineno*/) final {
     int openBrackets = 0;
     int openBraces = 0;
-    int openStrings = 0;  // only used for template strings, which can be multi-line
-    int openComments = 0;
 
     enum line_parse_state_e {
       NORMAL,           // start
@@ -110,7 +108,7 @@ struct LispCompleter : arangodb::Completer {
       }
     }
 
-    return (openBrackets <= 0 && openBraces <= 0 && openStrings <= 0 && openComments <= 0);
+    return (openBrackets <= 0 && openBraces <= 0);
   }
   std::vector<std::string> alternatives(char const*) override { return {}; }
 };
