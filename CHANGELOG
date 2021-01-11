@@ -31,6 +31,43 @@ devel
   run in parallel. The defaults are intentionally high in order to not stop any valid, 
   previously working queries from succedding.
 
+* Added startup options `--audit.queue` to control audit logging queuing
+  behavior (Enterprise Edition only):
+
+  The option controls whether audit log messages are submitted to a queue 
+  and written to disk in batches or if they should be written to disk directly 
+  without being queued.
+  Queueing audit log entries may be beneficial for latency, but can lead to
+  unqueued messages being lost in case of a power loss or crash. Setting
+  this option to `false` mimics the behavior from 3.7 and before, where
+  audit log messages where not queued but written in a blocking fashion.
+
+* Fixed some situations of
+  [...]
+  SUBQUERY
+  FILTER
+  LIMIT
+  [...]
+  in AQL queries, yielding incorrect responses. A distributed
+  state within the subquery was not resetted correctly.
+  This could also lead into "shrink" errors of AQL item blocks,
+  or much higher query runtimes.
+  Fixes:
+  - BTS-252
+  - ES-687
+  - github issue: #13099
+  - github issue: #13124
+  - github issue: #13147
+  - github issue: #13305
+  - DEVSUP-665
+
+* Added metric `arangodb_server_statistics_cpu_cores` to provide the number of
+  CPU cores visibile to the arangod process. This is the number of CPU cores
+  reported by the operating system to the process.
+  If the environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES` is
+  set to a positive value at instance startup, this value will be returned
+  instead.
+
 * `COLLECT WITH COUNT INTO x` and `COLLECT var = expr WITH COUNT INTO x` are now
   internally transformed into `COLLECT AGGREGATE x = LENGTH(null)` and
   `COLLECT var = expr AGGREGATE x = LENGTH(null)` respectively. This not only
@@ -189,9 +226,7 @@ devel
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.
 
-* Fix AR-113: Add a check in the AQL geo-index-optimizer rule that vars
-  referenced by a candidate index expression are actually available at the
-  candidate index node.
+* Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
 * Views on SmartGraph Edge collections do not contain some documents
   twice.
