@@ -159,7 +159,9 @@ std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(TRI_vocba
 std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
     TRI_vocbase_t& vocbase, bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?
-  if (V8DealerFeature::DEALER != nullptr && v8::Isolate::GetCurrent() != nullptr) {
+  if (vocbase.server().hasFeature<V8DealerFeature>() && 
+      vocbase.server().isEnabled<V8DealerFeature>() && 
+      v8::Isolate::GetCurrent() != nullptr) {
     return transaction::V8Context::Create(vocbase, embeddable);
   }
 

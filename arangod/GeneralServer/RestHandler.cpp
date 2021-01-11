@@ -146,6 +146,10 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
+  // always remove HTTP "Connection" header, so that we don't relay 
+  // "Connection: Close" or "Connection: Keep-Alive" or such
+  headers.erase(StaticStrings::Connection);
+
   if (headers.find(StaticStrings::Authorization) == headers.end()) {
     // No authorization header is set, this is in particular the case if this
     // request is coming in with VelocyStream, where the authentication happens

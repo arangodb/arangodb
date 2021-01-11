@@ -34,7 +34,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -703,7 +703,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(&_trx, documentId, ctx.callback))) {
+    if (ADB_UNLIKELY(!collection.getPhysical()->read(&_trx, documentId, ctx.callback))) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==

@@ -28,6 +28,8 @@
 #include "GeneralServer/CommTask.h"
 
 namespace arangodb {
+class GeneralServerFeature;
+
 namespace rest {
 
 template <SocketType T>
@@ -52,8 +54,6 @@ class GeneralCommTask : public CommTask {
   
   bool stopped() const { return _stopped.load(std::memory_order_acquire); }
     
-  protected:
-
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
   
@@ -67,6 +67,8 @@ class GeneralCommTask : public CommTask {
   static constexpr double WriteTimeout = 300.0;
     
   std::unique_ptr<AsioSocket<T>> _protocol;
+          
+  GeneralServerFeature const& _generalServerFeature;
   
   bool _reading;
   bool _writing;

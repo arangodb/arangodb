@@ -137,12 +137,12 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(2, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("hash", nodes[0].collectOptions.method);
       assertEqual("SUM", nodes[1].aggregates[0].type);
-      assertFalse(nodes[1].count);
       assertEqual("hash", nodes[1].collectOptions.method);
+      assertEqual(nodes[0].aggregates[0].outVariable.name, nodes[1].aggregates[0].inVariable.name);
 
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
       assertEqual(1, nodes.length);
@@ -163,12 +163,12 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(2, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("sorted", nodes[0].collectOptions.method);
       assertEqual("SUM", nodes[1].aggregates[0].type);
-      assertFalse(nodes[1].count);
       assertEqual("sorted", nodes[1].collectOptions.method);
+      assertEqual(nodes[0].aggregates[0].outVariable.name, nodes[1].aggregates[0].inVariable.name);
    
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
       assertEqual(1, nodes.length);
@@ -193,7 +193,6 @@ function optimizerRuleTestSuite() {
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(1, nodes.length);
       assertEqual([], nodes[0].aggregates);
-      assertFalse(nodes[0].count);
       assertEqual("sorted", nodes[0].collectOptions.method);
       
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
@@ -226,7 +225,6 @@ function optimizerRuleTestSuite() {
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(1, nodes.length);
       assertEqual([], nodes[0].aggregates);
-      assertFalse(nodes[0].count);
       assertEqual("sorted", nodes[0].collectOptions.method);
       
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
@@ -259,12 +257,12 @@ function optimizerRuleTestSuite() {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
       assertEqual(2, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("hash", nodes[0].collectOptions.method);
       assertEqual("SUM", nodes[1].aggregates[0].type);
-      assertFalse(nodes[1].count);
       assertEqual("hash", nodes[1].collectOptions.method);
+      assertEqual(nodes[0].aggregates[0].outVariable.name, nodes[1].aggregates[0].inVariable.name);
    
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
       assertEqual(1, nodes.length);
@@ -289,13 +287,15 @@ function optimizerRuleTestSuite() {
       let query = "FOR doc IN " + colName + " COLLECT value = doc.value WITH COUNT INTO l OPTIONS { method: 'sorted' } RETURN { value, l }";
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
+
+      require("console").log(nodes);
       assertEqual(2, nodes.length);
-      assertEqual([], nodes[0].aggregates);
-      assertTrue(nodes[0].count);
+      assertEqual(1, nodes[0].aggregates.length);
+      assertEqual("LENGTH", nodes[0].aggregates[0].type);
       assertEqual("sorted", nodes[0].collectOptions.method);
       assertEqual("SUM", nodes[1].aggregates[0].type);
-      assertFalse(nodes[1].count);
       assertEqual("sorted", nodes[1].collectOptions.method);
+      assertEqual(nodes[0].aggregates[0].outVariable.name, nodes[1].aggregates[0].inVariable.name);
    
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
       assertEqual(1, nodes.length);

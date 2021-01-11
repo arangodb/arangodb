@@ -28,7 +28,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Promise.h"
-#include "GeneralServer/RestHandler.h"
+#include "RestServer/Metrics.h"
 
 #include <map>
 #include <shared_mutex>
@@ -36,9 +36,7 @@
 namespace arangodb {
 
 class AgencyCache final : public arangodb::Thread {
-
-public:
-
+ public:
   typedef std::unordered_map<std::string, consensus::query_t> databases_t;
 
   struct change_set_t {
@@ -56,10 +54,10 @@ public:
   /// @brief start off with our server
   explicit AgencyCache(
     application_features::ApplicationServer& server,
-    AgencyCallbackRegistry& callbackRegistry);
+    AgencyCallbackRegistry& callbackRegistry,
+    int shutdownCode);
 
-  /// @brief Clean up
-  virtual ~AgencyCache();
+  ~AgencyCache();
 
   // whether or not the thread is allowed to start during prepare
   bool isSystem() const override;
@@ -105,13 +103,17 @@ public:
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
-  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction (
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
     consensus::query_t const& trx);
+#endif
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests
   consensus::Store& store();
+#endif
 
   /**
    * @brief         Get a list of planned/current  changes and other
@@ -125,8 +127,16 @@ public:
    */
   change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
+  
+  /**
+   * @brief         Clean up planned/current changes up to including index
+   *
+   * @param section   "Plan" or "Current"
+   * @param doneIndex   Done index
+   */
+  void clearChanged(std::string const& section, consensus::index_t const& doneIndex);
 
-private:
+ private:
 
   /// @brief invoke all callbacks
   void invokeAllCallbacks() const;
@@ -159,6 +169,11 @@ private:
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
 
+  /// @brief shut down code for futures that are unresolved.
+  /// this should be TRI_ERROR_SHUTTING_DOWN normally, but can be overridden
+  /// during testing
+  int const _shutdownCode;
+
   /// @brief Make sure, that we have seen in the beginning a snapshot
   std::atomic<bool> _initialized;
 
@@ -179,7 +194,9 @@ private:
 
   /// @brief snapshot note for client
   consensus::index_t _lastSnapshot;
-
+  
+  /// @brief current number of entries in _callbacks
+  Gauge<uint64_t>& _callbacksCount;
 };
 
 } // namespace

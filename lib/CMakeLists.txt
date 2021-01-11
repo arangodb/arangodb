@@ -126,6 +126,7 @@ add_library(arango STATIC
   Basics/CpuUsageSnapshot.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
@@ -144,6 +145,7 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp

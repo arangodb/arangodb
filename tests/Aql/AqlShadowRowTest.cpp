@@ -46,7 +46,7 @@ namespace aql {
 class AqlShadowItemRowTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   void AssertResultRow(InputAqlItemRow const& input, VPackSlice result,
                        std::unordered_set<RegisterId> const& regsToIgnore = {}) {

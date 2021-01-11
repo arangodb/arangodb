@@ -215,7 +215,7 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
         << "Running server/bootstrap/coordinator.js";
 
     VPackBuilder builder;
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+    vocbase->server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
         vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
@@ -267,7 +267,7 @@ void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) 
                                 /*new*/ myIdBuilder.slice(),
                                 /*ttl*/ 0, /*timeout*/ 5.0);
         }
-        if (res.successful()) {  // sucessfull leadership takeover
+        if (res.successful()) {  // successful leadership takeover
           leader = myIdBuilder.slice();
         }  // ignore for now, heartbeat thread will handle it
       }
@@ -295,7 +295,9 @@ void BootstrapFeature::start() {
       server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
-  bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
+  bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
+                   server().isEnabled<V8DealerFeature>() &&
+                   server().getFeature<V8DealerFeature>().isEnabled();
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -337,7 +339,7 @@ void BootstrapFeature::start() {
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
           vocbase.get(), "server/server.js", nullptr);
     }
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
