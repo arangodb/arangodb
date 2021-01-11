@@ -153,6 +153,7 @@ let optionsDocumentation = [
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
   '   - `testCase`: filter a jsunity testsuite for one special test case',
+  '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
   ''
 ];
 
@@ -172,6 +173,7 @@ const optionsDefaults = {
   'coreDirectory': '/var/tmp',
   'dbServers': 2,
   'duration': 10,
+  'encryptionAtRest': false,
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
