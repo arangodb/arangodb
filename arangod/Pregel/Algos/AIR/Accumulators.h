@@ -207,7 +207,7 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     _list.clear();
     if (s.isArray()) {
       _list.reserve(s.length());
-      for (auto&& p : velocypack::ArrayIterator(s)) {
+      for (auto const& p : velocypack::ArrayIterator(s)) {
         _list.emplace_back().add(p);
       }
       return {};
