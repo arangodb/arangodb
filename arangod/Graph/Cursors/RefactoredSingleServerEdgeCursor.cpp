@@ -73,7 +73,7 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
     TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     // must edit node in place; TODO replace node?
-    // TODO i think there is now a muable String node available
+    // TODO i think there is now a mutable String node available
     TEMPORARILY_UNLOCK_NODE(idNode);
     idNode->setStringValue(vertex.data(), vertex.length());
   }
@@ -102,21 +102,14 @@ IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
 RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
     arangodb::transaction::Methods* trx, arangodb::aql::QueryContext* queryContext,
     arangodb::aql::Variable const* tmpVar, std::vector<IndexAccessor> const& indexConditions)
-    : _tmpVar(tmpVar),
-      _currentCursor(0),
-      _cachePos(0),
-      _internalCursorMapping(nullptr),
-      _trx(trx),
-      _queryContext(queryContext) {
-  // We need at least one indexCondtion, otherwise nothing to serve
+    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx), _queryContext(queryContext) {
+  // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!indexConditions.empty());
   _lookupInfo.reserve(indexConditions.size());
   for (auto const& idxCond : indexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
                              idxCond.getMemberToUpdate());
   }
-
-  _cache.reserve(1000);
 }
 
 RefactoredSingleServerEdgeCursor::~RefactoredSingleServerEdgeCursor() {}
@@ -135,73 +128,15 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 
 void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
-  _cache.clear();
-  _cachePos = 0;
-
   for (auto& info : _lookupInfo) {
     info.rearmVertex(vertex, _trx, _tmpVar);
   }
 }
 
-void RefactoredSingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor,
-                                                            Callback const& callback) {
-  auto collection = cursor->collection();
-  EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
-  collection->getPhysical()->read(_trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-#ifdef USE_ENTERPRISE
-    if (_trx->skipInaccessible()) {
-      // TODO: we only need to check one of these
-      VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
-      VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-      if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-        return false;
-      }
-    }
-#endif
-    //_opts->cache()->increaseCounter(); TODO: Heiko check - Why?
-    if (_internalCursorMapping != nullptr) {
-      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      callback(std::move(etkn), edgeDoc, _internalCursorMapping->at(_currentCursor));
-    } else {
-      callback(std::move(etkn), edgeDoc, _currentCursor);
-    }
-    return true;
-  });
-}
-
-#if 0
-bool RefactoredSingleServerEdgeCursor::advanceCursor(
-    IndexIterator& cursor) {
-  TRI_ASSERT(!_lookupInfo.empty());
-
-  ++_currentCursor;
-  if (_currentCursor >= _lookupInfo.size()) {
-    // We are done, all cursors exhausted.
-    return false;
-  }
-
-  cursor = _lookupInfo[_currentCursor].cursor();
-  // If we switch the cursor. We have to clear the cache.
-  _cache.clear();
-  return true;
-}
-#endif
-
 void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   TRI_ASSERT(!_lookupInfo.empty());
-  size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
-    // TODO Check why we rearrange the cursor ordering
-    // Suggestion, this mappang needs to be const, so reorder the input cursors
-    // at creation team instead.
-    if (_internalCursorMapping != nullptr) {
-      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      cursorId = _internalCursorMapping->at(_currentCursor);
-    } else {
-      cursorId = _currentCursor;
-    }
-    TRI_ASSERT(cursorId < _lookupInfo.size());
-    auto& cursor = _lookupInfo[cursorId].cursor();
+    auto& cursor = _lookupInfo[_currentCursor].cursor();
     LogicalCollection* collection = cursor.collection();
     auto cid = collection->id();
     if (cursor.hasExtra()) {
@@ -211,7 +146,7 @@ void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callb
           return false;
         }
 #endif
-        callback(EdgeDocumentToken(cid, token), edge, cursorId);
+        callback(EdgeDocumentToken(cid, token), edge, _currentCursor);
         return true;
       });
     } else {
@@ -228,94 +163,13 @@ void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callb
           }
 #endif
           // _opts->cache()->increaseCounter(); TODO CHECK
-          callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
+          callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
           return true;
         });
       });
     }
   }
 }
-
-// TODO maybe remove, unsure if we need it still.
-#if 0
-bool RefactoredSingleServerEdgeCursor::next(Callback const& callback) {
-  // fills callback with next EdgeDocumentToken and Slice that contains the
-  // ohter side of the edge (we are standing on a node and want to iterate all
-  // connected edges
-  TRI_ASSERT(!_cursors.empty());
-
-  if (_currentCursor == _cursors.size()) {
-    return false;
-  }
-
-  // There is still something in the cache
-  if (_cachePos < _cache.size()) {
-    // get the collection
-    getDocAndRunCallback(_cursors[_currentCursor][_currentSubCursor].get(), callback);
-    return true;
-  }
-
-  // We need to refill the cache.
-  _cachePos = 0;
-  auto* cursorSet = &_cursors[_currentCursor];
-
-  // get current cursor
-  auto cursor = (*cursorSet)[_currentSubCursor].get();
-
-  // NOTE: We cannot clear the cache,
-  // because the cursor expect's it to be filled.
-  do {
-    if (cursorSet->empty() || !cursor->hasMore()) {
-      if (!advanceCursor(cursor, cursorSet)) {
-        return false;
-      }
-    } else {
-      if (cursor->hasExtra()) {
-        bool operationSuccessful = false;
-        auto extraCB = [&](LocalDocumentId const& token, VPackSlice edge) {
-          if (token.isSet()) {
-#ifdef USE_ENTERPRISE
-            if (trx()->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-              return false;
-            }
-#endif
-            operationSuccessful = true;
-            auto etkn = EdgeDocumentToken(cursor->collection()->id(), token);
-            if (_internalCursorMapping != nullptr) {
-              TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-              callback(std::move(etkn), edge, _internalCursorMapping->at(_currentCursor));
-            } else {
-              callback(std::move(etkn), edge, _currentCursor);
-            }
-            return true;
-          }
-          return false;
-        };
-        cursor->nextExtra(extraCB, 1);
-        if (operationSuccessful) {
-          return true;
-        }
-      } else {
-        _cache.clear();
-        auto cb = [&](LocalDocumentId const& token) {
-          if (token.isSet()) {
-            // Document found
-            _cache.emplace_back(token);
-            return true;
-          }
-          return false;
-        };
-        bool tmp = cursor->next(cb, 1000);
-        TRI_ASSERT(tmp == cursor->hasMore());
-      }
-    }
-  } while (_cache.empty());
-  TRI_ASSERT(!_cache.empty());
-  TRI_ASSERT(_cachePos < _cache.size());
-  getDocAndRunCallback(cursor, callback);
-  return true;
-}
-#endif
 
 arangodb::transaction::Methods* RefactoredSingleServerEdgeCursor::trx() const {
   return _trx;

@@ -46,27 +46,6 @@ class HashedStringRef;
 namespace graph {
 struct IndexAccessor;
 
-/*
-
-// brauche ich als standalone input
-transaction::Methods* _trx; // Liefert das Query (geteilt)
-
-
-
-// Packet:
-Variable, liste<IndexAccessor>
-
-Variable* _variable; // "" (geteilt)
-struct IndexAccessor const { //definition
-  IndexHande const& _index; // Muss das query vorher ausrechnen, der Provider muss es bekommen (pro collection)
-  AstNode* _searchCondition; // "" (pro index) _from == X  || _to == X
-}
-// keine ahnung von Rearm, baut den ersten Cursor?
-
-// Action.
-=> IndexCursor := _trx->indexScanForCondition()
-=> rearm
-*/
 struct EdgeDocumentToken;
 
 class RefactoredSingleServerEdgeCursor {
@@ -113,30 +92,17 @@ class RefactoredSingleServerEdgeCursor {
  private:
   aql::Variable const* _tmpVar;
   size_t _currentCursor;
-  std::vector<LocalDocumentId> _cache;
-  size_t _cachePos;
-  std::vector<size_t> const* _internalCursorMapping;
   std::vector<LookupInfo> _lookupInfo;
 
- protected:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::QueryContext* _queryContext;
 
  public:
-#if 0
-  bool next(Callback const& callback);
-#endif
   void readAll(Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
  private:
-#if 0
-  // returns false if cursor can not be further advanced
-  bool advanceCursor(IndexIterator& cursor);
-#endif
-  void getDocAndRunCallback(IndexIterator*, Callback const& callback);
-
   [[nodiscard]] transaction::Methods* trx() const;
 };
 }  // namespace graph
