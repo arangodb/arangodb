@@ -129,6 +129,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::string const& appPath() const { return _appPath; }
 
+  static bool javascriptRequestedViaOptions(std::shared_ptr<options::ProgramOptions> const& options);
+
  private:
   uint64_t nextId() { return _nextId++; }
   void copyInstallationFiles();

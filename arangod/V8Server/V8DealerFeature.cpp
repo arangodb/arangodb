@@ -281,12 +281,18 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
 
+  // a bit of duck typing here to check if we are an agent.
+  // the problem is that the server role may be still unclear in this early
+  // phase, so we are also looking for startup options that identify an agent
+  bool const isAgent = 
+      (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_AGENT) ||
+      (result.touched("agency.activate") && *(options->get<BooleanParameter>("agency.activate")->ptr));
+
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
-      (!result.touched("console") ||
-       !*(options->get<BooleanParameter>("console")->ptr))) {
+  if (!javascriptRequestedViaOptions(options) &&
+      (isAgent || ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER)) {
     // specifying --console requires JavaScript, so we can only turn it off
-    // if not specified
+    // if not requested
     _enableJS = false;
   }
 
@@ -376,6 +382,7 @@ void V8DealerFeature::prepare() {
 }
 
 void V8DealerFeature::start() {
+  LOG_DEVEL << "JS ENABLED!";
   TRI_ASSERT(_enableJS);
   TRI_ASSERT(isEnabled());
 
@@ -1728,6 +1735,20 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
   delete context;
   ++_contextsDestroyed;
+}
+
+bool V8DealerFeature::javascriptRequestedViaOptions(std::shared_ptr<ProgramOptions> const& options) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+
+  if (result.touched("console") && *(options->get<BooleanParameter>("console")->ptr)) {
+    // --console
+    return true;
+  }
+  if (result.touched("javascript.enabled") && *(options->get<BooleanParameter>("javascript.enabled")->ptr)) {
+    // --javascript.enabled
+    return true;
+  }
+  return false;
 }
 
 V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
