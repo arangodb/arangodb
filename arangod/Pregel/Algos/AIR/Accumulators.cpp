@@ -23,14 +23,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Accumulators.h"
-#include <Basics/ScopeGuard.h>
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+
 #include <Logger/LogMacros.h>
 
 using namespace arangodb::pregel::algos::accumulators;
 
 CustomAccumulator<VPackSlice>::CustomAccumulator(const AccumulatorOptions& options,
                                                  const CustomAccumulatorDefinitions& defs)
-  : Accumulator<VPackSlice>(options, defs) {
+    : Accumulator<VPackSlice>(options, defs) {
   _definition = defs.at(*options.customType);
   greenspun::InitMachine(_machine);
   SetupFunctions();
@@ -47,7 +49,7 @@ auto CustomAccumulator<VPackSlice>::clear() -> greenspun::EvalResult {
 }
 
 auto CustomAccumulator<VPackSlice>::setBySlice(VPackSlice v)
-  -> arangodb::greenspun::EvalResult {
+    -> arangodb::greenspun::EvalResult {
   inputSlice = v;
   TRI_DEFER({ inputSlice = Slice::noneSlice(); })
 
@@ -60,32 +62,34 @@ auto CustomAccumulator<VPackSlice>::setBySlice(VPackSlice v)
 
   VPackBuilder result;
   return greenspun::Evaluate(_machine, this->_definition.setProgram.slice(), result)
-    .mapError([](auto& err) {
-      err.wrapMessage("in setProgram of custom accumulator");
-    });
+      .mapError([](auto& err) {
+        err.wrapMessage("in setProgram of custom accumulator");
+      });
 }
 
 auto CustomAccumulator<VPackSlice>::getIntoBuilder(VPackBuilder& result)
-  -> arangodb::greenspun::EvalResult {
+    -> arangodb::greenspun::EvalResult {
   if (_definition.getProgram.isEmpty()) {
     result.add(_value);
     return {};
   }
 
   return greenspun::Evaluate(_machine, this->_definition.getProgram.slice(), result)
-    .mapError([](auto& err) {
-      err.wrapMessage("in getProgram of custom accumulator");
-    });
+      .mapError([](auto& err) {
+        err.wrapMessage("in getProgram of custom accumulator");
+      });
 }
 
 // FIXME: duplicate code here and below
-auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> {
+auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg)
+    -> greenspun::EvalResultT<UpdateResult> {
   this->inputSlice = msg.get("value");
   this->inputSender = msg.get("sender");
 
   TRI_DEFER({
-      this->inputSlice = VPackSlice::noneSlice();
-      this->inputSender = VPackSlice::noneSlice(); })
+    this->inputSlice = VPackSlice::noneSlice();
+    this->inputSender = VPackSlice::noneSlice();
+  })
 
   VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
@@ -95,18 +99,17 @@ auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg) -> gree
 
   auto resultSlice = result.slice();
   if (resultSlice.isString()) {
-    if (resultSlice.isEqualString("hot")) {
+    if (resultSlice.isEqualString(StaticStrings::AccumulatorHot)) {
       return UpdateResult::CHANGED;
-    } else if (resultSlice.isEqualString("cold")) {
+    } else if (resultSlice.isEqualString(StaticStrings::AccumulatorCold)) {
       return UpdateResult::NO_CHANGE;
     }
   } else if (resultSlice.isNone()) {
     return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
   return greenspun::EvalError(
-    "update program did not return a valid value: expected `\"hot\"` or "
-    "`\"cold\"`, found: " +
-    result.toJson());
+      "update program did not return a valid value: expected `" + StaticStrings::AccumulatorHot +
+      "` or `" + StaticStrings::AccumulatorCold + "`, found: " + result.toJson());
 }
 
 auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
@@ -129,18 +132,17 @@ auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
 
   auto resultSlice = result.slice();
   if (resultSlice.isString()) {
-    if (resultSlice.isEqualString("hot")) {
+    if (resultSlice.isEqualString(StaticStrings::AccumulatorHot)) {
       return UpdateResult::CHANGED;
-    } else if (resultSlice.isEqualString("cold")) {
+    } else if (resultSlice.isEqualString(StaticStrings::AccumulatorCold)) {
       return UpdateResult::NO_CHANGE;
     }
   } else if (resultSlice.isNone()) {
     return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
   return greenspun::EvalError(
-      "update program did not return a valid value: expected `\"hot\"` or "
-      "`\"cold\"`, found: " +
-      result.toJson());
+      "update program did not return a valid value: expected `" + StaticStrings::AccumulatorHot +
+      "` or `" + StaticStrings::AccumulatorCold + "`, found: " + result.toJson());
 }
 
 auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun::EvalResult {
@@ -160,12 +162,15 @@ auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun
   return result;
 }
 
-auto CustomAccumulator<VPackSlice>::aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult {
+auto CustomAccumulator<VPackSlice>::aggregateStateBySlice(VPackSlice msg)
+    -> greenspun::EvalResult {
   this->inputState = msg;
   TRI_DEFER({ this->inputState = VPackSlice::noneSlice(); });
 
   if (_definition.aggregateStateProgram.isEmpty()) {
-    return greenspun::EvalError{"custom accumulator cannot be used as a global accumulator, because it does not have an aggregateStateProgram"};
+    return greenspun::EvalError{
+        "custom accumulator cannot be used as a global accumulator, because it "
+        "does not have an aggregateStateProgram"};
   }
 
   VPackBuilder result;
@@ -176,26 +181,28 @@ auto CustomAccumulator<VPackSlice>::aggregateStateBySlice(VPackSlice msg) -> gre
   return {};
 }
 
-auto CustomAccumulator<VPackSlice>::getStateIntoBuilder(VPackBuilder& msg) -> greenspun::EvalResult {
+auto CustomAccumulator<VPackSlice>::getStateIntoBuilder(VPackBuilder& msg)
+    -> greenspun::EvalResult {
   if (_definition.getStateProgram.isEmpty()) {
     msg.add(_value);
     return {};
   } else {
     return greenspun::Evaluate(_machine, _definition.getStateProgram.slice(), msg)
-      .mapError([](auto& err) {
-        err.wrapMessage("in getStateProgram of custom accumulator");
-      });
+        .mapError([](auto& err) {
+          err.wrapMessage("in getStateProgram of custom accumulator");
+        });
   }
 }
 
-auto CustomAccumulator<VPackSlice>::getStateUpdateIntoBuilder(VPackBuilder& msg) -> greenspun::EvalResult {
+auto CustomAccumulator<VPackSlice>::getStateUpdateIntoBuilder(VPackBuilder& msg)
+    -> greenspun::EvalResult {
   if (_definition.getStateUpdateProgram.isEmpty()) {
     return getStateIntoBuilder(msg);
   } else {
     return greenspun::Evaluate(_machine, _definition.getStateUpdateProgram.slice(), msg)
-      .mapError([](auto& err) {
-        err.wrapMessage("in getStateUpdateProgram of custom accumulator");
-      });
+        .mapError([](auto& err) {
+          err.wrapMessage("in getStateUpdateProgram of custom accumulator");
+        });
   }
 }
 
@@ -206,9 +213,9 @@ auto CustomAccumulator<VPackSlice>::finalizeIntoBuilder(VPackBuilder& result)
   }
 
   auto res = greenspun::Evaluate(_machine, this->_definition.finalizeProgram.slice(), result)
-      .mapError([](auto& err) {
-        err.wrapMessage("in finalizeProgram of custom accumulator");
-      });
+                 .mapError([](auto& err) {
+                   err.wrapMessage("in finalizeProgram of custom accumulator");
+                 });
   if (res.fail()) {
     // Write null in case of failure
     result.add(VPackSlice::nullSlice());
@@ -294,8 +301,8 @@ auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine
 
 auto CustomAccumulator<VPackSlice>::AIR_InputState(arangodb::greenspun::Machine& ctx,
                                                    VPackSlice slice, VPackBuilder& result)
-  -> arangodb::greenspun::EvalResult {
-  if (!inputState.isNone()){
+    -> arangodb::greenspun::EvalResult {
+  if (!inputState.isNone()) {
     result.add(inputState);
     return {};
   }

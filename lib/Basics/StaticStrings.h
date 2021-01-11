@@ -257,6 +257,10 @@ class StaticStrings {
   static std::string const GraphInitialCid;
   static std::string const GraphName;
 
+  // pregel attribute names
+  static std::string const AccumulatorHot;
+  static std::string const AccumulatorCold;
+
   // Query Strings
   static std::string const QuerySortASC;
   static std::string const QuerySortDESC;

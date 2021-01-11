@@ -273,6 +273,10 @@ std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
 
+// pregel attribute names
+std::string const StaticStrings::AccumulatorHot("hot");
+std::string const StaticStrings::AccumulatorCold("cold");
+
 // Query Strings
 std::string const StaticStrings::QuerySortASC("ASC");
 std::string const StaticStrings::QuerySortDESC("DESC");
