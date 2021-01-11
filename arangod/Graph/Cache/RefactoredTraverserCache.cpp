@@ -52,49 +52,56 @@ RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Method
                                                    arangodb::ResourceMonitor& resourceMonitor)
     : _query(query),
       _trx(trx),
-      _resourceMonitor(&resourceMonitor),
-      _insertedDocuments(0),
-      _filteredDocuments(0),
+      _scannedIndex(0),
       _stringHeap(resourceMonitor, 4096) /* arbitrary block-size may be adjusted for performance */
-{}
-
-void RefactoredTraverserCache::clear() {
-  _stringHeap.clear();
-  _persistedStrings.clear();
-  _mmdr.clear();
+{
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
-VPackSlice RefactoredTraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+void RefactoredTraverserCache::clear() {
+  _persistedStrings.clear();
+  _stringHeap.clear();
+}
+
+template <typename ResultType>
+bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
+                                          ResultType& result) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
-  if (col == nullptr) {
+  if (ADB_UNLIKELY(col == nullptr)) {
     // collection gone... should not happen
     LOG_TOPIC("c4d78", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document. collection not found";
     TRI_ASSERT(col != nullptr);  // for maintainer mode
-    return arangodb::velocypack::Slice::nullSlice();
+    return false;
   }
 
-  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr)) {
+  auto res = col->getPhysical()->read(
+      _trx, idToken.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edge) -> bool {
+        // NOTE: Do not count this as Primary Index Scan, we counted it in the
+        // edge Index before copying...
+        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+          result = aql::AqlValue(edge);
+        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+          result.add(edge);
+        }
+        return true;
+      });
+  if (ADB_UNLIKELY(!res)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
         << "This is most likely a caching issue. Try: 'db." << col->name()
         << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
     TRI_ASSERT(false);  // for maintainer mode
-    return arangodb::velocypack::Slice::nullSlice();
   }
-
-  return VPackSlice(_mmdr.vpack());
+  return res;
 }
 
 template <typename ResultType>
 bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& idHashed,
                                             ResultType& result) {
   velocypack::StringRef id{idHashed};
-
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid
@@ -109,7 +116,7 @@ bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& i
     Result res = _trx->documentFastPathLocal(
         collectionName, id.substr(pos + 1),
         [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-          ++_insertedDocuments;
+          ++_scannedIndex;
           // copying...
           if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
             result = aql::AqlValue(doc);
@@ -144,8 +151,6 @@ bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& i
     throw;
   }
 
-  ++_insertedDocuments;
-
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
   _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
@@ -155,8 +160,9 @@ bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& i
 
 void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                                     VPackBuilder& builder) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  builder.add(lookupToken(idToken));
+  if (!appendEdge(idToken, builder)) {
+    builder.add(VPackSlice::nullSlice());
+  }
 }
 
 void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
@@ -167,32 +173,19 @@ void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::Hash
 }
 
 aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return aql::AqlValue(lookupToken(idToken));
-}
-
-aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
-  arangodb::velocypack::HashedStringRef hashedId{idString.begin(),
-                                                 static_cast<uint32_t>(idString.length())};
   aql::AqlValue val;
-  if (!appendVertex(hashedId, val)) {
+  if (!appendEdge(idToken, val)) {
     val = aql::AqlValue(aql::AqlValueHintNull{});
   }
   return val;
 }
 
-arangodb::velocypack::StringRef RefactoredTraverserCache::persistString(arangodb::velocypack::StringRef idString) {
-  arangodb::velocypack::HashedStringRef hsr(idString.data(),
-                                            static_cast<uint32_t>(idString.size()));
-
-  auto it = _persistedStrings.find(hsr);
-  if (it != _persistedStrings.end()) {
-    return (*it).stringRef();
+aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(arangodb::velocypack::HashedStringRef idString) {
+  aql::AqlValue val;
+  if (!appendVertex(idString, val)) {
+    val = aql::AqlValue(aql::AqlValueHintNull{});
   }
-  auto res = _stringHeap.registerString(hsr);
-  _persistedStrings.emplace(res);
-  // convert to simple StringRef here, as caller is not prepared to receive a HashedStringRef
-  return res.stringRef();
+  return val;
 }
 
 arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(

@@ -165,7 +165,7 @@ void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex,
 
 void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                 arangodb::velocypack::Builder& builder) {
-  builder.add(_cache.lookupToken(edge));
+  _cache.insertEdgeIntoResult(edge, builder);
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {

@@ -41,7 +41,6 @@ class Methods;
 
 namespace velocypack {
 class Builder;
-class StringRef;
 class Slice;
 }  // namespace velocypack
 
@@ -55,9 +54,8 @@ namespace graph {
 struct EdgeDocumentToken;
 
 /// Small wrapper around the actual datastore in
-/// which edges and vertices are stored. The cluster can overwrite this
-/// with an implementation which caches entire documents,
-/// the single server / db server can just work with raw
+/// which edges and vertices are stored.
+/// This db server variant can just work with raw
 /// document tokens and retrieve documents as needed
 
 class RefactoredTraverserCache {
@@ -71,10 +69,27 @@ class RefactoredTraverserCache {
   RefactoredTraverserCache(RefactoredTraverserCache&&) = default;
 
   RefactoredTraverserCache& operator=(RefactoredTraverserCache const&) = delete;
-  // RefactoredTraverserCache& operator=(RefactoredTraverserCache&&) = default;
 
   /// @brief clears all allocated memory in the underlying StringHeap
   void clear();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Return AQL value containing the result
+  ///        The document will be looked up in the StorageEngine
+  //////////////////////////////////////////////////////////////////////////////
+  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Return AQL value containing the result
+  ///        The document will be looked up in the StorageEngine
+  //////////////////////////////////////////////////////////////////////////////
+  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::HashedStringRef idString);
+
+  size_t getAndResetScannedIndex() {
+    size_t tmp = _scannedIndex;
+    _scannedIndex = 0;
+    return tmp;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
@@ -89,45 +104,12 @@ class RefactoredTraverserCache {
                               velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Return AQL value containing the result
-  ///        The document will be looked up in the StorageEngine
-  //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Return AQL value containing the result
-  ///        The document will be looked up in the StorageEngine
-  //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString);
-
-  size_t getAndResetInsertedDocuments() {
-    size_t tmp = _insertedDocuments;
-    _insertedDocuments = 0;
-    return tmp;
-  }
-
-  size_t getAndResetFilteredDocuments() {
-    size_t tmp = _filteredDocuments;
-    _filteredDocuments = 0;
-    return tmp;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
-
   arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
 
-  void increaseFilterCounter() { _filteredDocuments++; }
-
-  void increaseCounter() { _insertedDocuments++; }
-
-  /// Only valid until the next call to this class
-  velocypack::Slice lookupToken(EdgeDocumentToken const& token);
-
- protected:
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup a document from the database.
   ///        if this returns false the result is unmodified
@@ -136,13 +118,15 @@ class RefactoredTraverserCache {
   template <typename ResultType>
   bool appendVertex(arangodb::velocypack::HashedStringRef const& idString, ResultType& result);
 
- protected:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Reusable ManagedDocumentResult that temporarily takes
-  ///        responsibility for one document.
+  /// @brief Lookup an edge document from the database.
+  ///        if this returns false the result is unmodified
   //////////////////////////////////////////////////////////////////////////////
-  ManagedDocumentResult _mmdr;
 
+  template <typename ResultType>
+  bool appendEdge(graph::EdgeDocumentToken const& etkn, ResultType& result);
+
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
   //////////////////////////////////////////////////////////////////////////////
@@ -154,19 +138,9 @@ class RefactoredTraverserCache {
   arangodb::transaction::Methods* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ResourceMonitor to track memory usage.
+  /// @brief Times we had to scan the Primary Vertex Index
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::ResourceMonitor* _resourceMonitor;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Documents inserted in this cache
-  //////////////////////////////////////////////////////////////////////////////
-  size_t _insertedDocuments;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Documents filtered
-  //////////////////////////////////////////////////////////////////////////////
-  size_t _filteredDocuments;
+  size_t _scannedIndex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
