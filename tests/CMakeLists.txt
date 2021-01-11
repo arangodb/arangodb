@@ -170,6 +170,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/NumberUtilsTest.cpp
+  Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/SpinLockTest.cpp
