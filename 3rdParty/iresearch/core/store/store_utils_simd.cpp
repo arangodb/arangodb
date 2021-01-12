@@ -36,7 +36,11 @@ extern "C" {
 }
 
 #ifdef IRESEARCH_SSE4_2
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <sse2neon.h>
+#else
 #include <smmintrin.h> // for _mm_testc_si128
+#endif
 #endif
 
 namespace {

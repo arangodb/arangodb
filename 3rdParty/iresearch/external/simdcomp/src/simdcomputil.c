@@ -4,7 +4,11 @@
 
 #include "simdcomputil.h"
 #ifdef __SSE4_1__
+#ifndef __x86_x64
+#include <sse2neon.h>
+#else
 #include <smmintrin.h>
+#endif
 #endif
 #include <assert.h>
 

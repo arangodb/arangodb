@@ -7,8 +7,11 @@
 #include "portability.h"
 
 /* SSE2 is required */
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <sse2neon.h>
+#else
 #include <emmintrin.h>
-
+#endif
 #include "simdcomputil.h"
 #include "simdbitpacking.h"
 
