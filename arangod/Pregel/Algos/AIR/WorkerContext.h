@@ -56,8 +56,8 @@ private:
     explicit MutexAccumPair(std::unique_ptr<AccumulatorBase> accum) : accum(std::move(accum)) {}
   };
 
-  std::unordered_map<std::string, MutexAccumPair> const& globalAccumulatorsUpdates();
-  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& globalAccumulators();
+  [[nodiscard]] std::unordered_map<std::string, MutexAccumPair> const& globalAccumulatorsUpdates() const;
+  [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& globalAccumulators() const;
 
   ProgrammablePregelAlgorithm const* _algo;
 

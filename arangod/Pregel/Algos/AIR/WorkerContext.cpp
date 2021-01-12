@@ -41,11 +41,11 @@ WorkerContext::WorkerContext(ProgrammablePregelAlgorithm const* algorithm)
   }
 }
 
-std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& WorkerContext::globalAccumulators() {
+auto WorkerContext::globalAccumulators() const -> std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& {
   return _globalAccumulators;
 }
 
-auto WorkerContext::globalAccumulatorsUpdates() -> std::unordered_map<std::string, MutexAccumPair> const&  {
+auto WorkerContext::globalAccumulatorsUpdates() const -> std::unordered_map<std::string, MutexAccumPair> const& {
   return _globalAccumulatorsUpdates;
 }
 
