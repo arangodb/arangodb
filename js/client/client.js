@@ -1,5 +1,5 @@
 /* jshint -W051, -W020 */
-/* global global:true, window, require */
+/* global global:true, window, require, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -162,6 +162,17 @@ var initHelp = function () {
       withTimeout(internal.db._connection, 10, function() {
         internal.db._collections();
       });
+    } catch (e) {}
+    
+    try {
+      let remoteVersion = arango.getVersion();
+      let [ourMajor, ourMinor] = internal.version.split('.');
+      let [remoteMajor, remoteMinor] = remoteVersion.split('.');
+
+      if (remoteMajor !== ourMajor ||
+          (remoteMajor === ourMajor && remoteMinor > ourMinor)) {
+        internal.print("Client/server version mismatch detected. arangosh version: " + internal.version + ", server version: " + remoteVersion);
+      }
     } catch (e) {}
   }
 
