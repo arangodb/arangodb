@@ -32,12 +32,15 @@
 #include "Network/types.h"
 
 #include <fuerte/message.h>
-#include <velocypack/Buffer.h>
-#include <chrono>
 
+#include <chrono>
 #include <memory>
 
 namespace arangodb {
+namespace velocypack {
+template<typename T> class Buffer;
+class Slice;
+}
 
 namespace network {
 class ConnectionPool;

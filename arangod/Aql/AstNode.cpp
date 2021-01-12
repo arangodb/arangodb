@@ -136,7 +136,6 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_FCALL_USER), "user function call"},
     {static_cast<int>(NODE_TYPE_RANGE), "range"},
     {static_cast<int>(NODE_TYPE_NOP), "no-op"},
-    {static_cast<int>(NODE_TYPE_COLLECT_COUNT), "collect with count"},
     {static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),
      "calculated object element"},
     {static_cast<int>(NODE_TYPE_EXAMPLE), "example"},
@@ -548,7 +547,6 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_REPLACE:
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
@@ -695,7 +693,6 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_REPLACE:
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
@@ -2393,7 +2390,6 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_UPSERT:
@@ -2568,7 +2564,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_UPSERT:

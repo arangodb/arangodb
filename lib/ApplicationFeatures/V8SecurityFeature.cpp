@@ -422,6 +422,12 @@ bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
   return v8g->_securityContext.isInternal();
 }
 
+bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
+  TRI_GET_GLOBALS();
+  TRI_ASSERT(v8g != nullptr);
+  return v8g->_securityContext.isAdminScript() || v8g->_securityContext.isRestAdminScript();
+}
+
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
                                                   std::string const& name) const {
   return checkAllowAndDenyList(name, !_startupOptionsAllowList.empty(),

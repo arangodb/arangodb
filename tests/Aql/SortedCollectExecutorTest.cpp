@@ -75,7 +75,6 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -92,11 +91,10 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         collectRegister(RegisterPlan::MaxRegisterId),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1}, 1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
@@ -159,7 +157,6 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -176,12 +173,11 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1 /*nrIn*/, 3 /*nrOut*/,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -418,7 +414,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
                                  std::move(aggregateRegisters),
-                                 &VPackOptions::Defaults, false);
+                                 &VPackOptions::Defaults);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
@@ -511,7 +507,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
                                  std::move(aggregateRegisters),
-                                 &VPackOptions::Defaults, false);
+                                 &VPackOptions::Defaults);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
 
@@ -605,7 +601,6 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -621,12 +616,11 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1, nrOutputRegister,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -939,7 +933,6 @@ class SortedCollectExecutorTestSplit
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -950,13 +943,12 @@ class SortedCollectExecutorTestSplit
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1, nrOutputRegister,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes),
                       std::move(variables), std::move(aggregateRegisters),
-                      &VPackOptions::Defaults, count) {}
+                      &VPackOptions::Defaults) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {

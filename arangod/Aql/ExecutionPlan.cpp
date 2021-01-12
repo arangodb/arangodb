@@ -768,7 +768,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
 
   auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables, aggregateVariables,
                             nullptr, nullptr, std::vector<Variable const*>(),
-                            _ast->variables()->variables(false), false, true);
+                            _ast->variables()->variables(false), true);
 
   registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
@@ -1570,68 +1570,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   auto collectNode =
       new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
                       expressionVariable, outVariable, keepVariables,
-                      _ast->variables()->variables(false), false, false);
+                      _ast->variables()->variables(false), false);
 
-  auto en = registerNode(collectNode);
-
-  return addDependency(previous, en);
-}
-
-/// @brief create an execution plan element from an AST COLLECT node, COUNT
-/// note that also a sort plan node will be added in front of the collect plan
-/// node
-ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
-                                                   AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_COUNT);
-  TRI_ASSERT(node->numMembers() == 3);
-
-  auto options = createCollectOptions(node->getMember(0));
-
-  auto list = node->getMember(1);
-  size_t const numVars = list->numMembers();
-
-  std::vector<GroupVarInfo> groupVariables;
-  groupVariables.reserve(numVars);
-  for (size_t i = 0; i < numVars; ++i) {
-    auto assigner = list->getMember(i);
-
-    if (assigner == nullptr) {
-      continue;
-    }
-
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
-    TRI_ASSERT(out != nullptr);
-    auto v = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(v != nullptr);
-
-    auto expression = assigner->getMember(1);
-
-    if (expression->type == NODE_TYPE_REFERENCE) {
-      // operand is a variable
-      auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(GroupVarInfo{v, e});
-    } else {
-      // operand is some misc expression
-      auto calc = createTemporaryCalculation(expression, previous);
-      previous = calc;
-      groupVariables.emplace_back(GroupVarInfo{v, getOutVariable(calc)});
-    }
-  }
-
-  // output variable
-  auto v = node->getMember(2);
-  // handle out variable
-  Variable* outVariable = static_cast<Variable*>(v->getData());
-
-  TRI_ASSERT(outVariable != nullptr);
-
-  std::vector<AggregateVarInfo> const aggregateVariables{};
-
-  auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
-                      nullptr, outVariable, std::vector<Variable const*>(),
-                      _ast->variables()->variables(false), true, false);
   auto en = registerNode(collectNode);
 
   return addDependency(previous, en);
@@ -2130,11 +2070,6 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_COLLECT_COUNT: {
-        en = fromNodeCollectCount(en, member);
-        break;
-      }
-
       case NODE_TYPE_LIMIT: {
         en = fromNodeLimit(en, member);
         break;
@@ -2584,18 +2519,24 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
     // the number of arguments should also be one (note: this has been
     // validated before)
     TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
-    TRI_ASSERT(args->numMembers() == 1);
-
-    auto arg = args->getMember(0);
-
-    if (arg->type == NODE_TYPE_REFERENCE) {
-      // operand is a variable
-      auto e = static_cast<Variable*>(arg->getData());
-      aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
+    auto const& functionName = Aggregator::translateAlias(func->name);
+    if (args->numMembers() == 1) {
+      auto arg = args->getMember(0);
+      if (arg->type == NODE_TYPE_REFERENCE) {
+        // operand is a variable
+        auto e = static_cast<Variable*>(arg->getData());
+        aggregateVariables.emplace_back(
+            AggregateVarInfo{outVar, e, functionName});
+      } else {
+        auto calc = createTemporaryCalculation(arg, *previous);
+        *previous = calc;
+        aggregateVariables.emplace_back(
+            AggregateVarInfo{outVar, getOutVariable(calc), functionName});
+      }
     } else {
-      auto calc = createTemporaryCalculation(arg, *previous);
-      *previous = calc;
-      aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
+      TRI_ASSERT(!Aggregator::requiresInput(func->name));
+      aggregateVariables.emplace_back(
+          AggregateVarInfo{outVar, nullptr, functionName});
     }
   }
   

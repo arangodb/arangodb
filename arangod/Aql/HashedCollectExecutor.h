@@ -65,14 +65,12 @@ class HashedCollectExecutorInfos {
    * @param aggregateTypes Aggregation methods used
    * @param aggregateRegisters Input and output Register for Aggregation
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
-   * @param count Flag to enable count, will be written to collectRegister
    */
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                              velocypack::Options const* vpackOptions, 
-                             arangodb::ResourceMonitor& resourceMonitor,
-                             bool count);
+                             arangodb::ResourceMonitor& resourceMonitor);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -83,7 +81,6 @@ class HashedCollectExecutorInfos {
   std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
   std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
   std::vector<std::string> const& getAggregateTypes() const;
-  bool getCount() const noexcept;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
   arangodb::ResourceMonitor& getResourceMonitor() const;
@@ -109,9 +106,6 @@ class HashedCollectExecutorInfos {
 
   /// @brief resource manager
   arangodb::ResourceMonitor& _resourceMonitor;
-
-  /// @brief COUNTing node?
-  bool _count;
 };
 
 /**
