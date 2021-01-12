@@ -528,7 +528,6 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
 
   if (globalSuperstep() == 0) {
     if (auto res = clearAllVertexAccumulators(); res.fail()) {
-      LOG_DEVEL << res.error().toString();
       getReportManager()
               .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
