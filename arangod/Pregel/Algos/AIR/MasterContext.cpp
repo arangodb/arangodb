@@ -155,12 +155,12 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
   }
   aggregate<uint32_t>("phase", static_cast<uint32_t>(iter - phases.begin()));
   aggregate<uint64_t>(Utils::phaseFirstStepKey, globalSuperstep() + 1);
-  userSelectedNext = ContinuationResult::ACTIVATE_ALL;
+  _userSelectedNext = ContinuationResult::ACTIVATE_ALL;
   return true;
 }
 
 void MasterContext::finish() {
-  userSelectedNext = ContinuationResult::ABORT;
+  _userSelectedNext = ContinuationResult::ABORT;
 }
 
 MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVertexesVotedHalt) {
@@ -176,7 +176,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
   bool shouldTerminateUser = false;
   if (!phase.onPostStep.isEmpty()) {
     VPackBuilder onPostStepResult;
-    userSelectedNext = ContinuationResult::DONT_CARE;
+    _userSelectedNext = ContinuationResult::DONT_CARE;
     auto res = greenspun::Evaluate(_airMachine, phase.onPostStep.slice(), onPostStepResult);
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
@@ -184,7 +184,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
           << "` returned an error: " << res.error().toString();
       return ContinuationResult::ERROR_ABORT;
     }
-    if (userSelectedNext == ContinuationResult::ABORT) {
+    if (_userSelectedNext == ContinuationResult::ABORT) {
       shouldTerminateUser = true;
     }
   }
@@ -196,7 +196,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
   if (!phase.onHalt.isEmpty()) {
     VPackBuilder onHaltResult;
 
-    userSelectedNext = ContinuationResult::DONT_CARE;
+    _userSelectedNext = ContinuationResult::DONT_CARE;
     auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
@@ -205,14 +205,14 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
       return ContinuationResult::ABORT;
     }
 
-    if (userSelectedNext == ContinuationResult::DONT_CARE) {
+    if (_userSelectedNext == ContinuationResult::DONT_CARE) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
           << "onHalt program of phase `" + phase.name +
                  "` did not specify how to continue";
       return ContinuationResult::ABORT;
     }
 
-    return userSelectedNext;
+    return _userSelectedNext;
   } else {
     // simply select next phase or end
     phase_index += 1;
@@ -293,7 +293,7 @@ bool MasterContext::preGlobalSuperstepWithResult() {
 
   if (!phase.onPreStep.isEmpty()) {
     VPackBuilder onPreStepResult;
-    userSelectedNext = ContinuationResult::DONT_CARE;
+    _userSelectedNext = ContinuationResult::DONT_CARE;
     auto res = greenspun::Evaluate(_airMachine, phase.onPreStep.slice(), onPreStepResult);
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)
@@ -301,7 +301,7 @@ bool MasterContext::preGlobalSuperstepWithResult() {
           << "` returned an error: " << res.error().toString();
       return false;
     }
-    if (userSelectedNext == ContinuationResult::ABORT) {
+    if (_userSelectedNext == ContinuationResult::ABORT) {
       return false;
     }
   }

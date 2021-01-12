@@ -53,8 +53,6 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
   greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
 
-  ContinuationResult userSelectedNext = ContinuationResult::DONT_CARE;
-
   bool gotoPhase(std::string_view nextPhase);
   void finish();
 
@@ -71,6 +69,8 @@ private:
   greenspun::Machine _airMachine;
 
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
+
+  ContinuationResult _userSelectedNext = ContinuationResult::DONT_CARE;
 };
 
 }  // namespace accumulators
