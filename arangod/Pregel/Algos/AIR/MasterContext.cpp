@@ -312,7 +312,7 @@ bool MasterContext::preGlobalSuperstepWithResult() {
 void MasterContext::serializeValues(VPackBuilder& msg) {
   {
     VPackObjectBuilder valuesGuard(&msg, "globalAccumulatorValues");
-    for (auto&& acc : globalAccumulators()) {
+    for (auto const& acc : globalAccumulators()) {
       msg.add(VPackValue(acc.first));
       if (auto result = acc.second->finalizeIntoBuilder(msg); result.fail()) {
         std::string err = "AIR MasterContext, error serializing global accumulator ";
