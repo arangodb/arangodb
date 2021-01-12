@@ -875,7 +875,7 @@ bool State::loadPersisted() {
   return true;
 }
 
-/// @brief load a compacted snapshot, returns true if successfull and false
+/// @brief load a compacted snapshot, returns true if successful and false
 /// otherwise. In case of success store and index are modified. The store
 /// is reset to the state after log index `index` has been applied. Sets
 /// `index` to 0 if there is no compacted snapshot.
