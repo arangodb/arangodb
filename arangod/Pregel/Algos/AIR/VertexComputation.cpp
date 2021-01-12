@@ -420,19 +420,19 @@ void VertexComputation::traceMessage(MessageData const* msg) {
       }
 
       if (traceMessage) {
-        auto phase_index = *getAggregatedValue<uint32_t>("phase");
+        auto phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
         auto phase = _algorithm.options().phases.at(phase_index);
 
         getReportManager()
             .report(ReportLevel::INFO)
-            .with("pregel-id", pregelId())
-            .with("vertex", vertexData()._documentId)
-            .with("phase", phase.name)
-            .with("global-superstep", globalSuperstep())
-            .with("phase-step", phaseGlobalSuperstep())
-            .with("message", msg->_value.toJson())
-            .with("sender", msg->_sender)
-            .with("accumulator", accumName);
+            .with(StaticStrings::VertexComputationPregelId, pregelId())
+            .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+            .with(StaticStrings::VertexComputationPhase, phase.name)
+            .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
+            .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
+            .with(StaticStrings::VertexComputationMessage, msg->_value.toJson())
+            .with(StaticStrings::AccumulatorSender, msg->_sender)
+            .with(StaticStrings::AccumulatorName, accumName);
       }
     }
   }
@@ -448,18 +448,18 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
-      auto phase_index = *getAggregatedValue<uint32_t>("phase");
+      auto phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
       auto phase = _algorithm.options().phases.at(phase_index);
       getReportManager()
               .report(ReportLevel::ERR)
-              .with("pregel-id", pregelId())
-              .with("vertex", vertexData()._documentId)
-              .with("phase", phase.name)
-              .with("global-superstep", globalSuperstep())
-              .with("phase-step", phaseGlobalSuperstep())
-              .with("message", msg->_value.toJson())
-              .with("sender", msg->_sender)
-              .with("accumulator", accumName)
+              .with(StaticStrings::VertexComputationPregelId, pregelId())
+              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationPhase, phase.name)
+              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationMessage, msg->_value.toJson())
+              .with(StaticStrings::AccumulatorSender, msg->_sender)
+              .with(StaticStrings::AccumulatorName, accumName)
           << "in phase `" << phase.name << "` processing incoming messages for accumulator `"
           << accumName << "` failed: " << res.error().toString();
       return std::move(res.error());

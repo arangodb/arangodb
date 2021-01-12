@@ -273,11 +273,24 @@ std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
 
-// pregel attribute names
+// Pregel Section Start
+
+// Pregel Accumulator Attributes
 std::string const StaticStrings::AccumulatorHot("hot");
 std::string const StaticStrings::AccumulatorCold("cold");
 std::string const StaticStrings::AccumulatorValue("value");
 std::string const StaticStrings::AccumulatorSender("sender");
+std::string const StaticStrings::AccumulatorName("accumulator");
+
+// Pregel VertexComputation Attributes
+std::string const StaticStrings::VertexComputationPregelId("pregel-id");
+std::string const StaticStrings::VertexComputationVertexId("vertex");
+std::string const StaticStrings::VertexComputationPhase("phase");
+std::string const StaticStrings::VertexComputationGlobalSuperstep("global-superstep");
+std::string const StaticStrings::VertexComputationPhaseStep("phase-step");
+std::string const StaticStrings::VertexComputationMessage("message");
+
+// Pregel Section End
 
 // Query Strings
 std::string const StaticStrings::QuerySortASC("ASC");

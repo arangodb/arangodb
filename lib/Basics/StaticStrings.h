@@ -257,11 +257,24 @@ class StaticStrings {
   static std::string const GraphInitialCid;
   static std::string const GraphName;
 
-  // pregel attribute names
+  // Pregel Section Start
+
+  // Pregel Accumulator Attributes
   static std::string const AccumulatorHot;
   static std::string const AccumulatorCold;
   static std::string const AccumulatorValue;
   static std::string const AccumulatorSender;
+  static std::string const AccumulatorName;
+
+  // Pregel VertexComputation Attributes
+  static std::string const VertexComputationPregelId;
+  static std::string const VertexComputationVertexId;
+  static std::string const VertexComputationPhase;
+  static std::string const VertexComputationGlobalSuperstep;
+  static std::string const VertexComputationPhaseStep;
+  static std::string const VertexComputationMessage;
+
+  // Pregel Section End
 
   // Query Strings
   static std::string const QuerySortASC;
