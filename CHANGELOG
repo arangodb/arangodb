@@ -3,6 +3,22 @@ devel
 
 * Added AQL bit handling functions BIT_AND, BIT_OR, BIT_XOR and BIT_COUNT.
 
+* Removed server-side JavaScript object `ArangoClusterComm`, so it cannot be
+  used from inside JavaScript operations or Foxx.
+  The `ArangoClusterComm` object was previously used inside a few internal 
+  JavaScript operations, but was not part of the public APIs.
+
+* Restrict access to functions inside JavaScript objects `ArangoAgency` and
+  `ArangoAgent` to JavaScript code that is running in privileged mode, i.e.
+  via the server's emergency console, the `/_admin/execute` API (if turned on)
+  or internal bootstrap scripts.
+
+* Added startup option `--javascript.transactions` to allow turning off JavaScript
+  transactions if not needed. The default value for this option is `true`, meaning
+  JavaScript transactions are available as before.
+  However, using this option they can be turned off by admins to limit the amount
+  of JavaScript user code that is executed.
+
 * Introduce a default memory limit for AQL queries, to prevent rogue queries from
   consuming the entire memory available to an arangod instance.
 

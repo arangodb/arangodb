@@ -1,0 +1,7 @@
+{
+  "name": "arango-agency",
+  "version": "0.0.1",
+  "author": "arangodb",
+  "description": "simple test case for checking access to ArangoAgency JavaScript objects",
+  "main": "index.js"
+}

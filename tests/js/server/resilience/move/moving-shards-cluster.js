@@ -34,7 +34,8 @@ const db = arangodb.db;
 const _ = require("lodash");
 const internal = require("internal");
 const wait = internal.wait;
-const supervisionState = require("@arangodb/cluster").supervisionState;
+const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
+const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const errors = internal.errors;
 const request = require('@arangodb/request');
@@ -387,7 +388,7 @@ function MovingShardsSuite ({useData}) {
     // Now wait until the job we triggered is finished:
     var count = 1200;   // seconds
     while (true) {
-      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.json.id);
       console.info("Status of cleanOutServer job:", job.status);
       if (job.error === false && job.status === "Finished") {
         return result;
@@ -428,7 +429,7 @@ function MovingShardsSuite ({useData}) {
     // Now wait until the job we triggered is finished:
     var count = 1200;   // seconds
     while (true) {
-      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.json.id);
       console.info("Status of resignLeadership job:", job.status);
       if (job.error === false && job.status === "Finished") {
         return result;
@@ -542,7 +543,7 @@ function MovingShardsSuite ({useData}) {
     // Now wait until the job we triggered is finished:
     var count = 600;   // seconds
     while (true) {
-      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.json.id);
       console.info("Status of moveShard job:", job.status);
       if (job.error === false && job.status === expectedResult) {
         return result;
