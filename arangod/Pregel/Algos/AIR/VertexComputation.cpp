@@ -574,7 +574,6 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     }
 
     if (auto res = runProgram(_airMachine, phase.updateProgram.slice()); res.fail()) {
-      LOG_DEVEL << res.error().toString();
       getReportManager()
               .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
