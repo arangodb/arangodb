@@ -197,8 +197,6 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     VPackBuilder onHaltResult;
 
     userSelectedNext = ContinuationResult::DONT_CARE;
-    allowPhaseModifications = true;
-    TRI_DEFER({ allowPhaseModifications = false; })
     auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERR).with("phase", phase.name)

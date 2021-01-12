@@ -54,7 +54,6 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx, VPackSlice params, VPackBuilder& result);
 
   ContinuationResult userSelectedNext = ContinuationResult::DONT_CARE;
-  bool allowPhaseModifications = false;
 
   bool gotoPhase(std::string_view nextPhase);
   void finish();
