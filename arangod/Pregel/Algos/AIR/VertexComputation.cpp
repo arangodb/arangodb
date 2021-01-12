@@ -187,7 +187,7 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
   auto const& accums = algorithm().options().vertexAccumulators;
 
   if (auto i = accums.find(std::string{accumId}); i != accums.end()) {
-    const auto pregelIdFromSlice = [](VPackSlice slice) -> PregelID {
+    auto const pregelIdFromSlice = [](VPackSlice slice) -> PregelID {
       if (slice.isObject()) {
         VPackSlice key = slice.get("key");
         VPackSlice shard = slice.get("shard");
