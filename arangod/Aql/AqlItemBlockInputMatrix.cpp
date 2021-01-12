@@ -157,7 +157,7 @@ void AqlItemBlockInputMatrix::advanceBlockIndexAndShadowRow() noexcept {
   }
 }
 
-size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
+size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() noexcept {
   if (_aqlItemMatrix == nullptr) {
     // Have not been initialized.
     // We need to be called before.
