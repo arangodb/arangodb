@@ -326,7 +326,7 @@ void MasterContext::serializeValues(VPackBuilder& msg) {
 }
 
 greenspun::EvalResult MasterContext::air_GlobalSuperstep(greenspun::Machine& ctx,
-                                                         const VPackSlice params,
+                                                         VPackSlice const params,
                                                          VPackBuilder& result) {
   auto res = greenspun::extract<>(params);
   if (!res) {
