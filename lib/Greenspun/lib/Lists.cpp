@@ -134,7 +134,7 @@ EvalResult Prim_ListJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& res
 }
 
 EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 2) {
+  if (!params.isArray() || params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
 
@@ -152,7 +152,7 @@ EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params, VPackBuilder& res
 }
 
 EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 3) {
+  if (!params.isArray() || params.length() != 3) {
     return EvalError("expected exactly two parameters");
   }
 
