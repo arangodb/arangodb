@@ -562,7 +562,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
           << "` init-program failed: " << res.error().toString();
     }
   } else {
-    auto accumChanged = processIncomingMessages(incomingMessages);
+    auto const accumChanged = processIncomingMessages(incomingMessages);
     if (accumChanged.fail()) {
       voteHalt();
       return;
