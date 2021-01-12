@@ -371,3 +371,45 @@ TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
   w = v["/Target/ToDo/2"];
   checkSupervisionJob(w, "addFollower", "database", "123", "s1");
 }
+
+TEST_F(SupervisionTestClass, no_remove_follower_loop) {
+  // This tests the case which used to have an unholy loop of scheduling
+  // a removeFollower job and immediately terminating it and so on.
+  // Now, no removeFollower job should be scheduled.
+  _snapshot("/Plan/Collections/database/123/replicationFactor")
+    = createNode(R"=(3)=");
+  _snapshot("/Plan/Collections/database/123/shards/s1")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot("/Current/Collections/database/123/s1/servers")
+    = createNode(R"=(["leader", "follower1", "follower2"])=");
+  _snapshot("/Supervision/Health/follower1")
+    = createNode(R"=("FAILED")=");
+  std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
+  VPackSlice content = envelope->slice();
+  EXPECT_EQ(content.length(), 1);
+  VPackSlice w = content["/Target/ToDo/1"];
+  checkSupervisionJob(w, "addFollower", "database", "124", "s2");
+}
+
+TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
+  // This tests another case which used to have an unholy loop of scheduling
+  // a removeFollower job and immediately terminating it and so on.
+  // Now, no removeFollower job should be scheduled.
+  _snapshot("/Plan/Collections/database/124/replicationFactor")
+    = createNode(R"=(3)=");
+  _snapshot("/Plan/Collections/database/124/shards/s2")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot("/Plan/Collections/database/125/shards/s3")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot("/Plan/Collections/database/126/shards/s4")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot("/Current/Collections/database/124/s2/servers")
+    = createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
+  _snapshot("/Current/Collections/database/125/s3/servers")
+    = createNode(R"=(["leader", "follower1", "follower3"])=");
+  _snapshot("/Current/Collections/database/126/s4/servers")
+    = createNode(R"=(["leader", "follower1", "follower2"])=");
+  std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
+  VPackSlice content = envelope->slice();
+  EXPECT_EQ(content.length(), 0);
+}
