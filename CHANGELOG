@@ -1,6 +1,9 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Print a version mismatch (major/minor version difference) between the
+  arangosh version and the remote arangod version at arangosh startup.
+
 * Improve internal error reporting by cluster maintenance.
 
 * Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
