@@ -3,6 +3,10 @@ devel
 
 * Added AQL bit handling functions BIT_AND, BIT_OR, BIT_XOR and BIT_COUNT.
 
+* Fixed an endless busy loop which could happen if a coordinator tries to 
+  roll back a database creation, but the database has already been dropped 
+  by other means.
+
 * Removed server-side JavaScript object `ArangoClusterComm`, so it cannot be
   used from inside JavaScript operations or Foxx.
   The `ArangoClusterComm` object was previously used inside a few internal 

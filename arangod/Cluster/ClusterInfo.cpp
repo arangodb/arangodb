@@ -2064,28 +2064,28 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
         analyzersPath(database.getName()), AgencyPrecondition::Type::EMPTY, true)});
 
   // And wait for our database to show up in `Current/Databases`
-  auto waitresult = waitForDatabaseInCurrent(database, trx);
+  auto waitResult = waitForDatabaseInCurrent(database, trx);
 
-  if (waitresult.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME ||
-      waitresult.errorNumber() == TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN) {
+  if (waitResult.is(TRI_ERROR_ARANGO_DUPLICATE_NAME) ||
+      waitResult.is(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN)) {
     // Early exit without cancellation if we did not do anything
-    return waitresult;
+    return waitResult;
   }
 
-  if (waitresult.fail()) {
-    // cleanup: remove database from plan
-    auto ret = cancelCreateDatabaseCoordinator(database);
-
-    if (ret.ok()) {
-      // Creation failed
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
-                    "database creation failed");
-    } else {
-      // Cleanup failed too
-      return ret;
-    }
+  if (waitResult.ok()) {
+    return waitResult;
   }
-  return Result();
+
+  // cleanup: remove database from plan
+  auto ret = cancelCreateDatabaseCoordinator(database);
+
+  if (ret.fail()) {
+    // Cleanup failed too
+    return ret;
+  }
+  // Cleanup ok, but creation failed
+  return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                "database creation failed");
 }
 
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
@@ -2153,36 +2153,65 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
   AgencyWriteTransaction trx({delPlanCollections, delPlanDatabase, incrPlan}, preCondition);
 
   size_t tries = 0;
-  // TODO: Hard coded timeout, also the retry numbers below are all
-  //       pulled out of thin air.
   double nextTimeout = 0.5;
 
   AgencyCommResult res;
-  do {
+  while (true) {
     tries++;
     res = ac.sendTransactionWithFailover(trx, nextTimeout);
 
-    if (!res.successful()) {
-      if (tries == 1) {
-        events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
+    if (res.successful()) {
+      break;
+    }
+    
+    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+      auto [acb, index] = agencyCache.read(
+        std::vector<std::string>{
+          AgencyCommHelper::path("Plan/Databases/" + database.getName())});
+
+      velocypack::Slice databaseSlice = acb->slice()[0].get(std::vector<std::string>(
+        {AgencyCommHelper::path(), "Plan", "Databases", database.getName()}));
+
+      if (!databaseSlice.isObject()) {
+        // database key in agency does _not_ exist. this can happen if on another
+        // coordinator the database gets dropped while on this coordinator we are
+        // still trying to create it
+        break;
       }
-      if (tries >= 5) {
-        nextTimeout = 5.0;
-      }
-      LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
-        << "failed to cancel creation of database " << database.getName() << " with error "
-        << res.errorMessage() << ". Retrying.";
-    } else if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
-      Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-      if (r.fail()) {
-        return r;
+
+      VPackSlice agencyId = databaseSlice.get("id");
+      VPackSlice preconditionId = builder.slice().get("id");
+      if (agencyId.isString() && preconditionId.isString() &&
+          !agencyId.isEqualString(preconditionId.stringRef())) {
+        // database key is there, but has a different id, this can happen if the
+        // database has already been dropped in the meantime and recreated, in
+        // any case, let's get us out of here...
+        break;
       }
     }
 
+    if (tries == 1) {
+      events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
+    }
+    
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
-  } while (!res.successful());
+
+    if (tries >= 5) {
+      nextTimeout = 5.0;
+    }
+      
+    LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
+      << "failed to cancel creation of database " << database.getName() << " with error "
+      << res.errorMessage() << ". Retrying.";
+
+    // enhancing our calm a bit here, so this does not put the agency under pressure
+    // too much.
+    TRI_ASSERT(nextTimeout > 0.0 && nextTimeout <= 5.0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(unsigned(1000.0 * nextTimeout)));
+  }
 
   return Result();
 }
