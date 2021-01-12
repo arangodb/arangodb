@@ -1,6 +1,10 @@
 devel
 -----
 
+* Print a version mismatch (major/minor version difference) between the
+  arangosh version and the remote arangod version at arangosh startup.
+
+
 * Fixed an endless busy loop which could happen if a coordinator tries to 
   roll back a database creation, but the database has already been dropped 
   by other means.
