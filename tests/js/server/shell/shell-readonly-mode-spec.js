@@ -36,14 +36,7 @@ const db = internal.db;
 const heartbeatInterval = 1; // 1 second
 
 let isCluster = instanceInfo.arangods.length > 1;
-
-let download;
-if (isCluster) {
-  download = require('internal').clusterDownload;
-} else {
-  download = require('internal').download;
-}
-
+let download = require('internal').download;
 let endpoint = instanceInfo.url; 
 
 const waitForHeartbeat = function () {

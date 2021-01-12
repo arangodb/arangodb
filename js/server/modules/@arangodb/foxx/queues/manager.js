@@ -257,7 +257,7 @@ exports.manage = function () {
     try {
       db._useDatabase(database);
       global.KEYSPACE_CREATE('queue-control', 1, true);
-      var delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
+      let delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
 
       if (delayUntil === -1 || delayUntil > Date.now()) {
         return;
@@ -275,9 +275,9 @@ exports.manage = function () {
       // it is possible that the underlying database is deleted while we are in here.
       // this is not an error
       if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
-        warn("An exception occurred during foxx queue handling in database '"
+        warn("An exception occurred during Foxx queue handling in database '"
               + database + "' "
-              + e.message + " "
+              + e.message + ": "
               + JSON.stringify(e));
         // noop
       }
