@@ -490,7 +490,7 @@ class Parser;
   * --------------------------------------------------------------------------- */
 
 (0|[1-9][0-9]*) {
-  /* a numeric integer value */
+  /* a numeric integer value, base 10 (decimal) */
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
 
@@ -516,8 +516,85 @@ class Parser;
   return T_INTEGER;
 }
 
+(0[bB][01]+) {
+  /* a numeric integer value, base 2 (binary) */
+  /* note that we support an arbitrary run of leading zeroes for the actual number */
+
+  /* cut off first 2 characters */
+  char const* p = yytext + 2;
+  char const* e = yytext + yyleng;
+
+  while (p != e && *p == '0') {
+    /* skip leading zeros */
+    ++p;
+  }
+      
+  auto parser = yyextra;
+  if (e - p > 32) {
+    /* we only support up to 32 bits for now */
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "binary number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
+  }
+  
+  int64_t result = 0;
+
+  while (p != e) {
+    char c = *p;
+    if (c == '1') {
+      /* only the 1s are interesting for us */
+      result += (static_cast<int64_t>(1) << (e - p - 1));
+    }
+    ++p;
+  }
+  
+  arangodb::aql::AstNode* node = parser->ast()->createNodeValueInt(result);
+  yylval->node = node;
+
+  return T_INTEGER;
+}
+
+(0[xX][0-9a-fA-F]+) {
+  /* a numeric integer value, base 16 (hexadecimal) */
+  /* note that we support an arbitrary run of leading zeroes for the actual number */
+
+  /* cut off first 2 characters */
+  char const* p = yytext + 2;
+  char const* e = yytext + yyleng;
+
+  while (p != e && *p == '0') {
+    /* skip leading zeros */
+    ++p;
+  }
+  
+  auto parser = yyextra;
+  if (e - p > 8) {
+    /* we only support up to 32 bits for now */
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "hex number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
+  }
+  
+  int64_t result = 0;
+  
+  while (p != e) {
+    uint8_t v;
+    char c = *p;
+    if (c >= 'A' && c <= 'F') {
+      v = c - 'A' + 10;
+    } else if (c >= 'a' && c <= 'f') {
+      v = c - 'a' + 10;
+    } else {
+      v = c - '0';
+    }
+    result += (static_cast<int64_t>(v) << (4 * (e - p - 1)));
+    ++p;
+  }
+
+  arangodb::aql::AstNode* node = parser->ast()->createNodeValueInt(result);
+  yylval->node = node;
+
+  return T_INTEGER;
+}
+
 ((0|[1-9][0-9]*)(\.[0-9]+)?|\.[0-9]+)([eE][\-\+]?[0-9]+)? {
-  /* a numeric double value */
+  /* a numeric double value, base 10 (decimal) */
 
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
