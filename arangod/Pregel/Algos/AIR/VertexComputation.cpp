@@ -524,7 +524,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algorithm.options().phases.at(phase_index);
 
-  std::size_t phaseStep = phaseGlobalSuperstep();
+  auto phaseStep = phaseGlobalSuperstep();
 
   if (globalSuperstep() == 0) {
     if (auto res = clearAllVertexAccumulators(); res.fail()) {
