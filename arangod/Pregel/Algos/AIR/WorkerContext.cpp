@@ -35,7 +35,7 @@ WorkerContext::WorkerContext(ProgrammablePregelAlgorithm const* algorithm)
   AccumulatorsDeclaration const& globalAccumulatorsDeclarations =
       _algo->options().globalAccumulators;
 
-  for (auto&& acc : globalAccumulatorsDeclarations) {
+  for (auto const& acc : globalAccumulatorsDeclarations) {
     _globalAccumulators.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
     _globalAccumulatorsUpdates.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
   }
