@@ -67,7 +67,7 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
 
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
 private:
- ProgrammablePregelAlgorithm const* _algo;
+  ProgrammablePregelAlgorithm const* _algo;
   greenspun::Machine _airMachine;
 
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
