@@ -329,7 +329,7 @@ greenspun::EvalResult VertexComputation::air_bindRef(greenspun::Machine& ctx,
     return res.error();
   }
   auto const& bindings = algorithm().options().bindings;
-  auto&& [bindId] = res.value();
+  auto const& [bindId] = res.value();
 
   if (auto iter = bindings.find(bindId); iter != std::end(bindings)) {
     result.add(iter->second.slice());
