@@ -183,7 +183,7 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
   if (res.fail()) {
     return res.error();
   }
-  auto&& [accumId, destination, value] = res.value();
+  auto const& [accumId, destination, value] = res.value();
   auto const& accums = algorithm().options().vertexAccumulators;
 
   if (auto i = accums.find(std::string{accumId}); i != accums.end()) {
