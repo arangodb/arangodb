@@ -397,8 +397,8 @@ WorkerContext const& VertexComputation::workerContext() const {
 }
 
 void VertexComputation::traceMessage(MessageData const* msg) {
-  auto&& options = _algorithm.options();
-  auto&& accumName = msg->_accumulatorName;
+  auto const& options = _algorithm.options();
+  auto const& accumName = msg->_accumulatorName;
 
   if (options.debug) {
     DebugInformation const& dinfo = options.debug.value();
