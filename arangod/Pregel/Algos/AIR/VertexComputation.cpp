@@ -424,16 +424,15 @@ void VertexComputation::traceMessage(MessageData const* msg) {
         auto phase = _algorithm.options().phases.at(phase_index);
 
         getReportManager()
-                .report(ReportLevel::INFO)
-                .with("pregel-id", pregelId())
-                .with("vertex", vertexData()._documentId)
-                .with("phase", phase.name)
-                .with("global-superstep", globalSuperstep())
-                .with("phase-step", phaseGlobalSuperstep())
-                .with("message", msg->_value.toJson())
-                .with("sender", msg->_sender)
-                .with("accumulator", accumName)
-            << "debug trace";
+            .report(ReportLevel::INFO)
+            .with("pregel-id", pregelId())
+            .with("vertex", vertexData()._documentId)
+            .with("phase", phase.name)
+            .with("global-superstep", globalSuperstep())
+            .with("phase-step", phaseGlobalSuperstep())
+            .with("message", msg->_value.toJson())
+            .with("sender", msg->_sender)
+            .with("accumulator", accumName);
       }
     }
   }
