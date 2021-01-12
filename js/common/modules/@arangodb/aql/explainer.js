@@ -1,5 +1,5 @@
 /* jshint strict: false, maxlen: 300 */
-/* global arango, ArangoClusterComm */
+/* global arango */
 
 var db = require('@arangodb').db,
   internal = require('internal'),
@@ -17,7 +17,7 @@ let uniqueValue = 0;
 
 const isCoordinator = function () {
   let isCoordinator = false;
-  if (typeof ArangoClusterComm === 'object') {
+  if (internal.isArangod()) {
     isCoordinator = require('@arangodb/cluster').isCoordinator();
   } else {
     try {

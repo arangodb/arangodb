@@ -46,7 +46,6 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-user-structures.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
@@ -333,18 +332,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     }
     events::CreateDatabase(dbName, res, exec);
     return res;
-  }
-
-  // Invalidate Foxx Queue database cache. We do not care if this fails,
-  // because the cache entry has a TTL
-  if (ServerState::instance()->isSingleServerOrCoordinator()) {
-    try {
-      auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
-      auto database = sysDbFeature.use();
-
-      TRI_ExpireFoxxQueueDatabaseCache(database.get());
-    } catch (...) {
-    }
   }
 
   events::CreateDatabase(dbName, res, exec);
