@@ -1080,8 +1080,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
   // We'll do one quick attempt at getting the keys on the leader.
   // We might receive the keys or a count of the keys. In the first case we continue
-  // with the sync. If we get a coument count, we'll estimate a pessimistic wait and
-  // repeat the call without a quick option.
+  // with the sync. If we get a document count, we'll estimate a pessimistic wait
+  // of roughly 1e9/day and repeat the call without a quick option.
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
   std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
                     "&to=" + std::to_string(maxTick) +
@@ -1105,8 +1105,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     // so we're sending the x-arango-async header here
     auto headers = replutils::createHeaders();
     headers[StaticStrings::Async] = "store";
-
-    LOG_DEVEL << ((quick) ? url + "&quick=true" : url);
 
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {

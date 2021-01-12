@@ -402,6 +402,9 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 }
 
 /// @brief produce list of keys for a specific collection
+/// If the call is made with option quick=true, and more than
+/// 1 million documents are counted for keys, we'll return only
+/// the document count, else, we proceed to deliver the keys.
 void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
   if (collection.empty()) {
