@@ -163,17 +163,19 @@ var initHelp = function () {
         internal.db._collections();
       });
     } catch (e) {}
-    
-    try {
-      let remoteVersion = arango.getVersion();
-      let [ourMajor, ourMinor] = internal.version.split('.');
-      let [remoteMajor, remoteMinor] = remoteVersion.split('.');
+   
+    if (arango && arango.isConnected()) {
+      try {
+        let remoteVersion = arango.getVersion();
+        let [ourMajor, ourMinor] = internal.version.split('.');
+        let [remoteMajor, remoteMinor] = remoteVersion.split('.');
 
-      if (remoteMajor !== ourMajor ||
-          (remoteMajor === ourMajor && remoteMinor > ourMinor)) {
-        internal.print("Client/server version mismatch detected. arangosh version: " + internal.version + ", server version: " + remoteVersion);
-      }
-    } catch (e) {}
+        if (remoteMajor !== ourMajor ||
+            (remoteMajor === ourMajor && remoteMinor > ourMinor)) {
+          internal.print("Client/server version mismatch detected. arangosh version: " + internal.version + ", server version: " + remoteVersion);
+        }
+      } catch (e) {}
+    }
   }
 
   if (internal.quiet !== true) {
