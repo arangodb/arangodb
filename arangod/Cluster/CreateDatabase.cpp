@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -66,6 +67,13 @@ bool CreateDatabase::first() {
   auto database = _description.get(DATABASE);
 
   LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
+
+  TRI_IF_FAILURE("CreateDatabase::first") {
+    // simulate DB creation failure
+    _result.reset(TRI_ERROR_DEBUG);
+    _feature.storeDBError(database, _result);
+    return false;
+  }
 
   try {
     DatabaseGuard guard(StaticStrings::SystemDatabase);
