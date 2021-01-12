@@ -38,8 +38,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/velocypack-aliases.h>
 

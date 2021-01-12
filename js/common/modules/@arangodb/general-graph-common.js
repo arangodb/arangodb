@@ -1,5 +1,4 @@
 /* jshint strict: false */
-/* global ArangoClusterComm */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Graph functionality
@@ -761,12 +760,12 @@ class Graph {
 
     // we can call the "fast" version of some edge functions if we are
     // running server-side and are not a coordinator
-    var useBuiltIn = (typeof ArangoClusterComm === 'object');
+    let useBuiltIn = require('internal').isArangod();
     if (useBuiltIn && require('@arangodb/cluster').isCoordinator()) {
       useBuiltIn = false;
     }
 
-    var self = this;
+    let self = this;
     // Create Hidden Properties
     createHiddenProperty(this, '__useBuiltIn', useBuiltIn);
     createHiddenProperty(this, '__name', info._key || info.name);

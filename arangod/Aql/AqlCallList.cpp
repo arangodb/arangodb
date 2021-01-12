@@ -91,7 +91,7 @@ AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall
 
 [[nodiscard]] auto AqlCallList::hasDefaultCalls() const noexcept -> bool {
   return _defaultCall.has_value();
-};
+}
 
 [[nodiscard]] auto AqlCallList::modifyNextCall() -> AqlCall& {
   TRI_ASSERT(hasMoreCalls());

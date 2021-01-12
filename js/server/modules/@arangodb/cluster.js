@@ -32,7 +32,6 @@ var console = require('console');
 var arangodb = require('@arangodb');
 var ArangoError = arangodb.ArangoError;
 var errors = require("internal").errors;
-var wait = require('internal').wait;
 var isEnterprise = require('internal').isEnterprise();
 var _ = require('lodash');
 
@@ -154,24 +153,6 @@ function shardDistribution () {
 }
 
 // /////////////////////////////////////////////////////////////////////////////
-// / @brief supervision state
-// /////////////////////////////////////////////////////////////////////////////
-
-function supervisionState () {
-  try {
-    var result = global.ArangoAgency.get('Target');
-    result = result.arango.Target;
-    var proj = { ToDo: result.ToDo, Pending: result.Pending,
-      Failed: result.Failed, Finished: result.Finished,
-    error: false };
-    return proj;
-  } catch (err) {
-    return { error: true, errorMsg: 'could not read /Target in agency',
-    exception: err };
-  }
-}
-
-// /////////////////////////////////////////////////////////////////////////////
 // / @brief wait for synchronous replication to settle
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -244,22 +225,6 @@ function endpoints() {
   }
 }
 
-function queryAgencyJob(id) {
-  let job = null;
-  let states = ["Finished", "Pending", "Failed", "ToDo"];
-  for (let s of states) {
-    try {
-      job = global.ArangoAgency.get('Target/' + s + '/' + id);
-      job = job.arango.Target[s];
-      if (Object.keys(job).length !== 0 && job.hasOwnProperty(id)) {
-        return {error: false, id, status: s, job: job[id]};
-      }
-    } catch (err) {
-    }
-  }
-  return {error: true, errorMsg: "Did not find job.", id, job: null};
-}
-
 exports.coordinatorId = coordinatorId;
 exports.isCluster = isCluster;
 exports.isCoordinator = isCoordinator;
@@ -268,7 +233,5 @@ exports.shardList = shardList;
 exports.status = status;
 exports.endpointToURL = endpointToURL;
 exports.shardDistribution = shardDistribution;
-exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
-exports.queryAgencyJob = queryAgencyJob;

@@ -80,8 +80,7 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCallList const& call);
 
-  // TODO: Remove me again, only used to fake DONE
-  [[deprecated]] auto empty() const noexcept -> bool {
+  auto empty() const noexcept -> bool {
     return _operations.empty();
   }
 

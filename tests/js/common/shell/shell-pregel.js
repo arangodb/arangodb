@@ -51,12 +51,14 @@ function testAlgo(a, p) {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
       let attrs = ["totalRuntime", "startupTime", "computationTime"];
-      if (p.store) {
-        attrs.push("storageTime");
+      if (p.store && stats.hasOwnProperty('storageTime')) {
+        assertEqual("number", typeof stats.storageTime);
+        assertTrue(stats.storageTime >= 0.0, stats);
       }
       attrs.forEach((k) => {
         assertTrue(stats.hasOwnProperty(k), { p, stats });
         assertEqual("number", typeof stats[k]);
+        assertTrue(stats[k] >= 0.0, stats);
       });
 
       db[vColl].all().toArray()
