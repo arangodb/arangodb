@@ -170,7 +170,6 @@ add_library(arango STATIC
   Basics/files.cpp
   Basics/fpconv.cpp
   Basics/hashes.cpp
-  Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
   Basics/process-utils.cpp
@@ -180,7 +179,6 @@ add_library(arango STATIC
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Basics/vector.cpp
   Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
