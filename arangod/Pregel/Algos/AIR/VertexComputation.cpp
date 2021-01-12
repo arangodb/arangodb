@@ -443,7 +443,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
   auto accumChanged = bool{false};
 
   for (const MessageData* msg : incomingMessages) {
-    auto&& accumName = msg->_accumulatorName;
+    auto const& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
     traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
