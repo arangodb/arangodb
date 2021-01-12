@@ -443,7 +443,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
   auto accumChanged = bool{false};
 
   for (const MessageData* msg : incomingMessages) {
-    auto&& accumName = msg->_accumulatorName;
+    auto const& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
     traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
@@ -462,7 +462,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
               .with(StaticStrings::AccumulatorName, accumName)
           << "in phase `" << phase.name << "` processing incoming messages for accumulator `"
           << accumName << "` failed: " << res.error().toString();
-      return std::move(res.error());
+      return std::move(res).error();
     }
 
     accumChanged |= res.value() == AccumulatorBase::UpdateResult::CHANGED;
@@ -523,11 +523,6 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algorithm.options().phases.at(phase_index);
-
-  /*LOG_DEVEL << "running phase " << phase.name
-            << " superstep = " << phaseGlobalSuperstep()
-            << " global superstep = " << globalSuperstep() << " at vertex "
-            << vertexData()._vertexId;*/
 
   std::size_t phaseStep = phaseGlobalSuperstep();
 
