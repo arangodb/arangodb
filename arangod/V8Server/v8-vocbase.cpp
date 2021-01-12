@@ -2271,7 +2271,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                           vocbase.server().getFeature<DatabaseFeature>().useOldSystemCollections()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
-  // a thread-global variable that will is supposed to contain the AQL module
+  // a thread-global variable that will contain the AQL module.
   // do not remove this, otherwise AQL queries will break
   context->Global()
       ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "_AQL"),
