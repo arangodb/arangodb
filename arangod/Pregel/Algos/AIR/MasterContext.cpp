@@ -317,6 +317,7 @@ void MasterContext::serializeValues(VPackBuilder& msg) {
       if (auto result = acc.second->finalizeIntoBuilder(msg); result.fail()) {
         std::string err = "AIR MasterContext, error serializing global accumulator ";
         err += acc.first;
+        err += ": ";
         err += result.error().toString();
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR, err);
       }
