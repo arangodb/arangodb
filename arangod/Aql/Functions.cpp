@@ -6976,9 +6976,9 @@ AqlValue Functions::BitXOr(ExpressionContext* expressionContext, AstNode const& 
   });
 }
 
-/// @brief function BIT_COUNT
-AqlValue Functions::BitCount(ExpressionContext* expressionContext, AstNode const& node,
-                             VPackFunctionParameters const& parameters) {
+/// @brief function BIT_POPCOUNT
+AqlValue Functions::BitPopcount(ExpressionContext* expressionContext, AstNode const& node,
+                                VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (value.isNumber()) {
@@ -7001,7 +7001,7 @@ AqlValue Functions::BitCount(ExpressionContext* expressionContext, AstNode const
     }
   }
 
-  static char const* AFN = "BIT_COUNT";
+  static char const* AFN = "BIT_POPCOUNT";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }

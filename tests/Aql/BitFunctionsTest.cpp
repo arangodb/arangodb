@@ -359,8 +359,8 @@ TEST(BitFunctionsTest, BitXOr) {
   ASSERT_EQ(int64_t(98576986871), evaluate(node, "[null, 84790232, null, 88623582851, null, 79884822, null, 27781056, 9960235642]"));
 }
 
-TEST(BitFunctionsTest, BitCount) {
-  arangodb::aql::Function f("BIT_COUNT", &Functions::BitCount);
+TEST(BitFunctionsTest, BitPopcount) {
+  arangodb::aql::Function f("BIT_POPCOUNT", &Functions::BitCount);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
   

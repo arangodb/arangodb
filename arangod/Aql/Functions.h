@@ -427,8 +427,8 @@ struct Functions {
                         VPackFunctionParameters const&);
   static AqlValue BitXOr(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParameters const&);
-  static AqlValue BitCount(arangodb::aql::ExpressionContext*, AstNode const&,
-                           VPackFunctionParameters const&);
+  static AqlValue BitPopcount(arangodb::aql::ExpressionContext*, AstNode const&,
+                              VPackFunctionParameters const&);
   static AqlValue Rand(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const&);
   static AqlValue FirstDocument(arangodb::aql::ExpressionContext*,

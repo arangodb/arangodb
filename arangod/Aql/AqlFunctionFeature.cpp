@@ -241,7 +241,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"BIT_AND", ".", flags, &Functions::BitAnd});
   add({"BIT_OR", ".", flags, &Functions::BitOr});
   add({"BIT_XOR", ".", flags, &Functions::BitXOr});
-  add({"BIT_COUNT", ".", flags, &Functions::BitCount});
+  add({"BIT_POPCOUNT", ".", flags, &Functions::BitPopcount});
 
   // special flags:
   // not deterministic and not cacheable
