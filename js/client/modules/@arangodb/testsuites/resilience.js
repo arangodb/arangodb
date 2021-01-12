@@ -81,6 +81,7 @@ var _resilience = function(path) {
     return tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
+      'javascript.allow-admin-execute': 'true',
     });
   };
 };
@@ -109,6 +110,7 @@ function clientResilience (options) {
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
+    'javascript.allow-admin-execute': 'true',
   });
 }
 
@@ -137,6 +139,7 @@ function activeFailover (options) {
     'server.jwt-secret': 'haxxmann',
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
+    'javascript.allow-admin-execute': 'true',
   });
 }
 

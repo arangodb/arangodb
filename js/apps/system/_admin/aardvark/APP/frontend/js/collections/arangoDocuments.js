@@ -232,7 +232,8 @@
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
-        query += ' SORT x.' + this.getSort();
+        query += ' SORT x.@sortAttribute';
+        bindVars.sortAttribute = this.getSort();
       }
 
       if (bindVars.count !== 'all') {
@@ -343,8 +344,9 @@
       query = 'FOR x in @@collection';
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < this.MAX_SORT && this.getSort().length > 0) {
-        query += ' SORT x.' + this.getSort();
+      if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
+        query += ' SORT x.@sortAttribute';
+        bindVars.sortAttribute = this.getSort();
       }
 
       query += ' RETURN x';
