@@ -1602,31 +1602,26 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
     _type(type),
     _refCount(0),
     _isOwnAppsDirectory(true),
-    _deadlockDetector(false),
-    _userStructures(nullptr) {
+    _deadlockDetector(false) {
 
   TRI_ASSERT(_info.valid());
 
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
     QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
-    _queries.reset(new arangodb::aql::QueryList(feature));
+    _queries = std::make_unique<arangodb::aql::QueryList>(feature);
   }
-  _cursorRepository.reset(new arangodb::CursorRepository(*this));
-  _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
+  _cursorRepository = std::make_unique<arangodb::CursorRepository>(*this);
+  _replicationClients = std::make_unique<arangodb::ReplicationClientsProgressTracker>();
 
   // init collections
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
-  TRI_CreateUserStructuresVocBase(this);
+  _cacheData = std::make_unique<arangodb::DatabaseJavaScriptCache>();
 }
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
-  if (_userStructures != nullptr) {
-    TRI_FreeUserStructuresVocBase(this);
-  }
-
   // do a final cleanup of collections
   for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
     try {  // simon: this status lock is terrible software design
