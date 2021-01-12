@@ -34,7 +34,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <iostream>
 #include <typeinfo>
 
 using namespace arangodb;
@@ -294,7 +293,6 @@ static std::shared_ptr<VPackBuilder> runEnforceReplication(Node const& snap) {
     arangodb::consensus::enforceReplicationFunctional(
       snap, jobId, envelope);
   }
-  std::cout << envelope->slice().toString() << std::endl;
   return envelope;
 }
 
