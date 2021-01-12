@@ -405,7 +405,7 @@ void VertexComputation::traceMessage(MessageData const* msg) {
     if (auto iter = dinfo.traceMessages.find(vertexData()._documentId);
         iter != dinfo.traceMessages.end()) {
       bool traceMessage = true;
-      auto& traceOptions = iter->second;
+      auto const& traceOptions = iter->second;
       if (traceOptions.filter) {
         TraceMessagesFilterOptions const& filterOptions = traceOptions.filter.value();
         if (!filterOptions.byAccumulator.empty() &&
