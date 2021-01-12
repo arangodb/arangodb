@@ -3,8 +3,11 @@
  */
 #ifdef __SSE4_1__
 #include "simdintegratedbitpacking.h"
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <sse2neon.h>
+#else
 #include <smmintrin.h>
-
+#endif
 
 SIMDCOMP_ALIGNED(16) int8_t shuffle_mask_bytes[256] = {
 		0,1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,
