@@ -462,7 +462,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
               .with(StaticStrings::AccumulatorName, accumName)
           << "in phase `" << phase.name << "` processing incoming messages for accumulator `"
           << accumName << "` failed: " << res.error().toString();
-      return std::move(res.error());
+      return std::move(res).error();
     }
 
     accumChanged |= res.value() == AccumulatorBase::UpdateResult::CHANGED;
