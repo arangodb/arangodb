@@ -36,13 +36,15 @@
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <fuerte/types.h>
 
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace network {

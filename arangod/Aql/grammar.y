@@ -388,6 +388,9 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> collect_variable_list;
 %type <node> keep;
 %type <node> aggregate;
+%type <node> aggregate_list;
+%type <node> aggregate_element;
+%type <node> aggregate_function_call;
 %type <node> collect_optional_into;
 %type <strval> count_into;
 %type <node> expression;
@@ -817,6 +820,7 @@ collect_statement:
 
       ::startCollectScope(scopes);
 
+      // in the AST this is transformed to COLLECT AGGREGATE var = COUNT()
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
     }
@@ -829,6 +833,7 @@ collect_statement:
         ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
+      // in the AST this is transformed to COLLECT var = expr AGGREGATE var = COUNT()
       auto node = parser->ast()->createNodeCollectCount($1, $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
     }
@@ -1031,9 +1036,34 @@ aggregate:
     T_AGGREGATE {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-    } collect_list {
+    } aggregate_list {
       auto list = static_cast<AstNode*>(parser->popStack());
       $$ = list;
+    }
+  ;
+
+aggregate_list:
+    aggregate_element {
+    }
+  | aggregate_list T_COMMA aggregate_element {
+    }
+  ;
+
+aggregate_element:
+    variable_name T_ASSIGN aggregate_function_call {
+      auto node = parser->ast()->createNodeAssign($1.value, $1.length, $3);
+      parser->pushArrayElement(node);
+    }
+  ;
+
+aggregate_function_call:
+    function_name T_OPEN {
+      parser->pushStack($1.value);
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
+      auto list = static_cast<AstNode const*>(parser->popStack());
+      $$ = parser->ast()->createNodeAggregateFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
   ;
 

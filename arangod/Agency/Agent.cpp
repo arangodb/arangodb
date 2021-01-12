@@ -589,7 +589,7 @@ void Agent::sendAppendEntriesRPC() {
       // also the log entry which produced that snapshot.
       // Therefore, we will set lastConfirmed to one less than our latest
       // snapshot in this special case, and we will always fetch enough
-      // entries from the log to fulfull our duties.
+      // entries from the log to fulfill our duties.
 
       if ((steady_clock::now() - earliestPackage).count() < 0 ||
           _state.lastIndex() <= lastConfirmed) {
