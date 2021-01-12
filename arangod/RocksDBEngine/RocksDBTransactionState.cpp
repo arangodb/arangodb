@@ -146,8 +146,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     }
     _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
   } else {
-
     createTransaction();
+    TRI_ASSERT(_rocksTransaction != nullptr);
+
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
     if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
       TRI_ASSERT(_options.intermediateCommitCount != UINT64_MAX ||
