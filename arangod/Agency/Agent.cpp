@@ -969,12 +969,13 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
     duration_cast<milliseconds>(duration<double>(timeout));
 
   try {
-    auto res = _promises.emplace(tp, futures::Promise<query_t>());
+    auto&& [f, p] = futures::makePromise<query_t>();
+    _promises.emplace(tp, std::move(p));
     if (_lowestPromise > index) {
       _lowestPromise = index;
     }
     return std::tuple<futures::Future<query_t>, bool, std::string>{
-      res->second.getFuture(), true, std::string()};
+      std::move(f), true, std::string()};
   } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "Failed to add promise for polling");

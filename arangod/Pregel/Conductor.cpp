@@ -414,8 +414,8 @@ void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
   bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool { 
-        return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); 
+      [this]() -> bool {
+        return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL);
       }, Logger::PREGEL, "cancel worker execution");
   if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
@@ -595,7 +595,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
         b.add(pair.key.copyString(), pair.value);
       }
     }
-    
+
     // edge collection restrictions
     b.add(Utils::edgeCollectionRestrictionsKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : _edgeCollectionRestrictions) {
@@ -624,7 +624,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       }
       b.close();
     }
-    
+
     b.close();
     b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : collectionPlanIdMap) {
@@ -637,7 +637,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     }
     b.close();
     b.close();
-  
+
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
@@ -663,22 +663,22 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
 
       return TRI_ERROR_NO_ERROR;
     } else {
-      
+
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
-      
+
       responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                                                   path, std::move(buffer), reqOpts));
-      
+
       LOG_TOPIC("6ae66", DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
   }
-  
+
   size_t nrGood = 0;
-  futures::collectAll(responses).thenValue([&nrGood](auto const& results) {
+  futures::collectAll(responses).then([&nrGood](std::vector<futures::Try<network::Response>>&& results) {
     for (auto const& tryRes : results) {
-      network::Response const& r = tryRes.get();  // throws exceptions upwards
+      network::Response const& r = tryRes.unwrap();  // throws exceptions upwards
       if (r.ok() && r.statusCode() < 400) {
         nrGood++;
       } else {
@@ -686,8 +686,8 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
           << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
       }
     }
-  }).wait();
-  
+  }).await(mellon::yes_i_know_that_this_call_will_block);
+
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
@@ -865,14 +865,14 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     }
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   if (_dbServers.size() == 0) {
     LOG_TOPIC("a14fa", WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
 
   std::string base = Utils::baseUrl(Utils::workerPrefix);
-  
+
   VPackBuffer<uint8_t> buffer;
   buffer.append(message.slice().begin(), message.slice().byteSize());
 
@@ -880,20 +880,20 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   reqOpts.database = _vocbaseGuard.database().name();
   reqOpts.timeout = network::Timeout(5.0 * 60.0);
   reqOpts.skipScheduler = true;
-  
+
   auto const& nf = _vocbaseGuard.database().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   std::vector<futures::Future<network::Response>> responses;
-  
+
   for (auto const& server : _dbServers) {
     responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                                                 base + path, buffer, reqOpts));
   }
-  
+
   size_t nrGood = 0;
-  futures::collectAll(responses).thenValue([&](auto results) {
-    for (auto const& tryRes : results) {
-       network::Response const& res = tryRes.get();  // throws exceptions upwards
+  futures::collectAll(responses).thenValue([&](auto&& vec) {
+    for (auto const& tryRes : vec) {
+       network::Response const& res = tryRes.unwrap();  // throws exceptions upwards
       if (res.ok() && res.statusCode() < 400) {
         nrGood++;
         if (handle) {
@@ -901,8 +901,8 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
         }
       }
     }
-  }).wait();
-  
+  }).await(mellon::yes_i_know_that_this_call_will_block);
+
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 

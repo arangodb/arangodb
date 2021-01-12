@@ -41,6 +41,7 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/vocbase.h"
 
+#include <Futures/Utilities.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -51,7 +52,7 @@ using namespace arangodb;
 using namespace arangodb::methods;
 
 namespace {
-enum class QueriesMode { Current, Slow }; 
+enum class QueriesMode { Current, Slow };
 
 network::Headers buildHeaders() {
   auto auth = AuthenticationFeature::instance();
@@ -85,12 +86,12 @@ arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
 
 /// @brief return the list of currently running or slow queries
 arangodb::Result getQueries(TRI_vocbase_t& vocbase,
-                            velocypack::Builder& out, 
+                            velocypack::Builder& out,
                             QueriesMode mode,
-                            bool allDatabases, 
+                            bool allDatabases,
                             bool fanout) {
   Result res = checkAuthorization(vocbase, allDatabases);
-  
+
   if (res.fail()) {
     return res;
   }
@@ -100,7 +101,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
   arangodb::DatabaseFeature& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
 
   std::vector<arangodb::aql::QueryEntryCopy> queries;
-  
+
   // local case
   if (mode == QueriesMode::Slow) {
     // slow queries
@@ -130,11 +131,11 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
 
   // build the result
   out.openArray();
-  
+
   for (auto const& q : queries) {
     q.toVelocyPack(out);
   }
-  
+
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
     NetworkFeature const& nf = vocbase.server().getFeature<NetworkFeature>();
@@ -150,7 +151,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
     options.database = vocbase.name();
     options.param("local", "true");
     options.param("all", allDatabases ? "true" : "false");
-    
+
     std::string const url = std::string("/_api/query/") + (mode == QueriesMode::Slow ? "slow" : "current");
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -168,7 +169,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
     if (!futures.empty()) {
       auto responses = futures::collectAll(futures).get();
       for (auto const& it : responses) {
-        auto& resp = it.get();
+        auto& resp = it.unwrap();
         res.reset(resp.combinedResult());
         if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
           // it is expected in a multi-coordinator setup that a coordinator is not
@@ -187,15 +188,15 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
         }
       }
     }
-  } 
-  
+  }
+
   out.close();
 
   return res;
 }
 
 } // namespace
-  
+
 /// @brief return the list of slow queries
 Result Queries::listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout) {
   return getQueries(vocbase, out, QueriesMode::Slow, allDatabases, fanout);
@@ -205,7 +206,7 @@ Result Queries::listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool 
 Result Queries::listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout) {
   return getQueries(vocbase, out, QueriesMode::Current, allDatabases, fanout);
 }
-  
+
 /// @brief clears the list of slow queries
 Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout) {
   Result res;
@@ -222,7 +223,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
       return res.reset(TRI_ERROR_FORBIDDEN,
                        "only superusers may retrieve the list of queries for all databases");
     }
-      
+
     arangodb::DatabaseFeature& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
     databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
       vocbase->queryList()->clearSlow();
@@ -264,7 +265,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
     if (!futures.empty()) {
       auto responses = futures::collectAll(futures).get();
       for (auto const& it : responses) {
-        auto& resp = it.get();
+        auto& resp = it.unwrap();
         res.reset(resp.combinedResult());
         if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
           // it is expected in a multi-coordinator setup that a coordinator is not
@@ -284,7 +285,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
 /// @brief kills the given query
 Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabases) {
   Result res = checkAuthorization(vocbase, allDatabases);
-  
+
   if (res.ok()) {
     if (allDatabases) {
       arangodb::DatabaseFeature& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();

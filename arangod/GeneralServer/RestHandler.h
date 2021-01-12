@@ -146,17 +146,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template <typename T>
-  RestStatus waitForFuture(futures::Future<T>&& f) {
-    if (f.isReady()) {             // fast-path out
-      f.result().throwIfFailed();  // just throw the error upwards
-      return RestStatus::DONE;
-    }
+  template <typename F>
+  RestStatus waitForFuture(F&& f) {
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
+    std::forward<F>(f).thenFinal([self = shared_from_this(), &done](auto&& t) noexcept -> void {
       auto thisPtr = self.get();
-      if (t.hasException()) {
-        thisPtr->handleExceptionPtr(std::move(t).exception());
+      if (t.has_error()) {
+        thisPtr->handleExceptionPtr(std::forward<decltype(t)>(t).error());
       }
       if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;

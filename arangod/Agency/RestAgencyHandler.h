@@ -26,7 +26,6 @@
 
 #include "Agency/Agent.h"
 #include "Futures/Future.h"
-#include "Futures/Unit.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {

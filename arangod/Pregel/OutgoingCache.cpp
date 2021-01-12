@@ -92,11 +92,11 @@ void ArrayOutCache<M>::flushMessages() {
   VPackOptions options = VPackOptions::Defaults;
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
-    
+
   application_features::ApplicationServer& server = this->_config->vocbase()->server();
   auto const& nf = server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = this->_config->database();
   reqOpts.skipScheduler = true;
@@ -136,13 +136,13 @@ void ArrayOutCache<M>::flushMessages() {
     data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    
+
     responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
                                                 this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
   }
-  
-  futures::collectAll(responses).wait();
-  
+
+  futures::collectAll(responses).await(mellon::yes_i_know_that_this_call_will_block);
+
   this->_removeContainedMessages();
 }
 
@@ -242,19 +242,19 @@ void CombiningOutCache<M>::flushMessages() {
     data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    
+
     network::RequestOptions reqOpts;
     reqOpts.database = this->_config->database();
     reqOpts.timeout = network::Timeout(180);
     reqOpts.skipScheduler = true;
-    
+
     responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
                                                 this->_baseUrl + Utils::messagesPath, std::move(buffer),
                                                 reqOpts));
   }
-  
-  futures::collectAll(responses).wait();
-  
+
+  futures::collectAll(responses).await(mellon::yes_i_know_that_this_call_will_block);
+
   _removeContainedMessages();
 }
 

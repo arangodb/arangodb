@@ -363,7 +363,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
         Agent* agent = _agent;
         try {
           network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, *buffer, reqOpts).thenValue(
-            [=](network::Response r) {
+            [=, url = url](network::Response r) {
                 if (r.fail()) {
                   LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
                       << url << "(no response, " << fuerte::to_string(r.error)
@@ -661,7 +661,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   if (!query.isArray()) {
     return false;
   }
-  
+
   std::vector<std::string> query_strs;
   for (auto const& sub_query : VPackArrayIterator(query)) {
     query_strs.emplace_back(sub_query.copyString());

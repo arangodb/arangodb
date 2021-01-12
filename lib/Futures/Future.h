@@ -37,109 +37,10 @@ using Unit = void;
 
 template <typename T>
 using Try = ::expect::expected<T>;
-
-template <typename T, typename future_type = ::mellon::future<Try<T>, arangodb_tag>>
-struct Future;
-template <typename T, typename G, typename S, typename future_type = ::mellon::future_temporary<Try<T>, G, Try<S>, arangodb_tag>>
-struct FutureTemporary;
-
-template <typename T>
-auto wrap_future(::mellon::future<Try<T>, arangodb_tag>&& f) -> Future<T>;
-template <typename T, typename F, typename R>
-auto wrap_future(::mellon::future_temporary<Try<T>, F, Try<R>, arangodb_tag>&& f) -> FutureTemporary<T, F, R>;
-
-template <typename T, typename future_type>
-struct Future : future_type {
-  using ::mellon::future<Try<T>, arangodb_tag>::future;
-  explicit Future(future_type&& o) noexcept : future_type(std::move(o)) {}
-
-  template <typename F, typename U = T, typename R = std::invoke_result_t<F, U&&>>
-  auto thenValue(F&& f) && {
-    return wrap_future(std::move(self()).then([f = std::forward<F>(f)](T&& t) -> R {
-      return std::invoke(f, std::move(t));
-    }));
-  }
-
-  template <typename F, typename U = T, std::enable_if_t<std::is_void_v<U>, int> = 0,
-            typename R = std::invoke_result_t<F>>
-  auto thenValue(F&& f) && {
-    return wrap_future(std::move(self()).then([f = std::forward<F>(f)](T&& t) -> R {
-      return std::invoke(f, std::move(t));
-    }));
-  }
-
-  auto get() {
-    return std::move(self()).await_unwrap();
-  }
-
- private:
-  future_type& self() { return *this; }
-};
-
-
-template <typename T, typename G, typename S, typename future_type>
-struct FutureTemporary : future_type {
-  using ::mellon::future_temporary<Try<T>, G, Try<S>, arangodb_tag>::future_temporary;
-  explicit FutureTemporary(future_type&& o) noexcept : future_type(std::move(o)) {}
-
-  template <typename F, typename U = T, typename R = std::invoke_result_t<F, U&&>>
-  auto thenValue(F&& f) && {
-    return wrap_future(std::move(self()).then([f = std::forward<F>(f)](T&& t) -> R {
-      return std::invoke(f, std::move(t));
-    }));
-  }
-
-  template <typename F, typename U = T, std::enable_if_t<std::is_void_v<U>, int> = 0,
-      typename R = std::invoke_result_t<F>>
-  auto thenValue(F&& f) && {
-    return wrap_future(std::move(self()).then([f = std::forward<F>(f)](T&& t) -> R {
-      return std::invoke(f, std::move(t));
-    }));
-  }
-
-  /* implicit */ operator Future<S>() && noexcept {
-    return Future<S>(std::move(*this).finalize());
-  }
-
- private:
-  future_type& self() { return *this; }
-};
-
-template <typename T, typename promise_type = ::mellon::promise<Try<T>, arangodb_tag>>
-struct Promise : promise_type {
-  template <typename... Args>
-  auto setValue(Args&&... args) {
-    std::move(self()).fulfill(std::in_place, std::forward<Args>(args)...);
-  }
-
-  explicit Promise(promise_type&& o) noexcept : promise_type(std::move(o)) {}
-
- private:
-  promise_type& self() { return *this; }
-};
-
-template <typename T>
-auto makePromise() {
-  auto&& [f, p] = ::mellon::make_promise<Try<T>, arangodb_tag>();
-  return std::make_pair(Future<T>(std::move(f)), Promise<T>(std::move(p)));
-}
-
-template <typename T>
-auto makeFuture(T && t) {
-  return Future<T>{std::in_place, std::forward<T>(t)};
-}
-auto makeFuture() {
-  return Future<void>{std::in_place};
-}
-
-template <typename T>
-auto wrap_future(::mellon::future<Try<T>, arangodb_tag>&& f) -> Future<T> {
-  return Future<T>(std::move(f));
-}
-template <typename T, typename F, typename R>
-auto wrap_future(::mellon::future_temporary<T, F, Try<R>, arangodb_tag>&& f) {
-  return FutureTemporary<T, F, R>(std::move(f));
-}
+template<typename T>
+using Future = ::mellon::future<Try<T>, arangodb_tag>;
+template<typename T>
+using Promise = ::mellon::promise<Try<T>, arangodb_tag>;
 
 }  // namespace arangodb::futures
 
@@ -184,17 +85,64 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   };
 
   static constexpr auto small_value_size = 1024;
-  /* */
+  static constexpr bool disable_temporaries = false;
+
+  template<typename T, template<typename> typename Fut>
+  struct user_defined_additions;
+  template<typename T, template<typename> typename Fut>
+  struct user_defined_additions<arangodb::futures::Try<T>, Fut> {
+
+    template<typename F>
+    auto thenValue(F&&f) && noexcept {
+      return std::move(self()).then(std::forward<F>(f));
+    }
+
+    template<typename F>
+    auto thenFinal(F && f) && noexcept {
+      return std::move(self()).finally(std::forward<F>(f));
+    }
+
+    template<typename E, typename F>
+    auto thenError(F&& f) && noexcept {
+      return std::move(self()).template catch_error<E>(std::forward<F>(f));
+    }
+
+    auto get() {
+      return std::move(self()).await_unwrap();
+    }
+
+   private:
+    using future_type = Fut<arangodb::futures::Try<T>>;
+    future_type& self() { return static_cast<future_type&>(*this); }
+  };
+
+  template<typename T>
+  struct user_defined_promise_additions {
+
+    void setValue(T t) {
+      std::move(self()).fulfill(std::move(t));
+    }
+
+   private:
+    using promise_type = mellon::promise<T, arangodb::futures::arangodb_tag>;
+    promise_type& self() { return static_cast<promise_type&>(*this); }
+  };
 };
 
+namespace arangodb::futures {
+auto makeFuture() -> Future<Unit> {
+  return Future<Unit>{std::in_place};
+}
 template<typename T>
-struct mellon::future_trait<arangodb::futures::Future<T>> {
-  using value_type = arangodb::futures::Try<T>;
-  using tag_type = arangodb::futures::arangodb_tag;
-};
-
+auto makeFuture(T t) -> Future<T> {
+  return Future<T>{std::in_place, std::move(t)};
+}
 
 template<typename T>
-struct mellon::is_future<arangodb::futures::Future<T>> : std::true_type {};
+auto makePromise() -> std::pair<Future<T>, Promise<T>> {
+  return ::mellon::make_promise<Try<T>, arangodb_tag>();
+}
+
+}
 
 #endif  // ARANGOD_FUTURES_FUTURE_H

@@ -848,7 +848,7 @@ arangodb::Result visitAnalyzers(
             buffer,
             reqOpts);
 
-      auto& response = f.get();
+      auto const& response = f.get();
 
       if (response.error == arangodb::fuerte::Error::RequestTimeout) {
         // timeout, try another coordinator

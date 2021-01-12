@@ -28,13 +28,22 @@
 
 namespace arangodb::futures {
 
-template<typename T>
-auto collectAll(std::vector<Future<T>> &v) {
-  return wrap_future(mellon::collect(v.begin(), v.end()).and_then([](auto&& v) noexcept {
-    return Try<std::decay_t<decltype(v)>>(std::move(v));
-  }).finalize());
+template <typename T>
+auto collectAll(std::vector<Future<T>>& v) {
+  return mellon::collect(v.begin(), v.end()).and_then([](auto&& r) mutable noexcept {
+    // and now wrap this into a expected (this is cheap because of temporaries)
+    return Try<std::vector<Try<T>>>(std::forward<decltype(r)>(r));
+  });
 }
 
+template <typename T>
+auto collectAll(std::vector<Future<T>>&& v) {
+  return mellon::collect(v.begin(), v.end()).and_then([](auto&& r) mutable noexcept {
+    // and now wrap this into a expected (this is cheap because of temporaries)
+    return Try<std::vector<Try<T>>>(std::forward<decltype(r)>(r));
+  });
 }
+
+}  // namespace arangodb::futures
 
 #endif

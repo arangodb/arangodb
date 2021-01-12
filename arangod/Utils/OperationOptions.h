@@ -50,10 +50,10 @@ struct OperationOptions {
     Update,   // (partially) update the target document
     Ignore    // keep the target document unmodified (no writes)
   };
-  
+
   OperationOptions();
   explicit OperationOptions(ExecContext const&);
-  
+
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
 #ifndef _WIN32
@@ -63,28 +63,28 @@ struct OperationOptions {
   bool isOverwriteModeSet() const {
     return (overwriteMode != OverwriteMode::Unknown);
   }
-  
+
   bool isOverwriteModeUpdateReplace() const {
     return (overwriteMode == OverwriteMode::Update || overwriteMode == OverwriteMode::Replace);
   }
-  
+
   /// @brief stringifies the overwrite mode
   static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode);
 
   /// @brief determine the overwrite mode from the string value
   static OverwriteMode determineOverwriteMode(velocypack::StringRef value);
-  
+
  public:
-  
+
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
- 
+
   IndexOperationMode indexOperationMode;
 
-  // INSERT ... OPTIONS { overwrite: true } behavior: 
+  // INSERT ... OPTIONS { overwrite: true } behavior:
   // - replace an existing document, update an existing document, or do nothing
   OverwriteMode overwriteMode;
 
@@ -132,6 +132,8 @@ struct OperationOptions {
 private:
   ExecContext const* _context;
 };
+
+static_assert(std::is_nothrow_move_constructible_v<OperationOptions>);
 
 }  // namespace arangodb
 

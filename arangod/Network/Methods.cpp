@@ -294,12 +294,13 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(ConnectionPool* pool, DestinationId&& destination, RestVerb type,
+  RequestsState(ConnectionPool* pool, futures::Promise<network::Response>&& promise, DestinationId&& destination, RestVerb type,
                 std::string&& path, velocypack::Buffer<uint8_t>&& payload,
                 Headers&& headers, RequestOptions const& options)
       : _destination(std::move(destination)),
         _options(options),
         _pool(pool),
+        _promise(std::move(promise)),
         _startTime(std::chrono::steady_clock::now()),
         _endTime(_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                                   options.timeout)) {
@@ -326,7 +327,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   fuerte::Error _tmp_err;
 
  public:
-  FutureRes future() { return _promise.getFuture(); }
 
   // scheduler requests that are due
   void startRequest() {
@@ -542,11 +542,12 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
         << "request to '" << destination << "' '" << fuerte::to_string(type)
         << " " << path << "'";
 
-    auto rs = std::make_shared<RequestsState>(pool, std::move(destination), type,
+    auto&&[f, p] = futures::makePromise<Response>();
+    auto rs = std::make_shared<RequestsState>(pool, std::move(p), std::move(destination), type,
                                               std::move(path), std::move(payload),
                                               std::move(headers), options);
     rs->startRequest();  // will auto reference itself
-    return rs->future();
+    return std::move(f);
 
   } catch (std::exception const& e) {
     LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)
