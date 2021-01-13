@@ -38,6 +38,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -115,7 +116,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
           !collection.system() &&
           basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::CacheEnabled, false) &&
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
-      _numIndexCreations(0) {
+      _numIndexCreations(0),
+      _statistics(
+        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
     createCache();
@@ -129,7 +132,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cacheEnabled(
           static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
-      _numIndexCreations(0) {
+      _numIndexCreations(0),
+      _statistics(
+        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
   if (_cacheEnabled) {
     createCache();
   }
@@ -680,6 +685,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     _meta.adjustNumberDocuments(seq, /*revision*/ newRevisionId(),
                                 -static_cast<int64_t>(numDocs));
 
+    _statistics._numWrite.count(numDocs);
+
     {
       READ_LOCKER(idxGuard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -714,7 +721,9 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
-  state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
+  auto const tmp = std::min<uint64_t>(prvICC, 10000);
+  state->options().intermediateCommitCount = tmp;
+  _statistics._numWrite.count(tmp);
 
   uint64_t found = 0;
   VPackBuilder docBuffer;
@@ -831,7 +840,12 @@ Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
                                IndexIterator::DocumentCallback const& cb) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  
+  ++_statistics._numRead;
+
+  using namespace std::chrono;
+  using clock = steady_clock;
+  auto start = clock::now();
+
   rocksdb::PinnableSlice ps;
   Result res;
   do {
@@ -847,6 +861,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
+  _statistics._rocksdb_read_msec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -854,6 +869,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb) const {
+  ++_statistics._numRead;
   return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
 }
 
@@ -861,6 +877,14 @@ bool RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
+  ++_statistics._numRead;
+
+  using namespace std::chrono;
+  using clock = steady_clock;
+  auto start = clock::now();
+
+  bool ret = false;
+
   if (documentId.isSet()) {
     std::string* buffer = result.setManaged();
     rocksdb::PinnableSlice ps(buffer);
@@ -869,18 +893,29 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       if (ps.IsPinned()) {
         buffer->assign(ps.data(), ps.size());
       } // else value is already assigned
-      return true;
+      ret = true;;
     }
   }
-  return false;
+  _statistics._rocksdb_read_msec.count(duration<float,std::micro>(clock::now() - start).count());
+  return ret;
 }
 
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
-  bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
+  if (options.isSynchronousReplicationFrom.empty()) {
+    ++_statistics._numWrite;
+  } else {
+    ++_statistics._numReplicate;
+  }
+
+  using namespace std::chrono;
+  using clock = steady_clock;
+  auto start = clock::now();
+
+  bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   RevisionId revisionId;
   Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
@@ -891,8 +926,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   VPackSlice newSlice = builder->slice();
 
-  if (options.validate && 
-      !options.isRestore && 
+  if (options.validate &&
+      !options.isRestore &&
       options.isSynchronousReplicationFrom.empty()) {
     // only do schema validation when we are not restoring/replicating
     res = _logicalCollection.validate(newSlice, trx->transactionContextPtr()->getVPackOptions());
@@ -901,15 +936,15 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       return res;
     }
   }
-    
-  
+
+
   int r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection, newSlice);
 
   if (r != TRI_ERROR_NO_ERROR) {
     res.reset(r);
     return res;
   }
-        
+
 
   LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
 
@@ -944,6 +979,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
+  _statistics._rocksdb_insert_msec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -951,6 +987,17 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
+
+  if (options.isSynchronousReplicationFrom.empty()) {
+    ++_statistics._numWrite;
+  } else {
+    ++_statistics._numReplicate;
+  }
+
+  using namespace std::chrono;
+  using clock = steady_clock;
+  auto start = clock::now();
+
   Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
@@ -991,6 +1038,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     TRI_ASSERT(!resultMdr.empty());
 
     trackWaitForSync(trx, options);
+    _statistics._rocksdb_update_msec.count(duration<float,std::micro>(clock::now() - start).count());
     return res;
   }
 
@@ -1063,6 +1111,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
 
     guard.finish(hasPerformedIntermediateCommit);
   }
+  _statistics._rocksdb_update_msec.count(duration<float,std::micro>(clock::now() - start).count());
 
   return res;
 }
@@ -1071,7 +1120,20 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+
+  ++_statistics._numRead;
+
+  if (options.isSynchronousReplicationFrom.empty()) {
+    ++_statistics._numWrite;
+  } else {
+    ++_statistics._numReplicate;
+  }
+
   Result res;
+
+  using namespace std::chrono;
+  using clock = steady_clock;
+  auto start = clock::now();
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1175,6 +1237,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
+  _statistics._rocksdb_replace_msec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -1182,6 +1245,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
   VPackSlice keySlice;
+
   if (slice.isString()) {
     keySlice = slice;
   } else {
@@ -1215,8 +1279,13 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  RevisionId expectedRev, ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  ++_statistics._numWrite;
   Result res;
-  
+
+  using namespace std::chrono;
+  using clock = steady_clock;
+  auto start = clock::now();
+
   if (!documentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -1268,7 +1337,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 
     guard.finish(hasPerformedIntermediateCommit);
   }
-
+  _statistics._rocksdb_remove_msec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -1339,11 +1408,11 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
             type == Index::TRI_IDX_TYPE_NO_ACCESS_INDEX) {
           continue;
         }
-        
+
         builder.openObject();
         builder.add("type", VPackValue(it->typeName()));
         builder.add("id", VPackValue(it->id().id()));
-        
+
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         size_t count = 0;
         switch (type) {
@@ -1352,26 +1421,26 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
             break;
           case Index::TRI_IDX_TYPE_GEO_INDEX:
           case Index::TRI_IDX_TYPE_GEO1_INDEX:
-          case Index::TRI_IDX_TYPE_GEO2_INDEX: 
+          case Index::TRI_IDX_TYPE_GEO2_INDEX:
             count = rocksutils::countKeyRange(db, RocksDBKeyBounds::GeoIndex(rix->objectId()), true);
             break;
           case Index::TRI_IDX_TYPE_HASH_INDEX:
           case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
           case Index::TRI_IDX_TYPE_TTL_INDEX:
-          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: 
+          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
             if (it->unique()) {
               count = rocksutils::countKeyRange(db, RocksDBKeyBounds::UniqueVPackIndex(rix->objectId(), false), true);
             } else {
               count = rocksutils::countKeyRange(db, RocksDBKeyBounds::VPackIndex(rix->objectId(), false), true);
             }
             break;
-          case Index::TRI_IDX_TYPE_EDGE_INDEX: 
+          case Index::TRI_IDX_TYPE_EDGE_INDEX:
             count = rocksutils::countKeyRange(db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), false);
             break;
-          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX: 
+          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
             count = rocksutils::countKeyRange(db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), true);
             break;
-          default: 
+          default:
             // we should not get here
             TRI_ASSERT(false);
         }

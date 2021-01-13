@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added read write metrics
+
 * Internal Refactoring of K_PATH feature, with the goal to have all GraphAlgorithms on
   the same framework. This change should not have any visible effect on users.
 
