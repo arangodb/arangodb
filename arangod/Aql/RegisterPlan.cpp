@@ -91,6 +91,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   }
 #endif
+  
+  // will remain constant for the node throughout ths function
+  std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
+  VarSet const varsUsedLater = en->getVarsUsedLater();
 
   bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
 
@@ -123,7 +127,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    * is different from the input row.
    */
   auto const planRegistersForCurrentNode = [&](T* en) -> void {
-    auto const& varsSetHere = en->getVariablesSetHere();
     for (Variable const* v : varsSetHere) {
       TRI_ASSERT(v != nullptr);
       RegisterId regId = plan->registerVariable(v, unusedRegisters.back());
@@ -131,10 +134,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  auto const updateRegsToKeep = [this](T* en, VarSet const& varsUsedLater,
-                                       VarSet const& varsValid) {
-    auto const& varsSetHere = en->getVariablesSetHere();
-
+  auto const updateRegsToKeep = [this, &varsSetHere](T* en, VarSet const& varsUsedLater,
+                                                     VarSet const& varsValid) {
     auto isSetHere = [&](Variable const* var) {
       return std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
              varsSetHere.end();
@@ -159,9 +160,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   // TODO This is here to be backwards-compatible with some view tests relying
   //      on this check. When that is cleaned up, uncomment the check further
   //      above instead and remove this.
-  auto const assertNoVariablesMissing = [this](T* en) {
+  auto const assertNoVariablesMissing = [this, &varsUsedLater](T* en) {
     if (en->getType() != ExecutionNode::RETURN) {
-      auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
       VarSet varsUsedHere;
       en->getVariablesUsedHere(varsUsedHere);
       for (auto const& v : varsUsedHere) {
@@ -199,14 +199,13 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
 
   RegIdSet regsToClear;
-  auto const updateRegistersToClear = [&]() {
+  auto const updateRegistersToClear = [&](bool insertIntoRegsToClear) {
     // IMPORTANT NOTE:
     // Note that in case of mayReuseRegisterImmediately, these registers can
     // be reused, but are *still* set in regsToClear! This is *only* okay
     // because regsToClear is only ever used in passthrough-blocks, but
     // nodes that can create those may *not* reuse registers immediately.
     if (en->getType() != ExecutionNode::RETURN) {
-      auto const& varsUsedLater = en->getVarsUsedLater();
       assertNoVariablesMissing(en);
       auto regsToReuse =
           calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
@@ -215,24 +214,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       }
 
       unusedRegisters.back().insert(regsToReuse.begin(), regsToReuse.end());
-      regsToClear.insert(regsToReuse.begin(), regsToReuse.end());
-    }
-
-  };
-
-  auto const updateRegistersToReuse = [&]() {
-    if (en->getType() != ExecutionNode::RETURN) {
-      auto const& varsUsedLater = en->getVarsUsedLater();
-      assertNoVariablesMissing(en);
-      auto regsToReuse =
-          calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
-      for (auto const& reg : regsToReuse) {
-        regVarMappingStack.back().erase(reg);
+      if (insertIntoRegsToClear) {
+        regsToClear.insert(regsToReuse.begin(), regsToReuse.end());
       }
-
-      unusedRegisters.back().insert(regsToReuse.begin(), regsToReuse.end());
     }
-
   };
 
   if (!mayReuseRegisterImmediately) {
@@ -244,41 +229,41 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       previousSubqueryNrRegs.emplace(plan->nrRegs.back());
 
       auto const& varsValid = en->getVarsValidStack();
-      auto const& varsUsedLater = en->getVarsUsedLaterStack();
+      auto const& varsUsedLaterStack = en->getVarsUsedLaterStack();
 
       auto varMap = regVarMappingStack.back();
       regVarMappingStack.push_back(std::move(varMap));
 
-      size_t const stack_size = varsUsedLater.size();
-      TRI_ASSERT(varsValid.size() == stack_size);
-      TRI_ASSERT(regVarMappingStack.size() == stack_size);
+      size_t const stackSize = varsUsedLaterStack.size();
+      TRI_ASSERT(varsValid.size() == stackSize);
+      TRI_ASSERT(regVarMappingStack.size() == stackSize);
 
       TRI_ASSERT(varsValid.size() > 1);
-      TRI_ASSERT(varsUsedLater.size() > 1);
-      auto reuseOuter = calculateRegistersToReuse(varsUsedLater[stack_size - 2],
-                                                  regVarMappingStack[stack_size - 2]);
-      auto reuseInner = calculateRegistersToReuse(varsUsedLater[stack_size - 1],
-                                                  regVarMappingStack[stack_size - 1]);
+      TRI_ASSERT(varsUsedLaterStack.size() > 1);
+      auto reuseOuter = calculateRegistersToReuse(varsUsedLaterStack[stackSize - 2],
+                                                  regVarMappingStack[stackSize - 2]);
+      auto reuseInner = calculateRegistersToReuse(varsUsedLaterStack[stackSize - 1],
+                                                  regVarMappingStack[stackSize - 1]);
 
       auto topUnused = unusedRegisters.back();
       unusedRegisters.emplace_back(std::move(topUnused));
 
-      TRI_ASSERT(unusedRegisters.size() == stack_size);
-      unusedRegisters[stack_size - 1].insert(reuseInner.begin(), reuseInner.end());
-      unusedRegisters[stack_size - 2].insert(reuseOuter.begin(), reuseOuter.end());
+      TRI_ASSERT(unusedRegisters.size() == stackSize);
+      unusedRegisters[stackSize - 1].insert(reuseInner.begin(), reuseInner.end());
+      unusedRegisters[stackSize - 2].insert(reuseOuter.begin(), reuseOuter.end());
 
       if (explain) {
         plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
       }
 
       for (auto const& reg : reuseInner) {
-        regVarMappingStack[stack_size - 1].erase(reg);
+        regVarMappingStack[stackSize - 1].erase(reg);
       }
       for (auto const& reg : reuseOuter) {
-        regVarMappingStack[stack_size - 2].erase(reg);
+        regVarMappingStack[stackSize - 2].erase(reg);
       }
 
-      updateRegsToKeep(en, varsUsedLater[varsValid.size() - 2],
+      updateRegsToKeep(en, varsUsedLaterStack[varsValid.size() - 2],
                        varsValid[varsValid.size() - 2]);  // subquery start has to update both levels of regs to keep
       regsToKeepStack.emplace_back();
 
@@ -301,11 +286,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       }
     } break;
     default: {
-      if (mayReuseRegisterImmediately) {
-        updateRegistersToReuse();
-      } else {
-        updateRegistersToClear();
-      }
+      updateRegistersToClear(!mayReuseRegisterImmediately);
 
       if (explain) {
         plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
@@ -317,14 +298,13 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   // that are not in varsUsedLater and varsUsedHere
   if (mayReuseRegisterImmediately) {
     planRegistersForCurrentNode(en);
-    updateRegistersToClear();
+    updateRegistersToClear(true);
   }
 
-  updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
+  updateRegsToKeep(en, varsUsedLater, en->getVarsValid());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
-                                     en->getVariablesSetHere());
+  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(), varsSetHere);
   TRI_ASSERT(regsToKeepStack == actual);
 
   TRI_ASSERT(!plan->nrRegs.empty());
@@ -343,7 +323,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 }
 
 template <typename T>
-RegisterPlanT<T>::RegisterPlanT() : depth(0) {
+RegisterPlanT<T>::RegisterPlanT() 
+    : depth(0) {
   nrRegs.reserve(8);
   nrRegs.emplace_back(0);
 }
@@ -351,7 +332,10 @@ RegisterPlanT<T>::RegisterPlanT() : depth(0) {
 // Copy constructor used for a subquery:
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
-    : varInfo(v.varInfo), nrRegs(v.nrRegs), subqueryNodes(), depth(newdepth + 1) {
+    : varInfo(v.varInfo), 
+      nrRegs(v.nrRegs), 
+      subqueryNodes(), 
+      depth(newdepth + 1) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);

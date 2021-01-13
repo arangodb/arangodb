@@ -3,16 +3,16 @@ devel
 
 * AQL query execution plan register usage optimization.
 
-  This is a performance optimization that may positively affect queries
-  that use a lot of variables that are only needed in certain parts of
-  the query. The positive effect will come from saving registers, which
-  directly translates to saving columns in AqlItemBlocks.
+  This is a performance optimization that may positively affect some AQL
+  queries that use a lot of variables that are only needed in certain 
+  parts of the query. 
+  The positive effect will come from saving registers, which directly 
+  translates to saving columns in AqlItemBlocks.
 
   Previously, the number of registers that were planned for each depth 
   level of the query never decreased when going from one level to the
-  next.
-  Unused registers were recycled since 3.7, but this did not lead to 
-  unused registers being completely dismantled.
+  next. Even though unused registers were recycled since 3.7, this did 
+  not lead to unused registers being completely dismantled.
   
   Now there is an extra step at the end of the register planning that
   keeps track of the actually used registers on each depth, and that
