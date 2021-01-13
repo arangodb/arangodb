@@ -273,6 +273,8 @@ class StaticStrings {
   static std::string const VertexComputationGlobalSuperstep;
   static std::string const VertexComputationPhaseStep;
   static std::string const VertexComputationMessage;
+  static std::string const VertexComputationVoteActive;
+  static std::string const VertexComputationVoteHalt;
 
   // Pregel Section End
 

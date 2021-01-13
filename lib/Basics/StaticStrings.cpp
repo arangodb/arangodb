@@ -289,6 +289,8 @@ std::string const StaticStrings::VertexComputationPhase("phase");
 std::string const StaticStrings::VertexComputationGlobalSuperstep("global-superstep");
 std::string const StaticStrings::VertexComputationPhaseStep("phase-step");
 std::string const StaticStrings::VertexComputationMessage("message");
+std::string const StaticStrings::VertexComputationVoteActive("vote-active");
+std::string const StaticStrings::VertexComputationVoteHalt("vote-halt");
 
 // Pregel Section End
 

@@ -410,7 +410,8 @@ void VertexComputation::traceMessage(MessageData const* msg) {
       }
 
       if (traceMessage) {
-        auto phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
+        auto phase_index =
+            *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
         auto phase = _algorithm.options().phases.at(phase_index);
 
         getReportManager()
@@ -438,7 +439,8 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
-      auto phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
+      auto phase_index =
+          *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
       auto phase = _algorithm.options().phases.at(phase_index);
       getReportManager()
               .report(ReportLevel::ERR)
@@ -463,10 +465,10 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
 greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) {
   VPackBuilder resultBuilder;
 
-  // A valid pregel program can at the moment return one of five values: none,
+  // A valid pregel program can at the moment return one of four values:
   // true, false, "vote-halt", or "vote-active"
   //
-  // if it returns none, false, or "vote-halt", then we voteHalt(), if it
+  // if it returns false, or "vote-halt", then we voteHalt(), if it
   // returns true or "vote-active" we voteActive()
   //
   // In all other cases we throw an error
@@ -483,19 +485,20 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
         return {};
       }
     } else if (rs.isString()) {
-      if (rs.stringRef().equals("vote-active")) {
+      if (rs.stringRef().equals(StaticStrings::VertexComputationVoteActive)) {
         this->voteActive();
         return {};
-      } else if (rs.stringRef().equals("vote-halt")) {
+      } else if (rs.stringRef().equals(StaticStrings::VertexComputationVoteHalt)) {
         this->voteHalt();
         return {};
       }
     }
     // Not a valid value, vote to halt and return error
     voteHalt();
-    return greenspun::EvalError("pregel program returned " + rs.toJson() +
-                                ", expect one of `none`, `true`, `false`, "
-                                "`\"vote-halt\", or `\"vote-active\"`");
+    return greenspun::EvalError(
+        "pregel program returned " + rs.toJson() +
+        ", expecting one of `true`, `false`, `" + StaticStrings::VertexComputationVoteHalt +
+        "`, or `" + StaticStrings::VertexComputationVoteActive + "`");
   };
 
   auto evalResult = Evaluate(ctx, program, resultBuilder);
