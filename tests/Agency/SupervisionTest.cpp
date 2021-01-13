@@ -356,18 +356,26 @@ TEST_F(SupervisionTestClass, schedule_addfollower_rf_3) {
   checkSupervisionJob(v, "addFollower", "database", "123", "s1");
 }
 
+static std::unordered_map<std::string, std::string> tableOfJobs(VPackSlice envelope) {
+  std::unordered_map<std::string, std::string> res;
+  for (auto const& p : VPackObjectIterator(envelope)) {
+    res.emplace(std::pair(p.value.get("collection").copyString(),
+                          p.key.copyString()));
+  }
+  return res;
+}
+
 TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
   _snapshot("/Supervision/Health/follower1")
     = createNode(R"=("FAILED")=");
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
-  VPackSlice v = envelope->slice();
+  VPackSlice todo = envelope->slice();
 
-  EXPECT_EQ(v.length(), 2);
-  VPackSlice w = v["/Target/ToDo/1"];
-  checkSupervisionJob(w, "addFollower", "database", "124", "s2");
-  w = v["/Target/ToDo/2"];
-  checkSupervisionJob(w, "addFollower", "database", "123", "s1");
+  EXPECT_EQ(todo.length(), 2);
+  auto table = tableOfJobs(todo);
+  checkSupervisionJob(todo[table["123"]], "addFollower", "database", "123", "s1");
+  checkSupervisionJob(todo[table["124"]], "addFollower", "database", "124", "s2");
 }
 
 TEST_F(SupervisionTestClass, no_remove_follower_loop) {
