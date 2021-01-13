@@ -247,6 +247,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"BIT_SHIFT_LEFT", ".,.,.", flags, &Functions::BitShiftLeft});
   add({"BIT_SHIFT_RIGHT", ".,.,.", flags, &Functions::BitShiftRight});
   add({"BIT_CONSTRUCT", ".", flags, &Functions::BitConstruct});
+  add({"BIT_DECONSTRUCT", ".", flags, &Functions::BitDeconstruct});
   add({"BIT_TO_STRING", ".,.", flags, &Functions::BitToString});
   add({"BIT_FROM_STRING", ".", flags, &Functions::BitFromString});
 

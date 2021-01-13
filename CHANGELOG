@@ -17,6 +17,8 @@ devel
     `shift` bits, with a mask of `bits` length
   - BIT_CONSTRUCT(array): construct a number with bits set at the positions
     given in the array
+  - BIT_DECONSTRUCT(value): deconstruct a number into an array of its individual
+    set bits
   - BIT_TO_STRING(value): create a bitstring representation from numeric `value`
   - BIT_FROM_STRING(value): parse a bitstring representation into a number
 
@@ -33,7 +35,7 @@ devel
   The prefix for hexadecimal integer literals i `0x`, e.g. `0xabcdef02`.
 
   Binary and hexadecimal integer literals can only be used for unsigned integers.
-  The maximum supported value is `(2 ^ 31) - 1`, i.e. `0xffffffff` (hexadecimal)
+  The maximum supported value is `(2 ^ 32) - 1`, i.e. `0xffffffff` (hexadecimal)
   or `0b11111111111111111111111111111111` (binary).
 
 * Internal refactoring of K_PATH feature, with the goal to have all graph 

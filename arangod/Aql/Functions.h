@@ -439,6 +439,8 @@ struct Functions {
                                 VPackFunctionParameters const&);
   static AqlValue BitConstruct(arangodb::aql::ExpressionContext*, AstNode const&,
                                VPackFunctionParameters const&);
+  static AqlValue BitDeconstruct(arangodb::aql::ExpressionContext*, AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue BitFromString(arangodb::aql::ExpressionContext*, AstNode const&,
                                 VPackFunctionParameters const&);
   static AqlValue BitToString(arangodb::aql::ExpressionContext*, AstNode const&,

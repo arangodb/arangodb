@@ -7133,6 +7133,34 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
   return AqlValue(AqlValueHintNull());
 }
 
+AqlValue Functions::BitDeconstruct(ExpressionContext* expressionContext, AstNode const& node,
+                                   VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (value.isNumber()) {
+    VPackSlice v = value.slice();
+    auto [num, valid] = bitOperationValue<uint64_t>(v);
+    if (valid) {
+      transaction::Methods* trx = &expressionContext->trx();
+      transaction::BuilderLeaser builder(trx);
+       builder->openArray();
+       uint64_t compare = 1;
+       for (uint64_t i = 0; i < Functions::bitFunctionsMaxSupportedBits; ++i) {
+         if ((num & compare) != 0) {
+           builder->add(VPackValue(i));
+         }
+         compare <<= 1;
+       }
+       builder->close();
+       return AqlValue(builder->slice(), builder->size());
+    }
+  }
+
+  char const* AFN = "BIT_DECONSTRUCT";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
 /// @brief function BIT_TO_STRING
 AqlValue Functions::BitToString(ExpressionContext* expressionContext, AstNode const& node,
                                 VPackFunctionParameters const& parameters) {
