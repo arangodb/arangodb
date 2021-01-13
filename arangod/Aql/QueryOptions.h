@@ -53,6 +53,13 @@ enum class ProfileLevel : uint8_t {
   TraceTwo = 4
 };
 
+enum class TraversalProfileLevel : uint8_t {
+  /// no profiling information
+  None = 0,
+  /// include traversal tracing
+  Basic = 1
+};
+
 struct QueryOptions {
   QueryOptions();
   explicit QueryOptions(arangodb::velocypack::Slice);
@@ -61,6 +68,7 @@ struct QueryOptions {
   void fromVelocyPack(arangodb::velocypack::Slice slice);
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
+  TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const { return traversalProfile; }
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -71,6 +79,7 @@ struct QueryOptions {
               // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
+  TraversalProfileLevel traversalProfile;
   bool allPlans;
   bool verbosePlans;
   bool stream;
