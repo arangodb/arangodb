@@ -42,6 +42,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
@@ -180,7 +181,7 @@ class KShortestPathsExecutorTest
 
   MockAqlServer server;
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
@@ -209,7 +210,7 @@ class KShortestPathsExecutorTest
         options(*fakedQuery.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 3, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(0,
+        executorInfos(0, *fakedQuery.get(),
                       std::make_unique<FakeKShortestPathsFinder>(options,
                                                                  parameters._paths),
                       std::move(parameters._source), std::move(parameters._target)),
@@ -322,7 +323,7 @@ class KShortestPathsExecutorTest
                     AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
-    auto stats = NoStats{};
+    auto stats = TraversalStats{};
     auto ourCall = AqlCall{parameters._call};
     auto skippedInitial = size_t{0};
     auto skippedFullCount = size_t{0};

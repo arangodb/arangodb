@@ -36,6 +36,10 @@ devel
   The maximum supported value is `(2 ^ 31) - 1`, i.e. `0xffffffff` (hexadecimal)
   or `0b11111111111111111111111111111111` (binary).
 
+* Internal refactoring of K_PATH feature, with the goal to have all graph 
+  algorithms on the same framework. This change should not have any visible 
+  effect on users.
+
 * Fixed an endless busy loop which could happen if a coordinator tries to 
   roll back a database creation, but the database has already been dropped 
   by other means.
