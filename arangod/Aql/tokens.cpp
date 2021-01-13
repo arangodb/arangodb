@@ -1128,6 +1128,7 @@ class Parser;
 
 #include "Aql/AstNode.h"
 #include "Aql/grammar.h"
+#include "Aql/Functions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
 
@@ -2266,7 +2267,7 @@ YY_RULE_SETUP
   }
       
   auto parser = yyextra;
-  if (e - p > 32) {
+  if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits) {
     /* we only support up to 32 bits for now */
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "binary number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }
@@ -2304,7 +2305,8 @@ YY_RULE_SETUP
   }
   
   auto parser = yyextra;
-  if (e - p > 8) {
+  /* each digit 0-9a-f carries 4 bits of information */
+  if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits / 4) {
     /* we only support up to 32 bits for now */
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "hex number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }
