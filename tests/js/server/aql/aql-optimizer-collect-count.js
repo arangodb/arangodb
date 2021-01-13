@@ -87,6 +87,7 @@ function optimizerCountTestSuite () {
     testCountIsTransformedToAggregate : function () {
       var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO cnt RETURN cnt";
 
+      let output = require("@arangodb/aql/explainer").explain(query, {colors: false}, false);
       var plan = AQL_EXPLAIN(query).plan;
       var collectNode = plan.nodes[2];
       assertEqual("CollectNode", collectNode.type);
@@ -101,15 +102,15 @@ function optimizerCountTestSuite () {
         assertEqual("SUM", clusterCollectNode.aggregates[0].type);
         assertEqual("cnt", clusterCollectNode.aggregates[0].outVariable.name);
         assertEqual(clusterCollectNode.aggregates[0].inVariable.name, collectNode.aggregates[0].outVariable.name);
+        assertTrue(/\COLLECT AGGREGATE #[0-9] = LENGTH\(\)/.test(output));
+        assertTrue(/\COLLECT AGGREGATE cnt = SUM\(#[0-9]\)/.test(output));
       } else {
         assertEqual("count", collectNode.collectOptions.method);
         assertEqual(1, collectNode.aggregates.length);
         assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
+        assertTrue(/\COLLECT AGGREGATE cnt = LENGTH\(\)/.test(output));
       }
-
-      let output = require("@arangodb/aql/explainer").explain(query, {colors: false}, false);
-      assertTrue(/\COLLECT AGGREGATE cnt = LENGTH\(\)/.test(output));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +123,7 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(1000, results.json[0]);
-       
+
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
@@ -172,7 +173,7 @@ function optimizerCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test count
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCountTotalFilteredIndexed : function () {
       c.ensureIndex({ type: "persistent", fields: ["group"] });
       var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' COLLECT WITH COUNT INTO count RETURN count";
@@ -188,7 +189,7 @@ function optimizerCountTestSuite () {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
-    
+
     testCountTotalFilteredSkippedIndexed : function () {
       c.ensureIndex({ type: "persistent", fields: ["group"] });
       var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
@@ -220,7 +221,7 @@ function optimizerCountTestSuite () {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
-    
+
     testCountTotalFilteredPostFilteredSkippedIndexed : function () {
       c.ensureIndex({ type: "persistent", fields: ["group"] });
       var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
@@ -236,7 +237,7 @@ function optimizerCountTestSuite () {
         assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test count
 ////////////////////////////////////////////////////////////////////////////////
