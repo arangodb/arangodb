@@ -306,7 +306,7 @@ greenspun::EvalResult VertexComputation::air_numberOfVertices(greenspun::Machine
   if (res.fail()) {
     return res.error();
   }
-  // FIXME: is this the total number of vertices?
+
   result.add(VPackValue(context()->vertexCount()));
   return {};
 }
