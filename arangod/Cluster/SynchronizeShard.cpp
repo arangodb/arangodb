@@ -584,12 +584,12 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   try {
     std::string const context = "synchronization of shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
-
+  
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
           << "initial sync failed for " << database << "/" << col->name()
           << ": " << r.errorMessage();
-      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+      THROW_ARANGO_EXCEPTION(r);
     }
 
     {

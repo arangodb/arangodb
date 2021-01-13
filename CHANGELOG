@@ -1,4 +1,13 @@
-v3.7.6 (XXXX-XX-XX)
+v3.7.7 (XXXX-XX-XX)
+-------------------
+
+* Improve internal error reporting by cluster maintenance.
+
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
+
+
+v3.7.6 (2021-01-04)
 -------------------
 
 * Fix too early stop of replication, when waiting for keys
@@ -142,16 +151,6 @@ v3.7.6 (XXXX-XX-XX)
   be aborted whereas in previous versions they ran through successfully (but
   actually violated the limit). In this case it may be necessary to adjust (i.e.
   raise) query memory limits accordingly.
-
-* Changed the server-side implementation of the following internal JavaScript 
-  APIs to no-ops:
-  * `internal.reloadAqlFunctions()`: this is a no-op function now
-  * `@arangodb/actions.buildRouting()`: this is a no-op function now
-  * `@arangodb/actions.routingTree`: will return an empty object
-  * `@arangodb/actions.routingList`: will return an empty object
-
-  All the above APIs were intended to be used for internal means only. These
-  APIs are deprecated now and will be removed in ArangoDB v3.9.
 
 * Added startup option `--foxx.force-update-on-startup` to toggle waiting for
   all Foxx services in all databases to be propagated to a coordinator before it
