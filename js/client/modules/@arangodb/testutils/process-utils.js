@@ -1768,7 +1768,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-address'] = endpoint;
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
-      // coordinatorArgs['cluster.default-replication-factor'] = '2'; // TODO: active later
+      coordinatorArgs['cluster.default-replication-factor'] = '2';
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
     }
