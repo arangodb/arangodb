@@ -44,6 +44,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Collection.h"
 #include "velocypack/Slice.h"
+#include "velocypack/StringRef.h"
 #include "velocypack/velocypack-aliases.h"
 
 #include "../IResearch/IResearchQueryCommon.h"
@@ -155,7 +156,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
     arangodb::aql::Query notSplicedQuery(ctx,
                                          arangodb::aql::QueryString(querystring), bindParamVpack,
-                                         disableRuleOptions(additionalOptions));
+                                         disableRuleOptions(additionalOptions)->slice());
     notSplicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
@@ -175,7 +176,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
 
     auto ctx2 = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
     arangodb::aql::Query splicedQuery(ctx2, arangodb::aql::QueryString(querystring), bindParamVpack,
-                                      enableRuleOptions(additionalOptions));
+                                      enableRuleOptions(additionalOptions)->slice());
     splicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
@@ -526,14 +527,16 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto trx = std::make_unique<arangodb::transaction::Methods>(ctx, readCollection, noCollections,
                                                               noCollections, opts);
   ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
-  auto mdr = ManagedDocumentResult{};
-  auto result = collection->read(trx.get(), VPackStringRef{"myKey"}, mdr);
+  bool called = false;
+  auto result = collection->getPhysical()->read(trx.get(), arangodb::velocypack::StringRef{"myKey"}, [&](LocalDocumentId const&, VPackSlice document) {
+    called = true;
+    EXPECT_TRUE(document.isObject());
+    EXPECT_TRUE(document.get("_key").isString());
+    EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
+    return true;
+  });
+  ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
-  ASSERT_NE(nullptr, mdr.vpack());
-  auto const document = VPackSlice{mdr.vpack()};
-  ASSERT_TRUE(document.isObject());
-  ASSERT_TRUE(document.get("_key").isString());
-  ASSERT_EQ(std::string{"myKey"}, document.get("_key").copyString());
 }
 
 // Regression test for https://github.com/arangodb/arangodb/issues/10896

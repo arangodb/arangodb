@@ -46,7 +46,7 @@ class SharedScatterExecutionBlockTest {
  protected:
   mocks::MockAqlServer server{};
   ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
   velocypack::Options vpackOptions;

@@ -58,7 +58,9 @@ class Builder;
 class Slice;
 class StringRef;
 }  // namespace velocypack
+
 class CursorRepository;
+struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
@@ -162,8 +164,8 @@ struct TRI_vocbase_t {
                                                    // replication is assessing
                                                    // the state of the vocbase
 
-  // structures for user-defined volatile data
-  void* _userStructures;
+  // structures for volatile cache data (used from JavaScript)
+  std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
  public:
   /// @brief checks if a database name is allowed

@@ -104,7 +104,11 @@ void Counter::toPrometheus(std::string& result) const {
   _b.push();
   result += "\n#TYPE " + name() + " counter\n";
   result += "#HELP " + name() + " " + help() + "\n";
-  result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
+  result += name();
+  if (!labels().empty()) {
+    result += "{" + labels() + "}";
+  }
+  result += " " + std::to_string(load()) + "\n";
 }
 
 Counter::Counter(

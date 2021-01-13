@@ -24,13 +24,14 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H 1
 
-#include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include <rocksdb/options.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+
+#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 
 namespace rocksdb {
 class Iterator;

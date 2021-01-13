@@ -49,7 +49,8 @@ struct QueryEntryCopy {
                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                  std::vector<std::string> dataSources,
                  double started, double runTime,
-                 QueryExecutionState::ValueType state, bool stream);
+                 QueryExecutionState::ValueType state, bool stream,
+                 int resultCode);
   
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 
@@ -62,6 +63,7 @@ struct QueryEntryCopy {
   double const started;
   double const runTime;
   QueryExecutionState::ValueType const state;
+  int resultCode;
   bool stream;
 
 };
@@ -221,7 +223,9 @@ class QueryList {
   size_t count();
 
  private:
-  std::string extractQueryString(Query const* query, size_t maxLength) const;
+  std::string extractQueryString(Query const& query, size_t maxLength) const;
+
+  void killQuery(Query& query, size_t maxLength, bool silent); 
 
   /// @brief default maximum number of slow queries to keep in list
   static constexpr size_t defaultMaxSlowQueries = 64;

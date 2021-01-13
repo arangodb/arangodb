@@ -443,7 +443,7 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
 void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  while(true) {
+  while (true) {
     WRITE_LOCKER(guard, _lock);
     size_t remain = snippets.size();
     for (auto& engine : snippets) {

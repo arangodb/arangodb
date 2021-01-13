@@ -144,7 +144,7 @@ class Table : public std::enable_shared_from_this<Table> {
   std::uint64_t memoryUsage() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns the number of buckets in the table.
+  /// @brief Returns the number of buckets in the table. At most 2^32.
   //////////////////////////////////////////////////////////////////////////////
   std::uint64_t size() const;
 

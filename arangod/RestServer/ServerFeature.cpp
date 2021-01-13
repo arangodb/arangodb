@@ -43,7 +43,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"

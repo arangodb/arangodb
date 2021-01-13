@@ -81,8 +81,12 @@ class State {
   ///        Default: [first, last]
   std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
-
+  /// @brief load a compacted snapshot, returns the number of entries read.
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
+
+  /// @brief dump the entire in-memory state to velocypacj
+  /// should be used for testing only
+  void toVelocyPack(velocypack::Builder& builder) const;
 
  private:
   /// @brief Get complete log entries bound by lower and upper bounds.
@@ -104,6 +108,11 @@ class State {
    * @param l       log entry
    */
   void logEmplaceBackNoLock(log_t&& l);
+
+  /// @brief reads the _key value from the data and returns it as a numeric index value.
+  /// data needs to be an object with the _key attribute being present as a string value
+  /// inside.
+  static index_t extractIndexFromKey(arangodb::velocypack::Slice data);
 
  public:
   /// @brief Check for a log entry, returns 0, if the log does not
@@ -176,7 +185,7 @@ class State {
   /// @brief Get everything from the state machine
   query_t allLogs() const;
 
-  /// @brief load a compacted snapshot, returns true if successfull and false
+  /// @brief load a compacted snapshot, returns true if successful and false
   /// otherwise. In case of success store and index are modified. The store
   /// is reset to the state after log index `index` has been applied. Sets
   /// `index` to 0 if there is no compacted snapshot.
@@ -240,8 +249,8 @@ class State {
   /// @brief Create collections
   bool createCollections();
 
-  /// @brief Create collection
-  bool createCollection(std::string const& name);
+  /// @brief Create collection if it does not yet exist
+  bool ensureCollection(std::string const& name);
 
   /// @brief Compact persisted logs
   bool compactPersisted(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
@@ -284,14 +293,14 @@ class State {
   /// @brief Operation options
   arangodb::OperationOptions _options;
 
-  /// @brief Empty log entry;
-  static log_t emptyLog;
-
   /// @brief Protect writing into configuration collection
   arangodb::Mutex _configurationWriteLock;
 
   /// @brief Current state deque size in bytes
   Gauge<uint64_t>& _log_size;
+
+  /// @brief current number of entries in _clientIdLookupTable
+  Gauge<uint64_t>& _clientIdLookupCount;
 
 };
 

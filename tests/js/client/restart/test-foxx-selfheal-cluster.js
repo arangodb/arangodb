@@ -40,6 +40,9 @@ const path = require('path');
 const FoxxManager = require('@arangodb/foxx/manager');
 const basePath = path.resolve(require("internal").pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 
+const originalEndpoint = arango.getEndpoint();
+const originalUser = arango.connectedUser();
+
 function testSuite() {
   const jwtSecret = 'haxxmann';
 
@@ -109,6 +112,7 @@ function testSuite() {
     },
 
     tearDown : function() {
+      arango.reconnect(originalEndpoint, "_system", originalUser, "");
       // make sure self heal has run, otherwise we may not be able to uninstall
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
@@ -174,6 +178,7 @@ function testSuite() {
       }
       
       // make sure self heal has run, otherwise we may not be able to access the app
+      arango.reconnect(originalEndpoint, "_system", originalUser, "");
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
         
@@ -216,6 +221,7 @@ function testSuite() {
       waitForAlive(30, coordinator.url, {});
       
       // make sure self heal has run 
+      arango.reconnect(originalEndpoint, "_system", originalUser, "");
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
 

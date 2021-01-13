@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "StorageEngine/HealthData.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -624,10 +625,48 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Sync.status is copied to Health.syncStatus
       std::string syncTime;
       std::string syncStatus;
-      bool heartBeatVisible = _transient.has(syncPrefix + serverID);
-      if (heartBeatVisible) {
+
+      // in recent versions of ArangoDB, servers can also report back
+      // whether they are healthy or not, by sending in the "health"
+      // struct with details. currently only DB servers do this, and 
+      // versions older than 3.8 don't send this at all. so it is an 
+      // optional attribute, and we cannot rely on it being present. 
+      // the assumption is thus that servers that do not send back any 
+      // health data should be considered healthy.
+      // TODO: decide on how to exactly handle the "health" info here,
+      // and then make use of it. it remains unused for now and is thus
+      // specially marked.
+      [[maybe_unused]] bool isHealthy = true;
+      
+      bool heartbeatVisible = _transient.has(syncPrefix + serverID);
+      if (heartbeatVisible) {
         syncTime = _transient.hasAsString(syncPrefix + serverID + "/time").first;
         syncStatus = _transient.hasAsString(syncPrefix + serverID + "/status").first;
+        // it is optional for servers to send health data, so we need to be prepared
+        // for not receiving any.
+        auto healthData = _transient.hasAsBuilder(syncPrefix + serverID + "/health");
+        if (healthData.second) {
+          VPackSlice healthSlice = healthData.first.slice();
+          if (healthSlice.isObject()) {
+            // check health status reported by server
+            HealthData hd = HealthData::fromVelocyPack(healthSlice);
+
+            LOG_TOPIC("c77f5", TRACE, Logger::SUPERVISION)
+               << "server " << serverID 
+               << " sent health data: " << healthSlice.toJson()
+               << ", ok: " << hd.res.ok() 
+               << ", message: " << hd.res.errorMessage()
+               << ", bg error: " << hd.backgroundError
+               << ", free disk bytes: " << hd.freeDiskSpaceBytes
+               << ", free disk percent: " << hd.freeDiskSpacePercent;
+
+            if (hd.res.fail()) {
+              // server reported itself as unhealthy.
+              // TODO: do something about this!
+              isHealthy = false;
+            }
+          }
+        }
       } else {
         syncTime = timepointToString(std::chrono::system_clock::time_point()); // beginning of time
         syncStatus = "UNKNOWN";
@@ -635,7 +674,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Compute the time when we last discovered a new heartbeat from that server:
       std::chrono::system_clock::time_point lastAckedTime;
-      if (heartBeatVisible) {
+      if (heartbeatVisible) {
         if (transientHealthRecordFound) {
           lastAckedTime = (syncTime != transist.syncTime)
                           ? startTimeLoop

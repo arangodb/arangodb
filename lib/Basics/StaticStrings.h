@@ -256,6 +256,7 @@ class StaticStrings {
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
   static std::string const GraphName;
+  static std::string const GraphTraversalProfileLevel;
 
   // Query Strings
   static std::string const QuerySortASC;
@@ -380,6 +381,9 @@ class StaticStrings {
   static std::string const SupervisionAccumRuntimeMs;
   static std::string const SupervisionAccumRuntimeWaitForSyncMs;
   static std::string const SupervisionFailedServerCount;
+
+  // TODO: remove me after refactor is done
+  static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
 

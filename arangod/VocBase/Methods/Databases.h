@@ -43,8 +43,6 @@ namespace methods {
 
 /// Common code for the db._database(),
 struct Databases {
-  static TRI_vocbase_t* lookup(std::string const& dbname);
-  static TRI_vocbase_t* lookup(TRI_voc_tick_t);
   static std::vector<std::string> list(application_features::ApplicationServer& server,
                                        std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);

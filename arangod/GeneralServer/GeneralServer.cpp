@@ -190,7 +190,7 @@ extern int clientHelloCallback(SSL* ssl, int* al, void* arg);
 SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContexts) {
-    _sslContexts = SslServerFeature::SSL->createSslContexts();
+    _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
       // Set a client hello callback such that we have a chance to change the SSL context:
@@ -210,7 +210,7 @@ Result GeneralServer::reloadTLS() {
   try {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
-      _sslContexts = SslServerFeature::SSL->createSslContexts();
+      _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
       if (_sslContexts->size() > 0) {
         // Set a client hello callback such that we have a chance to change the SSL context:

@@ -63,8 +63,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-SslServerFeature* SslServerFeature::SSL = nullptr;
-
 SslServerFeature::SslServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
@@ -147,8 +145,6 @@ void SslServerFeature::prepare() {
   UniformCharacter r(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
   _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
-
-  SSL = this;
 }
 
 void SslServerFeature::unprepare() {

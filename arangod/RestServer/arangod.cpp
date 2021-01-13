@@ -108,7 +108,6 @@
 #include "Ssl/SslFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxFeature.h"
@@ -223,7 +222,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ReplicationFeature>();
     server.addFeature<ReplicationMetricsFeature>();
     server.addFeature<ReplicationTimeoutFeature>();
-    server.addFeature<RocksDBOptionFeature>();
     server.addFeature<SchedulerFeature>();
     server.addFeature<ScriptFeature>(&ret);
     server.addFeature<ServerFeature>(&ret);

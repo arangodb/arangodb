@@ -65,8 +65,6 @@ struct QueryProfile {
 
   /// @brief convert the profile to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&) const;
-  
- private:
 
  private:
   Query* _query;

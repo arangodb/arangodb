@@ -313,15 +313,13 @@ std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
   return fuerte::status_code_to_string(res.statusCode());
 }
 
-void addSourceHeader(fuerte::Request& req) {
+void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
+  // note: agent can be a nullptr here
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
     req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
-  } else if (state->isAgent()) {
-    auto agent = AgencyFeature::AGENT;
-    if (agent != nullptr) {
-      req.header.addMeta(StaticStrings::ClusterCommSource, "AGENT-" + agent->id());
-    }
+  } else if (state->isAgent() && agent != nullptr) {
+    req.header.addMeta(StaticStrings::ClusterCommSource, agent->id());
   }
 }
 

@@ -42,12 +42,7 @@ constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 25 * 1000 * 1000;
 }
 
-class MetricsTest : public ::testing::Test {
-protected:
-  MetricsTest () {}
-};
-
-TEST_F(MetricsTest, test_counter_concurrency) {
+TEST(MetricsTest, test_counter_concurrency) {
   Counter c(0, "counter", "Counter");
 
   ASSERT_EQ(c.load(),  0);
@@ -77,7 +72,7 @@ TEST_F(MetricsTest, test_counter_concurrency) {
   ASSERT_EQ(c.load(), ::numThreads * ::numOpsPerThread);
 }
 
-TEST_F(MetricsTest, test_histogram_concurrency_same) {
+TEST(MetricsTest, test_histogram_concurrency_same) {
   lin_scale_t scale(1, 100, 4);
   Histogram h(scale, "histogram", "Histogram");
 
@@ -114,7 +109,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_same) {
   ASSERT_EQ(h.load(3), 0);
 }
 
-TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
+TEST(MetricsTest, test_histogram_concurrency_distributed) {
   lin_scale_t scale(1, 100, 4);
   Histogram h(scale, "histogram", "Histogram");
 
@@ -151,7 +146,7 @@ TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
   ASSERT_EQ(h.load(3), (::numThreads > 3 ? (::numThreads - 3) : 0) * ::numOpsPerThread);
 }
 
-TEST_F(MetricsTest, test_histogram_simple) {
+TEST(MetricsTest, test_histogram_simple) {
   lin_scale_t scale(1, 100, 4);
   Histogram h(scale, "histogram", "Histogram");
 
@@ -234,7 +229,7 @@ TEST_F(MetricsTest, test_histogram_simple) {
 }
 
 
-TEST_F(MetricsTest, test_counter) {
+TEST(MetricsTest, test_counter) {
   Counter c(0, "counter_1", "Counter 1");
 
   ASSERT_EQ(c.load(),  0);
@@ -349,11 +344,11 @@ template<typename T> void gauge_test() {
   }
 }
 
-TEST_F(MetricsTest, test_gauge_double) {
+TEST(MetricsTest, test_gauge_double) {
   gauge_test<double>();
 }
 
-TEST_F(MetricsTest, test_gauge_float) {
+TEST(MetricsTest, test_gauge_float) {
   gauge_test<float>();
 }
 
@@ -412,61 +407,61 @@ template<typename Scale> void histogram_test(Scale const& scale) {
 }
 
 
-TEST_F(MetricsTest, test_double_histogram) {
+TEST(MetricsTest, test_double_histogram) {
   histogram_test(lin_scale_t( 1.,  2.,  9));
   histogram_test(lin_scale_t(-1.,  1., 10));
   histogram_test(lin_scale_t(-2., -1.,  8));
 }
-TEST_F(MetricsTest, test_float_histogram) {
+TEST(MetricsTest, test_float_histogram) {
   histogram_test(lin_scale_t( 1.f,  2.f,  9));
   histogram_test(lin_scale_t(-1.f,  1.f, 10));
   histogram_test(lin_scale_t(-2.f, -1.f,  8));
 }
 
-TEST_F(MetricsTest, test_short_histogram) {
+TEST(MetricsTest, test_short_histogram) {
   histogram_test(lin_scale_t<short>(-17, 349, 6));
   histogram_test(lin_scale_t<short>( 20,  40, 7));
   histogram_test(lin_scale_t<short>(-63, -11, 8));
 }
-TEST_F(MetricsTest, test_int_histogram) {
+TEST(MetricsTest, test_int_histogram) {
   histogram_test(lin_scale_t<int>(-17, 349, 6));
   histogram_test(lin_scale_t<int>( 20,  40, 7));
   histogram_test(lin_scale_t<int>(-63, -11, 8));
 }
 
-TEST_F(MetricsTest, test_double_log_10_histogram) {
+TEST(MetricsTest, test_double_log_10_histogram) {
   histogram_test(log_scale_t(10., 0.,  2000.,  5));
 }
-TEST_F(MetricsTest, test_float_log_10_histogram) {
+TEST(MetricsTest, test_float_log_10_histogram) {
   histogram_test(log_scale_t(10.f, 0.f,  2000.f,  5));
 }
-TEST_F(MetricsTest, test_double_log_2_histogram) {
+TEST(MetricsTest, test_double_log_2_histogram) {
   histogram_test(log_scale_t(2., 0.,  2000.,  10));
 }
-TEST_F(MetricsTest, test_float_log_2_histogram) {
+TEST(MetricsTest, test_float_log_2_histogram) {
   histogram_test(log_scale_t(2.f, 0.f,  2000.f,  10));
 }
-TEST_F(MetricsTest, test_double_log_e_histogram) {
+TEST(MetricsTest, test_double_log_e_histogram) {
   histogram_test(log_scale_t(std::exp(1.), 0.,  2000.,  10));
 }
-TEST_F(MetricsTest, test_float_log_e_histogram) {
+TEST(MetricsTest, test_float_log_e_histogram) {
   histogram_test(log_scale_t(std::exp(1.f), 0.f,  2000.f,  10));
 }
-TEST_F(MetricsTest, test_double_log_bin_histogram) {
+TEST(MetricsTest, test_double_log_bin_histogram) {
   histogram_test(log_scale_t(2., 0.,  128.,  8));
 }
-TEST_F(MetricsTest, test_float_log_bin_histogram) {
+TEST(MetricsTest, test_float_log_bin_histogram) {
   histogram_test(log_scale_t(2.f, 0.f,  128.f,  8));
 }
-TEST_F(MetricsTest, test_double_log_offset_histogram) {
+TEST(MetricsTest, test_double_log_offset_histogram) {
   histogram_test(log_scale_t(2., 0.,  128.,  8));
 }
-TEST_F(MetricsTest, test_float_log__histogram) {
+TEST(MetricsTest, test_float_log__histogram) {
   histogram_test(log_scale_t(2.f, 0.f,  128.f,  8));
 }
-TEST_F(MetricsTest, test_int64_log_bin_histogram) {
+TEST(MetricsTest, test_int64_log_bin_histogram) {
   histogram_test(log_scale_t<int64_t>(2, 50,  8000,  10));
 }
-TEST_F(MetricsTest, test_uint64_log_bin_histogram) {
+TEST(MetricsTest, test_uint64_log_bin_histogram) {
   histogram_test(log_scale_t<uint64_t>(2, 50, 8000, 10));
 }

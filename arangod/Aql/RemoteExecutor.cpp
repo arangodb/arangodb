@@ -503,7 +503,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   if (!_distributeId.empty()) {
     req->header.addMeta(StaticStrings::AqlShardIdHeader, _distributeId);
   }
-  network::addSourceHeader(*req);
+
+  network::addSourceHeader(nullptr, *req);
 
   LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
       << "request to '" << _server << "' '" << fuerte::to_string(type) << " "

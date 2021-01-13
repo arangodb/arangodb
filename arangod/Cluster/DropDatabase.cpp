@@ -25,7 +25,9 @@
 #include "DropDatabase.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -65,7 +67,8 @@ bool DropDatabase::first() {
   LOG_TOPIC("22779", DEBUG, Logger::MAINTENANCE) << "DropDatabase: dropping " << database;
 
   try {
-    DatabaseGuard guard("_system");
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, StaticStrings::SystemDatabase);
     auto vocbase = &guard.database();
 
     _result = Databases::drop(ExecContext::current(), vocbase, database);

@@ -164,9 +164,10 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
 
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(::garbageCollectionQuery),
-                             _bindVars, nullptr);
+                             _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -285,9 +286,10 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery : ::filteredLastEntryQuery),
-                             _bindVars, nullptr);
+                             _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
   aql::QueryResult queryResult = query.executeSync();
 
@@ -314,9 +316,10 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(
                                  _clusterId.empty() ? ::fifteenMinuteQuery : ::filteredFifteenMinuteQuery),
-                             _bindVars, nullptr);
+                             _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
   aql::QueryResult queryResult = query.executeSync();
 

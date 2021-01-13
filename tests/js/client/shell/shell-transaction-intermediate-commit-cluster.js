@@ -85,12 +85,12 @@ function getMetric(endpoint, name) {
   let res = request.get({
     url: endpoint + '/_admin/metrics',
   });
-  let re = new RegExp("^" + name + "\\{");
+  let re = new RegExp("^" + name);
   let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*?\} (\d+)$/, '$1'));
+  return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
 }
 
 function assertInSync(leader, follower, shardId) {

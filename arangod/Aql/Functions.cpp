@@ -911,7 +911,7 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
 
   Result res;
   try {
-    res = trx->documentFastPath(collectionName, nullptr, searchBuilder->slice(), result);
+    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result);
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
   }
@@ -1124,7 +1124,8 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, AstNode const& n
   arangodb::aql::Function const* func = nullptr;
   if (ucInvokeFN.find("::") == std::string::npos) {
     // built-in C++ function
-    func = AqlFunctionFeature::getFunctionByName(ucInvokeFN);
+    auto& server = trx.vocbase().server();
+    func = server.getFeature<AqlFunctionFeature>().byName(ucInvokeFN);
     if (func->hasCxxImplementation()) {
       std::pair<size_t, size_t> numExpectedArguments = func->numArguments();
 
@@ -2036,7 +2037,8 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto locale = LanguageFeature::instance()->getLocale();
+  auto& server = trx->vocbase().server();
+  auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
@@ -2106,7 +2108,8 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext, AstNode const
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto locale = LanguageFeature::instance()->getLocale();
+  auto& server = trx->vocbase().server();
+  auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
@@ -2664,7 +2667,8 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
-  auto locale = LanguageFeature::instance()->getLocale();
+  auto& server = trx->vocbase().server();
+  auto locale = server.getFeature<LanguageFeature>().getLocale();
   // we can't copy the search instances, thus use pointers:
   std::vector<std::unique_ptr<icu::StringSearch>> searchVec;
   searchVec.reserve(matchPatterns.size());
@@ -3851,10 +3855,8 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
   return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
 }
 
-
 /// @brief function DATE_LOCALTOUTC
-AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
-                                   AstNode const&,
+AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_LOCALTOUTC";
   using namespace std::chrono;
@@ -3875,11 +3877,51 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
 
   const std::string tz = timeZoneParam.slice().copyString();
 
-  const auto local = local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
+  const auto local =
+      local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
   const auto zoned = make_zoned(tz, local);
   const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
 
   return ::timeAqlValue(expressionContext, AFN, tp_utc);
+}
+
+/// @brief function DATE_TIMEZONE
+AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
+                                 AstNode const&,
+                                 VPackFunctionParameters const& parameters) {
+  using namespace date;
+
+  const auto* zone = current_zone();
+
+  if (zone != nullptr) {
+    return AqlValue(zone->name());
+  }
+
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function DATE_TIMEZONES
+AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode const&,
+                                  VPackFunctionParameters const& parameters) {
+  using namespace date;
+
+  auto& list = get_tzdb_list();
+  auto& db = list.front();
+  
+  transaction::Methods* trx = &expressionContext->trx();
+  transaction::BuilderLeaser result(trx);
+  result->openArray();
+
+  for (auto& zone : db.zones) {
+    result->add(VPackValue(zone.name()));
+  }
+
+  for (auto& link : db.links) {
+    result->add(VPackValue(link.name()));
+  }
+
+  result->close();
+  return AqlValue(result->slice(), result->size());
 }
 
 /// @brief function DATE_ADD
@@ -8197,4 +8239,3 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
-

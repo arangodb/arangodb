@@ -61,6 +61,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -2169,11 +2170,12 @@ class IResearchFeatureTestCoordinator
     server.startFeatures();
 
     arangodb::AgencyCommHelper::initialize("arango");
-    arangodb::network::ConnectionPool::Config poolConfig;
+    arangodb::network::ConnectionPool::Config poolConfig(server.getFeature<arangodb::MetricsFeature>());
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
+    poolConfig.name = "IResearchFeatureTest";
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
@@ -2421,11 +2423,12 @@ class IResearchFeatureTestDBServer
 
     arangodb::AgencyCommHelper::initialize("arango");
 
-    arangodb::network::ConnectionPool::Config poolConfig;
+    arangodb::network::ConnectionPool::Config poolConfig(server.getFeature<arangodb::MetricsFeature>());
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
+    poolConfig.name = "IResearchFeatureTest";
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");

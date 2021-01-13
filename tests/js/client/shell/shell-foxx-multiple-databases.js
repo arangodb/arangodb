@@ -23,11 +23,11 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
-let internal = require('internal');
-let arangodb = require('@arangodb');
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
 const path = require('path');
-let db = arangodb.db;
+const db = arangodb.db;
 const FoxxManager = require('@arangodb/foxx/manager');
 const basePath1 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 const basePath2 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb2');

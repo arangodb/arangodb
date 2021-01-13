@@ -810,7 +810,7 @@ arangodb::Result visitAnalyzers(
       const auto oneShardQueryString = arangodb::aql::QueryString(
         "FOR d IN "s + shards->begin()->first + " RETURN d");
       arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-        oneShardQueryString, nullptr, nullptr);
+        oneShardQueryString, nullptr);
 
       auto result = query.executeSync();
 
@@ -895,7 +895,7 @@ arangodb::Result visitAnalyzers(
   }
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                             queryString, nullptr, nullptr);
+                             queryString, nullptr);
 
   auto result = query.executeSync();
 
@@ -1792,7 +1792,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       if (res.fail()) {
         return res;
       }
-      arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), nullptr, nullptr);
+      arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), nullptr);
       aql::QueryResult queryResult = query.executeSync();
       if (queryResult.fail()) {
         return queryResult.result;
@@ -2212,7 +2212,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
     trx.begin();
 
-    arangodb::aql::Query queryDelete(ctx, queryDeleteString, bindBuilder, nullptr);
+    arangodb::aql::Query queryDelete(ctx, queryDeleteString, bindBuilder);
 
     auto deleteResult = queryDelete.executeSync();
     if (deleteResult.fail()) {
@@ -2230,7 +2230,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
       arangodb::StaticStrings::AnalyzersDeletedRevision + " >= @rev) " +
       "UPDATE d WITH UNSET(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision  + "') IN " +
       arangodb::StaticStrings::AnalyzersCollection);
-    arangodb::aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder, nullptr);
+    arangodb::aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder);
 
     auto updateResult = queryUpdate.executeSync();
     if (updateResult.fail()) {
