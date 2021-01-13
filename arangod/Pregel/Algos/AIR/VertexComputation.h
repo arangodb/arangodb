@@ -62,23 +62,6 @@ class VertexComputation : public vertex_computation {
   void registerLocalFunctions();
 
   // Local functions
-  // TODO we might want to place these in a separate struct and call it
-  //      the "vertex function library" or somesuch
-  // TODO it has to be less cumbersome to declare these buggers. Maybe we implement
-  //      these as structs with operator (), because the parameters are all the same
-  //      and we can neatly wrap parameter checking inside?
-  //
-  // TODO Wrap and unwrap parameters using templates? Suppose I have a function I want
-  //      to call from AIR that takes an uint64_t and a string and returns a bool,
-  //      can we make template tricks to be able to declare
-  //      blafunc<uint64_t, std::string, bool> which automatically unwraps
-  //      into an appropriate call into the Machine, including error messages?
-  //
-  //      what about lists/variadic functions? might not be able to do them
-  //
-  //      register functions with type info & small documentation, so we can
-  //      display it in the editor?
-
   greenspun::EvalResultT<std::unique_ptr<AccumulatorBase>&> vertexAccumulatorByName(std::string_view accumId);
 
   greenspun::EvalResult air_accumRef(greenspun::Machine& ctx,
