@@ -108,7 +108,6 @@ class VertexComputation : public vertex_computation {
   greenspun::EvalResult air_bindRef(greenspun::Machine& ctx,
                                     VPackSlice const params, VPackBuilder& result);
 
-  // TODO: which of these IDs do we actually need?
   greenspun::EvalResult air_thisDoc(greenspun::Machine& ctx,
                                     VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_thisVertexId(greenspun::Machine& ctx,
