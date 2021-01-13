@@ -1,6 +1,9 @@
 devel
 -----
 
+* Print a version mismatch (major/minor version difference) between the
+  arangosh version and the remote arangod version at arangosh startup.
+
 * Internal Refactoring of K_PATH feature, with the goal to have all GraphAlgorithms on
   the same framework. This change should not have any visible effect on users.
 
