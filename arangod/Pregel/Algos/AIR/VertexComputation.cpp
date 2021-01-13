@@ -514,8 +514,8 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto phase_index = *getAggregatedValue<uint32_t>("phase");
-  auto phase = _algorithm.options().phases.at(phase_index);
+  auto const phase_index = *getAggregatedValue<uint32_t>("phase");
+  auto const phase = _algorithm.options().phases.at(phase_index);
 
   auto phaseStep = phaseGlobalSuperstep();
 
