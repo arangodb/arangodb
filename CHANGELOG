@@ -6,6 +6,9 @@ devel
 
 * Limit additional replicas in failover cases to +2.
 
+* Internal Refactoring of K_PATH feature, with the goal to have all GraphAlgorithms on
+  the same framework. This change should not have any visible effect on users.
+
 * Fixed an endless busy loop which could happen if a coordinator tries to 
   roll back a database creation, but the database has already been dropped 
   by other means.
