@@ -670,15 +670,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     if (shardId.empty()) {
       std::tie(state, skipped, items) =
           _engine->execute(executeCall.callStack());
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
     } else {
       std::tie(state, skipped, items) =
           _engine->executeForClient(executeCall.callStack(), shardId);
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
+    }
+      
+    if (state == ExecutionState::WAITING) {
+      return RestStatus::WAITING;
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
