@@ -4,6 +4,15 @@ v3.7.7 (XXXX-XX-XX)
 * Print a version mismatch (major/minor version difference) between the
   arangosh version and the remote arangod version at arangosh startup.
 
+* Minor and rare AQL performance improvement, in nested subqueries:
+  LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
+  where sq1 produces no data (e.g. by the above filter) for sq2, the part <X>
+  have been asked two times (second returns empty result), instead of one, if
+  and only if the mainquery executes sq1 exactly one time.
+  Now we get away with one call only.
+  In the case sq1 has data, or sq1 is executed more often, only one call was
+  needed (assuming the data fits in one batch).
+
 * Improve internal error reporting by cluster maintenance.
 
 * Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
