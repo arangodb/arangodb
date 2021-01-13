@@ -6,7 +6,7 @@ devel
   - BIT_AND(array): and-combined result
   - BIT_OR(array): or-combined result
   - BIT_XOR(array): xor-combined result
-  - BIT_NEGATION(value, bits): bitwise negation of `value`, with a mask of
+  - BIT_NEGATE(value, bits): bitwise negation of `value`, with a mask of
     `bits` length
   - BIT_TEST(value, index): test if bit at position `index` is set in `value`
     (indexes are 0-based)
@@ -17,8 +17,8 @@ devel
     `shift` bits, with a mask of `bits` length
   - BIT_CONSTRUCT(array): construct a number with bits set at the positions
     given in the array
-  - TO_BITS(value): create a bitstring representation from numeric `value`
-  - FROM_BITS(value): parse a bitstring representation into a number
+  - BIT_TO_STRING(value): create a bitstring representation from numeric `value`
+  - BIT_FROM_STRING(value): parse a bitstring representation into a number
 
   `BIT_AND`, `BIT_OR` and `BIT_XOR` are also available as aggregate functions
   for usage inside COLLECT AGGREGATE.

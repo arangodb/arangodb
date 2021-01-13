@@ -427,8 +427,8 @@ struct Functions {
                         VPackFunctionParameters const&);
   static AqlValue BitXOr(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParameters const&);
-  static AqlValue BitNegation(arangodb::aql::ExpressionContext*, AstNode const&,
-                              VPackFunctionParameters const&);
+  static AqlValue BitNegate(arangodb::aql::ExpressionContext*, AstNode const&,
+                            VPackFunctionParameters const&);
   static AqlValue BitTest(arangodb::aql::ExpressionContext*, AstNode const&,
                           VPackFunctionParameters const&);
   static AqlValue BitPopcount(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -439,10 +439,10 @@ struct Functions {
                                 VPackFunctionParameters const&);
   static AqlValue BitConstruct(arangodb::aql::ExpressionContext*, AstNode const&,
                                VPackFunctionParameters const&);
-  static AqlValue ToBits(arangodb::aql::ExpressionContext*, AstNode const&,
-                         VPackFunctionParameters const&);
-  static AqlValue FromBits(arangodb::aql::ExpressionContext*, AstNode const&,
-                           VPackFunctionParameters const&);
+  static AqlValue BitFromString(arangodb::aql::ExpressionContext*, AstNode const&,
+                                VPackFunctionParameters const&);
+  static AqlValue BitToString(arangodb::aql::ExpressionContext*, AstNode const&,
+                              VPackFunctionParameters const&);
   static AqlValue Rand(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const&);
   static AqlValue FirstDocument(arangodb::aql::ExpressionContext*,

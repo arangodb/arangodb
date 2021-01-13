@@ -7001,9 +7001,9 @@ std::tuple<T1, T2, bool> binaryBitFunctionParameters(VPackFunctionParameters con
   return { 0, 0, false };
 }
 
-/// @brief function BIT_NEGATION
-AqlValue Functions::BitNegation(ExpressionContext* expressionContext, AstNode const& node,
-                                VPackFunctionParameters const& parameters) {
+/// @brief function BIT_NEGATE
+AqlValue Functions::BitNegate(ExpressionContext* expressionContext, AstNode const& node,
+                              VPackFunctionParameters const& parameters) {
   auto [testee, width, valid] = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
   if (valid) {
     // mask the lower bits of the result with up to 32 active bits
@@ -7011,7 +7011,7 @@ AqlValue Functions::BitNegation(ExpressionContext* expressionContext, AstNode co
     return AqlValue(AqlValueHintUInt(value));
   }
       
-  static char const* AFN = "BIT_TEST";
+  static char const* AFN = "BIT_NEGATE";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }
@@ -7021,7 +7021,7 @@ AqlValue Functions::BitNegation(ExpressionContext* expressionContext, AstNode co
 AqlValue Functions::BitTest(ExpressionContext* expressionContext, AstNode const& node,
                             VPackFunctionParameters const& parameters) {
   auto [testee, index, valid] = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
-  if (valid) {
+  if (valid && index < Functions::bitFunctionsMaxSupportedBits) {
     return AqlValue(AqlValueHintBool((testee & (1 << index)) != 0));
   }
       
@@ -7114,7 +7114,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
     for (VPackSlice v : VPackArrayIterator(s)) {
       auto [currentValue, valid] = bitOperationValue<uint64_t>(v);
       if (valid) {
-        if (currentValue > Functions::bitFunctionsMaxSupportedBits) {
+        if (currentValue >= Functions::bitFunctionsMaxSupportedBits) {
           valid = false;
         }
       }
@@ -7133,9 +7133,9 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
   return AqlValue(AqlValueHintNull());
 }
 
-/// @brief function TO_BITS
-AqlValue Functions::ToBits(ExpressionContext* expressionContext, AstNode const& node,
-                           VPackFunctionParameters const& parameters) {
+/// @brief function BIT_TO_STRING
+AqlValue Functions::BitToString(ExpressionContext* expressionContext, AstNode const& node,
+                                VPackFunctionParameters const& parameters) {
   auto [testee, index, valid] = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
   if (valid) {
     TRI_ASSERT(index <= Functions::bitFunctionsMaxSupportedBits);
@@ -7143,26 +7143,28 @@ AqlValue Functions::ToBits(ExpressionContext* expressionContext, AstNode const& 
     char buffer[Functions::bitFunctionsMaxSupportedBits];
     char* p = &buffer[0];
 
-    uint64_t compare = uint64_t(1) << index;
-    while (compare > 0 && index > 0) {
-      *p = (testee & compare) ? '1' : '0';
-      ++p;
-      compare >>= 1;
-      --index;
+    if (index > 0) {
+      uint64_t compare = uint64_t(1) << (index - 1);
+      while (compare > 0 && index > 0) {
+        *p = (testee & compare) ? '1' : '0';
+        ++p;
+        compare >>= 1;
+        --index;
+      }
     }
 
     return AqlValue(&buffer[0], static_cast<size_t>(p - &buffer[0]));
   }
   
-  static char const* AFN = "TO_BITS";
+  static char const* AFN = "BIT_TO_STRING";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }
 
-/// @brief function FROM_BITS
-AqlValue Functions::FromBits(ExpressionContext* expressionContext, AstNode const& node,
-                             VPackFunctionParameters const& parameters) {
-  static char const* AFN = "FROM_BITS";
+/// @brief function BIT_FROM_STRING
+AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode const& node,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "BIT_FROM_STRING";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (value.isString()) {
