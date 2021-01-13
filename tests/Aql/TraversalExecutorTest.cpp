@@ -267,7 +267,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
 
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
@@ -445,7 +445,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
 
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 

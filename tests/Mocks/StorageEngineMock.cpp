@@ -129,8 +129,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
 
       ++_keysIt;
     }
-
-    return _begin != _end || _keysIt.valid();
+    return _begin != _end && _keysIt.valid();
   }
 
   void resetImpl() override {

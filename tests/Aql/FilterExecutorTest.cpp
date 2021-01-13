@@ -56,7 +56,7 @@ using FilterExecutorInputParam = std::tuple<FilterExecutorSplitType>;
 class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInputParam> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
   RegIdSet outputRegisters;
