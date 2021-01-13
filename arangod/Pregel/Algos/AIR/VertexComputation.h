@@ -62,8 +62,6 @@ class VertexComputation : public vertex_computation {
   void registerLocalFunctions();
 
   // Local functions
-  greenspun::EvalResultT<std::unique_ptr<AccumulatorBase>&> vertexAccumulatorByName(std::string_view accumId);
-
   greenspun::EvalResult air_accumRef(greenspun::Machine& ctx,
                                      VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_accumSet(greenspun::Machine& ctx,
