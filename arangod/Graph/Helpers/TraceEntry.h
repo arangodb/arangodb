@@ -24,6 +24,7 @@
 #ifndef ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H
 #define ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H 1
 
+#include <limits>
 #include <numeric>
 #include <ostream>
 
