@@ -198,6 +198,10 @@ class ExecutionNode {
   static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
                                          arangodb::velocypack::Slice const& slice);
 
+  /// @brief remove registers right of (greater than) the specified register
+  /// from the internal maps
+  void removeRegistersGreaterThan(RegisterId maxRegister);
+
   /// @brief cast an ExecutionNode to a specific sub-type
   /// in maintainer mode, this function will perform a dynamic_cast and abort
   /// the program if the cast is invalid. in release mode, this function will

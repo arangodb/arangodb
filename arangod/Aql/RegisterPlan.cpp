@@ -59,10 +59,6 @@ template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  if (explain) {
-    plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
-  }
-
 // TODO There are some difficulties with view nodes to resolve before this code
 //      can be activated. Also see the comment on assertNoVariablesMissing()
 //      below.
@@ -103,8 +99,13 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
+  
+  if (explain) {
+    plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
+  }
 
   if (en->getType() == ExecutionNode::SUBQUERY) {
+    // old-style subqueries
     plan->addSubqueryNode(en);
   }
 
@@ -327,6 +328,11 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(regsToKeepStack == actual);
 #endif
 
+  TRI_ASSERT(!plan->nrRegs.empty());
+  for (auto regId: regsToClear) {
+    TRI_ASSERT(regId < plan->nrRegs.back());
+  }
+
   // We need to delete those variables that have been used here but are
   // not used any more later:
   en->setRegsToClear(std::move(regsToClear));
@@ -344,7 +350,7 @@ RegisterPlanT<T>::RegisterPlanT() : depth(0) {
 // Copy constructor used for a subquery:
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
-    : varInfo(v.varInfo), nrRegs(v.nrRegs), subQueryNodes(), depth(newdepth + 1) {
+    : varInfo(v.varInfo), nrRegs(v.nrRegs), subqueryNodes(), depth(newdepth + 1) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);
@@ -402,7 +408,7 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   other->depth = depth;
   other->varInfo = varInfo;
 
-  // No need to clone subQueryNodes because this was only used during
+  // No need to clone subqueryNodes because this was only used during
   // the buildup.
 
   return other;
@@ -410,12 +416,97 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
 
 template <typename T>
 void RegisterPlanT<T>::increaseDepth() {
-  depth++;
+  ++depth;
+
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
   auto regCount = nrRegs.back();
   nrRegs.emplace_back(regCount);
+}
+
+template <typename T>
+void RegisterPlanT<T>::shrink(T* start) {
+  // remove all registers greater than maxRegister from the ExecutionNodes 
+  // starting at current that have the same depth as current
+  auto removeRegistersGreaterThan = [this](T* current, RegisterId maxRegister) {
+    auto depth = current->getDepth();
+    while (current != nullptr && current->getDepth() == depth) {
+      current->removeRegistersGreaterThan(maxRegister);
+      current = current->getFirstDependency();
+    }
+  };
+
+  // scan the execution plan upwards, starting at the root node, until
+  // we either find the end of the plan or a change in the node's depth.
+  // while scanning the ExecutionNodes of a certain depth, we keep track 
+  // of the maximum register id they use.
+  // when we are at the end of the plan or at a depth change, we know which
+  // is the maximum register id used by the depth. if it is different from
+  // the already calculated number of registers for this depth, we walk over
+  // all nodes in that depth again and remove the superfluous registers from
+  // them.
+  
+  auto maxUsedRegister = [this](auto const& container, RegisterId maxRegisterId) -> RegisterId {
+    for (auto const& v : container) {
+      auto it = varInfo.find(v->id);
+      if (it != varInfo.end()) {
+        RegisterId rv = it->second.registerId;
+        maxRegisterId = std::max(rv, maxRegisterId);
+      }
+    }
+    return maxRegisterId;
+  };
+  
+  // max RegisterId used by nodes on the current depth
+  RegisterId maxRegisterId = 0;
+  
+  // node at which the current depth starts
+  T* depthStart = start;
+
+  // loop node pointer, will be modified while iterating
+  T* current = start;
+  
+  // currently used variables, outside of loop because the set is recycled
+  VarSet varsUsedHere;
+
+  while (current != nullptr) {
+    // take the node's used registers into account
+    // the maximum used RegisterId for the current depth is tracked in
+    // maxRegisterId
+    varsUsedHere.clear();
+    current->getVariablesUsedHere(varsUsedHere);
+    maxRegisterId = maxUsedRegister(varsUsedHere, maxRegisterId);
+    maxRegisterId = maxUsedRegister(current->getVariablesSetHere(), maxRegisterId);
+    for (auto const& usedLater : current->getVarsUsedLaterStack()) {
+      maxRegisterId = maxUsedRegister(usedLater, maxRegisterId);
+    }
+
+    auto depth = current->getDepth();
+    T* previous = current->getFirstDependency();
+    // check if from the next node onwards there will be a depth change, or if 
+    // we are at the end of the plan
+    bool const depthChange = (previous == nullptr || previous->getDepth() != depth);
+
+    if (depthChange) {
+      auto neededRegisters = static_cast<RegisterCount>(maxRegisterId + 1);
+      if (nrRegs[depth] > neededRegisters) {
+        // the current RegisterPlan has superfluous registers planned for this 
+        // depth. so let's put in some more effort and remove them.
+        nrRegs[depth] = neededRegisters;
+        // remove the superfluous registers from all the nodes starting at the
+        // start node of our current depth...
+        removeRegistersGreaterThan(depthStart, maxRegisterId);
+      }
+      
+      // new depth starting, so update the start node for the depth
+      depthStart = previous;
+      maxRegisterId = 0;
+    }
+    
+    // walk upwards
+    current = previous;
+  }
 }
 
 template <typename T>
@@ -493,7 +584,7 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
 
 template <typename T>
 void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
-  subQueryNodes.emplace_back(subquery);
+  subqueryNodes.emplace_back(subquery);
 }
 
 template <typename T>

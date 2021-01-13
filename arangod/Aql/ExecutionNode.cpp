@@ -981,11 +981,28 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
-  // Now handle the subqueries:
-  for (auto& s : v->subQueryNodes) {
+  if (v->subqueryNodes.empty() && super == nullptr) {
+    // shrink RegisterPlan by cutting off all unused rightmost registers
+    // from each depth. this is a completely optional performance
+    // optimization. turning it off should not affect correctness,
+    // only performance.
+    // note: we are intentionally not performing this optimization
+    // in case the query still contains old style subqueries. 
+    // in that case, the register planning optimization would be slightly
+    // more complex to perform. 99.99% of queries should not be affected
+    // by this optimization being turned off, because old-style subqueries
+    // are only around in case except someone intentionally turned off
+    // subquery optimizations. 
+    v->shrink(this);
+  }
+
+  // Now handle old-style subqueries:
+  for (auto& s : v->subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
   }
+
+  // TODO: looks like it is unnecessary to call reset here
   walker.reset();
 }
 
@@ -1138,6 +1155,26 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
     : _id(id), _depth(0), _varUsageValid(false), _isInSplicedSubquery(false), _plan(plan) {}
 
 ExecutionNodeId ExecutionNode::id() const { return _id; }
+
+void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
+  auto removeRegisters = [maxRegister](auto& container) {
+    for (auto it = container.begin(); it != container.end(); /* no hoisting */) {
+      if ((*it) > maxRegister) {
+        it = container.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  };
+
+  removeRegisters(_regsToClear);
+  removeRegisters(_regsToKeepStack.back());
+
+  auto it = _registerPlan->unusedRegsByNode.find(_id);
+  if (it != _registerPlan->unusedRegsByNode.end()) {
+    removeRegisters(it->second.back());
+  }
+}
 
 void ExecutionNode::swapFirstDependency(ExecutionNode* node) {
   TRI_ASSERT(hasDependency());
@@ -1888,7 +1925,6 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   bool const willUseV8 = expression()->willUseV8();
 
   TRI_ASSERT(expression() != nullptr);
-
 
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),
