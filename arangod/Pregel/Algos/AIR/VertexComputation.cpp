@@ -152,8 +152,6 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_accumRef_helper(VPackSlice const params,
                                                              VPackBuilder& result,
                                                              vertex_type const* vertexDataPtr) {
-  // TODO: Currently this helper is needed to expose that method to GraphFormat.cpp
-  // In the future we should implement some reusable interface to do that properly for all methods if needed.
   auto res = greenspun::extract<std::string>(params);
   if (res.fail()) {
     return std::move(res).error();
