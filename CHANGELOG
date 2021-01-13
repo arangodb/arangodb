@@ -1,6 +1,29 @@
 devel
 -----
 
+* AQL query execution plan register usage optimization.
+
+  This is a performance optimization that may positively affect queries
+  that use a lot of variables that are only needed in certain parts of
+  the query. The positive effect will come from saving registers, which
+  directly translates to saving columns in AqlItemBlocks.
+
+  Previously, the number of registers that were planned for each depth 
+  level of the query never decreased when going from one level to the
+  next.
+  Unused registers were recycled since 3.7, but this did not lead to 
+  unused registers being completely dismantled.
+  
+  Now there is an extra step at the end of the register planning that
+  keeps track of the actually used registers on each depth, and that
+  will shrink the number of registers for the depth to the id of the
+  maximum register. This is done for each depth separately.
+  Unneeded registers on the right hand side of the maximum used register
+  are now discarded. Unused registers on the left hand side of the maximum
+  used register id are not discarded, because we still need to guarantee
+  that registers from depths above stay in the same slot when starting
+  a new depth.
+
 * Fix a bug in the agency Supervision which could lead to removeFollower
   jobs constantly being created and immediately stopped again.
 
