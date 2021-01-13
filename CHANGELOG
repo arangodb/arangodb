@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix a bug in the agency Supervision which could lead to removeFollower
+  jobs constantly being created and immediately stopped again.
+
+* Limit additional replicas in failover cases to +2.
+
 * Print a version mismatch (major/minor version difference) between the
   arangosh version and the remote arangod version at arangosh startup.
 
