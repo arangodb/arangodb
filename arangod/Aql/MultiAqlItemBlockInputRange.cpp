@@ -70,6 +70,13 @@ auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
   return _inputs.at(dependency).upstreamState();
 }
 
+auto MultiAqlItemBlockInputRange::hasValidRow() const noexcept -> bool {
+  return std::any_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasValidRow();
+                     });
+}
+
 auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).hasDataRow();

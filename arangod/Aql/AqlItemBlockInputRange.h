@@ -50,7 +50,10 @@ class AqlItemBlockInputRange {
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
   ExecutorState upstreamState() const noexcept;
+
   bool upstreamHasMore() const noexcept;
+
+  bool hasValidRow() const noexcept;
 
   bool hasDataRow() const noexcept;
 

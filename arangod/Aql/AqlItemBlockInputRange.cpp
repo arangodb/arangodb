@@ -54,6 +54,11 @@ SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
   return _block;
 }
 
+bool AqlItemBlockInputRange::hasValidRow() const noexcept {
+  // covers both data rows & shadow rows
+  return isIndexValid(_rowIndex);
+}
+
 bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }

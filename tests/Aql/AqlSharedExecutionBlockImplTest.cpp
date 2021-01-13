@@ -175,7 +175,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
   std::pair<SharedAqlItemBlockPtr, SharedAqlItemBlockPtr> splitBlock(SharedAqlItemBlockPtr base,
                                                                      size_t splitAtRow) {
     auto first = base->slice(0, splitAtRow);
-    auto second = base->slice(splitAtRow, base->numRows());
+    auto second = base->slice(splitAtRow, base->size());
     return {second, first};
   }
 

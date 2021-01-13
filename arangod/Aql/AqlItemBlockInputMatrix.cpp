@@ -103,6 +103,11 @@ bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
   return upstreamState() == ExecutorState::HASMORE;
 }
 
+bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
+  return _shadowRow.isInitialized() ||
+         (_aqlItemMatrix != nullptr && _aqlItemMatrix->size() != 0);
+}
+
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   if (_aqlItemMatrix == nullptr) {
     return false;

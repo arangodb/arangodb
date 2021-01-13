@@ -356,7 +356,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
   aql::QueryString fakeQueryString(queryString);
   auto query = std::make_unique<arangodb::aql::Query>(
       arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-      fakeQueryString, bindParams, queryOptions.slice());
+      fakeQueryString, bindParams, queryOptions);
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 

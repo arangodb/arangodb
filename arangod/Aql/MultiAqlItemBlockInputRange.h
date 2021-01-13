@@ -46,6 +46,8 @@ class MultiAqlItemBlockInputRange {
   ExecutorState upstreamState(size_t const dependency) const noexcept;
   bool upstreamHasMore(size_t const dependency) const noexcept;
 
+  bool hasValidRow() const noexcept;
+
   bool hasDataRow() const noexcept;
   bool hasDataRow(size_t const dependency) const noexcept;
 
