@@ -326,13 +326,14 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
                                      en->getVariablesSetHere());
   TRI_ASSERT(regsToKeepStack == actual);
-#endif
 
   TRI_ASSERT(!plan->nrRegs.empty());
   for (auto regId: regsToClear) {
     TRI_ASSERT(regId < plan->nrRegs.back());
   }
 
+#endif
+  
   // We need to delete those variables that have been used here but are
   // not used any more later:
   en->setRegsToClear(std::move(regsToClear));
@@ -546,7 +547,6 @@ void RegisterPlanT<T>::toVelocyPackEmpty(VPackBuilder& builder) {
   { VPackArrayBuilder guard(&builder); }
   builder.add(VPackValue("nrRegs"));
   { VPackArrayBuilder guard(&builder); }
-  builder.add("totalNrRegs", VPackValue(0));
 }
 
 template <typename T>
@@ -571,15 +571,6 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
       builder.add(VPackValue(oneRegisterID));
     }
   }
-
-  // nrRegsHere is not used anymore and is intentionally left empty
-  // can be removed in ArangoDB 3.8
-  builder.add(VPackValue("nrRegsHere"));
-  { VPackArrayBuilder guard(&builder); }
-
-  // totalNrRegs is not used anymore and is intentionally left empty
-  // can be removed in ArangoDB 3.8
-  builder.add("totalNrRegs", VPackSlice::noneSlice());
 }
 
 template <typename T>
