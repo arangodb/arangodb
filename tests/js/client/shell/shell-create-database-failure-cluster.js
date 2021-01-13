@@ -33,7 +33,7 @@ let db = arangodb.db;
 let errors = arangodb.errors;
 const request = require('@arangodb/request');
 
-let = getEndpointById = function (id) {
+let getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
