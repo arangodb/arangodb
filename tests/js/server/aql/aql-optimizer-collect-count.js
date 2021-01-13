@@ -102,14 +102,14 @@ function optimizerCountTestSuite () {
         assertEqual("SUM", clusterCollectNode.aggregates[0].type);
         assertEqual("cnt", clusterCollectNode.aggregates[0].outVariable.name);
         assertEqual(clusterCollectNode.aggregates[0].inVariable.name, collectNode.aggregates[0].outVariable.name);
-        assertTrue(/\COLLECT AGGREGATE #[0-9] = LENGTH\(\)/.test(output));
-        assertTrue(/\COLLECT AGGREGATE cnt = SUM\(#[0-9]\)/.test(output));
+        assertTrue(/COLLECT AGGREGATE #[0-9] = LENGTH\(\)/.test(output));
+        assertTrue(/COLLECT AGGREGATE cnt = SUM\(#[0-9]\)/.test(output));
       } else {
         assertEqual("count", collectNode.collectOptions.method);
         assertEqual(1, collectNode.aggregates.length);
         assertEqual("cnt", collectNode.aggregates[0].outVariable.name);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
-        assertTrue(/\COLLECT AGGREGATE cnt = LENGTH\(\)/.test(output));
+        assertTrue(/COLLECT AGGREGATE cnt = LENGTH\(\)/.test(output));
       }
     },
 
@@ -555,4 +555,3 @@ function optimizerCountTestSuite () {
 jsunity.run(optimizerCountTestSuite);
 
 return jsunity.done();
-
