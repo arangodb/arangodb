@@ -37,6 +37,8 @@
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
 
+#include <Basics/ResourceUsage.h>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {

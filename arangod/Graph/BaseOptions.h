@@ -174,6 +174,16 @@ struct BaseOptions {
   
   void isQueryKilledCallback() const;
 
+  void setRefactor(bool r) noexcept {
+    _refactor = r;
+  }
+
+  bool refactor() const {
+    return _refactor;
+  }
+
+  aql::Variable const* tmpVar(); // TODO check public
+
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
 
@@ -223,6 +233,10 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  /// @brief whether or not we are running the refactored version
+  /// TODO: This must be removed prior release - (is currently needed for the refactoring)
+  bool _refactor;
 };
 
 }  // namespace graph

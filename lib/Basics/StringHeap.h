@@ -39,7 +39,9 @@ class StringRef;
 class StringHeap {
  public:
   StringHeap(StringHeap const&) = delete;
+  StringHeap(StringHeap&&) = default;
   StringHeap& operator=(StringHeap const&) = delete;
+  StringHeap& operator=(StringHeap&&) = delete;
 
   explicit StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize);
   ~StringHeap();
@@ -68,7 +70,7 @@ class StringHeap {
   std::vector<char*> _blocks;
 
   /// @brief size of each block
-  size_t const _blockSize;
+  size_t _blockSize;
 
   /// @brief offset into current block
   char* _current;

@@ -85,7 +85,6 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
       VelocyPackHelper::getStringValue(info, "weightAttribute", "");
   defaultWeight =
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
-
   VPackSlice read = info.get("reverseLookupInfos");
   if (!read.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -127,6 +126,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("weightAttribute", VPackValue(weightAttribute));
   builder.add("defaultWeight", VPackValue(defaultWeight));
   builder.add("type", VPackValue("shortestPath"));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
@@ -178,9 +178,8 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
                                                            : _baseLookupInfos);
 }
 
-template<typename ListType>
-void ShortestPathOptions::fetchVerticesCoordinator(
-    ListType const& vertexIds) {
+template <typename ListType>
+void ShortestPathOptions::fetchVerticesCoordinator(ListType const& vertexIds) {
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -226,5 +225,7 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       multiThreaded{other.multiThreaded},
       _reverseLookupInfos{other._reverseLookupInfos} {}
 
-template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
-template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(
+    std::deque<arangodb::velocypack::StringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(
+    std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);

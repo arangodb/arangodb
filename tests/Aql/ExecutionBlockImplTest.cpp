@@ -131,7 +131,7 @@ static constexpr auto onlySkipAndCount = []() -> const AqlCall {
 class SharedExecutionBlockImplTest {
  protected:
   mocks::MockAqlServer server{};
-  ResourceMonitor monitor{};
+  arangodb::ResourceMonitor monitor{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
