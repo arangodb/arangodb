@@ -291,14 +291,6 @@ greenspun::EvalResult VertexComputation::air_outboundEdges(greenspun::Machine& c
   return {};
 }
 
-greenspun::EvalResult VertexComputation::air_neigbours(greenspun::Machine& ctx,
-                                                       VPackSlice const params,
-                                                       VPackBuilder& result) {
-  // FIXME: Implement
-  LOG_DEVEL << "air_neighbours is not implemented yet";
-  return greenspun::EvalError("not implemented");
-}
-
 greenspun::EvalResult VertexComputation::air_numberOutboundEdges(
     greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<>(params);

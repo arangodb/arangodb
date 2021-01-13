@@ -100,8 +100,6 @@ class VertexComputation : public vertex_computation {
 
   greenspun::EvalResult air_outboundEdges(greenspun::Machine& ctx,
                                           VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_neigbours(greenspun::Machine& ctx,
-                                      VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_numberOutboundEdges(greenspun::Machine& ctx,
                                                 VPackSlice const params,
                                                 VPackBuilder& result);
