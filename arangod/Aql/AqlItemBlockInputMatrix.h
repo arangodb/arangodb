@@ -57,7 +57,7 @@ class AqlItemBlockInputMatrix {
 
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
-  size_t skipAllRemainingDataRows();
+  size_t skipAllRemainingDataRows() noexcept;
 
   // Will return HASMORE if we were able to increase the row index.
   // Otherwise will return DONE.
@@ -79,6 +79,9 @@ class AqlItemBlockInputMatrix {
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+
+ private:
+  void advanceBlockIndexAndShadowRow() noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
