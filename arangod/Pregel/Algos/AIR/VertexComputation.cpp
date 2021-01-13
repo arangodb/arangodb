@@ -93,19 +93,19 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("vertex-count",  // ,
                                 &VertexComputation::air_numberOfVertices, this);
 
-  _airMachine.setFunctionMember("global-superstep",  //,
+  _airMachine.setFunctionMember(StaticStrings::VertexComputationGlobalSuperstep,  //,
                                 &VertexComputation::air_globalSuperstep, this);
 
   _airMachine.setPrintCallback([this](std::string const& msg) {
-    auto phase_index = *getAggregatedValue<uint32_t>("phase");
+    auto phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
     auto phase = _algorithm.options().phases.at(phase_index);
     this->getReportManager()
             .report(ReportLevel::DEBUG)
-            .with("pregel-id", pregelId())
-            .with("vertex", vertexData()._documentId)
-            .with("phase", phase.name)
-            .with("global-superstep", globalSuperstep())
-            .with("phase-step", phaseGlobalSuperstep())
+            .with(StaticStrings::VertexComputationPregelId, pregelId())
+            .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+            .with(StaticStrings::VertexComputationPhase, phase.name)
+            .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
+            .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
         << msg;
   });
 }
@@ -514,7 +514,7 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto const phase_index = *getAggregatedValue<uint32_t>("phase");
+  auto const phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
   auto const phase = _algorithm.options().phases.at(phase_index);
 
   auto phaseStep = phaseGlobalSuperstep();
@@ -523,11 +523,11 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     if (auto res = clearAllVertexAccumulators(); res.fail()) {
       getReportManager()
               .report(ReportLevel::ERR)
-              .with("pregel-id", pregelId())
-              .with("vertex", vertexData()._documentId)
-              .with("phase", phase.name)
-              .with("global-superstep", globalSuperstep())
-              .with("phase-step", phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationPregelId, pregelId())
+              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationPhase, phase.name)
+              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
           << "in phase `" << phase.name
           << "` initial reset failed: " << res.error().toString();
       return;
@@ -538,11 +538,11 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     if (auto res = runProgram(_airMachine, phase.initProgram.slice()); res.fail()) {
       getReportManager()
               .report(ReportLevel::ERR)
-              .with("pregel-id", pregelId())
-              .with("vertex", vertexData()._documentId)
-              .with("phase", phase.name)
-              .with("global-superstep", globalSuperstep())
-              .with("phase-step", phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationPregelId, pregelId())
+              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationPhase, phase.name)
+              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
           << "in phase `" << phase.name
           << "` init-program failed: " << res.error().toString();
     }
@@ -561,11 +561,11 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     if (auto res = runProgram(_airMachine, phase.updateProgram.slice()); res.fail()) {
       getReportManager()
               .report(ReportLevel::ERR)
-              .with("pregel-id", pregelId())
-              .with("vertex", vertexData()._documentId)
-              .with("phase", phase.name)
-              .with("global-superstep", globalSuperstep())
-              .with("phase-step", phaseGlobalSuperstep())
+              .with(StaticStrings::VertexComputationPregelId, pregelId())
+              .with(StaticStrings::VertexComputationVertexId, vertexData()._documentId)
+              .with(StaticStrings::VertexComputationPhase, phase.name)
+              .with(StaticStrings::VertexComputationGlobalSuperstep, globalSuperstep())
+              .with(StaticStrings::VertexComputationPhaseStep, phaseGlobalSuperstep())
           << "in phase `" << phase.name
           << "` update-program failed: " << res.error().toString();
     }
