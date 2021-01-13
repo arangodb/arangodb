@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #define ARANGODB_CACHE_MANAGER_H
 
 #include "Basics/ReadWriteSpinLock.h"
-#include "Basics/SharedAtomic.h"
 #include "Basics/SharedCounter.h"
 #include "Basics/SpinLocker.h"
 #include "Cache/CachedValue.h"
@@ -69,7 +68,7 @@ class Rebalancer;      // forward declaration
 /// have more space.
 ///
 /// There should be a single Manager instance exposed via
-/// CacheManagerFeature::MANAGER --- use this unless you are very certain you
+/// CacheManagerFeature::manager() --- use this unless you are very certain you
 /// need a different instance.
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
@@ -215,9 +214,9 @@ class Manager {
   enum TaskEnvironment { none, rebalancing, resizing };
   PostFn _schedulerPost;
   std::uint64_t _resizeAttempt;
-  basics::SharedAtomic<std::uint64_t> _outstandingTasks;
-  basics::SharedAtomic<std::uint64_t> _rebalancingTasks;
-  basics::SharedAtomic<std::uint64_t> _resizingTasks;
+  std::atomic<std::uint64_t> _outstandingTasks;
+  std::atomic<std::uint64_t> _rebalancingTasks;
+  std::atomic<std::uint64_t> _resizingTasks;
   Manager::time_point _rebalanceCompleted;
 
   // friend class tasks and caches to allow access

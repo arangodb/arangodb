@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -203,14 +203,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
-  if (!dirty.empty() && plan.empty()) {
-    // TODO increase log level, except during shutdown?
-    LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
-        << "DBServerAgencySync::execute no plan change set";
-    result.success = true;
-    result.errorMessage = "DBServerAgencySync::execute no reconciliation plan";
-    return result;
-  }
 
   auto serverId = arangodb::ServerState::instance()->getId();
 

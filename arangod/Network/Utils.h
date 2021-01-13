@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,9 @@
 namespace arangodb {
 namespace velocypack {
 class Builder;
+}
+namespace consensus {
+class Agent;
 }
 class ClusterInfo;
 class NetworkFeature;
@@ -80,7 +83,7 @@ std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res);
 fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
 rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
-void addSourceHeader(fuerte::Request& req);
+void addSourceHeader(consensus::Agent* agent, fuerte::Request& req);
 
 }  // namespace network
 }  // namespace arangodb

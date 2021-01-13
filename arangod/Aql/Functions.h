@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -213,6 +213,10 @@ struct Functions {
                                  AstNode const&, VPackFunctionParameters const&);
   static AqlValue DateLocalToUtc(arangodb::aql::ExpressionContext*,
                                  AstNode const&, VPackFunctionParameters const&);
+  static AqlValue DateTimeZone(arangodb::aql::ExpressionContext*,
+                               AstNode const&, VPackFunctionParameters const&);
+  static AqlValue DateTimeZones(arangodb::aql::ExpressionContext*,
+                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue DateAdd(arangodb::aql::ExpressionContext*,
                           AstNode const&, VPackFunctionParameters const&);
   static AqlValue DateSubtract(arangodb::aql::ExpressionContext*,

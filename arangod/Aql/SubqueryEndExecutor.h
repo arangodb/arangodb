@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,8 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 
 class NoStats;
@@ -44,7 +46,9 @@ class SingleRowFetcher;
 
 class SubqueryEndExecutorInfos {
  public:
-  SubqueryEndExecutorInfos(velocypack::Options const* options, RegisterId inReg,
+  SubqueryEndExecutorInfos(velocypack::Options const* options, 
+                           arangodb::ResourceMonitor& resourceMonitor, 
+                           RegisterId inReg,
                            RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
@@ -56,9 +60,11 @@ class SubqueryEndExecutorInfos {
   [[nodiscard]] RegisterId getOutputRegister() const noexcept;
   [[nodiscard]] bool usesInputRegister() const noexcept;
   [[nodiscard]] RegisterId getInputRegister() const noexcept;
+  [[nodiscard]] arangodb::ResourceMonitor& getResourceMonitor() const noexcept;
 
  private:
   velocypack::Options const* _vpackOptions;
+  arangodb::ResourceMonitor& _resourceMonitor;
   RegisterId const _outReg;
   RegisterId const _inReg;
 };
@@ -114,7 +120,9 @@ class SubqueryEndExecutor {
   // control of it to hand over to an AqlValue
   class Accumulator {
    public:
-    explicit Accumulator(velocypack::Options const* options);
+    explicit Accumulator(arangodb::ResourceMonitor& resourceMonitor, velocypack::Options const* options);
+    ~Accumulator();
+    
     void reset();
 
     void addValue(AqlValue const& value);
@@ -124,9 +132,11 @@ class SubqueryEndExecutor {
     size_t numValues() const noexcept;
 
    private:
-    velocypack::Options const* const _options;
+    arangodb::ResourceMonitor& _resourceMonitor;
+    velocypack::Options const* _options;
     arangodb::velocypack::Buffer<uint8_t> _buffer;
     velocypack::Builder _builder;
+    size_t _memoryUsage{0};
     size_t _numValues{0};
   };
 

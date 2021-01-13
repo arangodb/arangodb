@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1577,7 +1577,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
   bindVars->close();  // bindVars
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars, nullptr);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars);
   aql::QueryResult queryResult = query.executeSync();
 
   // neither agency nor dbserver should get here
@@ -3479,7 +3479,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   
   transaction::Options opts;
   opts.lockTimeout = ttl; // not sure if appropriate ?
-  Result res = mgr->createManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
+  Result res = mgr->ensureManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
 
   if (res.fail()) {
     return res;

@@ -43,7 +43,7 @@ namespace aql {
 template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
-  explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+  explicit DependencyProxyMock(arangodb::ResourceMonitor& monitor,
                                ::arangodb::aql::RegisterId nrRegisters);
 
  public:
@@ -76,7 +76,7 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
 
   size_t _numFetchBlockCalls;
 
-  ::arangodb::aql::ResourceMonitor& _monitor;
+  ::arangodb::ResourceMonitor& _monitor;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
   ::arangodb::aql::SharedAqlItemBlockPtr _block;
 };
@@ -85,7 +85,7 @@ template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class MultiDependencyProxyMock
     : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
-  MultiDependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+  MultiDependencyProxyMock(arangodb::ResourceMonitor& monitor,
                            ::arangodb::aql::RegIdSet const& inputRegisters,
                            ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1247,14 +1247,11 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
     if (outVariable != nullptr &&
         varsUsedLater.find(outVariable) == varsUsedLater.end()) {
       // outVariable not used later
-      if (!collectNode->count()) {
-        collectNode->clearOutVariable();
-        collectNode->clearKeepVariables();
-      }
+      collectNode->clearOutVariable();
+      collectNode->clearKeepVariables();
       modified = true;
-    } else if (outVariable != nullptr && !collectNode->count() &&
-               !collectNode->hasExpressionVariable()) {
-      // outVariable used later, no count, no INTO expression, no KEEP
+    } else if (outVariable != nullptr && !collectNode->hasExpressionVariable()) {
+      // outVariable used later, no INTO expression, no KEEP
       // e.g. COLLECT something INTO g
       // we will now check how many parts of "g" are used later
 
@@ -1821,7 +1818,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation =
         (!groupVariables.empty() &&
-         (!collectNode->hasOutVariable() || collectNode->count()) &&
+         !collectNode->hasOutVariable() &&
          collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
 
     if (canUseHashAggregation && !opt->runOnlyRequiredRules(1)) {
@@ -1898,7 +1895,11 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         opt->addPlan(std::move(newPlan), rule, true);
       }
     } else if (groupVariables.empty() &&
-               collectNode->aggregateVariables().empty() && collectNode->count()) {
+               collectNode->hasOutVariable() == false &&
+               collectNode->aggregateVariables().size() == 1 &&
+               collectNode->aggregateVariables()[0].type == "LENGTH") {
+      // we have no groups and only a single aggregator of type LENGTH, so we
+      // can use the specialized count executor
       collectNode->aggregationMethod(CollectOptions::CollectMethod::COUNT);
       collectNode->specialized();
       modified = true;
@@ -2071,14 +2072,14 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   void replaceInView(ExecutionNode* en) {
     auto view = ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(en);
-    if (view->filterConditionIsEmpty()) {
+    AstNode const& search = view->filterCondition();
+    if (filterConditionIsEmpty(&search)) {
       // nothing to do
       return;
     }
-    AstNode const& search = view->filterCondition();
+
     VarSet variables;
     Ast::getReferencedVariables(&search, variables);
-
     // check if the search condition uses any of the variables that we want to
     // replace
     AstNode* cloned = nullptr;
@@ -2791,7 +2792,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         // in this case we must not perform the replacements
         while (current != nullptr) {
           if (current->getType() == EN::COLLECT) {
-            if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariableButNoCount()) {
+            if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariable()) {
               hasCollectWithOutVariable = true;
               break;
             }
@@ -2822,7 +2823,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         current->getVariablesUsedHere(vars);
         if (vars.find(outVariable) != vars.end()) {
           if (current->getType() == EN::COLLECT) {
-            if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariableButNoCount()) {
+            if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariable()) {
               // COLLECT with an INTO variable will collect all variables from
               // the scope, so we shouldn't try to remove or change the meaning
               // of variables
@@ -4361,17 +4362,40 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           bool hasFoundMultipleShards = false;
           auto p = previous;
           while (p != nullptr) {
-            if (p->getType() == ExecutionNode::REMOTE) {
-              hasFoundMultipleShards = true;
-            } else if (p->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-                       p->getType() == ExecutionNode::INDEX) {
-              auto col = getCollection(p);
-              if (col->numberOfShards() > 1) {
+            switch(p->getType()) {
+              case ExecutionNode::REMOTE:
                 hasFoundMultipleShards = true;
-              }
-            } else if (p->getType() == ExecutionNode::TRAVERSAL) {
-              hasFoundMultipleShards = true;
+                break;
+              case ExecutionNode::ENUMERATE_COLLECTION:
+              case ExecutionNode::INDEX:
+                {
+                  auto col = getCollection(p);
+                  if (col->numberOfShards() > 1) {
+                    hasFoundMultipleShards = true;
+                  }
+                }
+                break;
+              case ExecutionNode::TRAVERSAL:
+                hasFoundMultipleShards = true;
+                break;
+              case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+                {
+                  auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(p);
+                  auto collections = viewNode.collections();
+                  auto const collCount = collections.size();
+                  TRI_ASSERT(collCount > 0);
+                  if (collCount > 1) {
+                    hasFoundMultipleShards = true;
+                  } else if (1 == collCount) {
+                    hasFoundMultipleShards = collections.front().get().numberOfShards() > 1;
+                  }
+                }
+                break;
+              default:
+                break;
             }
+
+
             if (hasFoundMultipleShards) {
               break;
             }
@@ -4411,18 +4435,22 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           bool removeGatherNodeSort = false;
 
           if (collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT) {
-            // clone a COLLECT WITH COUNT operation from the coordinator to the
+            TRI_ASSERT(collectNode->aggregateVariables().size() == 1);
+            TRI_ASSERT(collectNode->hasOutVariable() == false);
+            // clone a COLLECT AGGREGATE var=LENGTH(_) operation from the coordinator to the
             // DB server(s), and leave an aggregate COLLECT node on the
             // coordinator for total aggregation
 
             // add a new CollectNode on the DB server to do the actual counting
             auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+            std::vector<AggregateVarInfo> aggregateVariables;
+            aggregateVariables.emplace_back(AggregateVarInfo{outVariable, collectNode->aggregateVariables()[0].inVar, "LENGTH"});
             auto dbCollectNode =
                 new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(),
                                 collectNode->groupVariables(),
-                                collectNode->aggregateVariables(), nullptr,
-                                outVariable, std::vector<Variable const*>(),
-                                collectNode->variableMap(), true, false);
+                                aggregateVariables, nullptr,
+                                nullptr, std::vector<Variable const*>(),
+                                collectNode->variableMap(), false);
 
             plan->registerNode(dbCollectNode);
 
@@ -4434,14 +4462,10 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             // re-use the existing CollectNode on the coordinator to aggregate
             // the counts of the DB servers
-            std::vector<AggregateVarInfo> aggregateVariables;
-            aggregateVariables.emplace_back(AggregateVarInfo{collectNode->outVariable(), outVariable, "SUM"});
-
+            collectNode->aggregateVariables()[0].type = "SUM";
+            collectNode->aggregateVariables()[0].inVar = outVariable;
             collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
-            collectNode->count(false);
-            collectNode->setAggregateVariables(std::move(aggregateVariables));
-            collectNode->clearOutVariable();
-
+            
             removeGatherNodeSort = true;
           } else if (collectNode->aggregationMethod() ==
                      CollectOptions::CollectMethod::DISTINCT) {
@@ -4461,7 +4485,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
                 new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(),
                                 groupVariables, collectNode->aggregateVariables(),
                                 nullptr, nullptr, std::vector<Variable const*>(),
-                                collectNode->variableMap(), false, true);
+                                collectNode->variableMap(), true);
 
             plan->registerNode(dbCollectNode);
 
@@ -4482,7 +4506,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
           } else if (  //! collectNode->groupVariables().empty() &&
-              (!collectNode->hasOutVariable() || collectNode->count())) {
+              !collectNode->hasOutVariable()) {
             // clone a COLLECT v1 = expr, v2 = expr ... operation from the
             // coordinator to the DB server(s), and leave an aggregate COLLECT
             // node on the coordinator for total aggregation
@@ -4503,11 +4527,6 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
               break;
             }
 
-            Variable const* outVariable = nullptr;
-            if (collectNode->count()) {
-              outVariable = plan->getAst()->variables()->createTemporaryVariable();
-            }
-
             // create new group variables
             auto const& groupVars = collectNode->groupVariables();
             std::vector<GroupVarInfo> outVars;
@@ -4523,9 +4542,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             auto dbCollectNode =
                 new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(),
-                                outVars, dbServerAggVars, nullptr,
-                                outVariable, std::vector<Variable const*>(),
-                                collectNode->variableMap(), collectNode->count(), false);
+                                outVars, dbServerAggVars, nullptr, nullptr, std::vector<Variable const*>(),
+                                collectNode->variableMap(), false);
 
             plan->registerNode(dbCollectNode);
 
@@ -4544,20 +4562,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             }
             collectNode->groupVariables(copy);
 
-            if (collectNode->count()) { // just sum the counts of the DBServers
-              std::vector<AggregateVarInfo> aggVars;
-              aggVars.emplace_back(AggregateVarInfo{collectNode->outVariable(), outVariable, "SUM"});
-
-              collectNode->count(false);
-              collectNode->setAggregateVariables(std::move(aggVars));
-              collectNode->clearOutVariable();
-            } else {
-              size_t j = 0;
-              for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
-                it.inVar = dbServerAggVars[j].outVar;
-                it.type = Aggregator::runOnCoordinatorAs(it.type);
-                ++j;
-              }
+            size_t j = 0;
+            for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
+              it.inVar = dbServerAggVars[j].outVar;
+              it.type = Aggregator::runOnCoordinatorAs(it.type);
+              ++j;
             }
 
             removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
@@ -6484,10 +6493,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool isValueOrReference(AstNode const* node) {
-  return node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_REFERENCE;
-}
-
 /// Essentially mirrors the geo::QueryParams struct, but with
 /// abstracts AstNode value objects
 struct GeoIndexInfo {
@@ -6791,7 +6796,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   // checks @first `smaller` @second
   // note: this only modifies "info" if the function returns true
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool {
-    if (isValueOrReference(second) &&       // no attribute access
+    if (second->type == NODE_TYPE_VALUE &&  // only constants allowed
         info.maxDistanceExpr == nullptr &&  // max distance is not yet set
         checkDistanceFunc(plan, first, /*legacy*/ true, info)) {
       TRI_ASSERT(info.index);
@@ -6799,7 +6804,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
       info.maxInclusive = info.maxInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
-    } else if (isValueOrReference(first) &&        // no attribute access
+    } else if (first->type == NODE_TYPE_VALUE &&   // only constants allowed
                info.minDistanceExpr == nullptr &&  // min distance is not yet set
                checkDistanceFunc(plan, second, /*legacy*/ true, info)) {
       info.minDistanceExpr = first;
@@ -7874,7 +7879,8 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
       returnNode->inVariable(outVariable);
    
       // replace COUNT/LENGTH with SUM, as we are getting an array from the subquery
-      auto func = AqlFunctionFeature::getFunctionByName("SUM");
+      auto& server = plan->getAst()->query().vocbase().server();
+      auto func = server.getFeature<AqlFunctionFeature>().byName("SUM");
       for (AstNode const* funcNode : it.second.second) {
         const_cast<AstNode*>(funcNode)->setData(static_cast<void const*>(func));
       }

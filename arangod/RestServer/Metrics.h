@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -141,8 +141,11 @@ template<typename T> class Gauge : public Metric {
   T load() const { return _g.load(); }
   virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + help() + "\n";
-    result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
+    result += "#HELP " + name() + " " + help() + "\n" + name();
+    if (!labels().empty()) {
+      result += "{" + labels() + "}";
+    }
+    result += " " + std::to_string(load()) + "\n";
   };
  private:
   std::atomic<T> _g;
@@ -453,7 +456,11 @@ template<typename Scale> class Histogram : public Metric {
       }
       result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
     }
-    result += name() + "_count{" + labels() + "} " + std::to_string(sum) + "\n";
+    result += name() + "_count";
+    if (!labels().empty()) {
+      result += "{" + labels() + "}";
+    }
+    result += " " + std::to_string(sum) + "\n";
   }
 
   std::ostream& print(std::ostream& o) const {

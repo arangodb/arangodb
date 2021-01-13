@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,10 +159,10 @@ RestStatus RestAgencyHandler::handleTransient() {
 RestStatus RestAgencyHandler::pollIndex(
   index_t const& start, double const& timeout) {
   auto pollResult = _agent->poll(start, timeout);
-  
-  if (pollResult.second) {
+
+  if (std::get<1>(pollResult)) {
     return waitForFuture(
-      std::move(pollResult.first).thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+      std::move(std::get<0>(pollResult)).thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
         VPackSlice res = rb->slice();
 
         if (res.isObject() && res.hasKey("result")) {
@@ -195,14 +195,20 @@ RestStatus RestAgencyHandler::pollIndex(
                   TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
                 return;
               }
-              uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
+              uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(), i = 0;
+
               builder.add("commitIndex", slice.get("commitIndex"));
               VPackSlice logs = slice.get("log");
-              builder.add("firstIndex", logs[i].get("index"));
+              if (start <= firstIndex) {
+                builder.add("firstIndex", logs[i].get("index"));
+              }
               builder.add(VPackValue("log"));
               VPackArrayBuilder a(&builder);
-              for (; i < logs.length(); ++i) {
-                builder.add(logs[i]);
+              if (start <= firstIndex) {
+                uint64_t i = start - firstIndex;
+                for (; i < logs.length(); ++i) {
+                  builder.add(logs[i]);
+                }
               }
             }
             generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
@@ -225,12 +231,17 @@ RestStatus RestAgencyHandler::pollIndex(
           rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
       }));
   } else {
-    generateError(
-      rest::ResponseCode::SERVICE_UNAVAILABLE,
-      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+    auto const& leader = std::get<2>(pollResult);
+    if (leader == NO_LEADER) {
+      generateError(
+        rest::ResponseCode::SERVICE_UNAVAILABLE,
+        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+    } else {
+      redirectRequest(leader);
+    }
     return RestStatus::DONE;
   }
-  
+
 }
 
 namespace {
@@ -261,11 +272,16 @@ RestStatus RestAgencyHandler::handlePoll() {
 
   // WARNING ////////////////////////////////////////////////////
   // Leader only
+  auto const& leaderId = _agent->leaderID();
   if (!_agent->leading()) {  // Redirect to leader
-    if (_agent->leaderID() == NO_LEADER) {
+    if (leaderId == NO_LEADER) {
       return reportMessage(
         rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
-    } // WARNING REDIRECTS NEEDS BE DOING
+    } else {
+      TRI_ASSERT(leaderId != _agent->id());
+      redirectRequest(leaderId);
+      return RestStatus::DONE;
+    }
   }
 
   // Get queryString index

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +71,7 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   auto const& it = _vocbases.find(dbid);
 
   if (it == _vocbases.end()) {
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
+    TRI_vocbase_t* vocbase = _server.getFeature<DatabaseFeature>().useDatabase(dbid);
     if (vocbase != nullptr) {
       TRI_DEFER(vocbase->release());
       _vocbases.try_emplace(dbid, *vocbase);

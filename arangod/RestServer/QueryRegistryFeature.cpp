@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -40,9 +41,51 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/MetricsFeature.h"
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+namespace {
+
+uint64_t defaultMemoryLimit(uint64_t available) {
+  // this function will produce the following results for some
+  // common available memory values:
+  //
+  //    Available memory:    134217728    (128MiB)  Limit:            0      (0MiB), %mem:  0.0
+  //    Available memory:    268435456    (256MiB)  Limit:            0      (0MiB), %mem:  0.0
+  //    Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
+  //    Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
+  //    Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
+  //    Available memory:   2147483648   (2048MiB)  Limit:   1288490189   (1228MiB), %mem: 60.0
+  //    Available memory:   4294967296   (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0
+  //    Available memory:   8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
+  //    Available memory:  17179869184  (16384MiB)  Limit:  10307921511   (9830MiB), %mem: 60.0
+  //    Available memory:  25769803776  (24576MiB)  Limit:  15461882265  (14745MiB), %mem: 60.0
+  //    Available memory:  34359738368  (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0
+  //    Available memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB), %mem: 60.0
+  //    Available memory:  68719476736  (65536MiB)  Limit:  41231686041  (39321MiB), %mem: 60.0
+  //    Available memory: 103079215104  (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0
+  //    Available memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB), %mem: 60.0
+  //    Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
+  //    Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
+  
+  // 20% of RAM will be considered as a reserve
+  uint64_t reserve = static_cast<uint64_t>(available * 0.2);
+
+  // minimum reserve memory is 256MiB
+  reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
+
+  if (available <= reserve) {
+    // almost no memory available, it will not make sense to set a memory limit here
+    return 0;
+  }
+  // 80% of non-reserve memory can be used per query.
+  // this is still a high value
+  return static_cast<uint64_t>((available - reserve) * 0.75);
+}
+
+} // namespace
 
 namespace arangodb {
 
@@ -61,7 +104,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _smartJoins(true),
       _parallelizeTraversals(true),
 #endif
-      _queryMemoryLimit(aql::QueryOptions::defaultMemoryLimit),
+      _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue())),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
@@ -109,7 +152,8 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--query.memory-limit",
                      "memory threshold for AQL queries (in bytes, 0 = no limit)",
-                     new UInt64Parameter(&_queryMemoryLimit));
+                     new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
   
   options->addOption("--query.max-runtime",
                      "runtime threshold for AQL queries (in seconds, 0 = no limit)",

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -144,6 +144,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
   /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
   inline bool isShutdown() const { return _shutdown.load(); }
+
+  struct Inserter {
+    Inserter(Cache& cache, void const* key, std::size_t keySize, void const* value,
+             std::size_t valueSize, std::function<bool(Result const&)> retry);
+    Result status;
+  };
 
  protected:
   static constexpr std::uint64_t triesFast = 200;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -309,6 +309,10 @@ class HeartbeatThread : public Thread,
   std::atomic<uint64_t> _lastCurrentVersionNoticed;
   // For periodic update of the current DBServer list:
   std::atomic<int> _updateCounter;
+      
+  /// @brief point in time the server last reported itself as unhealthy (used
+  /// to prevent log spamming on every occurrence of unhealthiness)
+  std::chrono::steady_clock::time_point _lastUnhealthyTimestamp;
 
   /// @brief Sync job
   DBServerAgencySync _agencySync;

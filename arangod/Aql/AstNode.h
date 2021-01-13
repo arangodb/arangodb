@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -181,7 +181,6 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_FCALL_USER = 48,
   NODE_TYPE_RANGE = 49,
   NODE_TYPE_NOP = 50,
-  NODE_TYPE_COLLECT_COUNT = 51,
   NODE_TYPE_CALCULATED_OBJECT_ELEMENT = 53,
   NODE_TYPE_UPSERT = 54,
   NODE_TYPE_EXAMPLE = 55,

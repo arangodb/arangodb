@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,15 +42,15 @@
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define LOG_TRX(logid, llevel, trx)                \
+#define LOG_TRX(logid, llevel, trx)                        \
   LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id().id() << " ("         \
+      << "#" << trx->id().id() << " ("                     \
       << transaction::statusString(trx->status()) << "): "
 
 #else
 
 #define LOG_TRX(logid, llevel, ...) \
-  while (0) LOG_TOPIC(logid, llevel,  arangodb::Logger::TRANSACTIONS)
+  while (0) LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS)
 #endif
 
 struct TRI_vocbase_t;
@@ -73,6 +73,10 @@ class TransactionState {
     typedef std::unique_ptr<Cookie> ptr;
     virtual ~Cookie() = default;
   };
+
+  static bool ServerIdLessThan(ServerID const& lhs, ServerID const& rhs) {
+    return lhs < rhs;
+  }
 
   typedef std::function<void(TransactionState& state)> StatusChangeCallback;
 
@@ -114,8 +118,8 @@ class TransactionState {
   /// - follower
   /// - coordinator
   /// - single
-  char const* actorName() const noexcept; 
-  
+  char const* actorName() const noexcept;
+
   /// @brief return a reference to the global transaction statistics/counters
   TransactionStatistics& statistics() noexcept;
 
@@ -140,8 +144,7 @@ class TransactionState {
   TransactionCollection* collection(DataSourceId cid, AccessMode::Type accessType) const;
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(std::string const& name,
-                                    AccessMode::Type accessType) const;
+  TransactionCollection* collection(std::string const& name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   Result addCollection(DataSourceId cid, std::string const& cname,
@@ -151,16 +154,16 @@ class TransactionState {
   Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
-  template<typename F>
+  template <typename F>
   void allCollections(F&& cb) {
     for (auto& trxCollection : _collections) {
       TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
-      if (!std::forward<F>(cb)(*trxCollection)) { // abort early
+      if (!std::forward<F>(cb)(*trxCollection)) {  // abort early
         return;
       }
     }
   }
-  
+
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
 
@@ -183,7 +186,7 @@ class TransactionState {
 
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
-  
+
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
   /// for leader, follower or single-server transactions, this can include any
@@ -220,18 +223,12 @@ class TransactionState {
   }
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string const& uuid) {
-    _knownServers.emplace(uuid);
-  }
+  void addKnownServer(std::string const& uuid) { _knownServers.emplace(uuid); }
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string const& uuid) {
-    _knownServers.erase(uuid);
-  }
+  void removeKnownServer(std::string const& uuid) { _knownServers.erase(uuid); }
 
-  void clearKnownServers() {
-    _knownServers.clear();
-  }
+  void clearKnownServers() { _knownServers.clear(); }
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
@@ -240,19 +237,23 @@ class TransactionState {
     return _lastWrittenOperationTick;
   }
 
-
-  void acceptAnalyzersRevision(
-      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+  void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
   const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
     return _analyzersRevision;
   }
-  
-  #ifdef USE_ENTERPRISE
+
+#ifdef USE_ENTERPRISE
   void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
   bool isInaccessibleCollection(DataSourceId cid);
   bool isInaccessibleCollection(std::string const& cname);
-  #endif
+#endif
+
+  /// @brief roll a new transaction ID on the coordintor. Use this method
+  /// with care, it should only be used when retrying in a synchronized
+  /// fashion after a fast-path locking detected a dead-lock situation.
+  /// Only allowed on coordinators.
+  void coordinatorRerollTransactionId();
 
  protected:
   /// @brief find a collection in the transaction's list of collections
@@ -262,6 +263,12 @@ class TransactionState {
   /// the transaction
   void clearQueryCache();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // reset the internal Transaction ID to none.
+  // Only used in the Transaction Mock for internal reasons.
+  void resetTransactionId();
+#endif
+
  private:
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
@@ -269,7 +276,6 @@ class TransactionState {
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-  TransactionId const _id;  /// @brief local trx id
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick;
@@ -284,12 +290,14 @@ class TransactionState {
   ListType _collections;  // list of participating collections
 
   transaction::Hints _hints;  // hints; set on _nestingLevel == 0
-  
+
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
   transaction::Options _options;
 
  private:
+  TransactionId _id;  /// @brief local trx id
+
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
 

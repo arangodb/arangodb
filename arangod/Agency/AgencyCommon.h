@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,6 +129,18 @@ struct log_t {
         entry(std::move(e)),
         clientId(clientId),
         timestamp(m) {}
+
+  void toVelocyPack(velocypack::Builder& builder) const {
+    builder.openObject();
+
+    builder.add("index", VPackValue(index));
+    builder.add("term", VPackValue(term));
+    builder.add("query", VPackSlice(entry->data()));
+    builder.add("clientId", VPackValue(clientId));
+    builder.add("timestamp", VPackValue(timestamp.count()));
+    
+    builder.close();
+  }
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
     o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "

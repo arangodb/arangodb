@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -745,13 +745,15 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
 
   double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
   TRI_ASSERT(compTime >= 0);
-  double storeTime = TRI_microtime() - _finalizationStartTimeSecs;
+  if (didStore) {
+    _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
+  }
 
   LOG_TOPIC("063b5", INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
   LOG_TOPIC("3cfa8", INFO, Logger::PREGEL)
       << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
-  LOG_TOPIC("d43cb", INFO, Logger::PREGEL) << "Computation Time: " << compTime << "s";
-  LOG_TOPIC_IF("74e05", INFO, Logger::PREGEL, didStore) << "Storage Time: " << storeTime << "s";
+  LOG_TOPIC("d43cb", INFO, Logger::PREGEL) << "Computation time: " << compTime << "s";
+  LOG_TOPIC_IF("74e05", INFO, Logger::PREGEL, didStore) << "Storage time: " << _storeTimeSecs << "s";
   LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
 
@@ -809,6 +811,11 @@ VPackBuilder Conductor::toVelocyPack() const {
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
+  result.add("startupTime", VPackValue(_computationStartTimeSecs - _startTimeSecs));
+  result.add("computationTime", VPackValue(_finalizationStartTimeSecs - _computationStartTimeSecs));
+  if (_storeTimeSecs > 0.0) {
+    result.add("storageTime", VPackValue(_storeTimeSecs));
+  }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING) {

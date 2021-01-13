@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -139,9 +139,13 @@ struct Job {
                                                    std::vector<std::string> const& exclude);
   static std::string randomIdleAvailableServer(Node const& snap,
                                                velocypack::Slice const& exclude);
+
   static size_t countGoodOrBadServersInList(Node const& snap,
                                             velocypack::Slice const& serverList);
   static size_t countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap, std::unordered_set<std::string> const& serverList);
+
+
   static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
@@ -158,6 +162,15 @@ struct Job {
                                                                std::string const& col,
                                                                std::string const& shrd,
                                                                std::string const& serverToAvoid);
+
+  /// @brief The shard must be one of a collection without
+  /// `distributeShardsLike`. This returns all servers which 
+  /// are in sync for this shard and for all of its clones, including
+  /// the leader.
+  static std::vector<std::string> findAllInSyncReplicas(
+      Node const& snap,
+      std::string const& db,
+      std::vector<Job::shard_t> const& shardsLikeMe);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which 

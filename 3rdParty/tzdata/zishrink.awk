@@ -166,9 +166,6 @@ function process_input_line(line, \
   ruleline = sub(/^Rule /, "R ", line)
   zoneline = sub(/^Zone /, "Z ", line)
 
-  # SystemV rules are not needed.
-  if (line ~ /^R SystemV /) return
-
   # Replace FooAsia rules with the same rules without "Asia", as they
   # are duplicates.
   if (match(line, /[^ ]Asia /)) {
@@ -275,7 +272,6 @@ BEGIN {
   default_dep["factory"] = 1
   default_dep["northamerica"] = 1
   default_dep["southamerica"] = 1
-  default_dep["systemv"] = 1
   default_dep["ziguard.awk"] = 1
   default_dep["zishrink.awk"] = 1
 

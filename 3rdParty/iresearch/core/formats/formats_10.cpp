@@ -110,11 +110,11 @@ class noop_compressor final : compression::compressor {
     return ptr(ptr(), &INSTANCE);
   }
 
-  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) {
+  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) override {
     return bytes_ref(in, size);
   }
 
-  virtual void flush(data_output& /*out*/) { }
+  virtual void flush(data_output& /*out*/) override { }
 
  private:
   noop_compressor() = default;
@@ -2550,9 +2550,8 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
       assert(out_cipher_ && out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_output::DEFAULT_BUFFER_SIZE,
-        out_cipher_->block_size()
-      );
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
+        out_cipher_->block_size());
 
       out_ = index_output::make<encrypted_output>(
         std::move(out_),
@@ -2672,9 +2671,8 @@ bool meta_reader::prepare(
       assert(in_cipher_ && in_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_input::DEFAULT_BUFFER_SIZE,
-        in_cipher_->block_size()
-      );
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
+        in_cipher_->block_size());
 
       in_ = memory::make_unique<encrypted_input>(
         std::move(in_),

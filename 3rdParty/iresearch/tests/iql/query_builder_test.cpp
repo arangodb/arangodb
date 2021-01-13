@@ -965,6 +965,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     }
 
     ASSERT_FALSE(docsItr->next());
+    ASSERT_FALSE(docsItr->next());
   }
 
   // user supplied boolean_function with expression args

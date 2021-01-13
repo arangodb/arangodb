@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -149,9 +149,14 @@ bool TRI_ShouldFailDebugging(char const* value) {
 
 /// @brief add a failure point
 void TRI_AddFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+  bool added = false;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  if (::failurePoints.emplace(value).second) {
+    added = ::failurePoints.emplace(value).second;
+  }
+
+  if (added) {
     LOG_TOPIC("d8a5f", WARN, arangodb::Logger::FIXME)
         << "activating intentional failure point '" << value
         << "'. the server will misbehave!";
@@ -171,7 +176,6 @@ void TRI_ClearFailurePointsDebugging() {
 
   ::failurePoints.clear();
 }
-
 #endif
 
 /// @brief appends a backtrace to the string provided

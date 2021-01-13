@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1050,14 +1050,6 @@ std::vector<uint32_t> characterCodes(char const* s, size_t length) {
   return charNums;
 }
 
-std::vector<uint32_t> characterCodes(std::string const& str) {
-  return characterCodes(str.data(), str.size());
-}
-
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
-  return levenshteinDistance(str1.data(), str1.size(), str2.data(), str2.size());
-}
-
 // .............................................................................
 // CONVERT TO STRING
 // .............................................................................
@@ -1878,78 +1870,6 @@ std::string correctPath(std::string const& incorrectPath) {
 #else
   return replace(incorrectPath, "\\", "/");
 #endif
-}
-
-// In a list str = "xx,yy,zz ...", entry(n,str,',') returns the nth entry of the
-// list delimited
-// by ','. E.g entry(2,str,',') = 'yy'
-
-std::string entry(size_t const pos, std::string const& sourceStr, std::string const& delimiter) {
-  size_t delLength = delimiter.length();
-  size_t sourceLength = sourceStr.length();
-
-  if (pos == 0) {
-    return "";
-  }
-
-  if (delLength == 0 || sourceLength == 0) {
-    return sourceStr;
-  }
-
-  size_t k = 0;
-  size_t offSet = 0;
-
-  while (true) {
-    size_t delPos = sourceStr.find(delimiter, offSet);
-
-    if ((delPos == sourceStr.npos) || (delPos >= sourceLength) || (offSet >= sourceLength)) {
-      return sourceStr.substr(offSet);
-    }
-
-    ++k;
-
-    if (k == pos) {
-      return sourceStr.substr(offSet, delPos - offSet);
-    }
-
-    offSet = delPos + delLength;
-  }
-
-  return sourceStr;
-}
-
-/// Determines the number of entries in a list str = "xx,yyy,zz,www".
-/// numEntries(str,',') = 4.
-
-size_t numEntries(std::string const& sourceStr, std::string const& delimiter) {
-  size_t delLength = delimiter.length();
-  size_t sourceLength = sourceStr.length();
-
-  if (sourceLength == 0) {
-    return (0);
-  }
-
-  if (delLength == 0) {
-    return (1);
-  }
-
-  size_t k = 1;
-
-  for (size_t j = 0; j < sourceLength; ++j) {
-    bool match = true;
-    for (size_t i = 0; i < delLength; ++i) {
-      if (sourceStr[j + i] != delimiter[i]) {
-        match = false;
-        break;
-      }
-    }
-    if (match) {
-      j += (delLength - 1);
-      ++k;
-      continue;
-    }
-  }
-  return k;
 }
 
 std::string encodeHex(char const* value, size_t length) {

@@ -241,12 +241,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
     return;                              \
   } while (0)
 
-/// @brief "not yet implemented" handler for sharding
-#define TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection) \
-  if (collection && ServerState::instance()->isCoordinator()) {       \
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                \
-  }
-
 /// @brief Return undefined (default..)
 ///   implicitly requires 'args and 'isolate' to be available
 #define TRI_V8_RETURN_UNDEFINED()                    \

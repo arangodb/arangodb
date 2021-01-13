@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #include "StringHeap.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -32,15 +33,16 @@
 using namespace arangodb;
 
 /// @brief create a StringHeap instance
-StringHeap::StringHeap(size_t blockSize)
-    : _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
+StringHeap::StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize)
+    : _resourceMonitor(resourceMonitor),
+      _blockSize(blockSize), 
+      _current(nullptr), 
+      _end(nullptr) {
   TRI_ASSERT(blockSize >= 64);
 }
 
 StringHeap::~StringHeap() {
-  for (auto& it : _blocks) {
-    delete[] it;
-  }
+  clear();
 }
 
 /// @brief register a string
@@ -57,21 +59,16 @@ arangodb::velocypack::HashedStringRef StringHeap::registerString<arangodb::veloc
   return arangodb::velocypack::HashedStringRef(p, static_cast<uint32_t>(value.size()));
 }
 
-void StringHeap::clear() {
+void StringHeap::clear() noexcept {
   _current = nullptr;
   _end = nullptr;
 
   for (auto& it : _blocks) {
     delete[] it;
   }
-  _blocks.clear();
-}
 
-void StringHeap::merge(StringHeap&& heap) {
-  _blocks.reserve(_blocks.size() + heap._blocks.size());
-  _blocks.insert(_blocks.end(), heap._blocks.begin(), heap._blocks.end());
-  heap._blocks.clear();
-  heap._current = nullptr;
+  _resourceMonitor.decreaseMemoryUsage(_blocks.size() * (sizeof(char*) + _blockSize));
+  _blocks.clear();
 }
 
 /// @brief register a string
@@ -97,14 +94,40 @@ char const* StringHeap::registerString(char const* ptr, size_t length) {
 
 /// @brief allocate a new block of memory
 void StringHeap::allocateBlock() {
+  size_t capacity;
+  if (_blocks.empty()) {
+    // reserve some initial space
+    capacity = 8;
+  } else {
+    capacity = _blocks.size() + 1;
+    // allocate with power of 2 growth
+    if (capacity > _blocks.capacity()) {
+      capacity *= 2;
+    }
+  }
+
+  TRI_ASSERT(capacity > _blocks.size());
+
+  // reserve space
+  if (capacity > _blocks.capacity()) {
+    // if this fails, we don't have to rollback anything
+    _blocks.reserve(capacity);
+  }
+
+  // may throw
+  ResourceUsageScope scope(_resourceMonitor, sizeof(char*) + _blockSize);
+
+  // if this fails, we don't have to rollback anything but the scope 
+  // (which will do so automatically)
   char* buffer = new char[_blockSize];
 
-  try {
-    _blocks.emplace_back(buffer);
-    _current = buffer;
-    _end = _current + _blockSize;
-  } catch (...) {
-    delete[] buffer;
-    throw;
-  }
+  // the emplace_back will work, because we added enough capacity before
+  TRI_ASSERT(_blocks.capacity() >= _blocks.size() + 1);
+  _blocks.emplace_back(buffer);
+
+  _current = buffer;
+  _end = _current + _blockSize;
+
+  // StringHeap now responsible for tracking the memory usage
+  scope.steal();
 }

@@ -54,6 +54,7 @@ class ApplicationFeature;
 namespace tests {
 namespace mocks {
 
+/// @brief mock application server with no features added
 class MockServer {
  public:
   MockServer();
@@ -110,6 +111,19 @@ class MockServer {
   bool _started;
 };
 
+/// @brief a server with almost no features added (Metrics are available
+/// though)
+class MockMetricsServer : public MockServer,
+                          public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                          public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                          public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                          public IResearchLogSuppressor {
+ public:
+  MockMetricsServer(bool startFeatures = true);
+};
+
+/// @brief a server with features added that allow to execute V8 code
+/// and bindings
 class MockV8Server : public MockServer,
                      public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
                      public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
@@ -119,6 +133,7 @@ class MockV8Server : public MockServer,
   MockV8Server(bool startFeatures = true);
 };
 
+/// @brief a server with features added that allow to execute AQL queries
 class MockAqlServer : public MockServer,
                       public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
                       public LogSuppressor<Logger::CLUSTER, LogLevel::ERR>,
@@ -130,9 +145,15 @@ class MockAqlServer : public MockServer,
   ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery(bool activateTracing = false, std::string queryString = "") const;
+  // runBeforePrepare gives an entry point to modify the list of collections one want to use within the Query.
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery(
+      bool activateTracing = false, std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
 };
 
+/// @brief a server with features added that allow to execute RestHandler
+/// code
 class MockRestServer : public MockServer,
                        public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
                        public LogSuppressor<Logger::FIXME, LogLevel::ERR>,

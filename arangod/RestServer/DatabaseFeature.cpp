@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,8 +89,6 @@ std::unique_ptr<TRI_vocbase_t> calculationVocbase;
   // i am here for debugging only.
 TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
 #endif
-
-DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 
 /// @brief database manager thread main loop
 /// the purpose of this thread is to physically remove directories of databases
@@ -291,16 +289,12 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
   startsAfter<EngineSelectorFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<StorageEngineFeature>();
-
-  DATABASE = nullptr;
 }
 
 DatabaseFeature::~DatabaseFeature() {
   // clean up
   auto p = _databasesLists.load();
   delete p;
-
-  DATABASE = nullptr;
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -380,9 +374,6 @@ void DatabaseFeature::initCalculationVocbase(application_features::ApplicationSe
 }
 
 void DatabaseFeature::start() {
-  // set singleton
-  DATABASE = this;
-
   verifyAppPaths();
 
   // scan all databases
@@ -552,8 +543,6 @@ void DatabaseFeature::unprepare() {
   } catch (...) {
   }
   calculationVocbase.reset();
-  // clear singleton
-  DATABASE = nullptr;
 }
 
 void DatabaseFeature::prepare() {
@@ -745,9 +734,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
 
   result = vocbase.release();
 
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("create database");
+  if (versionTracker() != nullptr) {
+    versionTracker()->track("create database");
   }
 
   return res;
@@ -854,9 +842,8 @@ int DatabaseFeature::dropDatabase(std::string const& name,
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("drop database");
+  if (versionTracker() != nullptr) {
+    versionTracker()->track("drop database");
   }
 
   return res;

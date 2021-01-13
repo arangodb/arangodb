@@ -92,6 +92,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path, FSAccessType) const;
   bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType) const;
   bool isInternalContext(v8::Isolate* isolate) const;
+  bool isAdminScriptContext(v8::Isolate* isolate) const;
 
   void addToInternalAllowList(std::string const& item, FSAccessType);
 

@@ -57,26 +57,26 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
   }
 
 // print a hex representation of the binary data
-  LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
-    try {
-      uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
-      uint8_t const* end = ptr + binary.size;
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
+  try {
+    uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
+    uint8_t const* end = ptr + binary.size;
 
-      while (ptr < end) {
-        uint8_t n = *ptr;
+    while (ptr < end) {
+      uint8_t n = *ptr;
 
-        uint8_t n1 = n >> 4;
-        uint8_t n2 = n & 0x0F;
+      uint8_t n1 = n >> 4;
+      uint8_t n2 = n & 0x0F;
 
-        _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
-             << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
-        ++ptr;
-      }
-    } catch (...) {
-      // ignore any errors here. logging should not have side effects
+      _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
+           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
+      ++ptr;
     }
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
 
-    return *this;
+  return *this;
 }
 
 // print a character array
@@ -143,6 +143,8 @@ LoggerStream::~LoggerStream() {
       return;
     }
 #endif
+    // TODO: with c++20, we can get a view on the stream's underlying buffer,
+    // without copying it
     Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
   } catch (...) {
     try {
