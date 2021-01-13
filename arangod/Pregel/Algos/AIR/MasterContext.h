@@ -38,7 +38,7 @@ namespace algos {
 namespace accumulators {
 
 struct MasterContext : ::arangodb::pregel::MasterContext {
-  MasterContext(ProgrammablePregelAlgorithm const* algorithm);
+  explicit MasterContext(ProgrammablePregelAlgorithm const* algorithm);
 
   MasterContext(MasterContext&&) = delete;
   MasterContext(MasterContext const&) = delete;

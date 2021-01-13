@@ -516,11 +516,10 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algorithm.options().phases.at(phase_index);
 
-  std::size_t phaseStep = phaseGlobalSuperstep();
+  auto phaseStep = phaseGlobalSuperstep();
 
   if (globalSuperstep() == 0) {
     if (auto res = clearAllVertexAccumulators(); res.fail()) {
-      LOG_DEVEL << res.error().toString();
       getReportManager()
               .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
@@ -536,7 +535,6 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
 
   if (phaseStep == 0) {
     if (auto res = runProgram(_airMachine, phase.initProgram.slice()); res.fail()) {
-      LOG_DEVEL << res.error().toString();
       getReportManager()
               .report(ReportLevel::ERR)
               .with("pregel-id", pregelId())
