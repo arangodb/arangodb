@@ -155,8 +155,8 @@ void FlushFeature::start() {
     WRITE_LOCKER(lock, _threadLock);
     _flushThread.reset(new FlushThread(*this, _flushInterval));
   }
-  DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
-  dbFeature->registerPostRecoveryCallback([this]() -> Result {
+  DatabaseFeature& dbFeature = server().getFeature<DatabaseFeature>();
+  dbFeature.registerPostRecoveryCallback([this]() -> Result {
     READ_LOCKER(lock, _threadLock);
     if (!this->_flushThread->start()) {
       LOG_TOPIC("bdc3c", FATAL, Logger::FLUSH) << "unable to start FlushThread";

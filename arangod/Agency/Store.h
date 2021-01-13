@@ -26,6 +26,7 @@
 
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Node.h"
 #include <map>
 

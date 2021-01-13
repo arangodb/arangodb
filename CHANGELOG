@@ -1,13 +1,255 @@
 devel
 -----
 
+* Internal Refactoring of K_PATH feature, with the goal to have all GraphAlgorithms on
+  the same framework. This change should not have any visible effect on users.
+
+* Fixed an endless busy loop which could happen if a coordinator tries to 
+  roll back a database creation, but the database has already been dropped 
+  by other means.
+
+* Removed server-side JavaScript object `ArangoClusterComm`, so it cannot be
+  used from inside JavaScript operations or Foxx.
+  The `ArangoClusterComm` object was previously used inside a few internal 
+  JavaScript operations, but was not part of the public APIs.
+
+* Restrict access to functions inside JavaScript objects `ArangoAgency` and
+  `ArangoAgent` to JavaScript code that is running in privileged mode, i.e.
+  via the server's emergency console, the `/_admin/execute` API (if turned on)
+  or internal bootstrap scripts.
+
+* Added startup option `--javascript.transactions` to allow turning off JavaScript
+  transactions if not needed. The default value for this option is `true`, meaning
+  JavaScript transactions are available as before.
+  However, using this option they can be turned off by admins to limit the amount
+  of JavaScript user code that is executed.
+
+* Introduce a default memory limit for AQL queries, to prevent rogue queries from
+  consuming the entire memory available to an arangod instance.
+
+  The limit is introduced via changing the default value of the option `--query.memory-limit` 
+  from previously `0` (meaning: no limit) to a dynamically calculated value.
+  The per-query memory limits defaults are now:
+
+    Available memory:    134217728    (128MiB)  Limit:            0      (0MiB), %mem:  0.0
+    Available memory:    268435456    (256MiB)  Limit:            0      (0MiB), %mem:  0.0
+    Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
+    Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
+    Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
+    Available memory:   2147483648   (2048MiB)  Limit:   1288490189   (1228MiB), %mem: 60.0
+    Available memory:   4294967296   (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0
+    Available memory:   8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
+    Available memory:  17179869184  (16384MiB)  Limit:  10307921511   (9830MiB), %mem: 60.0
+    Available memory:  25769803776  (24576MiB)  Limit:  15461882265  (14745MiB), %mem: 60.0
+    Available memory:  34359738368  (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0
+    Available memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB), %mem: 60.0
+    Available memory:  68719476736  (65536MiB)  Limit:  41231686041  (39321MiB), %mem: 60.0
+    Available memory: 103079215104  (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0
+    Available memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB), %mem: 60.0
+    Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
+    Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
+
+  As previously, a memory limit value of `0` means no limitation. 
+  The limit values are per AQL query, so they may still be too high in case queries
+  run in parallel. The defaults are intentionally high in order to not stop any valid, 
+  previously working queries from succedding.
+
+* Added startup options `--audit.queue` to control audit logging queuing
+  behavior (Enterprise Edition only):
+
+  The option controls whether audit log messages are submitted to a queue 
+  and written to disk in batches or if they should be written to disk directly 
+  without being queued.
+  Queueing audit log entries may be beneficial for latency, but can lead to
+  unqueued messages being lost in case of a power loss or crash. Setting
+  this option to `false` mimics the behavior from 3.7 and before, where
+  audit log messages were not queued but written in a blocking fashion.
+
+* Fixed some situations of
+  [...]
+  SUBQUERY
+  FILTER
+  LIMIT
+  [...]
+  in AQL queries, yielding incorrect responses. A distributed
+  state within the subquery was not resetted correctly.
+  This could also lead into "shrink" errors of AQL item blocks,
+  or much higher query runtimes.
+  Fixes:
+  - BTS-252
+  - ES-687
+  - github issue: #13099
+  - github issue: #13124
+  - github issue: #13147
+  - github issue: #13305
+  - DEVSUP-665
+
+* Added metric `arangodb_server_statistics_cpu_cores` to provide the number of
+  CPU cores visibile to the arangod process. This is the number of CPU cores
+  reported by the operating system to the process.
+  If the environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES` is
+  set to a positive value at instance startup, this value will be returned
+  instead.
+
+* `COLLECT WITH COUNT INTO x` and `COLLECT var = expr WITH COUNT INTO x` are now
+  internally transformed into `COLLECT AGGREGATE x = LENGTH(null)` and
+  `COLLECT var = expr AGGREGATE x = LENGTH(null)` respectively. This not only
+  simplified the code, but also allows more query optimizations:
+    - If the variable in `COLLECT WITH COUNT INTO var` is not used, the implicit
+      aggregator is now removed.
+    - All queries of the form `COLLECT AGGREGATE x = LENGTH(_)` are now executed
+      using the count executor, which can result in significantly improved
+      performance.
+
+* Minor and rare AQL performance improvement, in nested subqueries:
+  LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
+  where sq1 produces no data (e.g. by the above filter) for sq2,
+  the part <X> have been asked two times (second returns empty result),
+  instead of one, if and only if the mainquery executes sq1 exactly one time.
+  Now we get away with one call only.
+  In the case sq1 has data, or sq1 is executed more often, only one call was needed
+  (assuming the data fits in one batch).
+
+* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
+* Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
+
+* Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
+
+* Make DB servers report storage engine health to the agency, via a new "health"
+  attribute in requests sent to Sync/ServerStates/<id>.
+  The supervision can in the future check this attribute if it is posted,
+  and mark servers as BAD or FAILED in case an unhealthy status is reported.
+  DB server health is currently determined by whether or not the storage engine
+  (RocksDB) has reported a background error, and by whether or not the free disk 
+  space has reached a critical low amount. The current threshold for free disk
+  space is set at 1% of the disk capacity (only the disk is considered that 
+  contains the RocksDB database directory).
+  The minimum required free disk space percentage can be configured using the new
+  startup option `--rocksdb.minimum-disk-free-percent`, which needs to be between
+  0 and 1 (including). A value of 0 disables the check.
+  The minimum required free disk space can also be configured in bytes using the
+  new startup option `--rocksdb.minimum-disk-free-bytes`. A value of 0 disables
+  this check, too.
+
+* Failed servers are now reported consistently in the web interface, at 
+  approximately the same time in the navigation bar and in the nodes view. 
+  Previously these two places had their own, independent poll mechanism for the
+  nodes' health, and they were updated independently, which could cause an 
+  inconsistent view of the nodes' availability.
+  Using only one poll mechanism instead also saves some period background requests
+  for the second availability check.
+
+* Updated arangosync to 1.2.1.
+
+* Clean up callback bin and empty promises in single-host-agency.
+
+* Stabilize a Foxx cleanup test.
+
+* Drop a pair of braces {} in /_admin/metrics in case of empty labels, which
+  makes the API adhere better to the official Prometheus syntax.
+
+* Add some more metrics to the ConnectionPool.
+
+* Remove HTTP "Connection" header when forwarding requests in the cluster
+  from one coordinator to another, and let the internal network layer
+  handle closing of connections and keep-alive.
+
+* Added new metric: "arangodb_collection_lock_sequential_mode" this will count
+  how many times we need to do a sequential locking of collections. If this
+  metric increases this indicates lock contention in transaction setup.
+  Most likely this is caused by exlcusive locks used on collections with
+  more than one shard.
+
+* Fix for BTS-213
+  Changed the transaction locking mechanism in the cluster case.
+  For all installations that do not use "exclusive" collection locks this change
+  will not be noticable. In case of "exclusive" locks, and collections with more
+  than one shard, it is now less likely to get a LOCK_TIMEOUT (ErrorNum 18).
+  It is still possible to get into the LOCK_TIMEOUT case, especially if
+  the "exclusive" operation(s) are long-running.
+
+* Reduce overhead of audit logging functionality if audit logging is turned
+  off.
+
+* Add several more attributes to audit-logged queries, namely query execution
+  time and exit code (0 = no error, other values correspond to general ArangoDB 
+  error codes).
+
+* Added "startupTime", "computationTime" and "storageTime" to Pregel result
+  statistics.
+
+* Fixed a bug in maintainer mode sorting followerinfo lists the wrong way.
+
+* Limit value of `--rocksdb.block-cache-size` to 1 GB for agent instances to
+  reduce agency RAM usage, unless configured otherwise. In addition, limit the 
+  value of `--rocksdb.total-write-buffer-size` to 512 MB on agent instances for
+  the same reason.
+
+* Fixed issue #13238 Thread naming API on Windows are now used only if
+  available in KERNEL32.DLL
+
+* When querying the list of currently running or slow AQL queries, ignore not-yet
+  created databases on other coordinators.
+
+* Added support for fetching the list of currently running and slow AQL queries
+  from all databases at once, by adding an `all` parameter to the following
+  query APIs:
+
+  * `require("@arangodb/aql/queries").current({ all: true })`: will return the
+    currently running queries from all databases, not just the currently
+    selected database.
+  * HTTP GET `/_api/query/current?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").slow({ all: true })`: will return the
+    slow query history from all databases, not just the currently selected
+    database.
+  * HTTP GET `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+  * `require("@arangodb/aql/queries").clearSlow({ all: true })`: will clear
+    the slow query history for all databases, not just the currently selected
+    database.
+  * HTTP DELETE `/_api/query/slow?all=true`: same, but for the HTTP REST API.
+
+  Using the `all` parameter is only allowed when making the call inside the
+  `_system` database and with superuser privileges.
+  
+* Improve performance and memory efficiency of agency restart from persisted
+  database directory.
+
+* Added the following agency-related metrics:
+  - `arangodb_agency_client_lookup_table_size`: current number of entries
+    in agency client id lookup table. This gauge is available only on
+    agent instances.
+  - `arangodb_agency_cache_callback_count`: current number of entries in
+    agency cache callbacks table. This gauge will be effective on coordinators
+    and DB servers.
+  - `arangodb_agency_callback_count`: current number of agency callbacks
+    registered. This gauge will be effective on coordinators and DB servers.
+
+* Clean up agency change log, cluster info caches.
+
+* Added new `rocksdb_write_stalls` and `rocksdb_write_stops` counter metrics,
+  which should be more accurate than existing metrics related to the underlying
+  conditions.
+
+* Increased the default value of `--rocksdb.min-write-buffer-number-to-merge` in
+  some cases when we have allocated a sufficient amount of memory to the write
+  buffers for this to make sense. The increased value should help prevent
+  compaction-induced write stalls/stops, and should only be enabled when under
+  conditions such that it shouldn't greatly increase the chance of flush-induced
+  write stalls/stops.
+
+* Changed the default values for `--rocksdb.cache-index-and-filter-blocks` and
+  `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to true to
+  improve control over memory usage.
+
+* Lowered the minimum allowed value for `--rocksdb.max-write-buffer-number` from
+  9 to 4 to allow more fine-grained memory usage control.
+  
 * Fix for issue #772: Optimized document counting for ArangoSearch views.
   Added new ArangoSearch view option 'countApproximate' for customizing 
   view count strategy.
 
-* Fix AR-113. Add a check in the AQL geo-index-optimizer rule that vars
-  referenced by a candidate index expression are actually available at the
-  candidate index node.
+* Fix AR-113. Disallow non-values in the AQL geo-index-optimizer rule.
 
 * Views on SmartGraph Edge collections do not contain some documents
   twice.
@@ -115,6 +357,16 @@ devel
 * Fixed initial population of local AgencyCache values after a server restart.
   Previously the local cache was populated from the agency using a commit index
   value of 1, whereas it should have been 0 to get the full agency snapshot.
+
+* Better tracking of memory used in AQL graph traversals, COLLECT and SORT
+  operations. From this version onwards, certain AQL queries can report a 
+  higher memory usage than in previous versions of ArangoDB. This is not
+  because the queries use more memory than before, but because the memory
+  usage tracking has been improved.
+  A side effect of this change is that queries with a memory limit set may
+  now be aborted whereas in previous versions they ran through successfully
+  (but actually violated the limit). In this case it may be necessary to
+  adjust (i.e. raise) query memory limits accordingly.
 
 * Increase background garbage-collection interval for cluster transactions
   from 1 second to 2 seconds. This change should reduce the amount of

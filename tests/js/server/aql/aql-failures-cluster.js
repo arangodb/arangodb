@@ -89,7 +89,7 @@ function ahuacatlFailureSuite () {
           " FOR doc2 IN " +
           cn +
           " FILTER doc1._key != doc2._key RETURN 1",
-        internal.errors.ERROR_CLUSTER_AQL_COMMUNICATION
+        internal.errors.ERROR_DEBUG
       );
     },
 
@@ -102,7 +102,7 @@ function ahuacatlFailureSuite () {
           " FOR doc2 IN " +
           cn +
           " FILTER doc1._key != doc2._key RETURN 1",
-        internal.errors.ERROR_CLUSTER_AQL_COMMUNICATION
+        internal.errors.ERROR_DEBUG
       );
     },
 

@@ -31,6 +31,7 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 
 #include <algorithm>
 
@@ -159,11 +160,22 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _regsToKeep(initRegsToKeep(_infos.numberOfOutputRegisters())),
       _heapOutputRow{_heapBuffer, _outputRegister, _regsToKeep, _infos.registersToClear()} {
   TRI_ASSERT(_infos.limit() > 0);
-  _rows.reserve(infos.limit());
+
+  {
+    arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForSort());
+
+    _rows.reserve(infos.limit());
+    
+    // now we are responsible for memory tracking
+    guard.steal(); 
+  }
+
   _cmpHeap->setBuffer(_heapBuffer.get());
 }
 
-ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
+ConstrainedSortExecutor::~ConstrainedSortExecutor() {
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsageForSort());
+}
 
 bool ConstrainedSortExecutor::doneProducing() const noexcept {
   // must not get strictly larger
@@ -304,4 +316,8 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
     return std::min(call.getLimit(), totalRows - _returnNext);
   }
   return totalRows - _returnNext;
+}
+
+size_t ConstrainedSortExecutor::memoryUsageForSort() const noexcept {
+  return _infos.limit() * sizeof(decltype(_rows)::value_type);
 }

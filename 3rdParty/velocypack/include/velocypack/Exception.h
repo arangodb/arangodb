@@ -53,6 +53,7 @@ class Exception : public virtual std::exception {
     NeedAttributeTranslator = 20,
     CannotTranslateKey = 21,
     KeyNotFound = 22, // not used anymore
+    BadTupleSize = 23,
 
     BuilderNotSealed = 30,
     BuilderNeedOpenObject = 31,

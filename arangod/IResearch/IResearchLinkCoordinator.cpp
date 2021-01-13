@@ -36,7 +36,6 @@
 #include "IResearchViewCoordinator.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VelocyPackHelper.h"

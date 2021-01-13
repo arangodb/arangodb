@@ -54,7 +54,8 @@ RestStatus RestAdminRoutingHandler::execute() {
 }
 
 void RestAdminRoutingHandler::reloadRouting() {
-  if (!V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting")) {
+  if (!server().getFeature<V8DealerFeature>().addGlobalContextMethod(
+          "reloadRouting")) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "invalid action definition");
     return;

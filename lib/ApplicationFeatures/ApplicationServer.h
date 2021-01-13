@@ -166,10 +166,10 @@ class ApplicationServer {
    bool isPrepared();
 
    /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
-   bool isStopping();
+   bool isStopping() const;
 
    /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
-   bool isStoppingState(State state);
+   bool isStoppingState(State state) const;
 
    // this method will initialize and validate options
    // of all feature, start them and wait for a shutdown

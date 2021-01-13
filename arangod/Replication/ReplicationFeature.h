@@ -98,12 +98,10 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   void trackInventoryRequest() { ++_inventoryRequests; }
 
   /// @brief set the x-arango-endpoint header
-  static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
+  void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
 
   /// @brief fill a response object with correct response for a follower
-  static void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
-
-  static ReplicationFeature* INSTANCE;
+  void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
 
  private:
   /// @brief connection timeout for replication requests

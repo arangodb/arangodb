@@ -38,6 +38,10 @@ class GeneralRequest;
 class GeneralResponse;
 struct OperationResult;
 
+namespace aql {
+class Query;
+}
+
 namespace events {
 void UnknownAuthenticationMethod(GeneralRequest const&);
 void CredentialsMissing(GeneralRequest const&);
@@ -70,9 +74,7 @@ void ReplaceDocument(std::string const& db, std::string const& collection,
 void ModifyDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options, int code);
 void IllegalDocumentOperation(GeneralRequest const&, int result);
-void QueryDocument(std::string const& db, std::string const&, std::string const&, int code);
-void QueryDocument(std::string const& db, VPackSlice const&, int code);
-void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&);
+void AqlQuery(aql::Query const& query);
 void CreateHotbackup(std::string const& id, int result);
 void RestoreHotbackup(std::string const& id, int result);
 void DeleteHotbackup(std::string const& id, int result);

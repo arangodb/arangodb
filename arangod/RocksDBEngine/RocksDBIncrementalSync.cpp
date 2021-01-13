@@ -842,11 +842,11 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(rocksValue);  // we want probably to do this instead
-            col->readDocumentWithCallback(&trx, documentId,
-                                          [&docRev](LocalDocumentId const&, VPackSlice doc) {
-                                            docRev = RevisionId::fromSlice(doc);
-                                            return true;
-                                          });
+            physical->read(&trx, documentId,
+                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
+                             docRev = RevisionId::fromSlice(doc);
+                             return true;
+                           });
           }
           compareChunk(docKey, docRev);
           return true;

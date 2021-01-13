@@ -182,7 +182,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
 
-      DatabaseGuard guard(nameSlice.copyString());
+      DatabaseGuard guard(*vocbase);
 
       // change database name in place
       ReplicationApplierConfiguration configurationCopy = _state.applier;
@@ -219,7 +219,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
 /// mirrors the leader's
 Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDatabases) {
   std::set<std::string> existingDBs;
-  DatabaseFeature::DATABASE->enumerateDatabases(
+  auto& server = _state.applier._server;
+  server.getFeature<DatabaseFeature>().enumerateDatabases(
       [&](TRI_vocbase_t& vocbase) -> void { existingDBs.insert(vocbase.name()); });
 
   for (auto const& database : VPackObjectIterator(leaderDatabases)) {

@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
@@ -233,7 +234,8 @@ static arangodb::Result addShardFollower(
   }
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = pool->config().clusterInfo->server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
     auto collection = vocbase->lookupCollection(shard);
@@ -511,12 +513,12 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   try {
     std::string const context = "synchronization of shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
-
+  
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
           << "initial sync failed for " << database << "/" << col->name()
           << ": " << r.errorMessage();
-      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+      THROW_ARANGO_EXCEPTION(r);
     }
 
     {
@@ -569,7 +571,8 @@ static arangodb::Result replicationSynchronizeCatchup(
   // will throw if invalid
   configuration.validate();
 
-  DatabaseGuard guard(database);
+  auto& df = server.getFeature<DatabaseFeature>();
+  DatabaseGuard guard(df, database);
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
@@ -608,7 +611,8 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
   // will throw if invalid
   configuration.validate();
 
-  DatabaseGuard guard(database);
+  auto& df = server.getFeature<DatabaseFeature>();
+  DatabaseGuard guard(df, database);
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
@@ -717,7 +721,8 @@ bool SynchronizeShard::first() {
   // a try:
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
     auto collection = vocbase->lookupCollection(shard);
@@ -730,7 +735,7 @@ bool SynchronizeShard::first() {
     }
 
     auto ep = clusterInfo.getServerEndpoint(leader);
-    uint64_t docCount;
+    uint64_t docCount = 0;
     if (!collectionCount(*collection, docCount).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << database << "/" << shard;
@@ -742,7 +747,7 @@ bool SynchronizeShard::first() {
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
       _clientInfoString =
-          std::string{"follower "} + ServerState::instance()->getPersistedId() +
+          std::string{"follower "} + ServerState::instance()->getId() +
           " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
@@ -1122,7 +1127,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
        << "recalculating collection count on follower for "
        << database << "/" << shard;
 
-    uint64_t docCount;
+    uint64_t docCount = 0;
     Result countRes = collectionCount(collection, docCount);
     if (countRes.fail()) {
       return countRes;

@@ -407,7 +407,7 @@ bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result)
 
     result.add("vertices", VPackValue(VPackValueType::Array));
     for (auto const& it : _tempPath._vertices) {
-      _options.cache()->insertVertexIntoResult(it, result);
+      _options.cache()->appendVertex(it, result);
     }
     result.close();  // Array
     if (_options.useWeight()) {

@@ -37,6 +37,7 @@
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -269,7 +270,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
     // global inventory
-    DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
+    vocbase.server().getFeature<DatabaseFeature>().inventory(result, tick, nameFilter);
   } else {
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
@@ -314,7 +315,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     }
   }
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::documents());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents));
 
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   TransactionId trxId{0};
@@ -404,7 +406,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
   trxId = TransactionId(transaction::Context::makeTransactionId());
   rcoll->meta().placeBlocker(trxId, blockerSeq);
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::documents());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents));
 
   VPackBuilder builder(buffer, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
@@ -472,7 +475,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   }
 
   TRI_ASSERT(cIter->lastSortedIteratorOffset == 0);
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   TransactionId trxId{0};
@@ -517,7 +521,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
         docKey.constructDocument(cObjectId, docId);
 
         rocksdb::PinnableSlice ps;
-        auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
+        auto s = db->Get(cIter->readOptions(),
+                         RocksDBColumnFamilyManager::get(
+                             RocksDBColumnFamilyManager::Family::Documents),
                          docKey.string(), &ps);
         if (s.ok()) {
           TRI_ASSERT(ps.size() > 0);
@@ -607,7 +613,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
     }
   }
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
   // Position the iterator correctly
   if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
@@ -669,7 +676,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
       tmpKey.constructDocument(cObjectId, docId);
 
       rocksdb::PinnableSlice ps;
-      auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
+      auto s = db->Get(cIter->readOptions(),
+                       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
                        tmpKey.string(), &ps);
       if (s.ok()) {
         TRI_ASSERT(ps.size() > 0);
@@ -722,7 +730,8 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
   }
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
@@ -808,7 +817,9 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         tmpKey.constructDocument(cObjectId, docId);
 
         rocksdb::PinnableSlice ps;
-        auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
+        auto s = db->Get(cIter->readOptions(),
+                         RocksDBColumnFamilyManager::get(
+                             RocksDBColumnFamilyManager::Family::Documents),
                          tmpKey.string(), &ps);
         if (s.ok()) {
           TRI_ASSERT(ps.size() > 0);

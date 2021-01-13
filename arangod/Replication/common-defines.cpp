@@ -64,7 +64,8 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
     return true;
   }
 
-  if (name.compare(0, 11, "_statistics") == 0 ||
+  // check if the name starts with _statistics
+  if (name.compare(0, 11, StaticStrings::StatisticsCollection) == 0 ||
       name == "_routing") {
     // these system collections will always be excluded
     return true;

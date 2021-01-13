@@ -385,6 +385,9 @@ class Ast {
   AstNode* createNodeFunctionCall(char const* functionName, size_t length,
                                   AstNode const* arguments);
 
+  /// @brief create an AST function call node for aggregate functions
+  AstNode* createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments);
+
   /// @brief create an AST range node
   AstNode* createNodeRange(AstNode const*, AstNode const*);
 

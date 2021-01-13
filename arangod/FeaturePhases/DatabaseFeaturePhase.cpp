@@ -38,7 +38,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 
@@ -64,7 +63,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
   startsAfter<LockfileFeature>();
   startsAfter<ReplicationFeature>();
   startsAfter<RocksDBEngine>();
-  startsAfter<RocksDBOptionFeature>();
   startsAfter<RocksDBRecoveryManager>();
   startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();

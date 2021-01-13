@@ -50,8 +50,6 @@ class ProgramOptions;
 
 class SslServerFeature : public application_features::ApplicationFeature {
  public:
-  static SslServerFeature* SSL;
-
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
 
   explicit SslServerFeature(application_features::ApplicationServer& server);

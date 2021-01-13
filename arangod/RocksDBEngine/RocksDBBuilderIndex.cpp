@@ -28,7 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -169,7 +169,8 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
 
-  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamily::documents();
+  rocksdb::ColumnFamilyHandle* docCF =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   auto mode = snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
@@ -359,9 +360,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::Slice const& value) override {
     incTick();
-    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+            ->GetID()) {
       _lastObjectID = 0;
-    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                   ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
 
@@ -370,9 +375,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     incTick();
-    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+            ->GetID()) {
       _lastObjectID = 0;
-    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                   ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
     return rocksdb::Status();
@@ -380,9 +389,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     incTick();
-    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+            ->GetID()) {
       _lastObjectID = 0;
-    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                   ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
     return rocksdb::Status();

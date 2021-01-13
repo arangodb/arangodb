@@ -134,7 +134,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_startupDirectory.empty()) {
     LOG_TOPIC("6380f", FATAL, arangodb::Logger::FIXME)
-        << "no 'javascript.startup-directory' has been supplied, giving up";
+        << "no '--javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
 

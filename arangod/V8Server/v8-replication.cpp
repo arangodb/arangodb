@@ -593,8 +593,9 @@ static void JS_FailoverEnabledGlobalApplierReplication(v8::FunctionCallbackInfo<
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto replicationFeature = ReplicationFeature::INSTANCE;
-  if (replicationFeature != nullptr && replicationFeature->isActiveFailoverEnabled()) {
+  TRI_GET_GLOBALS();
+  auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
+  if (replicationFeature.isActiveFailoverEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();

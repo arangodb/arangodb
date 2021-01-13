@@ -5681,7 +5681,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_IP"), JS_IsIP);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

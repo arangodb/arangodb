@@ -30,6 +30,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+#include <set>
 
 namespace arangodb {
 
@@ -39,9 +40,15 @@ class TransactionState;
 namespace ClusterTrxMethods {
 using arangodb::futures::Future;
 
+struct IsServerIdLessThan {
+  bool operator()(ServerID const& lhs, ServerID const& rhs) const noexcept;
+};
+
+using SortedServersSet = std::set<ServerID, IsServerIdLessThan>;
+
 /// @brief begin a transaction on all followers
 Future<arangodb::Result> beginTransactionOnLeaders(TransactionState&,
-                                                   std::vector<ServerID> const& leaders);
+                                                   SortedServersSet const& leaders);
 
 /// @brief commit a transaction on a subordinate
 Future<arangodb::Result> commitTransaction(transaction::Methods& trx);

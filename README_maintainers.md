@@ -677,6 +677,14 @@ Running a test against a server you started (instead of letting the script start
 
     scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
 
+Re-running previously failed tests:
+
+    scripts/unittest <args> --failed
+
+The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
+The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
+This failed filter should work for all jsunity, mocha and rspec tests.
+
 #### Running Foxx Tests with a Fake Foxx Repo
 
 Since downloading Foxx apps from GitHub can be cumbersome with shaky DSL and

@@ -115,6 +115,9 @@ bool NeighborsEnumerator::next() {
 
         incHttpRequests(cursor->httpRequests());
       }
+    
+      _opts->isQueryKilledCallback();
+
       if (_currentDepth.empty()) {
         // Nothing found. Cannot do anything more.
         return false;

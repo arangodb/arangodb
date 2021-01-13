@@ -22,13 +22,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"  // required for RocksDBColumnFamily.h
+#include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -44,7 +44,8 @@ namespace iresearch {
 
 IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection)
     : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
-                   RocksDBColumnFamily::invalid(), false),
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
+                   false),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed

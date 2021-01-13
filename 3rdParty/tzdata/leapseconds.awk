@@ -24,6 +24,10 @@ BEGIN {
   print "# NIST format leap-seconds.list file, which can be copied from"
   print "# <ftp://ftp.nist.gov/pub/time/leap-seconds.list>"
   print "# or <ftp://ftp.boulder.nist.gov/pub/time/leap-seconds.list>."
+  print "# The NIST file is used instead of its IERS upstream counterpart"
+  print "# <https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list>"
+  print "# because under US law the NIST file is public domain"
+  print "# whereas the IERS file's copyright and license status is unclear."
   print "# For more about leap-seconds.list, please see"
   print "# The NTP Timescale and Leap Seconds"
   print "# <https://www.eecis.udel.edu/~mills/leap.html>."
@@ -105,8 +109,10 @@ END {
     print ""
     print "# UTC timestamp when this leap second list expires."
     print "# Any additional leap seconds will come after this."
-    print "# This Expires line is commented out for now,"
-    print "# so that pre-2020a zic implementations do not reject this file."
+    if (! EXPIRES_LINE) {
+      print "# This Expires line is commented out for now,"
+      print "# so that pre-2020a zic implementations do not reject this file."
+    }
     printf "%sExpires %.4d\t%s\t%.2d\t%.2d:%.2d:%.2d\n", \
       EXPIRES_LINE ? "" : "#", \
       ss_year, monthabbr[ss_month], ss_mday, ss_hour, ss_min, ss_sec

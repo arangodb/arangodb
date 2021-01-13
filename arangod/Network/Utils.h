@@ -38,6 +38,9 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+namespace consensus {
+class Agent;
+}
 class ClusterInfo;
 class NetworkFeature;
 
@@ -80,7 +83,7 @@ std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res);
 fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
 rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
-void addSourceHeader(fuerte::Request& req);
+void addSourceHeader(consensus::Agent* agent, fuerte::Request& req);
 
 }  // namespace network
 }  // namespace arangodb

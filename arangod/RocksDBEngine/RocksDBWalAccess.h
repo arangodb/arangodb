@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H
 #define ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H 1
 
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/WalAccess.h"
 
 namespace arangodb {

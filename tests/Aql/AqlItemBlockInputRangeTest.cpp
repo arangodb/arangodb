@@ -46,7 +46,7 @@ namespace aql {
 class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   AqlItemBlockInputRange createEmpty() {
     return AqlItemBlockInputRange{GetParam()};

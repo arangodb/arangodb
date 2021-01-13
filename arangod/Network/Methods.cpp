@@ -36,13 +36,15 @@
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <fuerte/types.h>
 
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace network {
@@ -142,8 +144,9 @@ std::string Response::serverId() const {
   return StaticStrings::Empty;
 }
 
-auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
-                    RequestOptions const& options, Headers headers) {
+auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
+                    VPackBufferUInt8 payload, RequestOptions const& options,
+                    Headers headers) {
   TRI_ASSERT(path.find("/_db/") == std::string::npos);
   TRI_ASSERT(path.find('?') == std::string::npos);
 
@@ -163,7 +166,15 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
   req->header.addMeta(StaticStrings::HLCHeader,
                       arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
 
-  network::addSourceHeader(*req);
+  consensus::Agent* agent = nullptr;
+  if (pool && pool->config().clusterInfo) {
+    auto& server = pool->config().clusterInfo->server();
+    if (server.hasFeature<AgencyFeature>() && server.isEnabled<AgencyFeature>()) {
+      agent = server.getFeature<AgencyFeature>().agent();
+    }
+  }
+  // note: agent can be a nullptr here
+  network::addSourceHeader(agent, *req);
 
   return req;
 }
@@ -201,7 +212,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
 
   // FIXME build future.reset(..)
   try {
-    auto req = prepareRequest(type, std::move(path), std::move(payload),
+    auto req = prepareRequest(pool, type, std::move(path), std::move(payload),
                               options, std::move(headers));
     req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
 
@@ -294,7 +305,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         _startTime(std::chrono::steady_clock::now()),
         _endTime(_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                                   options.timeout)) {
-    _tmp_req = prepareRequest(type, std::move(path), std::move(payload), _options, std::move(headers));
+    _tmp_req = prepareRequest(pool, type, std::move(path), std::move(payload),
+                              _options, std::move(headers));
   }
 
   ~RequestsState() = default;
