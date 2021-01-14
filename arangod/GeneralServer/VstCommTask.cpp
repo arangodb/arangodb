@@ -373,8 +373,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId()
       << "\",\"" << this->_connectionInfo.clientAddress << "\",\""
-      << _url << "\",\"" << static_cast<int>(response.responseCode()) << "\",tot:"
-      << Logger::FIXED(totalTime, 6) << ",que:" << Logger::FIXED(queueTime, 6) ;
+      << _url << "\",\"" << static_cast<int>(response.responseCode()) << "\","
+      << Logger::FIXED(totalTime, 6) << "," << Logger::FIXED(queueTime, 6) ;
 
   resItem->stat = std::move(stat);
 
