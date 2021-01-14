@@ -216,7 +216,7 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
 
 EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() || params.length() != 3) {
-    return EvalError("expected exactly two parameters");
+    return EvalError("expected exactly three parameters");
   }
 
   auto const& [slice, key, defaultValue] =
