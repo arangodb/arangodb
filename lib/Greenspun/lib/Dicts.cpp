@@ -196,11 +196,11 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
     return slice.get(key.stringRef());
   } else if (key.isArray()) {
     struct Iter : VPackArrayIterator {
-      using VPackArrayIterator ::difference_type;
+      using VPackArrayIterator::difference_type;
       using value_type = VPackStringRef;
       using VPackArrayIterator::iterator_category;
-      using VPackArrayIterator ::pointer;
-      using VPackArrayIterator ::reference;
+      using VPackArrayIterator::pointer;
+      using VPackArrayIterator::reference;
 
       value_type operator*() const {
         return VPackArrayIterator::operator*().stringRef();
