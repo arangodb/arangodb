@@ -35,48 +35,6 @@
 #include "Greenspun/Interpreter.h"
 #include "Greenspun/Primitives.h"
 
-/*  WARNING! HACK HACK HACK HACK
-
-    This is a *horrendous* hack to provide a demo prototype of how to
-    provide date functions inside greenspun (a purported universal extension
-    language to arangodb); These function should then be used (and usable)
-    inside AQL (and elsewhere).
-
-    They could (and SHOULD!) really be implemented in the greenspun language (or
-    one of its better syntactic representations), as its better modifiable and
-    easier to read. Some extremists might want to implement some backend functions
-    in C++ and they can, but should really provide better error messages than
-    "well this doesn't work, user, try again (which is what happens at the moment)"
-
-    add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", flags, &Functions::DateTimestamp});
-    add({"DATE_ISO8601", ".|.,.,.,.,.,.", flags, &Functions::DateIso8601});
-    add({"DATE_DAYOFWEEK", ".", flags, &Functions::DateDayOfWeek});
-    add({"DATE_YEAR", ".", flags, &Functions::DateYear});
-    add({"DATE_MONTH", ".", flags, &Functions::DateMonth});
-    add({"DATE_DAY", ".", flags, &Functions::DateDay});
-    add({"DATE_HOUR", ".", flags, &Functions::DateHour});
-    add({"DATE_MINUTE", ".", flags, &Functions::DateMinute});
-    add({"DATE_SECOND", ".", flags, &Functions::DateSecond});
-    add({"DATE_MILLISECOND", ".", flags, &Functions::DateMillisecond});
-    add({"DATE_DAYOFYEAR", ".", flags, &Functions::DateDayOfYear});
-    add({"DATE_ISOWEEK", ".", flags, &Functions::DateIsoWeek});
-    add({"DATE_LEAPYEAR", ".", flags, &Functions::DateLeapYear});
-    add({"DATE_QUARTER", ".", flags, &Functions::DateQuarter});
-    add({"DATE_DAYS_IN_MONTH", ".", flags, &Functions::DateDaysInMonth});
-    add({"DATE_ADD", ".,.|.", flags, &Functions::DateAdd});
-    add({"DATE_SUBTRACT", ".,.|.", flags, &Functions::DateSubtract});
-    add({"DATE_DIFF", ".,.,.|.", flags, &Functions::DateDiff});
-    add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
-    add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
-    add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
-    add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
-
-    // special flags:
-    add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer),
-    &Functions::DateNow});  // deterministic, but not cacheable!
-}
-*/
-
 namespace arangodb::greenspun {
 
 EvalResult DateTime_dateStringToUnix(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
