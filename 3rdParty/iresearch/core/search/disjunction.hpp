@@ -1303,8 +1303,9 @@ class block_disjunction final
         //    return true;
         //  }
         //}
-
-        if constexpr (traits_type::score()) {
+        // circumventing GCC 10.1 bug on ARM64 
+        constexpr bool is_score = traits_type::score(); 
+        if constexpr (is_score) {
           if (!it.score->is_default()) {
             return this->refill<true>(it, empty);
           }
