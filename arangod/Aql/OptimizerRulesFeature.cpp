@@ -455,6 +455,12 @@ void OptimizerRulesFeature::addRules() {
 
   // add the storage-engine specific rules
   addStorageEngineRules();
+  
+  // fuses calculation with following filter if the calculation is only
+  // used by the filter
+  registerRule("fuse-calculation-filter", fuseCalculationAndFilterRule, 
+               OptimizerRule::fuseCalculationAndFilterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // Splice subqueries
   //

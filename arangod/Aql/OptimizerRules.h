@@ -293,6 +293,9 @@ void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule
 /// @brief parallelize Gather nodes (cluster-only)
 void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
+//// @brief fuse calculation with following filter
+void fuseCalculationAndFilterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 

@@ -167,6 +167,7 @@ class ExecutionNode {
     ASYNC = 32,
     MUTEX = 33,
     WINDOW = 34,
+    CALCULATION_FILTER = 35,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -875,7 +876,7 @@ class FilterNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
 
-  /// @brief constructors for various arguments, always with offset and limit
+  /// @brief constructors for various arguments
  public:
   FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable);
 
@@ -908,6 +909,50 @@ class FilterNode : public ExecutionNode {
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
+};
+
+/// @brief class CalculationFilterNode
+class CalculationFilterNode : public ExecutionNode {
+  friend class ExecutionBlock;
+  friend class RedundantCalculationsReplacer;
+
+  /// @brief constructors for various arguments
+ public:
+  CalculationFilterNode(ExecutionPlan* plan, ExecutionNodeId id,
+                        std::unique_ptr<Expression> expr);
+
+  CalculationFilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override;
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+  
+  /// @brief return the expression. never a nullptr!
+  Expression* expression() const;
+
+  /// @brief estimateCost
+  CostEstimate estimateCost() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(VarSet& vars) const override final;
+  
+  bool isDeterministic() override final;
+
+ private:
+  /// @brief we need to have an expression and where to write the result
+  std::unique_ptr<Expression> _expression;
 };
 
 /// @brief this is an auxilliary struct for processed sort criteria information

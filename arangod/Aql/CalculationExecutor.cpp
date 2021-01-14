@@ -48,22 +48,7 @@ CalculationExecutorInfos::CalculationExecutorInfos(RegisterId outputRegister,
       _query(query),
       _expression(expression),
       _expInVars(std::move(expInVars)),
-      _expInRegs(std::move(expInRegs)) {
-}
-
-template <CalculationType calculationType>
-CalculationExecutor<calculationType>::CalculationExecutor(Fetcher& fetcher,
-                                                          CalculationExecutorInfos& infos)
-    :
-      _trx(infos.getQuery().newTrxContext()),
-      _infos(infos),
-      _fetcher(fetcher),
-      _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _rowState(ExecutionState::HASMORE),
-      _hasEnteredContext(false) {}
-
-template <CalculationType calculationType>
-CalculationExecutor<calculationType>::~CalculationExecutor() = default;
+      _expInRegs(std::move(expInRegs)) {}
 
 RegisterId CalculationExecutorInfos::getOutputRegisterId() const noexcept {
   return _outputRegisterId;
@@ -82,6 +67,16 @@ std::vector<Variable const*> const& CalculationExecutorInfos::getExpInVars() con
 std::vector<RegisterId> const& CalculationExecutorInfos::getExpInRegs() const noexcept {
   return _expInRegs;
 }
+
+template <CalculationType calculationType>
+CalculationExecutor<calculationType>::CalculationExecutor(Fetcher& /*fetcher*/,
+                                                          CalculationExecutorInfos& infos)
+    : _trx(infos.getQuery().newTrxContext()),
+      _infos(infos),
+      _hasEnteredContext(false) {}
+
+template <CalculationType calculationType>
+CalculationExecutor<calculationType>::~CalculationExecutor() = default;
 
 template <CalculationType calculationType>
 std::tuple<ExecutorState, typename CalculationExecutor<calculationType>::Stats, AqlCall>

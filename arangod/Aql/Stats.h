@@ -37,7 +37,7 @@ namespace aql {
 // no-op statistics for all Executors that don't have custom stats.
 class NoStats {
  public:
-  void operator+= (NoStats const&) {}
+  void operator+=(NoStats const&) {}
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
@@ -56,7 +56,7 @@ class CountStats {
 
   std::size_t getCounted() const noexcept { return _counted; }
   
-  void operator+= (CountStats const& stats) {
+  void operator+=(CountStats const& stats) {
     _counted += stats._counted;
   }
 
@@ -67,6 +67,32 @@ class CountStats {
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   CountStats const& filterStats) noexcept {
   executionStats.count += filterStats.getCounted();
+  return executionStats;
+}
+
+class CalculationFilterStats {
+ public:
+  CalculationFilterStats() noexcept : _filtered(0) {}
+
+  void setFiltered(std::size_t filtered) noexcept { _filtered = filtered; }
+
+  void addFiltered(std::size_t filtered) noexcept { _filtered += filtered; }
+
+  void incrFiltered() noexcept { _filtered++; }
+
+  std::size_t getFiltered() const noexcept { return _filtered; }
+  
+  void operator+=(CalculationFilterStats const& stats) {
+    _filtered += stats._filtered;
+  }
+
+ private:
+  std::size_t _filtered;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  CalculationFilterStats const& filterStats) noexcept {
+  executionStats.filtered += filterStats.getFiltered();
   return executionStats;
 }
 
@@ -82,7 +108,7 @@ class FilterStats {
 
   std::size_t getFiltered() const noexcept { return _filtered; }
   
-  void operator+= (FilterStats const& stats) {
+  void operator+=(FilterStats const& stats) {
     _filtered += stats._filtered;
   }
 
@@ -107,7 +133,7 @@ class EnumerateCollectionStats {
   std::size_t getScanned() const noexcept { return _scannedFull; }
   std::size_t getFiltered() const noexcept { return _filtered; }
   
-  void operator+= (EnumerateCollectionStats const& stats) {
+  void operator+=(EnumerateCollectionStats const& stats) {
     _scannedFull += stats._scannedFull;
     _filtered += stats._filtered;
   }
@@ -137,7 +163,7 @@ class IndexStats {
   std::size_t getScanned() const noexcept { return _scannedIndex; }
   std::size_t getFiltered() const noexcept { return _filtered; }
   
-  void operator+= (IndexStats const& stats) {
+  void operator+=(IndexStats const& stats) {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
   }
@@ -176,7 +202,7 @@ class ModificationStats {
   void incrWritesIgnored() noexcept { _writesIgnored++; }
   std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
   
-  void operator+= (ModificationStats const& stats) {
+  void operator+=(ModificationStats const& stats) {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
   }
@@ -225,7 +251,7 @@ class SingleRemoteModificationStats {
   void incrScannedIndex() noexcept { _scannedIndex++; }
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
   
-  void operator+= (SingleRemoteModificationStats const& stats) {
+  void operator+=(SingleRemoteModificationStats const& stats) {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
     _scannedIndex += stats._scannedIndex;

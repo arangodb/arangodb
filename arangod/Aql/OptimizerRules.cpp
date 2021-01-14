@@ -4799,6 +4799,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::UPDATE:
         case EN::UPSERT:
         case EN::CALCULATION:
+        case EN::CALCULATION_FILTER:
         case EN::FILTER:
         case EN::SUBQUERY:
         case EN::RETURN:
@@ -7177,6 +7178,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::FILTER:
+    case ExecutionNode::CALCULATION_FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::SORT:
     case ExecutionNode::COLLECT:
@@ -7969,6 +7971,70 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       }
     } else {
       gn->setParallelism(GatherNode::Parallelism::Serial);
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+/// @brief fuse calculation and filter condition that follow each other
+void arangodb::aql::fuseCalculationAndFilterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                                 OptimizerRule const& rule) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::FILTER, true);
+
+  bool modified = false;
+
+  for (auto const& n : nodes) {
+    Variable const* inVariable = ExecutionNode::castTo<FilterNode const*>(n)->inVariable();
+    auto setter = plan->getVarSetBy(inVariable->id);
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+    
+    auto const& varsUsedLater = n->getVarsUsedLater();
+    if (varsUsedLater.find(inVariable) != varsUsedLater.end()) {
+      // output variable of calculation is used AFTER the filter
+      continue;
+    }
+
+    // we got a filter populated by a calculation node
+    ExecutionNode* current = n->getFirstDependency();
+    while (current != nullptr) {
+      if (current->getType() == EN::CALCULATION) {
+        auto cn = ExecutionNode::castTo<CalculationNode*>(current);
+        if (!cn->isDeterministic() || cn->outVariable() != inVariable) {
+          break;
+        }
+       
+        Expression* expr = cn->expression();
+        if (expr->willUseV8()) {
+          break;
+        }
+        TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
+        if (!expr->canRunOnDBServer(vocbase.isOneShard())) {
+          break;
+        }
+
+        CalculationFilterNode* cfn =
+            new CalculationFilterNode(plan.get(), plan->nextId(), expr->clone(plan->getAst()));
+        plan->registerNode(cfn);
+        plan->replaceNode(cn, cfn);
+        plan->unlinkNode(n);
+        modified = true;
+        break;
+      } else {
+        // any other node type than a calculation node
+        // now check if it uses our target variable
+        VarSet usedHere;
+        current->getVariablesUsedHere(usedHere);
+        if (usedHere.find(inVariable) != usedHere.end()) {
+          // yes...
+          break;
+        }
+      }
+      current = current->getFirstDependency();
     }
   }
 

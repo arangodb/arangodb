@@ -342,6 +342,10 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+    // fuses calculations with following filter if the calculation is only
+    // used by the filter
+    fuseCalculationAndFilterRule,
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.

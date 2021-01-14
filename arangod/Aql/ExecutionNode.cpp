@@ -37,6 +37,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/CalculationFilterExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
@@ -72,6 +73,7 @@
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -123,7 +125,57 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
+    {static_cast<int>(ExecutionNode::CALCULATION_FILTER), "CalculationFilterNode"},
 };
+  
+void serializeExpressionMeta(VPackBuilder& nodes, Expression const& expression) {
+  auto root = expression.node();
+  if (root != nullptr) {
+    // enumerate all used functions, but report each function only once
+    std::unordered_set<std::string> functionsSeen;
+    nodes.add("functions", VPackValue(VPackValueType::Array));
+
+    Ast::traverseReadOnly(root, [&functionsSeen, &nodes](AstNode const* node) -> bool {
+        if (node->type == NODE_TYPE_FCALL) {
+        auto func = static_cast<Function const*>(node->getData());
+        if (functionsSeen.insert(func->name).second) {
+        // built-in function, not seen before
+        nodes.openObject();
+        nodes.add("name", VPackValue(func->name));
+        nodes.add("isDeterministic",
+            VPackValue(func->hasFlag(Function::Flags::Deterministic)));
+        nodes.add("canAccessDocuments", 
+            VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
+        nodes.add("canRunOnDBServerCluster",
+            VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
+        nodes.add("canRunOnDBServerOneShard",
+            VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)));
+        nodes.add("cacheable", VPackValue(func->hasFlag(Function::Flags::Cacheable)));
+        nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+        // deprecated
+        nodes.add("canRunOnDBServer",
+            VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
+        nodes.close();
+        }
+        } else if (node->type == NODE_TYPE_FCALL_USER) {
+          auto func = node->getString();
+          if (functionsSeen.insert(func).second) {
+            // user defined function, not seen before
+            nodes.openObject();
+            nodes.add("name", VPackValue(func));
+            nodes.add("isDeterministic", VPackValue(false));
+            nodes.add("canRunOnDBServer", VPackValue(false));
+            nodes.add("usesV8", VPackValue(true));
+            nodes.close();
+          }
+        }
+        return true;
+    });
+
+    nodes.close();
+  }
+}
+
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -220,6 +272,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new EnumerateListNode(plan, slice);
     case FILTER:
       return new FilterNode(plan, slice);
+    case CALCULATION_FILTER:
+      return new CalculationFilterNode(plan, slice);
     case LIMIT:
       return new LimitNode(plan, slice);
     case CALCULATION:
@@ -1358,6 +1412,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case ENUMERATE_COLLECTION:
     case ENUMERATE_LIST:
     case FILTER:
+    case CALCULATION_FILTER:
     case SORT:
     case COLLECT:
     case INSERT:
@@ -1783,10 +1838,21 @@ size_t LimitNode::offset() const { return _offset; }
 
 size_t LimitNode::limit() const { return _limit; }
 
+CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
+    : ExecutionNode(plan, id), 
+      _outVariable(outVariable), 
+      _expression(std::move(expr)) {
+  TRI_ASSERT(_expression != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+}
+
 CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan->getAst(), base)) {}
+
+CalculationNode::~CalculationNode() = default;
 
 /// @brief toVelocyPack, for CalculationNode
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -1800,55 +1866,10 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   _outVariable->toVelocyPack(nodes);
 
   nodes.add("canThrow", VPackValue(false));
-
   nodes.add("expressionType", VPackValue(_expression->typeString()));
 
   if ((flags & SERIALIZE_FUNCTIONS) && _expression->node() != nullptr) {
-    auto root = _expression->node();
-    if (root != nullptr) {
-      // enumerate all used functions, but report each function only once
-      std::unordered_set<std::string> functionsSeen;
-      nodes.add("functions", VPackValue(VPackValueType::Array));
-
-      Ast::traverseReadOnly(root, [&functionsSeen, &nodes](AstNode const* node) -> bool {
-        if (node->type == NODE_TYPE_FCALL) {
-          auto func = static_cast<Function const*>(node->getData());
-          if (functionsSeen.insert(func->name).second) {
-            // built-in function, not seen before
-            nodes.openObject();
-            nodes.add("name", VPackValue(func->name));
-            nodes.add("isDeterministic",
-                      VPackValue(func->hasFlag(Function::Flags::Deterministic)));
-            nodes.add("canAccessDocuments", 
-                      VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
-            nodes.add("canRunOnDBServerCluster",
-                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
-            nodes.add("canRunOnDBServerOneShard",
-                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)));
-            nodes.add("cacheable", VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-            nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
-            // deprecated
-            nodes.add("canRunOnDBServer",
-                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
-            nodes.close();
-          }
-        } else if (node->type == NODE_TYPE_FCALL_USER) {
-          auto func = node->getString();
-          if (functionsSeen.insert(func).second) {
-            // user defined function, not seen before
-            nodes.openObject();
-            nodes.add("name", VPackValue(func));
-            nodes.add("isDeterministic", VPackValue(false));
-            nodes.add("canRunOnDBServer", VPackValue(false));
-            nodes.add("usesV8", VPackValue(true));
-            nodes.close();
-          }
-        }
-        return true;
-      });
-
-      nodes.close();
-    }
+    ::serializeExpressionMeta(nodes, *_expression);
   }
 
   // And close it
@@ -1933,15 +1954,6 @@ CostEstimate CalculationNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
-
-CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
-                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
-    : ExecutionNode(plan, id), _outVariable(outVariable), _expression(std::move(expr)) {
-  TRI_ASSERT(_expression != nullptr);
-  TRI_ASSERT(_outVariable != nullptr);
-}
-
-CalculationNode::~CalculationNode() = default;
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
@@ -2252,6 +2264,11 @@ FilterNode::FilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
+FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable)
+    : ExecutionNode(plan, id), _inVariable(inVariable) {
+  TRI_ASSERT(_inVariable != nullptr);
+}
+
 /// @brief toVelocyPack, for FilterNode
 void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
@@ -2309,11 +2326,6 @@ CostEstimate FilterNode::estimateCost() const {
   return estimate;
 }
 
-FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable)
-    : ExecutionNode(plan, id), _inVariable(inVariable) {
-  TRI_ASSERT(_inVariable != nullptr);
-}
-
 ExecutionNode::NodeType FilterNode::getType() const { return FILTER; }
 
 void FilterNode::getVariablesUsedHere(VarSet& vars) const {
@@ -2321,6 +2333,101 @@ void FilterNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 Variable const* FilterNode::inVariable() const { return _inVariable; }
+
+CalculationFilterNode::CalculationFilterNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                             std::unique_ptr<Expression> expr)
+    : ExecutionNode(plan, id), 
+      _expression(std::move(expr)) {}
+
+CalculationFilterNode::CalculationFilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base),
+      _expression(new Expression(plan->getAst(), base)) {}
+
+/// @brief toVelocyPack, for CalculationFilterNode
+void CalculationFilterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                               std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+  nodes.add(VPackValue("expression"));
+  _expression->toVelocyPack(nodes, flags);
+  
+  nodes.add("canThrow", VPackValue(false));
+  nodes.add("expressionType", VPackValue(_expression->typeString()));
+  
+  if ((flags & SERIALIZE_FUNCTIONS) && _expression->node() != nullptr) {
+    ::serializeExpressionMeta(nodes, *_expression);
+  }
+
+  // And close it:
+  nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> CalculationFilterNode::createBlock(
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  VarSet inVars;
+  _expression->variables(inVars);
+
+  std::vector<Variable const*> expInVars;
+  expInVars.reserve(inVars.size());
+  std::vector<RegisterId> expInRegs;
+  expInRegs.reserve(inVars.size());
+
+  auto inputRegisters = RegIdSet{};
+  inputRegisters.reserve(inVars.size());
+
+  for (auto& var : inVars) {
+    expInVars.emplace_back(var);
+    auto regId = variableToRegisterId(var);
+    expInRegs.emplace_back(regId);
+    inputRegisters.emplace(regId);
+  }
+
+  auto registerInfos =
+      createRegisterInfos(std::move(inputRegisters), RegIdSet{});
+
+  auto executorInfos = CalculationFilterExecutorInfos(
+      engine.getQuery() /* used in expression */,
+      *expression(), std::move(expInVars) /* required by expression.execute */,
+      std::move(expInRegs)); /* required by expression.execute */
+
+  return std::make_unique<ExecutionBlockImpl<CalculationFilterExecutor>>(
+        &engine, this,std::move(registerInfos), std::move(executorInfos));
+}
+
+ExecutionNode* CalculationFilterNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                            bool withProperties) const {
+  auto c = std::make_unique<CalculationFilterNode>(plan, _id,
+                                                   _expression->clone(plan->getAst()));
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+Expression* CalculationFilterNode::expression() const { 
+  TRI_ASSERT(_expression != nullptr);
+  return _expression.get(); 
+}
+
+/// @brief estimateCost
+CostEstimate CalculationFilterNode::estimateCost() const {
+  TRI_ASSERT(!_dependencies.empty());
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
+}
+
+ExecutionNode::NodeType CalculationFilterNode::getType() const { return CALCULATION_FILTER; }
+
+void CalculationFilterNode::getVariablesUsedHere(VarSet& vars) const {
+  _expression->variables(vars);
+}
+
+bool CalculationFilterNode::isDeterministic() {
+  return _expression->isDeterministic();
+}
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),

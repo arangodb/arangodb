@@ -1647,6 +1647,11 @@ function processQuery(query, explain, planIndex) {
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
       case 'FilterNode':
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
+      case 'CalculationFilterNode':
+        (node.functions || []).forEach(function (f) {
+          functions[f.name] = f;
+        });
+        return keyword('FILTER') + ' ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
       case 'AggregateNode': /* old-style COLLECT node */
         return keyword('COLLECT') + ' ' + node.aggregates.map(function (node) {
           return variableName(node.outVariable) + ' = ' + variableName(node.inVariable);
@@ -2008,7 +2013,7 @@ function processQuery(query, explain, planIndex) {
         indent(level, node.type === 'SingletonNode') + label(node);
     }
 
-    if (node.type === 'CalculationNode') {
+    if (node.type === 'CalculationNode' || node.type === 'CalculationFilterNode') {
       line += variablesUsed() + constNess();
     }
     stringBuilder.appendLine(line);

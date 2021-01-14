@@ -456,6 +456,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
       return true;
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::CALCULATION_FILTER:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::CALCULATION:
@@ -502,6 +503,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::FILTER:
+    case ExecutionNode::CALCULATION_FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
@@ -551,6 +553,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::FILTER:
+    case ExecutionNode::CALCULATION_FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:

@@ -1,6 +1,13 @@
 devel
 -----
 
+* Add AQL optimizer rule to fuse calculations that are only used in a 
+  single filter together with their filter, so that the calculation result
+  is never stored and does not allocate any register in an AqlItemBlock.
+
+  This adds a new optimizer rule `fuse-calculation-filter` and a new
+  ExecutionNode type `CalculationFilterNode`.
+
 * Fix a bug in the agency Supervision which could lead to removeFollower
   jobs constantly being created and immediately stopped again.
 

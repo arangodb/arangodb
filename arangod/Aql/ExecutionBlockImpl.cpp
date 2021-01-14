@@ -30,6 +30,7 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CalculationExecutor.h"
+#include "Aql/CalculationFilterExecutor.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/CountCollectExecutor.h"
@@ -550,7 +551,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(
       useExecutor ==
           (is_one_of_v<
-              Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
+              Executor, CalculationFilterExecutor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
               KShortestPathsExecutor<graph::KPathFinder>, KShortestPathsExecutor<graph::KShortestPathsFinder>,
               KShortestPathsExecutor<KPathRefactored>, KShortestPathsExecutor<KPathRefactoredTracer>, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
@@ -1908,6 +1909,9 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range, SkipRes
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationFilterExecutor>;
+
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
