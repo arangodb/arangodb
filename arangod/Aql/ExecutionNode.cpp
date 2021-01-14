@@ -1001,9 +1001,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
   }
-
-  // TODO: looks like it is unnecessary to call reset here
-  // walker.reset();
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
