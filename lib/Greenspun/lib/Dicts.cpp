@@ -69,30 +69,14 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
 
 void createPaths(std::list<std::list<std::string>>& finalPaths,
                  VPackSlice object, std::list<std::string>& currentPath) {
-  for (VPackObjectIterator iter(object); iter.valid(); iter++) {
-    std::string currentKey = iter.key().toString();
-    VPackSlice currentValue = iter.value();
-
-    if (currentValue.isObject()) {
-      // path not done yet
-      currentPath.emplace_back(std::move(currentKey));
-
-      std::list<std::string> currentTmpPath(currentPath);
-      finalPaths.emplace_back(std::move(currentTmpPath));
-      createPaths(finalPaths, currentValue, currentPath);
-    } else {
-      // path is done
-      std::list<std::string> currentTmpPath(currentPath);
-      currentTmpPath.emplace_back(std::move(currentKey));
-      finalPaths.emplace_back(std::move(currentTmpPath));
-    }
-
-    if (iter.isLast()) {
-      // if end of path reached, remove last visited member
-      if (currentPath.size() > 0) {
-        currentPath.pop_back();
-      }
-    }
+  if (!object.isObject()) {
+    return;
+  }
+  for (auto iter : VPackObjectIterator(object)) {
+    currentPath.emplace_back(iter.key.toString());
+    finalPaths.emplace_back(currentPath);
+    createPaths(finalPaths, iter.value, currentPath);
+    currentPath.pop_back();
   }
 }
 
