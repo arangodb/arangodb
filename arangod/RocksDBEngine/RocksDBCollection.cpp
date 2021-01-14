@@ -959,8 +959,12 @@ Result RocksDBCollection::update(transaction::Methods* trx,
   } else if (!keySlice.isString()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
+  auto keyStr = VPackStringRef(keySlice);
+  if (keyStr.empty()) {
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  }
 
-  auto const oldDocumentId = primaryIndex()->lookupKey(trx, VPackStringRef(keySlice));
+  auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr);
   if (!oldDocumentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -1079,8 +1083,12 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   } else if (!keySlice.isString()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
+  auto keyStr = VPackStringRef(keySlice);
+  if (keyStr.empty()) {
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  }
 
-  auto const oldDocumentId = primaryIndex()->lookupKey(trx, VPackStringRef(keySlice));
+  auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr);
   if (!oldDocumentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -1191,8 +1199,12 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   if (!keySlice.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
+  auto keyStr = VPackStringRef(keySlice);
+  if (keyStr.empty()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
 
-  auto const documentId = primaryIndex()->lookupKey(&trx, VPackStringRef(keySlice));
+  auto const documentId = primaryIndex()->lookupKey(&trx, keyStr);
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
