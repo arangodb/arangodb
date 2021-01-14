@@ -81,7 +81,7 @@ void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize, uint6
   if (printLog) {
     LOG_TOPIC("dead2", WARN, Logger::THREADS)
         << "Scheduler queue with max capacity " << maxQueueSize
-        << " has approximately " << approxQueueLength 
+        << " has approximately " << approxQueueLength
         << " tasks and is filled more than 50% in last " << sinceLast.count()
         << "s (happened " << totalEvents << " times since last message)";
   }
@@ -302,10 +302,10 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
   // _sleeping state under the mutex and the worker checks the queues
   // again after having indicates that it sleeps, we are good.
   bool const checkSpinning = (numAwake > _numWorking.load(std::memory_order_relaxed));
- 
+
   // a candidate thread to notify
   decltype(_workerStates)::iterator notifyCandidate = _workerStates.end();
-  
+
   std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
 
   // make a single pass over all workerStates, to find a workerState
@@ -323,7 +323,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
       break;
     }
     // look out for a sleeping workerState. the first one we find will
-    // become a candidate for being notified. however, we will only notify 
+    // become a candidate for being notified. however, we will only notify
     // it if we don't look out for and find a spinning working thead.
     if (state->_sleeping && notifyCandidate == _workerStates.end()) {
       notifyCandidate = it;
@@ -646,7 +646,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   // Otherwise we might have the unlucky case that we first check dequeued,
   // then a job gets done fast (eg dequeued++, done++)
   // and then we read done.
-   uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
+  uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   TRI_ASSERT(jobsDequeued >= jobsDone);
   uint64_t threadsWorking = jobsDequeued - jobsDone;
@@ -799,7 +799,7 @@ void SupervisedScheduler::stopOneThread() {
     // _stop is set under the mutex, then the worker thread is notified.
   }
   state->_conditionWork.notify_one();
-  
+
   ++_metricsThreadsStopped;
 
   // However the thread may be working on a long job. Hence we enqueue it on
