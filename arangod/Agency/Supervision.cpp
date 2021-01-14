@@ -1826,7 +1826,6 @@ void arangodb::consensus::enforceReplicationFunctional(
 
   // We will loop over plannedDBs, so we use hasAsChildren
   auto const& plannedDBs = snapshot.hasAsChildren(planColPrefix).first;
-  // We will lookup in currentDBs, so we use hasAsNode
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
     auto const& db = *(db_.second);

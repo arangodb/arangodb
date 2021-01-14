@@ -206,7 +206,7 @@ class Supervision : public arangodb::CriticalThread {
 
  public:  // only for unit tests:
   void setSnapshotForUnitTest(Node* snapshot) {
-    _snapshot = snapshot;
+    _snapshot = *snapshot;
   }
 
   static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
