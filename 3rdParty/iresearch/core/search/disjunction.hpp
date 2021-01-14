@@ -1103,13 +1103,14 @@ class block_disjunction final
           // exhausted
           return false;
         }
-
+        // this is to circumvent bug in GCC 10.1 on ARM64
+        constexpr bool is_min_match = traits_type::min_match();
         if (doc < doc_.value) {
           doc_.value = doc;
-          if constexpr (traits_type::min_match()) {
+          if constexpr (is_min_match) {
             match_count_ = 1;
           }
-        } else if constexpr (traits_type::min_match()) {
+        } else if constexpr (is_min_match) {
           if (target == doc) {
             ++match_count_;
           }
