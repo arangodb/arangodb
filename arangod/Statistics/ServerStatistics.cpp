@@ -81,10 +81,7 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
                            log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Remove a document [us]")),
       _rocksdb_update_msec(
         _metrics.histogram("arangodb_update_time",
-                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Update a document [us]")),
-      _rocksdb_queue_msec(
-        _metrics.histogram("arangodb_rocksdb_queue_time",
-                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Queue an operation [us]")) {}
+                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Update a document [us]")) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods

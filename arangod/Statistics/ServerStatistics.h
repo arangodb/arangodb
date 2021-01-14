@@ -60,7 +60,6 @@ struct TransactionStatistics {
   Histogram<log_scale_t<float>>& _rocksdb_replace_msec;
   Histogram<log_scale_t<float>>& _rocksdb_remove_msec;
   Histogram<log_scale_t<float>>& _rocksdb_update_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_queue_msec;
 };
 
 struct ServerStatistics {
