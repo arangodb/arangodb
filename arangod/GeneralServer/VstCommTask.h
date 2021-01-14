@@ -123,6 +123,7 @@ class VstCommTask final : public GeneralCommTask<T> {
   auth::TokenCache::Entry _authToken;
   rest::AuthenticationMethod _authMethod;
   fuerte::vst::VSTVersion _vstVersion;
+  std::string _url;
 };
 }  // namespace rest
 }  // namespace arangodb

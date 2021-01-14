@@ -41,7 +41,7 @@ static constexpr uint32_t H2MaxConcurrentStreams = 32;
 namespace rest {
 
 struct H2Response;
-  
+
 template <SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
@@ -51,7 +51,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   void start() override;
   /// @brief upgrade from  H1 connection, must not call start
   void upgradeHttp1(std::unique_ptr<HttpRequest> req);
-  
+
  protected:
   virtual bool readCallback(asio_ns::error_code ec) override;
   virtual void setIOTimeout() override;
@@ -125,6 +125,8 @@ class H2CommTask final : public GeneralCommTask<T> {
   std::atomic<unsigned> _numProcessing{0};
 
   std::atomic<bool> _signaledWrite{false};
+
+  std::string _url;
 };
 }  // namespace rest
 }  // namespace arangodb
