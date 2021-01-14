@@ -198,8 +198,8 @@ void CollectNode::calcGroupRegisters(
 
     RegisterId inReg = itIn->second.registerId;
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
-    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(inReg.isConstRegister() || inReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(outReg.isConstRegister() || outReg < RegisterPlan::MaxRegisterId);
     groupRegisters.emplace_back(outReg, inReg);
     writeableOutputRegisters.insert(outReg);
     readableInputRegisters.insert(inReg);
@@ -222,7 +222,7 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
       auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
-      TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(inReg.isConstRegister() || inReg < RegisterPlan::MaxRegisterId);
       readableInputRegisters.insert(inReg);
     }
     // else: no input variable required
@@ -298,7 +298,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      std::move(aggregateTypes),
                                      std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(), 
+                                     &_plan->getAst()->query().vpackOptions(),
                                      _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(

@@ -144,7 +144,7 @@ std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
   } else {
     invalidDepth = true;
   }
-    
+
   if (maxDepth < minDepth) {
     invalidDepth = true;
   }
@@ -373,7 +373,7 @@ ExecutionPlan::~ExecutionPlan() {
 
   if (_trackMemoryUsage) {
     // only track memory usage here and access ast/query if we are allowed to do so.
-    // this can be inherently unsafe from within the gtest unit tests, so it is 
+    // this can be inherently unsafe from within the gtest unit tests, so it is
     // protected by an option here
     _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
   }
@@ -676,6 +676,10 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* ex
     }
   }
 
+  if (node->isConstant()) {
+    out->hasConstValue = true;
+  }
+
   // generate a temporary calculation node
   auto expr = std::make_unique<Expression>(_ast, node);
   CalculationNode* en = new CalculationNode(this, nextId(), std::move(expr), out);
@@ -935,11 +939,11 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to register node in plan");
     }
-    
+
     // we are now responsible for tracking the memory usage
     scope.steal();
   }
-    
+
   return node.release();
 }
 
@@ -1275,8 +1279,8 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 7);
 
   auto const type = static_cast<arangodb::graph::ShortestPathType::Type>(node->getMember(0)->getIntValue());
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths || 
-             type == arangodb::graph::ShortestPathType::Type::KPaths); 
+  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
+             type == arangodb::graph::ShortestPathType::Type::KPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
@@ -1936,10 +1940,10 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
   auto spec = node->getMember(0);
   auto rangeExpr = node->getMember(1);
   auto aggregates = node->getMember(2);
-  
+
   AqlFunctionsInternalCache cache;
   FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(), _ast->query(), cache);
-  
+
   Variable const* rangeVar = nullptr;
   if (rangeExpr->type != NODE_TYPE_NOP) {
     if (rangeExpr->type == NODE_TYPE_REFERENCE) {
@@ -1957,10 +1961,10 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
     auto en = registerNode(std::make_unique<SortNode>(this, nextId(), elements, false));
     previous = addDependency(previous, en);
   }
-  
+
   AqlValue preceding, following;
   TRI_ASSERT(spec->type == NODE_TYPE_OBJECT);
-  
+
   size_t n = spec->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = spec->getMemberUnchecked(i);
@@ -1974,7 +1978,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
                                      "WINDOW bounds must be determined at compile time");
     }
-    
+
     bool mustDestroy = false;
     if (name == "preceding") {
       Expression expr(_ast, value);
@@ -1994,7 +1998,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
       }
     }
   }
-  
+
   auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
 
   // aggregate variables
@@ -2104,7 +2108,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeUpsert(en, member);
         break;
       }
-        
+
       case NODE_TYPE_WINDOW: {
         en = fromNodeWindow(en, member);
         break;
@@ -2539,7 +2543,7 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
           AggregateVarInfo{outVar, nullptr, functionName});
     }
   }
-  
+
   return aggregateVariables;
 }
 

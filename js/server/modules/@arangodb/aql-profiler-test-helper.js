@@ -127,7 +127,7 @@ const blockTypesList = [
 
 let translateType = function(nodes, node) {
   let types = {};
-  nodes.forEach(function(node) { 
+  nodes.forEach(function(node) {
     let type = node.type;
     if (type === 'CollectNode') {
       if (node.collectOptions.method === 'sorted') {
@@ -201,14 +201,14 @@ function zipPlanNodesIntoStatsNodes (profile) {
     },
     {}
   );
-  
+
   // Note: We need to take the order plan.nodes here, not stats.nodes,
   // as stats.nodes is sorted by id.
   return profile.plan.nodes.map(node => (
-    { 
-      id: node.id, 
-      type: translateType(profile.plan.nodes, node), 
-      fromStats: statsNodesById[node.id], fromPlan: node 
+    {
+      id: node.id,
+      type: translateType(profile.plan.nodes, node),
+      fromStats: statsNodesById[node.id], fromPlan: node
     }
   ));
 }
@@ -380,7 +380,8 @@ function assertIsProfilePlanObject (plan) {
     expect(variable).to.have.all.keys([
       'id',
       'name',
-      'isDataFromCollection'
+      'isDataFromCollection',
+      'hasConstValue'
     ]);
 
     expect(variable.id).to.be.a('number');

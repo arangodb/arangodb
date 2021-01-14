@@ -48,11 +48,10 @@ using namespace arangodb::aql;
 // Requires RegisterPlan to be defined
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
-  if (registerId >= RegisterPlan::MaxRegisterId) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, 
-                                   std::string("too many registers (") + std::to_string(RegisterPlan::MaxRegisterId) + ") needed for AQL query");
+  if (!registerId.isConstRegister() && registerId.rawValue() >= RegisterPlan::MaxRegisterId.rawValue()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+                                   std::string("too many registers (") + std::to_string(RegisterPlan::MaxRegisterId.rawValue()) + ") needed for AQL query");
   }
-  TRI_ASSERT(registerId < RegisterPlanT<ExecutionNode>::MaxRegisterId);
 }
 
 template <typename T>
@@ -126,7 +125,9 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     for (Variable const* v : varsSetHere) {
       TRI_ASSERT(v != nullptr);
       RegisterId regId = plan->registerVariable(v, unusedRegisters.back());
-      regVarMappingStack.back().operator[](regId) = v;  // overwrite if existing, create if not
+      if (regId.isVariableRegister()) {
+        regVarMappingStack.back().operator[](regId) = v;  // overwrite if existing, create if not
+      }
     }
   };
 
@@ -148,7 +149,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(!regsToKeepStack.empty());
     regsToKeepStack.back().clear();
     for (auto const var : varsValid) {
-      if (!isSetHere(var) && isUsedLater(var)) {
+      if (!var->hasConstValue && !isSetHere(var) && isUsedLater(var)) {
         auto reg = plan->variableToRegisterId(var);
         regsToKeepStack.back().emplace(reg);
       }
@@ -188,6 +189,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
                                             RegVarMap const& regVarMap) -> RegIdSet {
     RegIdSet regsToReuse;
     for (auto& [regId, variable] : regVarMap) {
+      TRI_ASSERT(regId.isVariableRegister());
+      TRI_ASSERT(!variable->hasConstValue);
       if (!varsUsedLater.contains(variable)) {
         regsToReuse.emplace(regId);
       }
@@ -210,6 +213,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       auto regsToReuse =
           calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
       for (auto const& reg : regsToReuse) {
+        TRI_ASSERT(reg.isVariableRegister())
         regVarMappingStack.back().erase(reg);
       }
 
@@ -226,6 +230,9 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       auto regsToReuse =
           calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
       for (auto const& reg : regsToReuse) {
+        if (!reg.isVariableRegister()) {
+          __debugbreak();
+        }
         regVarMappingStack.back().erase(reg);
       }
 
@@ -344,7 +351,7 @@ RegisterPlanT<T>::RegisterPlanT() : depth(0) {
 // Copy constructor used for a subquery:
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
-    : varInfo(v.varInfo), nrRegs(v.nrRegs), subQueryNodes(), depth(newdepth + 1) {
+    : varInfo(v.varInfo), nrRegs(v.nrRegs), nrConstRegs(v.nrConstRegs), subQueryNodes(), depth(newdepth + 1) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);
@@ -376,7 +383,7 @@ RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
           "\"varInfoList\" item needs to be an object");
     }
     auto variableId = it.get("VariableId").getNumericValue<VariableId>();
-    auto registerId = it.get("RegisterId").getNumericValue<RegisterId>();
+    auto registerId = it.get("RegisterId").getNumericValue<RegisterId::value_t>();
     auto depthParam = it.get("depth").getNumericValue<unsigned int>();
 
     varInfo.try_emplace(variableId, VarInfo(depthParam, registerId));
@@ -387,10 +394,14 @@ RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "\"nrRegs\" attribute needs to be an array");
   }
+  VPackSlice nrConstRegsSlice = slice.get("nrConstRegs");
+  if (nrConstRegsSlice.isInteger()) {
+    nrConstRegs = nrConstRegsSlice.getIntUnchecked();
+  }
 
   nrRegs.reserve(nrRegsList.length());
   for (VPackSlice it : VPackArrayIterator(nrRegsList)) {
-    nrRegs.emplace_back(it.getNumericValue<RegisterId>());
+    nrRegs.emplace_back(it.getNumericValue<RegisterId::value_t>());
   }
 }
 
@@ -420,21 +431,26 @@ void RegisterPlanT<T>::increaseDepth() {
 
 template <typename T>
 RegisterId RegisterPlanT<T>::addRegister() {
-  return static_cast<RegisterId>(nrRegs[depth]++);
+  return RegisterId((unsigned)(nrRegs[depth]++));
 }
 
 template <typename T>
 RegisterId RegisterPlanT<T>::registerVariable(Variable const* v,
                                               std::set<RegisterId>& unusedRegisters) {
-  RegisterId regId;
 
-  if (unusedRegisters.empty()) {
+  RegisterId regId;
+  if (v->hasConstValue) {
+    regId = RegisterId::makeConstRegisterId((unsigned)nrConstRegs++);
+  } else if (unusedRegisters.empty()) {
     regId = addRegister();
+    TRI_ASSERT(regId.isConstRegister() == v->hasConstValue);
   } else {
     auto iter = unusedRegisters.begin();
     regId = *iter;
+    TRI_ASSERT(regId.isConstRegister() == v->hasConstValue);
     unusedRegisters.erase(iter);
   }
+  TRI_ASSERT(regId.isConstRegister() == v->hasConstValue);
 
   bool inserted;
   std::tie(std::ignore, inserted) = varInfo.try_emplace(v->id, VarInfo(depth, regId));
@@ -469,7 +485,7 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
       VPackObjectBuilder guardInner(&builder);
       builder.add("VariableId", VPackValue(oneVarInfo.first));
       builder.add("depth", VPackValue(oneVarInfo.second.depth));
-      builder.add("RegisterId", VPackValue(oneVarInfo.second.registerId));
+      builder.add("RegisterId", VPackValue(oneVarInfo.second.registerId.rawValue()));
     }
   }
 
@@ -485,6 +501,8 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
   // can be removed in ArangoDB 3.8
   builder.add(VPackValue("nrRegsHere"));
   { VPackArrayBuilder guard(&builder); }
+
+  builder.add("nrConstRegs", VPackValue(nrConstRegs));
 
   // totalNrRegs is not used anymore and is intentionally left empty
   // can be removed in ArangoDB 3.8
@@ -511,7 +529,11 @@ auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
     auto const& varsUsedLater = varsUsedLaterStack[idx];
 
     for (auto const var : stackEntry) {
+      if (var->hasConstValue) {
+        continue;
+      }
       auto reg = variableToRegisterId(var);
+      TRI_ASSERT(reg.isVariableRegister());
 
       bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
                          varsUsedLater.end();
@@ -534,7 +556,7 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const -> R
   auto it = varInfo.find(variable->id);
   TRI_ASSERT(it != varInfo.end());
   RegisterId rv = it->second.registerId;
-  TRI_ASSERT(rv < RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(rv.isConstRegister() || rv < RegisterPlan::MaxRegisterId);
   return rv;
 }
 
@@ -552,7 +574,7 @@ std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
     os << "------------------------------------" << std::endl;
 
     for (auto [id, info] : vars) {
-      os << "id = " << id << " register = " << info.registerId << std::endl;
+      os << "id = " << id << " register = " << info.registerId.value() << std::endl;
     }
   }
   return os;

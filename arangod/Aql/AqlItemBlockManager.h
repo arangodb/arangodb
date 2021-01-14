@@ -65,6 +65,13 @@ class AqlItemBlockManager {
 
   SerializationFormat getFormatType() const { return _format; }
 
+  void initializeConstValueBlock(RegisterCount nrRegs);
+
+  AqlItemBlock& getConstValueBlock() {
+    TRI_ASSERT(_constValueBlock != nullptr);
+    return *_constValueBlock;
+  }
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
@@ -110,6 +117,8 @@ class AqlItemBlockManager {
   };
 
   Bucket _buckets[numBuckets];
+
+  AqlItemBlock* _constValueBlock = nullptr;
 };
 
 }  // namespace aql

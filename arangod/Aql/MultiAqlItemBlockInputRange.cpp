@@ -37,8 +37,8 @@ using namespace arangodb::aql;
 namespace {
   static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
     if (row.isInitialized()) {
-      RegisterId const numRegisters = static_cast<RegisterId>(row.getNumRegisters());
-      for (RegisterId registerId = 0; registerId < numRegisters; ++registerId) {
+      RegisterCount const numRegisters = static_cast<RegisterCount>(row.getNumRegisters());
+      for (RegisterId::value_t registerId = 0; registerId < numRegisters; ++registerId) {
         if (!row.getValue(registerId).isEmpty()) {
           return true;
         }
@@ -155,7 +155,7 @@ auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::Shadow
 auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_dependenciesDontAgreeOnState);
   auto oneDependencyDone = bool{false};

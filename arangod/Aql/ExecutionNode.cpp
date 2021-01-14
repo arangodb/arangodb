@@ -358,7 +358,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
     case MUTEX:
       return new MutexNode(plan, slice);
     case WINDOW:{
-      
+
       Variable* rangeVar =
           Variable::varFromVPack(plan->getAst(), slice, "rangeVariable", /*optional*/true);
 
@@ -382,7 +382,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
           aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
         }
       }
-      
+
       auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
       WindowBounds bounds(type, slice);
       return new WindowNode(plan, slice, std::move(bounds),
@@ -414,7 +414,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _regsToClear.reserve(regsToClearList.length());
   for (VPackSlice it : VPackArrayIterator(regsToClearList)) {
-    _regsToClear.insert(it.getNumericValue<RegisterId>());
+    _regsToClear.insert(it.getNumericValue<RegisterId::value_t>());
   }
 
   auto allVars = plan->getAst()->variables();
@@ -480,7 +480,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
-  
+
   if (regsToKeepStackSlice.isArray()) {
     // || regsToKeepStackSlice.length() == 0) {
     _regsToKeepStack.reserve(regsToKeepStackSlice.length());
@@ -494,7 +494,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
       regsToKeep.reserve(stackEntrySlice.length());
       for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-        regsToKeep.insert(it.getNumericValue<RegisterId>());
+        regsToKeep.insert(it.getNumericValue<RegisterId::value_t>());
       }
     }
   } else if (!regsToKeepStackSlice.isNone()) {
@@ -830,7 +830,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     {
       VPackArrayBuilder guard(&nodes);
       for (auto const& oneRegisterID : _regsToClear) {
-        nodes.add(VPackValue(oneRegisterID));
+        TRI_ASSERT(oneRegisterID.isVariableRegister());
+        nodes.add(VPackValue(oneRegisterID.rawValue()));
       }
     }
 
@@ -852,7 +853,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       for (auto const& stackEntry : getRegsToKeepStack()) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& reg : stackEntry) {
-          nodes.add(VPackValue(reg));
+          TRI_ASSERT(reg.isVariableRegister());
+          nodes.add(VPackValue(reg.rawValue()));
         }
       }
     }
@@ -878,7 +880,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         for (auto const& stackEntry : unusedRegsStack) {
           VPackArrayBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
-            nodes.add(VPackValue(reg));
+            TRI_ASSERT(reg.isVariableRegister());
+            nodes.add(VPackValue(reg.rawValue()));
           }
         }
       }
@@ -892,7 +895,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           VPackObjectBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
             using std::to_string;
-            nodes.add(VPackValue(to_string(reg.first)));
+            // TODO - need to handle const registers here?
+            nodes.add(VPackValue(to_string(reg.first.rawValue())));
             reg.second->toVelocyPack(nodes);
           }
         }
@@ -988,6 +992,15 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   for (auto& s : v->subQueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
+    // we only want to create a single const block for all queries, so we have to
+    // ensure that nrConstRegs in the RegisterPlan of the root node contains the
+    // sum of all const regs in all (sub)queries.
+    v->nrConstRegs = sq->getSubquery()->_registerPlan->nrConstRegs;
+  }
+
+  for (auto& s : v->subQueryNodes) {
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
+    sq->getSubquery()->_registerPlan->nrConstRegs = v->nrConstRegs;
   }
   walker.reset();
 }
@@ -1566,14 +1579,14 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above must not
     // be multiplied with the number of items in this collection
-    estimate.estimatedNrItems *= estimatedNrItems; 
+    estimate.estimatedNrItems *= estimatedNrItems;
   }
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
   estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
-  
+
   return estimate;
 }
 
@@ -1791,6 +1804,15 @@ CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slic
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan->getAst(), base)) {}
 
+CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
+    : ExecutionNode(plan, id), _outVariable(outVariable), _expression(std::move(expr)) {
+  TRI_ASSERT(_expression != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+}
+
+CalculationNode::~CalculationNode() = default;
+
 /// @brief toVelocyPack, for CalculationNode
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                          std::unordered_set<ExecutionNode const*>& seen) const {
@@ -1822,7 +1844,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic",
                       VPackValue(func->hasFlag(Function::Flags::Deterministic)));
-            nodes.add("canAccessDocuments", 
+            nodes.add("canAccessDocuments",
                       VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
             nodes.add("canRunOnDBServerCluster",
                       VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
@@ -1865,6 +1887,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegisterId outputRegister = variableToRegisterId(_outVariable);
+  TRI_ASSERT(_outVariable->hasConstValue == outputRegister.isConstRegister());
 
   VarSet inVars;
   _expression->variables(inVars);
@@ -1892,17 +1915,23 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   TRI_ASSERT(expression() != nullptr);
 
-
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),
-                          RegIdSet{outputRegister});
+                          _outVariable->hasConstValue ? RegIdSet{} : RegIdSet{outputRegister});
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(), std::move(expInVars) /* required by expression.execute */,
       std::move(expInRegs)); /* required by expression.execute */
 
-  if (isReference) {
+  if (_outVariable->hasConstValue) {
+    bool mustDestroy; // TODO
+    AqlValue value = _expression->execute(nullptr, mustDestroy);
+    engine.itemBlockManager().getConstValueBlock().emplaceValue(0, outputRegister.value(), std::move(value));
+
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Constant>>>(
+        &engine, this,std::move(registerInfos), std::move(executorInfos));
+  } else if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
         &engine, this,std::move(registerInfos), std::move(executorInfos));
   } else if (!willUseV8) {
@@ -1937,22 +1966,13 @@ CostEstimate CalculationNode::estimateCost() const {
   return estimate;
 }
 
-CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
-                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
-    : ExecutionNode(plan, id), _outVariable(outVariable), _expression(std::move(expr)) {
-  TRI_ASSERT(_expression != nullptr);
-  TRI_ASSERT(_outVariable != nullptr);
-}
-
-CalculationNode::~CalculationNode() = default;
-
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
-Expression* CalculationNode::expression() const { 
+Expression* CalculationNode::expression() const {
   TRI_ASSERT(_expression != nullptr);
-  return _expression.get(); 
+  return _expression.get();
 }
 
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {

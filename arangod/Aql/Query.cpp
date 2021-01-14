@@ -456,7 +456,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             break;
           }
 
-          if (!_queryOptions.silent) {
+          if (!_queryOptions.silent &&
+              engine->root()->getPlanNode()->getType() == ExecutionNode::RETURN) {
             // cache low-level pointer to avoid repeated shared-ptr-derefs
             TRI_ASSERT(queryResult.data != nullptr);
             auto& resultBuilder = *queryResult.data;
@@ -671,7 +672,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           continue;
         }
 
-        if (!_queryOptions.silent) {
+        if (!_queryOptions.silent &&
+            engine->root()->getPlanNode()->getType() == ExecutionNode::RETURN) {
           size_t memoryUsage = 0;
           size_t const n = value->numRows();
 

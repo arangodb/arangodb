@@ -63,7 +63,7 @@ class AqlItemBlock {
   // needed for testing only
   friend class BlockCollector;
   friend class SharedAqlItemBlockPtr;
-  
+
  public:
   AqlItemBlock() = delete;
   AqlItemBlock(AqlItemBlock const&) = delete;
@@ -80,19 +80,19 @@ class AqlItemBlock {
   /// present in an AqlItemBlock, and how much dynamic memory on instance
   /// of the item uses
   struct ValueInfo {
-    ValueInfo() noexcept 
+    ValueInfo() noexcept
         : refCount(0), memoryUsage(0) {}
     ValueInfo(ValueInfo&& other) noexcept = default;
     ValueInfo& operator=(ValueInfo&& other) noexcept = default;
 
-    /// @brief set the memory usage for the item, expects refCount to be 
+    /// @brief set the memory usage for the item, expects refCount to be
     /// exactly 1
     void setMemoryUsage(size_t value) noexcept {
       TRI_ASSERT(value > 0);
       TRI_ASSERT(refCount == 1);
       TRI_ASSERT(memoryUsage == 0);
       // In theory, there can be items consuming more than 4 GB here.
-      // This case will be very rare and likely will cause a lot of other 
+      // This case will be very rare and likely will cause a lot of other
       // issues upfront. If we get such huge value, we count it as using
       // 4 GB of memory and ignore the rest.
       if (ADB_UNLIKELY(value > std::numeric_limits<uint32_t>::max())) {
@@ -109,7 +109,7 @@ class AqlItemBlock {
     uint32_t refCount;
     uint32_t memoryUsage;
   };
-  
+
   using ShadowRowIterator = std::vector<uint32_t>::const_iterator;
 
  protected:
@@ -133,9 +133,10 @@ class AqlItemBlock {
   template <typename... Args>
   // std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
   void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    auto address = getAddress(index, varNr);
+    TRI_ASSERT(varNr.isVariableRegister());
+    auto address = getAddress(index, varNr.rawValue());
     AqlValue* p = &_data[address];
-    TRI_ASSERT(p->isEmpty());
+    //TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
     AqlValue* value;
     try {
@@ -206,7 +207,7 @@ class AqlItemBlock {
   /// All entries _data[i] for numEntries() <= i < _data.size() always have to
   /// be erased, i.e. empty / none!
   size_t numEntries() const noexcept;
-  
+
   /// @brief number of modified entries
   size_t maxModifiedEntries() const noexcept;
 
@@ -288,7 +289,7 @@ class AqlItemBlock {
   /// information only. It should not be handed to any non-subquery executor.
   bool isShadowRow(size_t row) const;
 
-  /// @brief get the ShadowRowDepth 
+  /// @brief get the ShadowRowDepth
   /// Does only work if this row is a shadow row
   /// Asserts on Maintainer, returns 0 on production
   size_t getShadowRowDepth(size_t row) const;
@@ -298,7 +299,7 @@ class AqlItemBlock {
 
   /// @brief Transform the given row into a DataRow.
   void makeDataRow(size_t row);
-  
+
   /// @brief Return the indexes of ShadowRows within this block, starting at lower.
   std::pair<ShadowRowIterator, ShadowRowIterator> getShadowRowIndexesFrom(size_t lower) const noexcept;
 
@@ -341,7 +342,7 @@ class AqlItemBlock {
                                        size_t sourceRow, bool forceShadowRow);
 
   /// @brief get the computed address within the data vector
-  size_t getAddress(size_t index, RegisterId varNr) const noexcept;
+  size_t getAddress(size_t index, unsigned reg) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 
@@ -365,10 +366,10 @@ class AqlItemBlock {
 
   /// @brief _numRegisters, number of columns
   RegisterCount _numRegisters = 0;
-  
+
   /// @brief (highest) number of rows that have been written to
   size_t _maxModifiedRowIndex = 0;
-  
+
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;
 
@@ -380,7 +381,7 @@ class AqlItemBlock {
   /// after getRelevantRange function will be called, which will return a tuple
   /// of the old _rowIndex and the newly calculated _rowIndex - 1
   size_t _rowIndex;
-  
+
   /// @brief a helper class that manages the storage of shadow rows
   /// in an AqlItemBlock
   class ShadowRows {
@@ -393,28 +394,28 @@ class AqlItemBlock {
 
     /// @brief return the number of shadow rows
     size_t size() const noexcept;
-    
+
     /// @brief whether or not the row is a shadow row
     bool is(size_t row) const noexcept;
-    
+
     /// @brief get the shadow row depth for row
     size_t getDepth(size_t row) const noexcept;
 
     /// @brief clear all shadow rows
     void clear() noexcept;
-    
+
     /// @brief resize the container to at most numRows items
     void resize(size_t numRows);
-    
+
     /// @brief make a shadow row
     void make(size_t row, size_t depth);
-    
+
     /// @brief make a data row
     void clear(size_t row);
-    
+
     /// @brief clear all shadow rows from row to the end
     void clearFrom(size_t row);
-    
+
     /// @brief return the indexes of ShadowRows, starting at lower
     std::pair<ShadowRowIterator, ShadowRowIterator> getIndexesFrom(size_t lower) const noexcept;
 

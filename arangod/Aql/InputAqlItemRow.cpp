@@ -49,13 +49,12 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
                                                     RegIdFlatSet const& registers,
                                                     size_t newNrRegs) const {
-  SharedAqlItemBlockPtr block =
-      manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
+  SharedAqlItemBlockPtr block = manager.requestBlock(1, newNrRegs);
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNumRegisters() <= newNrRegs);
     // Should we transform this to output row and reuse copy row?
-    for (RegisterId col = 0; col < getNumRegisters(); col++) {
+    for (RegisterId::value_t col = 0; col < getNumRegisters(); col++) {
       if (registers.find(col) == registers.end()) {
         continue;
       }
@@ -149,13 +148,13 @@ InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex
 
 AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNumRegisters());
+  TRI_ASSERT(registerId.isConstRegister() || registerId < getNumRegisters());
   return block().getValueReference(_baseIndex, registerId);
 }
 
 AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNumRegisters());
+  TRI_ASSERT(registerId.isConstRegister() || registerId < getNumRegisters());
   AqlValue const& a = block().getValueReference(_baseIndex, registerId);
   if (!a.isEmpty() && a.requiresDestruction()) {
     // Now no one is responsible for AqlValue a
@@ -186,7 +185,7 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other,
   auto const eq = [options](auto left, auto right) {
     return 0 == AqlValue::Compare(options, left, right, false);
   };
-  for (RegisterId i = 0; i < getNumRegisters(); ++i) {
+  for (RegisterId::value_t i = 0; i < getNumRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
     }

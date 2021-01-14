@@ -70,7 +70,7 @@ OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
     for (auto const& reg : _outputRegisters) {
-      TRI_ASSERT(reg < _block->numRegisters());
+      TRI_ASSERT(reg.isConstRegister() || reg < _block->numRegisters());
     }
     // the block must have enough columns for the registers of both data rows,
     // and all the different shadow row depths
@@ -270,9 +270,10 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
 }
 
 void OutputAqlItemRow::advanceRow() {
-  TRI_ASSERT(produced());
+  // TODO - reactivate asserts once we have ensured that they hold!
+  //TRI_ASSERT(produced());
   TRI_ASSERT(allValuesWritten());
-  TRI_ASSERT(_inputRowCopied);
+  //TRI_ASSERT(_inputRowCopied);
   if (!_block->isShadowRow(_baseIndex)) {
     // We have written a data row into the output.
     // Need to count it.
@@ -356,7 +357,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   // We can only add shadow rows if source and this are different blocks
   TRI_ASSERT(!sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
-  block().makeShadowRow(_baseIndex, 0); 
+  block().makeShadowRow(_baseIndex, 0);
   doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);
 }
 
@@ -435,7 +436,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   }
   auto constexpr delta = depthDelta(adaptRowDepth);
   size_t const rowDepth = baseRowDepth + delta;
-    
+
   auto const roffset = rowDepth + 1;
   TRI_ASSERT(roffset <= registersToKeep().size());
   auto idx = registersToKeep().size() - roffset;
@@ -448,7 +449,8 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
         TRI_ASSERT(sourceRow.isInitialized());
       }
 #endif
-      if (ignoreMissing && itemId >= sourceRow.getNumRegisters()) {
+      TRI_ASSERT(itemId.isVariableRegister());
+      if (ignoreMissing && itemId.rawValue() >= sourceRow.getNumRegisters()) {
         continue;
       }
       if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
