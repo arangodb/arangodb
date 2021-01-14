@@ -46,7 +46,7 @@ using my_vector = std::vector<V>;
 template <typename V>
 using my_unordered_set = std::unordered_set<V>;
 
-bool isValidAccumulatorOptions(const AccumulatorOptions& options);
+bool isValidAccumulatorOptions(AccumulatorOptions const& options);
 
 /* clang-format off */
 
