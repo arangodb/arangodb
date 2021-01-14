@@ -92,7 +92,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   }
 #endif
   
-  // will remain constant for the node throughout ths function
+  // will remain constant for the node throughout this function
   std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
   VarSet const varsUsedLater = en->getVarsUsedLater();
 
