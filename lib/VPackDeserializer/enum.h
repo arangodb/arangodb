@@ -64,7 +64,7 @@ struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues,
   template <typename V, bool hidden, bool... hiddens, typename... Vs>
   static std::string joinValues(type_list<value_hidden_pair<V, hidden>, value_hidden_pair<Vs, hiddens>...>) {
     static_assert(!hidden, "please make the first entry not hidden");
-    return to_string(V{}) + ((hiddens ? (", " + to_string(Vs{})) : std::string{}) + ...);
+    return to_string(V{}) + ((hiddens ? std::string{} : (", " + to_string(Vs{}))) + ...);
   }
 
   static constexpr bool all_strings = (values::is_string_v<Values> && ...);
