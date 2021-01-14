@@ -49,10 +49,10 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
 
     // use global state to limit the computation of paths
     bool isSource = current == 0 && localSuperstep() == 0;
-    int64_t const* max = getAggregatedValue<int64_t>(spUpperPathBound);
+    auto const& max = getAggregatedValueRef<int64_t>(spUpperPathBound);
 
     int64_t* state = mutableVertexData();
-    if (isSource || (current < *state && current < *max)) {
+    if (isSource || (current < *state && current < max)) {
       *state = current;  // update state
 
       if (this->pregelId() == _target) {
@@ -67,7 +67,7 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       for (; edges.hasMore(); ++edges) {
         Edge<int64_t>* edge = *edges;
         int64_t val = edge->data() + current;
-        if (val < *max) {
+        if (val < max) {
           sendMessage(edge, val);
         }
       }

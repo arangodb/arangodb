@@ -85,8 +85,8 @@ struct LRComputation : public VertexComputation<float, float, float> {
         newScore += *msg;
       }
 
-      bool const* lastIteration = getAggregatedValue<bool>(kLastIteration);
-      if (*lastIteration) {
+      auto const lastIteration = getAggregatedValueRef<bool>(kLastIteration);
+      if (lastIteration) {
         *vertexValue = *vertexValue * getEdgeCount() + newScore;
         voteHalt();
       } else {

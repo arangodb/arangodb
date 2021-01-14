@@ -61,8 +61,9 @@ struct SCCComputation
     }
 
     SCCValue* vertexState = mutableVertexData();
-    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
-    switch (*phase) {
+    auto const& phase = getAggregatedValueRef<uint32_t>(kPhase);
+
+    switch (phase) {
       // let all our connected nodes know we are there
       case SCCPhase::TRANSPOSE: {
         vertexState->parents.clear();

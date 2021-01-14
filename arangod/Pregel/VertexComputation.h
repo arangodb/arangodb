@@ -63,8 +63,14 @@ class VertexContext {
   }
 
   template <typename T>
-  inline const T* getAggregatedValue(std::string const& name) {
-    return (const T*)_readAggregators->getAggregatedValue(name);
+  inline const T& getAggregatedValueRef(std::string const& name) {
+    auto ptr = _readAggregators->getAggregatedValue(name);
+    TRI_ASSERT(ptr != nullptr);
+    if (ptr == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unexpected read aggregator reference.");
+    }
+    return *(T const*)ptr;
   }
 
   IAggregator const* getReadAggregator(std::string const& name) {
@@ -103,7 +109,7 @@ class VertexContext {
   bool isActive() { return _vertexEntry->active(); }
 
   inline uint64_t phaseGlobalSuperstep() {
-    return globalSuperstep() - *getAggregatedValue<uint64_t>(Utils::phaseFirstStepKey);
+    return globalSuperstep() - getAggregatedValueRef<uint64_t>(Utils::phaseFirstStepKey);
   }
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }

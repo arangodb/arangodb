@@ -97,8 +97,8 @@ void VertexComputation::registerLocalFunctions() {
                                 &VertexComputation::air_globalSuperstep, this);
 
   _airMachine.setPrintCallback([this](std::string const& msg) {
-    auto phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
-    auto phase = _algorithm.options().phases.at(phase_index);
+    auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+    auto const& phase = _algorithm.options().phases.at(phase_index);
     this->getReportManager()
             .report(ReportLevel::DEBUG)
             .with(StaticStrings::VertexComputationPregelId, pregelId())
@@ -410,9 +410,8 @@ void VertexComputation::traceMessage(MessageData const* msg) {
       }
 
       if (traceMessage) {
-        auto phase_index =
-            *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
-        auto phase = _algorithm.options().phases.at(phase_index);
+        auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+        auto const& phase = _algorithm.options().phases.at(phase_index);
 
         getReportManager()
             .report(ReportLevel::INFO)
@@ -439,9 +438,8 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
-      auto phase_index =
-          *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
-      auto phase = _algorithm.options().phases.at(phase_index);
+      auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+      auto const& phase = _algorithm.options().phases.at(phase_index);
       getReportManager()
               .report(ReportLevel::ERR)
               .with(StaticStrings::VertexComputationPregelId, pregelId())
@@ -514,8 +512,8 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto const phase_index = *getAggregatedValue<uint32_t>(StaticStrings::VertexComputationPhase);
-  auto const phase = _algorithm.options().phases.at(phase_index);
+  auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+  auto const& phase = _algorithm.options().phases.at(phase_index);
 
   auto phaseStep = phaseGlobalSuperstep();
 
