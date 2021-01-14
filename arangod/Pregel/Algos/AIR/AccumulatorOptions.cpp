@@ -70,9 +70,6 @@ using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
     enum_member<AccumulatorType::CUSTOM, values::string_value<accumulatorType_custom>>
 >;
 
-constexpr const char accumulatorValueType_doubles[] = "doubles";
-constexpr const char accumulatorValueType_ints[] = "ints";
-constexpr const char accumulatorValueType_strings[] = "strings";
 constexpr const char accumulatorValueType_double[] = "double";
 constexpr const char accumulatorValueType_int[] = "int";
 constexpr const char accumulatorValueType_string[] = "string";
@@ -81,12 +78,9 @@ constexpr const char accumulatorValueType_slice[] = "slice";
 constexpr const char accumulatorValueType_any[] = "any";
 
 using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueType,
-    enum_member<AccumulatorValueType::DOUBLE, values::string_value<accumulatorValueType_doubles>>,
-    enum_member<AccumulatorValueType::INT, values::string_value<accumulatorValueType_ints>>,
-    enum_member<AccumulatorValueType::STRING, values::string_value<accumulatorValueType_strings>>,
-    enum_member<AccumulatorValueType::DOUBLE, values::string_value<accumulatorValueType_double>, true>,
-    enum_member<AccumulatorValueType::INT, values::string_value<accumulatorValueType_int>, true>,
-    enum_member<AccumulatorValueType::STRING, values::string_value<accumulatorValueType_string>, true>,
+    enum_member<AccumulatorValueType::DOUBLE, values::string_value<accumulatorValueType_double>>,
+    enum_member<AccumulatorValueType::INT, values::string_value<accumulatorValueType_int>>,
+    enum_member<AccumulatorValueType::STRING, values::string_value<accumulatorValueType_string>>,
     enum_member<AccumulatorValueType::BOOL, values::string_value<accumulatorValueType_bool>>,
     enum_member<AccumulatorValueType::SLICE, values::string_value<accumulatorValueType_slice>, true>,
     enum_member<AccumulatorValueType::SLICE, values::string_value<accumulatorValueType_any>>
@@ -356,13 +350,13 @@ std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {
 std::ostream& operator<<(std::ostream& os, AccumulatorValueType const& type) {
   switch (type) {
     case AccumulatorValueType::DOUBLE:
-      os << accumulatorValueType_doubles;
+      os << accumulatorValueType_double;
       break;
     case AccumulatorValueType::INT:
-      os << accumulatorValueType_ints;
+      os << accumulatorValueType_int;
       break;
     case AccumulatorValueType::STRING:
-      os << accumulatorValueType_strings;
+      os << accumulatorValueType_string;
       break;
     case AccumulatorValueType::BOOL:
       os << accumulatorValueType_bool;

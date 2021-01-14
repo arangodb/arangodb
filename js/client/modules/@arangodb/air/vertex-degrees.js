@@ -51,11 +51,11 @@ function vertex_degrees_program() {
     vertexAccumulators: {
       outDegree: {
         accumulatorType: "store",
-        valueType: "ints"
+        valueType: "int"
       },
       inDegree: {
         accumulatorType: "sum",
-        valueType: "ints"
+        valueType: "int"
       }
     },
     phases: [{
