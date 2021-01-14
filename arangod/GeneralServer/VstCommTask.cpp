@@ -292,8 +292,8 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
         this->_authToken.username().empty()) {
       stat.SET_SUPERUSER();
     }
-    _url = std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
-      (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
+    _url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
 
     LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
         << "\"vst-request-begin\",\"" << (void*)this << "\",\""
