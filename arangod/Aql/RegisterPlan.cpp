@@ -199,12 +199,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
 
   RegIdSet regsToClear;
-  auto const updateRegistersToClear = [&](bool insertIntoRegsToClear) {
-    // IMPORTANT NOTE:
-    // Note that in case of mayReuseRegisterImmediately, these registers can
-    // be reused, but are *still* set in regsToClear! This is *only* okay
-    // because regsToClear is only ever used in passthrough-blocks, but
-    // nodes that can create those may *not* reuse registers immediately.
+  auto const updateRegistersToClearAndReuse = [&](bool insertIntoRegsToClear) {
     if (en->getType() != ExecutionNode::RETURN) {
       assertNoVariablesMissing(en);
       auto regsToReuse =
@@ -286,7 +281,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       }
     } break;
     default: {
-      updateRegistersToClear(!mayReuseRegisterImmediately);
+      updateRegistersToClearAndReuse(!mayReuseRegisterImmediately);
 
       if (explain) {
         plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
@@ -298,7 +293,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   // that are not in varsUsedLater and varsUsedHere
   if (mayReuseRegisterImmediately) {
     planRegistersForCurrentNode(en);
-    updateRegistersToClear(true);
+    updateRegistersToClearAndReuse(true);
   }
 
   updateRegsToKeep(en, varsUsedLater, en->getVarsValid());

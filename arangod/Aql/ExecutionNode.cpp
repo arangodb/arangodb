@@ -1003,7 +1003,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   }
 
   // TODO: looks like it is unnecessary to call reset here
-  walker.reset();
+  // walker.reset();
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
@@ -1157,6 +1157,19 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
 ExecutionNodeId ExecutionNode::id() const { return _id; }
 
 void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto assertNotContained = [](RegisterId maxRegister, auto const& container) noexcept {
+    std::for_each(container.begin(), container.end(), [maxRegister](RegisterId regId) {
+      TRI_ASSERT(regId <= maxRegister);
+    });
+  };
+  assertNotContained(maxRegister, _regsToClear);
+  // validate all levels of _regsToKeepStack
+  for (auto const& regsToKeep : _regsToKeepStack) {
+    assertNotContained(maxRegister, regsToKeep); 
+  }
+#endif
+  
   auto removeRegisters = [maxRegister](auto& container) {
     for (auto it = container.begin(); it != container.end(); /* no hoisting */) {
       if ((*it) > maxRegister) {
@@ -1166,9 +1179,6 @@ void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
       }
     }
   };
-
-  removeRegisters(_regsToClear);
-  removeRegisters(_regsToKeepStack.back());
 
   auto it = _registerPlan->unusedRegsByNode.find(_id);
   if (it != _registerPlan->unusedRegsByNode.end()) {
