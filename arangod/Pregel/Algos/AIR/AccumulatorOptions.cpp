@@ -309,8 +309,6 @@ using vertex_accumulator_options_deserializer_base =
 
 using vertex_accumulator_options_deserializer = validator::validate<vertex_accumulator_options_deserializer_base, vertex_accumulator_options_validator>;
 
-/* clang-format on */
-
 result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice) {
   return deserialize<accumulator_options_deserializer>(slice);
 }
