@@ -46,19 +46,19 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
     globalAccumulators: {
       delta: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "maxAccumulator",
       }
     },
     vertexAccumulators: {
       rank: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "storeAccumulator",
       },
       receiver: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "sumAccumulator",
       }
     },

@@ -96,7 +96,7 @@ function data_access_read_vertex_program(expectedKeys, nested) {
     vertexAccumulators: {
       copiedDocumentKeys: {
         accumulatorType: "list",
-        valueType: "slice"
+        valueType: "any"
       }
     },
     phases: [{

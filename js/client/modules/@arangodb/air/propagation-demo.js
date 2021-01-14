@@ -161,12 +161,12 @@ function demand_propagation_demo_program(resultField) {
             "demandSumBuckets": {
                 "accumulatorType": "custom",
                 "customType": "bucketizedSum",
-                "valueType": "slice"
+                "valueType": "any"
             },
             "finalDemandSumBuckets": {
                 "accumulatorType": "custom",
                 "customType": "bucketizedSum",
-                "valueType": "slice"
+                "valueType": "any"
             },
         },
         "customAccumulators": {

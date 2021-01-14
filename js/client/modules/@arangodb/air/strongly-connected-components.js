@@ -49,34 +49,34 @@ function strongly_connected_components_program(resultField) {
       // SCC
       converged: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "or"
       },
     },
     vertexAccumulators: {
       forwardMin: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "min"
       },
       backwardMin: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "min"
       },
       isDisabled: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "store"
       },
       mySCC: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "store"
       },
       activeInbound: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "list"
       },
     },

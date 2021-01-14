@@ -53,7 +53,7 @@ function test_custom_global_accumulator_not_defined() {
         globalAccumulators: {
           one: {
             accumulatorType: "custom",
-            valueType: "slice",
+            valueType: "any",
             customType: "sam"
           },
         },
@@ -92,7 +92,7 @@ function test_custom_vertex_accumulator_not_defined() {
         vertexAccumulators: {
           one: {
             accumulatorType: "custom",
-            valueType: "slice",
+            valueType: "any",
             customType: "sam"
           },
         },
@@ -121,24 +121,24 @@ function global_accumulators_test_program(resultField) {
     globalAccumulators: {
       numberOfVertices: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "my_sum"
       },
       minimalTest: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "my_min"
       },
       maximalTest: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "my_max"
       }
     },
     vertexAccumulators: {
       forward: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "my_sum"
       },
     },

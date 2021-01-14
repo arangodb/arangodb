@@ -62,7 +62,7 @@ enum class AccumulatorValueType {
   INT,
   STRING,
   BOOL,
-  SLICE,
+  ANY,
 };
 
 /* A *single* accumulator */

@@ -57,7 +57,7 @@ function single_source_shortest_paths_program(
     vertexAccumulators: {
       distance: {
         accumulatorType: "custom",
-        valueType: "slice",
+        valueType: "any",
         customType: "my_min",
       },
     },

@@ -67,7 +67,7 @@ using my_type_mapping =
                        value_type_pair<AccumulatorValueType::BOOL, bool>,
                        value_type_pair<AccumulatorValueType::DOUBLE, double>,
                        value_type_pair<AccumulatorValueType::STRING, std::string>,
-                       value_type_pair<AccumulatorValueType::SLICE, VPackSlice>>;
+                       value_type_pair<AccumulatorValueType::ANY, VPackSlice>>;
 
 
 /*
