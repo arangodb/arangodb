@@ -62,11 +62,11 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
         _metrics.counter("arangodb_num_document_reads", 0,
                          "Number of document reads since process start")),
       _numWrite(
-        _metrics.counter("arangodb_num_document_inserts", 0,
-                         "Number of document inserts since process start")),
+        _metrics.counter("arangodb_num_document_writes", 0,
+                         "Number of document writes since process start")),
       _numReplicate(
         _metrics.counter("arangodb_num_document_replications", 0,
-                         "Number of document inserts since process start")),
+                         "Number of document replications since process start")),
       _rocksdb_insert_msec(
         _metrics.histogram("arangodb_insert_time",
                            log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Insert a document [us]")),
