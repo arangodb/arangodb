@@ -67,8 +67,8 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
   return {};
 }
 
-void createPaths(std::list<std::list<std::string>>& finalPaths,
-                 VPackSlice object, std::list<std::string>& currentPath) {
+void createPaths(std::vector<std::vector<std::string>>& finalPaths,
+                 VPackSlice object, std::vector<std::string>& currentPath) {
   if (!object.isObject()) {
     return;
   }
@@ -80,7 +80,7 @@ void createPaths(std::list<std::list<std::string>>& finalPaths,
   }
 }
 
-void pathToBuilder(std::list<std::list<std::string>>& finalPaths, VPackBuilder& result) {
+void pathToBuilder(std::vector<std::vector<std::string>>& finalPaths, VPackBuilder& result) {
   result.openArray();
   for (auto const& path : finalPaths) {
     if (path.size() > 1) {
@@ -137,8 +137,8 @@ EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilde
     return EvalError("expected object, found: " + obj.toJson());
   }
 
-  std::list<std::list<std::string>> finalPaths;
-  std::list<std::string> currentPath;
+  std::vector<std::vector<std::string>> finalPaths;
+  std::vector<std::string> currentPath;
   createPaths(finalPaths, obj, currentPath);
   pathToBuilder(finalPaths, result);
 
