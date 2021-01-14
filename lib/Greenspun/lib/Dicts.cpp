@@ -219,7 +219,7 @@ EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder&
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [slice, key, defaultValue] =
+  auto const& [slice, key, defaultValue] =
       arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
