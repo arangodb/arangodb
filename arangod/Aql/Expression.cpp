@@ -370,14 +370,11 @@ void Expression::prepareForExecution(ExpressionContext* ctx) {
     case JSON: {
       if (_data == nullptr) {
         // generate a constant value
-        //transaction::BuilderLeaser builder(&ctx->trx());
-        //_node->toVelocyPackValue(*builder.get());
-        // TODO - fix this hacky workaround
-        arangodb::velocypack::Builder builder{};
-        _node->toVelocyPackValue(builder);
+        transaction::BuilderLeaser builder(&ctx->trx());
+        _node->toVelocyPackValue(*builder.get());
 
-        _data = new uint8_t[static_cast<size_t>(builder.size())];
-        memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
+        _data = new uint8_t[static_cast<size_t>(builder->size())];
+        memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
       }
       break;
     }

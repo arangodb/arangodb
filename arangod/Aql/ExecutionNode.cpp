@@ -41,6 +41,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
@@ -1925,8 +1926,12 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
       std::move(expInRegs)); /* required by expression.execute */
 
   if (_outVariable->hasConstValue) {
+    // this calculation node produces a const value, so we already evaluate the expression
+    // and store it in the ConstValueBlock.
+    AqlFunctionsInternalCache cache;
+    FixedVarExpressionContext exprContext(engine.getQuery().trxForOptimization(), engine.getQuery(), cache);
     bool mustDestroy; // TODO
-    AqlValue value = _expression->execute(nullptr, mustDestroy);
+    AqlValue value = _expression->execute(&exprContext, mustDestroy);
     engine.itemBlockManager().getConstValueBlock().emplaceValue(0, outputRegister.value(), std::move(value));
 
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Constant>>>(

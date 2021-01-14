@@ -194,7 +194,7 @@ ExecutionEngine::ExecutionEngine(EngineId eId,
                        : std::make_shared<SharedQueryState>(query.vocbase().server())),
       _blocks(),
       _root(nullptr),
-      _resultRegister(0),
+      _resultRegister(RegisterPlan::MaxRegisterId),
       _initializeCursorCalled(false) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
