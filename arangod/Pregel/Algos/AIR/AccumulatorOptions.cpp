@@ -266,6 +266,8 @@ using vertex_accumulator_options_plan = parameter_list<
     factory_optional_deserialized_parameter<debug, debug_information_deserializer>
 >;
 
+/* clang-format on */
+
 // TODO: we could of course collect all parsing problems and return
 //       them in bulk
 struct vertex_accumulator_options_validator {
