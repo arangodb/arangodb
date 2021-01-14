@@ -246,7 +246,7 @@ EvalResult Prim_AttribRefOrFail(Machine& ctx, VPackSlice const params, VPackBuil
 
   auto&& [slice, key] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
-    return EvalError("expect second parameter to be an object");
+    return EvalError("expected first parameter to be an object");
   }
 
   auto res = ReadAttribute(slice, key);
