@@ -345,10 +345,11 @@ greenspun::EvalResult VertexComputation::air_thisVertexId(greenspun::Machine& ct
 greenspun::EvalResult VertexComputation::air_thisUniqueId(greenspun::Machine& ctx,
                                                           VPackSlice const params,
                                                           VPackBuilder& result) {
-  // TODO: FIXME, WE DO NOT KNOW THIS TO BE UNIQUE, WE SHOULD PROBABLY BE USING THE DOCMENT
-  //              ID AND COMPARE STRINGS OR SOMESUCH.
-  // HACK HACK HACK HACK
   auto pid = pregelId();
+
+  // asserts to check truth of uniqueness here.
+  TRI_ASSERT(this->vertexData()._vertexId <= std::uint64_t{1} << 48);
+  static_assert(std::is_unsigned_v<decltype(pid.shard)> && std::numeric_limits<decltype(pid.shard)>::max() < (1ul << 16));
 
   uint64_t combined = this->vertexData()._vertexId;
   combined <<= 16;
