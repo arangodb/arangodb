@@ -227,7 +227,7 @@ EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder&
 
   auto res = ReadAttribute(slice, key);
   if (res.fail()) {
-    return res.error();
+    return std::move(res).error();
   }
 
   VPackSlice resultValue = res.value();
