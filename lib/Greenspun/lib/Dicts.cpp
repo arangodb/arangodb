@@ -145,10 +145,11 @@ EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilde
   return {};
 }
 
-EvalResult MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
+namespace {
+void MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
                             VPackSlice const& sliceB) {
   VPackCollection::merge(result, sliceA, sliceB, true, false);
-  return {};
+}
 }
 
 EvalResult Prim_MergeDict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
