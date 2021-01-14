@@ -115,14 +115,11 @@ void pathToBuilder(std::list<std::list<std::string>>& finalPaths, VPackBuilder& 
 EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackObjectBuilder ob(&result);
   for (auto&& pair : VPackArrayIterator(params)) {
-    if (pair.isArray() && pair.length() == 2) {
-      if (pair.at(0).isString()) {
-        result.add(pair.at(0).stringRef(), pair.at(1));
-        continue;
-      }
+    if (pair.isArray() && pair.length() == 2 && pair.at(0).isString()) {
+      result.add(pair.at(0).stringRef(), pair.at(1));
+    } else {
+      return EvalError("expected pairs of string and slice");
     }
-
-    return EvalError("expected pairs of string and slice");
   }
   return {};
 }
