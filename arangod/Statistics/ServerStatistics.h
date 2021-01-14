@@ -52,6 +52,14 @@ struct TransactionStatistics {
   // histogram for lock acquisition (in seconds)
   Histogram<log_scale_t<double>>& _lockTimes;
   Counter& _sequentialLocks;
+  Counter& _numRead;
+  Counter& _numWrite;
+  Counter& _numReplicate;
+  Histogram<log_scale_t<float>>& _rocksdb_insert_msec;
+  Histogram<log_scale_t<float>>& _rocksdb_read_msec;
+  Histogram<log_scale_t<float>>& _rocksdb_replace_msec;
+  Histogram<log_scale_t<float>>& _rocksdb_remove_msec;
+  Histogram<log_scale_t<float>>& _rocksdb_update_msec;
 };
 
 struct ServerStatistics {

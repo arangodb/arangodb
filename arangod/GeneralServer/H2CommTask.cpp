@@ -475,15 +475,13 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
 
   // from here on we will send a response, the connection is not IDLE
   _numProcessing.fetch_add(1, std::memory_order_relaxed);
-
+  _url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+    (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   {
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
         << "\"h2-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(req->requestType()) << "\",\""
-        << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
-        << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
-        << "\"";
+        << HttpRequest::translateMethod(req->requestType()) << "\",\"" << _url << "\"";
 
     VPackStringRef body = req->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -565,6 +563,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   }
 
   double const totalTime = stat.ELAPSED_SINCE_READ_START();
+  double const queueTime = stat.ELAPSED_WHILE_QUEUED();  
 
   // and give some request information
   LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
@@ -572,8 +571,8 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << this->_connectionInfo.clientAddress
       << "\",\""
       //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(res->responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6);
+      << "\",\"" << static_cast<int>(res->responseCode()) << "\",tot:"
+      << Logger::FIXED(totalTime, 6) << ",que:" << Logger::FIXED(queueTime, 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);

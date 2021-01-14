@@ -298,14 +298,13 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
         this->_authToken.username().empty()) {
       stat.SET_SUPERUSER();
     }
+    _url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
 
     LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
         << "\"vst-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << VstRequest::translateMethod(req->requestType()) << "\",\""
-        << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
-        << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
-        << "\"";
+        << VstRequest::translateMethod(req->requestType()) << "\",\"" << _url << "\"";
 
     // TODO use different token if authentication header is present
     CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
@@ -374,13 +373,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   double const totalTime = stat.ELAPSED_SINCE_READ_START();
+  double const queueTime = stat.ELAPSED_WHILE_QUEUED();
 
   // and give some request information
   LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId()
       << "\",\"" << this->_connectionInfo.clientAddress << "\",\""
-      << static_cast<int>(response.responseCode()) << ","
-      << "\"," << Logger::FIXED(totalTime, 6);
+      << _url << "\",\"" << static_cast<int>(response.responseCode()) << "\",tot:"
+      << Logger::FIXED(totalTime, 6) << ",que:" << Logger::FIXED(queueTime, 6) ;
 
   resItem->stat = std::move(stat);
 

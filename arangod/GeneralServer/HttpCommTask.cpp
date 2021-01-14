@@ -416,14 +416,13 @@ void HttpCommTask<T>::processRequest() {
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
 
+  _url = std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+    (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
   {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
-        << (_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())
-        << (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath())
-        << "\"";
+        << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << _url << "\"";
 
     VPackStringRef body = _request->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -584,14 +583,16 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   _response = response.stealBody();
   // append write buffer and statistics
   double const totalTime = stat.ELAPSED_SINCE_READ_START();
+  double const queueTime = stat.ELAPSED_WHILE_QUEUED();
 
+  using namespace std::chrono;
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress << "\",\""
-      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6);
+      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
+      << _url << "\",\"" << static_cast<int>(response.responseCode()) << "\",tot:"
+      << Logger::FIXED(totalTime, 6) << ",que:" << Logger::FIXED(queueTime, 6) ;
 
   // sendResponse is always called from a scheduler thread
   boost::asio::post(this->_protocol->context.io_context,

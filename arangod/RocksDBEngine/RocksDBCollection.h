@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
 
+#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -214,6 +215,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;
+  arangodb::TransactionStatistics& _statistics;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
