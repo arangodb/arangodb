@@ -7046,7 +7046,7 @@ AqlValue Functions::BitTest(ExpressionContext* expressionContext, AstNode const&
                             VPackFunctionParameters const& parameters) {
   auto [testee, index, valid] = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
   if (valid && index < Functions::bitFunctionsMaxSupportedBits) {
-    return AqlValue(AqlValueHintBool((testee & (1 << index)) != 0));
+    return AqlValue(AqlValueHintBool((testee & (uint64_t(1) << index)) != 0));
   }
       
   static char const* AFN = "BIT_TEST";
