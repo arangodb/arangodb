@@ -1,6 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fix a potential memleak in AstNode repurposing.
+
 * Fix potential invalid pointer dereference on audit log shutdown.
 
 * Fix agency restart with mismatching compation and log indexes.
