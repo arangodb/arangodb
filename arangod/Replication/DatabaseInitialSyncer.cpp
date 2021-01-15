@@ -1041,7 +1041,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
         }
       }
 
-      if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _config.applier.maxWaitTime) {
+      if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= maxWaitTime) {
         ++stats.numFailedConnects;
         stats.waitedForInitial += waitTime;
         return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
@@ -1066,7 +1066,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
       return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    VPackBuilder builder;
     Result r = replutils::parseResponse(builder, response.get());
 
     if (r.fail()) {
@@ -1076,7 +1075,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                     _config.leader.endpoint + url + ": " + r.errorMessage());
     }
 
-    VPackSlice const slice = builder.slice();
+    slice = builder.slice();
     if (!slice.isObject()) {
       ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1084,6 +1083,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                     _config.leader.endpoint + url + ": response is no object");
     }
 
+    return Result();
+    
   };
 
   auto ck = keysCall(true);
@@ -1100,10 +1101,11 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
       }
     } else {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ")
-                    _config.master.endpoint + url + ": response count not a number");
+                    std::string("got invalid response from master at ") +
+                    _config.leader.endpoint + url + ": response count not a number");
     }
   }
+  
   VPackSlice const keysId = slice.get("id");
 
   if (!keysId.isString()) {
