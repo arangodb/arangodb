@@ -1,6 +1,8 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 1.2.2.
+
 * Minor and rare AQL performance improvement, in nested subqueries:
   LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
   where sq1 produces no data (e.g. by the above filter) for sq2, the part <X>
