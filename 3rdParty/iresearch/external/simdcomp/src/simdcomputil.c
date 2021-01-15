@@ -4,7 +4,7 @@
 
 #include "simdcomputil.h"
 #ifdef __SSE4_1__
-#ifndef __x86_x64
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <sse2neon.h>
 #else
 #include <smmintrin.h>
