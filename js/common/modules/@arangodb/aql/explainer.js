@@ -1667,7 +1667,7 @@ function processQuery(query, explain, planIndex) {
           }
           collect += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + (node.inVariable ? variableName(node.inVariable) : '') + ')';
             }).join(', ');
         }
         collect +=

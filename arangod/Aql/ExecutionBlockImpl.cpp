@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,12 +74,27 @@
 #include "Basics/system-functions.h"
 #include "Transaction/Context.h"
 
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
+#include "Graph/Providers/ProviderTracer.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
+#include "Graph/algorithm-aliases.h"
+
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
 
 #include <type_traits>
+
+using KPathRefactored =
+    arangodb::graph::KPathEnumerator<arangodb::graph::SingleServerProvider>;
+
+using KPathRefactoredTracer =
+    arangodb::graph::TracedKPathEnumerator<arangodb::graph::SingleServerProvider>;
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -536,9 +551,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-              KShortestPathsExecutor<graph::KPathFinder>, KShortestPathsExecutor<graph::KShortestPathsFinder>, ParallelUnsortedGatherExecutor,
-              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
-              HashedCollectExecutor, AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
+              KShortestPathsExecutor<graph::KPathFinder>, KShortestPathsExecutor<graph::KShortestPathsFinder>,
+              KShortestPathsExecutor<KPathRefactored>, KShortestPathsExecutor<KPathRefactoredTracer>, ParallelUnsortedGatherExecutor,
+              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
+              AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
@@ -1599,7 +1615,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // Subquery needs to include the topLevel Skip.
           // But does not need to apply the count to clientCall.
           _skipped.merge(skippedLocal, false);
-   
+
         } else {
           _skipped.merge(skippedLocal, true);
         }
@@ -1782,8 +1798,7 @@ auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept -> bool 
 
 template <>
 template <>
-RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const
-    noexcept {
+RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const noexcept {
   return _executorInfos.getOutputRegister();
 }
 
@@ -1805,8 +1820,8 @@ void ExecutionBlockImpl<Executor>::initOnce() {
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
-    noexcept -> bool {
+auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const noexcept
+    -> bool {
   if constexpr (isMultiDepExecutor<Executor>) {
     // call is an AqlCallSet. We need to call upstream if it's not empty.
     return !call.empty();
@@ -1950,6 +1965,9 @@ template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<arangodb::graph::KPathFinder>>;
+template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>;
+template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredTracer>>;
+
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;

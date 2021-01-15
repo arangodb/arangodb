@@ -1,6 +1,21 @@
 devel
 -----
 
+* Fix a bug in the agency Supervision which could lead to removeFollower
+  jobs constantly being created and immediately stopped again.
+
+* Limit additional replicas in failover cases to +2.
+
+* Print a version mismatch (major/minor version difference) between the
+  arangosh version and the remote arangod version at arangosh startup.
+
+* Internal Refactoring of K_PATH feature, with the goal to have all GraphAlgorithms on
+  the same framework. This change should not have any visible effect on users.
+
+* Fixed an endless busy loop which could happen if a coordinator tries to 
+  roll back a database creation, but the database has already been dropped 
+  by other means.
+
 * Removed server-side JavaScript object `ArangoClusterComm`, so it cannot be
   used from inside JavaScript operations or Foxx.
   The `ArangoClusterComm` object was previously used inside a few internal 
@@ -85,12 +100,13 @@ devel
   instead.
 
 * `COLLECT WITH COUNT INTO x` and `COLLECT var = expr WITH COUNT INTO x` are now
-  internally transformed into `COLLECT AGGREGATE x = LENGTH(null)` and
-  `COLLECT var = expr AGGREGATE x = LENGTH(null)` respectively. This not only
-  simplified the code, but also allows more query optimizations:
+  internally transformed into `COLLECT AGGREGATE x = LENGTH()` and
+  `COLLECT var = expr AGGREGATE x = LENGTH()` respectively. In addition, any
+  argument passed to the `COUNT`/`LENGTH` aggregator functions are now optimized
+  away. This not only simplified the code, but also allows more query optimizations:
     - If the variable in `COLLECT WITH COUNT INTO var` is not used, the implicit
       aggregator is now removed.
-    - All queries of the form `COLLECT AGGREGATE x = LENGTH(_)` are now executed
+    - All queries of the form `COLLECT AGGREGATE x = LENGTH()` are now executed
       using the count executor, which can result in significantly improved
       performance.
 
