@@ -3,7 +3,16 @@ v3.7.7 (XXXX-XX-XX)
 
 * Fixed rare objectId conflict for indexes.
 
-* Fix for OASIS-409: fixed indexing _id attribute at recovery
+* Fix for OASIS-409: fixed indexing _id attribute at recovery.
+
+* Minor and rare AQL performance improvement, in nested subqueries:
+  LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
+  where sq1 produces no data (e.g. by the above filter) for sq2, the part <X>
+  have been asked two times (second returns empty result), instead of one, if
+  and only if the mainquery executes sq1 exactly one time.
+  Now we get away with one call only.
+  In the case sq1 has data, or sq1 is executed more often, only one call was
+  needed (assuming the data fits in one batch).
 
 * Improve internal error reporting by cluster maintenance.
 
@@ -153,16 +162,6 @@ v3.7.6 (2021-01-04)
   be aborted whereas in previous versions they ran through successfully (but
   actually violated the limit). In this case it may be necessary to adjust (i.e.
   raise) query memory limits accordingly.
-
-* Changed the server-side implementation of the following internal JavaScript 
-  APIs to no-ops:
-  * `internal.reloadAqlFunctions()`: this is a no-op function now
-  * `@arangodb/actions.buildRouting()`: this is a no-op function now
-  * `@arangodb/actions.routingTree`: will return an empty object
-  * `@arangodb/actions.routingList`: will return an empty object
-
-  All the above APIs were intended to be used for internal means only. These
-  APIs are deprecated now and will be removed in ArangoDB v3.9.
 
 * Added startup option `--foxx.force-update-on-startup` to toggle waiting for
   all Foxx services in all databases to be propagated to a coordinator before it
