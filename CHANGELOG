@@ -1,4 +1,4 @@
-v3.6.11 (XXXX-XX-XX)
+v3.6.11 (2021-01-15)
 --------------------
 
 * Fix a bug in the agency Supervision which could lead to removeFollower jobs
