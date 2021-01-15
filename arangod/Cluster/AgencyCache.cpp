@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -566,14 +566,20 @@ void AgencyCache::beginShutdown() {
     {
       std::lock_guard g(_callbacksLock);
       if (_callbacks.empty()) {
-        _callbacksCount = 0;
+        // we are intentionally _not_ setting the metric to 0 here, as the metrics
+        // may already be unavailable. As we are in shutdown anyway here, this should
+        // not cause major issues.
+        // _callbacksCount = 0;
         break;
       }
       auto it = _callbacks.begin();
       TRI_ASSERT(it != _callbacks.end());
       callbackId = it->second;
       _callbacks.erase(it);
-      _callbacksCount -= 1;
+      // we are intentionally _not_ setting the metric to 0 here, as the metrics
+      // may already be unavailable. As we are in shutdown anyway here, this should
+      // not cause major issues.
+      // _callbacksCount -= 1;
     } // release _callbacksLock
 
     auto cb = _callbackRegistry.getCallback(callbackId);
