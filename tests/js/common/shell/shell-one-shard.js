@@ -37,6 +37,8 @@ const isEnterprise = internal.isEnterprise();
 const isCluster = internal.isCluster();
 const request = require('@arangodb/request');
 
+const defaultReplicationFactor = db._properties().replicationFactor;
+
 function getEndpointsByType(type) {
   const isType = (d) => (d.role.toLowerCase() === type);
   const toEndpoint = (d) => (d.endpoint);
@@ -98,7 +100,7 @@ function OneShardPropertiesSuite () {
       let props = db._properties();
       if (isCluster) {
         assertEqual(props.sharding, "");
-        assertEqual(props.replicationFactor, 1);
+        assertEqual(props.replicationFactor, defaultReplicationFactor);
       } else {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
@@ -134,7 +136,7 @@ function OneShardPropertiesSuite () {
       let props = db._properties();
       if (isCluster) {
         assertEqual(props.sharding, "");
-        assertEqual(props.replicationFactor, 1);
+        assertEqual(props.replicationFactor, defaultReplicationFactor);
         
         checkDBServerSharding(dn, "");
       } else {
