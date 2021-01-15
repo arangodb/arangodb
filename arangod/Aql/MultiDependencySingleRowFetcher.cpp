@@ -276,7 +276,7 @@ auto MultiDependencySingleRowFetcher::upstreamState() const -> ExecutionState {
 auto MultiDependencySingleRowFetcher::resetDidReturnSubquerySkips(size_t shadowRowDepth) -> void {
   _didReturnSubquerySkips = false;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Validate that the skip number is identical in all branches
   for (size_t i = 0; i < shadowRowDepth; ++i) {
     auto const reportedSkip = _maximumSkipReport.getSkipped(i);
