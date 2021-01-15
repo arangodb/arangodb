@@ -1,8 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
-* Fix a bug in the agency Supervision which could lead to removeFollower
-  jobs constantly being created and immediately stopped again.
+* Fix a bug in the agency Supervision which could lead to removeFollower jobs
+  constantly being created and immediately stopped again.
 
 * Limit additional replicas in failover cases to +2.
 
