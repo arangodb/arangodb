@@ -409,7 +409,7 @@ template <typename T>
 void RegisterPlanT<T>::shrink(T* start) {
   // remove all registers greater than maxRegister from the ExecutionNodes 
   // starting at current that have the same depth as current
-  auto removeRegistersGreaterThan = [this](T* current, RegisterId maxRegister) {
+  auto removeRegistersGreaterThan = [](T* current, RegisterId maxRegister) {
     auto depth = current->getDepth();
     while (current != nullptr && current->getDepth() == depth) {
       current->removeRegistersGreaterThan(maxRegister);
