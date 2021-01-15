@@ -2579,7 +2579,7 @@ struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUn
       --indent;
     }
 
-    LoggerStream logLn{};
+    LoggerStream logLn;
     logLn << Logger::LOGID("24fa8") << LogLevel::INFO << Logger::AQL;
 
     for (int i = 0; i < 2 * indent; i++) {
