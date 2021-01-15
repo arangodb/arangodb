@@ -6924,6 +6924,26 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
+  if (parameters.size() == 2) {
+    // expect two numbers as individual parameters
+    if (value.isNumber()) {
+      auto [result1, valid] = bitOperationValue<uint64_t>(value.slice());
+      if (valid) {
+        AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
+        if (value2.isNumber()) {
+          auto [result2, valid] = bitOperationValue<uint64_t>(value2.slice());
+          if (valid) {
+            uint64_t result = cb(result1, result2);
+            return AqlValue(AqlValueHintUInt(result));
+          }
+        }
+      }
+    }
+    registerInvalidArgumentWarning(expressionContext, impl->name.c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // expect an array of numbers (with null values being ignored)
   if (!value.isArray()) {
     registerInvalidArgumentWarning(expressionContext, impl->name.c_str());
     return AqlValue(AqlValueHintNull());

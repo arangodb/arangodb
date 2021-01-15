@@ -150,6 +150,27 @@ TEST(BitFunctionsTest, BitAnd) {
   expectFailed(node, "[4294967295, 4294967296]");
   expectFailed(node, "[9223372036854775808]");
   expectFailed(node, "[18446744073709551615]");
+  expectFailed(node, "0", "null");
+  expectFailed(node, "0", "false");
+  expectFailed(node, "0", "true");
+  expectFailed(node, "0", "-1");
+  expectFailed(node, "0", "\"\"");
+  expectFailed(node, "0", "\"1\"");
+  expectFailed(node, "0", "\"abc\"");
+  expectFailed(node, "0", "[]");
+  expectFailed(node, "0", "{}");
+  expectFailed(node, "null", "0");
+  expectFailed(node, "false", "0");
+  expectFailed(node, "true", "0");
+  expectFailed(node, "-1", "0");
+  expectFailed(node, "\"\"", "0");
+  expectFailed(node, "\"1\"", "0");
+  expectFailed(node, "\"abc\"", "0");
+  expectFailed(node, "[]", "0");
+  expectFailed(node, "{}", "0");
+  expectFailed(node, "4294967295", "4294967296");
+  expectFailed(node, "4294967296", "4294967296");
+  expectFailed(node, "4294967296", "4294967295");
 
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null]"));
@@ -213,6 +234,14 @@ TEST(BitFunctionsTest, BitAnd) {
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295]"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
+  
+  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0"));
+  ASSERT_EQ(int64_t(127), evaluate<int64_t>(node, "127", "255"));
+  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "65535", "65536"));
+  ASSERT_EQ(int64_t(65536), evaluate<int64_t>(node, "65536", "65536"));
+  ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "2147483650", "2"));
+  ASSERT_EQ(int64_t(254), evaluate<int64_t>(node, "255", "4294967294"));
+  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967294", "4294967295"));
 }
 
 TEST(BitFunctionsTest, BitOr) {
@@ -239,6 +268,27 @@ TEST(BitFunctionsTest, BitOr) {
   expectFailed(node, "[4294967296, 1]");
   expectFailed(node, "[9223372036854775808]");
   expectFailed(node, "[18446744073709551615]");
+  expectFailed(node, "0", "null");
+  expectFailed(node, "0", "false");
+  expectFailed(node, "0", "true");
+  expectFailed(node, "0", "-1");
+  expectFailed(node, "0", "\"\"");
+  expectFailed(node, "0", "\"1\"");
+  expectFailed(node, "0", "\"abc\"");
+  expectFailed(node, "0", "[]");
+  expectFailed(node, "0", "{}");
+  expectFailed(node, "null", "0");
+  expectFailed(node, "false", "0");
+  expectFailed(node, "true", "0");
+  expectFailed(node, "-1", "0");
+  expectFailed(node, "\"\"", "0");
+  expectFailed(node, "\"1\"", "0");
+  expectFailed(node, "\"abc\"", "0");
+  expectFailed(node, "[]", "0");
+  expectFailed(node, "{}", "0");
+  expectFailed(node, "4294967295", "4294967296");
+  expectFailed(node, "4294967296", "4294967296");
+  expectFailed(node, "4294967296", "4294967295");
 
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null]"));
@@ -298,6 +348,21 @@ TEST(BitFunctionsTest, BitOr) {
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295]"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
+  
+  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0"));
+  ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "127", "255"));
+  ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "254", "255"));
+  ASSERT_EQ(int64_t(511), evaluate<int64_t>(node, "256", "255"));
+  ASSERT_EQ(int64_t(131071), evaluate<int64_t>(node, "65535", "65536"));
+  ASSERT_EQ(int64_t(65536), evaluate<int64_t>(node, "65536", "65536"));
+  ASSERT_EQ(int64_t(2147483650), evaluate<int64_t>(node, "2147483650", "2"));
+  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "255", "4294967294"));
+  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "1", "4294967294"));
+  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "4294967294", "4294967295"));
+  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967294", "0"));
+  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "4294967294", "1"));
+  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967294", "2"));
+  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "4294967294", "3"));
 }
 
 TEST(BitFunctionsTest, BitXOr) {
@@ -326,6 +391,27 @@ TEST(BitFunctionsTest, BitXOr) {
   expectFailed(node, "[4294967295, 4294967296]");
   expectFailed(node, "[9223372036854775808]");
   expectFailed(node, "[18446744073709551615]");
+  expectFailed(node, "0", "null");
+  expectFailed(node, "0", "false");
+  expectFailed(node, "0", "true");
+  expectFailed(node, "0", "-1");
+  expectFailed(node, "0", "\"\"");
+  expectFailed(node, "0", "\"1\"");
+  expectFailed(node, "0", "\"abc\"");
+  expectFailed(node, "0", "[]");
+  expectFailed(node, "0", "{}");
+  expectFailed(node, "null", "0");
+  expectFailed(node, "false", "0");
+  expectFailed(node, "true", "0");
+  expectFailed(node, "-1", "0");
+  expectFailed(node, "\"\"", "0");
+  expectFailed(node, "\"1\"", "0");
+  expectFailed(node, "\"abc\"", "0");
+  expectFailed(node, "[]", "0");
+  expectFailed(node, "{}", "0");
+  expectFailed(node, "4294967295", "4294967296");
+  expectFailed(node, "4294967296", "4294967296");
+  expectFailed(node, "4294967296", "4294967295");
 
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null]"));
@@ -398,6 +484,19 @@ TEST(BitFunctionsTest, BitXOr) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[4294967295, 4294967295]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
   ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
+  
+  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0"));
+  ASSERT_EQ(int64_t(128), evaluate<int64_t>(node, "127", "255"));
+  ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "254", "255"));
+  ASSERT_EQ(int64_t(511), evaluate<int64_t>(node, "256", "255"));
+  ASSERT_EQ(int64_t(131071), evaluate<int64_t>(node, "65535", "65536"));
+  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "65536", "65536"));
+  ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "2147483650", "2"));
+  ASSERT_EQ(int64_t(4294967041), evaluate<int64_t>(node, "255", "4294967294"));
+  ASSERT_EQ(int64_t(4294967041), evaluate<int64_t>(node, "4294967294", "255"));
+  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "1", "4294967294"));
+  ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "4294967294", "4294967295"));
+  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967294", "0"));
 }
 
 TEST(BitFunctionsTest, BitPopcount) {

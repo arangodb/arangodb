@@ -238,9 +238,9 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
   
-  add({"BIT_AND", ".", flags, &Functions::BitAnd});
-  add({"BIT_OR", ".", flags, &Functions::BitOr});
-  add({"BIT_XOR", ".", flags, &Functions::BitXOr});
+  add({"BIT_AND", ".|.", flags, &Functions::BitAnd});
+  add({"BIT_OR", ".|.", flags, &Functions::BitOr});
+  add({"BIT_XOR", ".|.", flags, &Functions::BitXOr});
   add({"BIT_NEGATE", ".,.", flags, &Functions::BitNegate});
   add({"BIT_TEST", ".,.", flags, &Functions::BitTest});
   add({"BIT_POPCOUNT", ".", flags, &Functions::BitPopcount});
