@@ -322,6 +322,14 @@ function setupBinaries (builddir, buildType, configDir) {
       isEnterpriseClient = true;
       checkFiles.push(ARANGOBACKUP_BIN);
     }
+    if (version.asan &&
+        !process.env.hasOwnProperty('UBSAN_OPTIONS') &&
+        fs.exists('ubsan_arangodb_suppressions.txt')
+       ) {
+      print('preparing asan environment');
+      process.env['UBSAN_OPTIONS'] = `suppressions=${fs.join(fs.makeAbsolute(''), 'ubsan_arangodb_suppressions.txt')}`;
+      process.env['TSAN_OPTIONS'] = `suppressions=${fs.join(fs.makeAbsolute(''), 'tsan_arangodb_suppressions.txt')}`;
+    }
   }
 
   for (let b = 0; b < checkFiles.length; ++b) {
