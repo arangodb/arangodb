@@ -48,14 +48,17 @@ void doNothing(fuerte::Error, std::unique_ptr<fuerte::Request> req,
 struct ConfigMock {
   ConfigMock() :
     _po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path")),
-    _as(_po, nullptr) {
+    _as(_po, nullptr),
+    _clusterInfo(new ClusterInfo(_as, nullptr)) {
     _as.addFeature<arangodb::MetricsFeature>();
   }
+
   void operator()(ConnectionPool::Config& config) {
-    config.clusterInfo = new ClusterInfo(_as, nullptr);
+    config.clusterInfo = _clusterInfo.get();
   }
   std::shared_ptr<arangodb::options::ProgramOptions> _po;
   arangodb::application_features::ApplicationServer _as;
+  std::unique_ptr<arangodb::ClusterInfo> _clusterInfo;
 };
 
 TEST(NetworkConnectionPoolTest, acquire_endpoint) {
