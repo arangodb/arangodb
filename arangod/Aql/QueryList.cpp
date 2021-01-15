@@ -132,7 +132,9 @@ bool QueryList::insert(Query* query) {
     }
 
     // return whether or not insertion worked
-    return _current.insert({query->id(), query}).second;
+    bool inserted = _current.insert({query->id(), query}).second;
+    _queryRegistryFeature.trackQueryStart();
+    return inserted;
   } catch (...) {
     return false;
   }
@@ -167,7 +169,7 @@ void QueryList::remove(Query* query) {
   // elapsed time since query start
   double const elapsed = elapsedSince(query->startTime());
 
-  _queryRegistryFeature.trackQuery(elapsed);
+  _queryRegistryFeature.trackQueryEnd(elapsed);
 
   if (!trackSlowQueries()) {
     return;
