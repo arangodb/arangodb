@@ -759,8 +759,13 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
+  freeComputedValue();
+}
+
+void AstNode::freeComputedValue() {
   if (computedValue != nullptr) {
     delete[] computedValue;
+    computedValue = nullptr;
   }
 }
 
@@ -2606,10 +2611,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
 
 void AstNode::stealComputedValue() {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-    computedValue = nullptr;
-  }
+  freeComputedValue();
 }
 
 void AstNode::markFinalized(AstNode* subtreeRoot) {
@@ -2836,17 +2838,20 @@ bool AstNode::getBoolValue() const noexcept { return value.value._bool; }
 
 void AstNode::setBoolValue(bool v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  freeComputedValue();
   value.value._bool = v;
 }
 
 int64_t AstNode::getIntValue(bool) const noexcept { return value.value._int; }
 void AstNode::setIntValue(int64_t v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  freeComputedValue();
   value.value._int = v;
 }
 
 void AstNode::setDoubleValue(double v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  freeComputedValue();
   value.value._double = v;
 }
 
@@ -2857,6 +2862,8 @@ size_t AstNode::getStringLength() const {
 
 void AstNode::setStringValue(char const* v, size_t length) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  
+  freeComputedValue();
   // note: v may contain the NUL byte and is not necessarily
   // null-terminated itself (if from VPack)
   value.type = VALUE_TYPE_STRING;
@@ -2886,11 +2893,15 @@ void* AstNode::getData() const { return value.value._data; }
 
 void AstNode::setData(void* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  
+  freeComputedValue();
   value.value._data = v;
 }
 
 void AstNode::setData(void const* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  
+  freeComputedValue();
   value.value._data = const_cast<void*>(v);
 }
 
