@@ -24,6 +24,8 @@ devel
   that registers from depths above stay in the same slot when starting
   a new depth.
 
+* Updated arangosync to 1.2.2.
+
 * Fix a bug in the agency Supervision which could lead to removeFollower
   jobs constantly being created and immediately stopped again.
 
