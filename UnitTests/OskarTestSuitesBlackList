@@ -10,3 +10,4 @@ shell_client_aql_http2
 resilience_analyzers
 fuerte
 agency-restart
+recovery_cluster
