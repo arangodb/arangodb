@@ -1,6 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to 1.2.2.
+
 * Fix a potential memleak in AstNode repurposing.
 
 * Fix potential invalid pointer dereference on audit log shutdown.
