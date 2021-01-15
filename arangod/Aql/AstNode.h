@@ -589,6 +589,8 @@ struct AstNode {
                                                                Args... args);
 
   static std::underlying_type<AstNodeFlagType>::type makeFlags();
+  
+  void freeComputedValue();
 
  private:
   /// @brief precomputed VPack value (used when executing expressions)
