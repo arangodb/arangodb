@@ -6974,6 +6974,10 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
       result = cb(result, currentValue);
     }
   }
+
+  if (first) {
+    return AqlValue(AqlValueHintNull());
+  }
   
   return AqlValue(AqlValueHintUInt(result));
 }

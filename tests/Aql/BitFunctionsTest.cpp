@@ -122,6 +122,11 @@ void expectFailed(AstNode const& node, char const* input1, char const* input2 = 
   EXPECT_TRUE(actual.isNull(false));
 }
 
+void expectNull(AstNode const& node, char const* input1, char const* input2 = nullptr, char const* input3 = nullptr) {
+  AqlValue actual = callFn(node, input1, input2, input3);
+  EXPECT_TRUE(actual.isNull(false));
+}
+
 } // namespace
 
 TEST(BitFunctionsTest, BitAnd) {
@@ -171,10 +176,11 @@ TEST(BitFunctionsTest, BitAnd) {
   expectFailed(node, "4294967295", "4294967296");
   expectFailed(node, "4294967296", "4294967296");
   expectFailed(node, "4294967296", "4294967295");
+  
+  expectNull(node, "[]");
+  expectNull(node, "[null]");
+  expectNull(node, "[null, null, null, null]");
 
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null, null, null, null]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 0]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 0, 0]"));
@@ -289,10 +295,11 @@ TEST(BitFunctionsTest, BitOr) {
   expectFailed(node, "4294967295", "4294967296");
   expectFailed(node, "4294967296", "4294967296");
   expectFailed(node, "4294967296", "4294967295");
+  
+  expectNull(node, "[]");
+  expectNull(node, "[null]");
+  expectNull(node, "[null, null, null, null]");
 
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null, null, null, null]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 0]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 0, 0]"));
@@ -412,10 +419,11 @@ TEST(BitFunctionsTest, BitXOr) {
   expectFailed(node, "4294967295", "4294967296");
   expectFailed(node, "4294967296", "4294967296");
   expectFailed(node, "4294967296", "4294967295");
+  
+  expectNull(node, "[]");
+  expectNull(node, "[null]");
+  expectNull(node, "[null, null, null, null]");
 
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[null, null, null, null]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 0]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 0, 0]"));
