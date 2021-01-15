@@ -526,7 +526,7 @@ struct Functions {
 
   /// @brief maximum precision for bit operations
   static constexpr uint64_t bitFunctionsMaxSupportedBits = 32;
-  static constexpr uint64_t bitFunctionsMaxSupportedValue = uint64_t(1) << bitFunctionsMaxSupportedBits;
+  static constexpr uint64_t bitFunctionsMaxSupportedValue = ((uint64_t(1) << bitFunctionsMaxSupportedBits) - uint64_t(1));
 
 };
 
