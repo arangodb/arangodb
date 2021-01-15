@@ -122,7 +122,7 @@ devel
   LIMIT
   [...]
   in AQL queries, yielding incorrect responses. A distributed
-  state within the subquery was not resetted correctly.
+  state within the subquery was not reset correctly.
   This could also lead into "shrink" errors of AQL item blocks,
   or much higher query runtimes.
   Fixes:
@@ -156,7 +156,7 @@ devel
   LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
   where sq1 produces no data (e.g. by the above filter) for sq2,
   the part <X> have been asked two times (second returns empty result),
-  instead of one, if and only if the mainquery executes sq1 exactly one time.
+  instead of one, if and only if the main query executes sq1 exactly one time.
   Now we get away with one call only.
   In the case sq1 has data, or sq1 is executed more often, only one call was needed
   (assuming the data fits in one batch).
