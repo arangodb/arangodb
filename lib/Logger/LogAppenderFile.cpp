@@ -278,11 +278,11 @@ void LogAppenderFile::closeAll() {
       TRI_CLOSE(fd);
     }
   }
+  _fds.clear();
 }
 
 void LogAppenderFile::clear() {
   closeAll();
-  _fds.clear();
 }
 
 LogAppenderStdStream::LogAppenderStdStream(std::string const& filename,
