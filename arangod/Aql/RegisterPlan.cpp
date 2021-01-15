@@ -454,12 +454,11 @@ void RegisterPlanT<T>::shrink(T* start) {
     // take the node's used registers into account
     // the maximum used RegisterId for the current depth is tracked in
     // maxRegisterId
-    varsUsedHere.clear();
-    current->getVariablesUsedHere(varsUsedHere);
-    maxRegisterId = maxUsedRegister(varsUsedHere, maxRegisterId);
     maxRegisterId = maxUsedRegister(current->getVariablesSetHere(), maxRegisterId);
-    for (auto const& usedLater : current->getVarsUsedLaterStack()) {
-      maxRegisterId = maxUsedRegister(usedLater, maxRegisterId);
+    for (auto const& regsToKeep : current->getRegsToKeepStack()) {
+      for (auto const& regId : regsToKeep) {
+        maxRegisterId = std::max(regId, maxRegisterId);
+      }
     }
 
     auto depth = current->getDepth();

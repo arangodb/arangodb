@@ -475,6 +475,8 @@ class ExecutionNode {
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
+  
+  auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
@@ -492,8 +494,6 @@ class ExecutionNode {
   /// @brief toVelocyPackHelper, for a generic node
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
                                  std::unordered_set<ExecutionNode const*>& seen) const;
-
-  auto getRegsToKeepStack() const -> RegIdSetStack;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
