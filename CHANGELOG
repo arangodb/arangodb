@@ -1,7 +1,16 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fix a bug in the agency Supervision which could lead to removeFollower jobs
+  constantly being created and immediately stopped again.
+
+* Limit additional replicas in failover cases to +2.
+
+* Updated arangosync to 1.2.2.
+
 * Fix a potential memleak in AstNode repurposing.
+
+* Fix potential invalid pointer dereference on audit log shutdown.
 
 * Fix agency restart with mismatching compation and log indexes.
 
