@@ -2468,6 +2468,11 @@ function ahuacatlDateFunctionsTestSuite () {
       
       try {
         systemtz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        if (systemtz === "UTC") {
+          systemtz = "Etc/UTC";
+        }
+        
       } catch (err) {
       }
         
