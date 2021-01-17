@@ -6918,7 +6918,7 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
                             std::function<uint64_t(uint64_t, uint64_t)> const& cb) {
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
 
-  // extract AQl function name
+  // extract AQL function name
   auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
 
