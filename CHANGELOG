@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added metric `arangodb_aql_current_query` to track the number of currently
+  executing AQL queries.
+
 * Updated arangosync to 1.2.2.
 
 * Fix a bug in the agency Supervision which could lead to removeFollower
