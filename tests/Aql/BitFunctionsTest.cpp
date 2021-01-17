@@ -1341,17 +1341,20 @@ TEST(BitFunctionsTest, BitFromString) {
   expectFailed(node, "\"01 \"");
   expectFailed(node, "\" 01 \"");
   expectFailed(node, "\"111120 114\"");
+  expectFailed(node, "\"0000000000000000000000000000000000000000000000000000000000000000000000000000000000\"");
+  expectFailed(node, "\"00000000000000000000000000000000000000000000000000000000000001\"");
+  expectFailed(node, "\"0000000010000000000000000000000000000000\"");
+  expectFailed(node, "\"0000000000000000000000000000000100000000\"");
   
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"\""));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"0\""));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"00\""));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"000\""));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"00000000000000000000000000000000\""));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"0000000000000000000000000000000000000000000000000000000000000000000000000000000000\""));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"1\""));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"01\""));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"000001\""));
-  ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"00000000000000000000000000000000000000000000000000000000000001\""));
+  ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"00000000000000000000000000000001\""));
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "\"10\""));
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "\"010\""));
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "\"11\""));
@@ -1361,6 +1364,7 @@ TEST(BitFunctionsTest, BitFromString) {
   ASSERT_EQ(int64_t(4), evaluate<int64_t>(node, "\"0100\""));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "\"111\""));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "\"000000000111\""));
+  ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "\"00000000000000000000000000000111\""));
   ASSERT_EQ(int64_t(21), evaluate<int64_t>(node, "\"10101\""));
   ASSERT_EQ(int64_t(16), evaluate<int64_t>(node, "\"10000\""));
   ASSERT_EQ(int64_t(32), evaluate<int64_t>(node, "\"100000\""));
@@ -1370,12 +1374,10 @@ TEST(BitFunctionsTest, BitFromString) {
   ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "\"11111111\""));
   ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "\"0000000011111111\""));
   ASSERT_EQ(int64_t(256), evaluate<int64_t>(node, "\"100000000\""));
-  ASSERT_EQ(int64_t(256), evaluate<int64_t>(node, "\"0000000000000000000000000000000100000000\""));
   ASSERT_EQ(int64_t(65791), evaluate<int64_t>(node, "\"10000000011111111\""));
   ASSERT_EQ(int64_t(196863), evaluate<int64_t>(node, "\"110000000011111111\""));
   ASSERT_EQ(int64_t(1245439), evaluate<int64_t>(node, "\"100110000000011111111\""));
   ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "\"10000000000000000000000000000000\""));
-  ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "\"0000000010000000000000000000000000000000\""));
   ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "\"11000000000000000000000000000000\""));
   ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "\"11000000000000000000000000000000\""));
   ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "\"11111111111111111111111111111110\""));

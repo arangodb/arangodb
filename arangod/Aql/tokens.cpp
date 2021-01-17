@@ -2261,29 +2261,26 @@ YY_RULE_SETUP
   char const* p = yytext + 2;
   char const* e = yytext + yyleng;
 
-  while (p != e && *p == '0') {
-    /* skip leading zeros */
-    ++p;
-  }
-      
   auto parser = yyextra;
   if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits) {
     /* we only support up to 32 bits for now */
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "binary number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }
   
-  int64_t result = 0;
+  uint64_t result = 0;
 
   while (p != e) {
     char c = *p;
     if (c == '1') {
       /* only the 1s are interesting for us */
-      result += (static_cast<int64_t>(1) << (e - p - 1));
+      result += (static_cast<uint64_t>(1) << (e - p - 1));
     }
     ++p;
   }
   
-  arangodb::aql::AstNode* node = parser->ast()->createNodeValueInt(result);
+  TRI_ASSERT(result <= UINT32_MAX);
+  
+  arangodb::aql::AstNode* node = parser->ast()->createNodeValueInt(static_cast<int64_t>(result));
   yylval->node = node;
 
   return T_INTEGER;
@@ -2299,11 +2296,6 @@ YY_RULE_SETUP
   char const* p = yytext + 2;
   char const* e = yytext + yyleng;
 
-  while (p != e && *p == '0') {
-    /* skip leading zeros */
-    ++p;
-  }
-  
   auto parser = yyextra;
   /* each digit 0-9a-f carries 4 bits of information */
   if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits / 4) {
@@ -2311,7 +2303,7 @@ YY_RULE_SETUP
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "hex number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }
   
-  int64_t result = 0;
+  uint64_t result = 0;
   
   while (p != e) {
     uint8_t v;
@@ -2323,11 +2315,13 @@ YY_RULE_SETUP
     } else {
       v = c - '0';
     }
-    result += (static_cast<int64_t>(v) << (4 * (e - p - 1)));
+    result += (static_cast<uint64_t>(v) << (4 * (e - p - 1)));
     ++p;
   }
 
-  arangodb::aql::AstNode* node = parser->ast()->createNodeValueInt(result);
+  TRI_ASSERT(result <= UINT32_MAX);
+
+  arangodb::aql::AstNode* node = parser->ast()->createNodeValueInt(static_cast<int64_t>(result));
   yylval->node = node;
 
   return T_INTEGER;

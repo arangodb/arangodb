@@ -833,19 +833,19 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
 };
 
 struct BitFunctionAnd {
-  int64_t compute(int64_t value1, int64_t value2) noexcept {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
     return value1 & value2;
   }
 };
 
 struct BitFunctionOr {
-  int64_t compute(int64_t value1, int64_t value2) noexcept {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
     return value1 | value2;
   }
 };
 
 struct BitFunctionXOr {
-  int64_t compute(int64_t value1, int64_t value2) noexcept {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
     return value1 ^ value2;
   }
 };
@@ -872,10 +872,11 @@ struct AggregatorBitFunction : public Aggregator, BitFunction {
         if (!std::isnan(number) && number >= 0.0) {
           int64_t value = cmpValue.toInt64();
           if (value <= static_cast<int64_t>(Functions::bitFunctionsMaxSupportedValue)) {
+            TRI_ASSERT(value >= 0 && value <= UINT32_MAX);
             if (invoked) {
-              result = this->compute(result, value);
+              result = this->compute(result, static_cast<uint64_t>(value));
             } else {
-              result = value;
+              result = static_cast<uint64_t>(value);
               invoked = true;
             }
             return;
@@ -895,7 +896,7 @@ struct AggregatorBitFunction : public Aggregator, BitFunction {
     return AqlValue(AqlValueHintUInt(result));
   }
 
-  int64_t result;
+  uint64_t result;
   bool invalid;
   bool invoked;
 };
