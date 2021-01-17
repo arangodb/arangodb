@@ -166,7 +166,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _numAwake(0),
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerQueueLength, 0,
-          "Servers internal queue length")),
+          "Server's internal queue length")),
       _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           "arangodb_scheduler_jobs_done", 0, "Total number of queue jobs done")),
       _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
