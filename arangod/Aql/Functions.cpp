@@ -6905,7 +6905,7 @@ std::optional<T> bitOperationValue(VPackSlice input) {
   if (input.isNumber() && input.getNumber<double>() >= 0) {
     uint64_t result = input.getNumber<uint64_t>();
     if (result <= static_cast<uint64_t>(Functions::bitFunctionsMaxSupportedValue)) {
-      TRI_ASSERT(result >= 0 && result <= UINT32_MAX);
+      TRI_ASSERT(result <= UINT32_MAX);
       // value is valid
       return std::optional<T>{ static_cast<T>(result) };
     }
