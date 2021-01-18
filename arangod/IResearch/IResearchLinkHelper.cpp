@@ -658,19 +658,6 @@ namespace iresearch {
   return nullptr;
 }
 
-#ifdef USE_ENTERPRISE
-/*static*/ void IResearchLinkHelper::realNameFromSmartName(std::string& possiblySmartName) {
-  TRI_ASSERT(!possiblySmartName.empty());
-  if (possiblySmartName.compare(0, 7, "_local_") == 0) {
-    possiblySmartName.erase(0, 7);
-  } else if (possiblySmartName.compare(0, 6, "_from_") == 0) {
-    possiblySmartName.erase(0, 6);
-  } else if (possiblySmartName.compare(0, 4, "_to_") == 0) {
-    possiblySmartName.erase(0, 4);
-  }
-}
-#endif
-
 /*static*/ arangodb::Result IResearchLinkHelper::normalize( // normalize definition
     arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
     arangodb::velocypack::Slice definition, // source definition
@@ -719,7 +706,7 @@ namespace iresearch {
       meta._collectionName.empty()) {
     meta._collectionName  = collectionName;
 #ifdef USE_ENTERPRISE
-    realNameFromSmartName(meta._collectionName);
+    arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
 #endif
   }
 

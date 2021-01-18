@@ -90,13 +90,6 @@ struct IResearchLinkHelper {
     LogicalView const& view // link for view to find
   );
 
-#ifdef USE_ENTERPRISE
-  /// @brief removes smart name suffixes from collection names.
-  /// @param possiblySmartName  collection name with possible smart suffixes.
-  /// Will be modified inplace 
-  static void realNameFromSmartName(std::string& possiblySmartName);
-#endif
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate and copy required fields from the 'definition' into
   ///        'normalized'
