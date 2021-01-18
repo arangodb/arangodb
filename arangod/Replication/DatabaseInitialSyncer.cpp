@@ -981,13 +981,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   // sending this request in a blocking fashion may require very long to
   // complete,
   // so we're sending the x-arango-async header here
-  auto headers = replutils::createHeaders();
-  headers[StaticStrings::Async] = "store";
-
   auto keysCall = [&](bool quick) {
+    auto headers = replutils::createHeaders();
+    headers[StaticStrings::Async] = "store";
+
     std::unique_ptr<httpclient::SimpleHttpResult> response;
+
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
+      response.reset(client->retryRequest(rest::RequestType::POST, ((quick) ? url + "&quick=true" : url), nullptr, 0, headers));
     });
     ++stats.numKeysRequests;
 
@@ -1084,8 +1085,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     }
 
     return Result();
-    
+
   };
+
 
   auto ck = keysCall(true);
   if (!ck.ok()) {
@@ -1094,7 +1096,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   if (!slice.hasKey("id")) { // we only have count
     VPackSlice const c = slice.get("count");
     if (c.isNumber()) {
-      maxWaitTime = c.getNumber<uint64_t>() * 8 / 100000;
+      maxWaitTime = c.getNumber<uint64_t>() * 864/10000000; // ~ pessimistic 1 billion / day
       ck = keysCall(false);
       if (!ck.ok()) {
         return ck;
@@ -1105,7 +1107,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                     _config.leader.endpoint + url + ": response count not a number");
     }
   }
-  
+
   VPackSlice const keysId = slice.get("id");
 
   if (!keysId.isString()) {

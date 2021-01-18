@@ -42,6 +42,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -421,7 +422,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& quick = _request->value("quick");
   if (!quick.empty() && !(quick == "true" || quick == "false")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::string("invalid quick parameter: must be booleaan got ") + quick);
+                  std::string("invalid quick parameter: must be boolean got ") + quick);
     return;
   }
 
@@ -446,21 +447,11 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   // bind collection to context - will initialize iterator
   Result res;
-  DataSourceId cid;
   uint64_t numDocs;
+  DataSourceId cid;
   std::tie(res, cid, numDocs) = ctx->bindCollectionIncremental(_vocbase, collection);
-
   if (res.fail()) {
     generateError(res);
-    return;
-  }
-
-  if (numDocs > 1000000 && quick == "true") {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("count", VPackValue(numDocs));
-    result.close();
-    generateResult(rest::ResponseCode::OK, result.slice());
     return;
   }
 
