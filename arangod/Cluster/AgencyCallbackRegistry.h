@@ -26,6 +26,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "RestServer/Metrics.h"
 
 #include <memory>
@@ -45,7 +46,7 @@ class AgencyCallbackRegistry {
   ~AgencyCallbackRegistry();
 
   /// @brief register a callback
-  bool registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
+  Result registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
 
   /// @brief unregister a callback
   bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);

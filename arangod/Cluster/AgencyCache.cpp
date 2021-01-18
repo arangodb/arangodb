@@ -496,7 +496,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
 }
 
 /// Register local callback
-bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
+Result AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
   std::string const ckey = Store::normalize(AgencyCommHelper::path(key));
   LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER) << "Registering callback for " << ckey;
 
@@ -512,7 +512,7 @@ bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
   LOG_TOPIC("31415", TRACE, Logger::CLUSTER)
     << "Registered callback for key " << ckey << " with id " << id << ", callbacks: " << size;
   // this method always returns ok.
-  return true;
+  return {};
 }
 
 /// Unregister local callback

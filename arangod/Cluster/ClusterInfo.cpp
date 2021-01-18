@@ -5754,15 +5754,14 @@ void ClusterInfo::SyncerThread::run() {
       return notify(result);
     };
 
-  auto _acb =
+  auto acb =
     std::make_shared<AgencyCallback>(_server, _section + "/Version", update, true, false);
-  bool registered = _cr->registerCallback(_acb);
-  if (!registered) {
+  Result res = _cr->registerCallback(std::move(acb));
+  if (res.fail()) {
     LOG_TOPIC("70e05", FATAL, arangodb::Logger::CLUSTER)
-      << "Failed to register callback with local registery ";
+      << "Failed to register callback with local registry: " << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
-
 
   // This first call needs to be done or else we might miss all potential until
   // such time, that we are ready to receive. Under no circumstances can we assume
@@ -5804,7 +5803,6 @@ void ClusterInfo::SyncerThread::run() {
   }
 
   _cr->unregisterCallback(_acb);
-
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {
