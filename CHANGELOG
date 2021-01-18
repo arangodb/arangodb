@@ -1,6 +1,17 @@
 devel
 -----
 
+* Make AQL optimizer rule "splice-subqueries" mandatory, in the sense that it cannot be
+  disabled anymore. As a side effect of this change, there will no query execution plans
+  created by 3.8 that contain execution nodes of type `SubqueryNode`. `SubqueryNodes`
+  will be only used during query planning and optimization, but at the end of the query
+  optimization phase will all have been replaced with nodes of type `SubqueryStartNode`
+  and `SubqueryEndNode`.
+  The code to execute non-spliced subqueries remains in place so that 3.8 can still
+  execute queries planned on a 3.7 instance with the "splice-subqueries" optimizer rule
+  intentionally turned off. The code for executing non-spliced subqueries can be removed
+  in 3.9.
+
 * Updated arangosync to 1.2.2.
 
 * Fix a bug in the agency Supervision which could lead to removeFollower

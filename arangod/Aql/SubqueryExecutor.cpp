@@ -35,6 +35,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+// TODO: the entire executor is only needed to execute non-spliced subqueries sent
+// by a 3.7 coordinator. It can be removed in 3.9
 SubqueryExecutorInfos::SubqueryExecutorInfos(ExecutionBlock& subQuery,
                                              RegisterId outReg, bool subqueryIsConst)
     : _subQuery(subQuery),

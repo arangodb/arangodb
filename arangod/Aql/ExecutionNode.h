@@ -802,6 +802,10 @@ class CalculationNode : public ExecutionNode {
 };
 
 /// @brief class SubqueryNode
+/// in 3.8, SubqueryNodes are only used during query planning and optimization, but
+/// will finally be replaced with SubqueryStartNode and SubqueryEndNode nodes by the
+/// splice-subqueries optimizer rule. In addition, any query execution plan from 3.7
+/// may contain this node type. We can clean this up in 3.9.
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;

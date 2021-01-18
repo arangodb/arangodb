@@ -32,6 +32,8 @@
 #include "Aql/Stats.h"
 #include "Basics/Result.h"
 
+// TODO: the entire executor is only needed to execute non-spliced subqueries sent
+// by a 3.7 coordinator. It can be removed in 3.9
 namespace arangodb {
 namespace aql {
 class ExecutionBlock;
