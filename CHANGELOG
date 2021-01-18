@@ -1,6 +1,43 @@
 devel
 -----
 
+* Added the following bit handling functions to AQL:
+
+  - BIT_AND(array): and-combined result
+  - BIT_OR(array): or-combined result
+  - BIT_XOR(array): xor-combined result
+  - BIT_NEGATE(value, bits): bitwise negation of `value`, with a mask of
+    `bits` length
+  - BIT_TEST(value, index): test if bit at position `index` is set in `value`
+    (indexes are 0-based)
+  - BIT_POPCOUNT(value): return number of bits set in `value`
+  - BIT_SHIFT_LEFT(value, shift, bits): bitwise shift-left of `value` by 
+    `shift` bits, with a mask of `bits` length
+  - BIT_SHIFT_RIGHT(value, shift, bits): bitwise shift-right of `value` by 
+    `shift` bits, with a mask of `bits` length
+  - BIT_CONSTRUCT(array): construct a number with bits set at the positions
+    given in the array
+  - BIT_DECONSTRUCT(value): deconstruct a number into an array of its individual
+    set bits
+  - BIT_TO_STRING(value): create a bitstring representation from numeric `value`
+  - BIT_FROM_STRING(value): parse a bitstring representation into a number
+
+  `BIT_AND`, `BIT_OR` and `BIT_XOR` are also available as aggregate functions
+  for usage inside COLLECT AGGREGATE.
+
+  All above bit operations support unsigned integer values with up to 32 bits. 
+  Using values outside the supported range will make any of these bit functions
+  return `null` and register a warning.
+
+* Add binary (base 2) and hexadecimal (base 16) integer literals to AQL. 
+  These literals can be used where regular (base 10) integer literal can used. 
+  The prefix for binary integer literals is `0b`, e.g. `0b10101110`.
+  The prefix for hexadecimal integer literals i `0x`, e.g. `0xabcdef02`.
+
+  Binary and hexadecimal integer literals can only be used for unsigned integers.
+  The maximum supported value is `(2 ^ 32) - 1`, i.e. `0xffffffff` (hexadecimal)
+  or `0b11111111111111111111111111111111` (binary).
+
 * AQL query execution plan register usage optimization.
 
   This is a performance optimization that may positively affect some AQL
@@ -37,8 +74,9 @@ devel
 * Print a version mismatch (major/minor version difference) between the
   arangosh version and the remote arangod version at arangosh startup.
 
-* Internal Refactoring of K_PATH feature, with the goal to have all GraphAlgorithms on
-  the same framework. This change should not have any visible effect on users.
+* Internal refactoring of K_PATH feature, with the goal to have all graph 
+  algorithms on the same framework. This change should not have any visible 
+  effect on users.
 
 * Fixed an endless busy loop which could happen if a coordinator tries to 
   roll back a database creation, but the database has already been dropped 
@@ -108,7 +146,7 @@ devel
   LIMIT
   [...]
   in AQL queries, yielding incorrect responses. A distributed
-  state within the subquery was not resetted correctly.
+  state within the subquery was not reset correctly.
   This could also lead into "shrink" errors of AQL item blocks,
   or much higher query runtimes.
   Fixes:
@@ -142,7 +180,7 @@ devel
   LET sq1 ([..] FILTER false == true LET sq2 = (<X>) [..])
   where sq1 produces no data (e.g. by the above filter) for sq2,
   the part <X> have been asked two times (second returns empty result),
-  instead of one, if and only if the mainquery executes sq1 exactly one time.
+  instead of one, if and only if the main query executes sq1 exactly one time.
   Now we get away with one call only.
   In the case sq1 has data, or sq1 is executed more often, only one call was needed
   (assuming the data fits in one batch).
