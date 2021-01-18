@@ -2169,9 +2169,6 @@ class IResearchFeatureTestCoordinator
     server.startFeatures();
   }
 
-  ~IResearchFeatureTestCoordinator() {
-  }
-
   arangodb::consensus::index_t agencyTrx(std::string const& key, std::string const& value) {
     // Build an agency transaction:
     auto b2 = VPackParser::fromJson(value);
@@ -2387,9 +2384,6 @@ class IResearchFeatureTestDBServer
     // we will control UgradeFeature start!
     server.untrackFeature<arangodb::UpgradeFeature>();
     server.startFeatures();
-  }
-
-  ~IResearchFeatureTestDBServer() {
   }
 
   // version 0 data-source path

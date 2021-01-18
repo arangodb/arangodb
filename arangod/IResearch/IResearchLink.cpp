@@ -156,7 +156,7 @@ inline Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // Stored value field
   {
-    StoredValue field(trx, meta._collectionName, document);
+    StoredValue field(trx, meta._collectionName, document, id);
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
@@ -1511,7 +1511,7 @@ Result IResearchLink::insert(
   auto insertImpl = [this, &trx, &doc, &documentId](
                         irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIterator body(trx, _meta._collectionName);
+      FieldIterator body(trx, _meta._collectionName, _id);
 
       return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
     } catch (basics::Exception const& e) {

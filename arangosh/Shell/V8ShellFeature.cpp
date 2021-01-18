@@ -685,8 +685,6 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
           try {
             v8::Handle<v8::Value> result =
                 main->Call(TRI_IGETC, main, 1, args).FromMaybe(v8::Local<v8::Value>());
-            ;
-
             if (tryCatch.HasCaught()) {
               if (tryCatch.CanContinue()) {
                 TRI_LogV8Exception(isolate, &tryCatch);

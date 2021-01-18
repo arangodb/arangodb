@@ -279,24 +279,15 @@ inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& 
 
 std::string getDocumentId(irs::string_ref collection,
                           VPackSlice document) {
-  VPackSlice key;
-  if (document.isObject()) {
-    key = arangodb::transaction::helpers::extractKeyFromDocument(document);
-  } else if (document.isExternal()) {
-    key = document.resolveExternal().get(arangodb::StaticStrings::KeyString);
+  VPackStringRef const key = arangodb::transaction::helpers::extractKeyPart(document);
+  if (key.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to extract key value from document");
   }
-  if (!key.isString()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  std::string resolved = collection;
-  VPackValueLength keyLength;
-  char const* p = key.getString(keyLength);
-  if (p == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value");
-  }
-  resolved.reserve(resolved.size() + 1 + keyLength);
+  std::string resolved;
+  resolved.reserve(collection.size() + 1 + key.size());
+  resolved += collection;
   resolved.push_back('/');
-  resolved.append(p, static_cast<size_t>(keyLength));
+  resolved.append(key.data(), key.size());
   return resolved;
 }
 
@@ -328,8 +319,9 @@ namespace iresearch {
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
 
-FieldIterator::FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection)
-    : _trx(&trx), _collection(collection), _isDBServer(ServerState::instance()->isDBServer()) {
+FieldIterator::FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection,  IndexId linkId)
+    : _trx(&trx), _collection(collection), _linkId(linkId),
+      _isDBServer(ServerState::instance()->isDBServer()) {
 
   // initialize iterator's value
 }
@@ -435,7 +427,7 @@ bool FieldIterator::setValue(VPackSlice const value,
           LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
             << "Value for `_id` attribute could not be indexed for document "
             << transaction::helpers::extractKeyFromDocument(_slice).toString()
-            << ". To recover please recreate corresponding ArangoSearch links.";
+            << ". To recover please recreate corresponding ArangoSearch link '" << _linkId << "'";
           return false;
         }
       } else {
@@ -618,9 +610,10 @@ setAnalyzers:
   return true;
 }
 
-  StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const doc)
+  StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn,
+                           VPackSlice const doc, IndexId lid)
     : trx(t), document(doc), collection(cn),
-      isDBServer(ServerState::instance()->isDBServer()) {}
+      linkId(lid), isDBServer(ServerState::instance()->isDBServer()) {}
 
 bool StoredValue::write(irs::data_output& out) const {
   auto size = fields->size();
@@ -643,7 +636,7 @@ bool StoredValue::write(irs::data_output& out) const {
           LOG_TOPIC("bf98c", WARN, arangodb::iresearch::TOPIC)
             << "Value for `_id` attribute could not be stored for document "
             << transaction::helpers::extractKeyFromDocument(document).toString()
-            << ". To recover please recreate corresponding ArangoSearch links.";
+            << ". To recover please recreate corresponding ArangoSearch link '" << linkId << "'";
            return false;
         }
       } else {
