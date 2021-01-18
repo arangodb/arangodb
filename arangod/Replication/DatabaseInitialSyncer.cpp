@@ -1088,15 +1088,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                     "&serverId=" + _state.localServerIdString +
                     "&batchId=" + std::to_string(_config.batch.id);
 
+  std::string msg =
+    "fetching collection keys for collection '" + coll->name() + "' from " + url;
+  _config.progress.set(msg);
+
   VPackBuilder builder;
   VPackSlice slice;
   auto maxWaitTime = _config.applier._initialSyncMaxWaitTime;
 
   auto keysCall = [&](bool quick) {
-
-    std::string msg =
-      "fetching collection keys for collection '" + coll->name() + "' from " + url;
-    _config.progress.set(msg);
 
     // send an initial async request to collect the collection keys on the other
     // side
