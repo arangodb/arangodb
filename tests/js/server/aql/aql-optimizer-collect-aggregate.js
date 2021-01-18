@@ -1726,7 +1726,503 @@ function optimizerAggregateTestSuite () {
       assertEqual(1, results.json.length);
       assertTrue(Math.abs(expected - results.json[0]) < 0.01);
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
-    }
+    },
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndEmpty : function () {
+      var query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndOnlyNull : function () {
+      var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ null, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndSingleWithNull : function () {
+      var query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(42, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 42, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndSingleWithNulls : function () {
+      var query = "FOR i IN [ 42, null, null, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(42, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 42, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndTwoValues : function () {
+      var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(19, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 19, 23 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndSingleString : function () {
+      var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ '-42.5foo' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndTwoStrings : function () {
+      var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ '-42.5foo', '99baz' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndOutOfRange : function () {
+      var query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndMixed : function () {
+      var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      assertEqual("sorted", collectNode.collectOptions.method);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(0, collectNode.groups.length);
+
+      assertEqual(1, collectNode.aggregates.length);
+      assertEqual("m", collectNode.aggregates[0].outVariable.name);
+      assertEqual("BIT_AND", collectNode.aggregates[0].type);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndNumbers : function () {
+      var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, 34];
+      var expected = 0;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND(" + JSON.stringify(values) + ")").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndNumbersOthers : function () {
+      var values = [ 1, 42, 23, 19, 4, 28 ];
+      var expected = 0;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND(" + JSON.stringify(values) + ")").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_and
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitAndNumbersRange : function () {
+      var expected = 0;
+      var query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrEmpty : function () {
+      var query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrOnlyNull : function () {
+      var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ null, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrSingleWithNull : function () {
+      var query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(42, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ 42, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrTwoValues : function () {
+      var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(23, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ 19, 23 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrSingleString : function () {
+      var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ '-42.5foo' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrTwoStrings : function () {
+      var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ '-42.5foo', '99baz' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrOutOfRange : function () {
+      var query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrMixed : function () {
+      var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      assertEqual("sorted", collectNode.collectOptions.method);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(0, collectNode.groups.length);
+
+      assertEqual(1, collectNode.aggregates.length);
+      assertEqual("m", collectNode.aggregates[0].outVariable.name);
+      assertEqual("BIT_OR", collectNode.aggregates[0].type);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrNumbers : function () {
+      var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, 34];
+      var expected = 63;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR(" + JSON.stringify(values) + ")").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrNumbersOthers : function () {
+      var values = [ 1, 42, 23, 19, 4, 28 ];
+      var expected = 63;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR(" + JSON.stringify(values) + ")").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_or
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitOrNumbersRange : function () {
+      var expected = 16383;
+      var query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrEmpty : function () {
+      var query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrOnlyNull : function () {
+      var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ null, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrSingleWithNull : function () {
+      var query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(42, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ 42, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrTwoValues : function () {
+      var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(4, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ 19, 23 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrSingleString : function () {
+      var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ '-42.5foo' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrTwoStrings : function () {
+      var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ '-42.5foo', '99baz' ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrOutOfRange : function () {
+      var query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrMixed : function () {
+      var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertNull(results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      assertEqual("sorted", collectNode.collectOptions.method);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(0, collectNode.groups.length);
+
+      assertEqual(1, collectNode.aggregates.length);
+      assertEqual("m", collectNode.aggregates[0].outVariable.name);
+      assertEqual("BIT_XOR", collectNode.aggregates[0].type);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrNumbers : function () {
+      var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, 34];
+      var expected = 4;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR(" + JSON.stringify(values) + ")").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrNumbersOthers : function () {
+      var values = [ 1, 42, 23, 19, 4, 28 ];
+      var expected = 55;
+      var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR(" + JSON.stringify(values) + ")").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bit_xor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBitXOrNumbersRange : function () {
+      var expected = 10000;
+      var query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(expected, results.json[0]);
+    },
 
   };
 }
@@ -1968,11 +2464,34 @@ function optimizerAggregateResultsSuite () {
 
     testCountDistinct2 : function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = COUNT_DISTINCT(doc.value2) RETURN v");
-    }
+    },
+
+    testBitAnd1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_AND(doc.value1) RETURN v");
+    },
+    
+    testBitAnd2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_AND(doc.value2) RETURN v");
+    },
+    
+    testBitOr1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_OR(doc.value1) RETURN v");
+    },
+    
+    testBitOr2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_OR(doc.value2) RETURN v");
+    },
+    
+    testBitXOr1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_XOR(doc.value1) RETURN v");
+    },
+    
+    testBitXOr2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_XOR(doc.value2) RETURN v");
+    },
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
