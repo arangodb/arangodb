@@ -276,7 +276,7 @@ inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& 
 }
 
 std::string getDocumentId(irs::string_ref collection,
-                          VPackSlice const& document) {
+                          VPackSlice document
   VPackSlice key;
   if (document.isObject()) {
     key = arangodb::transaction::helpers::extractKeyFromDocument(document);
