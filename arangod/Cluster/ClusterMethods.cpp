@@ -596,6 +596,14 @@ bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
 }
 #endif
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to demangle hidden collections names
+////////////////////////////////////////////////////////////////////////////////
+#ifndef USE_ENTERPRISE
+void ClusterMethods::realNameFromSmartName(std::string&) { }
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.

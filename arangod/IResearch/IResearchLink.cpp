@@ -36,6 +36,9 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#ifdef USE_ENTERPRISE
+#include "Cluster/ClusterMethods.h"
+#endif
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
@@ -1083,7 +1086,7 @@ Result IResearchLink::init(
 #ifdef USE_ENTERPRISE
       // enterprise name is not used in _id so should not be here!
       if (ADB_LIKELY(!meta._collectionName.empty())) {
-        IResearchLinkHelper::realNameFromSmartName(meta._collectionName);
+        arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
       }
 #endif
     }

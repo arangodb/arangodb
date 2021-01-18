@@ -41,6 +41,9 @@
 #include "Basics/NumberOfCores.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#ifdef USE_ENTERPRISE
+#include "Cluster/ClusterMethods.h"
+#endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
@@ -315,7 +318,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
       LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)
           << " Processing collection " << name;
 #ifdef USE_ENTERPRISE
-      arangodb::iresearch::IResearchLinkHelper::realNameFromSmartName(name);
+      arangodb::ClusterMethods::realNameFromSmartName(name);
 #endif
       for (auto& index : indexes) {
         if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
