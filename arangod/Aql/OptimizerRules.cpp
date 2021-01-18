@@ -8115,6 +8115,11 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
       cb(node);
     }
   };
+    
+  TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
+    // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
+    subqueryNodes.clear();
+  }
 
   for (auto const& sq : subqueryNodes) {
     modified = true;

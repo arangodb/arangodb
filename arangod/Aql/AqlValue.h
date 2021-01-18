@@ -132,7 +132,6 @@ struct AqlValue final {
                            // not managed!
     VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
                            // slice, allocated by new[] or malloc()
-    DOCVEC,  // a vector of blocks of results coming from a subquery, managed
     RANGE    // a pointer to a range remembering lower and upper bound, managed
   };
 
@@ -152,8 +151,6 @@ struct AqlValue final {
   /// about how the memory was allocated:
   /// - MemoryOriginType::New: memory was allocated by new[] and must be deleted
   /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd
-  /// DOCVEC: a managed vector of AqlItemBlocks, for storing subquery results.
-  /// The vector and ItemBlocks are managed by the AqlValue
   /// RANGE: a managed range object. The memory is managed by the AqlValue
  private:
   union {
@@ -162,7 +159,6 @@ struct AqlValue final {
     uint8_t const* pointer;
     uint8_t* slice;
     void* data;
-    std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec;
     Range const* range;
   } _data;
 
@@ -184,9 +180,6 @@ struct AqlValue final {
   // construct from another AqlValue and a new data pointer, not copying!
   explicit AqlValue(AqlValue const& other, void* data) noexcept;
 
-  // construct from docvec, taking over its ownership
-  explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
-  
   explicit AqlValue(AqlValueHintNone const&) noexcept;
 
   explicit AqlValue(AqlValueHintNull const&) noexcept;
@@ -256,9 +249,6 @@ struct AqlValue final {
 
   /// @brief whether or not the value is a range
   bool isRange() const noexcept;
-
-  /// @brief whether or not the value is a docvec
-  bool isDocvec() const noexcept;
 
   /// @brief hashes the value
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
@@ -338,8 +328,7 @@ struct AqlValue final {
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&,
                     bool resolveExternals, bool allowUnindexed) const;
 
-  /// @brief materialize a value into a new one. this expands docvecs and
-  /// ranges
+  /// @brief materialize a value into a new one. this expands ranges
   AqlValue materialize(velocypack::Options const*, bool& hasCopied, bool resolveExternals) const;
 
   /// @brief return the slice for the value
@@ -382,9 +371,6 @@ struct AqlValue final {
   template <bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
   
-  /// @brief return the total size of the docvecs
-  size_t docvecLength() const;
-
   /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
   MemoryOriginType memoryOriginType() const noexcept;
   
