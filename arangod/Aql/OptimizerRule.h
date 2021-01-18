@@ -316,6 +316,11 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
+    // mark variables with const values so they can be evaluated only once
+    // and stored in a special AqlItemBlock.
+    // Note: this rule must be applied AFTER distribute nodes have been created.
+    keepConstValuesInConstRegisters,
+
     // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
     // operation
     optimizeCountRule,

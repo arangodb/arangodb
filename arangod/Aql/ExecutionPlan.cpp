@@ -676,10 +676,6 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* ex
     }
   }
 
-  if (node->isConstant()) {
-    out->hasConstValue = true;
-  }
-
   // generate a temporary calculation node
   auto expr = std::make_unique<Expression>(_ast, node);
   CalculationNode* en = new CalculationNode(this, nextId(), std::move(expr), out);

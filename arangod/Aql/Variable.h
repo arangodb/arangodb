@@ -26,6 +26,7 @@
 
 #include <string>
 
+#include "Aql/AqlValue.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
@@ -91,6 +92,9 @@ struct Variable {
   bool isDataFromCollection;
 
   bool hasConstValue = false;
+
+  // TODO - naming (we already have constValue member function)
+  AqlValue constantValue;
 
   /// @brief name of $OLD variable
   static char const* const NAME_OLD;

@@ -248,7 +248,11 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  Variable const* variable() const noexcept { return _variable; }
+
   void variable(Variable const* variable) { _variable = variable; }
+
+  Variable const* alternativeVariable() const noexcept { return _alternativeVariable; }
 
   void alternativeVariable(Variable const* variable) {
     _alternativeVariable = variable;
