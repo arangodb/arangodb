@@ -222,7 +222,7 @@ struct DocumentPrimaryKey {
 };  // DocumentPrimaryKey
 
 struct StoredValue {
-  StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const& doc);
+  StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const doc);
 
   bool write(irs::data_output& out) const;
 
