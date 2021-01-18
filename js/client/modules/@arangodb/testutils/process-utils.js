@@ -323,11 +323,28 @@ function setupBinaries (builddir, buildType, configDir) {
       checkFiles.push(ARANGOBACKUP_BIN);
     }
     if (version.asan &&
-        !process.env.hasOwnProperty('UBSAN_OPTIONS') &&
-        fs.exists('ubsan_arangodb_suppressions.txt')
+        !process.env.hasOwnProperty('ASAN_OPTIONS') &&
+        fs.exists('asan_arangodb_suppressions.txt')
        ) {
       print('preparing asan environment');
+      process.env['ASAN_OPTIONS'] = `suppressions=${fs.join(fs.makeAbsolute(''), 'asan_arangodb_suppressions.txt')}`;
+    } else if (version.ubsan &&
+               !process.env.hasOwnProperty('UBSAN_OPTIONS') &&
+               fs.exists('ubsan_arangodb_suppressions.txt')
+              ) {
+      print('preparing ubsan environment');
       process.env['UBSAN_OPTIONS'] = `suppressions=${fs.join(fs.makeAbsolute(''), 'ubsan_arangodb_suppressions.txt')}`;
+    } else if (version.lsan &&
+               !process.env.hasOwnProperty('LSAN_OPTIONS') &&
+               fs.exists('lsan_arangodb_suppressions.txt')
+              ) {
+      print('preparing lsan environment');
+      process.env['LSAN_OPTIONS'] = `suppressions=${fs.join(fs.makeAbsolute(''), 'lsan_arangodb_suppressions.txt')}`;
+    } else if (version.lsan &&
+               !process.env.hasOwnProperty('TSAN_OPTIONS') &&
+               fs.exists('tssan_arangodb_suppressions.txt')
+              ) {
+      print('preparing tsan environment');
       process.env['TSAN_OPTIONS'] = `suppressions=${fs.join(fs.makeAbsolute(''), 'tsan_arangodb_suppressions.txt')}`;
     }
   }
