@@ -325,6 +325,13 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   }
 }
 
+MockV8Server::~MockV8Server() {
+  if (_server.hasFeature<arangodb::ClusterFeature>()) {
+    _server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
+    _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
+  }
+}
+
 MockAqlServer::MockAqlServer(bool start) : MockServer() {
   // setup required application features
   SetupAqlPhase(*this);
@@ -335,6 +342,10 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
 }
 
 MockAqlServer::~MockAqlServer() {
+  if (_server.hasFeature<arangodb::ClusterFeature>()) {
+    _server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
+    _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
+  }
   arangodb::AqlFeature(_server).stop();  // unset singleton instance
 }
 

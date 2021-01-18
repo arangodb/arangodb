@@ -5835,18 +5835,36 @@ void ClusterInfo::SyncerThread::run() {
       }
       try {
         _f();
+      } catch (basics::Exception const& ex) {
+        if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+          LOG_TOPIC("9d1f5", WARN, arangodb::Logger::CLUSTER)
+            << "caught an error while loading " << _section << ": " << ex.what();
+        }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section << ": " << ex.what();
+        LOG_TOPIC("752c4", WARN, arangodb::Logger::CLUSTER)
+          << "caught an error while loading " << _section << ": " << ex.what();
       } catch (...) {
-        LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section;
+        LOG_TOPIC("30968", WARN, arangodb::Logger::CLUSTER)
+          << "caught an error while loading " << _section;
       }
     }
     // next round...
   }
 
-  _cr->unregisterCallback(_acb);
+  try {
+    _cr->unregisterCallback(acb);
+  } catch (basics::Exception const& ex) {
+    if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+      LOG_TOPIC("39336", WARN, arangodb::Logger::CLUSTER)
+        << "caught exception while unregistering callback: " << ex.what();
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("66f2f", WARN, arangodb::Logger::CLUSTER)
+      << "caught exception while unregistering callback: " << ex.what();
+  } catch (...) {
+    LOG_TOPIC("995cd", WARN, arangodb::Logger::CLUSTER)
+      << "caught unknown exception while unregistering callback";
+  }
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {
