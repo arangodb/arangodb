@@ -1983,7 +1983,10 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   auto agencyCallback =
     std::make_shared<AgencyCallback>(
       _server, "Current/Databases/" + database.getName(), dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r =_agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -2252,7 +2255,11 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
                               _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   });
@@ -2589,7 +2596,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           _server, "Current/Collections/" + databaseName + "/" + info.collectionID,
           closure, true, false);
 
-    _agencyCallbackRegistry->registerCallback(agencyCallback);
+    Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    if (r.fail()) {
+      return r;
+    }
+
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
@@ -3015,7 +3026,11 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [this, &agencyCallback]() -> void {
       _agencyCallbackRegistry->unregisterCallback(agencyCallback);
@@ -3948,7 +3963,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
 
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -4200,7 +4219,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
 
-
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
     std::vector<std::string>{AgencyCommHelper::path(planCollKey)});
@@ -4318,7 +4336,11 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -5693,6 +5715,28 @@ VPackSlice PlanCollectionReader::indexes() {
   } else {
     TRI_ASSERT(res.isArray());
     return res;
+  }
+}
+  
+CollectionWatcher::CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
+    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
+
+  std::string databaseName = collection.vocbase().name();
+  std::string collectionID = std::to_string(collection.id().id());
+  std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
+
+  _agencyCallback = std::make_shared<AgencyCallback>(
+      collection.vocbase().server(), where,
+      [this](VPackSlice const& result) {
+        if (result.isNone()) {
+          _present.store(false);
+        }
+        return true;
+      },
+      true, false);
+  Result res = _agencyCallbackRegistry->registerCallback(_agencyCallback);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 }
 
