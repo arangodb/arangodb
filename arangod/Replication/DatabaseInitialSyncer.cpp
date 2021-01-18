@@ -976,12 +976,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   VPackSlice slice;
   auto maxWaitTime = _config.applier._initialSyncMaxWaitTime;
 
+  auto keysCall = [&](bool quick) {
+
   // send an initial async request to collect the collection keys on the other
   // side
   // sending this request in a blocking fashion may require very long to
   // complete,
   // so we're sending the x-arango-async header here
-  auto keysCall = [&](bool quick) {
     auto headers = replutils::createHeaders();
     headers[StaticStrings::Async] = "store";
 
