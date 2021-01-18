@@ -413,7 +413,7 @@ function dumpTestSuite () {
 
       var startTime = new Date();
       var res;
-      while (new Date() - startTime < 60000) {
+      while (new Date() - startTime < 180000) {
         res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         if (res.length === 5000) {
           break;
