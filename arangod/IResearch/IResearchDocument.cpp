@@ -618,7 +618,7 @@ setAnalyzers:
   return true;
 }
 
- StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const& doc)
+  StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const doc)
     : trx(t), document(doc), collection(cn),
       isDBServer(ServerState::instance()->isDBServer()) {}
 
