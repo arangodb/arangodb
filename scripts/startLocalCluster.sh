@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 params=("$@")
 
-#rm -rf cluster
+rm -rf cluster
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
   cp -a cluster-init cluster
