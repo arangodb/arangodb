@@ -35,6 +35,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -425,6 +426,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   return stats;
 }
 
+/* SingleServerProvider Section */
+
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>,
     ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider,
@@ -435,3 +438,16 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
     ::arangodb::graph::ProviderTracer<SingleServerProvider>,
     ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;
+
+/* ClusterProvider Section */
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>,
+    ::arangodb::graph::PathStore<ClusterProvider::Step>, ClusterProvider,
+    ::arangodb::graph::PathValidator<PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>>,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>,
+    ::arangodb::graph::ProviderTracer<ClusterProvider>,
+    ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>>;

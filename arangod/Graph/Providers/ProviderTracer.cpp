@@ -27,15 +27,16 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryContext,
-                                             BaseProviderOptions opts, arangodb::ResourceMonitor& resourceMonitor)
+                                             BaseProviderOptions opts,
+                                             arangodb::ResourceMonitor& resourceMonitor)
     : _impl{queryContext, opts, resourceMonitor} {}
 
 template <class ProviderImpl>
@@ -62,9 +63,8 @@ futures::Future<std::vector<typename ProviderImpl::Step*>> ProviderTracer<Provid
 }
 
 template <class ProviderImpl>
-auto ProviderTracer<ProviderImpl>::expand(Step const& from,
-                                                                              size_t previous,
-                                                                              std::function<void(Step)> callback) -> void {
+auto ProviderTracer<ProviderImpl>::expand(Step const& from, size_t previous,
+                                          std::function<void(Step)> callback) -> void {
   double start = TRI_microtime();
   TRI_DEFER(_stats["expand"].addTiming(TRI_microtime() - start));
   _impl.expand(from, previous, std::move(callback));
@@ -116,3 +116,4 @@ arangodb::ResourceMonitor* ProviderTracer<ProviderImpl>::resourceMonitor() {
 }
 
 template class ::arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider>;
+template class ::arangodb::graph::ProviderTracer<arangodb::graph::ClusterProvider>;

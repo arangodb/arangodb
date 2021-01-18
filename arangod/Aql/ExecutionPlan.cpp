@@ -1288,6 +1288,8 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   // Refactored variant shall be default on SingleServer on KPaths
   bool defaultToRefactor = type == arangodb::graph::ShortestPathType::Type::KPaths &&
                            ServerState::instance()->isSingleServer();
+  // TODO HEIKO: important - change this after we're done here.
+  defaultToRefactor = (type == arangodb::graph::ShortestPathType::Type::KPaths);
 
   auto options = createShortestPathOptions(getAst(), direction, node->getMember(5), defaultToRefactor);
 

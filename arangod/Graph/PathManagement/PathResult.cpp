@@ -25,6 +25,7 @@
 #include "./PathResult.h"
 #include "Basics/StaticStrings.h"
 
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
@@ -112,8 +113,17 @@ auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
 
+/* SingleServerProvider Section */
+
 template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider,
                                              ::arangodb::graph::SingleServerProvider::Step>;
 
 template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider>,
                                              ::arangodb::graph::SingleServerProvider::Step>;
+
+/* ClusterProvider Section */
+
+template class ::arangodb::graph::PathResult<::arangodb::graph::ClusterProvider, ::arangodb::graph::ClusterProvider::Step>;
+
+template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
+                                             ::arangodb::graph::ClusterProvider::Step>;
