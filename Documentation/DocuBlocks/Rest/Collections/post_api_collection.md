@@ -42,7 +42,8 @@ specifies the type of the key generator. The currently available generators are
 *traditional*, *autoincrement*, *uuid* and *padded*.<br>
 The *traditional* key generator generates numerical keys in ascending order.
 The *autoincrement* key generator generates numerical keys in ascending order,
-the initial offset and the spacing can be configured
+the initial offset and the spacing can be configured (**note**: *autoincrement* is currently only 
+supported for non-sharded collections). 
 The *padded* key generator generates keys of a fixed length (16 bytes) in
 ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
 engine, which will slightly benefit keys that are inserted in lexicographically
