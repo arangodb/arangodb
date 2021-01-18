@@ -51,7 +51,7 @@ class AllRowsFetcherTest : public ::testing::Test {
   AqlItemMatrix const* matrix = nullptr;
   VPackBuilder input;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   RegIdSet inputRegisters{};
   DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, inputRegisters, 1};
 };

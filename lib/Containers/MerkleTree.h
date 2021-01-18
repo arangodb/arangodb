@@ -273,6 +273,18 @@ class MerkleTree {
    */
   void serializeBinary(std::string& output, bool compress) const;
 
+  /**
+   * @brief Provides a partition of the keyspace
+   *
+   * Makes best effort attempt to ensure the partitions are as even as possible.
+   * That is, to the granularity allowed, it will try to ensure that the number
+   * of keys in each partition is roughly the same.
+   *
+   * @param count The number of partitions to return
+   * @return Vector of (inclusive) ranges that partiion the keyspace
+   */
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> partitionKeys(std::uint64_t count);
+
  protected:
   explicit MerkleTree(std::string_view buffer);
   explicit MerkleTree(MerkleTree<Hasher, BranchingBits, LockStripes> const& other);

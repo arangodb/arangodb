@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "IndexIterator.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
@@ -158,7 +159,7 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
-        return _collection->readDocumentWithCallback(_trx, token, cb);
+        return _collection->getPhysical()->read(_trx, token, cb);
       },
       limit);
 }

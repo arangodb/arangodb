@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -304,7 +304,8 @@ void RestAqlHandler::setupClusterQuery() {
 }
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
-// simon: only used for <= 3.6
+// simon: only used for <= 3.7.
+// can be removed in 3.9
 bool RestAqlHandler::killQuery(std::string const& idString) {
   auto qid = arangodb::basics::StringUtils::uint64(idString);
   if (qid != 0) {
@@ -669,15 +670,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     if (shardId.empty()) {
       std::tie(state, skipped, items) =
           _engine->execute(executeCall.callStack());
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
     } else {
       std::tie(state, skipped, items) =
           _engine->executeForClient(executeCall.callStack(), shardId);
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
+    }
+      
+    if (state == ExecutionState::WAITING) {
+      return RestStatus::WAITING;
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};

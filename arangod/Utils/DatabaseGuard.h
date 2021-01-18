@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+class DatabaseFeature;
 
 /// @brief Scope guard for a database, ensures that it is not
 ///        dropped while still using it.
@@ -41,10 +42,10 @@ class DatabaseGuard {
   explicit DatabaseGuard(TRI_vocbase_t& vocbase);
 
   /// @brief create the guard, using a database id
-  explicit DatabaseGuard(TRI_voc_tick_t id);
+  explicit DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id);
 
   /// @brief create the guard, using a database name
-  explicit DatabaseGuard(std::string const& name);
+  explicit DatabaseGuard(DatabaseFeature& feature, std::string const& name);
 
   /// @brief destroy the guard
   ~DatabaseGuard() {

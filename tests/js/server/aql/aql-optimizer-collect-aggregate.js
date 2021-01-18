@@ -73,6 +73,12 @@ function optimizerAggregateTestSuite () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT WITH COUNT g AGGREGATE length = LENGTH(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE WITH COUNT RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE length = LENGTH(i) WITH COUNT RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = 1 RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = i.test RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = i.test + 1 RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = 1 + LENGTH(i) RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = LENGTH(i) + 1 RETURN 1");
+      
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,11 +86,6 @@ function optimizerAggregateTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidAggregateFunctions : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = 1 RETURN 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = i.test RETURN 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = i.test + 1 RETURN 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = LENGTH(i) + 1 RETURN 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = 1 + LENGTH(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = IS_NUMBER(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = IS_STRING(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = IS_ARRAY(i) RETURN 1");
@@ -120,7 +121,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -136,7 +136,6 @@ function optimizerAggregateTestSuite () {
       }
 
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -181,7 +180,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -194,7 +192,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -236,7 +233,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -250,7 +246,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -286,7 +281,6 @@ function optimizerAggregateTestSuite () {
       
       let collectNode = collectNodes[0];
       if (isCluster) {
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(0, collectNode.groups.length);
@@ -297,7 +291,6 @@ function optimizerAggregateTestSuite () {
 
         collectNode = collectNodes[1];
       }
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -337,7 +330,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -351,7 +343,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -391,7 +382,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -405,7 +395,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -458,7 +447,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(5, collectNode.aggregates.length);
@@ -471,7 +459,6 @@ function optimizerAggregateTestSuite () {
       }
       
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -518,7 +505,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(5, collectNode.aggregates.length);
@@ -566,7 +552,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(5, collectNode.aggregates.length);
@@ -579,7 +564,6 @@ function optimizerAggregateTestSuite () {
       }
 
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -603,7 +587,7 @@ function optimizerAggregateTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAggregateNested : function () {
-      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE length = LENGTH(j) RETURN length";
+      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE sum = SUM(1) RETURN sum";
 
       let opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
       var results = AQL_EXECUTE(query, null, opts);
@@ -620,15 +604,55 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("sorted", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
+        assertFalse(collectNode.isDistinctCommand);
+
+        assertEqual(1, collectNode.aggregates.length);
+        assertEqual("SUM", collectNode.aggregates[0].type);
+        collectNode = collectNodes[1];
+      }
+      assertEqual("sorted", collectNode.collectOptions.method);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(0, collectNode.groups.length);
+
+      assertEqual(1, collectNode.aggregates.length);
+      assertEqual("sum", collectNode.aggregates[0].outVariable.name);
+      assertEqual("SUM", collectNode.aggregates[0].type);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test aggregate
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountAggregateNested : function () {
+      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE length = LENGTH(j) RETURN length";
+
+      let opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+      var results = AQL_EXECUTE(query, null, opts);
+      assertEqual(1, results.json.length);
+      assertEqual(4000, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query, null, opts).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      assertEqual(isCluster ? 2 : 1, collectNodes.length);
+
+      let collectNode = collectNodes[0];
+      if (isCluster) {
+        assertEqual("count", collectNode.collectOptions.method);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.aggregates.length);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
+
         collectNode = collectNodes[1];
+        
+      } else {
+        assertEqual("count", collectNode.collectOptions.method);
       }
-      assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
+      assertEqual(isCluster ? "sorted" : "count", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -637,7 +661,6 @@ function optimizerAggregateTestSuite () {
       assertEqual("length", collectNode.aggregates[0].outVariable.name);
       assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
     },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test aggregate
 ////////////////////////////////////////////////////////////////////////////////
@@ -664,7 +687,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -675,7 +697,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -707,7 +728,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -717,7 +737,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -753,7 +772,6 @@ function optimizerAggregateTestSuite () {
 
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(2, collectNode.groups.length);
@@ -763,7 +781,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(2, collectNode.groups.length);
@@ -802,7 +819,6 @@ function optimizerAggregateTestSuite () {
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(1, collectNode.groups.length);
@@ -815,7 +831,6 @@ function optimizerAggregateTestSuite () {
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(1, collectNode.groups.length);
@@ -888,7 +903,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -915,7 +929,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -968,7 +981,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -995,7 +1007,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -1050,7 +1061,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -1157,7 +1167,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -1381,7 +1390,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -1651,7 +1659,6 @@ function optimizerAggregateTestSuite () {
 
       var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);
@@ -1774,8 +1781,7 @@ function optimizerAggregateModifyTestSuite () {
 
       let collectNode = collectNodes[0];
       if (isCluster) {
-        assertEqual("sorted", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
+        assertEqual("count", collectNode.collectOptions.method);
         assertFalse(collectNode.isDistinctCommand);
 
         assertEqual(0, collectNode.groups.length);
@@ -1783,8 +1789,7 @@ function optimizerAggregateModifyTestSuite () {
         assertEqual("LENGTH", collectNode.aggregates[0].type);
         collectNode = collectNodes[1];
       }
-      assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
+      assertEqual(isCluster ? "sorted" : "count", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
       assertEqual(0, collectNode.groups.length);

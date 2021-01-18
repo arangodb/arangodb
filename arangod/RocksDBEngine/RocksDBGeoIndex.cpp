@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -92,7 +93,7 @@ class RDBNearIterator final : public IndexIterator {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
-          if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+          if (!_collection->getPhysical()->read(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
                 geo::FilterType const ft = _near.filterType();
                 if (ft != geo::FilterType::NONE) {  // expensive test
                   geo::ShapeContainer const& filter = _near.filterShape();
@@ -126,7 +127,7 @@ class RDBNearIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
             bool result = true;  // this is updated by the callback
-            if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+            if (!_collection->getPhysical()->read(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
                   geo::ShapeContainer test;
                   Result res = _index->shape(doc, test);
                   TRI_ASSERT(res.ok());  // this should never fail here

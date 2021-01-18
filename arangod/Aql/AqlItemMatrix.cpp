@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,6 +90,10 @@ void AqlItemMatrix::clear() {
 RegisterCount AqlItemMatrix::getNumRegisters() const noexcept { return _nrRegs; }
 
 uint64_t AqlItemMatrix::size() const noexcept { return _numDataRows; }
+
+size_t AqlItemMatrix::memoryUsageForRowIndexes() const noexcept {
+  return size() * sizeof(RowIndex);
+}
 
 void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   // If we are stopped by shadow row, we first need to solve this blockage
@@ -208,4 +212,26 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
     return false;
   }
   return _stopIndexInLastBlock + 1 < _blocks.back()->numRows();
+}
+
+[[nodiscard]] auto AqlItemMatrix::skipAllShadowRowsOfDepth(size_t depth)
+    -> std::tuple<size_t, ShadowAqlItemRow> {
+  if (_blocks.empty()) {
+    // Nothing to do
+    return {0, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
+  }
+  size_t skipped = 0;
+  while (stoppedOnShadowRow()) {
+    auto shadow = popShadowRow();
+    if (shadow.getDepth() > depth) {
+      return {skipped, shadow};
+    }
+    if (shadow.getDepth() == depth) {
+      skipped++;
+    }
+  }
+  // If we get here we only have data left, and have not run over a
+  // shadowRow we shall not skip. Drop all
+  clear();
+  return {skipped, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
 }

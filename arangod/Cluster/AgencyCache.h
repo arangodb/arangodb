@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,7 +55,8 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief start off with our server
   explicit AgencyCache(
     application_features::ApplicationServer& server,
-    AgencyCallbackRegistry& callbackRegistry);
+    AgencyCallbackRegistry& callbackRegistry,
+    int shutdownCode);
 
   ~AgencyCache();
 
@@ -102,13 +104,17 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
-  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction (
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
     consensus::query_t const& trx);
+#endif
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests
   consensus::Store& store();
+#endif
 
   /**
    * @brief         Get a list of planned/current  changes and other
@@ -163,6 +169,11 @@ class AgencyCache final : public arangodb::Thread {
 
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
+
+  /// @brief shut down code for futures that are unresolved.
+  /// this should be TRI_ERROR_SHUTTING_DOWN normally, but can be overridden
+  /// during testing
+  int const _shutdownCode;
 
   /// @brief Make sure, that we have seen in the beginning a snapshot
   std::atomic<bool> _initialized;

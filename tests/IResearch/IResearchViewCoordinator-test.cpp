@@ -467,9 +467,6 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature

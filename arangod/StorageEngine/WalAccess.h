@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -156,8 +156,9 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
-      : _filter(filter), _callback(c), _responseSize(0) {}
+  WalAccessContext(application_features::ApplicationServer& server,
+                   WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
+      : _server(server), _filter(filter), _callback(c), _responseSize(0) {}
 
   ~WalAccessContext() = default;
 
@@ -175,6 +176,9 @@ struct WalAccessContext {
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);
 
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
+
+ private:
+  application_features::ApplicationServer& _server;
 
  public:
   /// @brief arbitrary collection filter (inclusive)

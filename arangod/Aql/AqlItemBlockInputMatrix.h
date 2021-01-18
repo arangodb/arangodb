@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,6 +61,9 @@ class AqlItemBlockInputMatrix {
   bool upstreamHasMore() const noexcept;
   size_t skipAllRemainingDataRows();
 
+  size_t skipAllShadowRowsOfDepth(size_t depth);
+
+
   // Will return HASMORE if we were able to increase the row index.
   // Otherwise will return DONE.
   ExecutorState incrBlockIndex();
@@ -81,6 +84,9 @@ class AqlItemBlockInputMatrix {
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+
+ private:
+  void advanceBlockIndexAndShadowRow() noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};

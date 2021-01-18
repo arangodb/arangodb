@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -785,7 +785,8 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   TRI_ASSERT(!coll.empty());
   auth::Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
-    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    std::string tmpColl =
+        _server.getFeature<DatabaseFeature>().translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);

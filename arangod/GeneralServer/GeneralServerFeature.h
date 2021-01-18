@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,52 +34,6 @@ class RestServerThread;
 
 class GeneralServerFeature final : public application_features::ApplicationFeature {
  public:
-  static rest::RestHandlerFactory* HANDLER_FACTORY;
-  static rest::AsyncJobManager* JOB_MANAGER;
-
- public:
-  static double keepAliveTimeout() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout : 300.0;
-  };
-
-  static bool hasProxyCheck() {
-    return GENERAL_SERVER != nullptr && GENERAL_SERVER->proxyCheck();
-  }
-
-  static std::vector<std::string> getTrustedProxies() {
-    if (GENERAL_SERVER == nullptr) {
-      return std::vector<std::string>();
-    }
-
-    return GENERAL_SERVER->trustedProxies();
-  }
-
-  static bool allowMethodOverride() {
-    if (GENERAL_SERVER == nullptr) {
-      return false;
-    }
-
-    return GENERAL_SERVER->_allowMethodOverride;
-  }
-
-  static std::vector<std::string> const& accessControlAllowOrigins() {
-    static std::vector<std::string> empty;
-
-    if (GENERAL_SERVER == nullptr) {
-      return empty;
-    }
-
-    return GENERAL_SERVER->_accessControlAllowOrigins;
-  }
-
-  static Result reloadTLS() {
-    return GENERAL_SERVER->reloadTLSInternal();
-  }
-
- private:
-  static GeneralServerFeature* GENERAL_SERVER;
-
- public:
   explicit GeneralServerFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -89,21 +43,18 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
- 
-  bool proxyCheck() const { return _proxyCheck; }
-  std::vector<std::string> trustedProxies() const { return _trustedProxies; }
+
+  double keepAliveTimeout() const;
+  bool proxyCheck() const;
+  std::vector<std::string> trustedProxies() const;
+  bool allowMethodOverride() const;
+  std::vector<std::string> const& accessControlAllowOrigins() const;
+  Result reloadTLS();
+
+  rest::RestHandlerFactory& handlerFactory();
+  rest::AsyncJobManager& jobManager();
 
  private:
-  Result reloadTLSInternal() {  // reload TLS data from disk
-    Result res;
-    for (auto& up : _servers) {
-      Result res2 = up->reloadTLS();
-      if (!res2.fail()) {
-        res = res2;   // yes, we only report the last error if there is one
-      }
-    }
-    return res;
-  }
 
   void buildServers();
   void defineHandlers();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/ResourceUsage.h"
 #include "StorageEngine/TransactionState.h"
 
 #include <string>
@@ -96,7 +97,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   irs::increment _inc;
   std::string _str;
   Options _options;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _resourceMonitor;
   std::unique_ptr<arangodb::aql::QueryContext> _query;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
   arangodb::aql::ExecutionEngine _engine;

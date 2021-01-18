@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,8 @@
 #include <rocksdb/db.h>
 #include <rocksdb/listener.h>
 
+#include <atomic>
+
 namespace arangodb {
 
 class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
@@ -36,8 +38,10 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 
   void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
+  bool called() const { return _called.load(std::memory_order_relaxed); }
+
  private:
-  bool _called = false;
+  std::atomic<bool> _called{false};
 };
 
 }  // namespace arangodb

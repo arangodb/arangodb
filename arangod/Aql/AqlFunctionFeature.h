@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,17 +37,11 @@ namespace aql {
 
 class AqlFunctionFeature final : public application_features::ApplicationFeature {
  public:
-  static AqlFunctionFeature* AQLFUNCTIONS;
-
   explicit AqlFunctionFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void unprepare() override final;
-
-  /// @brief returns a reference to a built-in function
-  static Function const* getFunctionByName(std::string const&);
 
   void add(Function const& func);
 

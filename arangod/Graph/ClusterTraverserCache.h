@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,14 @@
 
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
+#include "Graph/ClusterGraphDatalake.h"
 #include "Graph/TraverserCache.h"
+
+#include <velocypack/Buffer.h>
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace aql {
 struct AqlValue;
@@ -59,7 +63,6 @@ class ClusterTraverserCache final : public TraverserCache {
   ~ClusterTraverserCache() = default;
   
   using Cache = std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>;
-  using Datalake = std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>;
 
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
@@ -72,9 +75,8 @@ class ClusterTraverserCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Lookup document in cache and add it into the builder
-  void insertVertexIntoResult(arangodb::velocypack::StringRef idString, velocypack::Builder& builder) override;
-  /// Lookup document in cache and transform it to an AqlValue
-  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString, velocypack::Builder& result) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -92,7 +94,7 @@ class ClusterTraverserCache final : public TraverserCache {
     return _cache;
   }
 
-  Datalake& datalake() noexcept {
+  arangodb::graph::ClusterGraphDatalake& datalake() noexcept {
     return _datalake;
   }
 
@@ -103,8 +105,9 @@ class ClusterTraverserCache final : public TraverserCache {
  private:
   /// @brief link by _id into our data dump
   Cache _cache;
+
   /// @brief dump for our edge and vertex documents
-  Datalake _datalake;
+  arangodb::graph::ClusterGraphDatalake _datalake;
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 };

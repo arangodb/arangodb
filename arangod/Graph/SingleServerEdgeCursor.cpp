@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
 #include "Indexes/IndexIterator.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -35,10 +36,6 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-
-namespace {
-IndexIteratorOptions defaultIndexIteratorOptions;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get a document by it's ID. Also lazy locks the collection.
@@ -85,7 +82,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 void SingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
-  collection->readDocumentWithCallback(
+  collection->getPhysical()->read(
       _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible()) {
@@ -233,7 +230,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
         });
       } else {
         cursor->all([&](LocalDocumentId const& token) {
-          return collection->readDocumentWithCallback(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+          return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
             if (_trx->skipInaccessible()) {
               // TODO: we only need to check one of these
@@ -283,6 +280,8 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
       idNode->setStringValue(vertex.data(), vertex.length());
     }
 
+    IndexIteratorOptions defaultIndexIteratorOptions;
+
     auto& csrs = _cursors[i++];
     size_t j = 0;
     for (auto const& it : info.idxHandles) {
@@ -290,13 +289,13 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
       // check if the underlying index iterator supports rearming
       if (cursor->canRearm()) {
         // rearming supported
-        if (!cursor->rearm(node, _tmpVar, ::defaultIndexIteratorOptions)) {
+        if (!cursor->rearm(node, _tmpVar, defaultIndexIteratorOptions)) {
           cursor = std::make_unique<EmptyIndexIterator>(cursor->collection(), _trx);
         }
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
-        cursor = _trx->indexScanForCondition(it, node, _tmpVar, ::defaultIndexIteratorOptions);
+        cursor = _trx->indexScanForCondition(it, node, _tmpVar, defaultIndexIteratorOptions);
       }
       ++j;
     }
@@ -338,11 +337,13 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
     TEMPORARILY_UNLOCK_NODE(idNode);
     idNode->setStringValue(vertex.data(), vertex.length());
   }
+
+  IndexIteratorOptions defaultIndexIteratorOptions;
   
   _cursors.emplace_back();
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
-    csrs.emplace_back(_trx->indexScanForCondition(index, node, _tmpVar, ::defaultIndexIteratorOptions));
+    csrs.emplace_back(_trx->indexScanForCondition(index, node, _tmpVar, defaultIndexIteratorOptions));
   }
 }

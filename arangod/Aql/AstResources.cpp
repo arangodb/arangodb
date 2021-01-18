@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,10 @@
 
 #include "AstResources.h"
 #include "Aql/AstNode.h"
-#include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
-#include "Basics/tri-strings.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/tri-strings.h"
 
 #include <velocypack/Slice.h>
 
@@ -38,53 +38,60 @@ namespace {
 char const* emptyString = "";
 }  // namespace
 
-AstResources::AstResources(ResourceMonitor* resourceMonitor)
+AstResources::AstResources(arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _stringsLength(0),
-#endif
-      _shortStringStorage(_resourceMonitor, 1024) {
-}
+      _shortStringStorage(_resourceMonitor, 1024) {}
 
 AstResources::~AstResources() {
   // free strings
   for (auto& it : _strings) {
     TRI_FreeString(it);
   }
+  
+  size_t memoryUsage = 
+      (_nodes.numUsed() * sizeof(AstNode)) + 
+      (_strings.capacity() * memoryUsageForStringBlock()) +
+      _stringsLength;
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+}
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // we are in the destructor here already. decreasing the memory usage counters
-  // will only provide a benefit (in terms of assertions) if we are in
-  // maintainer mode, so we can save all these operations in non-maintainer mode
-  _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
-  _resourceMonitor->decreaseMemoryUsage(_nodes.numUsed() * sizeof(AstNode));
-#endif
+template <typename T>
+size_t AstResources::newCapacity(T const& container, size_t initialCapacity) const noexcept {
+  if (container.empty()) {
+    // reserve some initial space for vector
+    return initialCapacity;
+  }
+
+  size_t capacity = container.size() + 1;
+  if (capacity > container.capacity()) {
+    capacity *= 2;
+  }
+  return capacity;
 }
 
 /// @brief create and register an AstNode
 AstNode* AstResources::registerNode(AstNodeType type) {
   // may throw
-  _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
+  ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
 
-  try {
-    return _nodes.allocate(type);
-  } catch (...) {
-    _resourceMonitor->decreaseMemoryUsage(sizeof(AstNode));
-    throw;
-  }
+  AstNode* node = _nodes.allocate(type);
+    
+  // now we are responsible for tracking the memory usage
+  scope.steal();
+  return node;
 }
 
 /// @brief create and register an AstNode
 AstNode* AstResources::registerNode(Ast* ast, arangodb::velocypack::Slice slice) {
   // may throw
-  _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
+  ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
 
-  try {
-    return _nodes.allocate(ast, slice);
-  } catch (...) {
-    _resourceMonitor->decreaseMemoryUsage(sizeof(AstNode));
-    throw;
-  }
+  AstNode* node = _nodes.allocate(ast, slice);
+    
+  // now we are responsible for tracking the memory usage
+  scope.steal();
+  return node;
 }
 
 /// @brief register a string
@@ -140,46 +147,33 @@ char* AstResources::registerLongString(char* copy, size_t length) {
     TRI_FreeString(copy);
   });
 
-  size_t capacity;
-
-  if (_strings.empty()) {
-    // reserve some initial space for string storage
-    capacity = 8;
-  } else {
-    capacity = _strings.size() + 1;
-    if (capacity > _strings.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > _strings.size());
+  size_t capacity = newCapacity(_strings, 8);
 
   // reserve space
   if (capacity > _strings.capacity()) {
     // not enough capacity...
-    _resourceMonitor->increaseMemoryUsage(
-        ((capacity - _strings.capacity()) * sizeof(char*)) + length);
-    try {
-      _strings.reserve(capacity);
-    } catch (...) {
-      // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage(
-          ((capacity - _strings.capacity()) * sizeof(char*)) + length);
-      throw;
-    }
+    ResourceUsageScope scope(_resourceMonitor, (capacity - _strings.capacity()) * memoryUsageForStringBlock() + length);
+      
+    _strings.reserve(capacity);
+
+    // we are now responsible for tracking the memory usage
+    scope.steal();
   } else {
     // got enough capacity for the new string
-    _resourceMonitor->increaseMemoryUsage(length);
+    _resourceMonitor.increaseMemoryUsage(length);
   }
 
   // will not fail
+  TRI_ASSERT(_strings.capacity() > _strings.size());
   _strings.push_back(copy);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _stringsLength += length;
-#endif
 
   // safely took over the ownership fo the string, cancel the deletion now
   guard.cancel();
 
   return copy;
+}
+
+constexpr size_t AstResources::memoryUsageForStringBlock() const noexcept {
+  return sizeof(char*);
 }

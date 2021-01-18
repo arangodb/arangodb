@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertEqual, assertTrue, assertEqual, assertMatch, fail, ArangoClusterComm */
+/*global arango, assertEqual, assertTrue, assertEqual, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators

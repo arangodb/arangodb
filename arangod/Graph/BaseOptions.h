@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace aql {
 struct AstNode;
@@ -149,6 +150,8 @@ struct BaseOptions {
   virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
     return false;
   }
+  
+  arangodb::ResourceMonitor& resourceMonitor() const;
 
   TraverserCache* cache();
   TraverserCache* cache() const;
@@ -168,6 +171,18 @@ struct BaseOptions {
   }
 
   size_t parallelism() const { return _parallelism; }
+  
+  void isQueryKilledCallback() const;
+
+  void setRefactor(bool r) noexcept {
+    _refactor = r;
+  }
+
+  bool refactor() const {
+    return _refactor;
+  }
+
+  aql::Variable const* tmpVar(); // TODO check public
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -190,6 +205,7 @@ struct BaseOptions {
  protected:
   
   mutable arangodb::transaction::Methods _trx;
+
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
@@ -217,6 +233,10 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  /// @brief whether or not we are running the refactored version
+  /// TODO: This must be removed prior release - (is currently needed for the refactoring)
+  bool _refactor;
 };
 
 }  // namespace graph

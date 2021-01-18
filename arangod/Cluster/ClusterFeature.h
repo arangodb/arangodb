@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,6 +130,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// note: this may be called multiple times during shutdown
   void waitForSyncersToStop();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setSyncerShutdownCode(int code) { _syncerShutdownCode = code; }
+#endif
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -150,6 +153,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
+  int _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
   bool _unregisterOnShutdown = false;

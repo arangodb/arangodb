@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -201,15 +201,6 @@ class PlanCollectionReader {
 } // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a local helper to report errors and messages
-////////////////////////////////////////////////////////////////////////////////
-
-static inline int setErrormsg(int ourerrno, std::string& errorMsg) {
-  errorMsg = TRI_errno_string(ourerrno);
-  return ourerrno;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the JSON returns an error
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -258,11 +249,13 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
-                         AgencyCallbackRegistry* agencyCallbackRegistry)
+                         AgencyCallbackRegistry* agencyCallbackRegistry,
+                         int syncerShutdownCode)
   : _server(server),
     _agency(server),
     _agencyCallbackRegistry(agencyCallbackRegistry),
     _rebootTracker(SchedulerFeature::SCHEDULER),
+    _syncerShutdownCode(syncerShutdownCode),
     _planVersion(0),
     _planIndex(0),
     _currentVersion(0),
@@ -285,6 +278,12 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
   _uniqid._nextUpperValue = 0ULL;
   _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_NO_ERROR || _syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#else
+  TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,15 +444,20 @@ void ClusterInfo::flush() {
 /// @brief ask whether a cluster database exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
-
+bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID) {
   // Wait for sensible data in agency cache
   if (!_planProt.isValid) {
-    waitForPlan(1).wait();
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
 
   if (!_currentProt.isValid) {
-    waitForCurrent(1).wait();
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
 
   // From now on we know that all data has been valid once, so no need
@@ -495,7 +499,7 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
+std::vector<DatabaseID> ClusterInfo::databases() {
   std::vector<DatabaseID> result;
 
   if (_clusterId.empty()) {
@@ -503,14 +507,20 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
   }
 
   if (!_planProt.isValid) {
-    waitForPlan(1).wait();
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
 
   if (!_currentProt.isValid) {
-    waitForCurrent(1).wait();
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
 
-  if (reload || !_DBServersProt.isValid) {
+  if (!_DBServersProt.isValid) {
     loadCurrentDBServers();
   }
 
@@ -673,7 +683,10 @@ void ClusterInfo::loadPlan() {
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such an
   // outcome. But there is also no point continuing with a first agency poll.
-  agencyCache.waitFor(1).get();
+  Result r = agencyCache.waitFor(1).get();
+  if (r.fail()) {
+    THROW_ARANGO_EXCEPTION(r);
+  }
 
   MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
 
@@ -1601,7 +1614,10 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& 
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const& databaseID,
                                                                 CollectionID const& collectionID) {
   if (!_planProt.isValid) {
-    waitForPlan(1).wait();
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      return nullptr;
+    }
   }
 
   READ_LOCKER(readLocker, _planProt.lock);
@@ -1623,7 +1639,10 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
 std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(DatabaseID const& databaseID,
                                                                       std::string const& name) {
   if (!_planProt.isValid) {
-    waitForPlan(1).wait();
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      return nullptr;
+    }
   }
 
   READ_LOCKER(readLocker, _planProt.lock);
@@ -1701,14 +1720,16 @@ std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollection
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection in current. This returns information about
 /// all shards in the collection.
-/// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
     DatabaseID const& databaseID, CollectionID const& collectionID) {
 
   if (!_currentProt.isValid) {
-    waitForCurrent(1).get();
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
 
   READ_LOCKER(readLocker, _currentProt.lock);
@@ -1949,7 +1970,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(
                               std::memory_order_release);
         return true;
       }
-      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+      dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
     }
     return true;
   };
@@ -1977,8 +1998,11 @@ Result ClusterInfo::waitForDatabaseInCurrent(
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
   }
 
-  if (res.slice().get("results").length() > 0) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    if (r.fail()) {
+      return r;
+    }
   }
 
   // Waits for the database to turn up in Current/Databases
@@ -2040,28 +2064,28 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
         analyzersPath(database.getName()), AgencyPrecondition::Type::EMPTY, true)});
 
   // And wait for our database to show up in `Current/Databases`
-  auto waitresult = waitForDatabaseInCurrent(database, trx);
+  auto waitResult = waitForDatabaseInCurrent(database, trx);
 
-  if (waitresult.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME ||
-      waitresult.errorNumber() == TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN) {
+  if (waitResult.is(TRI_ERROR_ARANGO_DUPLICATE_NAME) ||
+      waitResult.is(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN)) {
     // Early exit without cancellation if we did not do anything
-    return waitresult;
+    return waitResult;
   }
 
-  if (waitresult.fail()) {
-    // cleanup: remove database from plan
-    auto ret = cancelCreateDatabaseCoordinator(database);
-
-    if (ret.ok()) {
-      // Creation failed
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
-                    "database creation failed");
-    } else {
-      // Cleanup failed too
-      return ret;
-    }
+  if (waitResult.ok()) {
+    return waitResult;
   }
-  return Result();
+
+  // cleanup: remove database from plan
+  auto ret = cancelCreateDatabaseCoordinator(database);
+
+  if (ret.fail()) {
+    // Cleanup failed too
+    return ret;
+  }
+  // Cleanup ok, but creation failed
+  return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                "database creation failed");
 }
 
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
@@ -2100,13 +2124,14 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
   }
 
-  if (res.slice().get("results").length()) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  Result r;
+  if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
   }
 
   // The transaction was successful and the database should
   // now be visible and usable.
-  return Result();
+  return r;
 }
 
 // This function can only return on success or when the cluster is shutting down.
@@ -2128,33 +2153,65 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
   AgencyWriteTransaction trx({delPlanCollections, delPlanDatabase, incrPlan}, preCondition);
 
   size_t tries = 0;
-  // TODO: Hard coded timeout, also the retry numbers below are all
-  //       pulled out of thin air.
   double nextTimeout = 0.5;
 
   AgencyCommResult res;
-  do {
+  while (true) {
     tries++;
     res = ac.sendTransactionWithFailover(trx, nextTimeout);
 
-    if (!res.successful()) {
-      if (tries == 1) {
-        events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
+    if (res.successful()) {
+      break;
+    }
+    
+    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+      auto [acb, index] = agencyCache.read(
+        std::vector<std::string>{
+          AgencyCommHelper::path("Plan/Databases/" + database.getName())});
+
+      velocypack::Slice databaseSlice = acb->slice()[0].get(std::vector<std::string>(
+        {AgencyCommHelper::path(), "Plan", "Databases", database.getName()}));
+
+      if (!databaseSlice.isObject()) {
+        // database key in agency does _not_ exist. this can happen if on another
+        // coordinator the database gets dropped while on this coordinator we are
+        // still trying to create it
+        break;
       }
-      if (tries >= 5) {
-        nextTimeout = 5.0;
+
+      VPackSlice agencyId = databaseSlice.get("id");
+      VPackSlice preconditionId = builder.slice().get("id");
+      if (agencyId.isString() && preconditionId.isString() &&
+          !agencyId.isEqualString(preconditionId.stringRef())) {
+        // database key is there, but has a different id, this can happen if the
+        // database has already been dropped in the meantime and recreated, in
+        // any case, let's get us out of here...
+        break;
       }
-      LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
-        << "failed to cancel creation of database " << database.getName() << " with error "
-        << res.errorMessage() << ". Retrying.";
-    } else if (res.slice().get("results").length()) {
-      waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
 
+    if (tries == 1) {
+      events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
+    }
+    
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
-  } while (!res.successful());
+
+    if (tries >= 5) {
+      nextTimeout = 5.0;
+    }
+      
+    LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
+      << "failed to cancel creation of database " << database.getName() << " with error "
+      << res.errorMessage() << ". Retrying.";
+
+    // enhancing our calm a bit here, so this does not put the agency under pressure
+    // too much.
+    TRI_ASSERT(nextTimeout > 0.0 && nextTimeout <= 5.0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(unsigned(1000.0 * nextTimeout)));
+  }
 
   return Result();
 }
@@ -2215,12 +2272,15 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-          return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
-  if (res.slice().get("results").length()) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    if (r.fail()) {
+      return r;
+    }
   }
 
   // Now wait stuff in Current to disappear and thus be complete:
@@ -2241,7 +2301,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
       if (TRI_microtime() > endTime) {
         logAgencyDump();
-              return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
       {
@@ -2250,7 +2310,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       }
 
       if (_server.isStopping()) {
-              return Result(TRI_ERROR_SHUTTING_DOWN);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -2632,8 +2692,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // into precondition failed, the collections were successfully created, so
       // we're fine too.
       if (res.successful()) {
-        if (res.slice().get("results").length()) {
-          waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+          [[maybe_unused]] Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
         }
         return;
       } else if (res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -2717,8 +2777,11 @@ Result ClusterInfo::createCollectionsCoordinator(
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
-      if (res.slice().get("results").length() > 0) {
-        waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+        Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+        if (r.fail()) {
+          return r;
+        }
       }
     }
   }
@@ -2789,8 +2852,11 @@ Result ClusterInfo::createCollectionsCoordinator(
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
         deleteCollectionGuard.cancel();
-        if (res.slice().get("results").length() > 0) {
-          waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+          Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+          if (r.fail()) {
+            return r;
+          }
         }
       }
 
@@ -3015,8 +3081,11 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
-  if (res.slice().get("results").length()) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    if (r.fail()) {
+      return r;
+    }
   }
 
   if (numberOfShards == 0) {
@@ -3111,10 +3180,11 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
-    if (res.slice().get("results").length()) {
-      waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    Result r;
+    if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+      r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
     }
-    return Result();
+    return r;
   }
 
   return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage());
@@ -3227,12 +3297,13 @@ Result ClusterInfo::createViewCoordinator(  // create view
             " error details: " + res.errorDetails() + " body: " + res.body());
   }
 
-  if (res.slice().get("results").length() > 0) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  Result r;
+  if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
   }
 
-  events::CreateView(databaseName, name, TRI_ERROR_NO_ERROR);
-  return Result(TRI_ERROR_NO_ERROR);
+  events::CreateView(databaseName, name, r.errorNumber());
+  return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3255,14 +3326,14 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
-
-  if (res.successful() && res.slice().get("results").length()) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  }
-
+  
   Result result;
 
-  if (!res.successful()) {
+  if (res.successful() && res.slice().get("results").length()) {
+    result = waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
+
+  if (!res.successful() && !result.fail()) {
     if (res.errorCode() == int(rest::ResponseCode::PRECONDITION_FAILED)) {
       result = Result(                                            // result
           TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
@@ -3328,10 +3399,11 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage()};
   }
 
-  if (res.slice().get("results").length()) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  Result r;
+  if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
   }
-  return {};
+  return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3379,7 +3451,10 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
             auto results = res.slice().get("results");
             if (results.isArray() && results.length() > 0) {
               readLocker.unlock(); // we want to wait for plan to load - release reader
-              waitForPlan(results[0].getNumber<uint64_t>()).get();
+              Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+              if (r.fail()) {
+                return std::make_pair(r, AnalyzersRevision::LATEST);
+              }
             }
           }
         }
@@ -3435,7 +3510,10 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
-        waitForPlan(results[0].getNumber<uint64_t>()).get();
+        Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+        if (r.fail()) {
+          return std::make_pair(r, AnalyzersRevision::LATEST);
+        }
       }
     }
     break;
@@ -3538,7 +3616,10 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
-        waitForPlan(results[0].getNumber<uint64_t>()).get();
+        Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+        if (r.fail()) {
+          return r;
+        }
       }
     }
     break;
@@ -3627,10 +3708,11 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
-    if (res.slice().get("results").length()) {
-      waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    Result r;
+    if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+      r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
     }
-    return Result();
+    return r;
   }
 
   return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage());
@@ -3828,8 +3910,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
       }
     }
 
-    if (found == (size_t)numberOfShards) {
-      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+    if (found == static_cast<size_t>(numberOfShards)) {
+      dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
     }
 
     return true;
@@ -3883,8 +3965,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (result.successful()) {
-    if (result.slice().get("results").length()) {
-      waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+    if (VPackSlice resultsSlice = result.slice().get("results"); resultsSlice.length() > 0) {
+      Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+      if (r.fail()) {
+        return r;
+      }
     }
   }
 
@@ -3984,8 +4069,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               << "Could not remove isBuilding flag in new index "
               << indexId.id() << ", this will be repaired automatically.";
         } else {
-          if (result.slice().get("results").length()) {
-            waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+          if (VPackSlice resultsSlice = result.slice().get("results"); resultsSlice.length() > 0) {
+            Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+            if (r.fail()) {
+              return r;
+            }
           }
         }
 
@@ -4024,8 +4112,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           AgencyCommResult update = _agency.sendTransactionWithFailover(trx, 0.0);
 
           if (update.successful()) {
-            if (update.slice().get("results").length()) {
-              waitForPlan(update.slice().get("results")[0].getNumber<uint64_t>()).get();
+            if (VPackSlice updateSlice = update.slice().get("results"); updateSlice.length() > 0) {
+              Result r = waitForPlan(updateSlice[0].getNumber<uint64_t>()).get();
+              if (r.fail()) {
+                return r;
+              }
             }
 
             if (tmpRes < 0) {                 // timeout
@@ -4246,8 +4337,11 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
         std::string(" Failed to execute ") + trx.toJson() +
             " ResultCode: " + std::to_string(result.errorCode()));
   }
-  if (result.slice().get("results").length()) {
-    waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (VPackSlice resultSlice = result.slice().get("results"); resultSlice.length() > 0) {
+    Result r = waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
+    if (r.fail()) {
+      return r;
+    }
   }
 
   if (numberOfShards == 0) {  // smart "dummy" collection has no shards
@@ -4873,7 +4967,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    waitForCurrent(1).wait();
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
 
   while (true) {
@@ -4933,26 +5030,22 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
-  int tries = 0;
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
-    // Simulate 3 failed tries below.
+    // Simulate no results
     return std::make_shared<std::vector<ShardID>>();
   }
-  while (true) {
-    {
-      // Get the sharding keys and the number of shards:
-      READ_LOCKER(readLocker, _planProt.lock);
-      // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
-      auto it = _shards.find(collectionID);
 
-      if (it != _shards.end()) {
-        return it->second;
-      }
-    }
-    if (++tries >= 2) {
-      return std::make_shared<std::vector<ShardID>>();
+  {
+    // Get the sharding keys and the number of shards:
+    READ_LOCKER(readLocker, _planProt.lock);
+    // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
+    auto it = _shards.find(collectionID);
+
+    if (it != _shards.end()) {
+      return it->second;
     }
   }
+  return std::make_shared<std::vector<ShardID>>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5027,7 +5120,10 @@ ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dir
 
   // We should never proceed here, until we have seen an
   // initial agency cache through loadPlan
-  waitForPlan(1);
+  Result r = waitForPlan(1).get();
+  if (r.fail()) {
+    THROW_ARANGO_EXCEPTION(r);
+  }
 
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   READ_LOCKER(readLocker, _planProt.lock);
@@ -5051,7 +5147,10 @@ ClusterInfo::getCurrent(uint64_t& index, std::unordered_set<std::string> const& 
 
   // We should never proceed here, until we have seen an
   // initial agency cache through loadCurrent
-  waitForCurrent(1);
+  Result r = waitForCurrent(1).get();
+  if (r.fail()) {
+    THROW_ARANGO_EXCEPTION(r);
+  }
 
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   READ_LOCKER(readLocker, _currentProt.lock);
@@ -5180,11 +5279,13 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
                                 std::to_string(r.errorCode()));
     return result;
   }
-  if (r.slice().get("results").length()) {
-    waitForPlan(r.slice().get("results")[0].getNumber<uint64_t>()).get();
+
+  Result rr;
+  if (VPackSlice resultsSlice = r.slice().get("results"); resultsSlice.length() > 0) {
+    rr = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
   }
 
-  return arangodb::Result();
+  return rr;
 }
 
 std::string const backupKey = "/arango/Target/HotBackup/Create";
@@ -5547,7 +5648,7 @@ void ClusterInfo::shutdownSyncers() {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
     while (pit != _waitPlan.end()) {
-      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
     _waitPlan.clear();
@@ -5557,7 +5658,7 @@ void ClusterInfo::shutdownSyncers() {
     std::lock_guard g(_waitCurrentLock);
     auto pit = _waitCurrent.begin();
     while (pit != _waitCurrent.end()) {
-      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
     _waitCurrent.clear();
@@ -5570,7 +5671,6 @@ void ClusterInfo::shutdownSyncers() {
     _curSyncer->beginShutdown();
   }
 }
-
 
 void ClusterInfo::waitForSyncersToStop() {
   auto start = std::chrono::steady_clock::now();
@@ -5635,7 +5735,9 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 }
 
 bool ClusterInfo::SyncerThread::start() {
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << currentThreadName();
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
+      << "Starting "
+      << (currentThreadName() != nullptr ? currentThreadName() : "by unknown thread");
   return Thread::start();
 }
 
@@ -5728,7 +5830,6 @@ futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(uint64_t cu
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
-
   READ_LOCKER(readLocker, _planProt.lock);
   if (raftIndex <= _planIndex) {
     return futures::makeFuture(arangodb::Result());
@@ -5882,7 +5983,7 @@ void ClusterInfo::triggerWaiting(
         pp->setValue(Result());
       }
     } else {
-      pp->setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pp->setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }

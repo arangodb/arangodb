@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -136,7 +136,7 @@ static v8::Handle<v8::Object> WrapClass(v8::Isolate* isolate,
 static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   // check if we have some transaction object
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("TRANSACTION(<object>)");
@@ -1773,11 +1773,13 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
 
-  if (GeneralServerFeature::hasProxyCheck()) {
+  TRI_GET_GLOBALS();
+  auto& gs = v8g->_server.getFeature<GeneralServerFeature>();
+  if (gs.proxyCheck()) {
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
     uint32_t i = 0;
-    for (auto const& proxyDef : GeneralServerFeature::getTrustedProxies()) {
+    for (auto const& proxyDef : gs.trustedProxies()) {
       result->Set(context, i++, TRI_V8_STD_STRING(isolate, proxyDef)).FromMaybe(false);
     }
     TRI_V8_RETURN(result);
@@ -2125,19 +2127,19 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "COMPARE_STRING"),
-                               JS_CompareString);
+                               JS_CompareString, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "NORMALIZE_STRING"),
-                               JS_NormalizeString);
+                               JS_NormalizeString, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "TIMEZONES"), JS_GetIcuTimezones);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "LOCALES"), JS_GetIcuLocales);
+                               TRI_V8_ASCII_STRING(isolate, "TIMEZONES"), JS_GetIcuTimezones, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "LOCALES"), JS_GetIcuLocales, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "FORMAT_DATETIME"),
-                               JS_FormatDatetime);
+                               JS_FormatDatetime, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "PARSE_DATETIME"),
-                               JS_ParseDatetime);
+                               JS_ParseDatetime, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ENDPOINTS"),
@@ -2180,7 +2182,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_AgencyDump, true);
   
 #ifdef USE_ENTERPRISE
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+  if (v8g->_server.hasFeature<V8DealerFeature>() &&
+      v8g->_server.getFeature<V8DealerFeature>().allowAdminExecute()) {
     TRI_AddGlobalFunctionVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
                                  JS_EncryptionKeyReload, true);
@@ -2219,7 +2222,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
                           v8::Boolean::New(isolate,
-                                           vocbase.server().getFeature<StatisticsFeature>().isEnabled()), v8::ReadOnly)
+                                           vocbase.server().getFeature<StatisticsFeature>().isEnabled()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result  
 
   // replication factors
@@ -2268,7 +2271,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                           vocbase.server().getFeature<DatabaseFeature>().useOldSystemCollections()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
-  // a thread-global variable that will is supposed to contain the AQL module
+  // a thread-global variable that will contain the AQL module.
   // do not remove this, otherwise AQL queries will break
   context->Global()
       ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "_AQL"),

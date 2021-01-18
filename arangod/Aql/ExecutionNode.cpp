@@ -1,10 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-//
-/// @brief Infrastructure for ExecutionPlans
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionNode.h"
@@ -285,19 +282,20 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
           Variable* outVar =
               Variable::varFromVPack(plan->getAst(), it, "outVariable");
           Variable* inVar =
-              Variable::varFromVPack(plan->getAst(), it, "inVariable");
+              Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
           std::string const type = it.get("type").copyString();
           aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
         }
       }
 
+      // TODO - this can be removed in 3.9
       bool count = slice.get("count").getBoolean();
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
       auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
                                   plan->getAst()->variables()->variables(false), groupVariables,
-                                  aggregateVariables, count, isDistinctCommand);
+                                  aggregateVariables, isDistinctCommand, count);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();
@@ -983,12 +981,26 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
-  // Now handle the subqueries:
-  for (auto& s : v->subQueryNodes) {
+  if (v->subqueryNodes.empty() && super == nullptr) {
+    // shrink RegisterPlan by cutting off all unused rightmost registers
+    // from each depth. this is a completely optional performance
+    // optimization. turning it off should not affect correctness,
+    // only performance.
+    // note: we are intentionally not performing this optimization
+    // in case the query still contains old style subqueries. 
+    // in that case, the register planning optimization would be slightly
+    // more complex to perform. 99.99% of queries should not be affected
+    // by this optimization being turned off, because old-style subqueries
+    // are only around in case except someone intentionally turned off
+    // subquery optimizations. 
+    v->shrink(this);
+  }
+
+  // Now handle old-style subqueries:
+  for (auto& s : v->subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
   }
-  walker.reset();
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
@@ -1140,6 +1152,36 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
     : _id(id), _depth(0), _varUsageValid(false), _isInSplicedSubquery(false), _plan(plan) {}
 
 ExecutionNodeId ExecutionNode::id() const { return _id; }
+
+void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto assertNotContained = [](RegisterId maxRegister, auto const& container) noexcept {
+    std::for_each(container.begin(), container.end(), [maxRegister](RegisterId regId) {
+      TRI_ASSERT(regId <= maxRegister);
+    });
+  };
+  assertNotContained(maxRegister, _regsToClear);
+  // validate all levels of _regsToKeepStack
+  for (auto const& regsToKeep : _regsToKeepStack) {
+    assertNotContained(maxRegister, regsToKeep); 
+  }
+#endif
+  
+  auto removeRegisters = [maxRegister](auto& container) {
+    for (auto it = container.begin(); it != container.end(); /* no hoisting */) {
+      if ((*it) > maxRegister) {
+        it = container.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  };
+
+  auto it = _registerPlan->unusedRegsByNode.find(_id);
+  if (it != _registerPlan->unusedRegsByNode.end()) {
+    removeRegisters(it->second.back());
+  }
+}
 
 void ExecutionNode::swapFirstDependency(ExecutionNode* node) {
   TRI_ASSERT(hasDependency());
@@ -1890,7 +1932,6 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   bool const willUseV8 = expression()->willUseV8();
 
   TRI_ASSERT(expression() != nullptr);
-
 
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),

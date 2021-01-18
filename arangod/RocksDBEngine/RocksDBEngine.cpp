@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +70,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -83,7 +84,6 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -108,6 +108,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <iomanip>
 #include <limits>
 
 using namespace arangodb;
@@ -172,11 +173,6 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
                     std::make_unique<RocksDBIndexFactory>(server)),
-#ifdef USE_ENTERPRISE
-      _createShaFiles(true),
-#else
-      _createShaFiles(false),
-#endif
       _db(nullptr),
       _walAccess(new RocksDBWalAccess(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
@@ -193,10 +189,19 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _syncInterval(100),
 #endif
       _syncDelayThreshold(5000),
+      _requiredDiskFreePercentage(0.01),
+      _requiredDiskFreeBytes(16 * 1024 * 1024),
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
-      _useEdgeCache(true) {
+      _useEdgeCache(true),
+#ifdef USE_ENTERPRISE
+      _createShaFiles(true),
+#else
+      _createShaFiles(false),
+#endif
+      _lastHealthCheckSuccessful(false) {
+  server.addFeature<RocksDBOptionFeature>();
 
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
@@ -263,6 +268,25 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
 // add the storage engine's specific options to the global list of options
 void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("rocksdb", "RocksDB engine specific configuration");
+  
+  /// @brief minimum required percentage of free disk space for considering the
+  /// server "healthy". this is expressed as a floating point value between 0 and 1!
+  /// if set to 0.0, the % amount of free disk is ignored in checks.
+  options->addOption("--rocksdb.minimum-disk-free-percent",
+                     "minimum percentage of free disk space for considering the server healthy in "
+                     "health checks (set to 0 to disable the check)",
+                     new DoubleParameter(&_requiredDiskFreePercentage),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle))
+                     .setIntroducedIn(30800);
+
+  /// @brief minimum number of free bytes on disk for considering the server healthy.
+  /// if set to 0, the number of free bytes on disk is ignored in checks.
+  options->addOption("--rocksdb.minimum-disk-free-bytes",
+                     "minimum number of free disk bytes for considering the server healthy in "
+                     "health checks (set to 0 to disable the check)",
+                     new UInt64Parameter(&_requiredDiskFreeBytes),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle))
+                     .setIntroducedIn(30800);
 
   // control transaction size for RocksDB engine
   options->addOption("--rocksdb.max-transaction-size",
@@ -285,55 +309,55 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "interval for automatic, non-requested disk syncs (in "
                      "milliseconds, use 0 to turn automatic syncing off)",
                      new UInt64Parameter(&_syncInterval),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
   
   options->addOption("--rocksdb.sync-delay-threshold",
                      "threshold value for self-observation of WAL disk syncs. "
                      "any WAL disk sync longer ago than this threshold will trigger "
                      "a warning (in milliseconds, use 0 for no warnings)",
                      new UInt64Parameter(&_syncDelayThreshold),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::Hidden))
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30800)
                      .setIntroducedIn(30705)
                      .setIntroducedIn(30608);
 
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
-                     new DoubleParameter(&_pruneWaitTime));
+                     new DoubleParameter(&_pruneWaitTime),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--rocksdb.wal-file-timeout-initial",
-      "initial timeout after which unused WAL files deletion kicks in after "
-      "server start",
-      new DoubleParameter(&_pruneWaitTimeInitial),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--rocksdb.wal-file-timeout-initial",
+                     "initial timeout after which unused WAL files deletion kicks in after "
+                     "server start",
+                     new DoubleParameter(&_pruneWaitTimeInitial),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
-                     new BooleanParameter(&_useThrottle));
+                     new BooleanParameter(&_useThrottle),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
 
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
                      "enable generation of sha256 files for each .sst file",
                      new BooleanParameter(&_createShaFiles),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Enterprise));
 #endif
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.edge-cache",
                      "use in-memory cache for edges",
                      new BooleanParameter(&_useEdgeCache),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30604);
 
-  options->addOption(
-      "--rocksdb.wal-archive-size-limit",
-      "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
-      new UInt64Parameter(&_maxWalArchiveSizeLimit),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--rocksdb.wal-archive-size-limit",
+                     "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
+                     new UInt64Parameter(&_maxWalArchiveSizeLimit),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -347,6 +371,13 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
+    LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --rocksdb.minimum-disk-free-percent. Please use a value "
+        << "between 0 (0%) and 1 (100%)";
+    FATAL_ERROR_EXIT();
+  }
 
   if (_syncInterval > 0) {
     if (_syncInterval < minSyncInterval) {
@@ -423,7 +454,7 @@ void RocksDBEngine::start() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
-  bool createdEngineDir = false;
+  [[maybe_unused]] bool createdEngineDir = false;
   if (!basics::FileUtils::isDirectory(_path)) {
     std::string systemErrorStr;
     long errorNo;
@@ -530,9 +561,7 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
 
 #ifdef USE_ENTERPRISE
-  configureEnterpriseRocksDBOptions(_options, createdEngineDir);
-#else
-  ((void)createdEngineDir);
+    configureEnterpriseRocksDBOptions(_options, createdEngineDir);
 #endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
@@ -619,14 +648,16 @@ void RocksDBEngine::start() {
   if (_useThrottle) {
     _throttleListener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_throttleListener);
-  }  // if
+  }
 
   if (_createShaFiles) {
     _shaListener.reset(new RocksDBShaCalculator(server()));
     _options.listeners.push_back(_shaListener);
-  }  // if
+  } 
+  
+  _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
 
-  _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
+  _options.listeners.push_back(_errorListener);
   _options.listeners.push_back(std::make_shared<RocksDBMetricsListener>(server()));
 
   if (opts._totalWriteBufferSize > 0) {
@@ -846,6 +877,12 @@ void RocksDBEngine::start() {
   if (!useEdgeCache()) {
     LOG_TOPIC("46557", INFO, Logger::ENGINES) << "in-memory cache for edges is disabled";
   }
+
+  // to populate initial health check data
+  HealthData hd = healthCheck();
+  if (hd.res.fail()) {
+    LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
+  }
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -899,6 +936,10 @@ void RocksDBEngine::stop() {
 void RocksDBEngine::unprepare() {
   TRI_ASSERT(isEnabled());
   shutdownRocksDBInstance();
+}
+  
+bool RocksDBEngine::hasBackgroundError() const {
+  return _errorListener != nullptr && _errorListener->called();
 }
 
 std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
@@ -2333,7 +2374,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                 VPackValue( (0 != userWrite) ? ((walWrite + flushWrite + compactionWrite) * 100) / userWrite : 100));
   }
 
-  cache::Manager* manager = CacheManagerFeature::MANAGER;
+  cache::Manager* manager = server().getFeature<CacheManagerFeature>().manager();
   if (manager != nullptr) {
     // cache turned on
     auto rates = manager->globalHitRates();
@@ -2545,6 +2586,98 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
+}
+
+HealthData RocksDBEngine::healthCheck() {
+  auto now = std::chrono::steady_clock::now();
+
+  // the following checks are executed under a mutex so that different
+  // threads can potentially call in here without messing up any data.
+  // in addition, serializing access to this function avoids stampedes
+  // with multiple threads trying to calculate the free disk space 
+  // capacity at the same time, which could be expensive.
+  MUTEX_LOCKER(guard, _healthMutex);
+  
+  TRI_IF_FAILURE("RocksDBEngine::healthCheck") {
+    _healthData.res.reset(TRI_ERROR_DEBUG, "peng! 💥");
+    return _healthData;
+  }
+
+  bool lastCheckLongAgo = (_healthData.lastCheckTimestamp.time_since_epoch().count() == 0) ||
+                          ((now - _healthData.lastCheckTimestamp) >= std::chrono::seconds(30)); 
+  if (lastCheckLongAgo) {
+    _healthData.lastCheckTimestamp = now;
+  }
+  
+  // only log about once every 24 hours, to reduce log spam
+  bool lastLogMessageLongAgo = (_lastHealthLogMessageTimestamp.time_since_epoch().count() == 0) ||
+                               ((now - _lastHealthLogMessageTimestamp) >= std::chrono::hours(24));
+
+  _healthData.backgroundError = hasBackgroundError();
+
+  if (_healthData.backgroundError) {
+    // go into failed state
+    _healthData.res.reset(TRI_ERROR_FAILED,
+                          "storage engine reports background error. please check the logs "
+                          "for the error reason and take action");
+  } else if (_lastHealthCheckSuccessful) { 
+    _healthData.res.reset();
+  }
+
+  if (lastCheckLongAgo || !_lastHealthCheckSuccessful) {
+    // check the amount of free disk space. this may be expensive to do, so
+    // we only execute the check every once in a while, or when the last check
+    // failed too (so that we don't report success only because we skipped the
+    // checks)
+    //
+    // total disk space in database directory
+    uint64_t totalSpace = 0;
+    // free disk space in database directory
+    uint64_t freeSpace = 0;
+  
+    if (TRI_GetDiskSpaceInfo(_basePath, totalSpace, freeSpace).ok() &&
+        totalSpace >= 1024 * 1024) {
+    
+      // only carry out the following if we get a disk size of at least 1MB back.
+      // everything else seems to be very unreasonable and not trustworthy.
+      double diskFreePercentage = double(freeSpace) / double(totalSpace);
+      _healthData.freeDiskSpaceBytes = freeSpace;
+      _healthData.freeDiskSpacePercent = diskFreePercentage;
+
+      if (_healthData.res.ok() &&
+          ((_requiredDiskFreePercentage > 0.0 && diskFreePercentage < _requiredDiskFreePercentage) ||
+           (_requiredDiskFreeBytes > 0 && freeSpace < _requiredDiskFreeBytes))) {
+        std::stringstream ss;
+        ss << "free disk space capacity has reached critical level, "
+           << "bytes free: " << freeSpace 
+           << ", % free: " << std::setprecision(1) << std::fixed << (diskFreePercentage * 100.0);
+        // go into failed state
+        _healthData.res.reset(TRI_ERROR_FAILED, ss.str());
+      } else if (diskFreePercentage < 0.05 || freeSpace < 256 * 1024 * 1024) {
+        // warnings about disk space only every 15 minutes
+        bool lastLogWarningLongAgo = (now - _lastHealthLogWarningTimestamp >= std::chrono::minutes(15));
+        if (lastLogWarningLongAgo) {
+          LOG_TOPIC("54e7f", WARN, Logger::ENGINES)
+              << "free disk space capacity is low, "
+              << "bytes free: " << freeSpace 
+              << ", % free: " << std::setprecision(1) << std::fixed << (diskFreePercentage * 100.0);
+          _lastHealthLogWarningTimestamp = now;
+        }
+        // don't go into failed state (yet)
+      }
+    }
+  }
+  
+  _lastHealthCheckSuccessful = _healthData.res.ok();
+
+  if (_healthData.res.fail() && lastLogMessageLongAgo) {
+    LOG_TOPIC("ead1f", ERR, Logger::ENGINES) << _healthData.res.errorMessage();
+    
+    // update timestamp of last log message
+    _lastHealthLogMessageTimestamp = now;
+  }
+
+  return _healthData;
 }
 
 }  // namespace arangodb

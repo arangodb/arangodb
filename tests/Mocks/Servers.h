@@ -154,7 +154,11 @@ class MockAqlServer : public MockServer,
   ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery(bool activateTracing = false, std::string queryString = "") const;
+  // runBeforePrepare gives an entry point to modify the list of collections one want to use within the Query.
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery(
+      bool activateTracing = false, std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
 };
 
 /// @brief a server with features added that allow to execute RestHandler

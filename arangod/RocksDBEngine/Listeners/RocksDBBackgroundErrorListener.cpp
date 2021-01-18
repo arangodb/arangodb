@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,9 +38,7 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
     return;
   }
 
-  if (!_called) {
-    _called = true;
-
+  if (!_called.exchange(true)) {
     std::string operation = "unknown";
     switch (reason) {
       case rocksdb::BackgroundErrorReason::kFlush: {
@@ -63,7 +61,7 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
 
     LOG_TOPIC("fae2c", ERR, Logger::ROCKSDB)
         << "RocksDB encountered a background error during a " << operation << " operation: "
-        << (status != nullptr ? status->ToString() : "unknown error") << "; The database will be put in read-only mode, and subsequent write errors are likely";
+        << (status != nullptr ? status->ToString() : "unknown error") << "; The database will be put in read-only mode, and subsequent write errors are likely. It is advised to shut down this instance, resolve the error offline and then restart it.";
   }
 }
 

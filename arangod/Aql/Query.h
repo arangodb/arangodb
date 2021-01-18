@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,9 +33,9 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "V8Server/V8Context.h"
 
@@ -289,6 +289,9 @@ class Query : public QueryContext {
   
   /// @brief query start time (steady clock value)
   double const _startTime;
+
+  /// @brief total memory used for building the (partial) result
+  size_t _resultMemoryUsage;
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
