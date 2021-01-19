@@ -36,6 +36,7 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
+#include "Reports.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
@@ -126,6 +127,7 @@ class Worker : public IWorker {
 
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
+  ReportManager _reports;
   /// valid after _finishedProcessing was called
   uint64_t _activeCount = 0;
   /// current number of running threads

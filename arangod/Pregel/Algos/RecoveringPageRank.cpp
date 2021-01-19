@@ -88,17 +88,17 @@ IAggregator* RecoveringPageRank::aggregator(std::string const& name) const {
 struct RPRCompensation : public VertexCompensation<float, float, float> {
   RPRCompensation() {}
   void compensate(bool inLostPartition) override {
-    const uint32_t* step = getAggregatedValue<uint32_t>(kStep);
-    if (*step == 0 && !inLostPartition) {
+    auto const& step = getAggregatedValueRef<uint32_t>(kStep);
+    if (step == 0 && !inLostPartition) {
       uint32_t c = 1;
       aggregate(kNonFailedCount, c);
       aggregate(kRank, mutableVertexData());
-    } else if (*step == 1) {
+    } else if (step == 1) {
       float* data = mutableVertexData();
       if (inLostPartition) {
         *data = 1.0f / context()->vertexCount();
       } else {
-        const float* scale = getAggregatedValue<float>(kScale);
+        auto const& scale = &getAggregatedValueRef<float>(kScale);
         if (*scale != 0) {
           *data *= *scale;
         }
