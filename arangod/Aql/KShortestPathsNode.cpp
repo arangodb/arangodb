@@ -351,9 +351,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                    opts->maxDepth};
 
-      if (ServerState::instance()->isCoordinator()) {
+      if (ServerState::instance()->isSingleServer()) {
+        LOG_DEVEL << "Coordinator found:";
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
+          LOG_DEVEL << "Using SS default KPaths";
           using KPathRefactored = KPathEnumerator<SingleServerProvider>;
 
           auto kPathUnique = std::make_unique<KPathRefactored>(
@@ -405,6 +407,22 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                           std::move(kPathUnique), std::move(sourceInput),
                                           std::move(targetInput));
           return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredCluster>>>(
+              &engine, this, std::move(registerInfos), std::move(executorInfos));
+        } else {
+          using KPathRefactoredClusterTracer = TracedKPathEnumerator<ClusterProvider>;
+
+          auto kPathUnique = std::make_unique<KPathRefactoredClusterTracer>(
+              ProviderTracer<ClusterProvider>{opts->query(), forwardProviderOptions,
+                              opts->query().resourceMonitor()},
+              ProviderTracer<ClusterProvider>{opts->query(), backwardProviderOptions,
+                              opts->query().resourceMonitor()},
+              std::move(enumeratorOptions), opts->query().resourceMonitor());
+
+          auto executorInfos =
+              KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                          std::move(kPathUnique), std::move(sourceInput),
+                                          std::move(targetInput));
+          return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredClusterTracer>>>(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
         }
       }
