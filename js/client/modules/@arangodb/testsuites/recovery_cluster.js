@@ -68,11 +68,13 @@ function checkServersGOOD(instanceInfo) {
           if (health[arangod.id].Status === "GOOD") {
             return previous;
           } else {
-            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
+            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status "
+                  + health[arangod.id].Status + " (which is not equal to GOOD)");
             return false;
           }
         } else {
-          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
+          print(RED + "ClusterHealthCheck failed " + arangod.id
+                + " does not have health property");
           return false;
         }
       }, true);
