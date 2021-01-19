@@ -122,7 +122,7 @@ Function const* AqlFunctionFeature::byName(std::string const& name) const {
 
 void AqlFunctionFeature::addTypeCheckFunctions() {
   // common flags for all these functions
-  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, 
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable,
                                    FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
 
   // type check functions
@@ -202,11 +202,11 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
   add({"IN_RANGE", ".,.,.,.,.", flags, &Functions::InRange }); // (attribute, lower, upper, include lower, include upper)
-  
+
   // special flags:
   // not deterministic and not cacheable
   auto nonDeterministicFlags = Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
-  add({"RANDOM_TOKEN", ".", nonDeterministicFlags, &Functions::RandomToken});  
+  add({"RANDOM_TOKEN", ".", nonDeterministicFlags, &Functions::RandomToken});
   add({"UUID", "", nonDeterministicFlags, &Functions::Uuid});
 }
 
@@ -254,7 +254,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   // special flags:
   // not deterministic and not cacheable
   auto nonDeterministicFlags = Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
-  add({"RAND", "", nonDeterministicFlags, &Functions::Rand}); 
+  add({"RAND", "", nonDeterministicFlags, &Functions::Rand});
 }
 
 void AqlFunctionFeature::addListFunctions() {
@@ -350,7 +350,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   // special flags:
   // not deterministic and non-cacheable, can only run on DB servers in OneShard mode
   auto documentFlags = Function::makeFlags(FF::CanRunOnDBServerOneShard, FF::CanReadDocuments);
-  add({"DOCUMENT", "h.|.", documentFlags, &Functions::Document});  
+  add({"DOCUMENT", "h.|.", documentFlags, &Functions::Document});
 }
 
 void AqlFunctionFeature::addGeoFunctions() {
@@ -436,18 +436,21 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
-  
+
   // only function without a C++ implementation
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable), nullptr});  
-  
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable), nullptr});
+
   // the following functions are not eligible to run on DB servers
   auto validationFlags = Function::makeFlags(FF::None);
   add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
 
+  // Call AIR
+  add({"CALL_GREENSPUN", ".|+", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard), &Functions::CallGreenspun});
+
   // special flags:
   // deterministic, not cacheable. only on coordinator
-  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  
+  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});
   add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard), &Functions::Fail});  // not deterministic and not cacheable
   add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
   add({"NOEVAL", ".", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!

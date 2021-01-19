@@ -1,6 +1,12 @@
 include_directories(.)
 
 # ----------------------------------------
+# Greenspun tests
+# ----------------------------------------
+
+add_subdirectory(Greenspun)
+
+# ----------------------------------------
 # Fuerte tests
 # ----------------------------------------
 
@@ -214,6 +220,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/KPathFinderTest.cpp
   Graph/KPathFinderTest_Refactored.cpp
   Graph/KShortestPathsFinder.cpp
+  Greenspun/PrimitivesTest.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp

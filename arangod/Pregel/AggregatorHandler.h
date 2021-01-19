@@ -30,12 +30,12 @@
 #include <functional>
 #include <map>
 #include "Basics/ReadWriteLock.h"
+#include "Pregel/Aggregator.h"
 
 namespace arangodb {
 namespace pregel {
 
 struct IAlgorithm;
-class IAggregator;
 
 /// Thread safe wrapper around handles
 class AggregatorHandler {
