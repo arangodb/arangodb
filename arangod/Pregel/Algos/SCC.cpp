@@ -61,8 +61,9 @@ struct SCCComputation
     }
 
     SCCValue* vertexState = mutableVertexData();
-    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
-    switch (*phase) {
+    auto const& phase = getAggregatedValueRef<uint32_t>(kPhase);
+
+    switch (phase) {
       // let all our connected nodes know we are there
       case SCCPhase::TRANSPOSE: {
         vertexState->parents.clear();
@@ -159,8 +160,9 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      SCCValue& senders, uint64_t& vertexIdRange) override {
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& documentId,
+                      arangodb::velocypack::Slice document, SCCValue& senders,
+                      uint64_t& vertexIdRange) override {
     senders.vertexID = vertexIdRange++;
   }
 

@@ -198,6 +198,10 @@ class ExecutionNode {
   static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
                                          arangodb::velocypack::Slice const& slice);
 
+  /// @brief remove registers right of (greater than) the specified register
+  /// from the internal maps
+  void removeRegistersGreaterThan(RegisterId maxRegister);
+
   /// @brief cast an ExecutionNode to a specific sub-type
   /// in maintainer mode, this function will perform a dynamic_cast and abort
   /// the program if the cast is invalid. in release mode, this function will
@@ -471,6 +475,8 @@ class ExecutionNode {
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
+  
+  auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
@@ -488,8 +494,6 @@ class ExecutionNode {
   /// @brief toVelocyPackHelper, for a generic node
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
                                  std::unordered_set<ExecutionNode const*>& seen) const;
-
-  auto getRegsToKeepStack() const -> RegIdSetStack;
 
   RegisterId variableToRegisterId(Variable const*) const;
 

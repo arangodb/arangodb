@@ -58,6 +58,7 @@ class IAggregator {
                          arangodb::velocypack::Builder& builder) const = 0;
 
   virtual void reset() = 0;
+
   virtual bool isConverging() const = 0;
 };
 
