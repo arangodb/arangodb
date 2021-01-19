@@ -1882,7 +1882,7 @@ auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack, s
   }
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 // This is a helper method to inject a prepared
 // input range in the tests. It should simulate
 // an ongoing query in a specific state.
