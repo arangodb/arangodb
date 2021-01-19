@@ -185,6 +185,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
   Graph/WeightedEnumerator.cpp
+  Graph/Cursors/RefactoredClusterEdgeCursor.cpp
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
