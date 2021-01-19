@@ -47,10 +47,12 @@ template <class ProviderImpl>
 class ProviderTracer {
  public:
   using Step = typename ProviderImpl::Step;
+  using Options = typename ProviderImpl::Options;
 
  public:
-  ProviderTracer(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+  ProviderTracer(arangodb::aql::QueryContext& queryContext, Options opts,
                  arangodb::ResourceMonitor& resourceMonitor);
+
   ProviderTracer(ProviderTracer const&) = delete;
   ProviderTracer(ProviderTracer&&) = default;
   ~ProviderTracer();

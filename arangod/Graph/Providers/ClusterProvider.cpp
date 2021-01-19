@@ -85,14 +85,20 @@ void ClusterProvider::Step::Edge::addToBuilder(ClusterProvider& provider,
 }
 
 ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
-                                 BaseProviderOptions opts,
+                                 ClusterBaseProviderOptions opts,
                                  arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
       _query(&queryContext),
       _resourceMonitor(&resourceMonitor),
       _stringHeap(resourceMonitor, 4096),
       _opts(std::move(opts)),
-      _stats{} {}
+      _stats{} {
+  _cursor = buildCursor();
+}
+
+std::unique_ptr<RefactoredClusterEdgeCursor> ClusterProvider::buildCursor() {
+  return std::make_unique<RefactoredClusterEdgeCursor>(trx(), _opts.getExpressionContext(), _opts.getCache());
+}
 
 auto ClusterProvider::startVertex(VertexType vertex) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
@@ -121,6 +127,11 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
                              std::function<void(Step)> const& callback) -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
+
+  // _query->vpackOptions()
+
+
+  LOG_DEVEL << "expanding: " << vertex.getID().toString();
 
   /* NOTE: OLD SingleServer Variant
   TRI_ASSERT(_cursor != nullptr);

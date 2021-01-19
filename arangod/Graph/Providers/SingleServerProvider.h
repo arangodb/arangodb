@@ -61,6 +61,7 @@ namespace graph {
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
 struct SingleServerProvider {
+  using Options = BaseProviderOptions;
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     class Vertex {

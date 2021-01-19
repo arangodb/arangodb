@@ -35,7 +35,7 @@ using namespace arangodb::graph;
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryContext,
-                                             BaseProviderOptions opts,
+                                             Options opts,
                                              arangodb::ResourceMonitor& resourceMonitor)
     : _impl{queryContext, opts, resourceMonitor} {}
 

@@ -25,6 +25,7 @@
 #ifndef ARANGOD_GRAPH_PROVIDERS_CLUSTER_PROVIDER_H
 #define ARANGOD_GRAPH_PROVIDERS_CLUSTER_PROVIDER_H 1
 
+#include "Graph/Cursors/RefactoredClusterEdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
@@ -60,6 +61,7 @@ namespace graph {
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
 struct ClusterProvider {
+  using Options = ClusterBaseProviderOptions;
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     class Vertex {
@@ -121,7 +123,7 @@ struct ClusterProvider {
   };
 
  public:
-  ClusterProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+  ClusterProvider(arangodb::aql::QueryContext& queryContext, ClusterBaseProviderOptions opts,
                        arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
   ClusterProvider(ClusterProvider&&) = default;
@@ -150,7 +152,7 @@ struct ClusterProvider {
  private:
   void activateCache(bool enableDocumentCache);
 
-  // std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
+  std::unique_ptr<RefactoredClusterEdgeCursor> buildCursor();
 
   [[nodiscard]] arangodb::aql::QueryContext* query() const;
 
@@ -165,7 +167,7 @@ struct ClusterProvider {
   // alive - Note: _trx must be first here because it is used in _cursor
   std::unique_ptr<arangodb::transaction::Methods> _trx;
 
-  // std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor; // TODO REMOVE
+  std::unique_ptr<RefactoredClusterEdgeCursor> _cursor;
 
   arangodb::aql::QueryContext* _query;
 
@@ -185,7 +187,7 @@ struct ClusterProvider {
   //////////////////////////////////////////////////////////////////////////////
   arangodb::StringHeap _stringHeap;
 
-  BaseProviderOptions _opts;
+  ClusterBaseProviderOptions _opts;
 
   arangodb::aql::TraversalStats _stats;
 };
