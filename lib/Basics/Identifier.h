@@ -78,9 +78,15 @@ class Identifier {
 // Identifier should not be bigger than the BaseType
 static_assert(sizeof(Identifier) == sizeof(Identifier::BaseType),
               "invalid size of Identifier");
+
+/*
+ * This has to stay here, otherwise it will not be visible in the logger
+ * unless this file is included before LogMarcos.h.
+ * If it is in this namespace it is found using ADL on the second parameter.
+ */
+std::ostream& operator<<(std::ostream& s, Identifier const& i);
 }  // namespace arangodb::basics
 
-std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i);
 
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \
   namespace std {                                             \

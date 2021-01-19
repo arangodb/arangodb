@@ -307,7 +307,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
-        
+
         serversToAsk.clear();
         auto curServers = cic->servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
@@ -387,14 +387,14 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             {
               auto responses = futures::collectAll(futures).get();
               for (futures::Try<network::Response> const& response : responses) {
-                if (!response.hasValue() || response.get().fail()) {
+                if (!response.has_value() || response.unwrap().fail()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be
                   // handled by the accumulated timeout
                   continue;
                 }
 
-                auto const& res = response.get();
+                auto const& res = response.unwrap();
                 VPackSlice slice = res.slice();
                 if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)

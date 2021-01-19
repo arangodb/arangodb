@@ -151,7 +151,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
-  std::string assembleDocumentId(std::string const& collectionName, 
+  std::string assembleDocumentId(std::string const& collectionName,
                                  std::string const& key, bool urlEncode);
 
   /// @brief generates a HTTP 201 or 202 response
@@ -189,7 +189,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
-  void generateDocument(arangodb::velocypack::Slice const& input, 
+  void generateDocument(arangodb::velocypack::Slice const& input,
                         bool generateBody,
                         arangodb::velocypack::Options const* options = nullptr);
 
@@ -205,7 +205,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief extracts a string parameter value
   void extractStringParameter(std::string const& name, std::string& ret) const;
-  
+
   /**
    * @brief Helper to create a new Transaction for a single collection. The
    * helper method will will lock the collection accordingly. It will additionally
@@ -222,7 +222,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
                                                           AccessMode::Type mode,
                                                           OperationOptions const& opOptions) const;
-  
+
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
 

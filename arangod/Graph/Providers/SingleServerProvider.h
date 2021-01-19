@@ -37,14 +37,10 @@
 
 #include "Transaction/Methods.h"
 
+#include "Futures/Future.h"
 #include <vector>
 
 namespace arangodb {
-
-namespace futures {
-template <typename T>
-class Future;
-}
 
 namespace aql {
 class QueryContext;
