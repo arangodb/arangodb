@@ -83,6 +83,7 @@
 
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
+#include "utils/math_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
 
 #include <boost/uuid/uuid.hpp>
@@ -7112,18 +7113,8 @@ AqlValue Functions::BitPopcount(ExpressionContext* expressionContext, AstNode co
     auto result = bitOperationValue<uint64_t>(v);
     if (result.has_value()) {
       uint64_t x = result.value();
-      // the following code fragment is from https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
-      // TODO: we could optimize this to use hardware-accelerated popcnt if it exists, or gcc's __builtin_popcntll
-      // or such, or C++20's std::popcount().
-      constexpr uint64_t m1  = 0x5555555555555555; //binary: 0101...
-      constexpr uint64_t m2  = 0x3333333333333333; //binary: 00110011..
-      constexpr uint64_t m4  = 0x0f0f0f0f0f0f0f0f; //binary:  4 zeros,  4 ones ...
-      constexpr uint64_t h01 = 0x0101010101010101; //the sum of 256 to the power of 0,1,2,3...
-
-      x -= (x >> 1) & m1;             //put count of each 2 bits into those 2 bits
-      x = (x & m2) + ((x >> 2) & m2); //put count of each 4 bits into those 4 bits
-      x = (x + (x >> 4)) & m4;        //put count of each 8 bits into those 8 bits
-      return AqlValue(AqlValueHintUInt((x * h01) >> 56));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ...
+      size_t count = ::iresearch::math::math_traits<decltype(x)>::pop(x);
+      return AqlValue(AqlValueHintUInt(count));
     }
   }
 
