@@ -32,6 +32,7 @@ const optionsDocumentation = [
   '   - `skipLoadBalancing : testing load_balancing will be skipped.'
 ];
 
+const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -66,7 +67,7 @@ function loadBalancingClient (options) {
   const excludeAuth = (fn) => { return (fn.indexOf('-auth') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing, options)
       .filter(excludeAuth);
-  let opts = _.clone(options)
+  let opts = _.clone(options);
   opts.cluster = true;
   if (opts.coordinators < 2) {
     opts.coordinators = 2;
@@ -98,14 +99,15 @@ function loadBalancingAuthClient (options) {
   const excludeNoAuth = (fn) => { return (fn.indexOf('-noauth') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing, options)
                     .filter(excludeNoAuth);
-  //options.cluster = true;
-  if (options.coordinators < 2) {
-    options.coordinators = 2;
+  let opts = _.clone(options);
+  opts.cluster = true;
+  if (opts.coordinators < 2) {
+    opts.coordinators = 2;
   }
-  options.username = 'root';
-  options.password = '';
+  opts.username = 'root';
+  opts.password = '';
 
-  let rc = tu.performTests(options, testCases, 'load_balancing', tu.runInArangosh, {
+  let rc = tu.performTests(opts, testCases, 'load_balancing', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann'
   });
