@@ -2234,3 +2234,137 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     EXPECT_EQ(expectedLiveDocs, actualDocs);
   }
 }
+
+TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+
+
+  arangodb::iresearch::IResearchLinkMeta linkMeta;
+  linkMeta._includeAllFields = true;  // include all fields
+
+  arangodb::RevisionId rev;
+  VPackBuilder document;
+  {
+    auto analyzersCollection = sysVocbase->useCollection(arangodb::StaticStrings::AnalyzersCollection, false);
+    ASSERT_TRUE(analyzersCollection);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
+    builder.close();
+    ASSERT_TRUE(analyzersCollection->getPhysical()->newObjectForInsert(
+        &trx, builder.slice(), false, document, false, rev).ok());
+    sysVocbase->releaseCollection(analyzersCollection.get());
+  }
+
+  auto mangledId = mangleStringIdentity(arangodb::StaticStrings::IdString);
+  {
+    arangodb::iresearch::FieldIterator it_no_name(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    EXPECT_FALSE(it_no_name.valid());
+    it_no_name.reset(document.slice(), linkMeta);
+    ASSERT_TRUE(it_no_name.valid());
+    bool id_indexed{false};
+    while (it_no_name.valid()) {
+      auto& field = *it_no_name;
+      std::string const actualName = std::string(field.name());
+      id_indexed = actualName == mangledId;
+      if (id_indexed) {
+        break;
+      }
+      ++it_no_name;
+    }
+    ASSERT_TRUE(id_indexed); // for single server collection name is not necessary
+  }
+  {
+    arangodb::iresearch::FieldIterator it_name(trx, "test", arangodb::IndexId(1));
+    EXPECT_FALSE(it_name.valid());
+    it_name.reset(document.slice(), linkMeta);
+    ASSERT_TRUE(it_name.valid());
+    bool id_indexed{false};
+    while (it_name.valid()) {
+      auto& field = *it_name;
+      std::string const actualName = std::string(field.name());
+      id_indexed = actualName == mangledId;
+      if (id_indexed) {
+        break;
+      }
+      ++it_name;
+    }
+    ASSERT_TRUE(id_indexed);
+  }
+}
+
+
+TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
+  auto oldRole = arangodb::ServerState::instance()->getRole();
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
+  auto roleRestorer = irs::make_finally([oldRole]() {
+    arangodb::ServerState::instance()->setRole(oldRole);
+  });
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+
+
+  arangodb::iresearch::IResearchLinkMeta linkMeta;
+  linkMeta._includeAllFields = true;  // include all fields
+
+  arangodb::RevisionId rev;
+  VPackBuilder document;
+  {
+    auto analyzersCollection = sysVocbase->useCollection(arangodb::StaticStrings::AnalyzersCollection, false);
+    ASSERT_TRUE(analyzersCollection);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
+    builder.close();
+    ASSERT_TRUE(analyzersCollection->getPhysical()->newObjectForInsert(
+        &trx, builder.slice(), false, document, false, rev).ok());
+    sysVocbase->releaseCollection(analyzersCollection.get());
+  }
+
+  auto mangledId = mangleStringIdentity(arangodb::StaticStrings::IdString);
+  {
+    arangodb::iresearch::FieldIterator it_no_name(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    EXPECT_FALSE(it_no_name.valid());
+    it_no_name.reset(document.slice(), linkMeta);
+    ASSERT_TRUE(it_no_name.valid());
+    bool id_indexed{false};
+    while (it_no_name.valid()) {
+      auto& field = *it_no_name;
+      std::string const actualName = std::string(field.name());
+      id_indexed = actualName == mangledId;
+      if (id_indexed) {
+        break;
+      }
+      ++it_no_name;
+    }
+    ASSERT_FALSE(id_indexed);
+  }
+  {
+    arangodb::iresearch::FieldIterator it_name(trx, "test", arangodb::IndexId(1));
+    EXPECT_FALSE(it_name.valid());
+    it_name.reset(document.slice(), linkMeta);
+    ASSERT_TRUE(it_name.valid());
+    bool id_indexed{false};
+    while (it_name.valid()) {
+      auto& field = *it_name;
+      std::string const actualName = std::string(field.name());
+      id_indexed = actualName == mangledId;
+      if (id_indexed) {
+        break;
+      }
+      ++it_name;
+    }
+    ASSERT_TRUE(id_indexed);
+  }
+}
