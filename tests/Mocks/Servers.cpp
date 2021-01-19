@@ -329,6 +329,7 @@ MockV8Server::~MockV8Server() {
   if (_server.hasFeature<arangodb::ClusterFeature>()) {
     _server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
     _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
+    _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForSyncersToStop();
   }
 }
 
@@ -345,6 +346,7 @@ MockAqlServer::~MockAqlServer() {
   if (_server.hasFeature<arangodb::ClusterFeature>()) {
     _server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
     _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
+    _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForSyncersToStop();
   }
   arangodb::AqlFeature(_server).stop();  // unset singleton instance
 }
@@ -451,6 +453,7 @@ MockClusterServer::MockClusterServer() : MockServer() {
 MockClusterServer::~MockClusterServer() {
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
   _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
+  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForSyncersToStop();
   arangodb::ServerState::instance()->setRole(_oldRole);
 }
 

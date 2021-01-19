@@ -418,6 +418,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+  
+  /// @brief cancel all pending wait-for-syncer operations
+  void drainSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers

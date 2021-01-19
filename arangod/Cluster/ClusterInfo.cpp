@@ -321,7 +321,6 @@ void ClusterInfo::cleanup() {
     _currentCollections.clear();
     _shardIds.clear();
   }
-
 }
 
 void ClusterInfo::triggerBackgroundGetIds() {
@@ -5665,7 +5664,7 @@ void ClusterInfo::startSyncers() {
   }
 }
 
-void ClusterInfo::shutdownSyncers() {
+void ClusterInfo::drainSyncers() {
   {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
@@ -5685,6 +5684,10 @@ void ClusterInfo::shutdownSyncers() {
     }
     _waitCurrent.clear();
   }
+}
+
+void ClusterInfo::shutdownSyncers() {
+  drainSyncers();
 
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
@@ -5695,6 +5698,8 @@ void ClusterInfo::shutdownSyncers() {
 }
 
 void ClusterInfo::waitForSyncersToStop() {
+  drainSyncers();
+
   auto start = std::chrono::steady_clock::now();
   while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
