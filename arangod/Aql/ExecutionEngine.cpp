@@ -726,14 +726,15 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
     bool const returnInheritedResults =
       ExecutionNode::castTo<ReturnNode const*>(root.getPlanNode())->returnInheritedResults();
     if (returnInheritedResults) {
-      auto returnNode =
+      auto executor =
         dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(
           &root);
-      TRI_ASSERT(returnNode != nullptr);
-      resultRegister(returnNode->getOutputRegisterId());
+      TRI_ASSERT(executor != nullptr);
+      resultRegister(executor->getOutputRegisterId());
     } else {
-      auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
-      TRI_ASSERT(returnNode != nullptr);
+      auto executor = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
+      TRI_ASSERT(executor != nullptr);
+      resultRegister(executor->getInputRegisterId());
     }
   }
 
