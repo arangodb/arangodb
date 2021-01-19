@@ -247,7 +247,7 @@ class LogicalCollection : public LogicalDataSource {
                                                    OperationOptions const& options) const;
 
   /// @brief closes an open collection
-  int close();
+  void close();
 
   // SECTION: Indexes
 
@@ -263,7 +263,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string const&) const;
 
-  bool dropIndex(IndexId iid);
+  Result dropIndex(IndexId iid);
 
   // SECTION: Index access (local only)
 

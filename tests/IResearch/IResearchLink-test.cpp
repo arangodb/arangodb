@@ -245,7 +245,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
-    EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
+    EXPECT_TRUE((logicalCollection->dropIndex(link->id()).ok() &&
                  logicalCollection->getIndexes().empty()));
   }
 

@@ -67,6 +67,7 @@
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
+#include "RocksDBEngine/RocksDBJobs.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
@@ -191,6 +192,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _syncDelayThreshold(5000),
       _requiredDiskFreePercentage(0.01),
       _requiredDiskFreeBytes(16 * 1024 * 1024),
+      _maxConcurrentBackgroundJobs(2),
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
@@ -359,6 +361,13 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new UInt64Parameter(&_maxWalArchiveSizeLimit),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden));
 
+  options->addOption("--rocksdb.max-concurrent-background-jobs",
+                     "maximum number of concurrent background compaction or deletion jobs that "
+                     "are scheduled on collection or index deletion or truncate",
+                     new UInt64Parameter(&_maxConcurrentBackgroundJobs),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800);
+
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
 #endif
@@ -371,6 +380,10 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_maxConcurrentBackgroundJobs == 0) {
+    _maxConcurrentBackgroundJobs = 1;
+  }
 
   if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
     LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
@@ -858,12 +871,13 @@ void RocksDBEngine::start() {
 
   TRI_ASSERT(_db != nullptr);
   _settingsManager.reset(new RocksDBSettingsManager(*this));
-  _replicationManager.reset(new RocksDBReplicationManager(*this));
+  _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
+  _jobScheduler = std::make_unique<RocksDBJobScheduler>(server(), *this, _maxConcurrentBackgroundJobs);
 
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
-  _backgroundThread.reset(new RocksDBBackgroundThread(*this, counterSyncSeconds));
+  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
         << "could not start rocksdb counter manager";
@@ -901,6 +915,10 @@ void RocksDBEngine::beginShutdown() {
 
 void RocksDBEngine::stop() {
   TRI_ASSERT(isEnabled());
+
+  if (_jobScheduler) {
+    _jobScheduler->beginShutdown();
+  }
 
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
@@ -940,6 +958,23 @@ void RocksDBEngine::unprepare() {
   
 bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
+}
+  
+Result RocksDBEngine::queueBackgroundJob(std::unique_ptr<RocksDBJob> job) {
+  Result res = _jobScheduler->queueJob(std::move(job));
+  if (res.fail()) {
+    if (res.is(TRI_ERROR_SHUTTING_DOWN)) {
+      res.reset();
+    } else {
+      LOG_TOPIC("5b98b", WARN, Logger::ENGINES) 
+          << "unable to queue rocksdb background job '" << job->label() << "':" << res.errorMessage();
+    }
+  }
+  return res;
+}
+
+void RocksDBEngine::dispatchBackgroundJobs() {
+  _jobScheduler->dispatchJobs();
 }
 
 std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
@@ -1356,6 +1391,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   auto* rcoll = static_cast<RocksDBMetaCollection*>(coll.getPhysical());
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
+  bool const scheduleCompaction = useRangeDelete;
   
   int resLock = rcoll->lockWrite(); // technically not necessary
   if (resLock != TRI_ERROR_NO_ERROR) {
@@ -1422,10 +1458,10 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   }
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = rcoll->getIndexes();
-  TRI_ASSERT(!vecShardIndex.empty());
+  std::vector<std::shared_ptr<Index>> indexes = rcoll->getIndexes();
+  TRI_ASSERT(!indexes.empty());
 
-  for (auto& index : vecShardIndex) {
+  for (auto& index : indexes) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
     res = RocksDBMetadata::deleteIndexEstimate(db, ridx->objectId());
     if (res.fail()) {
@@ -1433,53 +1469,19 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
           << "could not delete index estimate: " << res.errorMessage();
     }
 
-    auto dropRes = index->drop().errorNumber();
-
-    if (dropRes != TRI_ERROR_NO_ERROR) {
-      // We try to remove all indexed values.
-      // If it does not work they cannot be accessed any more and leaked.
-      // User View remains consistent.
-      LOG_TOPIC("97176", ERR, Logger::ENGINES)
-          << "unable to drop index: " << TRI_errno_string(dropRes);
-      //      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // delete documents
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-  auto result = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
-
-  if (result.fail()) {
-    // We try to remove all documents.
+    ridx->destroyCache();
+    auto dropJob = ridx->createDropJob();
+    // We try to remove all indexed values.
     // If it does not work they cannot be accessed any more and leaked.
     // User View remains consistent.
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  // run compaction for data only if collection contained a considerable
-  // amount of documents. otherwise don't run compaction, because it will
-  // slow things down a lot, especially during tests that create/drop LOTS
-  // of collections
-  if (useRangeDelete) {
-    rcoll->compact();
+    queueBackgroundJob(std::move(dropJob));
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // check if documents have been deleted
-  size_t numDocs = rocksutils::countKeyRange(_db, bounds, true);
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  auto dropJob = std::make_unique<RocksDBCollectionDropJob>(vocbase.name(), coll.name(), bounds, prefixSameAsStart, useRangeDelete, scheduleCompaction);
+  res = queueBackgroundJob(std::move(dropJob));
 
-  if (numDocs > 0) {
-    std::string errorMsg(
-        "deletion check in collection drop failed - not all documents "
-        "have been deleted. remaining: ");
-    errorMsg.append(std::to_string(numDocs));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-  }
-#endif
-
-  // if we get here all documents / indexes are gone.
-  // We have no data garbage left.
-  return Result();
+  return res;
 }
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,

@@ -53,6 +53,8 @@ namespace arangodb {
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
+class RocksDBJob;
+class RocksDBJobScheduler;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -362,6 +364,9 @@ class RocksDBEngine final : public StorageEngine {
 
   bool hasBackgroundError() const;
 
+  Result queueBackgroundJob(std::unique_ptr<RocksDBJob> job);
+  void dispatchBackgroundJobs();
+
   static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
 
@@ -420,6 +425,9 @@ class RocksDBEngine final : public StorageEngine {
 
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
+  
+  std::unique_ptr<RocksDBJobScheduler> _jobScheduler;
+
   uint64_t _maxTransactionSize;       // maximum allowed size for a transaction
   uint64_t _intermediateCommitSize;   // maximum size for a
                                       // transaction before an
@@ -476,6 +484,9 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief minimum number of free bytes on disk for considering the server healthy.
   /// if set to 0, the number of free bytes on disk is ignored in checks.
   uint64_t _requiredDiskFreeBytes;
+
+  /// @brief maximum number of concurrent background jobs
+  uint64_t _maxConcurrentBackgroundJobs;
 
   // use write-throttling
   bool _useThrottle;

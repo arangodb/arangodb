@@ -33,6 +33,7 @@
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBJobs.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
@@ -280,19 +281,26 @@ Result RocksDBMetaCollection::compact() {
   auto& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = this->bounds();
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
   
-  READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> i : _indexes) {
-    RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
-    index->compact();
+  // compact documents range
+  auto compactJob = std::make_unique<RocksDBCollectionCompactJob>(_logicalCollection.vocbase().name(), _logicalCollection.name(), bounds());
+  Result res = engine.queueBackgroundJob(std::move(compactJob));
+
+  if (res.ok()) {
+    READ_LOCKER(guard, _indexesLock);
+
+    for (std::shared_ptr<Index> idx : _indexes) {
+      RocksDBIndex* index = static_cast<RocksDBIndex*>(idx.get());
+      // schedule index compaction
+      auto job = index->createCompactJob();
+      res = engine.queueBackgroundJob(std::move(job));
+      if (res.fail()) {
+        break;
+      }
+    }
   }
   
-  return {};
+  return res;
 }
 
 void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {

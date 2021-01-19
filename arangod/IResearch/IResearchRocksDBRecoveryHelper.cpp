@@ -201,7 +201,9 @@ void ensureLink(arangodb::DatabaseFeature& db,
   bool created;
 
   // re-insert link
-  if (!col->dropIndex(link->id()) // index drop failure
+  arangodb::Result res = col->dropIndex(link->id());
+  
+  if (res.fail() // index drop failure
       || !col->createIndex(json.slice(), created) // index creation failure
       || !created) { // index not created
     LOG_TOPIC("44a02", ERR, arangodb::iresearch::TOPIC)

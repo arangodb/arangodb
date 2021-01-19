@@ -705,10 +705,9 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
       return Result(TRI_ERROR_FORBIDDEN);
     }
 
-    bool ok = col->dropIndex(idx->id());
-    int code = ok ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
+    res = col->dropIndex(idx->id());
     events::DropIndex(collection->vocbase().name(), collection->name(),
-                      std::to_string(iid.id()), code);
-    return Result(code);
+                      std::to_string(iid.id()), res.errorNumber());
+    return res;
   }
 }

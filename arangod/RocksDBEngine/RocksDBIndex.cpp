@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBJobs.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -109,16 +110,7 @@ RocksDBIndex::~RocksDBIndex() {
   auto& engine = selector.engine<RocksDBEngine>();
   engine.removeIndexMapping(_objectId.load());
 
-  if (useCache()) {
-    try {
-      TRI_ASSERT(_cache != nullptr);
-      auto* manager =
-          _collection.vocbase().server().getFeature<CacheManagerFeature>().manager();
-      TRI_ASSERT(manager != nullptr);
-      manager->destroyCache(_cache);
-    } catch (...) {
-    }
-  }
+  destroyCache();
 }
 
 rocksdb::Comparator const* RocksDBIndex::comparator() const {
@@ -190,59 +182,45 @@ void RocksDBIndex::createCache() {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::destroyCache() {
-  if (!_cache) {
+void RocksDBIndex::destroyCache() try {
+  auto cache = _cache;
+
+  if (!cache) {
     return;
   }
   auto* manager =
       _collection.vocbase().server().getFeature<CacheManagerFeature>().manager();
   TRI_ASSERT(manager != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cache.get() != nullptr);
   LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
-  manager->destroyCache(_cache);
+  manager->destroyCache(cache);
   _cache.reset();
-}
+} catch (...) {}
 
 Result RocksDBIndex::drop() {
+  // Try to drop the cache as well.
+  destroyCache();
+
+  RocksDBEngine& engine =
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+
+  auto job = createDropJob();
+  return job->run(engine);
+}
+
+std::unique_ptr<RocksDBJob> RocksDBIndex::createDropJob() {
   auto* coll = toRocksDBCollection(_collection);
   // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
   bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
   bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
+  bool const scheduleCompaction = useRangeDelete;
 
-  RocksDBEngine& engine =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  arangodb::Result r = rocksutils::removeLargeRange(engine.db(), this->getBounds(),
-                                                    prefixSameAsStart, useRangeDelete);
+  return std::make_unique<RocksDBIndexDropJob>(_collection.vocbase().name(), _collection.name(), name(), getBounds(), prefixSameAsStart, useRangeDelete, scheduleCompaction);  
+}
 
-  // Try to drop the cache as well.
-  if (_cache) {
-    try {
-      auto* manager =
-          _collection.vocbase().server().getFeature<CacheManagerFeature>().manager();
-      TRI_ASSERT(manager != nullptr);
-      manager->destroyCache(_cache);
-      // Reset flag
-      _cache.reset();
-    } catch (...) {
-    }
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // check if documents have been deleted
-  size_t numDocs =
-      rocksutils::countKeyRange(engine.db(), this->getBounds(), prefixSameAsStart);
-  if (numDocs > 0) {
-    std::string errorMsg(
-        "deletion check in index drop failed - not all documents in the index "
-        "have been deleted. remaining: ");
-    errorMsg.append(std::to_string(numDocs));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-  }
-#endif
-
-  return r;
+std::unique_ptr<RocksDBJob> RocksDBIndex::createCompactJob() {
+  return std::make_unique<RocksDBIndexCompactJob>(_collection.vocbase().name(), _collection.name(), name(), getBounds()); 
 }
 
 void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) {
@@ -293,17 +271,11 @@ size_t RocksDBIndex::memory() const {
 }
 
 /// compact the index, should reduce read amplification
-void RocksDBIndex::compact() {
+Result RocksDBIndex::compact() {
   auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-  rocksdb::CompactRangeOptions opts;
-  if (_cf != RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid)) {
-    RocksDBKeyBounds bounds = this->getBounds();
-    TRI_ASSERT(_cf == bounds.columnFamily());
-    rocksdb::Slice b = bounds.start(), e = bounds.end();
-    db->CompactRange(opts, _cf, &b, &e);
-  }
+  auto job = createCompactJob();
+  return job->run(engine);
 }
 
 // banish given key from transactional cache

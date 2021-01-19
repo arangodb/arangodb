@@ -81,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   futures::Future<OperationResult> figures(bool details, OperationOptions const& options) override;
 
   /// @brief closes an open collection
-  int close() override;
+  void close() override;
   void load() override;
   void unload() override;
 
@@ -101,7 +101,7 @@ class ClusterCollection final : public PhysicalCollection {
                                      bool restore, bool& created) override;
 
   /// @brief Drop an index with the given iid.
-  bool dropIndex(IndexId iid) override;
+  Result dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 

@@ -68,7 +68,7 @@ class PhysicalCollection {
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual int close() = 0;
+  virtual void close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
 
@@ -137,7 +137,7 @@ class PhysicalCollection {
   virtual std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
                                              bool restore, bool& created) = 0;
 
-  virtual bool dropIndex(IndexId iid) = 0;
+  virtual Result dropIndex(IndexId iid) = 0;
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;

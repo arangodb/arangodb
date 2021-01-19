@@ -43,6 +43,7 @@ namespace cache {
 class Cache;
 }
 class LogicalCollection;
+class RocksDBJob;
 class RocksDBMethods;
 struct OperationOptions;
 
@@ -79,9 +80,12 @@ class RocksDBIndex : public Index {
 
   void load() override;
   void unload() override;
+  
+  std::unique_ptr<RocksDBJob> createDropJob();
+  std::unique_ptr<RocksDBJob> createCompactJob();
 
   /// compact the index, should reduce read amplification
-  void compact();
+  Result compact();
 
   void setCacheEnabled(bool enable) {
     // allow disabling and enabling of caches for the primary index

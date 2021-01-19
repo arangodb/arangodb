@@ -168,12 +168,11 @@ void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::
 }
 
 /// @brief closes an open collection
-int ClusterCollection::close() {
+void ClusterCollection::close() {
   READ_LOCKER(guard, _indexesLock);
   for (auto it : _indexes) {
     it->unload();
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 void ClusterCollection::load() {
@@ -273,26 +272,32 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
 }
 
 /// @brief Drop an index with the given iid.
-bool ClusterCollection::dropIndex(IndexId iid) {
+Result ClusterCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
   if (iid.empty() || iid.isPrimary()) {
-    return true;
+    return {};
   }
 
-  WRITE_LOCKER(guard, _indexesLock);
-  for (auto it  : _indexes) {
-    if (iid == it->id()) {
-      _indexes.erase(it);
-      events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                        std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
-      return true;
+  // default value is error
+  Result res{TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
+
+  {
+    WRITE_LOCKER(guard, _indexesLock);
+  
+    for (auto it  : _indexes) {
+      if (iid == it->id()) {
+        _indexes.erase(it);
+        // clear error
+        res.reset();
+        break;
+      }
     }
   }
 
   // We tried to remove an index that does not exist
   events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                    std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-  return false;
+                    std::to_string(iid.id()), res.errorNumber());
+  return res;
 }
 
 std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/) const {

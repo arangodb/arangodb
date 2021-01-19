@@ -881,13 +881,13 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     try {
       CollectionGuard guard(vocbase, col->id());
-      bool result = guard.collection()->dropIndex(iid);
+      Result res = guard.collection()->dropIndex(iid);
 
-      if (!result) {
-        return Result();  // TODO: why do we ignore failures here?
+      if (res.fail()) {
+        res.reset(); // TODO: why do we ignore failures here?
       }
 
-      return Result();
+      return res;
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {

@@ -71,11 +71,11 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   PhysicalCollectionMock(arangodb::LogicalCollection& collection,
                          arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection& collection) const override;
-  virtual int close() override;
+  virtual void close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info,
                                                        bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
-  virtual bool dropIndex(arangodb::IndexId iid) override;
+  virtual arangodb::Result dropIndex(arangodb::IndexId iid) override;
   virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
       arangodb::transaction::Methods* trx) const override;

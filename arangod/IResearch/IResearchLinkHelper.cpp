@@ -188,14 +188,15 @@ arangodb::Result dropLink( // drop link
 ) {
 
   // don't need to create an extra transaction inside arangodb::methods::Indexes::drop(...)
-  if (!collection.dropIndex(link.id())) {
+  arangodb::Result res = collection.dropIndex(link.id());
+  if (res.fail()) {
     return arangodb::Result(  // result
         TRI_ERROR_INTERNAL,   // code
         std::string("failed to drop link '") + std::to_string(link.id().id()) +
             "' from collection '" + collection.name() + "'");
   }
 
-  return arangodb::Result();
+  return res;
 }
 
 template <>

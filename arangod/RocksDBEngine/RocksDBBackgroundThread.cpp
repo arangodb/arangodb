@@ -110,6 +110,8 @@ void RocksDBBackgroundThread::run() {
         // and then prune them when they expired
         _engine.pruneWalFiles();
       }
+
+      _engine.dispatchBackgroundJobs();
         
     } catch (std::exception const& ex) {
       LOG_TOPIC("8236f", WARN, Logger::ENGINES)
