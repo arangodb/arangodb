@@ -103,13 +103,13 @@ const resilienceAnalyzers = (new _resilience('resilience_analyzers')).func;
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPaths(testPaths.client_resilience, options);
   let localOptions = _.clone(options);
   localOptions.cluster = true;
   if (localOptions.coordinators < 2) {
     localOptions.coordinators = 2;
   }
 
+  let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
   let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
@@ -133,12 +133,12 @@ function activeFailover (options) {
       }
     };
   }
-  let testCases = tu.scanTestPaths(testPaths.active_failover, options);
   let localOptions = _.clone(options);
   localOptions.activefailover = true;
   localOptions.singles = 4;
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
+  let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
   let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
