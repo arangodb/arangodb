@@ -48,6 +48,21 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+RegisterId findVariableRegister(RegisterPlan& plan, Variable const* var) {
+  RegisterId reg = plan.variableToOptionalRegisterId(var);
+  if (reg == RegisterPlan::MaxRegisterId) {
+    for (auto s : plan.subQueryNodes) {
+      reg = findVariableRegister(*ExecutionNode::castTo<SubqueryNode*>(s)->getSubquery()->getRegisterPlan(), var);
+      if (reg != RegisterPlan::MaxRegisterId) {
+        break;
+      }
+    }
+  }
+  return reg;
+}
+}  // namespace
+
 // @brief Local struct to create the
 // information required to build traverser engines
 // on DB servers.
@@ -631,9 +646,21 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
   AqlItemBlockManager& mgr = query.itemBlockManager();
 
   auto nrConstRegs = plan.root()->getRegisterPlan()->nrConstRegs;
-  if (nrConstRegs > 0) {
+  if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
     mgr.initializeConstValueBlock(nrConstRegs);
+    plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
+                                       block = mgr.getConstValueBlock()](Variable* var) {
+      if (var->hasConstValue) {
+        RegisterId reg = findVariableRegister(*plan, var);
+        if (reg != RegisterPlan::MaxRegisterId) {
+          TRI_ASSERT(reg.isConstRegister());
+          AqlValue value = var->constantValue;
+          block->emplaceValue(0, reg.value(), std::move(value));
+        }
+      }
+    });
   }
+  TRI_ASSERT(nrConstRegs == 0 || mgr.getConstValueBlock()->numRegisters() == nrConstRegs);
 
   aql::SnippetList& snippets = query.snippets();
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));

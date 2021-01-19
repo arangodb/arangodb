@@ -49,12 +49,12 @@ Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
       isDataFromCollection(isDataFromCollection) {}
 
 Variable::Variable(arangodb::velocypack::Slice const& slice)
-    : Variable(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name"),
-               arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice, "id"),
-               arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false))
-    {
-      hasConstValue = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "hasConstValue", false);
-    }
+    : id(arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice, "id")),
+      name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
+      value(),
+      isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)),
+      hasConstValue(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "hasConstValue", false)),
+      constantValue(slice.get("constantValue")) {}
 
 /// @brief destroy the variable
 Variable::~Variable() = default;
@@ -83,6 +83,9 @@ void Variable::toVelocyPack(VPackBuilder& builder) const {
   builder.add("name", VPackValue(name));
   builder.add("isDataFromCollection", VPackValue(isDataFromCollection));
   builder.add("hasConstValue", VPackValue(hasConstValue));
+  builder.add(VPackValue("constantValue"));
+  constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
+                              /*allowUnindexed*/ true);
 }
 
 /// @brief replace a variable by another

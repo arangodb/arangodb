@@ -561,6 +561,16 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const -> R
 }
 
 template <typename T>
+auto RegisterPlanT<T>::variableToOptionalRegisterId(Variable const* variable) const -> RegisterId {
+  TRI_ASSERT(variable != nullptr);
+  auto it = varInfo.find(variable->id);
+  if (it != varInfo.end()) {
+    return it->second.registerId;
+  }
+  return RegisterPlan::MaxRegisterId;
+}
+
+template <typename T>
 std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
   // level -> variable, info
   std::map<unsigned int, std::map<VariableId, VarInfo>> frames;

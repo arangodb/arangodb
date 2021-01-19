@@ -43,6 +43,7 @@ AqlItemBlockManager::~AqlItemBlockManager() {
 }
 
 void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
+  TRI_ASSERT(_constValueBlock == nullptr);
   _constValueBlock = new AqlItemBlock(*this, 1, nrRegs);
 }
 

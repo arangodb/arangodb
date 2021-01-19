@@ -381,7 +381,8 @@ function assertIsProfilePlanObject (plan) {
       'id',
       'name',
       'isDataFromCollection',
-      'hasConstValue'
+      'hasConstValue',
+      'constantValue',
     ]);
 
     expect(variable.id).to.be.a('number');

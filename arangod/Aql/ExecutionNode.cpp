@@ -1926,14 +1926,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
       std::move(expInRegs)); /* required by expression.execute */
 
   if (_outVariable->hasConstValue) {
-    // this calculation node produces a const value, so we already evaluate the expression
-    // and store it in the ConstValueBlock.
-    AqlFunctionsInternalCache cache;
-    FixedVarExpressionContext exprContext(engine.getQuery().trxForOptimization(), engine.getQuery(), cache);
-    bool mustDestroy; // TODO
-    AqlValue value = _expression->execute(&exprContext, mustDestroy);
-    engine.itemBlockManager().getConstValueBlock().emplaceValue(0, outputRegister.value(), std::move(value));
-
+    // TODO - can we simply use the IdExecutor instead?
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Constant>>>(
         &engine, this,std::move(registerInfos), std::move(executorInfos));
   } else if (isReference) {

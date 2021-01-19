@@ -67,9 +67,8 @@ class AqlItemBlockManager {
 
   void initializeConstValueBlock(RegisterCount nrRegs);
 
-  AqlItemBlock& getConstValueBlock() {
-    TRI_ASSERT(_constValueBlock != nullptr);
-    return *_constValueBlock;
+  AqlItemBlock* getConstValueBlock() {
+    return _constValueBlock;
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

@@ -991,7 +991,7 @@ void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
 AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
   // TODO - avoid check for internal calls
   if (varNr.isConstRegister()) {
-    return _manager.getConstValueBlock().getValue(0, varNr.value());
+    return _manager.getConstValueBlock()->getValue(0, varNr.value());
   }
   return _data[getAddress(index, varNr.rawValue())];
 }
@@ -999,7 +999,7 @@ AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
 AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId varNr) const {
   // TODO - avoid check for internal calls
   if (varNr.isConstRegister()) {
-    return _manager.getConstValueBlock().getValueReference(0, varNr.value());
+    return _manager.getConstValueBlock()->getValueReference(0, varNr.value());
   }
   return _data[getAddress(index, varNr.rawValue())];
 }

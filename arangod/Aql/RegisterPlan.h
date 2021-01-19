@@ -153,6 +153,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+  auto variableToOptionalRegisterId(Variable const* variable) const -> RegisterId;
 
   auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
                       std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
