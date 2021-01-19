@@ -255,7 +255,7 @@ using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
 class EnumerateCollectionExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateCollectionInputParam> {
  protected:
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   TRI_vocbase_t& vocbase;

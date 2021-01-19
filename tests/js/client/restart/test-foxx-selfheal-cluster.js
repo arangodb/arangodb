@@ -225,8 +225,8 @@ function testSuite() {
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
 
-      // try to request Foxx app. the app must be inaccessible, because self-heal
-      // hasn't run yet
+      // try to request Foxx app. the app must be accessible now, because we ran self-heal
+      // just now
       res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
       assertEqual(200, res.status);
     },
@@ -267,7 +267,15 @@ function testSuite() {
 
       // try to request Foxx app. the app must be accessible, because of self-heal
       // at startup
-      let res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
+      let tries = 0;
+      let res;
+      while (++tries < 30) {
+        res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
+        if (res.status === 200) {
+          break;
+        }
+        require('internal').sleep(0.5);
+      }
       assertEqual(200, res.status);
     },
     

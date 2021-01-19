@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -265,7 +265,7 @@ struct AstNode {
   /// the Builder object can be passed in as an optimization
   arangodb::velocypack::Slice computeValue(arangodb::velocypack::Builder* = nullptr) const;
 
-  uint8_t const* computedValue() const { return _computedValue; }
+  uint8_t const* computedValue() const noexcept { return _computedValue; }
 
   /// @brief sort the members of an (array) node
   /// this will also set the FLAG_SORTED flag for the node
@@ -308,22 +308,22 @@ struct AstNode {
   AstNode const* castToNumber(Ast*) const;
 
   /// @brief check a flag for the node
-  bool hasFlag(AstNodeFlagType flag) const;
+  bool hasFlag(AstNodeFlagType flag) const noexcept;
 
   /// @brief reset flags in case a node is changed drastically
-  void clearFlags();
+  void clearFlags() noexcept;
 
   /// @brief recursively clear flags
-  void clearFlagsRecursive();
+  void clearFlagsRecursive() noexcept;
 
   /// @brief set a flag for the node
-  void setFlag(AstNodeFlagType flag) const;
+  void setFlag(AstNodeFlagType flag) const noexcept;
 
   /// @brief set two flags for the node
-  void setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const;
+  void setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const noexcept;
 
   /// @brief remove a flag for the node
-  void removeFlag(AstNodeFlagType flag) const;
+  void removeFlag(AstNodeFlagType flag) const noexcept;
 
   /// @brief whether or not the node value is trueish
   bool isTrue() const;
@@ -332,31 +332,31 @@ struct AstNode {
   bool isFalse() const;
 
   /// @brief whether or not the members of a list node are sorted
-  bool isSorted() const;
+  bool isSorted() const noexcept;
 
   /// @brief whether or not a value node is NULL
-  bool isNullValue() const;
+  bool isNullValue() const noexcept;
 
   /// @brief whether or not a value node is an integer
-  bool isIntValue() const;
+  bool isIntValue() const noexcept;
 
   /// @brief whether or not a value node is a dobule
-  bool isDoubleValue() const;
+  bool isDoubleValue() const noexcept;
 
   /// @brief whether or not a value node is of numeric type
-  bool isNumericValue() const;
+  bool isNumericValue() const noexcept;
 
   /// @brief whether or not a value node is of bool type
-  bool isBoolValue() const;
+  bool isBoolValue() const noexcept;
 
   /// @brief whether or not a value node is of string type
-  bool isStringValue() const;
+  bool isStringValue() const noexcept;
 
   /// @brief whether or not a value node is of list type
-  bool isArray() const;
+  bool isArray() const noexcept;
 
   /// @brief whether or not a value node is of array type
-  bool isObject() const;
+  bool isObject() const noexcept;
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
@@ -582,12 +582,12 @@ struct AstNode {
   /// @brief helper for building flags
   template <typename... Args>
   static std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag,
-                                                               Args... args);
+                                                               Args... args) noexcept;
 
-  static std::underlying_type<AstNodeFlagType>::type makeFlags();
+  static std::underlying_type<AstNodeFlagType>::type makeFlags() noexcept;
 
   void computeValue(arangodb::velocypack::Builder& builder) const;
-  void freeComputedValue();
+  void freeComputedValue() noexcept;
 
  private:
   /// @brief precomputed VPack value (used when executing expressions)

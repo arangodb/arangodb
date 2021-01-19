@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -166,7 +166,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _numAwake(0),
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerQueueLength, 0,
-          "Servers internal queue length")),
+          "Server's internal queue length")),
       _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           "arangodb_scheduler_jobs_done", 0, "Total number of queue jobs done")),
       _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -6899,6 +6899,362 @@ AqlValue Functions::Pi(ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const& parameters) {
   // acos(-1) == PI
   return ::numberValue(std::acos(-1.0), true);
+}
+
+template<typename T> 
+std::optional<T> bitOperationValue(VPackSlice input) {
+  if (input.isNumber() && input.getNumber<double>() >= 0) {
+    uint64_t result = input.getNumber<uint64_t>();
+    if (result <= static_cast<uint64_t>(Functions::bitFunctionsMaxSupportedValue)) {
+      TRI_ASSERT(result <= UINT32_MAX);
+      // value is valid
+      return std::optional<T>{ static_cast<T>(result) };
+    }
+  }
+  // value is not valid
+  return {};
+}
+
+AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const& node,
+                            VPackFunctionParameters const& parameters,
+                            std::function<uint64_t(uint64_t, uint64_t)> const& cb) {
+  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
+
+  // extract AQL function name
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl != nullptr);
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (parameters.size() == 2) {
+    // expect two numbers as individual parameters
+    if (value.isNumber()) {
+      auto result1 = bitOperationValue<uint64_t>(value.slice());
+      if (result1.has_value()) {
+        AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
+        if (value2.isNumber()) {
+          auto result2 = bitOperationValue<uint64_t>(value2.slice());
+          if (result2.has_value()) {
+            uint64_t result = cb(result1.value(), result2.value());
+            return AqlValue(AqlValueHintUInt(result));
+          }
+        }
+      }
+    }
+    registerInvalidArgumentWarning(expressionContext, impl->name.c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // expect an array of numbers (with null values being ignored)
+  if (!value.isArray()) {
+    registerInvalidArgumentWarning(expressionContext, impl->name.c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  bool first = true;
+  uint32_t result = 0;
+  
+  transaction::Methods* trx = &expressionContext->trx();
+  auto* vopts = &trx->vpackOptions();
+  AqlValueMaterializer materializer(vopts);
+  VPackSlice s = materializer.slice(value, false);
+  for (VPackSlice v : VPackArrayIterator(s)) {
+    // skip null values in the input
+    if (v.isNull()) {
+      continue;
+    }
+
+    auto currentValue = bitOperationValue<uint64_t>(v);
+    if (!currentValue.has_value()) {
+      registerInvalidArgumentWarning(expressionContext, impl->name.c_str());
+      return AqlValue(AqlValueHintNull());
+    }
+    if (first) {
+      first = false;
+      result = currentValue.value();
+    } else {
+      result = cb(result, currentValue.value());
+    }
+  }
+
+  if (first) {
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  return AqlValue(AqlValueHintUInt(result));
+}
+
+/// @brief function BIT_AND
+AqlValue Functions::BitAnd(ExpressionContext* expressionContext, AstNode const& node,
+                           VPackFunctionParameters const& parameters) {
+  return handleBitOperation(expressionContext, node, parameters, [](uint64_t value1, uint64_t value2) {
+      return value1 & value2;
+  });
+}
+
+/// @brief function BIT_OR
+AqlValue Functions::BitOr(ExpressionContext* expressionContext, AstNode const& node,
+                          VPackFunctionParameters const& parameters) {
+  return handleBitOperation(expressionContext, node, parameters, [](uint64_t value1, uint64_t value2) {
+      return value1 | value2;
+  });
+}
+
+/// @brief function BIT_XOR
+AqlValue Functions::BitXOr(ExpressionContext* expressionContext, AstNode const& node,
+                          VPackFunctionParameters const& parameters) {
+  return handleBitOperation(expressionContext, node, parameters, [](uint64_t value1, uint64_t value2) {
+      return value1 ^ value2;
+  });
+}
+
+template<typename T1, typename T2>
+std::optional<std::pair<T1, T2>> binaryBitFunctionParameters(VPackFunctionParameters const& parameters) {
+  AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
+  if (value1.isNumber()) {
+    auto result1 = bitOperationValue<T1>(value1.slice());
+    if (result1.has_value()) {
+      AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
+      if (value2.isNumber()) {
+        auto result2 = bitOperationValue<T2>(value2.slice());
+        if (result2.has_value() && result2.value() <= static_cast<T2>(Functions::bitFunctionsMaxSupportedBits)) {
+          return std::optional<std::pair<T1, T2>>{ { result1.value(), result2.value() } };
+        }
+      }
+    }
+  }
+
+  return {};
+}
+
+/// @brief function BIT_NEGATE
+AqlValue Functions::BitNegate(ExpressionContext* expressionContext, AstNode const& node,
+                              VPackFunctionParameters const& parameters) {
+  auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
+  if (result.has_value()) {
+    auto [testee, width] = result.value();
+    // mask the lower bits of the result with up to 32 active bits
+    uint64_t value = (~testee) & ((uint64_t(1) << width) - 1);
+    return AqlValue(AqlValueHintUInt(value));
+  }
+      
+  static char const* AFN = "BIT_NEGATE";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+
+/// @brief function BIT_TEST
+AqlValue Functions::BitTest(ExpressionContext* expressionContext, AstNode const& node,
+                            VPackFunctionParameters const& parameters) {
+  auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
+  if (result.has_value()) {
+    auto [testee, index] = result.value();
+    if (index < Functions::bitFunctionsMaxSupportedBits) {
+      return AqlValue(AqlValueHintBool((testee & (uint64_t(1) << index)) != 0));
+    }
+  }
+      
+  static char const* AFN = "BIT_TEST";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function BIT_SHIFT_LEFT
+AqlValue Functions::BitShiftLeft(ExpressionContext* expressionContext, AstNode const& node,
+                                 VPackFunctionParameters const& parameters) {
+  auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
+  if (result.has_value()) {
+    auto [testee, shift] = result.value();
+    AqlValue const& value = extractFunctionParameterValue(parameters, 2);
+    if (value.isNumber()) {
+      auto width = bitOperationValue<uint64_t>(value.slice());
+      if (width.has_value() && width.value() <= static_cast<uint64_t>(Functions::bitFunctionsMaxSupportedBits)) {
+        // mask the lower bits of the result with up to 32 active bits
+        return AqlValue(AqlValueHintUInt((testee << shift) & ((uint64_t(1) << width.value()) - 1)));
+      }
+    }
+  }
+  
+  static char const* AFN = "BIT_SHIFT_LEFT";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function BIT_SHIFT_RIGHT
+AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext, AstNode const& node,
+                                  VPackFunctionParameters const& parameters) {
+  auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
+  if (result.has_value()) {
+    auto [testee, shift] = result.value();
+    AqlValue const& value = extractFunctionParameterValue(parameters, 2);
+    if (value.isNumber()) {
+      auto width = bitOperationValue<uint32_t>(value.slice());
+      if (width.has_value() && width.value() <= static_cast<uint64_t>(Functions::bitFunctionsMaxSupportedBits)) {
+        // mask the lower bits of the result with up to 32 active bits
+        return AqlValue(AqlValueHintUInt((testee >> shift) & ((uint64_t(1) << width.value()) - 1)));
+      }
+    }
+  }
+  
+  static char const* AFN = "BIT_SHIFT_RIGHT";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+  
+/// @brief function BIT_POPCOUNT
+AqlValue Functions::BitPopcount(ExpressionContext* expressionContext, AstNode const& node,
+                                VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (value.isNumber()) {
+    VPackSlice v = value.slice();
+    auto result = bitOperationValue<uint64_t>(v);
+    if (result.has_value()) {
+      uint64_t x = result.value();
+      // the following code fragment is from https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
+      // TODO: we could optimize this to use hardware-accelerated popcnt if it exists, or gcc's __builtin_popcntll
+      // or such, or C++20's std::popcount().
+      constexpr uint64_t m1  = 0x5555555555555555; //binary: 0101...
+      constexpr uint64_t m2  = 0x3333333333333333; //binary: 00110011..
+      constexpr uint64_t m4  = 0x0f0f0f0f0f0f0f0f; //binary:  4 zeros,  4 ones ...
+      constexpr uint64_t h01 = 0x0101010101010101; //the sum of 256 to the power of 0,1,2,3...
+
+      x -= (x >> 1) & m1;             //put count of each 2 bits into those 2 bits
+      x = (x & m2) + ((x >> 2) & m2); //put count of each 4 bits into those 4 bits
+      x = (x + (x >> 4)) & m4;        //put count of each 8 bits into those 8 bits
+      return AqlValue(AqlValueHintUInt((x * h01) >> 56));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ...
+    }
+  }
+
+  static char const* AFN = "BIT_POPCOUNT";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode const& node,
+                                 VPackFunctionParameters const& parameters) {
+  static char const* AFN = "BIT_CONSTRUCT";
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (value.isArray()) {
+    transaction::Methods* trx = &expressionContext->trx();
+    auto* vopts = &trx->vpackOptions();
+    AqlValueMaterializer materializer(vopts);
+    VPackSlice s = materializer.slice(value, false);
+  
+    uint64_t result = 0;
+    for (VPackSlice v : VPackArrayIterator(s)) {
+      auto currentValue = bitOperationValue<uint64_t>(v);
+      bool valid = currentValue.has_value();
+      if (valid) {
+        if (currentValue.value() >= Functions::bitFunctionsMaxSupportedBits) {
+          valid = false;
+        }
+      }
+      if (!valid) {
+        registerInvalidArgumentWarning(expressionContext, AFN);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      result |= uint64_t(1) << currentValue.value();
+    }
+  
+    return AqlValue(AqlValueHintUInt(result));
+  }
+
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+AqlValue Functions::BitDeconstruct(ExpressionContext* expressionContext, AstNode const& node,
+                                   VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (value.isNumber()) {
+    VPackSlice v = value.slice();
+    auto num = bitOperationValue<uint64_t>(v);
+    if (num.has_value()) {
+      transaction::Methods* trx = &expressionContext->trx();
+      transaction::BuilderLeaser builder(trx);
+       builder->openArray();
+       uint32_t compare = 1;
+       for (uint32_t i = 0; i < Functions::bitFunctionsMaxSupportedBits; ++i) {
+          // potential improvement: use C++20's std::countr_zero()
+         if ((num.value() & compare) != 0) {
+           builder->add(VPackValue(i));
+         }
+         compare <<= 1;
+       }
+       builder->close();
+       return AqlValue(builder->slice(), builder->size());
+    }
+  }
+
+  char const* AFN = "BIT_DECONSTRUCT";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function BIT_TO_STRING
+AqlValue Functions::BitToString(ExpressionContext* expressionContext, AstNode const& node,
+                                VPackFunctionParameters const& parameters) {
+  auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
+  if (result.has_value()) {
+    auto [testee, index] = result.value();
+    TRI_ASSERT(index <= Functions::bitFunctionsMaxSupportedBits);
+
+    char buffer[Functions::bitFunctionsMaxSupportedBits];
+    char* p = &buffer[0];
+
+    if (index > 0) {
+      uint64_t compare = uint64_t(1) << (index - 1);
+      while (compare > 0) {
+        *p = (testee & compare) ? '1' : '0';
+        ++p;
+        compare >>= 1;
+      }
+    }
+
+    return AqlValue(&buffer[0], static_cast<size_t>(p - &buffer[0]));
+  }
+  
+  static char const* AFN = "BIT_TO_STRING";
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function BIT_FROM_STRING
+AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode const& node,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "BIT_FROM_STRING";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  if (value.isString()) {
+    VPackStringRef v = value.slice().stringRef();
+    char const* p = v.data();
+    char const* e = p + v.size();
+
+    if (static_cast<uint64_t>(e - p) <= Functions::bitFunctionsMaxSupportedBits) {
+      uint64_t result = 0;
+      while (p != e) {
+        char c = *p;
+        if (c == '1') {
+          /* only the 1s are interesting for us */
+          result += (static_cast<uint64_t>(1) << (e - p - 1));
+        } else if (c != '0') {
+          // invalid input. abort
+          registerInvalidArgumentWarning(expressionContext, AFN);
+          return AqlValue(AqlValueHintNull());
+        }
+        ++p;
+      }
+      return AqlValue(AqlValueHintUInt(result));
+    }
+  }
+  
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function RAND

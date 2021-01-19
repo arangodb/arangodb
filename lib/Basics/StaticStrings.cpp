@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -272,6 +272,7 @@ std::string const StaticStrings::GraphOrphans("orphanCollections");
 std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
+std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
 
 // Pregel Section Start
 
@@ -370,8 +371,10 @@ std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
 std::string const StaticStrings::AqlCallListSpecific("specifics");
 std::string const StaticStrings::AqlCallListDefault("default");
-std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzersRevision");
-std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision("current");
+std::string const StaticStrings::ArangoSearchAnalyzersRevision(
+    "analyzersRevision");
+std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision(
+    "current");
 std::string const StaticStrings::ArangoSearchSystemAnalyzersRevision("system");
 
 // aql http headers
@@ -457,3 +460,6 @@ std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs(
     "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
 std::string const StaticStrings::SupervisionFailedServerCount(
     "arangodb_agency_supervision_failed_server_count");
+
+// TODO REMOVE ME AFTER REFACTOR IS DONE
+std::string const StaticStrings::GraphRefactorFlag("refactor");

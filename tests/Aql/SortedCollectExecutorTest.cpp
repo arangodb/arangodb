@@ -56,7 +56,7 @@ namespace arangodb::tests::aql {
 class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -138,7 +138,7 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
 class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -583,7 +583,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 class SortedCollectExecutorTestSkip : public ::testing::Test {
  protected:
   // ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,6 +98,7 @@ class Methods {
  private:
   Methods() = delete;
   Methods(Methods const&) = delete;
+
   Methods& operator=(Methods const&) = delete;
 
  public:
@@ -115,6 +116,9 @@ class Methods {
 
   /// @brief destroy the transaction
   virtual ~Methods();
+
+  Methods(Methods&&) = default;
+  Methods& operator=(Methods&&) = default;
 
   typedef Result (*DataSourceRegistrationCallback)(LogicalDataSource& dataSource,
                                                    Methods& trx);

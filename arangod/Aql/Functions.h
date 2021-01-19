@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -421,6 +421,30 @@ struct Functions {
                           AstNode const&, VPackFunctionParameters const&);
   static AqlValue Pi(arangodb::aql::ExpressionContext*, AstNode const&,
                      VPackFunctionParameters const&);
+  static AqlValue BitAnd(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParameters const&);
+  static AqlValue BitOr(arangodb::aql::ExpressionContext*, AstNode const&,
+                        VPackFunctionParameters const&);
+  static AqlValue BitXOr(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParameters const&);
+  static AqlValue BitNegate(arangodb::aql::ExpressionContext*, AstNode const&,
+                            VPackFunctionParameters const&);
+  static AqlValue BitTest(arangodb::aql::ExpressionContext*, AstNode const&,
+                          VPackFunctionParameters const&);
+  static AqlValue BitPopcount(arangodb::aql::ExpressionContext*, AstNode const&,
+                              VPackFunctionParameters const&);
+  static AqlValue BitShiftLeft(arangodb::aql::ExpressionContext*, AstNode const&,
+                               VPackFunctionParameters const&);
+  static AqlValue BitShiftRight(arangodb::aql::ExpressionContext*, AstNode const&,
+                                VPackFunctionParameters const&);
+  static AqlValue BitConstruct(arangodb::aql::ExpressionContext*, AstNode const&,
+                               VPackFunctionParameters const&);
+  static AqlValue BitDeconstruct(arangodb::aql::ExpressionContext*, AstNode const&,
+                                 VPackFunctionParameters const&);
+  static AqlValue BitFromString(arangodb::aql::ExpressionContext*, AstNode const&,
+                                VPackFunctionParameters const&);
+  static AqlValue BitToString(arangodb::aql::ExpressionContext*, AstNode const&,
+                              VPackFunctionParameters const&);
   static AqlValue Rand(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const&);
   static AqlValue FirstDocument(arangodb::aql::ExpressionContext*,
@@ -502,6 +526,11 @@ struct Functions {
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,
                                  AstNode const&, VPackFunctionParameters const&);
+
+  /// @brief maximum precision for bit operations
+  static constexpr uint64_t bitFunctionsMaxSupportedBits = 32;
+  static constexpr uint64_t bitFunctionsMaxSupportedValue = ((uint64_t(1) << bitFunctionsMaxSupportedBits) - uint64_t(1));
+
 };
 
 }  // namespace aql
