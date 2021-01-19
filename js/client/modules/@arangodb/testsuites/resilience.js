@@ -65,7 +65,6 @@ const testPaths = {
 var _resilience = function(path) {
   this.func = function resilience (options) {
     let suiteName = path;
-    let testCases = tu.scanTestPaths(testPaths[path], options);
     let localOptions = _.clone(options);
     localOptions.cluster = true;
     localOptions.propagateInstanceInfo = true;
@@ -78,12 +77,14 @@ var _resilience = function(path) {
     if (localOptions.dbServers < 5) {
       localOptions.dbServers = 5;
     }
+    let testCases = tu.scanTestPaths(testPaths[path], localOptions);
     let rc = tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
     });
     options.cleanup = options.cleanup && localOptions.cleanup;
+    return rc;
   };
 };
 
@@ -103,16 +104,19 @@ const resilienceAnalyzers = (new _resilience('resilience_analyzers')).func;
 
 function clientResilience (options) {
   let testCases = tu.scanTestPaths(testPaths.client_resilience, options);
-  options.cluster = true;
-  if (options.coordinators < 2) {
-    options.coordinators = 2;
+  let localOptions = _.clone(options);
+  localOptions.cluster = true;
+  if (localOptions.coordinators < 2) {
+    localOptions.coordinators = 2;
   }
 
-  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
+  let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',
   });
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
