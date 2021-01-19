@@ -155,7 +155,9 @@ function phpDriver (options) {
   localOptions.test = '';
   localOptions['server.jwt-secret'] = 'haxxmann';
 
-  return tu.performTests(localOptions, [ 'php_test.js'], 'php_test', runInPhpTest);
+  let rc = tu.performTests(localOptions, [ 'php_test.js'], 'php_test', runInPhpTest);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 

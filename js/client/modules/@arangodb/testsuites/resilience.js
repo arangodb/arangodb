@@ -78,11 +78,12 @@ var _resilience = function(path) {
     if (localOptions.dbServers < 5) {
       localOptions.dbServers = 5;
     }
-    return tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
+    let rc = tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
     });
+    options.cleanup = options.cleanup && localOptions.cleanup;
   };
 };
 
@@ -134,13 +135,15 @@ function activeFailover (options) {
   localOptions.singles = 4;
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
-  return tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
+  let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',
   });
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
