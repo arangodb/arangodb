@@ -244,7 +244,7 @@ function recovery (options) {
     status: true
   };
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
