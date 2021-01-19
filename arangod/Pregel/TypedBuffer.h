@@ -53,7 +53,7 @@ namespace pregel {
 /// continuous memory buffer with a fixed capacity
 template <typename T>
 struct TypedBuffer {
-  static_assert(std::is_default_constructible<T>::value, "");
+  static_assert(std::is_default_constructible<T>::value, "Stored type T has to be default constructible");
   
   /// close file (see close() )
   virtual ~TypedBuffer() = default;

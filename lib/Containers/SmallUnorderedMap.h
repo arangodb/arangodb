@@ -34,7 +34,7 @@ namespace containers {
 template <class K, class V, std::size_t BufSize = 64,
           std::size_t ElementAlignment = alignof(std::pair<const K, V>)>
 using SmallUnorderedMap =
-    std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, short_alloc<std::pair<const K, V>, BufSize, ElementAlignment>>;
+    std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, detail::short_alloc<std::pair<const K, V>, BufSize, ElementAlignment>>;
 
 }  // namespace containers
 }  // namespace arangodb
