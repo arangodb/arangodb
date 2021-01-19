@@ -344,15 +344,16 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
     if (opts->refactor()) {
-      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
-      // be changed in the future) create BaseProviderOptions
-      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), buildReverseUsedIndexes());
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                    opts->maxDepth};
 
       if (ServerState::instance()->isSingleServer()) {
-        LOG_DEVEL << "Coordinator found:";
+        // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
+        // be changed in the future) create BaseProviderOptions
+        BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes());
+        BaseProviderOptions backwardProviderOptions(opts->tmpVar(),
+                                                    buildReverseUsedIndexes());
+
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
           LOG_DEVEL << "Using SS default KPaths";
@@ -390,9 +391,14 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
         }
       } else {
-        LOG_DEVEL << "Using KPaths cluster configuration.";
+        ClusterBaseProviderOptions forwardProviderOptions(
+            opts->getExpressionCtx(), static_cast<ClusterTraverserCache*>(opts->cache()));
+        ClusterBaseProviderOptions backwardProviderOptions(
+            opts->getExpressionCtx(), static_cast<ClusterTraverserCache*>(opts->cache()));
+
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
+          LOG_DEVEL << "Using KPaths cluster configuration.";
           using KPathRefactoredCluster = KPathEnumerator<ClusterProvider>;
 
           auto kPathUnique = std::make_unique<KPathRefactoredCluster>(
@@ -409,6 +415,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredCluster>>>(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
         } else {
+          LOG_DEVEL << "implemnt support for clusterprovideroptions in ProviderTracer"; // TODO
+          LOG_DEVEL << "Using KPaths cluster tracer configuration.";
+          /*
           using KPathRefactoredClusterTracer = TracedKPathEnumerator<ClusterProvider>;
 
           auto kPathUnique = std::make_unique<KPathRefactoredClusterTracer>(
@@ -424,6 +433,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                           std::move(targetInput));
           return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredClusterTracer>>>(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
+              */
         }
       }
     } else {
