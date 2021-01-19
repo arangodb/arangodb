@@ -323,11 +323,11 @@ function setupBinaries (builddir, buildType, configDir) {
       checkFiles.push(ARANGOBACKUP_BIN);
     }
     ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-      let envName = san.toUpperCase() + "_OPTIONS;
-      let fileName + san + "_arangodb_suppressions.txt";
+      let envName = san.toUpperCase() + "_OPTIONS";
+      let fileName = san + "_arangodb_suppressions.txt";
       if (!process.env.hasOwnProperty(envName) &&
           fs.exists(fileName)) {
-        print('preparing ' + san + ' environment');
+        // print('preparing ' + san + ' environment');
         process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
       }
     });
