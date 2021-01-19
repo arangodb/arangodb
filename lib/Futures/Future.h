@@ -42,6 +42,9 @@ using Future = ::mellon::future<Try<T>, arangodb_tag>;
 template<typename T>
 using Promise = ::mellon::promise<Try<T>, arangodb_tag>;
 
+template<typename T, template<typename> typename Fut, typename Tag>
+struct scheduler_addition {};
+
 }  // namespace arangodb::futures
 
 template <>
@@ -89,11 +92,11 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
 
   template<typename T, template<typename> typename Fut>
   struct user_defined_additions;
-  template<typename T, template<typename> typename Fut>
-  struct user_defined_additions<arangodb::futures::Try<T>, Fut> {
-
-    template<typename F>
-    auto thenValue(F&&f) && noexcept {
+  template <typename T, template <typename> typename Fut>
+  struct user_defined_additions<arangodb::futures::Try<T>, Fut>
+      : arangodb::futures::scheduler_addition<T, Fut, arangodb::futures::arangodb_tag> {
+    template <typename F>
+    auto thenValue(F&& f) && noexcept {
       return std::move(self()).then(std::forward<F>(f));
     }
 
@@ -130,9 +133,11 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
 };
 
 namespace arangodb::futures {
+
 auto makeFuture() -> Future<Unit> {
   return Future<Unit>{std::in_place};
 }
+
 template<typename T>
 auto makeFuture(T t) -> Future<T> {
   return Future<T>{std::in_place, std::move(t)};

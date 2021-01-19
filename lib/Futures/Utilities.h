@@ -36,6 +36,15 @@ auto collectAll(std::vector<Future<T>>& v) {
   });
 }
 
+template <typename... Fs, typename R = std::tuple<Try<Fs>...>>
+auto collect(Future<Fs>&&... fs) {
+  // TODO maybe we want to extend this function to allow to accept temporary objects
+  return mellon::collect(std::move(fs)...).and_then([](auto&& r) mutable noexcept {
+    // and now wrap this into a expected (this is cheap because of temporaries)
+    return Try<R>(std::forward<decltype(r)>(r));
+  });
+}
+
 template <typename T>
 auto collectAll(std::vector<Future<T>>&& v) {
   return mellon::collect(v.begin(), v.end()).and_then([](auto&& r) mutable noexcept {

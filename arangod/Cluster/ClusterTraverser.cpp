@@ -78,7 +78,7 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     _done = true;
     return;
   }
- 
+
   arangodb::velocypack::HashedStringRef persId = traverserCache()->persistString(s);
   _vertexGetter->reset(persId.stringRef());
   _enumerator->setStartVertex(persId.stringRef());
@@ -204,14 +204,14 @@ void ClusterTraverser::destroyEngines() {
     auto res = network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
                                     "/_internal/traverser/" +
                                         arangodb::basics::StringUtils::itoa(it.second),
-                                    body, options);
-    res.wait();
+                                    body, options).await(mellon::yes_i_know_that_this_call_will_block);
 
-    if (!res.hasValue() || res.get().fail()) {
+
+    if (!res.has_value() || res.unwrap().fail()) {
       // Note If there was an error on server side we do not have ok()
       std::string message("Could not destroy all traversal engines");
-      if (res.hasValue()) {
-        message += ": " + network::fuerteToArangoErrorMessage(res.get());
+      if (res.has_value()) {
+        message += ": " + network::fuerteToArangoErrorMessage(res.unwrap());
       }
       LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
     }

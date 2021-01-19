@@ -3297,7 +3297,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
-  
+
   Result result;
 
   if (res.successful() && res.slice().get("results").length()) {
@@ -3576,7 +3576,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         continue;
       } else if (restore) {
         break; // failed precondition means our revert is indirectly successful!
-      } 
+      }
       return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
                     "finish modifying analyzer precondition for database " +
                     databaseID + ": Revision " + revisionBuilder.toString() +
@@ -5606,7 +5606,7 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(_server, "Plan", std::bind(&ClusterInfo::loadPlan, this), _agencyCallbackRegistry);
   _curSyncer = std::make_unique<SyncerThread>(_server, "Current", std::bind(&ClusterInfo::loadCurrent, this), _agencyCallbackRegistry);
-  
+
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
       << "unable to start PlanSyncer/CurrentSYncer";
@@ -5645,7 +5645,7 @@ void ClusterInfo::shutdownSyncers() {
 
 void ClusterInfo::waitForSyncersToStop() {
   auto start = std::chrono::steady_clock::now();
-  while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
+  while ((_planSyncer != nullptr && _planSyncer->isRunning()) ||
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
@@ -5784,8 +5784,10 @@ futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex
     return futures::makeFuture(arangodb::Result());
   }
   // intentionally don't release _storeLock here until we have inserted the promise
+  auto&& [f, p] = futures::makePromise<arangodb::Result>();
   std::lock_guard w(_waitCurrentLock);
-  return _waitCurrent.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
+  _waitCurrent.emplace(raftIndex, std::move(p));
+  return std::move(f);
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(uint64_t currentVersion) {
@@ -5794,10 +5796,10 @@ futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(uint64_t cu
     return futures::makeFuture(arangodb::Result());
   }
   // intentionally don't release _storeLock here until we have inserted the promise
+  auto&& [f, p] = futures::makePromise<arangodb::Result>();
   std::lock_guard w(_waitCurrentVersionLock);
-  return _waitCurrentVersion
-      .emplace(currentVersion, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  _waitCurrentVersion.emplace(currentVersion, std::move(p));
+  return std::move(f);
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
@@ -5807,8 +5809,10 @@ futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
   }
 
   // intentionally don't release _storeLock here until we have inserted the promise
+  auto&& [f, p] = futures::makePromise<arangodb::Result>();
   std::lock_guard w(_waitPlanLock);
-  return _waitPlan.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
+  _waitPlan.emplace(raftIndex, std::move(p));
+  return std::move(f);
 }
 
 futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
@@ -5818,27 +5822,35 @@ futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
   }
 
   // intentionally don't release _storeLock here until we have inserted the promise
+  auto&&[f, p] = futures::makePromise<arangodb::Result>();
   std::lock_guard w(_waitPlanVersionLock);
-  return _waitPlanVersion
-      .emplace(planVersion, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  _waitPlanVersion.emplace(planVersion, std::move(p));
+  return std::move(f);
 }
 
 futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout timeout) {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchPlanVersion(timeout).thenValue(
-      [&applicationServer = server()](auto maybePlanVersion) {
-        if (maybePlanVersion.ok()) {
-          auto planVersion = maybePlanVersion.get();
+  auto&& [f, p] = futures::makePromise<Result>();
+  cluster::fetchPlanVersion(timeout).finally(
+      [&applicationServer = server(), p = std::move(p)](auto maybePlanVersion) mutable noexcept {
+        if (maybePlanVersion.has_error()) {
+          std::move(p).fulfill(maybePlanVersion.error());
+        }
+
+        auto& result = maybePlanVersion.unwrap();
+
+        if (result.ok()) {
+          auto planVersion = result.get();
 
           auto& clusterInfo =
               applicationServer.getFeature<ClusterFeature>().clusterInfo();
 
-          return clusterInfo.waitForPlanVersion(planVersion);
+          clusterInfo.waitForPlanVersion(planVersion).fulfill(std::move(p));
         } else {
-          return futures::Future<Result>{maybePlanVersion.result()};
+          std::move(p).fulfill(result.result());
         }
       });
+  return std::move(f);
 }
 
 
@@ -6082,7 +6094,7 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(std::shared_ptr<cluster::paths
 
   auto fAacResult = AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
 
-  auto fResult = std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
+  futures::Future<ResultT<T>> fResult = std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
     if (result.ok() && result.statusCode() == fuerte::StatusOK) {
       return ResultT<T>::success(
           result.slice().at(0).get(path->vec()).template getNumber<T>());

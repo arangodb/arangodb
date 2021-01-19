@@ -588,7 +588,7 @@ futures::Future<OperationResult> PhysicalCollection::figures(bool details,
                                                              OperationOptions const& options) {
   auto buffer = std::make_shared<VPackBufferUInt8>();
   VPackBuilder builder(buffer);
-  
+
   builder.openObject();
 
   // add index information
@@ -618,7 +618,7 @@ futures::Future<OperationResult> PhysicalCollection::figures(bool details,
   // add engine-specific figures
   figuresSpecific(details, builder);
   builder.close();
-  return OperationResult(Result(), std::move(buffer), options);
+  return futures::Future<OperationResult>{std::in_place, Result(), std::move(buffer), options};
 }
 
 std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(

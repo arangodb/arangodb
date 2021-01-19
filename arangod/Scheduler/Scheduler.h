@@ -33,11 +33,13 @@
 #include <queue>
 
 #include <function2.hpp>
-#include "Futures/Future.h"
+
 
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
+
+#include "Futures/Future.h"
 
 namespace arangodb {
 namespace application_features {
@@ -50,6 +52,7 @@ class Builder;
 class LogTopic;
 class SchedulerThread;
 class SchedulerCronThread;
+class SchedulerFeature;
 
 class Scheduler {
  public:
@@ -153,27 +156,21 @@ class Scheduler {
   // May throw.
   virtual bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) ADB_WARN_UNUSED_RESULT = 0;
 
-
  public:
     // delay Future returns a future that will be fulfilled after the given duration
     // requires scheduler
     // If d is zero, the future is fulfilled immediately. Throws a logic error
     // if delay was cancelled.
-    futures::Future<futures::Unit> delay(clock::duration d) {
+    futures::Future<void> delay(clock::duration d) {
       if (d == clock::duration::zero()) {
-        return futures::makeFuture();
+        return futures::Future<void>{std::in_place};
       }
 
-      auto&&[f, p] = futures::makePromise<bool>();
-
-      auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
-        [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
-
-      return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
-        if (cancelled) {
-          throw std::logic_error("delay was cancelled");
-        }
-      });
+      auto&&[f, p] = futures::makePromise<void>();
+      std::unique_lock guard(_cronQueueMutex);
+      _delayedFutures.emplace_back(clock::now() + d, std::move(p));
+      std::push_heap(_delayedFutures.begin(), _delayedFutures.end(), std::greater<DelayedFuture>{});
+      return std::move(f);
     }
 
   // ---------------------------------------------------------------------------
@@ -204,7 +201,37 @@ class Scheduler {
     }
   };
 
+  struct DelayedFuture {
+    explicit DelayedFuture(clock::time_point timepoint,
+                           mellon::promise<expect::expected<void>, futures::arangodb_tag> promise)
+        : timepoint(timepoint), promise(std ::move(promise)) {}
+    DelayedFuture(DelayedFuture&&) noexcept = default;
+    DelayedFuture& operator=(DelayedFuture&&) noexcept = default;
+
+    ~DelayedFuture() {
+      if (!promise.empty()) {
+        abort();
+      }
+    }
+
+    bool operator>(DelayedFuture const& other) const noexcept {
+      return timepoint > other.timepoint;
+    }
+
+    void run() noexcept {
+      std::move(promise).fulfill();
+    }
+
+    void abort() noexcept {
+      std::move(promise).throw_exception<std::runtime_error>("delay aborted");
+    }
+
+    clock::time_point timepoint;
+    futures::Promise<void> promise;
+  };
+
   std::priority_queue<CronWorkItem, std::vector<CronWorkItem>, CronWorkItemCompare> _cronQueue;
+  std::vector<DelayedFuture> _delayedFutures;
 
   std::mutex _cronQueueMutex;
   std::condition_variable _croncv;

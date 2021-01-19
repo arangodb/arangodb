@@ -43,6 +43,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
+#include <Futures/Utilities.h>
 #include <set>
 
 using namespace arangodb;
@@ -314,10 +315,10 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
 
   auto buildCallback =
-      [this, server, serverDest, didCreateEngine = std::move(didCreateEngine),
+      [this, server = server, serverDest, didCreateEngine = std::move(didCreateEngine),
        &serverToQueryId, &serverToQueryIdLock, &snippetIds](
           arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
-    auto const& resolvedResponse = response.get();
+    auto const& resolvedResponse = response.unwrap();
     if (resolvedResponse.fail()) {
       Result res = resolvedResponse.combinedResult();
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
@@ -445,10 +446,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses) -> Result {
             // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
             // error as we need to abort after.
-            // Otherwise we need to report 
+            // Otherwise we need to report
             Result res{TRI_ERROR_NO_ERROR};
             for (auto const& tryRes : responses) {
-              auto response = tryRes.get();
+              auto response = tryRes.unwrap();
               if (response.fail()) {
                 if (response.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
                   // Found something we cannot recover from.
@@ -475,7 +476,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       // Wait for all requests to complete.
       // So we know that all Transactions are aborted.
       // We do NOT care for the actual result.
-      futures::collectAll(requests).wait();
+      futures::collectAll(requests).await_unwrap();
       snippetIds.clear();
     }
 

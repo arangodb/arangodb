@@ -160,8 +160,8 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   // This code intentionally ignores all errors
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
   for (auto const& res : responses) {
-    if (res.hasValue() && res.get().ok()) {
-      auto& result = res.get();
+    if (res.has_value() && res.unwrap().ok()) {
+      auto& result = res.unwrap();
       if (result.statusCode() == fuerte::StatusOK) {
         realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
       }

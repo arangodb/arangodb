@@ -91,6 +91,7 @@ void Scheduler::shutdown() {
 
   _croncv.notify_one();
   _cronThread.reset();
+  _delayedFutures.clear();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // At this point the cron thread has been stopped
@@ -116,7 +117,7 @@ void Scheduler::runCronThread() {
 
     while (!_cronQueue.empty()) {
       // top is a reference to a tuple containing the timepoint and a shared_ptr to the work item
-      auto top = _cronQueue.top();
+      auto& top = _cronQueue.top();
       if (top.first < now) {
         _cronQueue.pop();
         guard.unlock();
@@ -139,6 +140,19 @@ void Scheduler::runCronThread() {
         auto then = (top.first - now);
 
         sleepTime = (sleepTime > then ? then : sleepTime);
+        break;
+      }
+    }
+
+    while (!_delayedFutures.empty()) {
+      auto& top = _delayedFutures.front();
+      if (top.timepoint < now) {
+        std::ignore = queue(RequestLane::CLUSTER_INTERNAL, [top = std::move(top)]() mutable noexcept {
+          top.run();
+        });
+        std::pop_heap(_delayedFutures.begin(), _delayedFutures.end(), std::greater<>{});
+        _delayedFutures.pop_back();
+      } else {
         break;
       }
     }

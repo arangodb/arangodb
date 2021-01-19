@@ -146,7 +146,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
   for (auto const& pair : shards) {
     auto const& it = shardMap->find(pair.first);
     if (it->second.empty()) {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;  // something is broken
+      return Future<Result>{std::in_place, TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};  // something is broken
     }
     // now we got the shard leader
     std::string const& leader = it->second[0];
@@ -1469,7 +1469,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
       [=, &trx, &coll, opCtx(std::move(opCtx)),
        options = options](Result&& r) mutable -> Future<OperationResult> {
         if (r.fail()) {
-          return OperationResult(std::move(r), options);
+          return makeFuture(OperationResult(std::move(r), options));
         }
 
         std::string const baseUrl = "/_api/document/";
@@ -1622,7 +1622,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         [=, &trx, opCtx(std::move(opCtx)),
          options = options](Result&& r) mutable -> Future<OperationResult> {
           if (r.fail()) {
-            return OperationResult(std::move(r), options);
+            return makeFuture(OperationResult(std::move(r), options));
           }
 
           // Now prepare the requests:
@@ -1686,7 +1686,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 
   return handle_indirect_future(std::move(f), [=, &trx, options = options](Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
-      return OperationResult(r, options);
+      return makeFuture(OperationResult(r, options));
     }
 
     // We simply send the body to all shards and await their results.
@@ -1864,7 +1864,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         [=, &trx, opCtx(std::move(opCtx)),
          options = options](Result&& r) mutable -> Future<OperationResult> {
           if (r.fail()) {
-            return OperationResult(std::move(r), options);
+            return makeFuture(OperationResult(std::move(r), options));
           }
 
           // Now prepare the requests:
@@ -2390,7 +2390,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
         [=, &trx, opCtx(std::move(opCtx)),
          options = options](Result&& r) mutable -> Future<OperationResult> {
           if (r.fail()) {  // bail out
-            return OperationResult(r, opCtx.options);
+            return makeFuture(OperationResult(r, opCtx.options));
           }
 
           // Now prepare the requests:

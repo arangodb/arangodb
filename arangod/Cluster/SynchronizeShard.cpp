@@ -151,7 +151,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   options.database = database;
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
-  
+
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                   REPL_HOLD_READ_LOCK,
                                   VPackBuffer<uint8_t>(), options)
@@ -252,7 +252,7 @@ static arangodb::Result addShardFollower(
     if (res.fail()) {
        return res;
     }
-    
+
     VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
@@ -293,7 +293,7 @@ static arangodb::Result addShardFollower(
     options.database = database;
     options.timeout = network::Timeout(timeout);
     options.skipScheduler = true; // hack to speed up future.get()
-    
+
     auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
                                     REPL_ADD_FOLLOWER,
                                     std::move(*body.steal()), options)
@@ -393,7 +393,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   // The POST request thus is answered immediately back to the caller.
   // The servers (<=3.3) with lower versions hold the POST request for as long
   // as the corresponding DELETE_REQ has not been successfully submitted.
-  
+
   // nullptr only happens during controlled shutdown
   if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
@@ -401,19 +401,19 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
 
   VPackBuilder body;
-  { 
+  {
     VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); 
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft));
   }
   auto buf = body.steal();
 
   // Try to POST the lock body. If POST fails, we should just exit and retry
-  // SynchroShard anew. 
+  // SynchroShard anew.
   network::RequestOptions options;
   options.timeout = network::Timeout(timeout);
   options.database = database;
@@ -513,7 +513,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   try {
     std::string const context = "synchronization of shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
-  
+
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
           << "initial sync failed for " << database << "/" << col->name()
@@ -605,7 +605,7 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
   auto const collection = conf.get(COLLECTION).copyString();
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
-    
+
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
@@ -1111,7 +1111,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   // if we get a checksum mismatch, it means that we got different counts of
   // documents on the leader and the follower, which can happen if collection
-  // counts are off for whatever reason. 
+  // counts are off for whatever reason.
   // under many cicrumstances the counts will have been auto-healed by the initial
   // or the incremental replication before, so in many cases we will not even get
   // into this if case
@@ -1119,11 +1119,11 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     // give up the lock on the leader, so writes aren't stopped unncessarily
     // on the leader while we are recalculating the counts
     readLockGuard.fire();
-    
+
     collection.vocbase().server().getFeature<ClusterFeature>().followersWrongChecksumCounter()++;
 
     // recalculate collection count on follower
-    LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
+    LOG_TOPIC("29384", INFO, Logger::MAINTENANCE)
        << "recalculating collection count on follower for "
        << database << "/" << shard;
 
@@ -1141,7 +1141,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       return countRes;
     }
 
-    LOG_TOPIC("d2689", INFO, Logger::MAINTENANCE) 
+    LOG_TOPIC("d2689", INFO, Logger::MAINTENANCE)
        << "recalculated collection count on follower for "
        << database << "/" << shard << ", old: " << oldCount << ", new: " << docCount;
 
@@ -1149,7 +1149,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     if (oldCount == docCount) {
       // no change happened due to recalculation. now try recounting on leader too.
       // this is last resort and should not happen often!
-      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
+      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE)
          << "recalculating collection count on leader for "
          << database << "/" << shard;
 
@@ -1180,7 +1180,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       }
     }
 
-    // still let the operation fail here, because we gave up the lock 
+    // still let the operation fail here, because we gave up the lock
     // already and cannot be sure the data on the leader hasn't changed in
     // the meantime. we will sort this issue out during the next maintenance
     // run
@@ -1233,7 +1233,7 @@ void SynchronizeShard::setState(ActionState state) {
               << "Failed to acquire current version from agency while increasing shard version"
               << " for shard "  << database << "/" << shard << e.what();
           })
-        .wait();
+        .await(mellon::yes_i_know_that_this_call_will_block);
       if (v > 0) {
         break;
       }
@@ -1247,8 +1247,12 @@ void SynchronizeShard::setState(ActionState state) {
     // In the former case, we tried our best and will safely continue some 10 min later.
     // If however v is an actual positive integer, we'll wait for it to sync in out
     // ClusterInfo cache through loadCurrent.
-    if ( v > 0) {
-      _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
+    if (v > 0) {
+      _feature.server()
+          .getFeature<ClusterFeature>()
+          .clusterInfo()
+          .waitForCurrentVersion(v)
+          .await(mellon::yes_i_know_that_this_call_will_block);
     }
     _feature.incShardVersion(shard);
     _feature.unlockShard(shard);

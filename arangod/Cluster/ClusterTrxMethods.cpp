@@ -197,13 +197,13 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   TRI_ASSERT(state->isRunning());
 
   if (state->knownServers().empty()) {
-    return Result();
+    return makeFuture(Result());
   }
 
   // only commit managed transactions, and AQL leader transactions (on DBServers)
   if (!ClusterTrxMethods::isElCheapo(*state) ||
       (state->isCoordinator() && state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
-    return Result();
+    return makeFuture(Result());
   }
   TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
 
@@ -243,7 +243,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
           TRI_ASSERT(state->id().isCoordinatorTransactionId());
 
           for (Try<arangodb::network::Response> const& tryRes : responses) {
-            network::Response const& resp = tryRes.get();  // throws exceptions upwards
+            network::Response const& resp = tryRes.unwrap();  // throws exceptions upwards
             Result res = ::checkTransactionResult(tidPlus, status, resp);
             if (res.fail()) {
               return res;
@@ -258,7 +258,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
 
         // Drop all followers that were not successful:
         for (Try<arangodb::network::Response> const& tryRes : responses) {
-          network::Response const& resp = tryRes.get();  // throws exceptions upwards
+          network::Response const& resp = tryRes.unwrap();  // throws exceptions upwards
 
           Result res = ::checkTransactionResult(tidPlus, status, resp);
           if (res.fail()) {  // remove follower from all collections
@@ -321,7 +321,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
   if (leaders.empty()) {
-    return res;
+    return makeFuture(res);
   }
 
   // If !state.knownServers.empty() => We have already locked something.
@@ -348,7 +348,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     }
 
     if (requests.empty()) {
-      return res;
+      return makeFuture(res);
     }
 
     const TransactionId tid = state.id().child();
@@ -363,7 +363,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
               // we actually abort here and cannot revert to slow path execution.
               Result result{TRI_ERROR_NO_ERROR};
               for (Try<arangodb::network::Response> const& tryRes : responses) {
-                network::Response const& resp = tryRes.get();  // throws exceptions upwards
+                network::Response const& resp = tryRes.unwrap();  // throws exceptions upwards
 
                 Result res =
                     ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
@@ -384,7 +384,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       // We are either good or we cannot use the slow path.
       // We need to return the result here.
       // We made sure that all servers that reported success are known to the transaction.
-      return fastPathResult;
+      return makeFuture(fastPathResult);
     }
 
     // Entering slow path
@@ -400,7 +400,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
           commitAbortTransaction(&state, transaction::Status::ABORTED).get();
       if (resetRes.fail()) {
         // return here if cleanup failed - this needs to be a success
-        return resetRes;
+        return makeFuture(resetRes);
       }
     }
 
@@ -424,14 +424,14 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       auto resp = ::beginTransactionRequest(state, leader);
       auto const& resolvedResponse = resp.get();
       if (resolvedResponse.fail()) {
-        return resolvedResponse.combinedResult();
+        return makeFuture(resolvedResponse.combinedResult());
       } else {
         state.addKnownServer(leader);  // add server id to known list
       }
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Future<Result>{std::in_place, TRI_ERROR_NO_ERROR};
 }
 
 /// @brief commit a transaction on a subordinate

@@ -281,7 +281,7 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
   }
   if (res.transportType() == Endpoint::TransportType::HTTP &&
       !ServerState::instance()->isDBServer()) {
-  
+
     // CORS response handling
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
@@ -354,9 +354,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal([self(shared_from_this()), handler(std::move(handler)), messageId](
-                                 futures::Try<Result> && /*ignored*/) -> void {
-      self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
+    std::move(res).thenFinal([self(shared_from_this()), handler(std::move(handler)),
+                              messageId](futures::Try<Result>&& /*ignored*/) noexcept {
+      try {
+        self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
+      } catch (...) {
+        /* TODO ignore */
+      }
     });
     return;
   }
@@ -409,7 +413,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();
- 
+
   std::lock_guard<std::mutex> guard(_statisticsMutex);
   return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
 }
@@ -558,14 +562,14 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   }
 
   std::string const& path = req.requestPath();
-  
+
   auto const& ap = token.allowedPaths();
   if (!ap.empty()) {
     if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
       return Flow::Abort;
     }
   }
-  
+
   bool userAuthenticated = req.authenticated();
   Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
 
@@ -677,10 +681,10 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
 /// handle an OPTIONS request
 void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
                                   std::string const& origin) {
-  
+
   auto resp = createResponse(rest::ResponseCode::OK, req->messageId());
   resp->setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
-  
+
   if (!origin.empty()) {
     LOG_TOPIC("e1cfa", DEBUG, arangodb::Logger::REQUESTS)
         << "got CORS preflight request";
@@ -772,7 +776,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
     LOG_TOPIC("c4538", WARN, arangodb::Logger::AUTHENTICATION)
         << "unknown exception during authentication process";
   }
-  
+
   return auth::TokenCache::Entry::Unauthenticated();
 }
 

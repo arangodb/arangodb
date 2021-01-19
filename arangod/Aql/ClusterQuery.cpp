@@ -108,7 +108,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);
-  
+
   SerializationFormat format = SerializationFormat::SHADOWROWS;
 
   const bool planRegisters = !_queryString.empty();
@@ -157,7 +157,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
     answerBuilder.close();  // traverserEngines
   }
   TRI_ASSERT(_trx != nullptr);
-  
+
   if (_queryProfile) {  // simon: just a hack for AQL_EXECUTEJSON
     _queryProfile->registerInQueryList();
   }
@@ -167,21 +167,21 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
 futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  
+
   // technically there is no need for this in DBServers, but it should
   // be good practice to prevent the other cleanup code from running
   ShutdownState exp = ShutdownState::None;
   if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress)) {
-    return Result{TRI_ERROR_INTERNAL, "query already finalized"}; // someone else got here
+    return futures::Future<Result>{std::in_place, TRI_ERROR_INTERNAL, "query already finalized"}; // someone else got here
   }
 
   LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
        << elapsedSince(_startTime)
        << " Query::finalizeSnippets: before _trx->commit, errorCode: "
        << errorCode << ", this: " << (uintptr_t)this;
-  
+
   enterState(QueryExecutionState::ValueType::FINALIZATION);
-  
+
   for (auto& engine : _snippets) {  // make sure all snippets are unused
     engine->sharedState()->invalidate();
     engine->collectExecutionStats(_execStats);
@@ -198,7 +198,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
       finishResult = _trx->abortAsync();
     }
   }
-  
+
   return std::move(finishResult).thenValue([this](Result res) -> Result {
     LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
           << elapsedSince(_startTime)
@@ -209,12 +209,12 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
      _execStats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
      _execStats.setExecutionTime(elapsedSince(_startTime));
     _shutdownState.store(ShutdownState::Done);
-     
+
      LOG_TOPIC("5fde0", DEBUG, Logger::QUERIES)
          << elapsedSince(_startTime)
          << " ClusterQuery::finalizeClusterQuery: done"
          << " this: " << (uintptr_t)this;
-         
+
     return res;
   });
  }
