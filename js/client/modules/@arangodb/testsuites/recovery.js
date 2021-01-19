@@ -32,9 +32,8 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
-const internal = require('internal');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -43,45 +42,9 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 
-const termSignal = 15;
-
 const testPaths = {
   'recovery': [tu.pathForTesting('server/recovery')]
 };
-
-/// ensure that we have enough db servers in cluster tests
-function ensureServers(options, numServers) {
-  if (options.cluster && options.dbServers < numServers) {
-    let localOptions = _.clone(options);
-    localOptions.dbServers = numServers;
-    return localOptions;
-  }
-  return options;
-}
-
-function checkServersGOOD(instanceInfo) {
-  try {
-    let health = require('internal').clusterHealth();
-    let rc = instanceInfo.arangods.reduce((previous, arangod) => {
-        if (arangod.role === "agent") return true;
-        if (health.hasOwnProperty(arangod.id)) {
-          if (health[arangod.id].Status === "GOOD") {
-            return previous;
-          } else {
-            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
-            return false;
-          }
-        } else {
-          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
-          return false;
-        }
-      }, true);
-    return rc;
-  } catch(e) {
-    print("Error checking cluster health " + e);
-    return false;
-  }
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: recovery
@@ -89,6 +52,7 @@ function checkServersGOOD(instanceInfo) {
 
 function runArangodRecovery (params) {
   let useEncryption = false;
+
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
@@ -100,9 +64,6 @@ function runArangodRecovery (params) {
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
   };
-  
-  // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
-  let additionalTestParams  = {};
 
 
   let argv = [];
@@ -113,17 +74,9 @@ function runArangodRecovery (params) {
   pu.cleanupDBDirectoriesAppend(crashLogDir);
 
   let crashLog = fs.join(crashLogDir, 'crash.log');
-  
-  if (params.options.cluster) {
-    // arangosh has different name for parameter :(
-    additionalTestParams['javascript.execute'] =  params.script;
-    additionalTestParams['javascript.run-main'] = true;
-  } else {
-    additionalTestParams['javascript.script'] =  params.script;
-  }
 
   if (params.setup) {
-    additionalTestParams['javascript.script-parameter'] = 'setup';
+    additionalParams['javascript.script-parameter'] = 'setup';
     try {
       // clean up crash log before next test
       fs.remove(crashLog);
@@ -138,27 +91,17 @@ function runArangodRecovery (params) {
     }
 
     params.options.disableMonitor = true;
-    if (params.options.cluster) {
-      params.options =  ensureServers(params.options);
-    }
-    let args = {};
-    args['temp.path'] = params.instanceInfo.rootDir;
-    
-    if (!params.options.cluster) {
-      params.testDir = fs.join(params.tempDir, `${params.count}`);
-      pu.cleanupDBDirectoriesAppend(params.testDir);
-      let dataDir = fs.join(params.testDir, 'data');
-      let appDir = fs.join(params.testDir, 'app');
-      let tmpDir = fs.join(params.testDir, 'tmp');
-      fs.makeDirectoryRecursive(params.testDir);
-      fs.makeDirectoryRecursive(dataDir);
-      fs.makeDirectoryRecursive(tmpDir);
-      fs.makeDirectoryRecursive(appDir);
-      args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
-      args['database.directory'] = fs.join(dataDir + 'db');
-      args['server.rest-server'] = 'false';
-      args['log.output'] = 'file://' + crashLog;
-    }
+    params.testDir = fs.join(params.tempDir, `${params.count}`);
+    pu.cleanupDBDirectoriesAppend(params.testDir);
+    let dataDir = fs.join(params.testDir, 'data');
+    let appDir = fs.join(params.testDir, 'app');
+    let tmpDir = fs.join(params.testDir, 'tmp');
+    fs.makeDirectoryRecursive(params.testDir);
+    fs.makeDirectoryRecursive(dataDir);
+    fs.makeDirectoryRecursive(tmpDir);
+    fs.makeDirectoryRecursive(appDir);
+
+    let args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
     // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
@@ -166,8 +109,13 @@ function runArangodRecovery (params) {
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
       'rocksdb.wal-file-timeout-initial': 10,
-      'replication.auto-start': 'true'
+      'database.directory': fs.join(dataDir + 'db'),
+      'server.rest-server': 'false',
+      'replication.auto-start': 'true',
+      'javascript.script': params.script
     });
+      
+    args['log.output'] = 'file://' + crashLog;
 
     if (useEncryption) {
       let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
@@ -192,77 +140,26 @@ function runArangodRecovery (params) {
     }
 
     params.args = args;
-      
+
+    argv = toArgv(Object.assign(params.args, additionalParams));
   } else {
-    additionalTestParams['javascript.script-parameter'] = 'recory';
-  }
-  
-  if (!params.options.cluster) {
-    // for single server run all parameters goes to one server
-    additionalParams = Object.assign(additionalParams, additionalTestParams);
-  }
-  
-  if (params.options.cluster) {
-    if (params.setup) {
-      params.args = Object.assign(params.args, additionalParams);
-      params.instanceInfo = pu.startInstance(params.options.protocol,
-                                             params.options,
-                                             params.args,
-                                             fs.join('recovery', params.count.toString()));
-    } else {
-      print(BLUE + "Restarting cluster " + RESET);
-      pu.reStartInstance(params.options, params.instanceInfo, {});
-      let tryCount = 10;
-      while(tryCount > 0 && !checkServersGOOD(params.instanceInfo)) {
-        print(RESET + "Waiting for all servers to go GOOD");
-        internal.sleep(3); // give agency time to bootstrap DBServers
-        --tryCount;
-      }
-    }
-    let agentArgs = pu.makeArgs.arangosh(params.options);
-    agentArgs['server.endpoint'] = tu.findEndpoint(params.options, params.instanceInfo);
-    if (params.args['log.level']) {
-      agentArgs['log.level'] = params.args['log.level'];
-    }
-    agentArgs['temp.path'] = params.instanceInfo.rootDir;
-    Object.assign(agentArgs, additionalTestParams);
-    require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceInfo);
-    try {
-      pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(agentArgs), params.options, 'arangosh', params.instanceInfo.rootDir, false);
-    } catch(err) {
-      print('Error while launching test:' + err);
-      pu.shutdownInstance(params.instanceInfo, params.options, false);
-      return; // without test server test will for sure fail
-    }
-    if (params.setup) {
-      let dbServers = params.instanceInfo.arangods.slice().filter((a) => {return a.role === 'dbserver' || a.role === 'coordinator';});
-      print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
-      dbServers.forEach((arangod) => {
-        internal.debugTerminateInstance(arangod.endpoint);
-        // need this to properly mark spawned process as killed in internal test data
-        arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); 
-        arangod.pid = 0;
-      });
-    } else {
-      pu.shutdownInstance(params.instanceInfo, params.options, false);
-    }
-  } else {
+    additionalParams['javascript.script-parameter'] = 'recory';
     argv = toArgv(Object.assign(params.args, additionalParams));
     
-    if (params.options.rr && !params.setup ) {
+    if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
     }
-      
-    process.env["crash-log"] = crashLog;
-    params.instanceInfo.pid = pu.executeAndWait(
-      binary,
-      argv,
-      params.options,
-      'recovery',
-      params.instanceInfo.rootDir,
-      !params.setup && params.options.coreCheck);
   }
+    
+  process.env["crash-log"] = crashLog;
+  params.instanceInfo.pid = pu.executeAndWait(
+    binary,
+    argv,
+    params.options,
+    'recovery',
+    params.instanceInfo.rootDir,
+    !params.setup && params.options.coreCheck);
 }
 
 function recovery (options) {
@@ -311,21 +208,7 @@ function recovery (options) {
         count: count,
         testDir: ""
       };
-
-      for (let phase = 1; ; ++phase) {
-        runArangodRecovery(params);
-
-        // check if a CONTINUE file exists
-        let continueFile = fs.join(params.args['temp.path'], "CONTINUE");
-        // very likely the CONTINUE file does not exist.
-
-        // the test we now run _may_ write a CONTINUE file.
-        // if it does, we keep looping here until the test fails
-        // or we don't have any CONTINUE file
-        if (!fs.exists(continueFile)) {
-          break;
-        }
-      }
+      runArangodRecovery(params);
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
