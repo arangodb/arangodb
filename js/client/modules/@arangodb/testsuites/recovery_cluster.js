@@ -229,6 +229,16 @@ function recovery (options) {
       status: false
     };
   }
+  
+  if (!options.cluster) {
+    return {
+      recovery: {
+        status: false,
+        message: 'cluster_recovery suite need cluster option to be set to true!'
+      },
+      status: false
+    };
+  }
 
   let results = {
     status: true
