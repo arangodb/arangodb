@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -490,7 +490,7 @@ public:
    * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,13 +36,15 @@
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <fuerte/types.h>
 
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace network {

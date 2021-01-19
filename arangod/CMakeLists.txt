@@ -185,8 +185,38 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
   Graph/WeightedEnumerator.cpp
+  Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
+  Graph/Cache/RefactoredTraverserCache.cpp
+  Graph/Enumerators/TwoSidedEnumerator.cpp
+  Graph/Helpers/TraceEntry.cpp
+  Graph/Queues/QueueTracer.cpp
+  Graph/PathManagement/PathResult.cpp
+  Graph/PathManagement/PathStore.cpp
+  Graph/PathManagement/PathStoreTracer.cpp
+  Graph/PathManagement/PathValidator.cpp
+  Graph/Options/TwoSidedEnumeratorOptions.cpp
+  Graph/Providers/SingleServerProvider.cpp
+  Graph/Providers/BaseProviderOptions.cpp
+  Graph/Providers/ProviderTracer.cpp
+  Graph/Types/UniquenessLevel.cpp
+  Graph/Types/ValidationResult.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
+)
+
+set(LIB_ARANGO_PREGEL_AIR_SOURCES
+  Pregel/Algos/AIR/AIR.cpp
+  Pregel/Algos/AIR/AbstractAccumulator.cpp
+  Pregel/Algos/AIR/AccumulatorOptions.cpp
+  Pregel/Algos/AIR/Accumulators.cpp
+  Pregel/Algos/AIR/EdgeData.cpp
+  Pregel/Algos/AIR/GraphFormat.cpp
+  Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/MessageData.cpp
+  Pregel/Algos/AIR/MessageFormat.cpp
+  Pregel/Algos/AIR/VertexComputation.cpp
+  Pregel/Algos/AIR/VertexData.cpp
+  Pregel/Algos/AIR/WorkerContext.cpp
 )
 
 set(LIB_ARANGO_PREGEL_SOURCES
@@ -214,6 +244,8 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
   Pregel/Recovery.cpp
+  Pregel/Reports.cpp
+  Pregel/Reports.h
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
@@ -778,6 +810,7 @@ add_library(arango_graph STATIC
 
 add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_SOURCES}
+  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
 )
 
 add_library(arango_aql STATIC
@@ -938,6 +971,7 @@ target_link_libraries(arango_network arango)
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
+target_link_libraries(arango_pregel arango_greenspun)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)

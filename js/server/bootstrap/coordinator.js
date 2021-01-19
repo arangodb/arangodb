@@ -27,13 +27,9 @@
 // @author Copyright 2014-2020, ArangoDB GmbH, Cologne, Germany
 ///////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief initialize a new database
-// //////////////////////////////////////////////////////////////////////////////
-
+/// initializes a coordinator. will be called once per V8 context, on all coordinators
 (function () {
   const internal = require('internal');
-  const errors = require('@arangodb').errors;
 
   // autoload all modules
   // this functionality is deprecated and will be removed in 3.9

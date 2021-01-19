@@ -527,3 +527,8 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","
 ## Plan Analyzers errors
 ################################################################################
 ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
+
+################################################################################
+## AIR errors
+################################################################################
+ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"

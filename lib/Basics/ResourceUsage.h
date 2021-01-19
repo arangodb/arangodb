@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,6 +71,11 @@ struct ResourceMonitor final {
   size_t peakMemoryUsage() const {
     return currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
   }
+
+  size_t currentMemoryUsage() const {
+    return currentResources.memoryUsage.load(std::memory_order_relaxed);
+  }
+
   
  private:
 

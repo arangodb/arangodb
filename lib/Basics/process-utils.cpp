@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -295,7 +295,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
 
     // add environment variables
     for (auto const& it : additionalEnv) {
-      putenv(TRI_DuplicateString(it.c_str()));
+      putenv(TRI_DuplicateString(it.c_str(), it.size()));
     }
 
     // execute worker
@@ -914,7 +914,7 @@ void TRI_CreateExternalProcess(char const* executable,
 
   memset(external->_arguments, 0, (n + 2) * sizeof(char*));
 
-  external->_arguments[0] = TRI_DuplicateString(executable);
+  external->_arguments[0] = TRI_DuplicateString(executable, strlen(executable));
   if (external->_arguments[0] == nullptr) {
     // OOM
     pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -922,7 +922,7 @@ void TRI_CreateExternalProcess(char const* executable,
   }
 
   for (size_t i = 0; i < n; ++i) {
-    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str());
+    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str(), arguments[i].size());
     if (external->_arguments[i + 1] == nullptr) {
       // OOM
       pid->_pid = TRI_INVALID_PROCESS_ID;
