@@ -37,3 +37,16 @@ aql::Variable const* BaseProviderOptions::tmpVar() const {
 std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
   return _indexInformation;
 }
+
+ClusterBaseProviderOptions::ClusterBaseProviderOptions(arangodb::aql::FixedVarExpressionContext expressionContext,
+                                                       ClusterTraverserCache* cache)
+    : _expressionCtx(expressionContext), _cache(cache) {}
+
+ClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
+  TRI_ASSERT(_cache != nullptr);
+  return _cache;
+}
+
+const arangodb::aql::FixedVarExpressionContext& ClusterBaseProviderOptions::getExpressionContext() const {
+  return _expressionCtx;
+}

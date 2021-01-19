@@ -26,6 +26,8 @@
 
 #include "Transaction/Methods.h"
 
+#include <Aql/FixedVarExpressionContext.h>
+#include <Graph/ClusterTraverserCache.h>
 #include <optional>
 #include <vector>
 
@@ -64,6 +66,18 @@ struct BaseProviderOptions {
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::vector<IndexAccessor> _indexInformation;
+};
+
+struct ClusterBaseProviderOptions {
+ public:
+  ClusterBaseProviderOptions(arangodb::aql::FixedVarExpressionContext expressionContext, ClusterTraverserCache* cache);
+
+  arangodb::aql::FixedVarExpressionContext const& getExpressionContext() const;
+  ClusterTraverserCache* getCache();
+
+ private:
+  arangodb::aql::FixedVarExpressionContext _expressionCtx;
+  ClusterTraverserCache* _cache;
 };
 
 }  // namespace graph
