@@ -271,9 +271,7 @@ auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) 
   if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider>> ||
                 std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider>> ||
                 std::is_same_v<FinderType, KPathEnumerator<ClusterProvider>> ||
-                std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>
-
-  ) {
+                std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider>>) {
     if (_finder.getNextPath(*tmp.builder())) {
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
@@ -401,4 +399,3 @@ template class ::arangodb::aql::KShortestPathsExecutor<TracedKPathEnumerator<Clu
 
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>;
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KPathFinder>;
-
