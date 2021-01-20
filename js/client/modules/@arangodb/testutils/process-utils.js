@@ -135,6 +135,16 @@ class ConfigBuilder {
       this.config['--compress-output'] = false;
     }
   }
+  activateEnvelopes() {
+    if (this.type === 'dump') {
+      this.config['--envelope'] = true;
+    }
+  }
+  deactivateEnvelopes() {
+    if (this.type === 'dump') {
+      this.config['--envelope'] = false;
+    }
+  }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {

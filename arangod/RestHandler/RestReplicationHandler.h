@@ -360,13 +360,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCoordinatorAnalyzersBatch();
+  Result processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreUsersBatch(std::string const& colName);
+  Result processRestoreUsersBatch(bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection
@@ -396,9 +396,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief parse an input batch
   //////////////////////////////////////////////////////////////////////////////
 
-  Result parseBatch(std::string const& collectionName,
-                    std::unordered_map<std::string, VPackValueLength>& latest,
-                    VPackBuilder& allMarkers);
+  Result parseBatch(transaction::Methods& trx,
+                    std::string const& collectionName,
+                    VPackBuilder& documentToInsert,
+                    bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a collection, based on the VelocyPack provided
