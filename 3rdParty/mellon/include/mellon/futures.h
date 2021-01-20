@@ -998,10 +998,9 @@ struct future
       detail::internal_store<Tag, T>::emplace(std::forward<Args>(args)...);
       _base.reset(FUTURES_INVALID_POINTER_INLINE_VALUE(Tag, T));
     } else {
-      // no preallocated memory needed
-      _base.reset(
-          detail::tag_trait_helper<Tag>::template allocate_construct<detail::continuation_base<Tag, T, 0>>(
-              std::in_place, std::forward<Args>(args)...));
+      // TODO no preallocated memory needed
+      _base.reset(detail::tag_trait_helper<Tag>::template allocate_construct<detail::continuation_base<Tag, T>>(
+          std::in_place, std::forward<Args>(args)...));
     }
   }
 
