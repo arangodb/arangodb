@@ -7,7 +7,7 @@ devel
   collections, but it did not parallelize the dump for multiple shards of the
   same collection.
   This change should speed up dumping of collections with multiple shards.
-  When dumping multiple shards of the same collection concurrently, Parallelism 
+  When dumping multiple shards of the same collection concurrently, parallelism 
   is still limited by all these threads needing to serialize their chunks into
   the same (shared) output file. 
 
