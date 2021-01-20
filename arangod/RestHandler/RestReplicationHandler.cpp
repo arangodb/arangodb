@@ -1508,7 +1508,7 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool gene
 
   {
     // this "fake" transaction here is only needed to get access to the underlying
-    // _users collection. we will not write anything into the collection here
+    // _analyzers collection. we will not write anything into the collection here
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, StaticStrings::AnalyzersCollection, AccessMode::Type::READ);
 
