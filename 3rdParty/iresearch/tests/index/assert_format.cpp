@@ -38,7 +38,7 @@
 
 #include "utils/bit_utils.hpp"
 #include "utils/automaton_utils.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 #include "store/data_output.hpp"
 
@@ -47,7 +47,7 @@
 #include <iostream>
 #include <cassert>
 
-NS_BEGIN(tests)
+namespace tests {
 
 position::position(
     uint32_t pos, uint32_t start,
@@ -961,12 +961,12 @@ void assert_index(
   assert_index(expected_index, actual_index_reader, features, skip, matcher);
 }
 
-NS_END // tests
+} // tests
 
-NS_ROOT
+namespace iresearch {
 
 // use base irs::position type for ancestors
 template<>
 struct type<tests::doc_iterator::pos_iterator> : type<irs::position> { };
 
-NS_END
+}

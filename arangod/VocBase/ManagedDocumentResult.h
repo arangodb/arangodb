@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -59,12 +60,12 @@ class ManagedDocumentResult {
   /// @brief access the internal buffer, revisionId must be set manually
   std::string* setManaged() noexcept {
     _string.clear();
-    _revisionId = 0;
+    _revisionId = RevisionId::none();
     return &_string;
   }
 
-  inline TRI_voc_rid_t revisionId() const noexcept { return _revisionId; }
-  void setRevisionId(TRI_voc_rid_t rid) noexcept { _revisionId = rid; }
+  inline RevisionId revisionId() const noexcept { return _revisionId; }
+  void setRevisionId(RevisionId rid) noexcept { _revisionId = rid; }
   void setRevisionId() noexcept;
 
   void clearData() noexcept {
@@ -73,7 +74,7 @@ class ManagedDocumentResult {
   
   void clear() noexcept {
     clearData();
-    _revisionId = 0;
+    _revisionId = RevisionId::none();
   }
   
   inline uint8_t const* vpack() const noexcept {
@@ -88,7 +89,7 @@ class ManagedDocumentResult {
 
  private:
   std::string _string;
-  TRI_voc_rid_t _revisionId;
+  RevisionId _revisionId;
 };
 
 }  // namespace arangodb

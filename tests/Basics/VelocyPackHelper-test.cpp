@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for VelocyPackHelper.cpp
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
@@ -43,12 +40,6 @@
   l = VPackParser::fromJson(lValue);  \
   r = VPackParser::fromJson(rValue);  \
   EXPECT_EQ(expected, func(l->slice(), r->slice(), true)); \
-
-#define INIT_BUFFER  TRI_string_buffer_t* sb = TRI_CreateStringBuffer();
-#define FREE_BUFFER  TRI_FreeStringBuffer(sb);
-#define STRINGIFY    TRI_StringifyJson(sb, json);
-#define STRING_VALUE sb->_buffer
-#define FREE_JSON    TRI_FreeJson(json);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

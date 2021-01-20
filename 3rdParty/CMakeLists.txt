@@ -16,8 +16,8 @@ remove_definitions("-DUSE_ENTERPRISE=1")
 # do not compile with IPO (assuming gcc or clang) with this command:
 #   < compile_commands.json jq '.[] | select(.command | test("-flto") | not) | .file' -r
 if (${IPO_ENABLED})
-    message ("Disabling IPO for 3rdParty libraries")
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+  message ("Disabling IPO for 3rdParty libraries")
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
 endif ()
 
 ################################################################################
@@ -31,13 +31,15 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 ## SNAPPY
 ################################################################################
 
-set(SNAPPY_VERSION "1.1.7")
+set(SNAPPY_VERSION "1.1.8")
 set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
 set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 set(SNAPPY_LIB "snappy")
 set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
+set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests")
+set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
 add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
@@ -69,7 +71,6 @@ endif ()
 ################################################################################
 
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
-
 
 set(V8_VERSION
   "7.9.317"
@@ -174,6 +175,13 @@ set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 
 ################################################################################
+## IMMER
+################################################################################
+
+set(IMMER_VERSION "0.6.2")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
+
+################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
@@ -211,7 +219,6 @@ endif()
 add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H1Connection.cpp
@@ -253,3 +260,58 @@ set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"
 set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)
 add_subdirectory(taocpp-json EXCLUDE_FROM_ALL)
 add_subdirectory(json-schema-validation EXCLUDE_FROM_ALL)
+
+
+LIST(APPEND TZ_DATA_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/africa"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/antarctica"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/asia"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/australasia"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/backward"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/backzone"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/calendars"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/etcetera"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/europe"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/NEWS"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/northamerica"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/southamerica"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/version"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/windowsZones.xml")
+
+set(TZ_DATA_FILES ${TZ_DATA_FILES} PARENT_SCOPE)
+
+
+
+if (MSVC)
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata)
+else()
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/tzdata)
+endif()

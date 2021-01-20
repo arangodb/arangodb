@@ -1,3 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Kaveh Vahedipour
+////////////////////////////////////////////////////////////////////////////////
+
 #include "Node.h"
 #include "Store.h"
 
@@ -13,69 +36,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <deque>
-#include <regex>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
 const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
-
-static std::string const SLASH("/");
-static std::regex const reg("/+");
-
-std::string Node::normalize(std::string const& path) {
-
-  if (path.empty()) {
-    return SLASH;
-  }
-
-  std::string key = std::regex_replace(path, reg, SLASH);
-
-  // Must specify absolute path
-  if (key.front() != SLASH.front()) {
-    key = SLASH + key;
-  }
-
-  // Remove trailing slash
-  if (key.size() > 2 && key.back() == SLASH.front()) {
-    key.pop_back();
-  }
-
-  return key;
-
-}
-
-/// @brief Split strings by separator
-std::vector<std::string> Node::split(const std::string& str, char separator) {
-  std::vector<std::string> result;
-  if (str.empty()) {
-    return result;
-  }
-
-  std::string key = std::regex_replace(str, reg, "/");
-
-  if (!key.empty() && key.front() == '/') {
-    key.erase(0, 1);
-  }
-  if (!key.empty() && key.back() == '/') {
-    key.pop_back();
-  }
-
-  std::string::size_type p = 0;
-  std::string::size_type q;
-  while ((q = key.find(separator, p)) != std::string::npos) {
-    result.emplace_back(key, p, q - p);
-    p = q + 1;
-  }
-  result.emplace_back(key, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(),
-                            [](std::string const& s) -> bool {
-                              return !s.empty();
-                            }).base(),
-               result.end());
-  return result;
-}
 
 /// @brief Construct with node name
 Node::Node(std::string const& name)
@@ -145,7 +111,7 @@ std::string Node::uri() const {
 }
 
 /// @brief Move constructor
-Node::Node(Node&& other)
+Node::Node(Node&& other) noexcept
     : _nodeName(std::move(other._nodeName)),
       _parent(nullptr),
       _store(nullptr),
@@ -206,7 +172,7 @@ Node& Node::operator=(VPackSlice const& slice) {
 
 // Move operator
 // cppcheck-suppress operatorEqVarError
-Node& Node::operator=(Node&& rhs) {
+Node& Node::operator=(Node&& rhs) noexcept {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
@@ -320,11 +286,6 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
   return *current;
 }
 
-std::shared_ptr<Node> Node::child(std::string const& name) {
-  return _children.at(name);
-}
-
-
 /// @brief rh-value at path vector. Check if TTL has expired.
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
@@ -350,12 +311,12 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
 /// @brief lh-value at path
 Node& Node::operator()(std::string const& path) {
-  return this->operator()(split(path, '/'));
+  return this->operator()(Store::split(path));
 }
 
 /// @brief rh-value at path
 Node const& Node::operator()(std::string const& path) const {
-  return this->operator()(split(path, '/'));
+  return this->operator()(Store::split(path));
 }
 
 // Get method which always throws when not found:
@@ -385,13 +346,9 @@ Node& Node::root() {
   return *tmp;
 }
 
-Store& Node::store() { return *(root()._store); }
-
-Store const& Node::store() const { return *(root()._store); }
-
-Store* Node::getStore() {
-  Node* par = _parent;
-  Node* tmp = this;
+Store* Node::getRootStore() const {
+  Node const* par = _parent;
+  Node const* tmp = this;
   while (par != nullptr) {
     tmp = par;
     par = par->_parent;
@@ -405,7 +362,8 @@ ValueType Node::valueType() const { return slice().type(); }
 
 // file time to live entry for this node to now + millis
 bool Node::addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tkey) {
-  store().timeTable().insert(std::pair<TimePoint, std::string>(tkey, uri()));
+  Store& store = *(root()._store);
+  store.timeTable().insert(std::pair<TimePoint, std::string>(tkey, uri()));
   _ttl = tkey;
   return true;
 }
@@ -414,15 +372,11 @@ void Node::timeToLive(TimePoint const& ttl) {
   _ttl = ttl;
 }
 
-TimePoint const& Node::timeToLive() const {
-  return _ttl;
-}
-
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
 
-  Store* s = getStore();  // We could be in a Node that belongs to a store,
-                          // or in one that doesn't.
+  Store* s = getRootStore();  // We could be in a Node that belongs to a store,
+                              // or in one that doesn't.
   if (s != nullptr) {
     s->removeTTL(uri());
   }
@@ -441,12 +395,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 
   using namespace std::chrono;
 
-  if (!slice.hasKey("new")) {
+  Slice val = slice.get("new");
+  if (val.isNone()) {
+    // key "new" not present
     return ResultT<std::shared_ptr<Node>>::error(
       TRI_ERROR_FAILED, std::string(
         "Operator set without new value: ") + slice.toJson());
   }
-  Slice val = slice.get("new");
 
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
@@ -461,15 +416,15 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
     *this = val;
   }
 
-  if (slice.hasKey("ttl")) {
-    VPackSlice ttl_v = slice.get("ttl");
+  VPackSlice ttl_v = slice.get("ttl");
+  if (!ttl_v.isNone()) {
     if (ttl_v.isNumber()) {
 
       // ttl in millisconds
       long ttl =
           1000l * ((ttl_v.isDouble())
-                   ? static_cast<long>(slice.get("ttl").getNumber<double>())
-                   : static_cast<long>(slice.get("ttl").getNumber<int>()));
+                   ? static_cast<long>(ttl_v.getNumber<double>())
+                   : static_cast<long>(ttl_v.getNumber<int>()));
 
       // calclate expiry time
       auto const expires = slice.hasKey("epoch_millis") ?
@@ -522,7 +477,9 @@ ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) 
 /// Append element to array
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
-  if (!slice.hasKey("new")) {
+  VPackSlice v = slice.get("new");
+  if (v.isNone()) {
+    // key "new" not present
     return ResultT<std::shared_ptr<Node>>::error(
       TRI_ERROR_FAILED, std::string(
         "Operator push without new value: ") + slice.toJson());
@@ -533,7 +490,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
     if (this->slice().isArray() && !lifetimeExpired()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
-    tmp.add(slice.get("new"));
+    tmp.add(v);
   }
   *this = tmp.slice();
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -636,7 +593,9 @@ ResultT<std::shared_ptr<Node>> Node::handle<POP>(VPackSlice const& slice) {
         size_t j = it.size() - 1;
         for (auto old : it) {
           tmp.add(old);
-          if (--j == 0) break;
+          if (--j == 0) {
+            break;
+          }
         }
       }
     }
@@ -883,21 +842,24 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
 
 // Apply slice to this node
 bool Node::applies(VPackSlice const& slice) {
-  std::regex reg("/+");
-
   clear();
 
   if (slice.isObject()) {
     for (auto const& i : VPackObjectIterator(slice)) {
-      std::string key = std::regex_replace(i.key.copyString(), reg, "/");
+      // note: no need to remove duplicate forward slashes here...
+      //  if i.key contains duplicate forward slashes, then we will go
+      //  into the  key.find('/')  case, and will be calling  operator()
+      //  on the tainted key. And  operator()  calls  Store::split(),
+      //  which will remove all duplicate forward slashes.
+      std::string key = i.key.copyString();
       if (key.find('/') != std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
         auto found = _children.find(key);
         if (found == _children.end()) {
-          _children[key] = std::make_shared<Node>(key, this);
+          found = _children.emplace(key, std::make_shared<Node>(key, this)).first;
         }
-        _children[key]->applies(i.value);
+        (*found).second->applies(i.value);
       }
     }
   } else {
@@ -972,14 +934,14 @@ std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const
 }
 
 std::vector<std::string> Node::exists(std::string const& rel) const {
-  return exists(split(rel, '/'));
+  return exists(Store::split(rel));
 }
 
 bool Node::has(std::vector<std::string> const& rel) const {
   return exists(rel).size() == rel.size();
 }
 
-bool Node::has(std::string const& rel) const { return has(split(rel, '/')); }
+bool Node::has(std::string const& rel) const { return has(Store::split(rel)); }
 
 int64_t Node::getInt() const {
   if (type() == NODE) {
@@ -1052,35 +1014,25 @@ double Node::getDouble() const {
 }
 
 std::pair<Node const&, bool> Node::hasAsNode(std::string const& url) const {
-  // *this is bogus initializer
-  std::pair<Node const&, bool> fail_pair = {*this, false};
-
   // retrieve node, throws if does not exist
   try {
     Node const& target(operator()(url));
-    std::pair<Node const&, bool> good_pair = {target, true};
-    return good_pair;
+    return {target, true};
   } catch (...) {
-    // do nothing, fail_pair second already false
-  }  // catch
-
-  return fail_pair;
+    // *this is bogus initializer
+    return {*this, false};
+  }
 }  // hasAsNode
 
 std::pair<Node&, bool> Node::hasAsWritableNode(std::string const& url) {
-  // *this is bogus initializer
-  std::pair<Node&, bool> fail_pair = {*this, false};
-
   // retrieve node, throws if does not exist
   try {
     Node& target(operator()(url));
-    std::pair<Node&, bool> good_pair = {target, true};
-    return good_pair;
+    return {target, true};
   } catch (...) {
-    // do nothing, fail_pair second already false
-  }  // catch
-
-  return fail_pair;
+    // *this is bogus initializer
+    return {*this, false};
+  }
 }  // hasAsWritableNode
 
 std::pair<NodeType, bool> Node::hasAsType(std::string const& url) const {
@@ -1265,6 +1217,17 @@ void Node::clear() {
   } else {
     return _parent->removeChild(_nodeName);
   }
+}
+
+std::vector<std::string> Node::keys() const {
+  std::vector<std::string> result;
+  if (!_isArray) {
+    result.reserve(_children.size());
+    for (auto const& i : _children) {
+      result.emplace_back(i.first);
+    }
+  }
+  return result;
 }
 
 auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)

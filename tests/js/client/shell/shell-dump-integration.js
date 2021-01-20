@@ -30,7 +30,7 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
-let pu = require('@arangodb/process-utils');
+let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 
 function dumpIntegrationSuite () {
@@ -330,12 +330,8 @@ function dumpIntegrationSuite () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', 'foobarbaz'];
-        let tree = runDump(path, args, 0); 
+        let tree = runDump(path, args, 1);
         checkEncryption(tree, path, "none");
-       
-        // second dump, without overwrite
-        // this is expected to have an exit code of 1
-        runDump(path, args, 1 /*exit code*/);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -347,12 +343,8 @@ function dumpIntegrationSuite () {
       let path = fs.getTempFile();
       try {
         let args = ['--collection', 'foobarbaz', '--collection', 'knarzknarzknarz'];
-        let tree = runDump(path, args, 0); 
+        let tree = runDump(path, args, 1); 
         checkEncryption(tree, path, "none");
-       
-        // second dump, without overwrite
-        // this is expected to have an exit code of 1
-        runDump(path, args, 1 /*exit code*/);
       } finally {
         try {
           fs.removeDirectory(path);

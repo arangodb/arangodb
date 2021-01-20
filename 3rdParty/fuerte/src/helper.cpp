@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/helper.h>
-
 #include <string.h>
-#include <sstream>
-#include <stdexcept>
-
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <sstream>
+#include <stdexcept>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -63,29 +62,29 @@ std::string to_string(std::vector<VPackSlice> const& slices) {
 std::string to_string(Message& message) {
   std::stringstream ss;
   ss << "\n#### Message #####################################\n";
-  //ss << "Id:" << message.messageID << "\n";
+  // ss << "Id:" << message.messageID << "\n";
   ss << "Header:\n";
   if (message.type() == MessageType::Request) {
     Request const& req = static_cast<Request const&>(message);
-    
+
     if (req.header.version()) {
       ss << "version: " << req.header.version() << std::endl;
     }
-    
+
     ss << "type: request" << std::endl;
-    
+
     if (!req.header.database.empty()) {
       ss << "database: " << req.header.database << std::endl;
     }
-    
+
     if (req.header.restVerb != RestVerb::Illegal) {
       ss << "restVerb: " << to_string(req.header.restVerb) << std::endl;
     }
-    
+
     if (!req.header.path.empty()) {
       ss << "path: " << req.header.path << std::endl;
     }
-    
+
     if (!req.header.parameters.empty()) {
       ss << "parameters: ";
       for (auto const& item : req.header.parameters) {
@@ -96,8 +95,10 @@ std::string to_string(Message& message) {
 
     if (!req.header.meta().empty()) {
       ss << "meta:\n";
-      ss << "\t" << fu_content_type_key << " -:- " << to_string(req.header.contentType()) << "\n";
-      ss << "\t" << fu_accept_key << " -:- " << to_string(req.header.acceptType()) << "\n";
+      ss << "\t" << fu_content_type_key << " -:- "
+         << to_string(req.header.contentType()) << "\n";
+      ss << "\t" << fu_accept_key << " -:- "
+         << to_string(req.header.acceptType()) << "\n";
       for (auto const& item : req.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
@@ -105,11 +106,11 @@ std::string to_string(Message& message) {
     }
   } else if (message.type() == MessageType::Response) {
     Response const& res = static_cast<Response const&>(message);
-    
+
     if (res.header.version()) {
       ss << "version: " << res.header.version() << std::endl;
     }
-    
+
     ss << "type: response" << std::endl;
     if (res.header.responseCode != StatusUndefined) {
       ss << "responseCode: " << res.header.responseCode << std::endl;
@@ -117,7 +118,8 @@ std::string to_string(Message& message) {
 
     if (!res.header.meta().empty()) {
       ss << "meta:\n";
-      ss << "\t" << fu_content_type_key << " -:- " << to_string(res.header.contentType()) << "\n";
+      ss << "\t" << fu_content_type_key << " -:- "
+         << to_string(res.header.contentType()) << "\n";
       for (auto const& item : res.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
@@ -129,7 +131,7 @@ std::string to_string(Message& message) {
   /*  if (header.user) {
    ss << "user: " << header.user.get() << std::endl;
    }
-   
+
    if (header.password) {
    ss << "password: " << header.password.get() << std::endl;
    }*/
@@ -227,7 +229,7 @@ void toLowerInPlace(std::string& str) {
   auto tl = [](char c) -> char {
     return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
   };
-  
+
   auto pos = str.data();
   auto end = pos + str.size();
 
@@ -253,17 +255,28 @@ void toLowerInPlace(std::string& str) {
     pos += len;
   }
 }
-  
-fuerte::Error translateError(asio_ns::error_code e, fuerte::Error c) {
-  
-  if (e == asio_ns::error::misc_errors::eof ||
-      e == asio_ns::error::connection_reset) {
-    return fuerte::Error::ConnectionClosed;
-  } else if (e == asio_ns::error::operation_aborted) {
-    return fuerte::Error::Canceled;
+
+std::string extractPathParameters(std::string const& p, StringMap& params) {
+  size_t pos = p.rfind('?');
+  if (pos != std::string::npos) {
+    std::string result = p.substr(0, pos);
+
+    while (pos != std::string::npos && pos + 1 < p.length()) {
+      size_t pos2 = p.find('=', pos + 1);
+      if (pos2 == std::string::npos) {
+        break;
+      }
+      std::string key = p.substr(pos + 1, pos2 - pos - 1);
+      pos = p.find('&', pos2 + 1);  // points to next '&' or string::npos
+      std::string value = pos == std::string::npos
+                              ? p.substr(pos2 + 1)
+                              : p.substr(pos2 + 1, pos - pos2 - 1);
+      params.emplace(std::move(key), std::move(value));
+    }
+
+    return result;
   }
-  
-  return c;
+  return p;
 }
-  
+
 }}}  // namespace arangodb::fuerte::v1

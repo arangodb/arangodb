@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@ namespace aql {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
-struct NodeCounter final : public WalkerWorker<ExecutionNode> {
+struct NodeCounter final : public WalkerWorker<ExecutionNode, false> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
   std::unordered_set<ExecutionNode const*> seen;
 
@@ -63,7 +63,7 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
     if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
          en->getType() != ExecutionNode::DISTRIBUTE)) {
-      return WalkerWorker<ExecutionNode>::done(en);
+      return WalkerWorker<ExecutionNode, false>::done(en);
     }
     return false;
   }

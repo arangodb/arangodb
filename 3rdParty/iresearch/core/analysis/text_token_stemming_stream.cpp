@@ -30,7 +30,7 @@
 
 #include "text_token_stemming_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 
 bool make_locale_from_name(const irs::string_ref& name,
@@ -49,7 +49,6 @@ bool make_locale_from_name(const irs::string_ref& name,
         "Caught error while constructing locale from "
         "name: %s",
         name.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -90,7 +89,6 @@ bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
         "Caught error while constructing text_token_stemming_stream from jSON "
         "arguments: %s",
         args.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -158,7 +156,6 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
       "Caught error while constructing text_token_stemming_stream TEXT arguments: %s",
       args.c_str()
     );
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -178,10 +175,10 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json,
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text, 
                        normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
   : attributes{{
@@ -230,14 +227,20 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   term_eof_ = true;
 
   // convert to UTF8 for use with 'stemmer_'
-  // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(term_buf_, data, locale_)) {
-    IR_FRMT_ERROR(
-      "Failed to parse UTF8 value from token: %s",
-      data.c_str()
-    );
+  irs::string_ref term_buf_ref;
+  if (irs::locale_utils::is_utf8(locale_)) {
+    term_buf_ref = data;
+  } else {
+    // valid conversion since 'locale_' was created with internal unicode encoding
+    if (!irs::locale_utils::append_internal(term_buf_, data, locale_)) {
+      IR_FRMT_ERROR(
+        "Failed to parse UTF8 value from token: %s",
+        data.c_str());
 
-    return false;
+      return false;
+    }
+
+    term_buf_ref = term_buf_;
   }
 
   offset_.start = 0;
@@ -249,18 +252,17 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   // find the token stem
   // ...........................................................................
   if (stemmer_) {
-    if (term_buf_.size() > irs::integer_traits<int>::const_max) {
+    if (term_buf_ref.size() > irs::integer_traits<int>::const_max) {
       IR_FRMT_WARN(
         "Token size greater than the supported maximum size '%d', truncating token: %s",
-        irs::integer_traits<int>::const_max, data.c_str()
-      );
-      term_buf_.resize(irs::integer_traits<int>::const_max);
+        irs::integer_traits<int>::const_max, data.c_str());
+      term_buf_ref = {term_buf_ref, irs::integer_traits<int>::const_max };
     }
 
     static_assert(sizeof(sb_symbol) == sizeof(char), "sizeof(sb_symbol) != sizeof(char)");
-    const auto* value = reinterpret_cast<sb_symbol const*>(term_buf_.c_str());
+    const auto* value = reinterpret_cast<sb_symbol const*>(term_buf_ref.c_str());
 
-    value = sb_stemmer_stem(stemmer_.get(), value, (int)term_buf_.size());
+    value = sb_stemmer_stem(stemmer_.get(), value, static_cast<int>(term_buf_ref.size()));
 
     if (value) {
       static_assert(sizeof(irs::byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
@@ -281,5 +283,5 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
 }
 
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

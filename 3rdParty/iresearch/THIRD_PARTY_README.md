@@ -77,6 +77,10 @@ number of components produced by third parties
     - Copyright: serge-sans-paille <sguelton@quarkslab.com>
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: immutable compile time std-like containers
+13. Title: Kaldi
+    - Copyright: Daniel Povey <dpovey@gmail.com>
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: a set of extensions for OpenFST library
 
 ## Third Party Open Source Software licenses
 

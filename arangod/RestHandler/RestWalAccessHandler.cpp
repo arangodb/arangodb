@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -175,9 +175,9 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  WalAccess const* wal = engine->walAccess();
+  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  WalAccess const* wal = engine.walAccess();
   TRI_ASSERT(wal != nullptr);
 
   if (suffixes[0] == "range" && _request->requestType() == RequestType::GET) {
@@ -257,10 +257,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
   std::string const clientInfo = _request->value("clientInfo");
 
-  // check if a barrier id was specified in request
-  TRI_voc_tid_t barrierId =
-      _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
-
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   bool found = false;
@@ -287,7 +283,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   size_t length = 0;
 
   if (useVst) {
-    result = wal->tail(filter, chunkSize, barrierId,
+    result = wal->tail(filter, chunkSize,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 
@@ -308,7 +304,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(filter, chunkSize, barrierId,
+    result = wal->tail(filter, chunkSize,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 
@@ -360,7 +356,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 
-  DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+  server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
     vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
                                        replutils::BatchInfo::DefaultTimeout);
   });
@@ -403,10 +399,9 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openArray();
-  WalAccessResult r =
-      wal->openTransactions(filter, [&](TRI_voc_tick_t tick, TRI_voc_tid_t tid) {
-        builder.add(VPackValue(std::to_string(tid)));
-      });
+  WalAccessResult r = wal->openTransactions(filter, [&](TransactionId, TransactionId tid) {
+    builder.add(VPackValue(std::to_string(tid.id())));
+  });
   builder.close();
 
   _response->setContentType(rest::ContentType::DUMP);

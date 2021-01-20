@@ -32,7 +32,7 @@
 #include "utils/misc.hpp"
 #include "utils/map_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -44,9 +44,9 @@ struct ngram_segment_state_t {
 using states_t = states_cache<ngram_segment_state_t>;
 using approximation = min_match_disjunction<doc_iterator::ptr>;
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 ///@class ngram_similarity_doc_iterator
@@ -105,6 +105,9 @@ class ngram_similarity_doc_iterator final
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
+    if (doc_->value >= target) {
+      return doc_->value;
+    }
     const auto doc = approx_.seek(target);
 
     if (doc_limits::eof(doc) || check_serial_positions()) {
@@ -387,6 +390,8 @@ class ngram_similarity_query : public filter::prepared {
       const ngram_segment_state_t& query_state) const {
     using disjunction_t = irs::disjunction_iterator<doc_iterator::ptr>;
 
+    const auto& features = irs::flags::empty_instance();
+
     disjunction_t::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
     for (auto& term_state : query_state.terms) {
@@ -402,7 +407,7 @@ class ngram_similarity_query : public filter::prepared {
       }
 
       // get postings
-      auto docs = term->postings(irs::flags::empty_instance());
+      auto docs = term->postings(features);
       assert(docs);
 
       // add iterator
@@ -554,4 +559,4 @@ filter::prepared::ptr by_ngram_similarity::prepare(
       this->boost() * boost);
 }
 
-NS_END
+}

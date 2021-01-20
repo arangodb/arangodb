@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,8 +43,11 @@ class Context;
 namespace aql {
 
 struct QueryResult {
+  // no copying, but moving is allowed
+  QueryResult(QueryResult const& other) = delete;
   QueryResult& operator=(QueryResult const& other) = delete;
   QueryResult(QueryResult&& other) = default;
+  QueryResult& operator=(QueryResult&& other) = default;
 
   QueryResult()
       : result(),

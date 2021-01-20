@@ -149,10 +149,6 @@
           arangoHelper.renderEmpty('Please wait. Requesting cluster information...', 'fa fa-spin fa-circle-o-notch');
         }
 
-        if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Overview');
-        }
-
         var scalingFunc = function (nodes) {
           $.ajax({
             type: 'GET',
@@ -160,31 +156,49 @@
             contentType: 'application/json',
             success: function (data) {
               if (window.location.hash === '#nodes') {
+                if (navi !== false) {
+                  arangoHelper.buildNodesSubNav('Overview', false);
+                }
                 self.continueRender(nodes, data);
               }
+            },
+            error: function (err) {
+              if (navi !== false) {
+                arangoHelper.buildNodesSubNav('Overview', true);
+              }
+              self.renderFailure(err);
             }
           });
         };
 
-        $.ajax({
-          type: 'GET',
-          cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-          contentType: 'application/json',
-          processData: false,
-          async: true,
-          success: function (data) {
-            if (window.location.hash === '#nodes') {
-              scalingFunc(data.Health);
-            }
-          },
-          error: function () {
-            if (window.location.hash === '#nodes') {
-              arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
-            }
-          }
-        });
+        if (window.App && window.App.lastHealthCheckResult) {
+          scalingFunc(window.App.lastHealthCheckResult.Health);
+        }
       }
+    },
+
+    renderFailure: function (err) {
+      var title = 'Unexpected Failure';
+      var msg = 'See the browser developer console for more details.';
+
+      $(this.el).html('');
+      if (err.responseJSON && err.responseJSON.code === 403) {
+        title = 'Forbidden';
+        msg = 'No access to read nodes data.';
+      } else if (err.responseJSON && err.responseJSON.code && err.responseJSON.errorMessage) {
+        title = 'Error code: ' + err.responseJSON.code;
+        msg = err.responseJSON.errorMessage;
+      } else {
+        console.log(err);
+      }
+
+      // render info text
+      $(this.el).append(
+        '<div class="infoBox errorBox" style="background: white;">' +
+        '<h4>' + title + '</h4>' +
+        '<p>' + msg + '</p>' +
+        '</div>'
+      );
     },
 
     continueRender: function (nodes, scaling) {
@@ -385,16 +399,9 @@
         });
       };
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callbackFunction(data.Health);
-        }
-      });
+      if (window.App && window.App.lastHealthCheckResult) {
+        callbackFunction(window.App.lastHealthCheckResult.Health);
+      }
     },
 
     isPlanFinished: function () {

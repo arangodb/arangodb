@@ -1,5 +1,5 @@
 /* jshint -W051, -W020 */
-/* global global:true, window, require */
+/* global global:true, require, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -29,10 +29,6 @@
 // / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-if (typeof global === 'undefined' && typeof window !== 'undefined') {
-  global = window;
-}
-
 // //////////////////////////////////////////////////////////////////////////////
 // @brief common globals
 // //////////////////////////////////////////////////////////////////////////////
@@ -49,8 +45,7 @@ global.clearTimeout = global.clearTimeout || function () {};
 // //////////////////////////////////////////////////////////////////////////////
 
 global.start_pager = function start_pager () {
-  var internal = require('internal');
-  internal.startPager();
+  require('internal').startPager();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -58,8 +53,7 @@ global.start_pager = function start_pager () {
 // //////////////////////////////////////////////////////////////////////////////
 
 global.stop_pager = function stop_pager () {
-  var internal = require('internal');
-  internal.stopPager();
+  require('internal').stopPager();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -67,9 +61,9 @@ global.stop_pager = function stop_pager () {
 // //////////////////////////////////////////////////////////////////////////////
 
 global.help = function help () {
-  var internal = require('internal');
-  var arangodb = require('@arangodb');
-  var arangosh = require('@arangodb/arangosh');
+  let internal = require('internal');
+  let arangodb = require('@arangodb');
+  let arangosh = require('@arangodb/arangosh');
 
   internal.print(arangosh.HELP);
   arangodb.ArangoDatabase.prototype._help();
@@ -129,29 +123,29 @@ global.ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 
 global.tutorial = require('@arangodb/tutorial');
 
-let withTimeout = function(connection, timeout, cb) {
-  if (!connection) {
-    return;
-  }
-  let oldTimeout = connection.timeout();
-  try {
-    try {
-      connection.timeout(timeout);
-    } catch (err) {}
-    return cb();
-  } finally {
-    try {
-      connection.timeout(oldTimeout);
-    } catch (err) {}
-  }
-};
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief prints help
 // //////////////////////////////////////////////////////////////////////////////
 
-var initHelp = function () {
-  var internal = require('internal');
+(function () {
+  let withTimeout = function(connection, timeout, cb) {
+    if (!connection) {
+      return;
+    }
+    let oldTimeout = connection.timeout();
+    try {
+      try {
+        connection.timeout(timeout);
+      } catch (err) {}
+      return cb();
+    } finally {
+      try {
+        connection.timeout(oldTimeout);
+      } catch (err) {}
+    }
+  };
+
+  let internal = require('internal');
 
   if (internal.db) {
     try {
@@ -163,6 +157,19 @@ var initHelp = function () {
         internal.db._collections();
       });
     } catch (e) {}
+   
+    if (arango.isConnected()) {
+      try {
+        let remoteVersion = arango.getVersion();
+        let [ourMajor, ourMinor] = internal.version.split('.');
+        let [remoteMajor, remoteMinor] = remoteVersion.split('.');
+
+        if (remoteMajor !== ourMajor ||
+            (remoteMajor === ourMajor && remoteMinor > ourMinor)) {
+          internal.print("Client/server version mismatch detected. arangosh version: " + internal.version + ", server version: " + remoteVersion);
+        }
+      } catch (e) {}
+    }
   }
 
   if (internal.quiet !== true) {
@@ -172,41 +179,36 @@ var initHelp = function () {
       internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");
     }
   }
-};
+})();
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief read rc file
 // //////////////////////////////////////////////////////////////////////////////
 
-if (typeof window === 'undefined') {
-  // We're in arangosh
-  initHelp();
-  // these variables are not defined in the browser context
-  if (!(
-    global.IS_EXECUTE_SCRIPT ||
-    global.IS_EXECUTE_STRING ||
-    global.IS_CHECK_SCRIPT ||
-    global.IS_UNIT_TESTS ||
-    global.IS_JS_LINT
-    )) {
-    try {
-      // this will not work from within a browser
-      let __fs__ = require('fs');
-      let __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
+if (!(
+  global.IS_EXECUTE_SCRIPT ||
+  global.IS_EXECUTE_STRING ||
+  global.IS_CHECK_SCRIPT ||
+  global.IS_UNIT_TESTS ||
+  global.IS_JS_LINT
+  )) {
+  try {
+    // this will not work from within a browser
+    let __fs__ = require('fs');
+    let __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
 
-      if (__fs__.exists(__rcf__)) {
-        /* jshint evil: true */
-        let __content__ = __fs__.read(__rcf__);
-        eval(__content__);
-      }
-    } catch (e) {
-      require('console').debug('arangosh.rc: %s', String(e));
+    if (__fs__.exists(__rcf__)) {
+      /* jshint evil: true */
+      let __content__ = __fs__.read(__rcf__);
+      eval(__content__);
     }
+  } catch (e) {
+    require('console').debug('arangosh.rc: %s', String(e));
   }
-
-  delete global.IS_EXECUTE_SCRIPT;
-  delete global.IS_EXECUTE_STRING;
-  delete global.IS_CHECK_SCRIPT;
-  delete global.IS_UNIT_TESTS;
-  delete global.IS_JS_LINT;
 }
+
+delete global.IS_EXECUTE_SCRIPT;
+delete global.IS_EXECUTE_STRING;
+delete global.IS_CHECK_SCRIPT;
+delete global.IS_UNIT_TESTS;
+delete global.IS_JS_LINT;

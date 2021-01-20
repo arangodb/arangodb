@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,8 +35,6 @@
 namespace arangodb {
 namespace maintenance {
 
-enum Signal { GRACEFUL, IMMEDIATE };
-
 //
 // state accessor and set functions
 //  (some require time checks and/or combination tests)
@@ -53,27 +51,27 @@ enum ActionState {
 };
 
 /**
- * @brief Action description for mainenance actions
+ * @brief Action description for maintenance actions
  *
  * This structure holds once initialized constant parameters of a maintenance
  * action. Members are declared const, thus thread safety guards are omitted.
  */
-struct ActionDescription {
- public:
+struct ActionDescription final {
   /**
    * @brief Construct with properties
    * @param  desc  Descriminatory properties, which are considered for hash
-   * @param  supp  Non discriminatory properties
+   * @param  properties  Non discriminatory properties
    */
-  explicit ActionDescription(
-      std::map<std::string, std::string> const& desc,
+  ActionDescription(
+      std::map<std::string, std::string> description,
       int priority,
-      std::shared_ptr<VPackBuilder> const& properties = std::make_shared<VPackBuilder>());
+      bool runEvenIfDuplicate,
+      std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up
    */
-  virtual ~ActionDescription();
+  ~ActionDescription();
 
   /**
    * @brief Check equality (only _description considered)
@@ -85,8 +83,8 @@ struct ActionDescription {
    * @brief Calculate hash of _description as concatenation
    * @param  other  Other descriptor
    */
-  std::size_t hash() const;
-  static std::size_t hash(std::map<std::string, std::string> const& desc);
+  std::size_t hash() const noexcept;
+  static std::size_t hash(std::map<std::string, std::string> const& desc) noexcept;
 
   /// @brief Name of action
   std::string const& name() const;
@@ -164,6 +162,15 @@ struct ActionDescription {
     return _priority;
   }
 
+  /**
+   * @brief Get the fact if it is forced or not. If forced, the MaintenanceFeature
+   * will not sort out duplicates by hashing the description. Rather, the action
+   * will always be submitted.
+   */
+  bool isRunEvenIfDuplicate() const {
+    return _runEvenIfDuplicate;
+  }
+
  private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
@@ -173,6 +180,9 @@ struct ActionDescription {
 
   /** @brief priority */
   int _priority;
+
+  /// @brief flag to not sort out duplicates by hashing
+  bool _runEvenIfDuplicate;
 };
 
 }  // namespace maintenance

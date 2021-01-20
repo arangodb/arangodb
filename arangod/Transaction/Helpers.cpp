@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -256,7 +256,7 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
 void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
-                                                        TRI_voc_rid_t& revisionId) {
+                                                        RevisionId& revisionId) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
@@ -275,13 +275,7 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackS
       foundKey = true;
     } else if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
-      if (revSlice.isString()) {
-        VPackValueLength l;
-        char const* p = revSlice.getStringUnchecked(l);
-        revisionId = TRI_StringToRid(p, l, false);
-      } else if (revSlice.isNumber()) {
-        revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
-      }
+      revisionId = RevisionId::fromSlice(revSlice);
       if (foundKey) {
         return;
       }
@@ -298,12 +292,12 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackS
     keySlice = slice.get(StaticStrings::KeyString);
     VPackValueLength l;
     char const* p = slice.get(StaticStrings::RevString).getString(l);
-    revisionId = TRI_StringToRid(p, l, false);
+    revisionId = RevisionId::fromString(p, l, false);
   }
 }
 
 /// @brief extract _rev from a database document
-TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
+RevisionId transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
 
@@ -313,15 +307,7 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
     if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
-      if (revSlice.isString()) {
-        VPackValueLength l;
-        char const* p = revSlice.getStringUnchecked(l);
-        return TRI_StringToRid(p, l, false);
-      } else if (revSlice.isNumber()) {
-        return revSlice.getNumericValue<TRI_voc_rid_t>();
-      }
-      // invalid type for revision id
-      return 0;
+      return RevisionId::fromSlice(revSlice);
     }
     // skip over the attribute name
     ++p;
@@ -330,11 +316,7 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   }
 
   // fall back to regular lookup
-  {
-    VPackValueLength l;
-    char const* p = slice.get(StaticStrings::RevString).getString(l);
-    return TRI_StringToRid(p, l, false);
-  }
+  return RevisionId::fromSlice(slice);
 }
 
 VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
@@ -368,6 +350,7 @@ velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::
 }
 
 OperationResult transaction::helpers::buildCountResult(
+    OperationOptions const& options,
     std::vector<std::pair<std::string, uint64_t>> const& count,
     transaction::CountType type, uint64_t& total) {
   total = 0;
@@ -388,7 +371,7 @@ OperationResult transaction::helpers::buildCountResult(
     }
     resultBuilder.add(VPackValue(result));
   }
-  return OperationResult(Result(), resultBuilder.steal());
+  return OperationResult(Result(), resultBuilder.steal(), options);
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
@@ -398,7 +381,15 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
-  uint64_t cid = encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  DataSourceId cid{encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
+  return makeIdFromParts(resolver, cid, key);
+}
+
+/// @brief creates an id string from a collection name and the _key string
+std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* resolver,
+                                                  DataSourceId const& cid,
+                                                  VPackSlice const& key) {
+  TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE

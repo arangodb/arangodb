@@ -88,23 +88,23 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like|k_shortest_paths|prune"
+        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like|k_shortest_paths|k_paths|prune|window"
     );
 
     var builtinFunctions = (
         "(to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|typename|json_stringify|json_parse|" +
         "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
         "log|log2|log10|exp|exp2|sin|cos|tan|asin|acos|atan|atan2|radians|degrees|pi|regex_test|" +
-        "like|floor|ceil|round|abs|rand|sqrt|pow|length|count|min|max|average|sum|median|variance_population|" +
+        "like|floor|ceil|round|abs|rand|sqrt|pow|length|count|min|max|average|sum|product|median|variance_population|" +
         "variance_sample|first|last|unique|outersection|interleave|in_range|jaccard|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
         "near|within|within_rectangle|is_in_polygon|distance|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|stddev_population|" +
         "slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value|remove_values|" + 
         "remove_nth|replace_nth|date_now|date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
         "date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_leapyear|date_quarter|date_days_in_month|" + 
-        "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
+        "date_add|date_subtract|date_diff|date_compare|date_format|date_utctolocal|date_localtoutc|date_timezone|date_timezones|fail|passthru|sleep|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|decode_rev|union|union_distinct|intersection|flatten|is_same_collection|check_document|" +
-        "ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
+        "ltrim|rtrim|find_first|find_last|split|substitute|ipv4_to_number|ipv4_from_number|is_ipv4|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
         "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
         "levenshtein_distance|levenshtein_match|regex_matches|regex_split|ngram_match|ngram_similarity|ngram_positional_similarity|uuid|" +
         "tokens|exists|starts_with|phrase|min_match|boost|analyzer|" +
@@ -170,4 +170,3 @@ oop.inherits(AqlHighlightRules, TextHighlightRules);
 
 exports.AqlHighlightRules = AqlHighlightRules;
 });
-

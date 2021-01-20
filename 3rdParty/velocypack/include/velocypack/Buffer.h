@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_BUFFER_H
@@ -269,7 +267,7 @@ class Buffer {
 
   // If true, uses memory inside the buffer (_local).
   // Otherwise, uses memory on the heap.
-  bool usesLocalMemory() const noexcept {
+  inline bool usesLocalMemory() const noexcept {
     return _buffer == _local;
   }
  
@@ -297,7 +295,7 @@ class Buffer {
 
     // need reallocation
     ValueLength newLen = _size + len;
-    constexpr double growthFactor = 1.25;
+    constexpr double growthFactor = 1.5;
     if (newLen < growthFactor * _size) {
       // ensure the buffer grows sensibly and not by 1 byte only
       newLen = static_cast<ValueLength>(growthFactor * _size);

@@ -10,6 +10,8 @@ const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, l
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including router.all)
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 // const _ = require('lodash')
 // function log(something) {
 //   const seen = new Set()

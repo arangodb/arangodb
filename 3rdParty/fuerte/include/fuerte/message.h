@@ -25,21 +25,21 @@
 #ifndef ARANGO_CXX_DRIVER_MESSAGE
 #define ARANGO_CXX_DRIVER_MESSAGE
 
-#include <string>
-#include <vector>
-
 #include <fuerte/asio_ns.h>
 #include <fuerte/types.h>
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <string>
+#include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
 const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
 const std::string fu_content_type_key("content-type");
+const std::string fu_content_encoding_key("content-encoding");
 const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
@@ -49,7 +49,7 @@ struct MessageHeader {
 
  public:
   // Header metadata helpers#
-  template<typename K, typename V>
+  template <typename K, typename V>
   void addMeta(K&& key, V&& value) {
     if (fu_accept_key == key) {
       _acceptType = to_ContentType(value);
@@ -61,6 +61,8 @@ struct MessageHeader {
       if (_contentType != ContentType::Custom) {
         return;
       }
+    } else if (fu_content_encoding_key == key) {
+      _contentEncoding = to_ContentEncoding(value);
     }
     this->_meta.emplace(std::forward<K>(key), std::forward<V>(value));
   }
@@ -75,11 +77,10 @@ struct MessageHeader {
   }
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
+  ContentEncoding contentEncoding() const { return _contentEncoding; }
   // content type accessors
   ContentType contentType() const { return _contentType; }
-  void contentType(ContentType type) {
-    _contentType = type;
-  }
+  void contentType(ContentType type) { _contentType = type; }
   void contentType(std::string const& type) {
     addMeta(fu_content_type_key, type);
   }
@@ -89,6 +90,7 @@ struct MessageHeader {
   short _version;
   ContentType _contentType = ContentType::Unset;
   ContentType _acceptType = ContentType::VPack;
+  ContentEncoding _contentEncoding = ContentEncoding::Identity;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -109,7 +111,7 @@ struct RequestHeader final : public MessageHeader {
   ContentType acceptType() const { return _acceptType; }
   void acceptType(ContentType type) { _acceptType = type; }
   void acceptType(std::string const& type);
-  
+
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
 
@@ -131,7 +133,7 @@ struct ResponseHeader final : public MessageHeader {
 // from (Response) a server.
 class Message {
  protected:
-  Message() = default;
+  Message() : _timestamp(std::chrono::steady_clock::now()) {}
   virtual ~Message() = default;
 
  public:
@@ -162,6 +164,9 @@ class Message {
     return velocypack::Slice::noneSlice();
   }
 
+  /// content-encoding header type
+  ContentEncoding contentEncoding() const;
+
   /// content-type header accessors
   ContentType contentType() const;
 
@@ -169,6 +174,13 @@ class Message {
   bool isContentTypeVPack() const;
   bool isContentTypeHtml() const;
   bool isContentTypeText() const;
+
+  std::chrono::steady_clock::time_point timestamp() const { return _timestamp; }
+  // set timestamp when it was sent
+  void timestamp(std::chrono::steady_clock::time_point t) { _timestamp = t; }
+
+ private:
+  std::chrono::steady_clock::time_point _timestamp;
 };
 
 // Request contains the message send to a server in a request.

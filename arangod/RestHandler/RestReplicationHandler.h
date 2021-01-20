@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,7 +100,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreData;
   static std::string const RestoreView;
   static std::string const Sync;
-  static std::string const MakeSlave;
+  static std::string const MakeFollower;
   static std::string const ServerId;
   static std::string const ApplierConfig;
   static std::string const ApplierStart;
@@ -123,10 +123,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   bool isCoordinatorError();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief turn the server into a slave of another
+  /// @brief turn the server into a follower of another
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandMakeSlave();
+  void handleCommandMakeFollower();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief forward a command in the coordinator case
@@ -263,7 +263,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the state of the replication logger
   /// @route GET logger-state
-  /// @caller Syncer::getMasterState
+  /// @caller Syncer::getLeaderState
   /// @response VPackObject describing the ServerState in a certain point
   ///           * state (server state)
   ///           * server (version / id)
@@ -341,7 +341,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
  private:
   struct RevisionOperationContext {
     uint64_t batchId;
-    TRI_voc_rid_t resume;
+    RevisionId resume;
     std::string cname;
     std::shared_ptr<LogicalCollection> collection;
     std::unique_ptr<ReplicationIterator> iter;
@@ -353,15 +353,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force);
+  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
+                                  bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief restores the structure of a collection, coordinator case
+  /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollectionCoordinator(VPackSlice const& collection,
-                                             bool dropExisting, bool force,
-                                             bool ignoreDistributeShardsLikeErrors);
+  Result processRestoreCoordinatorAnalyzersBatch();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
@@ -515,18 +514,18 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   void timeoutTombstones() const;
 
-  bool isTombstoned(aql::QueryId id) const;
+  bool isTombstoned(TransactionId id) const;
 
-  void registerTombstone(aql::QueryId id) const;
+  void registerTombstone(TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a blocking transaction for the given collectionName,
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(TRI_voc_tid_t tid, LogicalCollection& col, double ttl,
-                                   AccessMode::Type access, RebootId const& rebootId,
-                                   std::string const& serverId);
+  Result createBlockingTransaction(TransactionId tid, LogicalCollection& col,
+                                   double ttl, AccessMode::Type access,
+                                   RebootId const& rebootId, std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock
@@ -535,14 +534,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error, if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> isLockHeld(TRI_voc_tick_t tid) const;
+  ResultT<bool> isLockHeld(TransactionId tid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compute a local checksum for the given collection
   ///        Will return error if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<std::string> computeCollectionChecksum(aql::QueryId readLockId,
+  ResultT<std::string> computeCollectionChecksum(TransactionId readLockId,
                                                  LogicalCollection* col) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -552,7 +551,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error if the lock has expired or is not found.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
+  ResultT<bool> cancelBlockingTransaction(TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Validate that the requesting user has access rights to this route

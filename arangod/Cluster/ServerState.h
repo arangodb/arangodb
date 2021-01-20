@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,8 +55,6 @@ class ServerState {
     STATE_UNDEFINED = 0,  // initial value
     STATE_STARTUP,        // used by all roles
     STATE_SERVING,        // used by all roles
-    STATE_STOPPING,       // primary only
-    STATE_STOPPED,        // primary only
     STATE_SHUTDOWN        // used by all roles
   };
 
@@ -182,8 +180,11 @@ class ServerState {
   }
 
   /// @brief check whether the server is a single or coordinator
-  bool isSingleServerOrCoordinator() {
-    RoleEnum role = loadRole();
+  bool isSingleServerOrCoordinator() const {
+    return isSingleServerOrCoordinator(loadRole());
+  }
+  
+  static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) {
     return isCoordinator(role) || isSingleServer(role);
   }
 
@@ -246,19 +247,13 @@ class ServerState {
   /// @brief set the current state
   void setState(StateEnum);
 
-  /// @brief gets the JavaScript startup path
-  std::string getJavaScriptPath();
-
-  /// @brief sets the JavaScript startup path
-  void setJavaScriptPath(std::string const&);
-
   bool isFoxxmaster() const;
 
-  std::string const& getFoxxmaster();
+  std::string getFoxxmaster() const;
 
   void setFoxxmaster(std::string const&);
-
-  void setFoxxmasterQueueupdate(bool);
+  
+  void setFoxxmasterQueueupdate(bool value) noexcept;
 
   bool getFoxxmasterQueueupdate() const noexcept;
 
@@ -339,9 +334,6 @@ class ServerState {
   /// can be used through a notification architecture from there
   RebootId _rebootId;
 
-  /// @brief the JavaScript startup path, can be set just once
-  std::string _javaScriptStartupPath;
-
   /// @brief the server's own endpoint, can be set just once
   std::string _myEndpoint;
 
@@ -358,12 +350,15 @@ class ServerState {
   /// @brief whether or not the cluster was initialized
   bool _initialized;
   
-  bool _foxxmasterQueueupdate;
-
+  /// @brief lock for all foxxmaster-related members
+  mutable arangodb::basics::ReadWriteSpinLock _foxxmasterLock;
+  
   std::string _foxxmaster;
 
   // @brief point in time since which this server is the Foxxmaster
   TRI_voc_tick_t _foxxmasterSince;
+  
+  bool _foxxmasterQueueupdate;
 };
 }  // namespace arangodb
 

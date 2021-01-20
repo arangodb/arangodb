@@ -1391,7 +1391,7 @@ real InverseStart(const struct geod_geodesic* g,
       calp1 = sbet12a - cbet2 * sbet1 * sq(somg12) / (1 - comg12);
     }
   }
-  /* Sanity check on starting guess.  Backwards check allows NaN through. */
+  /* validity check on starting guess.  Backwards check allows NaN through. */
   if (!(salp1 <= 0))
     norm2(&salp1, &calp1);
   else {

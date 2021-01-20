@@ -43,7 +43,6 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=17
         - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -58,7 +57,6 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=17
         - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
@@ -73,7 +71,6 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=17
         - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -88,7 +85,6 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=17
         - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Release"
 
@@ -108,7 +104,6 @@ matrix:
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -123,7 +118,6 @@ matrix:
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
     ############################################################################
@@ -138,14 +132,13 @@ matrix:
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
     # Release build, shared library
     ############################################################################
     - os: linux
-      dist: trusty # gcc7 is not available in `precise`
+      dist: trusty # gcc8 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
@@ -153,7 +146,6 @@ matrix:
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Release"
 
     ############################################################################
@@ -172,7 +164,6 @@ matrix:
       env:
         - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -187,7 +178,6 @@ matrix:
       env:
         - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
     ############################################################################
@@ -198,11 +188,10 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install g++-8 valgrind
+        - travis_retry sudo apt-get install g++-9 valgrind
       env:
         - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -213,15 +202,14 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install g++-8 valgrind
+        - travis_retry sudo apt-get install g++-9 valgrind
       env:
         - SET_ENV="CC=gcc-9 && CXX=g++-9"
         - CMAKE_VERSION=3.8.2 # supports c++17
-        - CXX_STANDARD=17
         - BUILD_TYPE="Release"
 
     ############################################################################
-    # OSX
+    # OSX 
     ############################################################################
 
     ############################################################################
@@ -235,7 +223,6 @@ matrix:
           brew install bison@2.7 || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -250,7 +237,6 @@ matrix:
           brew install bison@2.7 || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
@@ -265,7 +251,6 @@ matrix:
           brew install bison@2.7 || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -280,7 +265,6 @@ matrix:
           brew install bison@2.7 || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
-        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release"
 
@@ -391,7 +375,7 @@ install:
       cd ${DEPS_DIR}
       travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1
       cd ${SNOWBALL_DIR}
-      git reset --hard 53739a805cfa6c77ff8496dc711dc1c106d987c1
+      git reset --hard a8d4a95adc4792f8bcff0aed6bb9b09b9ca3aab5
     fi
     export SNOWBALL_ROOT=${SNOWBALL_DIR}
 
@@ -414,7 +398,7 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
-  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_CXX_STANDARD=${CXX_STANDARD} -DUSE_TESTS=On" ${BUILD_PYRESEARCH}
+  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On" ${BUILD_PYRESEARCH}
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
 

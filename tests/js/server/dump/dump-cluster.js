@@ -31,10 +31,12 @@ const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangosh = require('@arangodb/arangosh');
+let analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 const _ = require('lodash');
-const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertTypeOf} = jsunity.jsUnity.assertions;
+const {assertEqual, assertNotEqual, assertTrue, assertFalse,
+       assertUndefined, assertTypeOf, assertNull, assertNotNull} = jsunity.jsUnity.assertions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -163,6 +165,7 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
+
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -367,8 +370,24 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
       assertEqual(1, res.length);
-    }
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test custom analyzers restoring
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzers: function() {
+      assertNotNull(db._collection("_analyzers"));
+      assertEqual(isEnterprise ? 2 : 1, db._analyzers.count()); // only 1 stored custom analyzers
+                                                                // plus 1 for smartgraph in enerprise
+      let analyzer = analyzers.analyzer("custom");
+      assertEqual(db._name() + "::custom", analyzer.name());
+      assertEqual("delimiter", analyzer.type());
+      assertEqual(Object.keys(analyzer.properties()).length, 1);
+      assertEqual(" ", analyzer.properties().delimiter);
+      assertEqual(1, analyzer.features().length);
+      assertEqual("frequency", analyzer.features()[0]);
 
+      assertNull(analyzers.analyzer("custom_dst"));
+    },
   };
 }
 
@@ -862,7 +881,7 @@ function dumpTestEnterpriseSuite () {
       let props = view.properties();
       assertEqual("UnitTestsDumpSmartView", view.name());
       assertTrue(props.hasOwnProperty("links"));
-      assertEqual(Object.keys(props.links).length, 4); // virtual collecion + 3 system collections
+      assertEqual(Object.keys(props.links).length, 3); // virtual collecion + 2 system collections
 
       // UnitTestDumpSmartEdges
       assertTrue(props.links.hasOwnProperty("UnitTestDumpSmartEdges"));
@@ -875,14 +894,7 @@ function dumpTestEnterpriseSuite () {
       assertTrue("UnitTestsDumpView::smartCustom", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[1]);
 
       // _to_UnitTestDumpSmartEdges
-      assertTrue(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.includeAllFields);
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-      assertEqual(Object.keys(props.links._to_UnitTestDumpSmartEdges.fields).length, 1);
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-      assertTrue("text_en", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-      assertTrue("UnitTestsDumpView::smartCustom", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
+      assertFalse(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
 
       // _from_UnitTestDumpSmartEdges
       assertTrue(props.links.hasOwnProperty("_from_UnitTestDumpSmartEdges"));
@@ -913,7 +925,7 @@ function dumpTestEnterpriseSuite () {
       assertEqual("test", db._jobs.document("test")._key);
       assertEqual("test", db._queues.document("test")._key);
     },
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether the test collection has been restored
 ////////////////////////////////////////////////////////////////////////////////

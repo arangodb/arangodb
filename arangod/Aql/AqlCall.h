@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -67,7 +68,7 @@ struct AqlCall {
    */
 
   struct LimitPrinter {
-    explicit LimitPrinter (Limit const& limit) : _limit(limit) {}
+    explicit LimitPrinter(Limit const& limit) : _limit(limit) {}
     ~LimitPrinter() = default;
 
     // Never allow any kind of copying
@@ -102,22 +103,12 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
-    AqlCall call;
-    call.offset = toSkip;
-    call.softLimit = 0u;
-    call.hardLimit = AqlCall::Infinity{};
-    call.fullCount = false;
-    return call;
+    return AqlCall{/*offset*/ toSkip, /*softLimit*/ 0u, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateGetSome(std::size_t atMost) {
-    AqlCall call;
-    call.offset = 0;
-    call.softLimit = atMost;
-    call.hardLimit = AqlCall::Infinity{};
-    call.fullCount = false;
-    return call;
+    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
@@ -246,18 +237,37 @@ constexpr bool operator<(AqlCall::Limit const& a, size_t b) {
   return std::get<size_t>(a) < b;
 }
 
-constexpr bool operator<(size_t a, AqlCall::Limit const& b) { return !(b < a); }
+constexpr bool operator<(size_t a, AqlCall::Limit const& b) {
+  if (std::holds_alternative<AqlCall::Infinity>(b)) {
+    return true;
+  }
+  return a < std::get<size_t>(b);
+}
+
+constexpr bool operator>(size_t a, AqlCall::Limit const& b) {
+  return b < a;
+}
+
+constexpr bool operator>(AqlCall::Limit const& a, size_t b) {
+  return b < a;
+}
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
-  return std::visit(overload{[n](size_t const& i) -> AqlCall::Limit {
-                               return i + n;
-                             },
-                             [](auto inf) -> AqlCall::Limit { return inf; }},
-                    a);
+  return std::visit(
+      overload{[n](size_t const& i) -> AqlCall::Limit { return i + n; },
+               [](AqlCall::Infinity inf) -> AqlCall::Limit { return inf; }},
+      a);
 }
 
 constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
   return a + n;
+}
+
+constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+  return std::visit(
+      overload{[&a](size_t const& b_) -> AqlCall::Limit { return a + b_; },
+               [](AqlCall::Infinity inf) -> AqlCall::Limit { return inf; }},
+      a);
 }
 
 constexpr bool operator==(AqlCall::Limit const& a, size_t n) {

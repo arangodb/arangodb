@@ -26,7 +26,7 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_same_position;
 
@@ -65,10 +65,6 @@ struct IRESEARCH_API by_same_position_options {
 class IRESEARCH_API by_same_position
     : public filter_with_options<by_same_position_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_same_position";
-  }
-
   DECLARE_FACTORY();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -85,6 +81,6 @@ class IRESEARCH_API by_same_position
     const attribute_provider* ctx) const override;
 }; // by_same_position
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_SAME_POSITION_FILTER_H

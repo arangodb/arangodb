@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +71,7 @@ class SynchronizeShard : public ActionBase {
 
   arangodb::Result catchupWithExclusiveLock(
       std::string const& ep, std::string const& database,
-      LogicalCollection const& collection, std::string const& clientId,
+      LogicalCollection& collection, std::string const& clientId,
       std::string const& shard, std::string const& leader, SyncerId syncerId,
       TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 

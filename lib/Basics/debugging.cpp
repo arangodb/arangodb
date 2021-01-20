@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +95,7 @@ arangodb::basics::ReadWriteLock failurePointsLock;
 std::set<std::string, ::Comparer> failurePoints(comparer);
 }  // namespace
 
-/// @brief cause a segmentation violation
+/// @brief intentionally cause a segmentation violation or other failures
 /// this is used for crash and recovery tests
 void TRI_TerminateDebugging(char const* message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -111,11 +111,15 @@ void TRI_TerminateDebugging(char const* message) {
     // intentionally crashes the program!
     std::terminate();
   } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+    // intentionally crashes the program!
+    // note: when using ASan/UBSan, this actually does not crash
+    // the program but continues.
     auto f = []() noexcept {
       // intentionally crashes the program!
       return std::string(nullptr);
     };
     f();
+    // we will get here at least with ASan/UBSan.
     std::terminate();
   } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;
@@ -145,9 +149,14 @@ bool TRI_ShouldFailDebugging(char const* value) {
 
 /// @brief add a failure point
 void TRI_AddFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+  bool added = false;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  if (::failurePoints.emplace(value).second) {
+    added = ::failurePoints.emplace(value).second;
+  }
+
+  if (added) {
     LOG_TOPIC("d8a5f", WARN, arangodb::Logger::FIXME)
         << "activating intentional failure point '" << value
         << "'. the server will misbehave!";
@@ -167,7 +176,6 @@ void TRI_ClearFailurePointsDebugging() {
 
   ::failurePoints.clear();
 }
-
 #endif
 
 /// @brief appends a backtrace to the string provided

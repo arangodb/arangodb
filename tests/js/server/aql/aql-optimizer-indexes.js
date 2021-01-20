@@ -2123,7 +2123,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSkiplistMultiple : function () {
-      c.truncate();
+      c.truncate({ compact: false });
       let docs = [];
       for (var i = 0; i < 10; ++i) {
         docs.push({ value1: i, value2: i });
@@ -2156,7 +2156,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexSkiplistMultiple2 : function () {
-      c.truncate();
+      c.truncate({ compact: false });
       let docs = [];
       for (var i = 0; i < 10; ++i) {
         docs.push({ value1: i, value2: i });

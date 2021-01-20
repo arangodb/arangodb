@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,11 +68,12 @@ using StringBuffer = arangodb::basics::StringBuffer;
 ClientsExecutorInfos::ClientsExecutorInfos(std::vector<std::string> clientIds)
     : _clientIds(std::move(clientIds)) {
   TRI_ASSERT(!_clientIds.empty());
-};
+}
 
 auto ClientsExecutorInfos::nrClients() const noexcept -> size_t {
   return _clientIds.size();
 }
+
 auto ClientsExecutorInfos::clientIds() const noexcept -> std::vector<std::string> const& {
   return _clientIds;
 }
@@ -125,21 +126,6 @@ auto BlocksWithClientsImpl<Executor>::initializeCursor(InputAqlItemRow const& in
     list.clear();
   }
   return ExecutionBlock::initializeCursor(input);
-}
-
-/// @brief shutdown
-template <class Executor>
-auto BlocksWithClientsImpl<Executor>::shutdown(int errorCode)
-    -> std::pair<ExecutionState, Result> {
-  if (_wasShutdown) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  auto res = ExecutionBlock::shutdown(errorCode);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
-  }
-  _wasShutdown = true;
-  return res;
 }
 
 /// @brief getClientId: get the number <clientId> (used internally)
@@ -240,7 +226,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
       auto [state, skipped, result] = dataContainer.execute(stack, _upstreamState);
       if (state == ExecutionState::DONE || !skipped.nothingSkipped() || result != nullptr) {
         // We have a valid result.
-        return {state, skipped, result};
+        return {state, skipped, std::move(result)};
       }
       stack.popCall();
     }
@@ -286,10 +272,10 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)}, true);
+  AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)});
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(skipped.nothingSkipped());
-  return {state, block};
+  return {state, std::move(block)};
 }
 
 /// @brief skipSomeForShard
@@ -297,7 +283,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>
 template <class Executor>
 std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCallList{AqlCall::SimulateSkipSome(atMost)}, true);
+  AqlCallStack stack(AqlCallList{AqlCall::SimulateSkipSome(atMost)});
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(block == nullptr);
   return {state, skipped.getSkipCount()};

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -63,14 +64,8 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _engineType(engineType),
       _info(info),
       _selectivityEstimates(collection) {
-  if (_engineType == ClusterEngineType::RocksDBEngine) {
-    VPackSlice s = info.get("isVolatile");
-    if (s.isBoolean() && s.getBoolean()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "volatile collections are unsupported in the RocksDB engine");
-    }
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+  if (_engineType != ClusterEngineType::RocksDBEngine &&
+      _engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
@@ -88,13 +83,8 @@ ClusterCollection::~ClusterCollection() = default;
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) {
+IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, TransactionId tid) {
   return _selectivityEstimates.get(allowUpdating, tid);
-}
-
-/// @brief sets the current index selectivity estimates
-void ClusterCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
-  _selectivityEstimates.set(std::move(estimates));
 }
 
 /// @brief flushes the current index selectivity estimates
@@ -165,13 +155,15 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> ClusterCollection::figures() {
+futures::Future<OperationResult> ClusterCollection::figures(bool details,
+                                                            OperationOptions const& options) {
   auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
   return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
-                              std::to_string(_logicalCollection.id()));
+                              std::to_string(_logicalCollection.id().id()),
+                              details, options);
 }
 
-void ClusterCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
+void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder& /*builder*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
@@ -198,7 +190,7 @@ void ClusterCollection::unload() {
   }
 }
 
-TRI_voc_rid_t ClusterCollection::revision(transaction::Methods* trx) const {
+RevisionId ClusterCollection::revision(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -213,15 +205,15 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(indexesSlice.isArray());
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
   std::vector<std::shared_ptr<Index>> indexes;
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+    engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
 
   } else {
-    engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+    engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
   }
 
   for (std::shared_ptr<Index>& idx : indexes) {
@@ -265,12 +257,12 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
     return idx;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-  idx = engine->indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine.indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
   TRI_ASSERT(idx != nullptr);
 
   // In the coordinator case we do not fill the index
@@ -321,27 +313,27 @@ Result ClusterCollection::compact() {
 }
 
 Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
-                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& /*result*/) const {
+                                    std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                arangodb::velocypack::StringRef const& /*key*/,
-                               ManagedDocumentResult& /*result*/) {
+                               IndexIterator::DocumentCallback const& /*cb*/) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+// read using a token!
+bool ClusterCollection::read(transaction::Methods* /*trx*/,
+                             LocalDocumentId const& /*documentId*/,
+                             IndexIterator::DocumentCallback const& /*cb*/) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
                                      ManagedDocumentResult& /*result*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-// read using a token!
-bool ClusterCollection::readDocumentWithCallback(transaction::Methods* /*trx*/,
-                                                 LocalDocumentId const& /*documentId*/,
-                                                 IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

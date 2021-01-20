@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -211,21 +211,21 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
 
   if (!validateJwtHeader(header)) {
     LOG_TOPIC("2eb8a", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt header " << header;
+        << "Couldn't validate jwt header: SENSITIVE_DETAILS_HIDDEN";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   std::string const message = header + "." + body;
   if (!validateJwtHMAC256Signature(message, signature)) {
     LOG_TOPIC("176c4", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt signature " << signature << " against given secret";
+        << "Couldn't validate jwt signature against given secret";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   auth::TokenCache::Entry newEntry = validateJwtBody(body);
   if (!newEntry.authenticated()) {
     LOG_TOPIC("5fcba", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt body " << body;
+        << "Couldn't validate jwt body: SENSITIVE_DETAILS_HIDDEN";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 

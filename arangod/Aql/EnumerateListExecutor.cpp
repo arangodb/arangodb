@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -78,14 +79,10 @@ void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange)
 
   // store the length into a local variable
   // so we don't need to calculate length every time
-  if (inputList.isDocvec()) {
-    _inputArrayLength = inputList.docvecSize();
-  } else {
-    if (!inputList.isArray()) {
-      throwArrayExpectedException(inputList);
-    }
-    _inputArrayLength = inputList.length();
+  if (!inputList.isArray()) {
+    throwArrayExpectedException(inputList);
   }
+  _inputArrayLength = inputList.length();
 
   _inputArrayPosition = 0;
 }
@@ -151,14 +148,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   AqlCall upstreamCall{};
-
-  if (!inputRange.hasDataRow()) {
-    return {inputRange.upstreamState(), NoStats{}, 0, upstreamCall};
-  }
-
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  size_t skipped = 0;
-  bool offsetPhase = (call.getOffset() > 0);
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
     if (_inputArrayLength == _inputArrayPosition) {
@@ -169,34 +159,27 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipR
     }
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
-    // if offset is > 0, we're in offset skip phase
-    if (offsetPhase) {
-      if (skipped < call.getOffset()) {
-        // we still need to skip offset entries
-        skipped += skipArrayElement(call.getOffset() - skipped);
-      } else {
-        // we skipped enough in our offset phase
-        break;
-      }
-    } else {
-      // fullCount phase - skippen bis zum ende
-      skipped += skipArrayElement(_inputArrayLength - _inputArrayPosition);
-    }
-  }
-  call.didSkip(skipped);
 
-  if (!call.needsFullCount()) {
-    // Do not overfetch too much
-    upstreamCall.softLimit = call.getOffset();
-    // else we do unlimited softLimit.
-    // we are going to return everything anyways.
+    auto const skip = std::invoke([&]{
+      // if offset is > 0, we're in offset skip phase
+      if (call.getOffset() > 0) {
+        // we still need to skip offset entries
+        return call.getOffset();
+      } else {
+        TRI_ASSERT(call.needsFullCount());
+        // fullCount phase - skippen bis zum ende
+        return _inputArrayLength - _inputArrayPosition;
+      }
+    });
+    auto const skipped = skipArrayElement(skip);
+    call.didSkip(skipped);
   }
+
   if (_inputArrayPosition < _inputArrayLength) {
     // fullCount will always skip the complete array
-    TRI_ASSERT(offsetPhase);
-    return {ExecutorState::HASMORE, NoStats{}, skipped, upstreamCall};
+    return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
-  return {inputRange.upstreamState(), NoStats{}, skipped, upstreamCall};
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 void EnumerateListExecutor::initialize() {

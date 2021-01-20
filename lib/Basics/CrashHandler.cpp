@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -58,6 +59,11 @@
 #include <libunwind.h>
 #endif
 
+#ifdef __linux__
+#include <sys/auxv.h>
+#include <elf.h>
+#endif
+
 namespace {
 
 #ifdef _WIN32
@@ -67,51 +73,8 @@ struct siginfo_t;
 
 #else
 
-/// @brief helper struct that is used to create an alternative stack for the
-/// signal handler on construction and to tear it down on destruction
-struct CrashHandlerStackInitializer {
-  CrashHandlerStackInitializer() 
-      : stackAdjusted(false) {
-    // reserve 512KB space for signal handler stack - should be more than enough
-    try {
-      memory = std::make_unique<char[]>(512 * 1024);
-    } catch (...) {
-      // could not allocate memory for alternative stack.
-      // in this case we must not modify the stack for the signal handler
-      // as we have no way of signaling failure here, all we can do is drop out
-      // of the constructor
-      return;
-    }
-
-    stack_t altstack;
-    altstack.ss_sp = static_cast<void*>(memory.get());
-    altstack.ss_size = MINSIGSTKSZ;
-    altstack.ss_flags = 0;
-    if (sigaltstack(&altstack, nullptr) == 0) {
-      stackAdjusted = true;
-    }
-  }
-
-  ~CrashHandlerStackInitializer() {
-    // reset to default stack
-    if (stackAdjusted) {
-      stack_t altstack;
-      altstack.ss_sp = nullptr;
-      altstack.ss_size = 0;
-      altstack.ss_flags = SS_DISABLE;
-      // intentionally ignore return value here as this will be called on shutdown only
-      sigaltstack(&altstack, nullptr);
-    }
-  }
-
-  // memory reserved for the signal handler stack
-  std::unique_ptr<char[]> memory;
-  bool stackAdjusted;
-};
-
-/// @brief this instance will make sure that we have an extra stack for
-/// our signal handler
-CrashHandlerStackInitializer stackInitializer;
+// memory reserved for the signal handler stack
+std::unique_ptr<char[]> alternativeStackMemory;
 
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
@@ -145,7 +108,7 @@ std::atomic<bool> killHard(false);
     // restore default signal action, so that we can write a core dump and crash "properly"
     struct sigaction act;
     sigemptyset(&act.sa_mask);
-    act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
+    act.sa_flags = SA_NODEFER | SA_RESETHAND | (alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
     act.sa_handler = SIG_DFL;
     sigaction(signal, &act, nullptr);
 
@@ -174,28 +137,55 @@ void appendNullTerminatedString(char const* src, size_t maxLength, char*& dst) {
 }
 
 /// @brief appends null-terminated hex string value to dst
-/// advances dst pointer by len
-void appendHexValue(unsigned char const* src, size_t len, char*& dst) {
+/// advances dst pointer by at most len * 2.
+/// if stripLeadingZeros is true, omits all leading zero characters. 
+/// If the value is 0x0 itself, prints one zero character.
+void appendHexValue(unsigned char const* src, size_t len, char*& dst, bool stripLeadingZeros) {
   char chars[] = "0123456789abcdef";
   unsigned char const* e = src + len;
   while (--e >= src) {
     unsigned char c = *e;
-    *dst++ = chars[c >> 4U];
-    *dst++ = chars[c & 0xfU];
+    if (!stripLeadingZeros || (c >> 4U) != 0) {
+      *dst++ = chars[c >> 4U];
+      stripLeadingZeros = false; 
+    }
+    if (!stripLeadingZeros || (c & 0xfU) != 0) {
+      *dst++ = chars[c & 0xfU];
+      stripLeadingZeros = false; 
+    }
   }
-  *dst = '\0';
+  if (stripLeadingZeros) {
+    *dst++ = '0';
+  }
 }
 
-/// @brief Logs the occurrence of a signal to the logfile.
+#ifdef ARANGODB_HAVE_LIBUNWIND
+void appendAddress(unw_word_t pc, long base, char*& dst) {
+  if (base == 0) {
+    // absolute address of pc
+    appendNullTerminatedString(" [$0x", dst);
+    appendHexValue(reinterpret_cast<unsigned char const*>(&pc), sizeof(decltype(pc)), dst, false);
+  } else {
+    // relative offset of pc
+    appendNullTerminatedString(" [+0x", dst);
+    decltype(pc) relative = pc - base; 
+    unsigned char const* s = reinterpret_cast<unsigned char const*>(&relative);
+    appendHexValue(s, sizeof(relative), dst, false);
+  }
+  appendNullTerminatedString("] ", dst);
+}
+#endif
+
+/// @brief builds a log message to be logged to the logfile later
 /// does not allocate any memory, so should be safe to call even
 /// in context of SIGSEGV, with a broken heap etc.
 /// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
 /// (4096 bytes should be more than enough).
-size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info) {
+size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info, void* ucontext) {
   // build a crash message
   char* p = s;
-  appendNullTerminatedString("ArangoDB ", p);
+  appendNullTerminatedString("💥 ArangoDB ", p);
   appendNullTerminatedString(ARANGODB_VERSION_FULL, p);
   appendNullTerminatedString(", thread ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
@@ -225,23 +215,63 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
     appendNullTerminatedString(" accessing address 0x", p);
     unsigned char const* x = reinterpret_cast<unsigned char const*>(info->si_addr);
     unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
-    appendHexValue(s, sizeof(unsigned char const*), p);
+    appendHexValue(s, sizeof(unsigned char const*), p, false);
   }
 #endif
   
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, p);
 
+#ifdef __linux__
+  {
+    // AT_PHDR points to the program header, which is located after the ELF header.
+    // This allows us to calculate the base address of the executable.
+    auto baseAddr = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
+    appendNullTerminatedString(" - image base address: 0x", p);
+    unsigned char const* x = reinterpret_cast<unsigned char const*>(baseAddr);
+    unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
+    appendHexValue(s, sizeof(unsigned char const*), p, false);
+  }
+
+  auto ctx = static_cast<ucontext_t*>(ucontext);
+  if (ctx) {
+    auto appendRegister = [ctx, &p](const char* prefix, int reg) {
+      appendNullTerminatedString(prefix, p);
+      unsigned char const* s = reinterpret_cast<unsigned char const*>(&ctx->uc_mcontext.gregs[reg]);
+      appendHexValue(s, sizeof(greg_t), p, false);
+    };
+    appendNullTerminatedString(" - CPU context:", p);
+    appendRegister(" rip: 0x", REG_RIP);
+    appendRegister(", rsp: 0x", REG_RSP);
+    appendRegister(", efl: 0x", REG_EFL);
+    appendRegister(", rbp: 0x", REG_RBP);
+    appendRegister(", rsi: 0x", REG_RSI);
+    appendRegister(", rdi: 0x", REG_RDI);
+    appendRegister(", rax: 0x", REG_RAX);
+    appendRegister(", rbx: 0x", REG_RBX);
+    appendRegister(", rcx: 0x", REG_RCX);
+    appendRegister(", rdx: 0x", REG_RDX);    
+    appendRegister(", r8: 0x", REG_R8);
+    appendRegister(", r9: 0x", REG_R9);
+    appendRegister(", r10: 0x", REG_R10);
+    appendRegister(", r11: 0x", REG_R11);
+    appendRegister(", r12: 0x", REG_R12);
+    appendRegister(", r13: 0x", REG_R13);
+    appendRegister(", r14: 0x", REG_R14);
+    appendRegister(", r15: 0x", REG_R15);
+  }
+#endif
+
   return p - s;
 }
 
-void logBacktrace(char const* context, int signal, siginfo_t* info) try {
+void logBacktrace(char const* context, int signal, siginfo_t* info, void* ucontext) try {
   // buffer for constructing temporary log messages (to avoid malloc)
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
 
   char* p = &buffer[0];
-  size_t length = buildLogMessage(p, context, signal, info);
+  size_t length = buildLogMessage(p, context, signal, info, ucontext);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
 
@@ -252,6 +282,13 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
 #ifdef ARANGODB_HAVE_LIBUNWIND
   // log backtrace, of up to maxFrames depth 
   { 
+#ifdef __linux__
+  // The address of the program headers of the executable.
+    long base = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
+#else
+    long base = 0;
+#endif
+
     unw_cursor_t cursor;
     // unw_word_t ip, sp;
     unw_context_t uc;
@@ -278,21 +315,36 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
           break;
         }
 
+        if (frame == maxFrames + skipFrames) {
+          memset(&buffer[0], 0, sizeof(buffer));
+          p = &buffer[0];
+          appendNullTerminatedString("..reached maximum frame display depth (", p);
+          p += arangodb::basics::StringUtils::itoa(uint64_t(maxFrames), p);
+          appendNullTerminatedString("). stopping backtrace", p);
+
+          length = p - &buffer[0];
+          LOG_TOPIC("bbb04", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+          break;
+        }
+
         if (frame >= skipFrames) {
           // this is a stack frame we want to display
           memset(&buffer[0], 0, sizeof(buffer));
           p = &buffer[0];
           appendNullTerminatedString("frame ", p);
+          if (frame < 10) {
+            // pad frame id to 2 digits length
+            *p++ = ' ';
+          }
           p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
-          appendNullTerminatedString(" [0x", p);
-          appendHexValue(reinterpret_cast<unsigned char const*>(&pc), sizeof(decltype(pc)), p);
-          appendNullTerminatedString("] ", p);
+
+          appendAddress(pc, base, p);
 
           char mangled[512];
           memset(&mangled[0], 0, sizeof(mangled));
           
           // get symbol information (in mangled format)
-          unw_word_t offset;
+          unw_word_t offset = 0;
           if (unw_get_proc_name(&cursor, &mangled[0], sizeof(mangled) - 1, &offset) == 0) {
             // "mangled" buffer must have been null-terminated before, but it doesn't
             // harm if we double-check it is null-terminated
@@ -309,7 +361,7 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
             }
             // print offset into function
             appendNullTerminatedString(" (+0x", p); 
-            appendHexValue(reinterpret_cast<unsigned char const*>(&offset), sizeof(decltype(offset)), p);
+            appendHexValue(reinterpret_cast<unsigned char const*>(&offset), sizeof(decltype(offset)), p, true);
             appendNullTerminatedString(")", p); 
           } else {
             // unable to retrieve symbol information
@@ -319,7 +371,7 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
           length = p - &buffer[0];
           LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
         }
-      } while (++frame < (maxFrames + skipFrames) && unw_step(&cursor) > 0);
+      } while (++frame < (maxFrames + skipFrames + 1) && unw_step(&cursor) > 0);
       // flush logs as early as possible
       arangodb::Logger::flush();
     }
@@ -346,7 +398,8 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
   // we better not throw an exception from inside a signal handler
 }
 
-/// @brief the actual function that is invoked for a deadly signal
+/// @brief Logs the reception of a signal to the logfile.
+/// this is the actual function that is invoked for a deadly signal
 /// (i.e. SIGSEGV, SIGBUS, SIGILL, SIGFPE...)
 ///
 /// the following assumptions are made for this crash handler:
@@ -363,9 +416,9 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
 ///   efforts, so we are not even trying this.
 /// - Windows and macOS are currently not supported.
 #ifndef _WIN32
-void crashHandlerSignalHandler(int signal, siginfo_t* info, void*) {
+void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    ::logBacktrace("signal handler invoked", signal, info);
+    ::logBacktrace("signal handler invoked", signal, info, ucontext);
     arangodb::Logger::flush();
     arangodb::Logger::shutdown();
   } else {
@@ -387,7 +440,7 @@ namespace arangodb {
 
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(char const* context) {
-  ::logBacktrace(context, SIGABRT, nullptr);
+  ::logBacktrace(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
   Logger::flush();
   Logger::shutdown();
 
@@ -396,25 +449,25 @@ void CrashHandler::crash(char const* context) {
 }
 
 /// @brief logs an assertion failure and crashes the program
-void CrashHandler::assertionFailure(char const* file, int line, char const* context) {
+void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context) {
   // assemble an "assertion failured in file:line: message" string
-  char buffer[512];
+  char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
   
   char* p = &buffer[0];
   appendNullTerminatedString("assertion failed in ", p);
-  appendNullTerminatedString(file, 128, p);
+  appendNullTerminatedString((file == nullptr ? "unknown file" : file), 128, p);
   appendNullTerminatedString(":", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(line), p);
+  if (func != nullptr) {
+    appendNullTerminatedString(" [", p);
+    appendNullTerminatedString(func, p);
+    appendNullTerminatedString("]", p);
+  }
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
 
-  ::logBacktrace(&buffer[0], SIGABRT, nullptr);
-  Logger::flush();
-  Logger::shutdown();
-
-  // crash from here
-  ::killProcess(SIGABRT);
+  crash(&buffer[0]);
 }
 
 /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
@@ -445,10 +498,35 @@ void CrashHandler::installCrashHandler() {
   }
 
 #ifndef _WIN32
+  try {
+    constexpr size_t stackSize = std::max<size_t>(
+        128 * 1024, 
+        std::max<size_t>(
+          MINSIGSTKSZ, 
+          SIGSTKSZ
+        )
+      );
+
+    ::alternativeStackMemory = std::make_unique<char[]>(stackSize);
+    
+    stack_t altstack;
+    altstack.ss_sp = static_cast<void*>(::alternativeStackMemory.get());
+    altstack.ss_size = stackSize;
+    altstack.ss_flags = 0;
+    if (sigaltstack(&altstack, nullptr) != 0) {
+      ::alternativeStackMemory.release();
+    }
+  } catch (...) {
+    // could not allocate memory for alternative stack.
+    // in this case we must not modify the stack for the signal handler
+    // as we have no way of signaling failure here.
+    ::alternativeStackMemory.release();
+  }
+
   // install signal handlers for the following signals
   struct sigaction act;
   sigemptyset(&act.sa_mask);
-  act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO;
+  act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO | (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
   act.sa_sigaction = crashHandlerSignalHandler;
   sigaction(SIGSEGV, &act,nullptr);
   sigaction(SIGBUS, &act, nullptr);
@@ -472,12 +550,14 @@ void CrashHandler::installCrashHandler() {
         char const* msg = "handler for std::terminate() invoked with an std::exception: ";
         appendNullTerminatedString(msg, p);
         char const* e = ex.what();
-        if (strlen(e) > 100) {
-          memcpy(p, e, 100);
-          p += 100;
-          appendNullTerminatedString(" (truncated)", p);
-        } else {
-          appendNullTerminatedString(e, p);
+        if (e != nullptr) {
+          if (strlen(e) > 100) {
+            memcpy(p, e, 100);
+            p += 100;
+            appendNullTerminatedString(" (truncated)", p);
+          } else {
+            appendNullTerminatedString(e, p);
+          }
         }
       } catch (...) {
         char const* msg = "handler for std::terminate() invoked with an unknown exception";

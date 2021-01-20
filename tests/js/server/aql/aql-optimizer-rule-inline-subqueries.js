@@ -69,8 +69,15 @@ function optimizerRuleTestSuite () {
         "LET a = [1,2,3] FOR i IN a RETURN i",
         "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] RETURN j) RETURN x",
         "FOR i IN (FOR j IN [1,2,3] COLLECT v = j INTO g RETURN [v, g]) RETURN i",
+        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,2,3] COLLECT v = j INTO g RETURN [v, g]) FOR x IN sub RETURN [i, x]",
         "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] LIMIT 1 RETURN j) FOR k IN x RETURN k",
-        "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] SORT j RETURN j) FOR k IN x RETURN k"
+        "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] SORT j RETURN j) FOR k IN x RETURN k",
+        "FOR i IN [3,2,1] SORT i LET sub = (FOR j IN [1,2,3] SORT j DESC RETURN j) FOR k IN sub RETURN [i, k]",
+        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,1] RETURN DISTINCT j) FOR k IN sub RETURN [i, k]",
+        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,1] COLLECT x = j RETURN x) FOR k IN sub RETURN [i, k]",
+        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,1] COLLECT x = j OPTIONS { method: 'hash' } RETURN x) FOR k IN sub RETURN [i, k]",
+        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,1] COLLECT x = j OPTIONS { method: 'sorted' } RETURN x) FOR k IN sub RETURN [i, k]",
+        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,2,3,3] RETURN DISTINCT j) FOR x IN sub RETURN [i, x]",
       ];
 
       queries.forEach(function(query) {
@@ -147,7 +154,9 @@ function optimizerRuleTestSuite () {
         [ "LET x = (FOR j IN [1,2,3,4] RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [ 2 ] ],
         [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC RETURN j) FOR k IN x RETURN k", [ 4, 3, 2, 1 ] ],
         [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x RETURN k", [ 4, 3 ] ],
-        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x LIMIT 1 RETURN k", [ 4 ] ]
+        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x LIMIT 1 RETURN k", [ 4 ] ],
+        [ "FOR i IN [3,2,1] SORT i LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [ [1, 1], [1, 2], [1, 3], [2, 1], [2, 2], [2, 3], [3, 1], [3, 2], [3, 3] ] ],
+        [ "FOR i IN [3,2,1] SORT i DESC LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [ [3, 1], [3, 2], [3, 3], [2, 1], [2, 2], [2, 3], [1, 1], [1, 2], [1, 3] ] ],
       ];
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0]);
@@ -168,20 +177,12 @@ function optimizerRuleCollectionTestSuite () {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
+    setUpAll : function () {
       db._drop(cn);
       c = db._create(cn);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn);
       c = null;
     },
@@ -240,14 +241,14 @@ function optimizerRuleViewTestSuite () {
 
   return {
 
-    setUp : function () {
+    setUpAll : function () {
       db._dropView(cn + "View");
       db._drop(cn);
       db._create(cn);
       db._createView(cn + "View", "arangosearch", { links: { "UnitTestsOptimizer" : { includeAllFields: true } } });
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._dropView(cn + "View");
       db._drop(cn);
     },

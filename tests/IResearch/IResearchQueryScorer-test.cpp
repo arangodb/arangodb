@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -502,9 +503,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -606,9 +605,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -715,9 +712,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -823,9 +818,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -932,9 +925,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1041,9 +1032,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1159,9 +1148,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1268,9 +1255,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1353,9 +1338,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1439,9 +1422,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1556,9 +1537,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1641,9 +1620,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();
@@ -1721,9 +1698,7 @@ TEST_F(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                               std::shared_ptr<arangodb::velocypack::Builder>(),
-                               arangodb::velocypack::Parser::fromJson("{}"));
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
 
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query.plan();

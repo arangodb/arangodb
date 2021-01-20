@@ -34,9 +34,8 @@ const optionsDocumentation = [
   '   - `ldapPort : Port of the ldap server'
 ];
 
-// const helper = require('@arangodb/user-helper');
 const _ = require('lodash');
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;

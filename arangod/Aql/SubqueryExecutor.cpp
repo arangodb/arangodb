@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -152,7 +153,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         if (_infos.returnsData()) {
           TRI_ASSERT(_subqueryResults != nullptr);
           INTERNAL_LOG_SQ << uint64_t(this)
-                       << " store subquery result for writing " << block->size();
+                       << " store subquery result for writing " << block->numRows();
           _subqueryResults->emplace_back(std::move(block));
         }
       }
@@ -213,25 +214,6 @@ void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& out
   output.advanceRow();
 }
 
-/// @brief shutdown, tell dependency and the subquery
-template <bool isModificationSubquery>
-std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shutdown(int errorCode) {
-  // Note this shutdown needs to be repeatable.
-  // Also note the ordering of this shutdown is different
-  // from earlier versions we now shutdown subquery first
-  ExecutionState state = ExecutionState::DONE;
-  if (!_shutdownDone) {
-    // We take ownership of _state here for shutdown state
-    std::tie(state, _shutdownResult) = _subquery.shutdown(errorCode);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(_shutdownResult.ok());
-      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-    }
-    _shutdownDone = true;
-  }
-  return {state, _shutdownResult};
-}
-
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::translatedReturnType() const
     noexcept -> ExecutionState {
@@ -245,17 +227,12 @@ template <>
 template <>
 auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutionState, Stats, size_t, AqlCall> {
-  auto getUpstreamCall = [&]() {
-    auto upstreamCall = AqlCall{};
-    return upstreamCall;
-  };
-
   INTERNAL_LOG_SQ << uint64_t(this) << "skipRowsRange " << call;
 
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
-    return {translatedReturnType(), NoStats{}, 0, getUpstreamCall()};
+    return {translatedReturnType(), NoStats{}, 0, AqlCall{}};
   }
   TRI_ASSERT(call.needSkipMore());
   // We cannot have a modifying subquery considered const
@@ -273,7 +250,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
           _subquery.execute(AqlCallStack(AqlCallList{subqueryCall}));
       TRI_ASSERT(skipRes.nothingSkipped());
       if (state == ExecutionState::WAITING) {
-        return {state, NoStats{}, 0, getUpstreamCall()};
+        return {state, NoStats{}, 0, AqlCall{}};
       }
       // We get a result, but we asked for no rows.
       // so please give us no rows.
@@ -302,7 +279,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
           // We are done, we will not get any more input.
           break;
         }
-        return {state, NoStats{}, 0, getUpstreamCall()};
+        return {state, NoStats{}, 0, AqlCall{}};
       }
       TRI_ASSERT(_subqueryInitialized);
     }
@@ -313,7 +290,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
   // or both if limit == 0.
   call.didSkip(_skipped);
   _skipped = 0;
-  return {translatedReturnType(), NoStats{}, call.getSkipCount(), getUpstreamCall()};
+  return {translatedReturnType(), NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
 template <bool isModificationSubquery>

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -457,19 +458,28 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 ///        and the Condition stays unmodified. Also does not care for sorting
 ///        Returns false if no index could be found.
 
-bool getBestIndexHandleForFilterCondition(
-    aql::Collection const& collection,
-    arangodb::aql::AstNode*& node,
-    arangodb::aql::Variable const* reference, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex) {
+bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
+                                          arangodb::aql::AstNode*& node,
+                                          arangodb::aql::Variable const* reference,
+                                          size_t itemsInCollection,
+                                          aql::IndexHint const& hint,
+                                          std::shared_ptr<Index>& usedIndex,
+                                          bool onlyEdgeIndexes) {
   // We can only start after DNF transformation and only a single AND
   TRI_ASSERT(node->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
   if (node->numMembers() == 0) {
     // Well no index can serve no condition.
     return false;
   }
-  
+
   auto indexes = collection.indexes();
+  if (onlyEdgeIndexes) {
+    indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                                 [](auto&& idx) {
+                                   return idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
+                                 }),
+                  indexes.end());
+  }
 
   arangodb::aql::SortCondition sortCondition;    // always empty here
   arangodb::aql::AstNode* specializedCondition;  // unused

@@ -177,6 +177,19 @@ Upstream is: https://github.com/taocpp/json
 
 - On upgrade do not add unnecessary files (e.g. src, tests, contrib)
   and update the commit hash in `./taocpp-json.version`.
+  
+## tzdata
+
+IANA time zone database / Olson database
+Contains information about the world's time zones
+
+Upstream is: https://www.iana.org/time-zones (Data Only Distribution)
+
+Windows builds require windowsZones.xml from the Unicode CLDR project:
+https://github.com/unicode-org/cldr/blob/master/common/supplemental/windowsZones.xml
+
+invoke `Installation/fetch_tz_database.sh` to do this.
+Fix CMakeLists.txt with new zone files if neccessary.
 
 ## V8
 

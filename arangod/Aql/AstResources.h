@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,14 +27,21 @@
 #include <string>
 #include <vector>
 
+#include "Aql/AstNode.h"
 #include "Aql/ShortStringStorage.h"
 #include "Basics/Common.h"
+#include "Basics/FixedSizeAllocator.h"
 
 namespace arangodb {
-namespace aql {
-
-struct AstNode;
 struct ResourceMonitor;
+
+namespace velocypack {
+class Slice;
+}
+
+namespace aql {
+class Ast;
+struct AstNode;
 
 class AstResources {
  public:
@@ -42,11 +49,14 @@ class AstResources {
   AstResources(AstResources const&) = delete;
   AstResources& operator=(AstResources const&) = delete;
 
-  explicit AstResources(ResourceMonitor*);
+  explicit AstResources(arangodb::ResourceMonitor&);
   ~AstResources();
 
-  /// @brief add a node to the list of nodes
-  void addNode(AstNode*);
+  /// @brief create and register an AstNode
+  AstNode* registerNode(AstNodeType type);
+  
+  /// @brief create and register an AstNode
+  AstNode* registerNode(Ast*, arangodb::velocypack::Slice slice);
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
@@ -63,22 +73,26 @@ class AstResources {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
  private:
+  template <typename T>
+  size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
+
   /// @brief registers a long string and takes over the ownership for it
   char* registerLongString(char* copy, size_t length);
+  
+  /// @brief return the memory usage for a block of strings
+  constexpr size_t memoryUsageForStringBlock() const noexcept;
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief all nodes created in the AST - will be used for freeing them later
-  std::vector<AstNode*> _nodes;
+  FixedSizeAllocator<AstNode> _nodes;
 
   /// @brief strings created in the query - used for easy memory deallocation
   std::vector<char*> _strings;
 
   /// @brief cumulated length of strings in _strings
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t _stringsLength;
-#endif
 
   /// @brief short string storage. uses less memory allocations for short
   /// strings

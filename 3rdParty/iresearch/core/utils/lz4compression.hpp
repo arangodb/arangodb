@@ -29,8 +29,8 @@
 
 #include <memory>
 
-NS_ROOT
-NS_BEGIN(compression)
+namespace iresearch {
+namespace compression {
 
 struct LZ4_stream_deleter {
   void operator()(void* p) noexcept;
@@ -76,7 +76,7 @@ struct IRESEARCH_API lz4 {
   static compression::decompressor::ptr decompressor();
 }; // lz4basic
 
-NS_END // compression
-NS_END // NS_ROOT
+} // compression
+} // namespace iresearch {
 
 #endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -843,7 +844,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   // in case the user did not restrict the dump to any collections
   
   // now check if at least one of the specified collections was found
-  if (_options.collections.empty()) {
+  if (!_options.collections.empty()) {
     bool found = false;
     for (auto const& [name, collection] : restrictList) {
       if (!collection.isNone()) {
@@ -954,7 +955,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _options.collections.size(); ++i) {
-    restrictList.insert(std::pair<std::string, bool>(_options.collections[i], true));
+    restrictList.insert(std::pair<std::string, bool>(_options.collections[i], false));
   }
 
   // Step 3. iterate over collections
@@ -980,6 +981,52 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
     if (cid == 0 || name == "") {
       return ::ErrorMalformedJsonResponse;
     }
+    if (deleted) {
+      continue;
+    }
+    if (name[0] == '_' && !_options.includeSystemCollections) {
+      continue;
+    }
+    // filter by specified names
+    if (!restrictList.empty()) {
+      if (restrictList.find(name) == restrictList.end()) {
+        // collection name not in list
+        continue;
+      }
+      restrictList[name] = true;
+    }
+  }
+  
+  if (!_options.collections.empty()) {
+    bool found = false;
+    for (auto const& it : restrictList) {
+      if (it.second) {
+        found = true;
+      } else {
+        LOG_TOPIC("2cbe6", WARN, arangodb::Logger::DUMP)
+            << "Requested collection '" << it.first << "' not found in database";
+      }
+    }
+    if (!found) {
+      LOG_TOPIC("11523", FATAL, arangodb::Logger::DUMP)
+          << "None of the requested collections were found in the database";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  for (auto const& collection : VPackArrayIterator(collections)) {
+    // extract parameters about the individual collection
+    TRI_ASSERT(collection.isObject());
+    VPackSlice const parameters = collection.get("parameters");
+    TRI_ASSERT(parameters.isObject());
+
+    // extract basic info about the collection
+    uint64_t const cid = basics::VelocyPackHelper::extractIdValue(parameters);
+    std::string const name =
+        basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+    bool const deleted =
+        basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false);
+
     if (deleted) {
       continue;
     }

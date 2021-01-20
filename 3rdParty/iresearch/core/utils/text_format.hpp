@@ -24,10 +24,8 @@
 #ifndef IRESEARCH_TEXT_FORMAT_H
 #define IRESEARCH_TEXT_FORMAT_H
 
-#include "type_id.hpp"
-
-NS_ROOT
-NS_BEGIN(text_format)
+namespace iresearch {
+namespace text_format {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            common textual formats
@@ -36,40 +34,24 @@ NS_BEGIN(text_format)
 ////////////////////////////////////////////////////////////////////////////////
 /// @class CSV format type https://en.wikipedia.org/wiki/Comma-separated_values
 ////////////////////////////////////////////////////////////////////////////////
-struct csv {
-  static constexpr string_ref type_name() noexcept {
-    return "csv";
-  }
-};
+struct csv { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class jSON format type https://en.wikipedia.org/wiki/JSON
 ////////////////////////////////////////////////////////////////////////////////
-struct json {
-  static constexpr string_ref type_name() noexcept {
-    return "json";
-  }
-};
+struct json { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw text format type without any specific encoding
 ////////////////////////////////////////////////////////////////////////////////
-struct text {
-  static constexpr string_ref type_name() noexcept {
-    return "text";
-  }
-};
+struct text { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class XML format type https://en.wikipedia.org/wiki/XML
 ////////////////////////////////////////////////////////////////////////////////
-struct xml {
-  static constexpr string_ref type_name() noexcept {
-    return "xml";
-  }
-};
+struct xml { };
 
-NS_END // text_format
-NS_END // ROOT
+} // text_format
+} // ROOT
 
 #endif

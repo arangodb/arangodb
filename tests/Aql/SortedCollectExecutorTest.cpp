@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -55,7 +56,7 @@ namespace arangodb::tests::aql {
 class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -74,7 +75,6 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -84,18 +84,17 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         collectRegister(RegisterPlan::MaxRegisterId),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1}, 1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
@@ -139,7 +138,7 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
 class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -158,7 +157,6 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -167,7 +165,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestRowsUpstream()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -175,12 +173,11 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1 /*nrIn*/, 3 /*nrOut*/,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -244,7 +241,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -265,7 +262,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
     auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
     ASSERT_EQ(ExecutorState::DONE, state);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
-    ASSERT_EQ(inputBlock->size(), result.numRowsWritten());
+    ASSERT_EQ(inputBlock->numRows(), result.numRowsWritten());
     ASSERT_FALSE(result.produced());
   }
 
@@ -297,7 +294,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_3) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -349,7 +346,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -386,7 +383,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
 
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -417,7 +414,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
                                  std::move(aggregateRegisters),
-                                 &VPackOptions::Defaults, false);
+                                 &VPackOptions::Defaults);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
@@ -426,7 +423,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -475,7 +472,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -510,7 +507,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
                                  std::move(aggregateRegisters),
-                                 &VPackOptions::Defaults, false);
+                                 &VPackOptions::Defaults);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
 
@@ -527,7 +524,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -586,7 +583,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 class SortedCollectExecutorTestSkip : public ::testing::Test {
  protected:
   // ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -604,7 +601,6 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -613,19 +609,18 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestSkip()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         collectRegister(2),
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1, nrOutputRegister,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -706,7 +701,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
@@ -828,7 +823,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
@@ -843,7 +838,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
@@ -900,7 +895,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
@@ -938,7 +933,6 @@ class SortedCollectExecutorTestSplit
   RegisterId expressionRegister;
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  bool count;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -949,13 +943,12 @@ class SortedCollectExecutorTestSplit
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
-        count(false),
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1, nrOutputRegister,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes),
                       std::move(variables), std::move(aggregateRegisters),
-                      &VPackOptions::Defaults, count) {}
+                      &VPackOptions::Defaults) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {

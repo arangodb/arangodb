@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -272,17 +272,6 @@ bool config_t::supervision() const {
 double config_t::supervisionFrequency() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionFrequency;
-}
-
-bool config_t::activePushBack(std::string const& id) {
-  WRITE_LOCKER(writeLocker, _lock);
-  if (_active.size() < _agencySize &&
-      std::find(_active.begin(), _active.end(), id) == _active.end()) {
-    _active.push_back(id);
-    ++_version;
-    return true;
-  }
-  return false;
 }
 
 std::unordered_set<std::string> config_t::gossipPeers() const {

@@ -30,13 +30,13 @@
 #include "store/directory.hpp"
 #include "store/directory_cleaner.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class format;
 class index_meta;
 struct segment_meta;
 
-NS_BEGIN(directory_utils)
+namespace directory_utils {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           memory_allocator utils
@@ -98,7 +98,7 @@ IRESEARCH_API directory_cleaner::removal_acceptor_t remove_except_current_segmen
   const directory& dir, const format& codec
 );
 
-NS_END
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class tracking_directory
@@ -261,6 +261,6 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // ref_tracking_directory
 
-NS_END
+}
 
 #endif

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -280,8 +281,6 @@ struct ExecutorTestHelper {
   }
 
   auto run(bool const loop = false) -> void {
-    ResourceMonitor monitor;
-
     auto inputBlock = generateInputRanges(_itemBlockManager);
 
     auto skippedTotal = SkipResult{};
@@ -308,7 +307,7 @@ struct ExecutorTestHelper {
         skippedTotal.merge(skipped, false);
         call.didSkip(skipped.getSkipCount());
         if (result != nullptr) {
-          call.didProduce(result->size());
+          call.didProduce(result->numRows());
           allResults.add(result);
         }
         call.resetSkipCount();

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -40,13 +41,15 @@ namespace rocksdb {
 /// @brief rotate the active journals for the collection on all DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string const& collname) {
-  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  if (!ce->isRocksDB()) {
+Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& server,
+                                       std::string const& dbname,
+                                       std::string const& collname) {
+  ClusterEngine& ce =
+      (server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>());
+  if (!ce.isRocksDB()) {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
 
-  auto& server = ce->server();
   // Set a few variables needed for our work:
   NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -65,6 +68,9 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string co
   std::string const baseUrl = "/_api/collection/";
 
   VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.add(VPackSlice::emptyObjectSlice());
+
   network::Headers headers;
   network::RequestOptions options;
   options.database = dbname;
@@ -85,12 +91,13 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string co
 
   auto responses = futures::collectAll(futures).get();
   for (auto const& r : responses) {
-    if (!r.hasValue() || r.get().fail()) {
-      return TRI_ERROR_FAILED;
+    Result res = r.get().combinedResult();
+    if (res.fail()) {
+      return res;
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 }  // namespace rocksdb

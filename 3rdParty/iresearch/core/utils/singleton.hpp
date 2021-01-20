@@ -31,7 +31,7 @@
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template< typename T >
 class singleton: util::noncopyable {
@@ -45,7 +45,7 @@ class singleton: util::noncopyable {
   singleton() = default;
 };
 
-NS_END // NS_ROOT
+} // namespace iresearch {
 
 #endif // #ifdef IRESEARCH_DLL_PLUGIN
 #endif

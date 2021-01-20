@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -180,7 +181,7 @@ auto DistributeClientBlock::execute(AqlCallStack callStack, ExecutionState upstr
         static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
     TRI_ASSERT(casted != nullptr);
     auto [block, skipped] = popJoinedBlock();
-    casted->injectConstantBlock(block, skipped);
+    casted->injectConstantBlock(std::move(block), std::move(skipped));
     _executorHasMore = true;
   }
   auto [state, skipped, result] = _executor->execute(callStack);
@@ -201,5 +202,5 @@ auto DistributeClientBlock::execute(AqlCallStack callStack, ExecutionState upstr
       state = upstreamState;
     }
   }
-  return {state, skipped, result};
+  return {state, std::move(skipped), std::move(result)};
 }

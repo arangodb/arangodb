@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ namespace cache {
 /// @brief Bucket structure for TransactionalCache.
 ///
 /// Contains, a State variable, three slots each for hashes and data pointers,
-/// four slots for blacklisted hashes, and the applicable transaction term. Most
+/// four slots for banished hashes, and the applicable transaction term. Most
 /// querying and manipulation can be handled via the exposed methods. Bucket
 /// must be locked before doing anything else to ensure proper synchronization.
 /// Data entries are carefully laid out to ensure the structure fits in a single
@@ -48,10 +48,10 @@ namespace cache {
 struct TransactionalBucket {
   BucketState _state;
 
-  // blacklist entries for transactional semantics
-  static constexpr std::size_t slotsBlacklist = 5;
-  std::uint32_t _blacklistHashes[slotsBlacklist];
-  std::uint64_t _blacklistTerm;
+  // banish entries for transactional semantics
+  static constexpr std::size_t slotsBanish = 5;
+  std::uint32_t _banishHashes[slotsBanish];
+  std::uint64_t _banishTerm;
 
   // actual cached entries
   static constexpr std::size_t slotsData = 8;
@@ -90,10 +90,10 @@ struct TransactionalBucket {
   bool isMigrated() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Checks whether bucket has been fully blacklisted. Requires state to
+  /// @brief Checks whether bucket has been fully banished. Requires state to
   /// be locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isFullyBlacklisted() const;
+  bool isFullyBanished() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether bucket is full. Requires state to be locked.
@@ -114,14 +114,14 @@ struct TransactionalBucket {
                     bool moveToFront = true);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts a given value if it is not blacklisted. Requires state to
+  /// @brief Inserts a given value if it is not banished. Requires state to
   /// be locked.
   ///
   /// Requires that the bucket is not full and does not already contain an item
   /// with the same key. If it is full, the item will not be inserted. If an
   /// item with the same key exists, this is not detected but it is likely to
   /// produce bugs later on down the line. If the item's hash has been
-  /// blacklisted, or the bucket is fully blacklisted, insertion will simply do
+  /// banished, or the bucket is fully banished, insertion will simply do
   /// nothing. When inserting, the item is put into the first empty slot, then
   /// moved to the front. If attempting to insert and the bucket is full, the
   /// user should evict an item and specify the optimizeForInsertion flag to be
@@ -141,20 +141,20 @@ struct TransactionalBucket {
   CachedValue* remove(std::uint32_t hash, void const* key, std::size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Blacklists a key and removes it if it exists. Requires state to
+  /// @brief Banishs a key and removes it if it exists. Requires state to
   /// be locked.
   ///
-  /// Search for a matching key. If one exists, remove it. Then blacklist the
-  /// hash associated with the key. If there are no empty blacklist slots, fully
-  /// blacklist the bucket.
+  /// Search for a matching key. If one exists, remove it. Then banish the
+  /// hash associated with the key. If there are no empty banish slots, fully
+  /// banish the bucket.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* blacklist(std::uint32_t hash, void const* key, std::size_t keySize);
+  CachedValue* banish(std::uint32_t hash, void const* key, std::size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Checks whether a given hash is blacklisted. Requires state to be
+  /// @brief Checks whether a given hash is banished. Requires state to be
   /// locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isBlacklisted(std::uint32_t hash) const;
+  bool isBanished(std::uint32_t hash) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Searches for the best candidate in the bucket to evict. Requires
@@ -178,9 +178,9 @@ struct TransactionalBucket {
   void evict(CachedValue* value, bool optimizeForInsertion = false);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Updates the bucket's blacklist term. Requires state to be locked.
+  /// @brief Updates the bucket's banish term. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void updateBlacklistTerm(std::uint64_t term);
+  void updateBanishTerm(std::uint64_t term);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reinitializes a bucket to be completely empty and unlocked.

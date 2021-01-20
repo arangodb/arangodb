@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -71,38 +72,37 @@ class GraphOperations {
   /// returned as a pair.
   /// This is because in case of a precondition error during trx.document(),
   /// the OperationResult may still be needed.
-  OperationResult getVertex(std::string const& collectionName, std::string const& key,
-                            std::optional<TRI_voc_rid_t> rev);
+  OperationResult getVertex(std::string const& collectionName,
+                            std::string const& key, std::optional<RevisionId> rev);
 
   /// @brief Get a single edge document from definitionName.
   /// Similar to getVertex().
-  OperationResult getEdge(const std::string& definitionName, const std::string& key,
-                          std::optional<TRI_voc_rid_t> rev);
+  OperationResult getEdge(const std::string& definitionName,
+                          const std::string& key, std::optional<RevisionId> rev);
 
   /// @brief Remove a single edge document from definitionName.
   OperationResult removeEdge(const std::string& definitionName,
-                             const std::string& key, std::optional<TRI_voc_rid_t> rev,
+                             const std::string& key, std::optional<RevisionId> rev,
                              bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
   OperationResult removeVertex(const std::string& collectionName,
-                               const std::string& key, std::optional<TRI_voc_rid_t> rev,
+                               const std::string& key, std::optional<RevisionId> rev,
                                bool waitForSync, bool returnOld);
 
   /// @brief Remove an edge or vertex and all incident edges in the graph
   OperationResult removeEdgeOrVertex(const std::string& collectionName,
-                                     const std::string& key,
-                                     std::optional<TRI_voc_rid_t> rev,
+                                     const std::string& key, std::optional<RevisionId> rev,
                                      bool waitForSync, bool returnOld);
 
   OperationResult updateEdge(const std::string& definitionName,
                              const std::string& key, VPackSlice document,
-                             std::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                             std::optional<RevisionId> rev, bool waitForSync,
                              bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult replaceEdge(const std::string& definitionName,
                               const std::string& key, VPackSlice document,
-                              std::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                              std::optional<RevisionId> rev, bool waitForSync,
                               bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult createEdge(const std::string& definitionName, VPackSlice document,
@@ -129,12 +129,12 @@ class GraphOperations {
 
   OperationResult updateVertex(const std::string& collectionName,
                                const std::string& key, VPackSlice document,
-                               std::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                               std::optional<RevisionId> rev, bool waitForSync,
                                bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult replaceVertex(const std::string& collectionName,
                                 const std::string& key, VPackSlice document,
-                                std::optional<TRI_voc_rid_t> rev, bool waitForSync,
+                                std::optional<RevisionId> rev, bool waitForSync,
                                 bool returnOld, bool returnNew, bool keepNull);
 
   OperationResult createVertex(const std::string& collectionName, VPackSlice document,
@@ -184,25 +184,24 @@ class GraphOperations {
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-  OperationResult getDocument(std::string const& collectionName, const std::string& key,
-                              std::optional<TRI_voc_rid_t> rev);
+  OperationResult getDocument(std::string const& collectionName,
+                              const std::string& key, std::optional<RevisionId> rev);
 
   /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
   /// (depending on whether rev is set)
-  VPackBufferPtr _getSearchSlice(const std::string& key,
-                                 std::optional<TRI_voc_rid_t>& rev) const;
+  VPackBufferPtr _getSearchSlice(const std::string& key, std::optional<RevisionId>& rev) const;
 
   OperationResult modifyDocument(const std::string& collectionName,
                                  const std::string& key, VPackSlice document,
-                                 bool isPatch, std::optional<TRI_voc_rid_t> rev,
+                                 bool isPatch, std::optional<RevisionId> rev,
                                  bool waitForSync, bool returnOld, bool returnNew,
                                  bool keepNull, transaction::Methods& trx);
 
   OperationResult createDocument(transaction::Methods* trx, const std::string& collectionName,
                                  VPackSlice document, bool waitForSync, bool returnNew);
 
-  OperationResult checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
-  OperationResult checkVertexCollectionAvailability(std::string const& vertexCollectionName);
+  Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
+  Result checkVertexCollectionAvailability(std::string const& vertexCollectionName);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;

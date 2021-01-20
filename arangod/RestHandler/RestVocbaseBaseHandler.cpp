@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -260,14 +260,14 @@ ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget()
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
-    TRI_voc_tid_t tid = 0;
+    TransactionId tid = TransactionId::none();
     std::size_t pos = 0;
     try {
-      tid = std::stoull(value, &pos, 10);
+      tid = TransactionId{std::stoull(value, &pos, 10)};
     } catch (...) {
     }
-    if (tid != 0) {
-      uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+    if (tid.isSet()) {
+      uint32_t sourceServer = tid.serverId();
       if (sourceServer != ServerState::instance()->getShortId()) {
         auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
         return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
@@ -322,7 +322,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
                                          std::string const& collectionName, TRI_col_type_e type,
                                          VPackOptions const* options, bool isMultiple,
                                          rest::ResponseCode waitForSyncResponseCode) {
-  if (result._options.waitForSync) {
+  if (result.options.waitForSync) {
     resetResponse(waitForSyncResponseCode);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
@@ -383,9 +383,13 @@ void RestVocbaseBaseHandler::generateForbidden() {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice) {
-  resetResponse(rest::ResponseCode::PRECONDITION_FAILED);
-
+void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
+                                                   bool precFailed) {
+  TRI_ASSERT(opres.errorNumber() == TRI_ERROR_ARANGO_CONFLICT);
+  const auto code = precFailed ? ResponseCode::PRECONDITION_FAILED : ResponseCode::CONFLICT;
+  resetResponse(code);
+  
+  VPackSlice slice = opres.slice();
   if (slice.isObject()) {  // single document case
     std::string const rev =
         VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "");
@@ -395,10 +399,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice)
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add(StaticStrings::Code,
-                VPackValue(static_cast<int32_t>(rest::ResponseCode::PRECONDITION_FAILED)));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int32_t>(code)));
     builder.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_CONFLICT));
-    builder.add(StaticStrings::ErrorMessage, VPackValue("precondition failed"));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(opres.errorMessage()));
 
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
@@ -411,35 +414,16 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice)
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
-  writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates precondition failed
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generatePreconditionFailed(std::string const& collectionName,
-                                                        std::string const& key,
-                                                        TRI_voc_rid_t rev) {
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::IdString,
-              VPackValue(assembleDocumentId(collectionName, key, false)));
-  builder.add(StaticStrings::KeyString, VPackValue(key));
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
-  builder.close();
-
-  generatePreconditionFailed(builder.slice());
+  writeResult(builder.slice(), *(ctx->getVPackOptions()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateNotModified(RevisionId rid) {
   resetResponse(rest::ResponseCode::NOT_MODIFIED);
-  _response->setHeaderNC(StaticStrings::Etag,
-                         "\"" + TRI_RidToString(rid) + "\"");
+  _response->setHeaderNC(StaticStrings::Etag, "\"" + rid.toString() + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -482,7 +466,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input, bool gene
 void RestVocbaseBaseHandler::generateTransactionError(std::string const& collectionName,
                                                       OperationResult const& result,
                                                       std::string const& key,
-                                                      TRI_voc_rid_t rev) {
+                                                      RevisionId rev) {
   int code = result.errorNumber();
   switch (code) {
     case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
@@ -510,11 +494,22 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:
-        generatePreconditionFailed(result.slice());
+        generateConflictError(result, /*precFailed*/ rev.isSet());
       } else {
         // This case happens if we call this method directly with a dummy
         // OperationResult:
-        generatePreconditionFailed(collectionName, key.empty() ? "unknown" : key, rev);
+
+        OperationResult tmp(result.result, result.options);
+        tmp.buffer = std::make_shared<VPackBufferUInt8>();
+        VPackBuilder builder(tmp.buffer);
+        builder.openObject();
+        builder.add(StaticStrings::IdString,
+                    VPackValue(assembleDocumentId(collectionName, key, false)));
+        builder.add(StaticStrings::KeyString, VPackValue(key));
+        builder.add(StaticStrings::RevString, VPackValue(rev.toString()));
+        builder.close();
+      
+        generateConflictError(tmp, /*precFailed*/ rev.isSet());
       }
       return;
 
@@ -527,7 +522,7 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) const {
+RevisionId RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) const {
   isValid = true;
   bool found;
   std::string const& etag = _request->header(header, found);
@@ -552,16 +547,16 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header, bool& 
       --e;
     }
 
-    TRI_voc_rid_t rid = 0;
+    RevisionId rid = RevisionId::none();
 
     bool isOld;
-    rid = TRI_StringToRid(s, e - s, isOld, false);
-    isValid = (rid != 0 && rid != UINT64_MAX);
+    rid = RevisionId::fromString(s, e - s, isOld, false);
+    isValid = (rid.isSet() && rid != RevisionId::max());
 
     return rid;
   }
 
-  return 0;
+  return RevisionId::none();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -579,20 +574,24 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 }
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
-    std::string const& collectionName, AccessMode::Type type) const {
+    std::string const& collectionName, AccessMode::Type type, OperationOptions const& opOptions) const {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
+    auto tmp = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
                                                          collectionName, type);
+    if (!opOptions.isSynchronousReplicationFrom.empty() && ServerState::instance()->isDBServer()) {
+      tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    }
+    return tmp;
   }
   
-  TRI_voc_tid_t tid = 0;
+  TransactionId tid = TransactionId::none();
   std::size_t pos = 0;
   try {
-    tid = std::stoull(value, &pos, 10);
+    tid = TransactionId{std::stoull(value, &pos, 10)};
   } catch (...) {}
-  if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
+  if (!tid.isSet() || (tid.isLegacyTransactionId() &&
                    ServerState::instance()->isRunningInCluster())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
   }
@@ -609,7 +608,9 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+      Result res =
+          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                !opOptions.isSynchronousReplicationFrom.empty());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -619,7 +620,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   auto ctx = mgr->leaseManagedTrx(tid, type);
   if (!ctx) {
     LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid.id()) + "' not found");
   }
   return std::make_unique<transaction::Methods>(std::move(ctx));
 }
@@ -632,13 +633,13 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
     return std::make_shared<transaction::StandaloneContext>(_vocbase);
   }
 
-  TRI_voc_tid_t tid = 0;
+  TransactionId tid = TransactionId::none();
   std::size_t pos = 0;
   try {
-    tid = std::stoull(value, &pos, 10);
+    tid = TransactionId{std::stoull(value, &pos, 10)};
   } catch (...) {}
-  if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
-                   ServerState::instance()->isRunningInCluster())) {
+  if (tid.empty() || (tid.isLegacyTransactionId() &&
+                      ServerState::instance()->isRunningInCluster())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
   }
 
@@ -646,7 +647,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   TRI_ASSERT(mgr != nullptr);
 
   if (pos > 0 && pos < value.size()) {
-    if (!transaction::isLeaderTransactionId(tid) || !ServerState::instance()->isDBServer()) {
+    if (!tid.isLeaderTransactionId() || !ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
                                      "illegal to start a managed transaction here");
     }
@@ -657,7 +658,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
       std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }
@@ -668,7 +669,9 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   auto ctx = mgr->leaseManagedTrx(tid, mode);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                                   std::string("transaction '") +
+                                       std::to_string(tid.id()) + "' not found");
   }
   return ctx;
 }

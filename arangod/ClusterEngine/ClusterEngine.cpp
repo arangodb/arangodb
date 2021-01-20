@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +23,13 @@
 
 #include "ClusterEngine.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/build.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterMethods.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -39,16 +38,11 @@
 #include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
@@ -56,7 +50,6 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::options;
 
 std::string const ClusterEngine::EngineName("Cluster");
 std::string const ClusterEngine::FeatureName("ClusterEngine");
@@ -86,6 +79,10 @@ bool ClusterEngine::isRocksDB() const {
 bool ClusterEngine::isMock() const {
   return ClusterEngine::Mocking ||
          (_actualEngine && _actualEngine->name() == "Mock");
+}
+
+HealthData ClusterEngine::healthCheck() {
+  return {};
 }
 
 ClusterEngineType ClusterEngine::engineType() const {
@@ -119,12 +116,12 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
 }
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
+    TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
   return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
+    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
       new ClusterTransactionCollection(&state, cid, accessType));
 }
@@ -146,8 +143,10 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
-  builder.openObject();
-  builder.close();
+  Result res = getEngineStatsFromDBServers(server().getFeature<ClusterFeature>(), builder);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 // inventory functionality
@@ -163,7 +162,7 @@ void ClusterEngine::getDatabases(arangodb::velocypack::Builder& result) {
   obj->add(StaticStrings::DataSourceName, VPackValue(StaticStrings::SystemDatabase));
 }
 
-void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                       arangodb::velocypack::Builder& builder,
                                       bool includeIndexes, TRI_voc_tick_t maxTick) {}
 
@@ -220,8 +219,8 @@ TRI_voc_tick_t ClusterEngine::recoveryTick() {
 
 void ClusterEngine::createCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) {
-  TRI_ASSERT(collection.id() != 0);
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id()));
+  TRI_ASSERT(collection.id().isSet());
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id().id()));
 }
 
 arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
@@ -240,7 +239,7 @@ arangodb::Result ClusterEngine::renameCollection(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-Result ClusterEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+Result ClusterEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
                                  arangodb::LogicalView const& /*view*/
 ) {
   return TRI_ERROR_NOT_IMPLEMENTED;
@@ -259,6 +258,11 @@ Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
     return {};
   }
   return TRI_ERROR_NOT_IMPLEMENTED;
+}
+
+Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  return compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
 }
 
 /// @brief Add engine-specific optimizer rules

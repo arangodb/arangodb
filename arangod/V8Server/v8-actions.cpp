@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -39,20 +40,20 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "StorageEngine/HotBackup.h"
 #include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -79,7 +80,8 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t*, v8::Isolate*,
 
 class v8_action_t final : public TRI_action_t {
  public:
-  v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {}
+  explicit v8_action_t(ActionFeature const& actionFeature)
+      : TRI_action_t(), _actionFeature(actionFeature), _callbacks(), _callbacksLock() {}
 
   void visit(void* data) override {
     v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
@@ -116,7 +118,7 @@ class v8_action_t final : public TRI_action_t {
     TRI_action_result_t result;
 
     // allow use database execution in rest calls?
-    bool allowUseDatabase = _allowUseDatabase || ActionFeature::ACTION->allowUseDatabase();
+    bool allowUseDatabase = _allowUseDatabase || _actionFeature.allowUseDatabase();
 
     // get a V8 context
     V8ContextGuard guard(vocbase, _isSystem ?
@@ -195,6 +197,8 @@ class v8_action_t final : public TRI_action_t {
   }
 
  private:
+  ActionFeature const& _actionFeature;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback dictionary
   //////////////////////////////////////////////////////////////////////////////
@@ -435,6 +439,54 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   // intentional copy, as we will modify the headers later
   auto headers = request->headers();
 
+  std::string const& acceptPlain = request->contentTypeResponsePlain();
+
+  if (!acceptPlain.empty()) {
+    headers.emplace(StaticStrings::Accept, acceptPlain);
+  } else {
+    switch (request->contentTypeResponse()) {
+      case ContentType::UNSET:
+      case ContentType::CUSTOM:  // use Content-Type from _headers
+        break;
+      case ContentType::JSON:    // application/json
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJson);
+        break;
+      case ContentType::VPACK:   // application/x-velocypack
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeVPack);
+        break;
+      case ContentType::TEXT:    // text/plain
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeText);
+        break;
+      case ContentType::HTML:    // text/html
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeHtml);
+        break;
+      case ContentType::DUMP:    // application/x-arango-dump
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeDump);
+        break;
+    }
+  }
+
+  switch (request->contentType()) {
+    case ContentType::UNSET:
+    case ContentType::CUSTOM:  // use Content-Type from _headers
+      break;
+    case ContentType::JSON:    // application/json
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson);
+      break;
+    case ContentType::VPACK:   // application/x-velocypack
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack);
+      break;
+    case ContentType::TEXT:    // text/plain
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeText);
+      break;
+    case ContentType::HTML:    // text/html
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeHtml);
+      break;
+    case ContentType::DUMP:    // application/x-arango-dump
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeDump);
+      break;
+  }
+
   TRI_GET_GLOBAL_STRING(HeadersKey);
   req->Set(context, HeadersKey, headerFields).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(RequestTypeKey);
@@ -442,12 +494,12 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   auto setRequestBodyJsonOrVPack = [&]() {
     if (rest::ContentType::UNSET == request->contentType()) {
-      bool digesteable = false;
+      bool digestable = false;
       try {
         auto parsed = request->payload(true);
         if (parsed.isObject() || parsed.isArray()) {
           request->setDefaultContentType();
-          digesteable = true;
+          digestable = true;
         }
       } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
@@ -459,7 +511,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
       req->Set(context, RawRequestBodyKey, bufObj).FromMaybe(false);
       req->Set(context, RequestBodyKey, TRI_V8_PAIR_STRING(isolate, raw.data(), raw.size())).FromMaybe(false);
-      if (!digesteable) {
+      if (!digestable) {
         return;
       }
     }
@@ -472,7 +524,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
-      VPackSlice slice = request->payload();
+      VPackSlice slice = request->payload(true);
       std::string jsonString = slice.toJson();
 
       LOG_TOPIC("8afce", DEBUG, Logger::COMMUNICATION)
@@ -1091,7 +1143,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create an action with the given options
-  auto action = std::make_shared<v8_action_t>();
+  auto action = std::make_shared<v8_action_t>(v8g->_server.getFeature<ActionFeature>());
   ParseActionOptions(isolate, v8g, action.get(), options);
 
   // store an action with the given name
@@ -1135,8 +1187,9 @@ static void JS_ExecuteGlobalContextFunction(v8::FunctionCallbackInfo<v8::Value> 
 
   std::string const def = std::string(*utf8def, utf8def.length());
 
+  TRI_GET_GLOBALS();
   // and pass it to the V8 contexts
-  if (!V8DealerFeature::DEALER->addGlobalContextMethod(def)) {
+  if (!v8g->_server.getFeature<V8DealerFeature>().addGlobalContextMethod(def)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid action definition");
   }
@@ -1478,8 +1531,10 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
   fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
 
   network::RequestOptions reqOpts;
+
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(3600);
+  reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
 
   std::vector<futures::Future<network::Response>> futures;
   futures.reserve(DBServers.size());
@@ -1754,6 +1809,39 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hotbackup
+//////////////////////////////////////////////////////////////////////////////
+
+static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createHotbackup(obj)");
+  }
+  VPackBuilder obj;
+  try {
+    TRI_V8ToVPack(isolate, obj, args[0], false, true);
+  } catch(std::exception const& e) {
+    TRI_V8_THROW_EXCEPTION_USAGE(std::string("createHotbackup(obj): could not convert body to object: ") + e.what());
+  }
+
+  VPackBuilder result;
+#if USE_ENTERPRISE
+  TRI_GET_GLOBALS();
+  HotBackup h(v8g->_server);
+  auto r = h.execute("create", obj.slice(), result);
+  if (r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+#else
+  result.add(obj.slice());
+#endif
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
@@ -1761,6 +1849,11 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CREATE_HOTBACKUP"),
+                               JS_CreateHotbackup);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
@@ -1787,12 +1880,20 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
   // poll interval for Foxx queues
   TRI_GET_GLOBALS();
-  FoxxQueuesFeature& foxxQueuesFeature = v8g->_server.getFeature<FoxxQueuesFeature>();
+  FoxxFeature& foxxFeature = v8g->_server.getFeature<FoxxFeature>();
 
   isolate->GetCurrentContext()
       ->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
+          v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC,
+          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+          v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }

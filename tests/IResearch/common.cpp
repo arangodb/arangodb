@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -404,7 +405,7 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
   }
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), bindVars,
-                             arangodb::velocypack::Parser::fromJson(optionsString));
+                             arangodb::velocypack::Parser::fromJson(optionsString)->slice());
 
   auto const res = query.explain();
 
@@ -422,15 +423,24 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
   return expectedRules.empty();
 }
 
+arangodb::aql::QueryResult explainQuery(TRI_vocbase_t& vocbase, std::string const& queryString,
+                                        std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
+                                        std::string const& optionsString /*= "{}"*/) {
+
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), bindVars,
+                             arangodb::velocypack::Parser::fromJson(optionsString)->slice());
+
+  return query.explain();
+}
+
 arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string const& queryString,
                                         std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                                         std::string const& optionsString /*= "{}"*/
 ) {
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), bindVars,
-                             arangodb::velocypack::Parser::fromJson(optionsString));
-
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss;
+                             arangodb::velocypack::Parser::fromJson(optionsString)->slice());
 
   arangodb::aql::QueryResult result;
   while (true) {
@@ -452,7 +462,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 ) {
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                             nullptr, arangodb::velocypack::Parser::fromJson(optionsString));
+                             nullptr, arangodb::velocypack::Parser::fromJson(optionsString)->slice());
 
   auto result = query.parse();
 
@@ -460,7 +470,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     return nullptr;
   }
 
-  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
 }
 
 std::unique_ptr<arangodb::aql::Query> prepareQuery(
@@ -471,7 +481,7 @@ std::unique_ptr<arangodb::aql::Query> prepareQuery(
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = std::make_unique<arangodb::aql::Query>(
     ctx, arangodb::aql::QueryString(queryString), nullptr,
-      arangodb::velocypack::Parser::fromJson(optionsString));
+      arangodb::velocypack::Parser::fromJson(optionsString)->slice());
 
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   return query;
@@ -538,8 +548,8 @@ std::string mangleString(std::string name, std::string suffix) {
 }
 
 std::string mangleStringIdentity(std::string name) {
-  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::FieldMeta::Analyzer()  // args
-  );
+  arangodb::iresearch::kludge::mangleField(
+    name, arangodb::iresearch::FieldMeta::Analyzer());
 
   return name;
 }
@@ -555,7 +565,7 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                             bindVars, options);
+                             bindVars, options->slice());
 
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   EXPECT_TRUE(query.plan());
@@ -601,8 +611,7 @@ void assertExpressionFilter(
     std::string const& refName /*= "d"*/
 ) {
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), nullptr,
-                             std::make_shared<arangodb::velocypack::Builder>());
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -711,11 +720,9 @@ void buildActualFilter(TRI_vocbase_t& vocbase,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/
 ) {
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                             bindVars, options);
+                             bindVars);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -783,11 +790,10 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::string const& refName /*= "d"*/
 ) {
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<") << queryString << "> parseOk:" << parseOk << " execOk:" << execOk);
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                             bindVars, options);
+                             bindVars);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -895,14 +901,14 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
   SCOPED_TRACE(testing::Message("assertFilterParseFail failed for query:<") << queryString << ">");
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                             bindVars, nullptr);
+                             bindVars);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.fail());
 }
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
-  arangodb::CreateDatabaseInfo info(server);
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Ast.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
@@ -60,6 +61,11 @@ using namespace arangodb::aql;
 namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
+   
+[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query, int code, char const* details) {
+  std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
+  query.warnings().registerError(code, msg.c_str());
+}
 
 /**
  * @brief Register the given datasource with the given accesstype in the query.
@@ -199,16 +205,17 @@ Ast::SpecialNodes::SpecialNodes()
 }
 
 /// @brief create the AST
-Ast::Ast(QueryContext& query)
+Ast::Ast(QueryContext& query, AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
-      _resources(&query.resourceMonitor()),
+      _resources(query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
       _containsBindParameters(false),
       _containsModificationNode(false),
       _containsParallelNode(false),
-      _willUseV8(false) {
+      _willUseV8(false),
+      _astFlags(flags) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -242,6 +249,11 @@ AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
     }
     current = current->getMember(1);
   }
+}
+
+/// @brief create a node from the velocypack slice
+AstNode* Ast::createNode(arangodb::velocypack::Slice slice) {
+  return _resources.registerNode(this, slice);
 }
 
 /// @brief create an AST passhthru node
@@ -587,24 +599,15 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   return node;
 }
 
-/// @brief create an AST collect node, COUNT INTO
+/// @brief create an AST collect node with a single COUNT aggregator
 AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
                                      size_t nameLength, AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
-  node->reserve(2);
+  auto count = createNodeAssign(name, nameLength,
+                                createNodeAggregateFunctionCall("COUNT", createNodeArray()));
+  auto aggregators = createNodeArray(1);
+  aggregators->addMember(count);
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &_specialNodes.NopNode;
-  }
-
-  node->addMember(options);
-  node->addMember(list);
-
-  AstNode* variable = createNodeVariable(name, nameLength, true);
-  node->addMember(variable);
-
-  return node;
+  return createNodeCollect(list, aggregators, nullptr, nullptr, nullptr, options);
 }
 
 /// @brief create an AST sort node
@@ -635,6 +638,31 @@ AstNode* Ast::createNodeLimit(AstNode const* offset, AstNode const* count) {
   return node;
 }
 
+/// @brief create an AST window node
+AstNode* Ast::createNodeWindow(AstNode const* spec,
+                               AstNode const* rangeVar,
+                               AstNode const* aggregates) {
+  if (aggregates == 0 || aggregates->numMembers() == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY); // parser should prevent this
+  }
+  
+  if (_containsModificationNode) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION);
+  }
+  
+  AstNode* node = createNode(NODE_TYPE_WINDOW);
+  node->reserve(3);
+  node->addMember(spec);
+  node->addMember(rangeVar != nullptr ? rangeVar : &_specialNodes.NopNode);
+
+  // wrap aggregates again
+  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
+  agg->addMember(aggregates);
+  node->addMember(agg);
+
+  return node;
+}
+
 /// @brief create an AST assign node, used in COLLECT statements
 AstNode* Ast::createNodeAssign(char const* variableName, size_t nameLength,
                                AstNode const* expression) {
@@ -658,8 +686,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
   }
 
   if (isUserDefined && *name == '_') {
-    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
-    return nullptr;
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
   }
 
   if (_scopes.existsVariable(name, nameLength)) {
@@ -675,8 +702,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
       return node;
     }
 
-    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
-    return nullptr;
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
   }
 
   auto variable = _variables.createVariable(std::string(name, nameLength), isUserDefined);
@@ -820,6 +846,9 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
 
   AstNode* node = createNode(NODE_TYPE_PARAMETER);
   node->setStringValue(name, length);
+  if (hasFlag(NON_CONST_PARAMETERS)) {
+    node->setFlag(DETERMINED_CONSTANT);
+  }
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name, length);
@@ -1100,6 +1129,19 @@ AstNode* Ast::createNodeValueDouble(double value) {
   node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
   node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 
+  return node;
+}
+
+/// @brief create an AST string value node with forced non-constness
+AstNode* Ast::createNodeValueMutableString(char const* value, size_t length) {
+  if (value == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNode(NODE_TYPE_VALUE);
+  node->setValueType(VALUE_TYPE_STRING);
+  node->setStringValue(value, length);
+  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
   return node;
 }
 
@@ -1457,16 +1499,23 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* grap
   return node;
 }
 
-/// @brief create an AST k-shortest paths node
-AstNode* Ast::createNodeKShortestPaths(AstNode const* outVars, AstNode const* graphInfo) {
+/// @brief create an AST k-shortest paths or k-paths node
+AstNode* Ast::createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const* outVars, AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_K_SHORTEST_PATHS);
-  node->reserve(outVars->numMembers() + graphInfo->numMembers());
+  node->reserve(1 + outVars->numMembers() + graphInfo->numMembers());
 
   TRI_ASSERT(graphInfo->numMembers() == 5);
-  TRI_ASSERT(outVars->numMembers() > 0);
-  TRI_ASSERT(outVars->numMembers() < 3);
+  TRI_ASSERT(outVars->numMembers() == 1);
+
+  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths || 
+             type == arangodb::graph::ShortestPathType::Type::KPaths); 
+
+  // type: K_SHORTEST_PATH vs. K_PATHS
+  TRI_ASSERT(node->numMembers() == 0);
+  node->addMember(createNodeValueInt(static_cast<int64_t>(type)));
+  TRI_ASSERT(node->numMembers() == 1);
 
   // Add GraphInfo
   for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
@@ -1477,7 +1526,7 @@ AstNode* Ast::createNodeKShortestPaths(AstNode const* outVars, AstNode const* gr
   for (size_t i = 0; i < outVars->numMembers(); ++i) {
     node->addMember(outVars->getMemberUnchecked(i));
   }
-  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
+  TRI_ASSERT(node->numMembers() == 1 + graphInfo->numMembers() + outVars->numMembers());
 
   _containsTraversal = true;
 
@@ -1489,6 +1538,47 @@ AstNode const* Ast::createNodeOptions(AstNode const* options) const {
     return options;
   }
   return &_specialNodes.NopNode;
+}
+
+/// @brief create an AST function call node for aggregate functions
+AstNode* Ast::createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments) {
+  if (functionName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  auto normalized = normalizeFunctionName(functionName, strlen(functionName));
+
+  if (!Aggregator::isValid(normalized.first)) {
+    // aggregate expression must be a call to MIN|MAX|LENGTH...
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
+  }
+
+  TRI_ASSERT(arguments != nullptr);
+  TRI_ASSERT(arguments->type == NODE_TYPE_ARRAY);
+
+  if (Aggregator::requiresInput(normalized.first)) {
+    // validate number of function call arguments
+    size_t numExpectedArguments = 1; // at the moment all aggregators take only a single argument
+    if (arguments->numMembers() != numExpectedArguments) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                                    functionName, 1, 1);
+    }
+  }
+
+  // TODO - we should consider to introduce a NODE_TYPE_AGGREATE_FCALL type
+  AstNode* node = createNode(NODE_TYPE_FCALL);
+
+  // Register a pointer to the function.
+  // However, this function is never called, but the function name is later translated to an aggregator.
+  // This also implies that ATM we can only support aggregator functions that also have a matching AQL function.
+  auto& server = query().vocbase().server();
+  auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
+  TRI_ASSERT(func != nullptr);
+  node->setData(static_cast<void const*>(func));
+
+  node->addMember(arguments);
+
+  return node;
 }
 
 /// @brief create an AST function call node
@@ -1504,7 +1594,8 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
 
   if (normalized.second) {
     // built-in function
-    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
+    auto& server = query().vocbase().server();
+    auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
     TRI_ASSERT(func != nullptr);
    
     node = createNode(NODE_TYPE_FCALL);
@@ -1528,9 +1619,8 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                     static_cast<int>(numExpectedArguments.second));
     }
 
-    if (!func->hasFlag(Function::Flags::CanRunOnDBServer)) {
-      // this also qualifies a query for potentially reading or modifying
-      // documents via function calls!
+    if (func->hasFlag(Function::Flags::CanReadDocuments)) {
+      // this also qualifies a query for potentially reading documents via function calls!
       _functionsMayAccessDocuments = true;
     }
   } else {
@@ -1590,16 +1680,14 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
         if (param.empty()) {
           // parameter name must not be empty
-          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-          return nullptr;
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
         auto const& it = p.find(param);
 
         if (it == p.end()) {
           // query uses a bind parameter that was not defined by the user
-          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-          return nullptr;
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
         // mark the bind parameter as being used
@@ -1608,12 +1696,15 @@ void Ast::injectBindParameters(BindParameters& parameters,
         auto const& value = (*it).second.first;
 
         if (node->type == NODE_TYPE_PARAMETER) {
+          auto const constantParameter = node->isConstant();
           // bind parameter containing a value literal
           node = nodeFromVPack(value, true);
 
           if (node != nullptr) {
-            // already mark node as constant here
-            node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            if (constantParameter) {
+              // already mark node as constant here if parameters are constant
+              node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            }
             // mark node as simple
             node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
             // mark node as executable on db-server
@@ -1626,6 +1717,13 @@ void Ast::injectBindParameters(BindParameters& parameters,
           }
         } else {
           TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+         
+          if (!value.isString()) {
+            // we can get here in case `WITH @col ...` when the value of @col
+            // is not a string
+            ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param.c_str());
+            // query will have been aborted here
+          }
 
           // bound data source parameter
           TRI_ASSERT(value.isString());
@@ -1636,36 +1734,56 @@ void Ast::injectBindParameters(BindParameters& parameters,
           bool isWriteCollection = false;
 
           arangodb::velocypack::StringRef paramRef(param);
+          arangodb::velocypack::StringRef nameRef(name, l);
+
+          AstNode* newNode = nullptr;
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
                 paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
                                                             c->getStringLength())) {
+              // bind parameter still present in _writeCollections
+              TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
+              break;
+            } else if (c->type == NODE_TYPE_COLLECTION &&
+                nameRef == arangodb::velocypack::StringRef(c->getStringValue(),
+                                                           c->getStringLength())) {
+              // bind parameter was already replaced with a proper collection node 
+              // in _writeCollections
+              TRI_ASSERT(newNode == nullptr);
+              isWriteCollection = true;
+              newNode = const_cast<AstNode*>(c);
               break;
             }
           }
 
-          node = createNodeDataSource(resolver, name, l,
-                                      isWriteCollection ? AccessMode::Type::WRITE
-                                                        : AccessMode::Type::READ,
-                                      false, true);
+          TRI_ASSERT(newNode == nullptr || isWriteCollection);
 
-          if (isWriteCollection) {
-            // must update AST info now for all nodes that contained this
-            // parameter
-            for (size_t i = 0; i < _writeCollections.size(); ++i) {
-              auto& c = _writeCollections[i].first;
+          if (newNode == nullptr) {
+            newNode = createNodeDataSource(resolver, name, l,
+                                           isWriteCollection ? AccessMode::Type::WRITE
+                                                             : AccessMode::Type::READ,
+                                        false, true);
+            TRI_ASSERT(newNode != nullptr);
 
-              if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                  paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
-                                                              c->getStringLength())) {
-                c = node;
-                // no break here. replace all occurrences
+            if (isWriteCollection) {
+              // must update AST info now for all nodes that contained this
+              // parameter
+              for (auto& it : _writeCollections) {
+                auto& c = it.first;
+
+                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
+                    paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
+                                                                c->getStringLength())) {
+                  c = newNode;
+                  // no break here. replace all occurrences
+                }
               }
             }
           }
+          node = newNode;
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
         // look at second sub-node. this is the (replaced) bind parameter
@@ -1712,9 +1830,10 @@ void Ast::injectBindParameters(BindParameters& parameters,
                                       node->getString().c_str());
       } else if (node->type == NODE_TYPE_TRAVERSAL) {
         extractCollectionsFromGraph(node->getMember(2));
-      } else if (node->type == NODE_TYPE_SHORTEST_PATH ||
-                 node->type == NODE_TYPE_K_SHORTEST_PATHS) {
+      } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
         extractCollectionsFromGraph(node->getMember(3));
+      } else if (node->type == NODE_TYPE_K_SHORTEST_PATHS) {
+        extractCollectionsFromGraph(node->getMember(4));
       }
 
       return node;
@@ -2110,9 +2229,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
-      if (ctx->hasSeenAnyWriteNode && !func->hasFlag(Function::Flags::CanRunOnDBServer)) {
-        // if canRunOnDBServer is true, then this is an indicator for a
-        // document-accessing function
+      if (ctx->hasSeenAnyWriteNode && func->hasFlag(Function::Flags::CanReadDocuments)) {
+        // we have a document-reading function _after_ a modification/write
+        // operation. this is disallowed
         std::string name("function ");
         name.append(func->name);
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
@@ -2327,7 +2446,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
   return result;
 }
 
-/// @brief determines the to-be-kept attribute of an INTO expression
+/// @brief determines the to-be-kept attributes of an INTO expression
 std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
     AstNode const* node, Variable const* searchVariable, bool& isSafeForOptimization) {
   auto isTargetVariable = [&searchVariable](AstNode const* node) {
@@ -2365,9 +2484,9 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
 
-  std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization,
-                                                 &result, &isTargetVariable,
-                                                 &searchVariable](AstNode const* node) {
+  auto visitor = [&isSafeForOptimization,
+                  &result, &isTargetVariable,
+                  &searchVariable](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
     }
@@ -2460,6 +2579,59 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
     state.attributeName = nullptr;
     state.nameLength = 0;
 
+    return true;
+  };
+
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
+
+  return state.isSafeForOptimization;
+}
+
+/// @brief determines the attributes (and their subattributes) referenced in an 
+/// expression for the specified out variable
+bool Ast::getReferencedAttributesRecursive(AstNode const* node, Variable const* variable,
+                                           std::unordered_set<arangodb::aql::AttributeNamePath>& vars) {
+  // traversal state
+  struct TraversalState {
+    Variable const* variable;
+    bool isSafeForOptimization;
+    std::unordered_set<arangodb::aql::AttributeNamePath>& vars;
+    arangodb::aql::AttributeNamePath path;
+  };
+
+  TraversalState state{variable, true, vars, {}};
+
+  auto visitor = [&state](AstNode const* node) -> bool {
+    if (node == nullptr || !state.isSafeForOptimization) {
+      return false;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      state.path.path.emplace_back(node->getStringValue(), node->getStringLength());
+      return true;
+    }
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      // reference to a variable
+      auto v = static_cast<Variable const*>(node->getData());
+      if (v == state.variable) {
+        if (state.path.empty()) {
+          // we haven't seen an attribute access directly before...
+          // this may have been an access to an indexed property, e.g value[0]
+          // or a reference to the complete value, e.g. FUNC(value) note that
+          // this is unsafe to optimize this away
+          state.isSafeForOptimization = false;
+          return false;
+        }
+        // we picked attribute names up in reverse order, so now reverse them
+        state.path.reverse();
+        state.vars.emplace(std::move(state.path.path));
+        state.path.clear();
+      }
+      // fall-through
+    }
+
+    state.path.clear();
     return true;
   };
 
@@ -2732,7 +2904,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
       auto value = member->getMember(0);
 
       if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
-          createCondition(value);
+        createCondition(value);
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {
@@ -3833,12 +4005,7 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
 
 /// @brief create a node of the specified type
 AstNode* Ast::createNode(AstNodeType type) {
-  auto node = new AstNode(type);
-
-  // register the node so it gets freed automatically later
-  _resources.addNode(node);
-
-  return node;
+  return _resources.registerNode(type);
 }
 
 /// @brief validate the name of the given datasource

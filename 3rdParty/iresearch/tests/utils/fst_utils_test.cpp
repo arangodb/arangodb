@@ -21,55 +21,54 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-#include "fst/matcher.h"
 #include "utils/automaton.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 TEST(fst_table_matcher_test, static_const) {
-  static_assert(fst::MATCH_INPUT == fst::TableMatcher<fst::fsa::Automaton>::MATCH_TYPE, "assertion failed");
-  static_assert(fst::kNoIEpsilons | fst::kIDeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton>::MATCH_TYPE, "assertion failed");
-  static_assert(fst::MATCH_OUTPUT == fst::TableMatcher<fst::fsa::Automaton, 256, false>::MATCH_TYPE, "assertion failed");
-  static_assert(fst::kNoOEpsilons | fst::kODeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton, 256, false>::MATCH_TYPE, "assertion failed");
-  static_assert(std::is_same<fst::fsa::Automaton, fst::TableMatcher<fst::fsa::Automaton>::FST>::value, "assertion failed");
-  static_assert(std::is_same<fst::fsa::Transition,fst::TableMatcher<fst::fsa::Automaton>::Arc>::value, "assertion failed");
-  static_assert(std::is_same<int,fst::TableMatcher<fst::fsa::Automaton>::Label>::value, "assertion failed");
-  static_assert(std::is_same<int,fst::TableMatcher<fst::fsa::Automaton>::StateId>::value, "assertion failed");
-  static_assert(std::is_same<fst::fsa::BooleanWeight,fst::TableMatcher<fst::fsa::Automaton>::Weight>::value, "assertion failed");
+  static_assert(fst::MATCH_INPUT == fst::TableMatcher<fst::fsa::Automaton<>>::MATCH_TYPE, "assertion failed");
+  static_assert(fst::kNoIEpsilons | fst::kIDeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton<>>::MATCH_TYPE, "assertion failed");
+  static_assert(fst::MATCH_OUTPUT == fst::TableMatcher<fst::fsa::Automaton<>, 256, false>::MATCH_TYPE, "assertion failed");
+  static_assert(fst::kNoOEpsilons | fst::kODeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton<>, 256, false>::MATCH_TYPE, "assertion failed");
+  static_assert(std::is_same<fst::fsa::Automaton<>, fst::TableMatcher<fst::fsa::Automaton<>>::FST>::value, "assertion failed");
+  static_assert(std::is_same<fst::fsa::Transition<>,fst::TableMatcher<fst::fsa::Automaton<>>::Arc>::value, "assertion failed");
+  static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<>>::Label>::value, "assertion failed");
+  static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<>>::StateId>::value, "assertion failed");
+  static_assert(std::is_same<fst::fsa::BooleanWeight,fst::TableMatcher<fst::fsa::Automaton<>>::Weight>::value, "assertion failed");
 }
 
-TEST(fst_table_matcher_test, invalid_matcher) {
+TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
-    fst::fsa::Automaton a;
+    fst::fsa::Automaton<> a;
     a.AddState(); // 0
     a.AddState(); // 1
     a.EmplaceArc(1, 1, 0);
     a.EmplaceArc(1, 1, 0);
-    fst::TableMatcher<fst::fsa::Automaton> matcher(a, fst::kNoLabel);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
 
-  // not an acceptor
+  // acceptor, regardless of specified arc weights
   {
-    fst::fsa::Automaton a;
+    fst::fsa::Automaton<> a;
     a.AddState(); // 0
     a.AddState(); // 1
     a.EmplaceArc(1, 1, 0);
     a.EmplaceArc(1, 2, 0);
-    fst::ArcIteratorData<fst::fsa::Transition> data;
+    fst::ArcIteratorData<fst::fsa::Transition<>> data;
     a.InitArcIterator(1, &data);
-    const_cast<fst::fsa::Transition&>(data.arcs[0]).olabel = fst::kNoLabel;
+    const_cast<fst::fsa::Transition<>&>(data.arcs[0]).olabel = fst::kNoLabel;
 
-    fst::TableMatcher<fst::fsa::Automaton> matcher(a, fst::kNoLabel);
-    ASSERT_EQ(fst::kError, matcher.Properties(0));
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
+    ASSERT_NE(fst::kError, matcher.Properties(0));
   }
 }
 
 TEST(fst_table_matcher_test, test_matcher) {
   // create matcher with an empty automaton
   {
-    fst::fsa::Automaton a;
-    fst::TableMatcher<fst::fsa::Automaton> matcher(a, fst::kNoLabel);
+    fst::fsa::Automaton<> a;
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -78,7 +77,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     ASSERT_EQ(fst::MATCH_INPUT, matcher.Type(false));
     ASSERT_EQ(fst::MATCH_INPUT, matcher.Type(true));
 
-    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton>> copy(matcher.Copy(false));
+    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton<>>> copy(matcher.Copy(false));
     ASSERT_NE(nullptr, copy);
     ASSERT_NE(fst::kError, copy->Properties(0));
     ASSERT_TRUE(copy->Done());
@@ -91,12 +90,12 @@ TEST(fst_table_matcher_test, test_matcher) {
 
   // create matcher with non-empty automaton
   {
-    fst::fsa::Automaton a;
+    fst::fsa::Automaton<> a;
     a.SetFinal(a.AddState());
     a.AddState();
     a.EmplaceArc(1, 42, 0);
 
-    fst::TableMatcher<fst::fsa::Automaton> matcher(a, fst::kNoLabel);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::kNoLabel);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -121,7 +120,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     matcher.Next();
     ASSERT_TRUE(matcher.Done());
 
-    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton>> copy(matcher.Copy(false));
+    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton<>>> copy(matcher.Copy(false));
     ASSERT_NE(nullptr, copy);
     ASSERT_NE(fst::kError, copy->Properties(0));
     ASSERT_TRUE(copy->Done());
@@ -153,13 +152,13 @@ TEST(fst_table_matcher_test, test_matcher) {
 
   // create matcher with non-empty automaton with rho transitions
   {
-    fst::fsa::Automaton a;
+    fst::fsa::Automaton<> a;
     a.SetFinal(a.AddState()); // 0
     a.AddState(); // 1
     a.EmplaceArc(1, 42, 0);
     a.EmplaceArc(1, fst::fsa::kRho, 0);
 
-    fst::TableMatcher<fst::fsa::Automaton> matcher(a, fst::fsa::kRho);
+    fst::TableMatcher<fst::fsa::Automaton<>> matcher(a, fst::fsa::kRho);
     ASSERT_NE(fst::kError, matcher.Properties(0));
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
@@ -195,7 +194,7 @@ TEST(fst_table_matcher_test, test_matcher) {
     ASSERT_TRUE(matcher.Done());
 
 
-    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton>> copy(matcher.Copy(false));
+    std::unique_ptr<fst::TableMatcher<fst::fsa::Automaton<>>> copy(matcher.Copy(false));
     ASSERT_NE(nullptr, copy);
     ASSERT_NE(fst::kError, copy->Properties(0));
     ASSERT_TRUE(copy->Done());
@@ -234,13 +233,13 @@ TEST(fst_table_matcher_test, test_matcher) {
 
   // complex automaton
   {
-    fst::fsa::Automaton a;
+    fst::fsa::Automaton<> a;
 
     // build automaton
     {
       auto from = a.AddState();
-      auto add_state = [&a, &from](fst::fsa::Automaton::Arc::Label min,
-                                  fst::fsa::Automaton::Arc::Label max,
+      auto add_state = [&a, &from](fst::fsa::Automaton<>::Arc::Label min,
+                                  fst::fsa::Automaton<>::Arc::Label max,
                                   int step) mutable {
         auto to = a.AddState();
 
@@ -261,12 +260,12 @@ TEST(fst_table_matcher_test, test_matcher) {
 
     // check automaton
     {
-      using matcher_t = fst::TableMatcher<fst::fsa::Automaton>;
-      using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton>;
+      using matcher_t = fst::TableMatcher<fst::fsa::Automaton<>>;
+      using expected_matcher_t = fst::SortedMatcher<fst::fsa::Automaton<>>;
 
       expected_matcher_t expected_matcher(a, fst::MATCH_INPUT);
       matcher_t matcher(a, fst::fsa::kRho);
-      for (fst::fsa::Automaton::StateId state = 0; state < a.NumStates(); ++state) {
+      for (fst::fsa::Automaton<>::StateId state = 0; state < a.NumStates(); ++state) {
         expected_matcher.SetState(state);
         matcher.SetState(state);
 

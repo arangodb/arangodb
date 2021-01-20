@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -115,7 +116,7 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
     const char* whereFreed = (v8g->_inForcedCollect)? "Forced collect": "V8 internal collection";
-    LOG_TOPIC("95f66", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("95f66", WARN, arangodb::Logger::V8)
         << "reached heap-size limit of #" << v8g->_id
         << " interrupting V8 execution ("
         << "heap size limit " << heapSizeLimit
@@ -132,10 +133,10 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // terminate the entire process
 static void oomCallback(char const* location, bool isHeapOOM) {
   if (isHeapOOM) {
-    LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::V8)
         << "out of heap hemory in V8 (" << location << ")";
   } else {
-    LOG_TOPIC("5d980", FATAL, arangodb::Logger::FIXME) << "out of memory in V8 (" << location << ")";
+    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8) << "out of memory in V8 (" << location << ")";
   }
   FATAL_ERROR_EXIT();
 }
@@ -147,7 +148,7 @@ static void fatalCallback(char const* location, char const* message) {
   if (message == nullptr) {
     message = "no message";
   }
-  LOG_TOPIC("531c0", FATAL, arangodb::Logger::FIXME)
+  LOG_TOPIC("531c0", FATAL, arangodb::Logger::V8)
       << "fatal error in V8 (" << location << "): " << message;
   FATAL_ERROR_EXIT();
 }
@@ -185,7 +186,7 @@ void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
     // we have to compare against INT_MAX here, because the value is an int
     // inside V8
     if (_v8MaxHeap > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
-      LOG_TOPIC("81a63", FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("81a63", FATAL, arangodb::Logger::V8)
           << "value for '--javascript.v8-max-heap' exceeds maximum value "
           << (std::numeric_limits<int>::max)();
       FATAL_ERROR_EXIT();

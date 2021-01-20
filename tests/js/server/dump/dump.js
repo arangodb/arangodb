@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -52,7 +52,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertTrue(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -69,7 +68,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -102,7 +100,6 @@ function dumpTestSuite () {
 
       assertEqual(3, c.type()); // edges
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(2, c.getIndexes().length); // primary index + edges index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -129,7 +126,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -146,7 +142,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -176,7 +171,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(9, c.getIndexes().length);
       assertEqual("primary", c.getIndexes()[0].type);
@@ -248,7 +242,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
       assertEqual("autoincrement", p.keyOptions.type);
       assertFalse(p.keyOptions.allowUserKeys);
       assertEqual(7, p.keyOptions.offset);
@@ -277,7 +270,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -455,6 +447,8 @@ function dumpTestSuite () {
       assertEqual(" ", analyzer.properties().delimiter);
       assertEqual(1, analyzer.features().length);
       assertEqual("frequency", analyzer.features()[0]);
+      
+      assertNull(analyzers.analyzer("custom_dst"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

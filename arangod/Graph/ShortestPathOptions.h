@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,15 +43,14 @@ class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
+  uint64_t minDepth;
+  uint64_t maxDepth;
   std::string start;
-  std::string direction;
+  std::string end;
   std::string weightAttribute;
   double defaultWeight;
   bool bidirectional;
   bool multiThreaded;
-  std::string end;
-  arangodb::velocypack::Builder startBuilder;
-  arangodb::velocypack::Builder endBuilder;
 
   explicit ShortestPathOptions(aql::QueryContext& query);
 
@@ -73,12 +72,6 @@ struct ShortestPathOptions : public BaseOptions {
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
-
-  void setStart(std::string const&);
-  void setEnd(std::string const&);
-
-  arangodb::velocypack::Slice getStart() const;
-  arangodb::velocypack::Slice getEnd() const;
 
   std::unique_ptr<EdgeCursor> buildCursor(bool backward);
 
@@ -103,9 +96,8 @@ struct ShortestPathOptions : public BaseOptions {
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
 
-  void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
-
-  void isQueryKilledCallback() const;
+  template<typename ListType>
+  void fetchVerticesCoordinator(ListType const& vertexIds);
 
   auto estimateDepth() const noexcept -> uint64_t override;
 

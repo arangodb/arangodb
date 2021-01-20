@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,41 +28,49 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/StringRef.h>
-
 namespace arangodb {
+struct ResourceMonitor;
+
+namespace velocypack {
+class HashedStringRef;
+class StringRef;
+}
 
 class StringHeap {
  public:
   StringHeap(StringHeap const&) = delete;
+  StringHeap(StringHeap&&) = default;
   StringHeap& operator=(StringHeap const&) = delete;
+  StringHeap& operator=(StringHeap&&) = delete;
 
-  explicit StringHeap(size_t blockSize);
+  explicit StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize);
   ~StringHeap();
 
-  /// @brief register a string
-  arangodb::velocypack::StringRef registerString(char const* ptr, size_t length);
-  arangodb::velocypack::StringRef registerString(arangodb::velocypack::StringRef const& str) {
-    return registerString(str.data(), str.size());
-  }
+  /// @brief register a string - implemented for StringRef and HashedStringRef
+  template <typename T>
+  T registerString(T const& str);
  
   /// @brief clear all data from the StringHeap, not releasing any occupied memory 
   /// the caller must make sure that nothing points into the data of the StringHeap
   /// when calling this method
-  void clear();
-  
-  void merge(StringHeap&& heap);
+  void clear() noexcept;
   
  private:
   /// @brief allocate a new block of memory
   void allocateBlock();
 
+  /// @brief register a string
+  char const* registerString(char const* data, size_t length);
+
  private:
+  /// @brief memory usage tracker
+  ResourceMonitor& _resourceMonitor;
+
   /// @brief already allocated string blocks
   std::vector<char*> _blocks;
 
   /// @brief size of each block
-  size_t const _blockSize;
+  size_t _blockSize;
 
   /// @brief offset into current block
   char* _current;

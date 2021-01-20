@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -342,7 +343,7 @@ class CommonGatherExecutorTest
 
   auto assertResultValid(SharedAqlItemBlockPtr block, ResultMaps& result) -> void {
     if (block != nullptr) {
-      for (size_t row = 0; row < block->size(); ++row) {
+      for (size_t row = 0; row < block->numRows(); ++row) {
         if (block->isShadowRow(row)) {
           ShadowAqlItemRow in{block, row};
           auto val = in.getValue(0);
@@ -553,7 +554,7 @@ class CommonGatherExecutorTest
   auto sortedExecutor(RegisterInfos&& regInfos, GatherNode::SortMode sortMode)
       -> std::unique_ptr<ExecutionBlock> {
     std::vector<SortRegister> sortRegister;
-    sortRegister.emplace_back(SortRegister{0, SortElement{nullptr, true}});
+    sortRegister.emplace_back(SortRegister{0, _sortElement});
 
     auto executorInfos =
         SortingGatherExecutorInfos(std::move(sortRegister), *fakedQuery.get(),
@@ -662,6 +663,10 @@ class CommonGatherExecutorTest
   std::vector<std::unique_ptr<ExecutionBlock>> _blockLake;
   // Activate result logging
   bool _useLogging{false};
+
+  // We need to retain the memory of this SortElement. Otherwise we have invalid memory access,
+  // for sorting nodes.
+  SortElement _sortElement{nullptr, true};
 
 };  // namespace arangodb::tests::aql
 

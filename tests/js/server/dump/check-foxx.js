@@ -55,6 +55,8 @@ const options = {
   json: true
 };
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 function getCoordinators() {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
   const toEndpoint = (d) => (d.endpoint);

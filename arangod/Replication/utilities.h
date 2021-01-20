@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
@@ -107,7 +108,7 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string> processedCollections{};  // TODO worker safety
+  std::map<DataSourceId, std::string> processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   explicit ProgressInfo(Setter);
@@ -121,26 +122,7 @@ struct ProgressInfo {
   Setter _setter;
 };
 
-struct BarrierInfo {
-  static constexpr double DefaultTimeout = 900.0;
-  /// @brief WAL barrier id
-  uint64_t id{0};
-  /// @brief ttl for WAL barrier
-  int ttl{static_cast<int>(DefaultTimeout)};
-  /// @brief WAL barrier last update time
-  double updateTime{0.0};
-
-  /// @brief send a "create barrier" command
-  Result create(Connection&, TRI_voc_tick_t);
-
-  /// @brief send an "extend barrier" command
-  Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
-
-  /// @brief send remove barrier command
-  Result remove(Connection&) noexcept;
-};
-
-struct MasterInfo {
+struct LeaderInfo {
   std::string endpoint;
   std::string engine;  // storage engine (optional)
   ServerId serverId{0};
@@ -150,10 +132,13 @@ struct MasterInfo {
   TRI_voc_tick_t lastUncommittedLogTick{0};
   bool active{false};
 
-  explicit MasterInfo(ReplicationApplierConfiguration const& applierConfig);
+  explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
-  /// @brief get master state
-  Result getState(Connection& connection, bool isChildSyncer);
+  /// @brief returns major version number * 10000 + minor version number * 100
+  uint64_t version() const;
+
+  /// @brief get leader state
+  Result getState(Connection& connection, bool isChildSyncer, char const* context);
 
   /// we need to act like a 3.2 client
   bool simulate32Client() const;
@@ -177,7 +162,7 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection const& connection, ProgressInfo& progress, MasterInfo& master,
+  Result start(Connection const& connection, ProgressInfo& progress, LeaderInfo& leader,
                SyncerId syncerId, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command

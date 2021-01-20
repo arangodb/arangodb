@@ -20,21 +20,27 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "directory.hpp"
+
+#include <chrono>
+#include <thread>
+
+#include "shared.hpp"
 #include "data_input.hpp"
 #include "data_output.hpp"
 #include "utils/log.hpp"
 #include "utils/thread_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        index_lock implementation
 // ----------------------------------------------------------------------------
 
 bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) noexcept {
-  const size_t LOCK_POLL_INTERVAL = 1000;
+  using namespace std::chrono_literals;
+
+  constexpr size_t LOCK_POLL_INTERVAL = 1000;
 
   try {
     bool locked = lock();
@@ -43,16 +49,15 @@ bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) noexcept {
     for (size_t sleep_count = 0;
          !locked && (wait_timeout == LOCK_WAIT_FOREVER || sleep_count < max_sleep_count);
          ++sleep_count) {
-      sleep_ms(LOCK_POLL_INTERVAL);
+      std::this_thread::sleep_for(std::chrono::milliseconds(LOCK_POLL_INTERVAL));
       locked = lock();
     }
 
     return locked;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;
 }
 
-NS_END
+}

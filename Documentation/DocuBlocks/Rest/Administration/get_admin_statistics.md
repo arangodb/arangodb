@@ -33,6 +33,9 @@ intermediate commits and will not increase the value.
 @RESTRETURNCODE{200}
 Statistics were returned successfully.
 
+@RESTRETURNCODE{404}
+Statistics are disabled on the instance.
+
 @RESTREPLYBODY{error,boolean,required,}
 boolean flag to indicate whether an error occurred (*false* in this case)
 
@@ -184,7 +187,10 @@ the number of contexts that were previously used, and should now be garbage coll
 the number of V8 contexts that are free to use
 
 @RESTSTRUCT{max,v8_context_struct,integer,required,}
-the total number of V8 contexts we may spawn as configured by --javascript.v8-contexts
+the maximum number of V8 concurrent contexts we may spawn as configured by --javascript.v8-contexts
+
+@RESTSTRUCT{min,v8_context_struct,integer,required,}
+the minimum number of V8 contexts that are spawned as configured by --javascript.v8-contexts-minimum
 
 @RESTSTRUCT{memory,v8_context_struct,array,required,v8_isolate_memory}
 a list of V8 memory / garbage collection watermarks; Refreshed on every garbage collection run;

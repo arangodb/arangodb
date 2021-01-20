@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/conversions.h"
 #include "V8/v8-conv.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/KeyGenerator.h"
 #include "v8-vocbaseprivate.h"
 
@@ -166,12 +167,12 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     }
     v8::String::Utf8Value str(isolate, revObj);
     bool isOld;
-    uint64_t rid = TRI_StringToRid(*str, str.length(), isOld, false);
+    RevisionId rid = RevisionId::fromString(*str, str.length(), isOld, false);
 
-    if (rid == 0) {
+    if (rid.empty()) {
       return false;
     }
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
+    builder.add(StaticStrings::RevString, VPackValue(rid.toString()));
     return true;
   }
 

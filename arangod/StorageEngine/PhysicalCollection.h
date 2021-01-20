@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 
 namespace arangodb {
 
+class ClusterInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -62,7 +63,7 @@ class PhysicalCollection {
   // creation happens atm in engine->createCollection
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                             bool doSync) = 0;
-  virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
+  virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
@@ -79,6 +80,13 @@ class PhysicalCollection {
 
   void drop();
 
+  /// recalculate counts for collection in case of failure, blocking
+  virtual uint64_t recalculateCounts();
+
+  /// @brief whether or not the collection contains any documents. this
+  /// function is allowed to return true even if there are no documents
+  virtual bool hasDocuments();
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -86,10 +94,7 @@ class PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid);
-
-  /// @brief sets the current index selectivity estimates
-  virtual void setClusterIndexEstimates(IndexEstMap&& estimates);
+  virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TransactionId tid);
 
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
@@ -124,7 +129,8 @@ class PhysicalCollection {
                        std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures();
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options);
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -160,22 +166,22 @@ class PhysicalCollection {
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
-  
-  virtual Result lookupKey(transaction::Methods*,
-                           arangodb::velocypack::StringRef,
-                           std::pair<LocalDocumentId, TRI_voc_rid_t>&) const = 0;
+
+  virtual Result lookupKey(transaction::Methods*, arangodb::velocypack::StringRef,
+                           std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result) = 0;
+                      IndexIterator::DocumentCallback const& cb) const = 0;
+  
+  /// @brief read a documument referenced by token (internal method)
+  virtual bool read(transaction::Methods* trx,
+                    LocalDocumentId const& token,
+                    IndexIterator::DocumentCallback const& cb) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocumentWithCallback(transaction::Methods* trx,
-                                        LocalDocumentId const& token,
-                                        IndexIterator::DocumentCallback const& cb) const = 0;
   /**
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might
@@ -205,7 +211,7 @@ class PhysicalCollection {
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,
-                            bool isRestore, TRI_voc_rid_t& revisionId) const;
+                            bool isRestore, RevisionId& revisionId) const;
 
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
@@ -213,20 +219,16 @@ class PhysicalCollection {
 
   virtual Result rebuildRevisionTree();
 
-  virtual void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
-  virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
+  virtual void placeRevisionTreeBlocker(TransactionId transactionId);
+  virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
-  TRI_voc_rid_t newRevisionId() const;
-
-  virtual Result upgrade();
-  virtual bool didPartialUpgrade();
-  virtual Result cleanupAfterUpgrade();
+  RevisionId newRevisionId() const;
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
+  virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
 
@@ -235,25 +237,26 @@ class PhysicalCollection {
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx, velocypack::Slice const& oldValue,
                           velocypack::Builder& builder, bool isRestore,
-                          TRI_voc_rid_t& revisionId) const;
+                          RevisionId& revisionId) const;
 
   /// @brief merge two objects for update
   Result mergeObjectsForUpdate(transaction::Methods* trx, velocypack::Slice const& oldValue,
                                velocypack::Slice const& newValue,
                                bool isEdgeCollection, bool mergeObjects,
                                bool keepNull, velocypack::Builder& builder,
-                               bool isRestore, TRI_voc_rid_t& revisionId) const;
+                               bool isRestore, RevisionId& revisionId) const;
 
   /// @brief new object for replace
   Result newObjectForReplace(transaction::Methods* trx, velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
                              bool isEdgeCollection, velocypack::Builder& builder,
-                             bool isRestore, TRI_voc_rid_t& revisionId) const;
+                             bool isRestore, RevisionId& revisionId) const;
 
-  int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
-                    TRI_voc_rid_t found) const;
+  bool checkRevision(transaction::Methods* trx, RevisionId expected,
+                     RevisionId found) const;
 
   LogicalCollection& _logicalCollection;
+  ClusterInfo* _ci;
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;

@@ -60,10 +60,9 @@ the logger server provides updates frequently or seldom.
 whether or not system collection operations will be applied
 
 @RESTBODYPARAM{autoResync,boolean,optional,}
-whether or not the slave should perform a full automatic resynchronization
-with the master in case the master cannot serve log data requested by the
-slave,
-or when the replication is started and no tick value can be found.
+whether or not the follower should perform a full automatic resynchronization
+with the leader in case the leader cannot serve log data requested by the
+follower, or when the replication is started and no tick value can be found.
 
 @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
 number of resynchronization retries that will be performed in a row when
@@ -76,35 +75,35 @@ in case resynchronizations always fail.
 
 @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 the maximum wait time (in seconds) that the initial synchronization will
-wait for a response from the master when fetching initial collection data.
+wait for a response from the leader when fetching initial collection data.
 This wait time can be used to control after what time the initial
 synchronization
 will give up waiting for a response and fail. This value is relevant even
 for continuous replication when *autoResync* is set to *true* because this
-may re-start the initial synchronization when the master cannot provide
-log data the slave requires.
+may re-start the initial synchronization when the leader cannot provide
+log data the follower requires.
 This value will be ignored if set to *0*.
 
 @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
 the time (in seconds) that the applier will intentionally idle before
-it retries connecting to the master in case of connection problems.
+it retries connecting to the leader in case of connection problems.
 This value will be ignored if set to *0*.
 
 @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
 the minimum wait time (in seconds) that the applier will intentionally idle
-before fetching more log data from the master in case the master has
+before fetching more log data from the leader in case the leader has
 already sent all its log data. This wait time can be used to control the
 frequency with which the replication applier sends HTTP log fetch requests
-to the master in case there is no write activity on the master.
+to the leader in case there is no write activity on the leader.
 This value will be ignored if set to *0*.
 
 @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
 the maximum wait time (in seconds) that the applier will intentionally idle
-before fetching more log data from the master in case the master has
+before fetching more log data from the leader in case the leader has
 already sent all its log data and there have been previous log fetch attempts
 that resulted in no more log data. This wait time can be used to control the
 maximum frequency with which the replication applier sends HTTP log fetch
-requests to the master in case there is no write activity on the master for
+requests to the leader in case there is no write activity on the leader for
 longer periods. This configuration value will only be used if the option
 *adaptivePolling* is set to *true*.
 This value will be ignored if set to *0*.
@@ -112,7 +111,7 @@ This value will be ignored if set to *0*.
 @RESTBODYPARAM{requireFromPresent,boolean,required,}
 if set to *true*, then the replication applier will check
 at start whether the start tick from which it starts or resumes replication is
-still present on the master. If not, then there would be data loss. If
+still present on the leader. If not, then there would be data loss. If
 *requireFromPresent* is *true*, the replication applier will abort with an
 appropriate error message. If set to *false*, then the replication applier will
 still start, and ignore the data loss.

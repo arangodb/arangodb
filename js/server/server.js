@@ -37,15 +37,23 @@
   let options = internal.options();
   let restServer = true;
   if (options.hasOwnProperty("server.rest-server")) {
-   restServer = options["server.rest-server"];
+    restServer = options["server.rest-server"];
   }
 
   // autoload all modules
-  internal.loadStartup('server/bootstrap/autoload.js').startup();
+  // this functionality is deprecated and will be removed in 3.9
+  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
+    // check and load all modules in all databases from _modules
+    // this can be expensive, so it is guarded by a flag
+    internal.loadStartup('server/bootstrap/autoload.js').startup();
+  }
 
   // reload routing information
   if (restServer) {
-    internal.loadStartup('server/bootstrap/routing.js').startup();
+    // the function name reloadRouting is misleading here, as it actually
+    // only initializes/clears the local routing map, but doesn't rebuild
+    // it.
+    require('@arangodb/actions').reloadRouting();
   }
 
   // This script is also used by agents. Coords use a different script.

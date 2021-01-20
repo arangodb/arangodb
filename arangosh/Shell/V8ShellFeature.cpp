@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Utilities/IsArangoExecutable.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -132,7 +134,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_startupDirectory.empty()) {
     LOG_TOPIC("6380f", FATAL, arangodb::Logger::FIXME)
-        << "no 'javascript.startup-directory' has been supplied, giving up";
+        << "no '--javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
 
@@ -549,6 +551,11 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
       console.printErrorLine(exception);
       console.log(exception);
+      i = extractShellExecutableName(i);
+      if (!i.empty()) {
+        LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
+          << "This command must be executed in a system shell and cannot be used inside of arangosh: '" << i << "'";
+      }
 
       // this will change the prompt for the next round
       promptError = true;
@@ -1048,7 +1055,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
-  v8security.addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1060,7 +1067,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security.addToInternalWhitelist(it, FSAccessType::READ);  // expand
+    v8security.addToInternalAllowList(it, FSAccessType::READ);  // expand
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1090,7 +1097,7 @@ void V8ShellFeature::initGlobals() {
 
   if (_currentModuleDirectory) {
     modules += sep + FileUtils::currentDirectory().result();
-    v8security.addToInternalWhitelist(FileUtils::currentDirectory().result(),
+    v8security.addToInternalAllowList(FileUtils::currentDirectory().result(),
                                       FSAccessType::READ);
   }
 

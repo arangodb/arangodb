@@ -45,43 +45,49 @@
         $('#loginForm').hide();
         $('.login-window #databases').show();
 
-        $.ajax(url).success(function (permissions) {
-          //  enable db select and login button
-          $('#loginDatabase').html('');
-          // fill select with allowed dbs
-          if (Object.keys(permissions.result).length > 0) {
-            // show select, remove input
-            $('#loginDatabase').show();
-            $('.fa-database').show();
-            $('#databaseInputName').remove();
+        $.ajax({
+          type: "GET",
+          url: url,
+          success: function (permissions) {
+            //  enable db select and login button
+            $('#loginDatabase').html('');
+            // fill select with allowed dbs
+            if (Object.keys(permissions.result).length > 0) {
+              // show select, remove input
+              $('#loginDatabase').show();
+              $('.fa-database').show();
+              $('#databaseInputName').remove();
 
-            var sortedObj = self.sortDatabases(permissions.result);
-            _.each(sortedObj, function (rule, db) {
-              if (frontendConfig.authenticationEnabled) {
-                $('#loginDatabase').append(
-                  '<option>' + db + '</option>'
-                );
-              } else {
-                $('#loginDatabase').append(
-                  '<option>' + rule + '</option>'
-                );
-              }
-            });
-          } else {
-            $('#loginDatabase').hide();
-            $('.fa-database').hide();
-            $('#loginDatabase').after(
-              '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
-            );
-          }
+              var sortedObj = self.sortDatabases(permissions.result);
+              _.each(sortedObj, function (rule, db) {
+                if (frontendConfig.authenticationEnabled) {
+                  $('#loginDatabase').append(
+                      '<option>' + db + '</option>'
+                  );
+                } else {
+                  $('#loginDatabase').append(
+                      '<option>' + rule + '</option>'
+                  );
+                }
+              });
+            } else {
+              $('#loginDatabase').hide();
+              $('.fa-database').hide();
+              $('#loginDatabase').after(
+                  '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
+              );
+            }
 
-          self.renderDBS();
-        }).error(function (e) {
-          if (errCallback) {
-            errCallback();
-          } else {
-            // existing jwt login is not valid anymore => reload
-            location.reload(true);
+            self.renderDBS();
+          },
+          error: function (e) {
+            if (errCallback) {
+              errCallback();
+            } else {
+              // existing jwt login is not valid anymore => reload
+              arangoHelper.setCurrentJwt(null, null);
+              location.reload(true);
+            }
           }
         });
       };
@@ -199,42 +205,47 @@
       self.loggedIn = true;
 
       // get list of allowed dbs
-      $.ajax(url).success(function (permissions) {
-        $('#loginForm').hide();
-        $('.login-window #databases').show();
+      $.ajax({
+        type: "GET",
+        url: url,
+        success: function (permissions) {
+          $('#loginForm').hide();
+          $('.login-window #databases').show();
 
-        // enable db select and login button
-        $('#loginDatabase').html('');
+          // enable db select and login button
+          $('#loginDatabase').html('');
 
-        if (Object.keys(permissions.result).length > 0) {
-          // show select, remove input
-          $('#loginDatabase').show();
-          $('.fa-database').show();
-          $('#databaseInputName').remove();
+          if (Object.keys(permissions.result).length > 0) {
+            // show select, remove input
+            $('#loginDatabase').show();
+            $('.fa-database').show();
+            $('#databaseInputName').remove();
 
-          var sortedObj = self.sortDatabases(permissions.result);
-          _.each(sortedObj, function (rule, db) {
-            if (frontendConfig.authenticationEnabled) {
-              $('#loginDatabase').append(
-                '<option>' + db + '</option>'
-              );
-            } else {
-              $('#loginDatabase').append(
-                '<option>' + rule + '</option>'
-              );
-            }
-          });
-        } else {
-          $('#loginDatabase').hide();
-          $('.fa-database').hide();
-          $('#loginDatabase').after(
-            '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
-          );
+            var sortedObj = self.sortDatabases(permissions.result);
+            _.each(sortedObj, function (rule, db) {
+              if (frontendConfig.authenticationEnabled) {
+                $('#loginDatabase').append(
+                    '<option>' + db + '</option>'
+                );
+              } else {
+                $('#loginDatabase').append(
+                    '<option>' + rule + '</option>'
+                );
+              }
+            });
+          } else {
+            $('#loginDatabase').hide();
+            $('.fa-database').hide();
+            $('#loginDatabase').after(
+                '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
+            );
+          }
+
+          self.renderDBS();
+        },
+        error: function () {
+          $('.wrong-credentials').show();
         }
-
-        self.renderDBS();
-      }).error(function () {
-        $('.wrong-credentials').show();
       });
     },
 

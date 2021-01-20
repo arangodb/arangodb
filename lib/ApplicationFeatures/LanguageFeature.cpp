@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/error.h"
+#include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
 #include "Logger/LogMacros.h"
@@ -46,8 +48,10 @@ void setCollator(std::string const& language, void* icuDataPtr) {
   using arangodb::basics::Utf8Helper;
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
-        << "error setting collator language to '" << language << "'";
-    FATAL_ERROR_EXIT();
+        << "error setting collator language to '" << language << "'. "
+        << "The icudtl.dat file might be of the wrong version. "
+        << "Check for an incorrectly set ICU_DATA environment variable";
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
 }
 
@@ -81,14 +85,11 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-static LanguageFeature* Instance = nullptr;
-
 LanguageFeature::LanguageFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Language"),
       _locale(),
       _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr) {
-  Instance = this;
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -98,8 +99,6 @@ LanguageFeature::~LanguageFeature() {
     TRI_Free(_icuDataPtr);
   }
 }
-
-LanguageFeature* LanguageFeature::instance() { return Instance; }
 
 void LanguageFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--default-language", "ISO-639 language code",
@@ -138,17 +137,17 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
 
     if (!TRI_IsRegularFile(path.c_str())) {
-      std::string msg = std::string("cannot locate '") + path +
-                        "'; please make sure it is available; "
-                        "the variable ICU_DATA='";
+      std::string msg = std::string("failed to initialize ICU library. Could not locate '")
+                        + path + "'. Please make sure it is available. "
+                        "The environment variable ICU_DATA";
       std::string icupath;
       if (TRI_GETENV("ICU_DATA", icupath)) {
-        msg += icupath;
+        msg += "='" + icupath + "'";
       }
-      msg += "' should point to the directory containing '" + fn + "'";
+      msg += " should point to the directory containing '" + fn + "'";
 
       LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
     } else {
       std::string icu_path = path.substr(0, path.length() - fn.length());
       FileUtils::makePathAbsolute(icu_path);
@@ -167,7 +166,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   if (icuDataPtr == nullptr) {
     LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
                                               << path << "' - " << TRI_last_error();
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
   return icuDataPtr;
 }
@@ -183,6 +182,12 @@ void LanguageFeature::prepare() {
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
+
+icu::Locale& LanguageFeature::getLocale() { return _locale; }
+
+std::string const& LanguageFeature::getDefaultLanguage() const {
+  return _language;
+}
 
 std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;

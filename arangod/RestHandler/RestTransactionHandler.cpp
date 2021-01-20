@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Actions/ActionFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -114,16 +115,16 @@ void RestTransactionHandler::executeGetState() {
     return;
   }
 
-  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[0]);
-  if (tid == 0) {
+  TransactionId tid{StringUtils::uint64(_request->suffixes()[0])};
+  if (tid.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "Illegal transaction ID");
     return;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  transaction::Status status = mgr->getManagedTrxStatus(tid);
-  
+  transaction::Status status = mgr->getManagedTrxStatus(tid, _vocbase.name());
+
   if (status == transaction::Status::UNDEFINED) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
   } else {
@@ -134,53 +135,60 @@ void RestTransactionHandler::executeGetState() {
 void RestTransactionHandler::executeBegin() {
   TRI_ASSERT(_request->suffixes().size() == 1 &&
              _request->suffixes()[0] == "begin");
-  
-  // figure out the transaction ID
-  TRI_voc_tid_t tid = 0;
-  bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  if (found) {
-    if (!ServerState::isDBServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
-      return;
-    }
-    tid = basics::StringUtils::uint64(value);
-    if (tid == 0 || !transaction::isChildTransactionId(tid)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                    "invalid transaction ID on DBServer");
-      return;
-    }
-    TRI_ASSERT(tid != 0);
-    TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
-  } else {
-    if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
-      return;
-    }
-    tid = ServerState::isSingleServer(role) ? TRI_NewTickServer() :
-                                              TRI_NewServerSpecificTickMod4();
-  }
-  TRI_ASSERT(tid != 0);
-  
-  
+
   bool parseSuccess = false;
   VPackSlice slice = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return;
   }
-  
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-    
-  Result res = mgr->createManagedTrx(_vocbase, tid, slice);
-  if (res.fail()) {
-    generateError(res);
+
+  bool found = false;
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+  if (found) {
+    if (!ServerState::isDBServer(role)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "Not supported on this server type");
+      return;
+    }
+    // figure out the transaction ID
+    TransactionId tid = TransactionId{basics::StringUtils::uint64(value)};
+    if (tid.empty() || !tid.isChildTransactionId()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "invalid transaction ID on DBServer");
+      return;
+    }
+    TRI_ASSERT(tid.isSet());
+    TRI_ASSERT(!tid.isLegacyTransactionId());
+    TRI_ASSERT(tid.isSet());
+
+    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice, false);
+    if (res.fail()) {
+      generateError(res);
+    } else {
+      generateTransactionResult(rest::ResponseCode::CREATED, tid,
+                                transaction::Status::RUNNING);
+    }
   } else {
-    generateTransactionResult(rest::ResponseCode::CREATED, tid, transaction::Status::RUNNING);
+    if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "Not supported on this server type");
+      return;
+    }
+
+    // start
+    ResultT<TransactionId> res = mgr->createManagedTrx(_vocbase, slice);
+    if (res.fail()) {
+      generateError(res.result());
+    } else {
+      generateTransactionResult(rest::ResponseCode::CREATED, res.get(),
+                                transaction::Status::RUNNING);
+    }
   }
 }
 
@@ -190,8 +198,8 @@ void RestTransactionHandler::executeCommit() {
     return;
   }
 
-  TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
-  if (tid == 0) {
+  TransactionId tid{basics::StringUtils::uint64(_request->suffixes()[0])};
+  if (tid.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "bad transaction ID");
     return;
@@ -199,8 +207,8 @@ void RestTransactionHandler::executeCommit() {
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  Result res = mgr->commitManagedTrx(tid);
+
+  Result res = mgr->commitManagedTrx(tid, _vocbase.name());
   if (res.fail()) {
     generateError(res);
   } else {
@@ -229,14 +237,14 @@ void RestTransactionHandler::executeAbort() {
       generateError(res);
     }
   } else {
-    TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
-    if (tid == 0) {
+    TransactionId tid{basics::StringUtils::uint64(_request->suffixes()[0])};
+    if (tid.empty()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "bad transaction ID");
       return;
     }
-  
-    Result res = mgr->abortManagedTrx(tid);
+
+    Result res = mgr->abortManagedTrx(tid, _vocbase.name());
 
     if (res.fail()) {
       generateError(res);
@@ -247,7 +255,7 @@ void RestTransactionHandler::executeAbort() {
 }
 
 void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
-                                                       TRI_voc_tid_t tid,
+                                                       TransactionId tid,
                                                        transaction::Status status) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
@@ -255,7 +263,7 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
   tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
   tmp.add(StaticStrings::Error, VPackValue(false));
   tmp.add("result", VPackValue(VPackValueType::Object, true));
-  tmp.add("id", VPackValue(std::to_string(tid)));
+  tmp.add("id", VPackValue(std::to_string(tid.id())));
   tmp.add("status", VPackValue(transaction::statusString(status)));
   tmp.close();
   tmp.close();
@@ -267,9 +275,8 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
 
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
-  if (!V8DealerFeature::DEALER) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "JavaScript transactions are not available");
+  if (!server().isEnabled<V8DealerFeature>()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
     return;
   }
 
@@ -282,28 +289,40 @@ void RestTransactionHandler::executeJSTransaction() {
 
   std::string portType = _request->connectionInfo().portType();
 
-  bool allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+  bool allowUseDatabase = server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
+  V8Context* v8Context =
+      server().getFeature<V8DealerFeature>().enterContext(&_vocbase, securityContext);
 
-  if (!_v8Context) {
+  if (!v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
     return;
   }
 
-  TRI_DEFER(returnContext());
+  // register a function to release the V8Context whenever we exit from this scope
+  auto guard = scopeGuard([this]() {
+    WRITE_LOCKER(lock, _lock);
+    if (_v8Context != nullptr) {
+      server().getFeature<V8DealerFeature>().exitContext(_v8Context);
+      _v8Context = nullptr;
+    }
+  });
+     
+  {
+    // make our V8Context available to the cancel function
+    WRITE_LOCKER(lock, _lock);
+    _v8Context = v8Context;
+    if (_canceled) {
+      // if we cancel here, the shutdown function above will perform the necessary cleanup
+      lock.unlock();
+      generateCanceled();
+      return;
+    }
+  }
 
   VPackBuilder result;
   try {
-    {
-      WRITE_LOCKER(lock, _lock);
-      if (_canceled) {
-        generateCanceled();
-        return;
-      }
-    }
-
-    Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled,
+    Result res = executeTransaction(v8Context->_isolate, _lock, _canceled,
                                     slice, portType, result);
     if (res.ok()) {
       VPackSlice slice = result.slice();
@@ -324,19 +343,15 @@ void RestTransactionHandler::executeJSTransaction() {
   }
 }
 
-void RestTransactionHandler::returnContext() {
-  WRITE_LOCKER(writeLock, _lock);
-  V8DealerFeature::DEALER->exitContext(_v8Context);
-  _v8Context = nullptr;
-}
-
 void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
-  auto isolate = _v8Context->_isolate;
-  if (!isolate->IsExecutionTerminating()) {
-    isolate->TerminateExecution();
+  if (_v8Context != nullptr) {
+    auto isolate = _v8Context->_isolate;
+    if (!isolate->IsExecutionTerminating()) {
+      isolate->TerminateExecution();
+    }
   }
 }
 

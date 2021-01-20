@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -55,6 +56,68 @@ namespace aql {
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
+// The numbers here are random, but all of them are below 1000 which is the default batch size
+static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
+
+static constexpr auto skipCall = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 15;
+  return res;
+};
+
+static constexpr auto softLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.softLimit = 35u;
+  return res;
+};
+
+static constexpr auto hardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 76u;
+  return res;
+};
+
+static constexpr auto fullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 17u;
+  res.fullCount = true;
+  return res;
+};
+
+static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.softLimit = 64u;
+  return res;
+};
+
+static constexpr auto skipAndHardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 32;
+  res.hardLimit = 51u;
+  return res;
+};
+static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 8;
+  res.hardLimit = 57u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlyFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlySkipAndCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
+
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
 
@@ -68,7 +131,7 @@ using LambdaExe = TestLambdaSkipExecutor;
 class SharedExecutionBlockImplTest {
  protected:
   mocks::MockAqlServer server{};
-  ResourceMonitor monitor{};
+  arangodb::ResourceMonitor monitor{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
@@ -435,7 +498,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
   EXPECT_EQ(state, ExecutionState::DONE);
   EXPECT_EQ(skipped.getSkipCount(), 0);
   EXPECT_NE(block, nullptr);
-  EXPECT_EQ(block->size(), 1);
+  EXPECT_EQ(block->numRows(), 1);
   // Once with empty, once with the line by Singleton
   EXPECT_EQ(nrCalls, 2);
 }
@@ -460,7 +523,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   EXPECT_EQ(skipped.getSkipCount(), 0);
   // We produce one row
   ASSERT_NE(block, nullptr);
-  EXPECT_EQ(block->size(), 1);
+  EXPECT_EQ(block->numRows(), 1);
   // Once with empty, once with the line by Singleton
   EXPECT_EQ(nrCalls, 2);
 }
@@ -485,7 +548,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   EXPECT_EQ(skipped.getSkipCount(), 0);
   // We produce one row
   ASSERT_NE(block, nullptr);
-  EXPECT_EQ(block->size(), 1);
+  EXPECT_EQ(block->numRows(), 1);
   // Once with empty, once with the line by Singleton
   EXPECT_EQ(nrCalls, 2);
 }
@@ -571,7 +634,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_f
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->size(), ExecutionBlock::DefaultBatchSize);
+    EXPECT_EQ(block->numRows(), ExecutionBlock::DefaultBatchSize);
     EXPECT_FALSE(block->hasShadowRows());
   }
   {
@@ -580,7 +643,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_f
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->size(), 1);
+    EXPECT_EQ(block->numRows(), 1);
     EXPECT_TRUE(block->hasShadowRows());
     ASSERT_TRUE(block->isShadowRow(0));
     ShadowAqlItemRow shadow{block, 0};
@@ -620,7 +683,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->size(), ExecutionBlock::DefaultBatchSize);
+    EXPECT_EQ(block->numRows(), ExecutionBlock::DefaultBatchSize);
     EXPECT_FALSE(block->hasShadowRows());
   }
   {
@@ -629,7 +692,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(block, nullptr);
-    ASSERT_EQ(block->size(), 2);
+    ASSERT_EQ(block->numRows(), 2);
     EXPECT_TRUE(block->hasShadowRows());
     {
       ASSERT_TRUE(block->isShadowRow(0));
@@ -677,10 +740,10 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->size(), ExecutionBlock::DefaultBatchSize);
+    EXPECT_EQ(block->numRows(), ExecutionBlock::DefaultBatchSize);
     EXPECT_TRUE(block->hasShadowRows());
-    ASSERT_TRUE(block->isShadowRow(block->size() - 1));
-    ShadowAqlItemRow shadow{block, block->size() - 1};
+    ASSERT_TRUE(block->isShadowRow(block->numRows() - 1));
+    ShadowAqlItemRow shadow{block, block->numRows() - 1};
     EXPECT_EQ(shadow.getDepth(), 0);
   }
   {
@@ -689,7 +752,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->size(), 1);
+    EXPECT_EQ(block->numRows(), 1);
     EXPECT_TRUE(block->hasShadowRows());
     ASSERT_TRUE(block->isShadowRow(0));
     ShadowAqlItemRow shadow{block, 0};
@@ -799,7 +862,7 @@ struct BaseCallAsserter {
  *        Assumes that we are always called once with an empty input.
  *        And once with a given input.
  *        Will expect to be called for skip and fullCount (4 counts)
- *        Does expect to not be called if skip and/or fullCount are ommited.
+ *        Does expect to not be called if skip and/or fullCount are omitted.
  */
 struct SkipCallAsserter : public BaseCallAsserter {
   explicit SkipCallAsserter(AqlCall const& expectedCall)
@@ -1044,8 +1107,8 @@ class ExecutionBlockImplExecuteIntegrationTest
   auto AssertValueEquals(SharedAqlItemBlockPtr const& block, size_t row,
                          RegisterId reg, size_t expected) const -> void {
     ASSERT_NE(block, nullptr);
-    ASSERT_GT(block->size(), row);
-    ASSERT_GE(block->getNrRegs(), reg);
+    ASSERT_GT(block->numRows(), row);
+    ASSERT_GE(block->numRegisters(), reg);
     auto const& value = block->getValueReference(row, reg);
     ASSERT_TRUE(value.isNumber());
     EXPECT_EQ(static_cast<size_t>(value.toInt64()), expected);
@@ -1061,11 +1124,10 @@ class ExecutionBlockImplExecuteIntegrationTest
   auto AssertIsShadowRowOfDepth(SharedAqlItemBlockPtr const& block, size_t row,
                                 size_t expected) -> void {
     ASSERT_NE(block, nullptr);
-    ASSERT_GT(block->size(), row);
+    ASSERT_GT(block->numRows(), row);
     ASSERT_TRUE(block->isShadowRow(row));
-    auto val = block->getShadowRowDepth(row);
-    ASSERT_TRUE(val.isNumber());
-    EXPECT_EQ(static_cast<size_t>(val.toInt64()), expected);
+    size_t val = block->getShadowRowDepth(row);
+    EXPECT_EQ(val, expected);
   }
 
   /**
@@ -1335,9 +1397,9 @@ class ExecutionBlockImplExecuteIntegrationTest
     }
     size_t limit =
         (std::min)(call.getLimit(), static_cast<size_t>(expected.length()) - offset);
-    if (result != nullptr && result->size() > numShadowRows) {
+    if (result != nullptr && result->numRows() > numShadowRows) {
       // GetSome part
-      EXPECT_EQ(limit, result->size() - numShadowRows);
+      EXPECT_EQ(limit, result->numRows() - numShadowRows);
       for (size_t i = 0; i < limit; ++i) {
         // The next have to match
         auto got = result->getValueReference(i, testReg).slice();
@@ -1443,6 +1505,36 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
   }
 
   ValidateResult(builder, skipped, block, outReg);
+}
+
+// Test that killQuery is honored, whenever we ask the Block
+
+// Test a simple produce block. that has is supposed to write 1000 rows.
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_fail_on_kill) {
+  auto singleton = createSingleton();
+
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openArray();
+  for (size_t i = 0; i < 1000; ++i) {
+    builder->add(VPackValue(i));
+  }
+  builder->close();
+  RegisterId outReg = 0;
+  auto producer = produceBlock(singleton.get(), builder, outReg);
+
+  auto const& call = getCall();
+  auto stack = buildStack(call);
+  // Kill the query.
+  fakedQuery->kill();
+  try {
+    // We killed the query, so any call to execute should fail
+    std::ignore = producer->execute(stack);
+    FAIL() << "Did not throw an exception";
+  } catch (arangodb::basics::Exception const& e) {
+    ASSERT_EQ(e.code(), TRI_ERROR_QUERY_KILLED);
+  } catch (...) {
+    FAIL() << "Got unexpected exception";
+  }
 }
 
 // Test two consecutive produce blocks.
@@ -1760,7 +1852,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       }
 
       ASSERT_NE(block, nullptr);
-      ASSERT_EQ(block->size(), 1);
+      ASSERT_EQ(block->numRows(), 1);
       // Book-keeping for call.
       // We need to request data from above with the correct call.
       if (!skipped.nothingSkipped()) {
@@ -1886,14 +1978,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
     // Cannot skip a shadowRow
     EXPECT_EQ(skipped.getSkipCount(), 0);
     ASSERT_NE(block, nullptr);
-    ASSERT_EQ(block->size(), 1);
+    ASSERT_EQ(block->numRows(), 1);
     EXPECT_TRUE(block->hasShadowRows());
     EXPECT_TRUE(block->isShadowRow(0));
     auto rowIndex = block->getShadowRowDepth(0);
-    EXPECT_TRUE(basics::VelocyPackHelper::equal(rowIndex.slice(),
-                                                builder.slice().at(i), false))
-        << "Expected: " << builder.slice().at(i).toJson()
-        << " got: " << rowIndex.slice().toJson();
+    EXPECT_EQ(rowIndex, builder.slice().at(i).getNumber<size_t>());
   }
 }
 
@@ -1947,7 +2036,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
     // Forward to shadowRow on hardLimit
     ValidateResult(builder, skipped, block, outReg, 1);
     ASSERT_TRUE(block != nullptr);
-    ValidateShadowRow(block, block->size() - 1, 0);
+    ValidateShadowRow(block, block->numRows() - 1, 0);
   }
 }
 
@@ -2005,8 +2094,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRo
     ValidateResult(builder, skipped, block, outReg, 2);
     ASSERT_TRUE(block != nullptr);
     // Include both shadow rows
-    ValidateShadowRow(block, block->size() - 2, 0);
-    ValidateShadowRow(block, block->size() - 1, 1);
+    ValidateShadowRow(block, block->numRows() - 2, 0);
+    ValidateShadowRow(block, block->numRows() - 1, 1);
   }
 }
 
@@ -2093,7 +2182,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         EXPECT_EQ(forwardSkipped.getSkipCount(), 0);
         // However there need to be two shadow rows
         ASSERT_NE(forwardBlock, nullptr);
-        ASSERT_EQ(forwardBlock->size(), 2);
+        ASSERT_EQ(forwardBlock->numRows(), 2);
         ValidateShadowRow(forwardBlock, 0, 0);
         ValidateShadowRow(forwardBlock, 1, 1);
       }
@@ -2112,8 +2201,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
       ValidateResult(subqueryData, skipped, block, 0, 2);
       ASSERT_NE(block, nullptr);
       // Include both shadow rows
-      ValidateShadowRow(block, block->size() - 2, 0);
-      ValidateShadowRow(block, block->size() - 1, 1);
+      ValidateShadowRow(block, block->numRows() - 2, 0);
+      ValidateShadowRow(block, block->numRows() - 1, 1);
     }
   }
 }
@@ -2253,10 +2342,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     ASSERT_NE(block, nullptr);
     if (skip) {
       EXPECT_EQ(skipped.getSkipCount(), 1);
-      EXPECT_EQ(block->size(), 2);
+      EXPECT_EQ(block->numRows(), 2);
     } else {
       EXPECT_EQ(skipped.getSkipCount(), 0);
-      EXPECT_EQ(block->size(), 3);
+      EXPECT_EQ(block->numRows(), 3);
     }
     size_t row = 0;
     if (!skip) {
@@ -2292,7 +2381,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
     EXPECT_EQ(skipped.getSkipCount(), 0);
-    EXPECT_EQ(block->size(), 1);
+    EXPECT_EQ(block->numRows(), 1);
     size_t row = 0;
     AssertIsShadowRowOfDepth(block, row, 0);
     AssertValueEquals(block, row, depth1Reg, 4);
@@ -2319,7 +2408,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     EXPECT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(block, nullptr);
     EXPECT_EQ(skipped.getSkipCount(), 0);
-    EXPECT_EQ(block->size(), 2);
+    EXPECT_EQ(block->numRows(), 2);
     size_t row = 0;
     AssertIsShadowRowOfDepth(block, row, 0);
     AssertValueEquals(block, row, depth1Reg, 5);
@@ -2342,68 +2431,6 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     skipAsserter.reset();
   }
 }
-
-// The numbers here are random, but all of them are below 1000 which is the default batch size
-static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
-
-static constexpr auto skipCall = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 15;
-  return res;
-};
-
-static constexpr auto softLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.softLimit = 35u;
-  return res;
-};
-
-static constexpr auto hardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 76u;
-  return res;
-};
-
-static constexpr auto fullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 17u;
-  res.fullCount = true;
-  return res;
-};
-
-static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.softLimit = 64u;
-  return res;
-};
-
-static constexpr auto skipAndHardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 32;
-  res.hardLimit = 51u;
-  return res;
-};
-static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 8;
-  res.hardLimit = 57u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlyFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlySkipAndCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
 
 INSTANTIATE_TEST_CASE_P(
     ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,

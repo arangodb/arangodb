@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -563,7 +563,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
         keyValue = lastValue + _increment - ((lastValue - _offset) % _increment);
       }
 
-      // bounds and sanity checks
+      // bounds and validity checks
       if (keyValue == UINT64_MAX || keyValue < lastValue) {
         return "";
       }
@@ -891,7 +891,7 @@ bool KeyGenerator::validateId(char const* key, size_t len, size_t* split) {
     return false;
   }
 
-  if (pos > TRI_COL_NAME_LENGTH) {
+  if (pos > LogicalCollection::maxNameLength) {
     return false;
   }
 

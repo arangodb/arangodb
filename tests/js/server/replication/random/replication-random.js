@@ -38,7 +38,7 @@ const compareTicks = replication.compareTicks;
 const console = require("console");
 const internal = require("internal");
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

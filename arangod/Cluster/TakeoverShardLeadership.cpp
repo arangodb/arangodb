@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -160,7 +162,7 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   for (auto const& res : responses) {
     if (res.hasValue() && res.get().ok()) {
       auto& result = res.get();
-      if (result.response && result.response->statusCode() == fuerte::StatusOK) {
+      if (result.statusCode() == fuerte::StatusOK) {
         realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
       }
     }
@@ -186,7 +188,8 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
       // below where we check that we are in the list of failoverCandidates!
       ci.waitForCurrent(planIndex);
       auto currentInfo =
-          ci.getCollectionCurrent(databaseName, std::to_string(collection.planId()));
+          ci.getCollectionCurrent(databaseName,
+                                  std::to_string(collection.planId().id()));
       if (currentInfo == nullptr) {
         // Collection has been dropped we cannot continue here.
         return;
@@ -252,7 +255,8 @@ bool TakeoverShardLeadership::first() {
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
 
     std::shared_ptr<LogicalCollection> coll;
@@ -288,6 +292,12 @@ bool TakeoverShardLeadership::first() {
                              _description.get(SERVER_ID), _result);
   }
 
-  notify();
   return false;
+}
+
+void TakeoverShardLeadership::setState(ActionState state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    _feature.unlockShard(_description.get(SHARD));
+  }
+  ActionBase::setState(state);
 }

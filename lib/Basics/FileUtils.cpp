@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -330,7 +330,7 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
     *errorNumber = 0;
   }
 
-  auto result = TRI_MKDIR(name.c_str(), mask);
+  auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
 
   int res = errno;
   if (result != 0 && res == EEXIST && isDirectory(name)) {

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for CuckooFilter based index selectivity estimator
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2018-2019, ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein, Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +149,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     std::vector<uint64_t> toRemove(0);
     std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
     expected = currentSeq;  // only commit up to blocker
-    auto res = meta.placeBlocker(iteration, ++currentSeq);
+    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     ASSERT_TRUE(res.ok());
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
@@ -162,7 +159,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_EQ(1.0 / std::max(1.0, static_cast<double>(iteration)), est.computeEstimate());
 
-    meta.removeBlocker(iteration);
+    meta.removeBlocker(TransactionId{iteration});
     EXPECT_EQ(meta.committableSeq(UINT64_MAX), UINT64_MAX);
 
     // now make sure we apply it
@@ -181,7 +178,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     std::vector<uint64_t> toRemove(10);
     std::generate(toRemove.begin(), toRemove.end(), [&index] { return ++index; });
     expected = currentSeq;  // only commit up to blocker
-    auto res = meta.placeBlocker(iteration, ++currentSeq);
+    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     ASSERT_TRUE(res.ok());
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
@@ -193,7 +190,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
             est.computeEstimate());
 
-    meta.removeBlocker(iteration);
+    meta.removeBlocker(TransactionId{iteration});
 
     // now make sure we apply it
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
@@ -220,12 +217,12 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
     std::generate(toInsert.begin(), toInsert.end(), [&index] { return ++index; });
 
     auto expected = currentSeq;  // only commit up to blocker
-    auto res = meta.placeBlocker(iteration, ++currentSeq);
+    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     ASSERT_TRUE(res.ok());
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
     // remove previous blocker
-    meta.removeBlocker(iteration - 1);
+    meta.removeBlocker(TransactionId{iteration - 1});
 
     // now make sure we applied last batch, but not this one
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
@@ -251,11 +248,11 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
     if (0 == iteration) {
       expected = currentSeq;  // only commit up to blocker
     }
-    auto res = meta.placeBlocker(iteration, ++currentSeq);
+    auto res = meta.placeBlocker(TransactionId{iteration}, ++currentSeq);
     ASSERT_TRUE(res.ok());
     est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
     // remove only if not first blocker
-    meta.removeBlocker(std::max(static_cast<size_t>(1), iteration));
+    meta.removeBlocker(TransactionId{std::max(static_cast<size_t>(1), iteration)});
 
     // now make sure we haven't applied anything
     est.serialize(serialization, meta.committableSeq(UINT64_MAX));
@@ -265,7 +262,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   }
 
   // now remove first blocker and make sure we apply everything
-  meta.removeBlocker(0);
+  meta.removeBlocker(TransactionId::none());
   est.serialize(serialization, meta.committableSeq(UINT64_MAX));
   expected = currentSeq;
   serialization.clear();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,20 +98,20 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief returns the LocalDocumentId and the revision id for the document with the 
   /// specified key.
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
+                   std::pair<LocalDocumentId, RevisionId>& result) const override;
 
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
-                      TRI_voc_rid_t& revisionId) const;
+                      RevisionId& revisionId) const;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result) override;
+              IndexIterator::DocumentCallback const& cb) const override;
+  
+  /// @brief lookup with callback, not thread-safe on same transaction::Context
+  bool read(transaction::Methods* trx, LocalDocumentId const& token,
+            IndexIterator::DocumentCallback const& cb) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
-
-  /// @brief lookup with callback, not thread-safe on same transaction::Context
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options) override;
@@ -132,20 +132,18 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
-  void adjustNumberDocuments(transaction::Methods&, int64_t) override;
+  bool hasDocuments() override;
 
-  Result upgrade() override;
-  bool didPartialUpgrade() override;
-  Result cleanupAfterUpgrade() override;
+  void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                LocalDocumentId expectedId, ManagedDocumentResult& previous,
+                RevisionId expectedRev, ManagedDocumentResult& previous,
                 OperationOptions& options);
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(velocypack::Builder&) override;
+  void figuresSpecific(bool details, velocypack::Builder&) override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -197,7 +195,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   }
   
   /// @brief track key in file
-  void blackListKey(RocksDBKey const& key) const;
+  void invalidateCacheEntry(RocksDBKey const& key) const;
   
   /// @brief can use non transactional range delete in write ahead log
   bool canUseRangeDeleteInWal() const;

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -183,7 +184,7 @@ arangodb::Result readEncryptionFile(std::string const& directory, std::string& t
                                     arangodb::EncryptionFeature* encryptionFeature) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
-    
+
   std::string newType = ::EncryptionTypeNone;
 #ifdef USE_ENTERPRISE
   if (nullptr != encryptionFeature) {
@@ -198,11 +199,11 @@ arangodb::Result readEncryptionFile(std::string const& directory, std::string& t
   } else {
     type = newType;
   }
-    
+
   if (type != newType) {
-    return {TRI_ERROR_BAD_PARAMETER, 
-            std::string("encryption type in existing ENCRYPTION file '") + filename + "' (" + type + 
-              ") does not match requested encryption type (" + newType + ")"}; 
+    return {TRI_ERROR_BAD_PARAMETER,
+            std::string("encryption type in existing ENCRYPTION file '") + filename + "' (" + type +
+              ") does not match requested encryption type (" + newType + ")"};
   }
   return {};
 }
@@ -268,7 +269,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       _status.reset(::readEncryptionFile(_path, _encryptionType, _encryptionFeature));
       if (::EncryptionTypeNone != _encryptionType) {
         _writeGzip = false;
-      }  
+      }
       return;
     }
     // fall through to write encryption file
@@ -302,7 +303,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
   // currently gzip and encryption are mutually exclusive, encryption wins
   if (::EncryptionTypeNone != _encryptionType) {
     _writeGzip = false;
-  }  
+  }
 }
 
 ManagedDirectory::~ManagedDirectory() = default;
@@ -337,7 +338,8 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::stri
 
   if (!_status.fail()) {  // directory is in a bad state?
     try {
-      bool gzFlag = (0 == filename.substr(filename.size() - 3).compare(".gz"));
+      bool gzFlag = filename.size() > 3 && 
+                    (0 == filename.substr(filename.size() - 3).compare(".gz"));
       file = std::make_unique<File>(*this, filename,
                                     (ManagedDirectory::DefaultReadFlags ^ flags), gzFlag);
     } catch (...) {
@@ -370,7 +372,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(int fileD
   return file;
 }
 
-  
+
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   std::string const& filename, bool overwrite, int flags, bool gzipOk) {
   std::unique_ptr<File> file;
@@ -625,7 +627,7 @@ Result const& ManagedDirectory::File::close() {
 }
 
 
-ssize_t ManagedDirectory::File::offset() const {
+TRI_read_return_t ManagedDirectory::File::offset() const {
   TRI_read_return_t fileBytesRead = -1;
 
   if (isGzip()) {
@@ -635,6 +637,22 @@ ssize_t ManagedDirectory::File::offset() const {
   } // else
 
   return fileBytesRead;
+}
+
+void ManagedDirectory::File::skip(size_t count) {
+  // TODO is there a better implementation than just read count bytes?
+  // how does this work with gzip?
+  size_t const bufferSize = 4 * 1024;
+  char buffer[bufferSize];
+
+  while (count > 0) {
+    TRI_read_return_t bytesRead = read(buffer, std::min(bufferSize, count));
+    if (bytesRead <= 0) {
+      break; // eof or error (_status will be set)
+    }
+
+    count -= bytesRead;
+  }
 }
 
 }  // namespace arangodb

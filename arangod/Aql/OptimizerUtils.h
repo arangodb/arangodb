@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,10 +55,13 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-bool getBestIndexHandleForFilterCondition(
-aql::Collection const& collection, arangodb::aql::AstNode*& node,
-arangodb::aql::Variable const* reference, size_t itemsInCollection,
-aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex);
+bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
+                                          arangodb::aql::AstNode*& node,
+                                          arangodb::aql::Variable const* reference,
+                                          size_t itemsInCollection,
+                                          aql::IndexHint const& hint,
+                                          std::shared_ptr<Index>& usedIndex,
+                                          bool onlyEdgeIndexes = false);
 
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when

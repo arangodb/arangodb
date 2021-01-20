@@ -148,11 +148,11 @@ ERROR_ARANGO_IO_ERROR,1305,"storage engine I/O error","Will be raised when stora
 ## ArangoDB replication errors
 ################################################################################
 
-ERROR_REPLICATION_NO_RESPONSE,1400,"no response","Will be raised when the replication applier does not receive any or an incomplete response from the master."
-ERROR_REPLICATION_INVALID_RESPONSE,1401,"invalid response","Will be raised when the replication applier receives an invalid response from the master."
-ERROR_REPLICATION_MASTER_ERROR,1402,"master error","Will be raised when the replication applier receives a server error from the master."
-ERROR_REPLICATION_MASTER_INCOMPATIBLE,1403,"master incompatible","Will be raised when the replication applier connects to a master that has an incompatible version."
-ERROR_REPLICATION_MASTER_CHANGE,1404,"master change","Will be raised when the replication applier connects to a different master than before."
+ERROR_REPLICATION_NO_RESPONSE,1400,"no response","Will be raised when the replication applier does not receive any or an incomplete response from the leader."
+ERROR_REPLICATION_INVALID_RESPONSE,1401,"invalid response","Will be raised when the replication applier receives an invalid response from the leader."
+ERROR_REPLICATION_LEADER_ERROR,1402,"leader error","Will be raised when the replication applier receives a server error from the leader."
+ERROR_REPLICATION_LEADER_INCOMPATIBLE,1403,"leader incompatible","Will be raised when the replication applier connects to a leader that has an incompatible version."
+ERROR_REPLICATION_LEADER_CHANGE,1404,"leader change","Will be raised when the replication applier connects to a different leader than before."
 ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replication applier is asked to connect to itself for replication."
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication log stream."
 ERROR_REPLICATION_INVALID_APPLIER_STATE,1407,"invalid applier state","Will be raised when an invalid replication applier state file is found."
@@ -169,7 +169,8 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ## ArangoDB cluster errors
 ################################################################################
 
-ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,1448,"creating collection failed due to precondition","Will be raised when updating the plan on collection creatio failed."
+ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,1447,"follower transaction intermediate commit already performed","Will be raised when a follower transaction has already performed an intermediate commit and must be rolled back."
+ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,1448,"creating collection failed due to precondition","Will be raised when updating the plan on collection creation failed."
 ERROR_CLUSTER_SERVER_UNKNOWN,1449,"got a request from an unkown server","Will be raised on some occasions when one server gets a request from another, which has not (yet?) been made known via the Agency."
 ERROR_CLUSTER_TOO_MANY_SHARDS,1450,"too many shards","Will be raised when the number of shards for a collection is higher than allowed."
 ERROR_CLUSTER_COLLECTION_ID_EXISTS,1453,"collection ID already exists","Will be raised when a Coordinator in a cluster tries to create a collection and the collection ID already exists."
@@ -188,7 +189,7 @@ ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,1466,"must not specify _key for this collecti
 ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,1467,"got contradicting answers from different shards","Will be raised if a Coordinator in a cluster gets conflicting results from different shards, which should never happen."
 ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN,1468,"not all sharding attributes given","Will be raised if a Coordinator tries to find out which shard is responsible for a partial document, but cannot do this because not all sharding attributes are specified."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES,1469,"must not change the value of a shard key attribute","Will be raised if there is an attempt to update the value of a shard attribute."
-ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter","Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection."
+ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter for clusters","Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection."
 ERROR_CLUSTER_ONLY_ON_COORDINATOR,1471,"this operation is only valid on a coordinator in a cluster","Will be raised if there is an attempt to run a Coordinator-only operation on a different type of node."
 ERROR_CLUSTER_READING_PLAN_AGENCY,1472,"error reading Plan in agency","Will be raised if a Coordinator or DB-Server cannot read the Plan in the Agency."
 ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection","Will be raised if a Coordinator cannot truncate all shards of a cluster collection."
@@ -272,6 +273,8 @@ ERROR_QUERY_NOT_FOUND,1591,"query ID not found","Will be raised when an Id of a 
 ERROR_QUERY_USER_ASSERT,1593,"%s","Will be raised if and user provided expression fails to evaluate to true"
 ERROR_QUERY_USER_WARN,1594,"%s","Will be raised if and user provided expression fails to evaluate to true"
 
+ERROR_QUERY_WINDOW_AFTER_MODIFICATION,1595,"window operation after data-modification","Will be raised when a window node is created after a data-modification operation."
+
 ################################################################################
 ## ArangoDB cursor errors
 ################################################################################
@@ -327,6 +330,7 @@ ERROR_LDAP_CANNOT_START_TLS,1805,"cannot start a TLS LDAP session","can not star
 ERROR_LDAP_FOUND_NO_OBJECTS,1806,"LDAP didn't found any objects","LDAP didn't found any objects with the specified search query"
 ERROR_LDAP_NOT_ONE_USER_FOUND,1807,"LDAP found zero ore more than one user","LDAP found zero ore more than one user"
 ERROR_LDAP_USER_NOT_IDENTIFIED,1808,"LDAP found a user, but its not the desired one","LDAP found a user, but its not the desired one"
+ERROR_LDAP_OPERATIONS_ERROR,1809,"LDAP returned an operations error","LDAP returned an operations error"
 ERROR_LDAP_INVALID_MODE,1820,"invalid ldap mode","cant distinguish a valid mode for provided LDAP configuration"
 
 ################################################################################
@@ -442,7 +446,7 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
 ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the SmartGraph attribute set."
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
-ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the SmartGraph attribute."
+ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the SmartGraph attribute."
 ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and cannot be used for sharding. All system attributes are forbidden."
 ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH,4005,"smart graph attribute mismatch","The SmartGraph attribute of the given collection does not match the SmartGraph attribute of the graph."
 ERROR_INVALID_SMART_JOIN_ATTRIBUTE,4006,"invalid smart join attribute declaration","Will be raised when the smartJoinAttribute declaration is invalid."
@@ -522,3 +526,8 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","
 ## Plan Analyzers errors
 ################################################################################
 ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
+
+################################################################################
+## AIR errors
+################################################################################
+ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"

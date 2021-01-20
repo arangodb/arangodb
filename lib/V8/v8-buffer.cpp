@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1538,7 +1538,6 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
 void TRI_InitV8Buffer(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
-  // sanity checks
   TRI_ASSERT(unbase64('/') == 63);
   TRI_ASSERT(unbase64('+') == 62);
   TRI_ASSERT(unbase64('T') == 19);

@@ -52,7 +52,7 @@ const TableRow = styled(Grid)`
   margin-bottom: 1px;
 `;
 
-const Header = styled(TableRow)`
+const Header = styled(TableRow as any)`
 border-bottom-color: rgba(140, 138, 137, 0.247059);
 border-bottom-width: 1px;
 border-bottom-style: solid;
@@ -60,7 +60,7 @@ font-weight: 600;
 color: rgb(113, 125, 144);
 `;
 
-const Name = styled(TableRow)`
+const Name = styled(TableRow as any)`
   color: rgb(255, 255, 255);
   background-color: rgb(51, 51, 51);
   cursor: pointer;
@@ -73,30 +73,29 @@ const RightAlign = styled(Cell)`
 text-align: right;
 `;
 
-const InSync = styled(CheckCircle)`
+const InSync = styled(CheckCircle as any)`
   color: #2ecc71;
   width: 12pt;
   padding: 0px 5px;
 `;
 
-const IsColapsed = styled(ArrowRight)`
+const IsColapsed = styled(ArrowRight as any)`
   width: 12pt;
   padding: 0px 5px;
 `;
 
-const IsDetailed = styled(ArrowDown)`
+const IsDetailed = styled(ArrowDown as any)`
   width: 12pt;
   padding: 0px 5px;
 `;
 
 const makeShards = (args : any) => {
   const { Plan } = args;
-  const shards = [];
+  const shards:Array<Object> = [];
   for (const [name, info] of Object.entries(Plan)) {
-    //if (!info.hasOwnProperty("progress")) {
-    shards.push({name, sync: true, ...info });
-    console.log("fix me propertly");
-    //}
+    if (!(info as object).hasOwnProperty("progress")) {
+      shards.push({name, sync: true, ...(info as object) });
+    }
   }
   return shards;
 };

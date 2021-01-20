@@ -120,7 +120,7 @@ function ahuacatlModifySuite () {
         assertEqual(1, c.count());
         assertEqual(0, actual.json.length);
         assertEqual(expected, sanitizeStats(actual.stats));
-        c.truncate();
+        c.truncate({ compact: false });
       }
 
       // RestrictToSingleShard
@@ -168,7 +168,7 @@ function ahuacatlModifySuite () {
         assertTrue(hasDistributeNode(plan.nodes));
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
         assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
-        c.truncate();
+        c.truncate({ compact: false });
       }
 
       // RestrictToSingleShard
@@ -218,7 +218,7 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-      c.truncate();
+      c.truncate({ compact: false });
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
@@ -263,7 +263,7 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-      c.truncate();
+      c.truncate({ compact: false });
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
@@ -319,7 +319,7 @@ function ahuacatlModifySuite () {
         assertEqual("test" + i, r[0]._key);
         assertEqual(cn + "/test" + i, r[0]._id);
       }
-      c.truncate();
+      c.truncate({ compact: false });
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
@@ -399,7 +399,7 @@ function ahuacatlModifySuite () {
         assertEqual(2000, c.count());
         assertEqual(0, actual.json.length);
         assertEqual(expected, sanitizeStats(actual.stats));
-        c.truncate();
+        c.truncate({ compact: false });
       }
       // RestrictToSingleShard
       let actual = getModifyQueryResultsRaw(query);
@@ -1619,8 +1619,8 @@ function ahuacatlModifySuite () {
         db._query(query);
         assertEqual([1], c1.toArray().map(o => o.value));
         assertEqual([2], c2.toArray().map(o => o.value));
-        c1.truncate();
-        c2.truncate();
+        c1.truncate({ compact: false });
+        c2.truncate({ compact: false });
       }
     },
 
@@ -1864,9 +1864,6 @@ function ahuacatlGeneratedSuite() {
       `;
       const resNoSplice = db._query(q, {}, deactivateSplice);
       const resSplice = db._query(q, {}, activateSplice);
-      require("internal").print(
-        `Splice: ${resSplice.getExtra().stats.writesExecuted} vs. NoSplice: ${resNoSplice.getExtra().stats.writesExecuted}`
-      );
       
       assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
       assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);

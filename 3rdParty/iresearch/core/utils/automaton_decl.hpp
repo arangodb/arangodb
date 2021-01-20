@@ -25,7 +25,7 @@
 
 #include <cstddef>
 
-NS_BEGIN(fst)
+namespace fst {
 
 template <class Arc, class Allocator>
 class VectorState;
@@ -36,23 +36,29 @@ class VectorFst;
 template<typename F, size_t CacheSize, bool MatchInput>
 class TableMatcher;
 
-NS_BEGIN(fsa)
+namespace fsa {
 
+class BooleanWeight;
+
+template<typename W, typename L>
 struct Transition;
 
-using AutomatonState = VectorState<Transition, std::allocator<Transition>>;
-using Automaton = VectorFst<Transition, AutomatonState>;
+template<typename W, typename L>
+using AutomatonState = VectorState<Transition<W, L>, std::allocator<Transition<W, L>>>;
 
-NS_END // fsa
-NS_END // fst
+template<typename W = BooleanWeight, typename L = int32_t>
+using Automaton = VectorFst<Transition<W, L>, AutomatonState<W, L>>;
 
-NS_ROOT
+} // fsa
+} // fst
 
-using automaton = fst::fsa::Automaton;
+namespace iresearch {
+
+using automaton = fst::fsa::Automaton<>;
 
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true>;
 
-NS_END
+}
 
 #endif // IRESEARCH_AUTOMATON_DECL_H
 

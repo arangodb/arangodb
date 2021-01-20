@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,17 +26,18 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ScatterExecutor.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
-struct ResourceMonitor;
 class SkipResult;
 }  // namespace aql
 
@@ -69,8 +71,6 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
                             std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
                             WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
                             size_t subqueryDepth = 0);
-
-  virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 
   /**
    * @brief Initialize the cursor. Return values will be alternating.

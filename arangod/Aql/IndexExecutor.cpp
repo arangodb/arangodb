@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,15 +37,16 @@
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/Query.h"
+#include "Aql/Projections.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
+#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
 
 #include <velocypack/Iterator.h>
@@ -86,7 +88,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         return false;
       }
     }
-
+        
     context.incrScanned();
 
     auto indexId = index->id();
@@ -113,14 +115,14 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
           return AqlValue();
         }
         velocypack::Slice s;
-        // hash/skiplist/edge
+        // hash/skiplist/persistent
         if (fc.slice.isArray()) {
           TRI_ASSERT(it->second < fc.slice.length());
           if (ADB_UNLIKELY(it->second >= fc.slice.length())) {
             return AqlValue();
           }
           s = fc.slice.at(it->second);
-        } else {  // primary
+        } else {  // primary/edge
           s = fc.slice;
         }
         if (doCopy) {
@@ -145,7 +147,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     TRI_ASSERT(!output.isFull());
     output.moveValueInto(registerId, input, guard);
 
-    // hash/skiplist/edge
+    // hash/skiplist/persistent
     if (slice.isArray()) {
       for (auto const& indReg : outNonMaterializedIndRegs.second) {
         TRI_ASSERT(indReg.first < slice.length());
@@ -158,7 +160,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         TRI_ASSERT(!output.isFull());
         output.moveValueInto(indReg.second, input, guard);
       }
-    } else {  // primary
+    } else {  // primary/edge
       auto indReg = outNonMaterializedIndRegs.second.cbegin();
       TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
       if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
@@ -181,8 +183,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 IndexExecutorInfos::IndexExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, 
+    Expression* filter, arangodb::aql::Projections projections,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, bool count, AstNode const* condition,
@@ -197,8 +198,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
-      _projections(projections),
-      _coveringIndexAttributePositions(coveringIndexAttributePositions),
+      _projections(std::move(projections)),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
@@ -269,7 +269,7 @@ Variable const* IndexExecutorInfos::getOutVariable() const {
   return _outVariable;
 }
 
-std::vector<std::string> const& IndexExecutorInfos::getProjections() const noexcept {
+arangodb::aql::Projections const& IndexExecutorInfos::getProjections() const noexcept {
   return _projections;
 }
 
@@ -278,10 +278,6 @@ QueryContext& IndexExecutorInfos::query() noexcept {
 }
 
 Expression* IndexExecutorInfos::getFilter() const noexcept { return _filter; }
-
-std::vector<size_t> const& IndexExecutorInfos::getCoveringIndexAttributePositions() const noexcept {
-  return _coveringIndexAttributePositions;
-}
 
 bool IndexExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
@@ -358,7 +354,7 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
                     : !infos.getProduceResult()
                           ? Type::NoResult
                           : _cursor->hasCovering() &&  // if change see IndexNode::canApplyLateDocumentMaterializationRule()
-                                    !infos.getCoveringIndexAttributePositions().empty()
+                                    infos.getProjections().supportsCoveringIndex()
                                 ? Type::Covering
                                 : Type::Document) {
   switch (_type) {
@@ -511,7 +507,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _documentProducingFunctionContext(
       _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
       infos.query(), _trx, infos.getFilter(), infos.getProjections(),
-      infos.getCoveringIndexAttributePositions(), false,
+      false,
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),
       _currentIndex(_infos.getIndexes().size()),
@@ -603,7 +599,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
     AqlValue a = exp->execute(&ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
-    AqlValueMaterializer materializer(&_trx);
+    AqlValueMaterializer materializer(&_trx.vpackOptions());
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 

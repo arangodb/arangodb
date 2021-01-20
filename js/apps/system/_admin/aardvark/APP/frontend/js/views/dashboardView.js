@@ -90,49 +90,6 @@
       return figure;
     },
 
-    showDetail: function (e) {
-      var self = this;
-      var figure = this.getDetailFigure(e);
-      var options;
-
-      options = this.dygraphConfig.getDetailChartConfig(figure);
-
-      this.getHistoryStatistics(figure);
-      this.detailGraphFigure = figure;
-
-      window.modalView.hideFooter = true;
-      window.modalView.hide();
-      window.modalView.show(
-        'modalGraph.ejs',
-        options.header,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        this.events
-      );
-
-      window.modalView.hideFooter = false;
-
-      $('#modal-dialog').on('hidden', function () {
-        self.hidden();
-      });
-
-      $('#modal-dialog').toggleClass('modal-chart-detail', true);
-
-      options.height = $(window).height() * 0.7;
-      options.width = $('.modal-inner-detail').width();
-
-      // Reselect the labelsDiv. It was not known when requesting options
-      options.labelsDiv = $(options.labelsDiv)[0];
-
-      this.detailGraph = new Dygraph(
-        document.getElementById('lineChartDetail'),
-        this.history[this.server][figure],
-        options
-      );
-    },
-
     hidden: function () {
       this.detailGraph.destroy();
       delete this.detailGraph;
@@ -172,7 +129,6 @@
       this.options = options;
       this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
-      this.events['click .dashboard-sub-bar-menu-sign'] = this.showDetail.bind(this);
       this.events['mousedown .dygraph-rangesel-zoomhandle'] = this.stopUpdating.bind(this);
       this.events['mouseup .dygraph-rangesel-zoomhandle'] = this.startUpdating.bind(this);
 
@@ -610,7 +566,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/clusterNodeVersion?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeVersion?ServerID=' + this.serverInfo.target),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -627,7 +583,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/clusterNodeEngine?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeEngine?ServerID=' + this.serverInfo.target),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -642,7 +598,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/clusterNodeStats?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeStatistics?ServerID=' + this.serverInfo.target),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -695,9 +651,8 @@
       }
 
       if (self.server !== '-local-') {
-        urlParams += '&type=short';
         if (self.serverInfo.target) {
-          urlParams += '&DBserver=' + self.serverInfo.target;
+          urlParams += '&DBserver=' + encodeURIComponent(self.serverInfo.target);
         }
 
         if (!self.history.hasOwnProperty(self.server)) {
@@ -705,17 +660,14 @@
         }
       }
 
-      $.ajax(
-        url + urlParams,
-        {
-          async: true,
-          xhrFields: {
-            withCredentials: true
-          },
-          crossDomain: true
-        }
-      ).done(
-        function (d) {
+      $.ajax({
+        url: url + urlParams,
+        xhrFields: {
+          withCredentials: true
+        },
+        crossDomain: true,
+        async: true,
+        success: function (d) {
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d);
@@ -727,44 +679,11 @@
             callback(d.enabled, modalView);
           }
           self.updateCharts();
-        })
-        .error(function (e) {
+        },
+        error: function (e) {
           arangoHelper.arangoError('Statistics', 'stat fetch req error:' + JSON.stringify(e));
-        });
-    },
-
-    getHistoryStatistics: function (figure) {
-      var self = this;
-      var url = 'statistics/long';
-
-      var urlParams = '?filter=' + this.dygraphConfig.mapStatToFigure[figure].join();
-
-      if (self.server !== '-local-') {
-        url = self.server.endpoint + arangoHelper.databaseUrl('/_admin/aardvark/statistics/cluster');
-        urlParams += '&type=long&DBserver=' + self.server.target;
-
-        if (!self.history.hasOwnProperty(self.server)) {
-          self.history[self.server] = {};
         }
-      }
-
-      var origin = window.location.href.split('/');
-      var preUrl = origin[0] + '//' + origin[2] + '/' + origin[3] + '/_system/' + origin[5] + '/' + origin[6] + '/';
-
-      $.ajax(
-        preUrl + url + urlParams,
-        {async: true}
-      ).done(
-        function (d) {
-          var i;
-
-          self.history[self.server][figure] = [];
-
-          for (i = 0; i < d.times.length; ++i) {
-            self.mergeDygraphHistory(d, i);
-          }
-        }
-      );
+      });
     },
 
     addEmptyDataLabels: function () {
@@ -813,6 +732,18 @@
       }
 
       if (self.reRender && self.isVisible) {
+        var margin = {
+          top: ($('#residentSizeChartContainer').outerHeight() - $('#residentSizeChartContainer').height()) / 2,
+          right: 1,
+          bottom: ($('#residentSizeChartContainer').outerHeight() - $('#residentSizeChartContainer').height()) / 2,
+          left: 1
+        };
+        if (Number.isNaN(margin.top)) {
+          margin.top = 1;
+        }
+        if (Number.isNaN(margin.bottom)) {
+          margin.bottom = 1;
+        }
         nv.addGraph(function () {
           self.residentChart = nv.models.multiBarHorizontalChart()
             .x(function (d) {
@@ -823,17 +754,10 @@
             })
             .width(dimensions.width)
             .height(dimensions.height)
-            .margin({
-              top: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-              right: 1,
-              bottom: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-              left: 1
-            })
+            .margin(margin)
             .showValues(false)
             .showYAxis(false)
             .showXAxis(false)
-            // .transitionDuration(100)
-            // .tooltip(false)
             .showLegend(false)
             .showControls(false)
             .stacked(true);
@@ -1194,6 +1118,10 @@
         // hide menu entries
         if (!frontendConfig.isCluster) {
           $('#subNavigationBar .breadcrumb').html('');
+        } else {
+          // in cluster mode and db node got found, remove menu entries, as we do not have them here
+          $('#requests-statistics').remove();
+          $('#system-statistics').remove();
         }
         this.getNodeInfo();
       }

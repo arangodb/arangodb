@@ -30,7 +30,7 @@
 
 #include <memory>
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          input_buf implementation
@@ -70,21 +70,6 @@ std::streamsize input_buf::showmanyc() {
 // -----------------------------------------------------------------------------
 // --SECTION--                               buffered_index_input implementation
 // -----------------------------------------------------------------------------
-
-buffered_index_input::buffered_index_input(
-    size_t buf_size/*= DEFAULT_BUFFER_SIZE*/
-) noexcept
-  : start_(0),
-    buf_size_(buf_size) {
-}
-
-buffered_index_input::buffered_index_input(
-    const buffered_index_input& rhs
-) noexcept
-  : index_input(),
-    start_(rhs.start_ + rhs.offset()),
-    buf_size_(rhs.buf_size_) {
-}
 
 byte_type buffered_index_input::read_byte() {
   if (begin_ >= end_) {
@@ -157,7 +142,7 @@ size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
   } else { // read directly to output buffer if possible
     size  = read_internal(b, size);
     start_ += (offset() + size);
-    begin_ = end_ = buf_.get(); // will trigger refill on the next read
+    begin_ = end_ = buf_; // will trigger refill on the next read
   }
 
   return read += size;
@@ -172,14 +157,9 @@ size_t buffered_index_input::refill() {
     throw eof_error(); // read past eof
   }
 
-  if (!buf_) {
-    buf_ = memory::make_unique<byte_type[]>(buf_size_);
-    begin_ = end_ = buf_.get();
-    seek_internal(start_);
-  }
-
-  begin_ = buf_.get();
-  end_ = begin_ + read_internal(buf_.get(), data_size);
+  assert(buf_);
+  begin_ = buf_;
+  end_ = begin_ + read_internal(buf_, data_size);
   start_ = data_start;
 
   return data_size;
@@ -187,12 +167,12 @@ size_t buffered_index_input::refill() {
 
 void buffered_index_input::seek(size_t p) {
   if (p >= start_ && p < (start_ + size())) {
-    begin_ = buf_.get() + p - start_;
+    begin_ = buf_ + p - start_;
   } else {
     seek_internal(p);
-    begin_ = end_ = buf_.get();
+    begin_ = end_ = buf_;
     start_ = p;
   }
 }
 
-NS_END
+}

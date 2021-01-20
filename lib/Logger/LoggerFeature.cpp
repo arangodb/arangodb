@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,7 +30,6 @@
 #endif
 
 #ifdef TRI_HAVE_UNISTD_H
-#include <fuerte/FuerteLogger.h>
 #include <unistd.h>
 #endif
 
@@ -61,12 +61,20 @@
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+// Please leave this code in for the next time we have to debug fuerte.
+#if 0
+void LogHackWriter(char const* p) {
+  LOG_DEVEL << p;
+}
+#endif
+
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
     : ApplicationFeature(server, "Logger"),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
       _threaded(threaded) {
+
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
@@ -85,10 +93,6 @@ LoggerFeature::~LoggerFeature() {
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
-  options->addOldOption("log.content-filter", "");
-  options->addOldOption("log.source-filter", "");
-  options->addOldOption("log.application", "");
-  options->addOldOption("log.facility", "");
 
   options
       ->addOption("--log", "the global or topic-specific log level",
@@ -144,6 +148,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   new StringParameter(&_fileMode))
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
+
+  options->addOption("--log.api-enabled",
+                     "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
+                     new StringParameter(&_apiSwitch))
+      .setIntroducedIn(30411)
+      .setIntroducedIn(30506)
+      .setIntroducedIn(30605);
 
   options
       ->addOption("--log.use-json-format", "use json output format",
@@ -219,6 +230,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addObsoleteOption("log.content-filter", "", true);
+  options->addObsoleteOption("log.source-filter", "", true);
+  options->addObsoleteOption("log.application", "", true);
+  options->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
@@ -267,6 +283,18 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // if not valid, the following call will throw an exception and
     // abort the startup
     LogTimeFormats::formatFromName(_timeFormatString);
+  }
+
+  if (_apiSwitch == "true" || _apiSwitch == "on" ||
+      _apiSwitch == "On") {
+    _apiEnabled = true;
+    _apiSwitch = "true";
+  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
+    _apiEnabled = true;
+    _apiSwitch = "jwt";
+  } else {
+    _apiEnabled = false;
+    _apiSwitch = "false";
   }
 
   if (!_fileMode.empty()) {
@@ -346,14 +374,15 @@ void LoggerFeature::prepare() {
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
-      LogAppender::addAppender(definition + ".supervisor");
+      LogAppender::addAppender(Logger::defaultLogGroup(),
+                               definition + ".supervisor");
     } else {
-      LogAppender::addAppender(definition);
+      LogAppender::addAppender(Logger::defaultLogGroup(), definition);
     }
   }
 
   if (_foregroundTty) {
-    LogAppender::addAppender("-");
+    LogAppender::addAppender(Logger::defaultLogGroup(), "-");
   }
 
   if (_forceDirect || _supervisor) {

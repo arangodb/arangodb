@@ -92,7 +92,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes
@@ -162,7 +162,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes as well as removal
@@ -266,8 +266,16 @@ function ahuacatlProfilerTestSuite () {
 
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
+          const calcOptBatches = () => {
+            const opt =  Math.ceil(totalRows / defaultBatchSize);
+            if (totalRows % defaultBatchSize === 0) {
+              // In this case the traversal may, or may not know that there is more data.
+              return [opt, opt + 1];
+            }
+            return opt;
+          };
 
-          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
+          const optimalBatches = calcOptBatches();
 
           const expected = [
             {type: SingletonBlock, calls: 1, items: 1},

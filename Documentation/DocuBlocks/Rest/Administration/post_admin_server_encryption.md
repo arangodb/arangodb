@@ -13,6 +13,8 @@ new user key.
 This is a protected API and can only be executed with superuser rights.
 This API is not available on coordinator nodes.
 
+The API returns HTTP 404 in case encryption key rotation is disabled.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -34,4 +36,7 @@ Can be empty.
 @RESTRETURNCODE{403}
 This API will return HTTP 403 FORBIDDEN if it is not called with
 superuser rights.
+
+@RESTRETURNCODE{404}
+This API will return HTTP 404 in case encryption key rotation is disabled.
 @endDocuBlock

@@ -1029,7 +1029,86 @@ function optimizerRuleTestSuite() {
       var result = AQL_EXPLAIN(query.string, query.bindVars);
       hasIndexNode(result, query);
       hasNoFilterNode(result, query);
-    }
+    },
+
+    // Regression test (https://arangodb.atlassian.net/browse/AR-113):
+    // Previously, the filter was moved into the index, but one access of `dist` in `dist < dist` was left, while the
+    // variable obviously can't be available yet at the index node.
+    // When failing, throws an error like
+    //   missing variable #1 (dist) for node #8 (IndexNode) while planning registers
+    testSelfReference1: function () {
+      const query = {
+        string: `
+          FOR doc IN @@col
+            LET dist = GEO_DISTANCE(doc.geo, [16, 53])
+            FILTER dist < dist
+            RETURN {doc, dist}
+        `,
+        bindVars: {'@col': colName},
+      };
+
+      const result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasNoIndexNode(result, query);
+      hasFilterNode(result, query);
+    },
+
+    // See testSelfReference1
+    testSelfReference2: function () {
+      const query = {
+        string: `
+          FOR doc IN @@col
+            LET dist = GEO_DISTANCE(doc.geo, [16, 53])
+            LET dist2 = GEO_DISTANCE(doc.geo, [3, 7])
+            FILTER dist < dist2
+            RETURN {doc, dist, dist2}
+        `,
+        bindVars: {'@col': colName},
+      };
+
+      const result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasNoIndexNode(result, query);
+      hasFilterNode(result, query);
+    },
+
+    // See testSelfReference1
+    testSelfReference3: function () {
+      const query = {
+        string: `
+          FOR doc IN @@col
+            LET dist = GEO_DISTANCE(doc.geo, [16, 53])
+            LET dist2 = doc.maxDist
+            FILTER dist < dist2
+            RETURN {doc, dist, dist2}
+        `,
+        bindVars: {'@col': colName},
+      };
+
+      const result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasNoIndexNode(result, query);
+      hasFilterNode(result, query);
+    },
+
+    // See testSelfReference1
+    // Note that currently, the optimizer rule does not work with `dist2` being
+    // not a value (but a variable reference) in the filter expression. When
+    // this changes in the future, the expectations in this test can simply be
+    // changed.
+    testInaccessibleReference: function () {
+      const query = {
+        string: `
+          FOR doc IN @@col
+            LET dist = GEO_DISTANCE(doc.geo, [16, 53])
+            LET dist2 = NOEVAL(7)
+            FILTER dist < dist2
+            RETURN {doc, dist, dist2}
+        `,
+        bindVars: {'@col': colName},
+      };
+
+      const result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasNoIndexNode(result, query);
+      hasFilterNode(result, query);
+    },
 
   }; // test dictionary (return)
 } // optimizerRuleTestSuite

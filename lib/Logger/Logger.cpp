@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogGroup.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
 
@@ -70,6 +71,12 @@ static std::string const TRACE = "TRACE";
 static std::string const UNKNOWN = "UNKNOWN";
 
 std::string const LogThreadName("Logging");
+
+class DefaultLogGroup : public LogGroup {
+  std::size_t id() const override { return 0; }
+};
+DefaultLogGroup defaultLogGroupInstance;
+
 }  // namespace
 
 Mutex Logger::_initializeMutex;
@@ -96,6 +103,8 @@ TRI_pid_t Logger::_cachedPid(0);
 std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
+
+LogGroup& Logger::defaultLogGroup() { return ::defaultLogGroupInstance; }
 
 LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
 
@@ -358,7 +367,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         out.push_back('"');
       }
       // value of date/time is always safe to print
-      LogTimeFormats::writeTime(out, _timeFormat);
+      LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
       if (LogTimeFormats::isStringFormat(_timeFormat)) {
         out.push_back('"');
       }
@@ -457,7 +466,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     out.push_back('}');
   } else {
     // human readable format
-    LogTimeFormats::writeTime(out, _timeFormat);
+    LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
     out.push_back(' ');
 
     // output prefix
@@ -550,29 +559,44 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
 
+  append(defaultLogGroup(), msg, false, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, topicId, msg->_message.data(),
+                                          msg->_message.size(), true);
+  });
+} catch (...) {
+  // logging itself must never cause an exeption to escape
+}
+
+void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
+                    bool forceDirect,
+                    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
-  // some Windows-specifc appenders for the debug output windows and the Windows event log.
+  // some Windows-specifc appenders for the debug output window and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
-  LogAppender::logGlobal(*msg);
+  LogAppender::logGlobal(group, *msg);
 
   if (!_active.load(std::memory_order_relaxed)) {
     // logging is still turned off. now use hard-coded to-stderr logging
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, topicId, msg->_message.data(), msg->_message.size(), true);
+    inactive(msg);
   } else {
     // now either queue or output the message
     bool handled = false;
-    if (_threaded) {
-      handled = _loggingThread->log(msg);
+    if (_threaded && !forceDirect) {
+      handled = _loggingThread->log(group, msg);
     }
 
     if (!handled) {
       TRI_ASSERT(msg != nullptr);
-      LogAppender::log(*msg);
+
+      TRI_IF_FAILURE("Logger::append") {
+        // cut off all logging
+        return;
+      }
+
+      LogAppender::log(group, *msg);
     }
   }
-} catch (...) {
-  // logging itself must never cause an exeption to escape
 }
 
 ////////////////////////////////////////////////////////////////////////////////

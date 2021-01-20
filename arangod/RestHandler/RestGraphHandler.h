@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -215,7 +216,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   Result modifyVertexDefinition(graph::Graph& graph, VertexDefinitionAction action,
                                 std::string vertexDefinitionName);
 
-  std::optional<TRI_voc_rid_t> handleRevision() const;
+  std::optional<RevisionId> handleRevision() const;
 
  private:
   graph::GraphManager _gmngr;

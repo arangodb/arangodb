@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -60,9 +61,9 @@ void GreetingsFeature::prepare() {
   // cppcheck-suppress knownConditionTrueFalse
   if (warn) {
     LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
-      << "This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION!";
+      << "🥑 This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION! 🔥";
     LOG_TOPIC("bd666", WARN, arangodb::Logger::FIXME)
-      << "==============================================================================";
+      << "===================================================================================";
 
   }
 }

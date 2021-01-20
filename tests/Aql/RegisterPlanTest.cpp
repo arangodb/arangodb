@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -137,7 +138,7 @@ struct ExecutionNodeMock {
 
   auto getRegsToKeep() -> RegIdSetStack const& { return _regsToKeep; }
 
-  auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
+  auto walk(WalkerWorker<ExecutionNodeMock, WalkerUniqueness::NonUnique>& worker) -> bool {
     if (worker.before(this)) {
       return true;
     }

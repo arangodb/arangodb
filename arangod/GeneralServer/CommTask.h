@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,9 +89,9 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   // callable from any thread
   virtual void start() = 0;
   virtual void stop() = 0;
-  
-protected:
-  
+
+ protected:
+
   virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                           uint64_t messageId) = 0;
 
@@ -119,14 +119,14 @@ protected:
   RequestStatistics::Item const& statistics(uint64_t);
   RequestStatistics::Item stealStatistics(uint64_t);
   
-  /// @brief send simple response including response body
-  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                         velocypack::Buffer<uint8_t>&&);
-
   /// @brief send response including error response body
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum,
-                        char const* errorMessage = nullptr);
+  void sendErrorResponse(rest::ResponseCode, rest::ContentType,
+                         uint64_t messageId, int errorNum,
+                         char const* errorMessage = nullptr);
+  
+  /// @brief send simple response including response body
+  void sendSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
+                          velocypack::Buffer<uint8_t>&&);
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
@@ -160,7 +160,7 @@ protected:
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
 
-  std::mutex _statisticsMutex;
+  mutable std::mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics::Item> _statisticsMap;
 };
 }  // namespace rest

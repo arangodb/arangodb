@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +39,10 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
 
@@ -56,7 +58,9 @@ class Builder;
 class Slice;
 class StringRef;
 }  // namespace velocypack
+
 class CursorRepository;
+struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
@@ -64,12 +68,6 @@ class LogicalView;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 }  // namespace arangodb
-
-/// @brief predefined collection name for users
-constexpr auto TRI_COL_NAME_USERS = "_users";
-
-/// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
 /// @brief document handle separator as character
 constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
@@ -144,7 +142,7 @@ struct TRI_vocbase_t {
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _deadCollections;  // collections dropped that can be removed later
 
-  std::unordered_map<TRI_voc_cid_t,
+  std::unordered_map<arangodb::DataSourceId,
                      std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceById;  // data-source by id
   std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>> _dataSourceByName;  // data-source by name
@@ -161,13 +159,13 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
-  arangodb::basics::DeadlockDetector<TRI_voc_tid_t, arangodb::LogicalCollection> _deadlockDetector;
+  arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
 
-  // structures for user-defined volatile data
-  void* _userStructures;
+  // structures for volatile cache data (used from JavaScript)
+  std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
  public:
   /// @brief checks if a database name is allowed
@@ -189,7 +187,7 @@ struct TRI_vocbase_t {
   std::uint32_t replicationFactor() const;
   std::uint32_t writeConcern() const;
   std::string const& sharding() const;
-  bool isShardingSingle() const;
+  bool isOneShard() const;
   TRI_vocbase_type_e type() const { return _type; }
 
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
@@ -264,7 +262,7 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalView> createView(arangodb::velocypack::Slice parameters);
 
   /// @brief drops a view
-  arangodb::Result dropView(TRI_voc_cid_t cid, bool allowDropSystem);
+  arangodb::Result dropView(arangodb::DataSourceId cid, bool allowDropSystem);
 
   /// @brief returns all known collections with their parameters
   /// and optionally indexes
@@ -273,7 +271,8 @@ struct TRI_vocbase_t {
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   /// @brief looks up a collection by identifier
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(TRI_voc_cid_t id) const noexcept;
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(arangodb::DataSourceId id) const
+      noexcept;
 
   /// @brief looks up a collection by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollection(std::string const& nameOrId) const
@@ -284,23 +283,24 @@ struct TRI_vocbase_t {
       noexcept;
 
   /// @brief looks up a data-source by identifier
-  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(TRI_voc_cid_t id) const noexcept;
+  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(arangodb::DataSourceId id) const
+      noexcept;
 
   /// @brief looks up a data-source by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const
       noexcept;
 
   /// @brief looks up a view by identifier
-  std::shared_ptr<arangodb::LogicalView> lookupView(TRI_voc_cid_t id) const;
+  std::shared_ptr<arangodb::LogicalView> lookupView(arangodb::DataSourceId id) const;
 
   /// @brief looks up a view by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalView> lookupView(std::string const& nameOrId) const;
 
   /// @brief renames a collection
-  arangodb::Result renameCollection(TRI_voc_cid_t cid, std::string const& newName);
+  arangodb::Result renameCollection(arangodb::DataSourceId cid, std::string const& newName);
 
   /// @brief renames a view
-  arangodb::Result renameView(TRI_voc_cid_t cid, std::string const& oldName);
+  arangodb::Result renameView(arangodb::DataSourceId cid, std::string const& oldName);
 
   /// @brief creates a new collection from parameter set
   /// collection id ("cid") is normally passed with a value of 0
@@ -312,7 +312,8 @@ struct TRI_vocbase_t {
   /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
   /// timeout is in seconds. Essentially, the timeout counts to acquire the
   /// write lock for using the collection.
-  arangodb::Result dropCollection(TRI_voc_cid_t cid, bool allowDropSystem, double timeout);
+  arangodb::Result dropCollection(arangodb::DataSourceId cid,
+                                  bool allowDropSystem, double timeout);
 
   /// @brief unloads a collection
   arangodb::Result unloadCollection(arangodb::LogicalCollection* collection, bool force);
@@ -321,7 +322,8 @@ struct TRI_vocbase_t {
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(TRI_voc_cid_t cid, bool checkPermissions);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(arangodb::DataSourceId cid,
+                                                             bool checkPermissions);
 
   /// @brief locks a collection for usage by name
   /// Note that this will READ lock the collection you have to release the
@@ -375,9 +377,6 @@ struct TRI_vocbase_t {
   /// This function is called when a view is dropped.
   bool unregisterView(arangodb::LogicalView const& view);
 };
-
-/// @brief extract the _rev attribute from a slice
-TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open

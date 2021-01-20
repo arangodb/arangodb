@@ -33,7 +33,7 @@
 
 #include <cstring>
 
-NS_ROOT
+namespace iresearch {
 
 #ifdef _WIN32
   #pragma warning(disable : 4706)
@@ -78,4 +78,4 @@ bool is_same_hostname(const char* rhs, size_t size) {
   return std::equal(name, name + size, rhs);
 }
 
-NS_END // ROOT
+} // ROOT

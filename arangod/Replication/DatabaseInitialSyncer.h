@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Containers/MerkleTree.h"
 #include "Replication/InitialSyncer.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
 
@@ -45,7 +46,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                                                   std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
       DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-      InitialSyncerIncrementalSyncStats& stats, std::string const& keysId,
+      ReplicationMetricsFeature::InitialSyncStats& stats, std::string const& keysId,
       uint64_t chunkId, std::string const& lowString,
       std::string const& highString, std::vector<std::string> const& markers);
 
@@ -62,16 +63,14 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   struct Configuration {
     /// @brief replication applier config (from the base Syncer)
     ReplicationApplierConfiguration const& applier;
-    /// @brief the compaction barrier state (from the base Syncer)
-    replutils::BarrierInfo& barrier;  // TODO worker safety
     /// @brief the dump batch state (from the base InitialSyncer)
     replutils::BatchInfo& batch;  // TODO worker safety
     /// @brief the client connection (from the base Syncer)
     replutils::Connection& connection;
     /// @brief whether or not we have flushed the WAL on the remote server
     bool flushed;  // TODO worker safety
-    /// @brief info about master node (from the base Syncer)
-    replutils::MasterInfo& master;
+    /// @brief info about leader node (from the base Syncer)
+    replutils::LeaderInfo& leader;
     /// @brief the progress info (from the base InitialSyncer)
     replutils::ProgressInfo& progress;  // TODO worker safety
     /// @brief the syncer state (from the base Syncer)
@@ -80,8 +79,8 @@ class DatabaseInitialSyncer final : public InitialSyncer {
     TRI_vocbase_t& vocbase;
 
     explicit Configuration(ReplicationApplierConfiguration const&,
-                           replutils::BarrierInfo&, replutils::BatchInfo&,
-                           replutils::Connection&, bool, replutils::MasterInfo&,
+                           replutils::BatchInfo&,
+                           replutils::Connection&, bool, replutils::LeaderInfo&,
                            replutils::ProgressInfo&, SyncerState& state, TRI_vocbase_t&);
 
     bool isChild() const;  // TODO worker safety
@@ -91,13 +90,13 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                         ReplicationApplierConfiguration const& configuration);
 
   /// @brief run method, performs a full synchronization
-  Result run(bool incremental) override {
-    return runWithInventory(incremental, velocypack::Slice::noneSlice());
+  Result run(bool incremental, char const* context = nullptr) override {
+    return runWithInventory(incremental, velocypack::Slice::noneSlice(), context);
   }
 
   /// @brief run method, performs a full synchronization with the
   ///        given list of collections.
-  Result runWithInventory(bool incremental, velocypack::Slice collections);
+  Result runWithInventory(bool incremental, velocypack::Slice collections, char const* context = nullptr);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const& slice) override {
     return &_config.vocbase;
@@ -130,23 +129,16 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   // TODO worker-safety
   bool isAborted() const override;
 
-  /// @brief insert the batch id and barrier ID.
-  ///        For use in globalinitialsyncer
+  /// @brief insert the batch ID for use in globalinitialsyncer
   // TODO worker safety
-  void useAsChildSyncer(replutils::MasterInfo const& info, SyncerId const syncerId, uint64_t barrierId,
-                        double barrierUpdateTime, uint64_t batchId, double batchUpdateTime) {
+  void useAsChildSyncer(replutils::LeaderInfo const& info, SyncerId const syncerId,
+                        uint64_t batchId, double batchUpdateTime) {
     _state.syncerId = syncerId;
     _state.isChildSyncer = true;
-    _state.master = info;
-    _state.barrier.id = barrierId;
-    _state.barrier.updateTime = barrierUpdateTime;
+    _state.leader = info;
     _config.batch.id = batchId;
     _config.batch.updateTime = batchUpdateTime;
   }
-
-  /// @brief last time the barrier was extended or created
-  /// The barrier prevents the deletion of WAL files for mmfiles
-  double barrierUpdateTime() const { return _state.barrier.updateTime; }
 
   /// @brief last time the batch was extended or created
   /// The batch prevents compaction in mmfiles and keeps a snapshot
@@ -157,10 +149,19 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
+  enum class FormatHint {
+    // format must still be detected. this is used on the first call
+    AutoDetect,
+    // enveloped format. all documents are wrapped into a {"type":2300,"data":{...}} envelope
+    Envelope,
+    // raw documents, i.e. no envelope
+    NoEnvelope,
+  };
+
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, arangodb::LogicalCollection* coll,
-                      std::string const& leaderColl, InitialSyncerDumpStats& stats,
+                      std::string const& leaderColl, 
                       int batch, TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory
@@ -169,21 +170,18 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief set a progress message
   void setProgress(std::string const& msg);
 
-  /// @brief send a WAL flush command
-  Result sendFlush();
-
   /// @brief handle a single dump marker
   // TODO worker-safety
   Result parseCollectionDumpMarker(transaction::Methods&, arangodb::LogicalCollection*,
-                                   arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice, FormatHint& hint);
 
   /// @brief apply the data from a collection dump
   // TODO worker-safety
   Result parseCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
 
-  /// @brief determine the number of documents in a collection
-  int64_t getSize(arangodb::LogicalCollection const& col);
+  /// @brief whether or not the collection has documents
+  bool hasDocuments(arangodb::LogicalCollection const& col);
 
   /// @brief incrementally fetch data from a collection
   // TODO worker safety
@@ -217,7 +215,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result handleCollection(arangodb::velocypack::Slice const&,
                           arangodb::velocypack::Slice const&, bool incremental, SyncPhase);
 
-  /// @brief handle the inventory response of the master
+  /// @brief handle the inventory response of the leader
   Result handleCollectionsAndViews(arangodb::velocypack::Slice const& colls,
                                    arangodb::velocypack::Slice const& views,
                                    bool incremental);
@@ -243,6 +241,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result batchFinish();
 
   Configuration _config;
+
+  /// @brief whether or not we are a coordinator/dbserver
+  bool const _isClusterRole;
 };
 
 }  // namespace arangodb

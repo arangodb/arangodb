@@ -31,7 +31,7 @@
 #include <set>
 #include <map>
 
-NS_LOCAL
+namespace {
 
 struct unique_base {
   using ptr = std::unique_ptr<unique_base>;
@@ -63,7 +63,7 @@ class memory_pool_allocator_test: public test_base {
   }
 };
 
-NS_END // LOCAL
+} // LOCAL
 
 TEST(memory_test, allocate_unique_array_no_construct) {
   std::allocator<char> alloc;

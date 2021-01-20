@@ -23,7 +23,7 @@
 #include "shared.hpp"
 #include "error.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 //                                                                   error_base
@@ -119,4 +119,4 @@ const char* illegal_state::what() const noexcept{
   return "Illegal state."; 
 }
 
-NS_END // NS_ROOT
+} // namespace iresearch {

@@ -98,6 +98,16 @@ function SynchronousReplicationWithViewSuite () {
       replicas = ccinfo.map(s => s.servers.length);
       if (replicas.every(x => x > 1)) {
         console.info("Replication up and running!");
+        // The following wait has a purpose, so please do not remove it.
+        // We have just seen that all followers are in sync. However, this
+        // means that the leader has told the agency so, it has not necessarily
+        // responded to the followers, so they might still be in
+        // SynchronizeShard. If we STOP the leader too quickly in a subsequent
+        // test, then the follower might get stuck in SynchronizeShard
+        // and the expected failover cannot happen. A second should be plenty
+        // of time to receive the response and finish the SynchronizeShard
+        // operation.
+        wait(1);
         return true;
       }  
       wait(0.5);

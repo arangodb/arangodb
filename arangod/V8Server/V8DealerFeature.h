@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/ConditionVariable.h"
+#include "RestServer/MetricsFeature.h"
 #include "V8/JSLoader.h"
 
 #include <velocypack/Builder.h>
@@ -43,21 +45,21 @@ class V8Context;
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
-  static V8DealerFeature* DEALER;
-
   struct Statistics {
     size_t available;
     size_t busy;
     size_t dirty;
     size_t free;
     size_t max;
+    size_t min;
   };
-  struct MemoryStatistics {
+  struct DetailedContextStatistics {
     size_t id;
     double tMax;
     size_t countOfTimes;
     size_t heapMax;
     size_t heapMin;
+    size_t invocations;
   };
 
   explicit V8DealerFeature(application_features::ApplicationServer& server);
@@ -82,17 +84,20 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   uint64_t _nrInflightContexts;     // number of contexts currently in creation
   uint64_t _maxContextInvocations;  // maximum number of V8 context invocations
   bool _allowAdminExecute;
+  bool _allowJavaScriptTransactions;
   bool _enableJS;
 
  public:
   bool allowAdminExecute() const { return _allowAdminExecute; }
+  bool allowJavaScriptTransactions() const { return _allowJavaScriptTransactions; }
 
   bool addGlobalContextMethod(std::string const&);
   void collectGarbage();
 
-  // In the following two, if the builder pointer is not nullptr, then
-  // the Javascript result(s) are returned as VPack in the builder,
-  // the builder is not cleared and thus should be empty before the call.
+  /// @brief loads a JavaScript file in all contexts, only called at startup.
+  /// if the builder pointer is not nullptr, then
+  /// the Javascript result(s) are returned as VPack in the builder,
+  /// the builder is not cleared and thus should be empty before the call.
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
 
@@ -100,9 +105,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   /// currently returns a nullptr if no context can be acquired in time
   V8Context* enterContext(TRI_vocbase_t*, JavaScriptSecurityContext const& securityContext);
   void exitContext(V8Context*);
-
-  void defineContextUpdate(std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
-                           TRI_vocbase_t*);
 
   void setMinimumContexts(size_t nr) {
     if (nr > _nrMinContexts) {
@@ -115,7 +117,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
 
   Statistics getCurrentContextNumbers();
-  std::vector<MemoryStatistics> getCurrentMemoryNumbers();
+  std::vector<DetailedContextStatistics> getCurrentContextDetails();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -127,12 +129,14 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::string const& appPath() const { return _appPath; }
 
+  static bool javascriptRequestedViaOptions(std::shared_ptr<options::ProgramOptions> const& options);
+
  private:
   uint64_t nextId() { return _nextId++; }
   void copyInstallationFiles();
   void startGarbageCollection();
   V8Context* addContext();
-  V8Context* buildContext(size_t id);
+  V8Context* buildContext(TRI_vocbase_t* vocbase, size_t id);
   V8Context* pickFreeContextForGc();
   void shutdownContext(V8Context* context);
   void unblockDynamicContextCreation();
@@ -165,7 +169,12 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::map<std::string, double> _definedDoubles;
   std::map<std::string, std::string> _definedStrings;
 
-  std::vector<std::pair<std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>, TRI_vocbase_t*>> _contextUpdates;
+  Counter& _contextsCreationTime;
+  Counter& _contextsCreated;
+  Counter& _contextsDestroyed;
+  Counter& _contextsEntered;
+  Counter& _contextsExited;
+  Counter& _contextsEnterFailures;
 };
 
 /// @brief enters and exits a context and provides an isolate
@@ -181,6 +190,7 @@ class V8ContextGuard {
   V8Context* context() const { return _context; }
 
  private:
+  TRI_vocbase_t* _vocbase;
   v8::Isolate* _isolate;
   V8Context* _context;
 };
@@ -195,6 +205,7 @@ class V8ConditionalContextGuard {
   ~V8ConditionalContextGuard();
 
  private:
+  TRI_vocbase_t* _vocbase;
   v8::Isolate*& _isolate;
   V8Context* _context;
   bool _active;

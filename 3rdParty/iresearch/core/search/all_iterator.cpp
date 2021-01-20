@@ -23,7 +23,7 @@
 #include "all_iterator.hpp"
 #include "formats/empty_term_reader.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 all_iterator::all_iterator(
     const sub_reader& reader,
@@ -49,4 +49,4 @@ all_iterator::all_iterator(
   }
 }
 
-NS_END // ROOT
+} // ROOT

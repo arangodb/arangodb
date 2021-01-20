@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 
 #include <algorithm>
 
+#include "Agency/AgencyStrings.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -59,6 +61,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -91,6 +94,7 @@
 
 #include <boost/core/demangle.hpp>
 using namespace arangodb;
+using namespace arangodb::consensus;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
@@ -122,14 +126,17 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   // required for AuthenticationFeature with USE_ENTERPRISE
   server.addFeature<arangodb::LdapFeature>(false);
 #endif
-
-  arangodb::DatabaseFeature::DATABASE = &server.getFeature<arangodb::DatabaseFeature>();
 }
 
 static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<arangodb::application_features::ClusterFeaturePhase>(false);
   server.addFeature<arangodb::ClusterFeature>(false);
+ 
+  // fake the exit code with which unresolved futures are returned on
+  // shutdown. if we don't do this lots of places in ClusterInfo will
+  // report failures during testing
+  server.getFeature<ClusterFeature>().setSyncerShutdownCode(TRI_ERROR_NO_ERROR);
 }
 
 static void SetupCommunicationFeaturePhase(MockServer& server) {
@@ -150,7 +157,12 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<arangodb::QueryRegistryFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
-  server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+  {
+    auto& feature = server.addFeature<arangodb::iresearch::IResearchFeature>(true);
+    feature.collectOptions(server.server().options());
+    feature.validateOptions(server.server().options());
+  }
+
   server.addFeature<arangodb::aql::AqlFunctionFeature>(true);
   server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
   server.addFeature<arangodb::AqlFeature>(true);
@@ -293,9 +305,20 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
   return *system;
 }
 
+MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
+  // setup required application features
+  SetupGreetingsPhase(*this);
+  addFeature<arangodb::EngineSelectorFeature>(false);
+
+  if (start) {
+    startFeatures();
+  }
+}
+
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
+  addFeature<arangodb::NetworkFeature>(false);
 
   if (start) {
     startFeatures();
@@ -323,51 +346,78 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
                                                           noCollections, opts);
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activateTracing,
-                                                                     std::string queryString) const {
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
+    bool activateTracing, std::string queryString,
+    std::function<void(aql::Query&)> callback) const {
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
-  auto queryOptions = std::make_shared<VPackBuilder>();
-  queryOptions->openObject();
+  VPackBuilder queryOptions;
+  queryOptions.openObject();
   if (activateTracing) {
-    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+    queryOptions.add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
   }
-  queryOptions->close();
+  queryOptions.close();
   if (queryString.empty()) {
     queryString = "RETURN 1";
   }
-  
+
   aql::QueryString fakeQueryString(queryString);
-  auto query =
-      std::make_unique<arangodb::aql::Query>(arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-                                             fakeQueryString, bindParams, queryOptions);
+  auto query = std::make_unique<arangodb::aql::Query>(
+      arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
+      fakeQueryString, bindParams, queryOptions.slice());
+  callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
-//  auto engine =
-//      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
-//  query->setEngine(std::move(engine));
+  //  auto engine =
+  //      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
+  //  query->setEngine(std::move(engine));
 
   return query;
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
-  addFeature<arangodb::QueryRegistryFeature>(false);
-
   SetupV8Phase(*this);
+  addFeature<arangodb::QueryRegistryFeature>(false);
+  addFeature<arangodb::NetworkFeature>(false);
   if (start) {
     startFeatures();
   }
 }
 
-consensus::check_ret_t AgencyCache::set(VPackSlice const trx) {
-  ++_commitIndex;
-  return _readDB.applyTransaction(trx);
+std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::applyTestTransaction(
+    consensus::query_t const& trxs) {
+  std::unordered_set<uint64_t> uniq;
+  std::vector<uint64_t> toCall;
+  std::unordered_set<std::string> pc, cc;
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> res;
+
+  {
+    std::lock_guard g(_storeLock);
+    ++_commitIndex;
+    res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
+        _readDB.applyTransactions(trxs), _commitIndex};  // apply logs
+  }
+  {
+    std::lock_guard g(_callbacksLock);
+    for (auto const& trx : VPackArrayIterator(trxs->slice())) {
+      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
+    }
+    {
+      std::lock_guard g(_storeLock);
+      for (auto const& i : pc) {
+        _planChanges.emplace(_commitIndex, i);
+      }
+      for (auto const& i : cc) {
+        _currentChanges.emplace(_commitIndex, i);
+      }
+    }
+  }
+  invokeCallbacks(toCall);
+  return res;
 }
 
-consensus::Store& AgencyCache::store() {
-  return _readDB;
-}
+consensus::Store& AgencyCache::store() { return _readDB; }
 
 MockClusterServer::MockClusterServer() : MockServer() {
   _oldRole = arangodb::ServerState::instance()->getRole();
@@ -376,34 +426,33 @@ MockClusterServer::MockClusterServer() : MockServer() {
   SetupAqlPhase(*this);
 
   _server.getFeature<ClusterFeature>().allocateMembers();
-  _agencyStore = &_server.getFeature<ClusterFeature>().agencyCache().store();
 
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
 
-  arangodb::network::ConnectionPool::Config config;
+  arangodb::network::ConnectionPool::Config config(_server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
   addFeature<arangodb::NetworkFeature>(true, config);
 }
 
 MockClusterServer::~MockClusterServer() {
+  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
+  _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
   arangodb::ServerState::instance()->setRole(_oldRole);
 }
 
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  arangodb::network::ConnectionPool::Config poolConfig;
+  arangodb::network::ConnectionPool::Config poolConfig(_server.getFeature<MetricsFeature>());
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
-  poolConfig.minOpenConnections = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
-  _pool = std::make_unique<AsyncAgencyStorePoolMock>(_agencyStore, poolConfig);
+  _pool = std::make_unique<AsyncAgencyStorePoolMock>(_server, poolConfig);
 
   arangodb::AgencyCommHelper::initialize("arango");
   AsyncAgencyCommManager::initialize(server());
@@ -411,7 +460,8 @@ void MockClusterServer::startFeatures() {
   AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
   arangodb::AgencyComm(server()).ensureStructureInitialized();
 
-  std::string st = "{\"" + arangodb::ServerState::instance()->getId() + "\":{\"rebootId\":1}}";
+  std::string st = "{\"" + arangodb::ServerState::instance()->getId() +
+                   "\":{\"rebootId\":1}}";
   agencyTrx("/arango/Current/ServersKnown", st);
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
@@ -420,46 +470,66 @@ void MockClusterServer::startFeatures() {
   auto& factory =
       getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
   indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
+  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
 }
 
-void MockClusterServer::agencyTrx(std::string const& key, std::string const& value) {
+consensus::index_t MockClusterServer::agencyTrx(std::string const& key,
+                                                std::string const& value) {
   // Build an agency transaction:
-  VPackBuilder b;
+  auto b = std::make_shared<VPackBuilder>();
   {
-    VPackArrayBuilder guard(&b);
+    VPackArrayBuilder trxs(b.get());
     {
-      VPackObjectBuilder guard2(&b);
-      auto b2 = VPackParser::fromJson(value);
-      b.add(key, b2->slice());
+      VPackArrayBuilder trx(b.get());
+      {
+        VPackObjectBuilder op(b.get());
+        auto b2 = VPackParser::fromJson(value);
+        b->add(key, b2->slice());
+      }
     }
   }
-  _server.getFeature<ClusterFeature>().agencyCache().set(b.slice());
+  return std::get<1>(
+      _server.getFeature<ClusterFeature>().agencyCache().applyTestTransaction(b));
 }
 
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   TemplateSpecializer ts(name);
-
   std::string st = ts.specialize(plan_dbs_string);
-  agencyTrx("/arango/Plan/Databases/" + name, st);
 
+  agencyTrx("/arango/Plan/Databases/" + name, st);
   st = ts.specialize(plan_colls_string);
   agencyTrx("/arango/Plan/Collections/" + name, st);
   st = ts.specialize(current_dbs_string);
   agencyTrx("/arango/Current/Databases/" + name, st);
   st = ts.specialize(current_colls_string);
   agencyTrx("/arango/Current/Collections/" + name, st);
-  agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
-  agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+      .wait();
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+      .wait();
 }
 
 void MockClusterServer::agencyDropDatabase(std::string const& name) {
   std::string st = R"=({"op":"delete"}))=";
+
   agencyTrx("/arango/Plan/Databases/" + name, st);
   agencyTrx("/arango/Plan/Collections/" + name, st);
   agencyTrx("/arango/Current/Databases/" + name, st);
   agencyTrx("/arango/Current/Collections/" + name, st);
-  agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
-  agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+      .wait();
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+      .wait();
 }
 
 MockDBServer::MockDBServer(bool start) : MockClusterServer() {
@@ -476,17 +546,13 @@ MockDBServer::~MockDBServer() = default;
 
 TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);
-  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-  ci.loadPlan();
-  ci.loadCurrent();
-
   // Now we must run a maintenance action to create the database locally,
   // unless it is the system database, in which case this does not work:
   if (name != "_system") {
     maintenance::ActionDescription ad(
         {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
          {std::string(maintenance::DATABASE), std::string(name)}},
-        maintenance::HIGHER_PRIORITY);
+        maintenance::HIGHER_PRIORITY, false);
     auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
     maintenance::CreateDatabase cd(mf, ad);
     cd.first();  // Does the job
@@ -500,9 +566,6 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
 
 void MockDBServer::dropDatabase(std::string const& name) {
   agencyDropDatabase(name);
-  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-  ci.loadPlan();
-  ci.loadCurrent();
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase == nullptr);
@@ -511,7 +574,7 @@ void MockDBServer::dropDatabase(std::string const& name) {
   maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
-      maintenance::HIGHER_PRIORITY);
+      maintenance::HIGHER_PRIORITY, false);
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
   dd.first();  // Does the job
@@ -529,9 +592,6 @@ MockCoordinator::~MockCoordinator() = default;
 
 TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);
-  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-  ci.loadPlan();
-  ci.loadCurrent();
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase != nullptr);
@@ -540,9 +600,6 @@ TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
 
 void MockCoordinator::dropDatabase(std::string const& name) {
   agencyDropDatabase(name);
-  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-  ci.loadPlan();
-  ci.loadCurrent();
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase == nullptr);
