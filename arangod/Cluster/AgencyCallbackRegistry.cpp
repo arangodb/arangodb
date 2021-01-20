@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
@@ -55,7 +56,7 @@ AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::Application
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
-bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
+Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
   uint64_t id;
   while (true) {
     id = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
@@ -66,31 +67,35 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     }
   }
 
+  Result res;
   try {
-    bool ok = false;
     if (local) {
       auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-      ok = cache.registerCallback(cb->key, id);
+      res = cache.registerCallback(cb->key, id);
     } else {
-      ok = _agency.registerCallback(cb->key, getEndpointUrl(id)).successful();
+      res = _agency.registerCallback(cb->key, getEndpointUrl(id)).asResult();
       cb->local(false);
     }
-    if (ok) {
+    if (res.ok()) {
       _callbacksCount += 1;
       ++_totalCallbacksRegistered;
-      return true;
+      return res;
     }
-    LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
   } catch (std::exception const& e) {
-    LOG_TOPIC("f5330", ERR, Logger::CLUSTER) << "Couldn't register callback: " << e.what();
+    res.reset(TRI_ERROR_FAILED, e.what());
   } catch (...) {
-    LOG_TOPIC("1d24f", ERR, Logger::CLUSTER)
-        << "Couldn't register callback: unknown exception";
+    res.reset(TRI_ERROR_FAILED, "unknown exception");
   }
-    
-  WRITE_LOCKER(locker, _lock);
-  _callbacks.erase(id);
-  return false;
+  
+  TRI_ASSERT(res.fail());
+  res.reset(res.errorNumber(), std::string("registering ") + (local ? "local " : "") + "callback failed: " + res.errorMessage());
+  LOG_TOPIC("b88f4", WARN, Logger::CLUSTER) << res.errorMessage();
+  
+  {
+    WRITE_LOCKER(locker, _lock);
+    _callbacks.erase(id);
+  }
+  return res;
 }
 
 std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id) {
