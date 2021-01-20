@@ -169,10 +169,7 @@ void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::
 
 /// @brief closes an open collection
 void ClusterCollection::close() {
-  READ_LOCKER(guard, _indexesLock);
-  for (auto it : _indexes) {
-    it->unload();
-  }
+  unload();
 }
 
 void ClusterCollection::load() {

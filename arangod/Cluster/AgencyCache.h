@@ -45,10 +45,10 @@ class AgencyCache final : public arangodb::Thread {
     uint64_t version;        // Plan / Current version
     databases_t dbs; // touched databases
     consensus::query_t rest; // Plan / Current rest
-    change_set_t (consensus::index_t const& i, uint64_t const& v, databases_t const& d,
-                  consensus::query_t const& r) :
+    change_set_t(consensus::index_t const& i, uint64_t const& v, databases_t const& d,
+                 consensus::query_t const& r) :
       ind(i), version(v), dbs(d), rest(r) {}
-    change_set_t (consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
+    change_set_t(consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
       ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
   };
 
@@ -181,7 +181,7 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief Agency callback registry
   AgencyCallbackRegistry& _callbackRegistry;
 
-  /// @brief Stored call backs key -> callback registry's id
+  /// @brief Stored callbacks: key -> callback registry's id
   mutable std::mutex _callbacksLock;
   std::multimap<std::string, uint64_t> _callbacks;
 

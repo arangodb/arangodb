@@ -883,8 +883,10 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
       CollectionGuard guard(vocbase, col->id());
       Result res = guard.collection()->dropIndex(iid);
 
-      if (res.fail()) {
-        res.reset(); // TODO: why do we ignore failures here?
+      if (res.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
+        // if the index cannot be found (for whatever reason), dropping
+        // it fails, but the end result is the same: no such index
+        res.reset();
       }
 
       return res;

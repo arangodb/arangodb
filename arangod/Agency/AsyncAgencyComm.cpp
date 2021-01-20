@@ -408,14 +408,13 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     RequestType type, uint64_t index) const {
   std::vector<ClientId> clientIds;
   return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout,
-                          type, clientIds, VPackBuffer<uint8_t>{});
+                          type, std::vector<ClientId>(), VPackBuffer<uint8_t>{});
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
     RequestType type, velocypack::Buffer<uint8_t>&& body) const {
-  std::vector<ClientId> clientIds;
-  return sendWithFailover(method, url, timeout, type, clientIds, std::move(body));
+  return sendWithFailover(method, url, timeout, type, std::vector<ClientId>(), std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
@@ -546,9 +545,8 @@ AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(
     network::Timeout timeout, AgencyReadTransaction const& trx) const {
-  std::vector<ClientId> clientIds;
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout,
-                          RequestType::READ, clientIds, trx);
+                          RequestType::READ, std::vector<ClientId>(), trx);
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(
@@ -581,9 +579,8 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWriteTransaction(
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(
     network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const {
-  std::vector<ClientId> clientIds;
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout,
-                          RequestType::READ, clientIds, std::move(body));
+                          RequestType::READ, std::vector<ClientId>(), std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendPollTransaction(

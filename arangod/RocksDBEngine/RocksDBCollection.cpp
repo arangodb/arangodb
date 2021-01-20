@@ -467,7 +467,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
           RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
                                        _logicalCollection.id(), indexInfo.slice()));
     }
-  } while(false);
+  } while (false);
 
   // cleanup routine
   if (res.fail()) { // We could not create the index. Better abort
@@ -520,12 +520,8 @@ Result RocksDBCollection::dropIndex(IndexId iid) {
     _indexes.erase(it);
   }
     
-  READ_LOCKER(guard, _indexesLock);
-
-  TRI_ASSERT(toRemove != nullptr);
-  
   // index found. now drop it
-  
+  TRI_ASSERT(toRemove != nullptr);
   RocksDBIndex* cindex = static_cast<RocksDBIndex*>(toRemove.get());
   
   Result res;
