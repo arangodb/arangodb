@@ -128,6 +128,24 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
 };
+
+void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
+  for (auto const& [id, info] : from.varInfo) {
+    if (info.registerId.isConstRegister()) {
+      to.varInfo.try_emplace(id, info);
+    }
+  }
+}
+
+void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
+  for (auto& s : plan.subQueryNodes) {
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
+    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
+    subqueryPlan.nrConstRegs = plan.nrConstRegs;
+    propagateConstVariables(plan, subqueryPlan);
+    propagateConstVariablesToSubqueries(subqueryPlan);
+  }
+}
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -993,16 +1011,16 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   for (auto& s : v->subQueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
+    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
     // we only want to create a single const block for all queries, so we have to
     // ensure that nrConstRegs in the RegisterPlan of the root node contains the
     // sum of all const regs in all (sub)queries.
-    v->nrConstRegs = sq->getSubquery()->_registerPlan->nrConstRegs;
+    v->nrConstRegs = subqueryPlan.nrConstRegs;
+    propagateConstVariables(subqueryPlan, *v);
   }
 
-  for (auto& s : v->subQueryNodes) {
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    sq->getSubquery()->_registerPlan->nrConstRegs = v->nrConstRegs;
-  }
+  propagateConstVariablesToSubqueries(*v);
+  
   walker.reset();
 }
 
