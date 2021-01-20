@@ -762,32 +762,36 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   buffer.clear();
   while (true) {
-    if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
+    constexpr size_t bufferSize = 32768;
+    if (buffer.reserve(bufferSize) != TRI_ERROR_NO_ERROR) {
       result = {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
       return result;
     }
 
-    ssize_t numRead = datafile->read(buffer.end(), 16384);
+    ssize_t numRead = datafile->read(buffer.end(), bufferSize);
     if (datafile->status().fail()) {  // error while reading
       result = datafile->status();
       return result;
     }
-    // we read something
-    buffer.increaseLength(numRead);
-    jobData.stats.totalRead += static_cast<uint64_t>(numRead);
-    numReadForThisCollection += numRead;
-    numReadSinceLastReport += numRead;
+    
+    if (numRead > 0) {
+      // we read something
+      buffer.increaseLength(numRead);
+      jobData.stats.totalRead += static_cast<uint64_t>(numRead);
+      numReadForThisCollection += numRead;
+      numReadSinceLastReport += numRead;
 
-    if (buffer.length() < jobData.options.chunkSize && numRead > 0) {
-      continue;  // still continue reading
+      if (buffer.length() < jobData.options.chunkSize) {
+        continue;  // still continue reading
+      }
     }
-
+    
     // do we have a buffer?
     if (buffer.length() > 0) {
       // look for the last \n in the buffer
       char* found = (char*)memrchr((const void*)buffer.begin(), '\n', buffer.length());
       size_t length;
-
+    
       if (found == nullptr) {  // no \n in buffer...
         if (numRead == 0) {
           // we're at the end of the file, so send the complete buffer anyway
@@ -796,9 +800,14 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
           continue;  // don't have a complete line yet, read more
         }
       } else {
-        length = found - buffer.begin();  // found a \n somewhere; break at line
+        if (numRead == 0) {
+          // we're at the end of the file, so send the complete buffer anyway
+          length = buffer.length();
+        } else {
+          length = found - buffer.begin();  // found a \n somewhere; break at line
+        }
       }
-
+      
       jobData.stats.totalBatches++;
       result = ::sendRestoreData(httpClient, jobData.options, cname, buffer.begin(), length, jobData.useEnvelope);
       jobData.stats.totalSent += length;
