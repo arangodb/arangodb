@@ -215,7 +215,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   TRI_ASSERT(type != REPLICATION_MARKER_DOCUMENT || doc.isObject());
 
-  if (type == REPLICATION_INVALID) {
+  if (type != REPLICATION_MARKER_DOCUMENT && type != REPLICATION_MARKER_REMOVE) {
+    // we can only handle REPLICATION_MARKER_DOCUMENT and REPLICATION_MARKER_REMOVE here
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
                       collectionName + "' on line " + std::to_string(line) +
