@@ -212,11 +212,11 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=](OperationResult&& opres) {
+          .then_bind([=](OperationResult&& opres) {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
-            return _activeTrx->finishAsync(opres.result).thenValue([=, opres(std::move(opres))](Result&& res) {
+            return _activeTrx->finishAsync(opres.result).thenValue([=, cname = cname, opOptions = opOptions, opres(std::move(opres))](Result&& res) {
               if (opres.fail()) {
                 generateTransactionError(cname, opres);
                 return;
@@ -318,7 +318,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options)
-          .thenValue([=, options = options, collection = collection, key = key,
+          .then_bind([=, options = options, collection = collection, key = key,
                       buffer(std::move(buffer))](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
                 .thenValue([=, options = options, collection = collection,
@@ -515,8 +515,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
   });
 
-  return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+  return waitForFuture(std::move(f).then_bind([=, opOptions = opOptions, buffer(std::move(buffer))](OperationResult opRes) {
+    return _activeTrx->finishAsync(opRes.result).thenValue([=, opOptions = opOptions, opRes(std::move(opRes))](Result&& res) {
       // ...........................................................................
       // outside write transaction
       // ...........................................................................
@@ -624,7 +624,7 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)
-          .thenValue([=, cname = cname, key = key, opOptions = opOptions,
+          .then_bind([=, cname = cname, key = key, opOptions = opOptions,
                       buffer(std::move(buffer))](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
                 .thenValue([=, cname = cname, key = key, opOptions = opOptions,
@@ -691,7 +691,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
 
   return waitForFuture(
       _activeTrx->documentAsync(cname, search, opOptions)
-          .thenValue([=, cname = cname, opOptions = opOptions](OperationResult opRes) {
+          .then_bind([=, cname = cname, opOptions = opOptions](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
                 .thenValue([=, cname = cname, opOptions = opOptions,
                             opRes(std::move(opRes))](Result&& res) {

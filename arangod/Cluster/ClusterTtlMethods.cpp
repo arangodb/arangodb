@@ -65,8 +65,8 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
-    
+    network::Response r = std::move(f).await_unwrap();
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
@@ -99,8 +99,8 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
-    
+    network::Response r = std::move(f).await_unwrap();
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
@@ -138,8 +138,8 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
-    
+    network::Response r = std::move(f).await_unwrap();
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }

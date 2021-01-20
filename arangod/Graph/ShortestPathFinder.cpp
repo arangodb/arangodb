@@ -68,7 +68,7 @@ void ShortestPathFinder::destroyEngines() {
                                     "/_internal/traverser/" +
                                         arangodb::basics::StringUtils::itoa(it.second),
                                     VPackBuffer<uint8_t>(), options)
-                   .get();
+                   .await_unwrap();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have

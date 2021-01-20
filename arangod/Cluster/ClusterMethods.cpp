@@ -1229,7 +1229,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).await_unwrap();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1353,7 +1353,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
 
   std::map<std::string, std::vector<double>> indexEstimates;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
@@ -1747,7 +1747,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
   // lazily begin transactions on all leader shards
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds).await_unwrap();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1937,7 +1937,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   if (isManaged) {  // lazily begin the transaction
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).await_unwrap();
     if (res.fail()) {
       return makeFuture(OperationResult(res, options));
     }
@@ -2041,7 +2041,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserC
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2140,7 +2140,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserC
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2236,7 +2236,7 @@ void fetchVerticesFromEngines(
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -2527,7 +2527,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync, bool waitF
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2570,7 +2570,7 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
@@ -2836,7 +2836,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
 
   size_t nrGood = 0;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
     if (!r.ok()) {
       continue;
     }
@@ -2857,7 +2857,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
     if (!r.ok()) {
       continue;
     }
@@ -3048,7 +3048,7 @@ arangodb::Result controlMaintenanceFeature(network::ConnectionPool* pool,
 
   // Now listen to the results:
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(network::fuerteToArangoErrorCode(r),
@@ -3106,7 +3106,7 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool, std::string c
 
   // Now listen to the results:
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       // oh-oh cluster is in a bad state
@@ -3442,7 +3442,7 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
     }
   };
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3536,7 +3536,7 @@ arangodb::Result unlockDBServerTransactions(network::ConnectionPool* pool,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
-  std::ignore = futures::collectAll(futures).get();
+  std::ignore = futures::collectAll(futures).await_unwrap();
 
   LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
       << "best try to kill all locks on db servers";
@@ -3583,7 +3583,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   std::string version;
   bool sizeValid = true;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(network::fuerteToArangoErrorCode(r), std::string("Communication error list backups on ") +
@@ -3692,7 +3692,7 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool, std::string c
 
   // Now listen to the results:
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(network::fuerteToArangoErrorCode(r),
@@ -3783,7 +3783,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
 
   // Perform the requests
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -3835,7 +3835,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
 
   // Perform the requests
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -4380,7 +4380,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature, VPackBuild
                                   "/_api/engine/stats", VPackBuffer<uint8_t>(), reqOpts));
   }
 
-  auto responses = futures::collectAll(std::move(futures)).get();
+  auto responses = futures::collectAll(std::move(futures)).await_unwrap();
 
   report.openObject();
   for (auto const& tryRes : responses) {

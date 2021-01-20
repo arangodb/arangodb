@@ -102,7 +102,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).await_unwrap();
       if (res.fail()) {  // something is wrong
         return res;
       }
@@ -136,10 +136,10 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
 
   updateStatus(transaction::Status::ABORTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
-  
+
   return {};
 }
-  
+
 /// @brief return number of commits
 uint64_t ClusterTransactionState::numCommits() const {
   // there are no intermediate commits for a cluster transaction, so we can

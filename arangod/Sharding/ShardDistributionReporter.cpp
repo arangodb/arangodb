@@ -358,7 +358,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // Wait for responses
             // First wait for Leader
             {
-              auto const& res = leaderF.get();
+              auto const& res = std::move(leaderF).await_unwrap();
               if (res.fail()) {
                 // We did not even get count for leader, use defaults
                 continue;
@@ -385,7 +385,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             }
 
             {
-              auto responses = futures::collectAll(futures).get();
+              auto responses = futures::collectAll(futures).await_unwrap();
               for (futures::Try<network::Response> const& response : responses) {
                 if (!response.has_value() || response.unwrap().fail()) {
                   // We do not care for errors of any kind.

@@ -59,13 +59,13 @@ ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
     // force shutdown of Plan/Current syncers. under normal circumstances they
     // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if
     // something goes very wrong at startup)
     waitForSyncersToStop();
 
     // force shutdown of AgencyCache. under normal circumstances the cache will
     // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if
     // something goes very wrong at startup)
     shutdownAgencyCache();
 
@@ -442,8 +442,8 @@ void ClusterFeature::prepare() {
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
     return;
-  } 
-    
+  }
+
   reportRole(_requestedRole);
 
   network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
@@ -534,7 +534,7 @@ void ClusterFeature::start() {
   // empty agency. There are also other measures that guard against such a
   // outcome. But there is also no point continuing with a first agency poll.
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache->waitFor(1).get();
+    std::ignore = _agencyCache->waitFor(1).await_unwrap();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
       << "Agency cache is ready. Starting cluster cache syncers";
   }

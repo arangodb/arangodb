@@ -155,7 +155,7 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
     futures.emplace_back(std::move(f));
   }
 
-  auto responses = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(futures).await_unwrap();
 
   // This code intentionally ignores all errors
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();

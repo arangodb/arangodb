@@ -113,8 +113,8 @@ void Inception::gossip() {
   if (this->isStopping() || _agent.isStopping()) {
     return;
   }
-  
-  
+
+
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
@@ -125,7 +125,7 @@ void Inception::gossip() {
   auto startTime = steady_clock::now();
   seconds timeout(3600);
   long waitInterval = 250000;
-  
+
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(1);
 
@@ -177,7 +177,7 @@ void Inception::gossip() {
       _agent.activateAgency();
       return;
     }
-    
+
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
@@ -260,14 +260,14 @@ bool Inception::restartingActiveAgent() {
     VPackObjectBuilder b(&greeting);
     greeting.add(clientId, VPackValue(clientEp));
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(2);
   reqOpts.skipScheduler = true; // hack to speed up future.get()
 
   seconds const timeout(3600);
   long waitInterval(500000);
-  
+
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
@@ -292,12 +292,12 @@ bool Inception::restartingActiveAgent() {
       if (this->isStopping() || _agent.isStopping()) {
         return false;
       }
-      
+
       auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                                         greetBuffer, reqOpts).get();
-      
+                                         greetBuffer, reqOpts).await_unwrap();
+
       if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
-        
+
         VPackSlice const theirConfig = comres.slice();
 
         if (!theirConfig.isObject()) {
@@ -320,20 +320,20 @@ bool Inception::restartingActiveAgent() {
     for (auto const& i : informed) {
       active.erase(std::remove(active.begin(), active.end(), i), active.end());
     }
-    
+
     for (auto& p : pool) {
       if (p.first != myConfig.id() && p.first != "") {
         if (this->isStopping() || _agent.isStopping()) {
           return false;
         }
-        
+
         auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post, path,
-                                           greetBuffer, reqOpts).get();
-        
+                                           greetBuffer, reqOpts).await_unwrap();
+
         if (comres.ok()) {
           try {
             VPackSlice theirConfig = comres.slice();
-          
+
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
             auto const& tcc = theirConfig.get("configuration");
             auto const& theirId = tcc.get("id").copyString();
@@ -356,10 +356,10 @@ bool Inception::restartingActiveAgent() {
                 if (this->isStopping() || _agent.isStopping()) {
                   return false;
                 }
-                
+
                 comres = network::sendRequest(cp, theirLeaderEp, fuerte::RestVerb::Post, path,
-                                              greetBuffer, reqOpts).get();
-                
+                                              greetBuffer, reqOpts).await_unwrap();
+
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.
                 if (comres.fail()) {

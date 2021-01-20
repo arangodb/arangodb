@@ -1518,7 +1518,7 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
     Result res;
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
+      auto responses = futures::collectAll(futures).await_unwrap();
       for (auto const& it : responses) {
         auto& resp = it.unwrap();
         res.reset(resp.combinedResult());

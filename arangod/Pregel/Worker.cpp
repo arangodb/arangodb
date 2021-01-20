@@ -822,7 +822,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
 
     network::Response r = network::sendRequest(pool, "server:" + _config.coordinatorId(),
                                                fuerte::RestVerb::Post,
-                                               baseUrl + path, std::move(buffer), reqOpts).get();
+                                               baseUrl + path, std::move(buffer), reqOpts).await_unwrap();
 
     if (handle) {
       handle(r.slice());

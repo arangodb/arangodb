@@ -130,6 +130,7 @@ source = sys.argv[1]
 # read input file
 
 erros = []
+errnos = set()
 with io.open(source, encoding="utf-8", newline=None) as source_fh:
     errors = csv.reader(io.open(source, encoding="utf-8", newline=None))
 
@@ -149,6 +150,11 @@ with io.open(source, encoding="utf-8", newline=None) as source_fh:
         sys.exit()
 
       errorsList.append(e)
+      errno = int(e[1])
+      if errno in errnos:
+        print("duplicated error number: {}".format(errno), file=sys.stderr)
+        sys.exit()
+      errnos.add(errno)
 
 outfile = sys.argv[2]
 extension = os.path.splitext(outfile)[1]

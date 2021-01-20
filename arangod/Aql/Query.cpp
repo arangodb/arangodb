@@ -1356,7 +1356,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
     // request to DBServers (done by AQL layer or RestTransactionHandler)
     futures::Future<Result> commitResult = _trx->commitAsync();
     // TRI_ASSERT(commitResult.isReady()); -- todo
-    if (auto res = commitResult.await_unwrap(); res.fail()) {
+    if (auto res = std::move(commitResult).await_unwrap(); res.fail()) {
       THROW_ARANGO_EXCEPTION(std::move(res));
     }
   }

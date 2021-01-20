@@ -378,7 +378,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
 
               return result;
             })
-            .get();
+            .await_unwrap();
 
     if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT) || !canRevertToSlowPath) {
       // We are either good or we cannot use the slow path.
@@ -397,7 +397,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     // abortTransaction on knownServers() and wait for them
     if (!state.knownServers().empty()) {
       Result resetRes =
-          commitAbortTransaction(&state, transaction::Status::ABORTED).get();
+          commitAbortTransaction(&state, transaction::Status::ABORTED).await_unwrap();
       if (resetRes.fail()) {
         // return here if cleanup failed - this needs to be a success
         return makeFuture(resetRes);
@@ -422,7 +422,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
 #endif
 
       auto resp = ::beginTransactionRequest(state, leader);
-      auto const& resolvedResponse = resp.get();
+      auto const& resolvedResponse = std::move(resp).await_unwrap();
       if (resolvedResponse.fail()) {
         return makeFuture(resolvedResponse.combinedResult());
       } else {

@@ -441,7 +441,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     _query.incHttpRequests(unsigned(1));
   }
 
-  futures::Future<Result> fastPathResult =
+  futures::Future<Result> fastPathResultFuture =
       futures::collectAll(networkCalls)
           .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses) -> Result {
             // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
@@ -466,13 +466,14 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // we see was LOCK_TIMEOUT.
             return res;
           });
-  if (fastPathResult.get().fail()) {
-    if (fastPathResult.get().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-      return fastPathResult.get();
+  auto fastPathResult = std::move(fastPathResultFuture).await_unwrap();
+  if (fastPathResult.fail()) {
+    if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+      return fastPathResult;
     }
     {
       // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), serverToQueryId);
+      auto requests = cleanupEngines(fastPathResult.errorNumber(), _query.vocbase().name(), serverToQueryId);
       // Wait for all requests to complete.
       // So we know that all Transactions are aborted.
       // We do NOT care for the actual result.
@@ -511,10 +512,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
       auto request = buildSetupRequest(trx, std::move(server), infoSlice,
                                        std::move(didCreateEngine), snippetIds, serverToQueryId,
-                                       serverToQueryIdLock, pool, options);
+                                       serverToQueryIdLock, pool, options).await_unwrap();
       _query.incHttpRequests(unsigned(1));
-      if (request.get().fail()) {
-        return request.get();
+      if (request.fail()) {
+        return request;
       }
     }
   }

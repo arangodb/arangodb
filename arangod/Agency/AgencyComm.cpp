@@ -74,7 +74,7 @@ static std::string const writeURL{"/_api/agency/write"};
 const std::vector<std::string> AgencyTransaction::TypeUrl({"/read", "/write",
                                                            "/transact",
                                                            "/transient"});
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
@@ -530,7 +530,7 @@ VPackSlice AgencyCommResult::slice() const {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "call to AgencyCommResult::slice() without valid precondition check");
   }
-  return _vpack->slice(); 
+  return _vpack->slice();
 }
 
 void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
@@ -638,7 +638,7 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
 AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
-  
+
   try {
     builder.openObject();
     std::string const status =
@@ -1210,7 +1210,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       result = comm.withSkipScheduler(true)
                    .sendWriteTransaction(std::chrono::duration<double>(timeout),
                                          std::move(buffer))
-                   .get();
+                   .await_unwrap();
     } else {
       LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
           << "sending non-write transaction with POST " << inBody.toJson()
@@ -1219,7 +1219,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                    .sendWithFailover(fuerte::RestVerb::Post, initialUrl,
                                      std::chrono::duration<double>(timeout),
                                      AsyncAgencyComm::RequestType::READ, std::move(buffer))
-                   .get();
+                   .await_unwrap();
     }
   } else if (method == arangodb::rest::RequestType::GET) {
     LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
@@ -1229,7 +1229,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                  .sendWithFailover(fuerte::RestVerb::Get, initialUrl,
                                    std::chrono::duration<double>(timeout),
                                    AsyncAgencyComm::RequestType::CUSTOM, std::move(buffer))
-                 .get();
+                 .await_unwrap();
   } else {
     return AgencyCommResult{static_cast<int>(rest::ResponseCode::METHOD_NOT_ALLOWED),
                             "method not supported"};

@@ -155,7 +155,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                   REPL_HOLD_READ_LOCK,
                                   VPackBuffer<uint8_t>(), options)
-                 .get();
+                 .await_unwrap();
   auto res = response.combinedResult();
 
   if (res.ok()) {
@@ -297,7 +297,7 @@ static arangodb::Result addShardFollower(
     auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
                                     REPL_ADD_FOLLOWER,
                                     std::move(*body.steal()), options)
-                   .get();
+                   .await_unwrap();
     auto result = response.combinedResult();
 
     if (result.fail()) {
@@ -356,7 +356,7 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                                   REPL_HOLD_READ_LOCK,
                                   std::move(*body.steal()), options)
-                 .get();
+                 .await_unwrap();
 
   auto res = response.combinedResult();
   if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
@@ -420,7 +420,7 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   auto response = network::sendRequest(
     pool, endpoint, fuerte::RestVerb::Post,
-    REPL_HOLD_READ_LOCK, *buf, options).get();
+    REPL_HOLD_READ_LOCK, *buf, options).await_unwrap();
 
   auto res = response.combinedResult();
 
@@ -444,7 +444,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   try {
     auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, REPL_HOLD_READ_LOCK,
                                   *buf, options)
-                 .get();
+                 .await_unwrap();
     auto res = response.combinedResult();
     if (res.fail()) {
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
@@ -1166,7 +1166,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
       auto response = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
                                            url, std::move(buffer), options)
-                          .get();
+                          .await_unwrap();
       auto result = response.combinedResult();
 
       if (result.fail()) {

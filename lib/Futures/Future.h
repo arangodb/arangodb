@@ -49,8 +49,28 @@ struct scheduler_addition {};
 
 template <>
 struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
+  struct allocator {
+    // TODO is this how you do such things?
+    template <typename T>
+    static T* allocate() {
+      return reinterpret_cast<T*>(::operator new(sizeof(T)));
+    }
+    template <typename T>
+    static T* allocate(std::nothrow_t) noexcept {
+      return reinterpret_cast<T*>(::operator new(sizeof(T), std::nothrow));
+    }
+  };
+
   /* */
   struct assertion_handler {
+    void operator()(bool condition) const noexcept {
+      if (!condition) {
+        //::arangodb::CrashHandler::assertionFailure();
+      }
+    }
+  };
+
+  struct debug_assertion_handler {
     void operator()(bool condition) const noexcept { TRI_ASSERT(condition); }
   };
 
@@ -110,10 +130,6 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
       return std::move(self()).template catch_error<E>(std::forward<F>(f));
     }
 
-    auto get() {
-      return std::move(self()).await_unwrap();
-    }
-
    private:
     using future_type = Fut<arangodb::futures::Try<T>>;
     future_type& self() { return static_cast<future_type&>(*this); }
@@ -134,7 +150,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
 
 namespace arangodb::futures {
 
-auto makeFuture() -> Future<Unit> {
+static inline auto makeFuture() -> Future<Unit> {
   return Future<Unit>{std::in_place};
 }
 

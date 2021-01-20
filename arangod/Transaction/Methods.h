@@ -102,7 +102,7 @@ class Methods {
   Methods& operator=(Methods const&) = delete;
 
  public:
-  
+
   /// @brief create the transaction
   explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext,
                    transaction::Options const& options = transaction::Options());
@@ -171,12 +171,12 @@ class Methods {
     TRI_ASSERT(_transactionContext != nullptr);
     return _transactionContext.get();
   }
-  
+
   // is this instance responsible for commit / abort
   bool isMainTransaction() const {
     return _mainTransaction;
   }
-  
+
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
@@ -190,7 +190,7 @@ class Methods {
   char const* statusString() const {
     return transaction::statusString(status());
   }
-  
+
   /// @brief options used, not dump options
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
@@ -198,17 +198,17 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  Result commit() { return commitAsync().get(); }
+  Result commit() { return commitAsync().await_unwrap(); }
   /// @brief commit / finish the transaction
   Future<Result> commitAsync();
 
   /// @deprecated use async variant
-  Result abort() { return abortAsync().get(); }
+  Result abort() { return abortAsync().await_unwrap(); }
   /// @brief abort the transaction
   Future<Result> abortAsync();
 
   /// @deprecated use async variant
-  Result finish(Result const& res) { return finishAsync(res).get(); }
+  Result finish(Result const& res) { return finishAsync(res).await_unwrap(); }
 
   /// @brief finish a transaction (commit or abort), based on the previous state
   Future<Result> finishAsync(Result const& res);
@@ -269,7 +269,7 @@ class Methods {
   ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
                                            VPackSlice value,
                                            OperationOptions& options) {
-    return documentAsync(collectionName, value, options).get();
+    return documentAsync(collectionName, value, options).await_unwrap();
   }
 
   /// @brief return one or multiple documents from a collection
@@ -280,7 +280,7 @@ class Methods {
   OperationResult insert(std::string const& cname,
                          VPackSlice value,
                          OperationOptions const& options) {
-    return this->insertAsync(cname, value, options).get();
+    return this->insertAsync(cname, value, options).await_unwrap();
   }
 
   /// @brief create one or multiple documents in a collection
@@ -289,11 +289,11 @@ class Methods {
   Future<OperationResult> insertAsync(std::string const& collectionName,
                                       VPackSlice value,
                                       OperationOptions const& options);
-  
+
   /// @deprecated use async variant
   OperationResult update(std::string const& cname, VPackSlice updateValue,
                          OperationOptions const& options) {
-    return this->updateAsync(cname, updateValue, options).get();
+    return this->updateAsync(cname, updateValue, options).await_unwrap();
   }
 
   /// @brief update/patch one or multiple documents in a collection.
@@ -301,11 +301,11 @@ class Methods {
   /// if it fails, clean up after itself
   Future<OperationResult> updateAsync(std::string const& collectionName, VPackSlice updateValue,
                                       OperationOptions const& options);
-  
+
   /// @deprecated use async variant
   OperationResult replace(std::string const& cname, VPackSlice replaceValue,
                          OperationOptions const& options) {
-    return this->replaceAsync(cname, replaceValue, options).get();
+    return this->replaceAsync(cname, replaceValue, options).await_unwrap();
   }
 
   /// @brief replace one or multiple documents in a collection.
@@ -317,7 +317,7 @@ class Methods {
   /// @deprecated use async variant
   OperationResult remove(std::string const& collectionName,
                          VPackSlice value, OperationOptions const& options) {
-    return removeAsync(collectionName, value, options).get();
+    return removeAsync(collectionName, value, options).await_unwrap();
   }
 
   /// @brief remove one or multiple documents in a collection
@@ -332,7 +332,7 @@ class Methods {
 
   /// @brief deprecated use async variant
   OperationResult truncate(std::string const& collectionName, OperationOptions const& options) {
-    return this->truncateAsync(collectionName, options).get();
+    return this->truncateAsync(collectionName, options).await_unwrap();
   }
 
   /// @brief remove all documents in a collection
@@ -342,7 +342,7 @@ class Methods {
   /// deprecated, use async variant
   virtual OperationResult count(std::string const& collectionName,
                                 CountType type, OperationOptions const& options) {
-    return countAsync(collectionName, type, options).get();
+    return countAsync(collectionName, type, options).await_unwrap();
   }
 
   /// @brief count the number of documents in a collection
@@ -366,16 +366,16 @@ class Methods {
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
-  
+
   /// @brief fetch the LogicalCollection by CID
   arangodb::LogicalCollection* documentCollection(DataSourceId cid) const;
 
   /// @brief fetch the LogicalCollection by name
   arangodb::LogicalCollection* documentCollection(std::string const& name) const;
-  
+
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-    
+
 #ifndef USE_ENTERPRISE
   bool skipInaccessible() const {
     return false;
@@ -478,18 +478,18 @@ class Methods {
 
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
-  
+
  protected:
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
 
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
-  
+
   bool _mainTransaction;
-  
+
  private:
-  
+
   Future<Result> replicateOperations(
       LogicalCollection* collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,

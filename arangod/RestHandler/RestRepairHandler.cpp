@@ -123,8 +123,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     auto waitForNewPlan = [&clusterInfo] {
       using namespace std::chrono_literals;
       auto fRes = clusterInfo.fetchAndWaitForPlanVersion(10.0s);
-      // Note that get() might throw
-      return fRes.get();
+      // Note that await_unwrap() might throw
+      return std::move(fRes).await_unwrap();
     };
 
     if (auto res = waitForNewPlan(); !res.ok()) {

@@ -1144,12 +1144,12 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     }
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
+      auto responses = futures::collectAll(futures).await_unwrap();
       for (auto const& it : responses) {
-        if (!it.hasValue()) {
+        if (!it.has_value()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
         }
-        auto& res = it.get();
+        auto& res = it.unwrap();
         if (res.statusCode() == fuerte::StatusOK) {
           VPackSlice slice = res.slice();
           if (slice.isObject()) {
@@ -1235,7 +1235,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     }
 
     for (auto& f : futures) {
-      network::Response const& resp = f.get();
+      network::Response const& resp = std::move(f).await_unwrap();
 
       if (resp.statusCode() != fuerte::StatusOK) {
         VPackSlice slice = resp.slice();

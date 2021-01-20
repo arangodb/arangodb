@@ -848,7 +848,7 @@ arangodb::Result visitAnalyzers(
             buffer,
             reqOpts);
 
-      auto const& response = f.get();
+      auto const& response = std::move(f).await_unwrap();
 
       if (response.error == arangodb::fuerte::Error::RequestTimeout) {
         // timeout, try another coordinator
@@ -1767,8 +1767,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
     }
 
     OperationOptions options;
-    trx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).get();
-    res = trx.commitAsync().get();
+    std::ignore = trx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).await_unwrap();
+    res = trx.commitAsync().await_unwrap();
     if (res.ok()) {
       invalidate(vocbase);
     }
@@ -1797,7 +1797,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       if (queryResult.fail()) {
         return queryResult.result;
       }
-      res = trx.commitAsync().get();
+      res = trx.commitAsync().await_unwrap();
       if (!res.ok()) {
         return res;
       }
@@ -1816,8 +1816,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
 
       if (res.ok()) {
         OperationOptions options;
-        truncateTrx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).get();
-        res = truncateTrx.commitAsync().get();
+        truncateTrx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).await_unwrap();
+        res = truncateTrx.commitAsync().await_unwrap();
       }
       if (res.fail()) {
         // failed cleanup is not critical problem. just log it
