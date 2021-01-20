@@ -26,6 +26,8 @@
 #include <cassert>
 #include <cstddef>
 
+namespace arangodb::containers::detail {
+
 template <std::size_t N, std::size_t alignment = alignof(std::max_align_t)>
 class arena {
   alignas(alignment) char buf_[N];
@@ -139,5 +141,5 @@ template <class T, std::size_t N, std::size_t A1, class U, std::size_t M, std::s
 inline bool operator!=(const short_alloc<T, N, A1>& x, const short_alloc<U, M, A2>& y) noexcept {
   return !(x == y);
 }
-
+}  // namespace arangodb
 #endif  // SHORT_ALLOC_H

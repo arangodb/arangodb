@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,7 +131,7 @@ class MultiDependencySingleRowFetcher {
   void reportSubqueryFullCounts(size_t subqueryDepth,
                                 std::vector<size_t> const& skippedInDependency);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   auto initialize(size_t subqueryDepth) -> void;
 #endif
 

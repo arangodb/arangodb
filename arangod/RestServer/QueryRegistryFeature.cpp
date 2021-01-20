@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -128,10 +128,13 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
           "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
       _queriesCounter(
         server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_all_query", 0, "Total number of AQL queries")),
+          "arangodb_aql_all_query", 0, "Total number of AQL queries finished")),
       _slowQueriesCounter(
         server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries")) {
+          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries finished")),
+      _runningQueries(
+        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_aql_current_query", 0, "Current number of AQL queries executing")) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -326,10 +329,15 @@ void QueryRegistryFeature::unprepare() {
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
-void QueryRegistryFeature::trackQuery(double time) { 
+void QueryRegistryFeature::trackQueryStart() noexcept {
+  _runningQueries += 1;
+}
+
+void QueryRegistryFeature::trackQueryEnd(double time) { 
   ++_queriesCounter; 
   _queryTimes.count(time);
   _totalQueryExecutionTime += static_cast<uint64_t>(1000.0 * time);
+  _runningQueries -= 1;
 }
 
 void QueryRegistryFeature::trackSlowQuery(double time) { 

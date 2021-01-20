@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,7 +60,6 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
-
 using RegVarMap = std::unordered_map<RegisterId, Variable const*>;
 using RegVarMapStack = std::vector<RegVarMap>;
 
@@ -94,7 +93,7 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T, WalkerUniqueness::NonU
     return false;  // do not walk into subquery
   }
 
-  using RegCountStack = std::stack<RegisterCount>;
+  using RegCountStack = std::stack<RegisterCount, std::vector<RegisterCount>>;
 
   RegIdOrderedSetStack unusedRegisters{{}};
   RegIdSetStack regsToKeepStack{{}};
@@ -123,7 +122,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   RegisterCount nrConstRegs = 0;
 
   // We collect the subquery nodes to deal with them at the end:
-  std::vector<T*> subQueryNodes;
+  std::vector<T*> subqueryNodes;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
@@ -132,7 +131,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
-  /// @brief Only used when the reister plan is being explained
+  /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegVarMapStack> regVarMapStackByNode;
 
  public:
@@ -148,6 +147,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);
+  void shrink(T* start);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);

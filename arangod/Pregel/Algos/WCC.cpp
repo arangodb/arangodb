@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,12 +105,14 @@ struct WCCGraphFormat final : public GraphFormat<uint64_t, uint64_t> {
   size_t estimatedVertexSize() const override { return sizeof(uint64_t); }
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 
-  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/,
                       uint64_t& targetPtr, uint64_t& vertexIdRange) override {
     targetPtr = vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice /*document*/, uint64_t& targetPtr) override {
+  void copyEdgeData(arangodb::velocypack::Options const&,
+                    arangodb::velocypack::Slice /*document*/, uint64_t& targetPtr) override {
     targetPtr = std::numeric_limits<uint64_t>::max();
   }
 
