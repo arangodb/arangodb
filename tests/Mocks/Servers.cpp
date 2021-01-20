@@ -449,8 +449,8 @@ MockClusterServer::MockClusterServer() : MockServer() {
 MockClusterServer::~MockClusterServer() {
   auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   ci.shutdownSyncers();
-  _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
   ci.waitForSyncersToStop();
+  _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
   arangodb::ServerState::instance()->setRole(_oldRole);
 }
 
