@@ -1,6 +1,8 @@
 devel
 -----
 
+* back/slash normalise directory names before splitting it in arangoimp
+
 * Added the following bit handling functions to AQL:
 
   - BIT_AND(array): and-combined result
