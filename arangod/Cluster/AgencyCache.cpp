@@ -503,15 +503,18 @@ Result AgencyCache::registerCallback(std::string const& key, uint64_t const& id)
   size_t size = 0;
   {
     std::lock_guard g(_callbacksLock);
+    // insertion into the multimap should always succeed, except in case of OOM
     _callbacks.emplace(ckey, id);
     size = _callbacks.size();
+    _callbacksCount = uint64_t(size);
   }
 
-  _callbacksCount = uint64_t(size);
 
   LOG_TOPIC("31415", TRACE, Logger::CLUSTER)
     << "Registered callback for key " << ckey << " with id " << id << ", callbacks: " << size;
-  // this method always returns ok.
+  // this method always returns ok, except in case of OOM (in this case it will throw).
+  // to keep some API compatibility with AgencyCallbackRegistry::registerCallback(...), 
+  // we make this function return a Result, too, even though it is not really needed here
   return {};
 }
 
@@ -533,9 +536,9 @@ void AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id)
       }
     }
     size = _callbacks.size();
+  _callbacksCount = uint64_t(size);
   }
 
-  _callbacksCount = uint64_t(size);
 
   LOG_TOPIC("034cc", TRACE, Logger::CLUSTER)
     << "Unregistered callback for key " << ckey << " with id " << id << ", callbacks: " << size;
