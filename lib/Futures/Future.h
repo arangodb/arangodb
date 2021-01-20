@@ -26,8 +26,9 @@
 
 #include <mellon/futures.h>
 
-#include "Basics/Exceptions.h"
+#include "Basics/CrashHandler.h"
 #include "Basics/debugging.h"
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 
 namespace arangodb::futures {
