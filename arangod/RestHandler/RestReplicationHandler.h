@@ -35,6 +35,9 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/ReplicationIterator.h"
 
+#include <string>
+#include <unordered_set>
+
 namespace arangodb {
 class ClusterInfo;
 class CollectionNameResolver;
@@ -361,6 +364,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// processRestoreUsersBatch().
   Result parseBatchForSystemCollection(std::string const& collectionName,
                                        VPackBuilder& documentsToInsert,
+                                       std::unordered_set<std::string>& documentsToRemove,
                                        bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -406,6 +410,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result parseBatch(transaction::Methods& trx,
                     std::string const& collectionName,
                     VPackBuilder& documentToInsert,
+                    std::unordered_set<std::string>& documentsToRemove,
                     bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////

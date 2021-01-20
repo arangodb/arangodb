@@ -188,6 +188,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (value.isString()) {
     // compact format
     type = REPLICATION_MARKER_DOCUMENT;
+    // for a valid document marker without envelope, doc points to the actual docuemnt
     doc = slice;
   } else {
     // enveloped (old) format. each document is wrapped into a
@@ -203,10 +204,21 @@ static Result restoreDataParser(char const* ptr, char const* pos,
       }
     
       if (type == REPLICATION_MARKER_DOCUMENT) {
+        // for dumps taken with RocksDB and/or MMFiles
         value = slice.get(::dataString);
         if (!value.isObject()) {
           type = REPLICATION_INVALID;
         } else {
+          // for a valid document marker, doc points to the actual docuemnt
+          doc = value;
+        }
+      } else if (type == REPLICATION_MARKER_REMOVE) {
+        // edge case: only need for old dumps taken with MMFiles
+        value = slice.get("key");
+        if (!value.isString()) {
+          type = REPLICATION_INVALID;
+        } else {
+          // for a valid remove marker, doc points to the key string
           doc = value;
         }
       }
@@ -1408,6 +1420,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(transaction::Methods& trx, 
                                           std::string const& collectionName,
                                           VPackBuilder& documentsToInsert,
+                                          std::unordered_set<std::string>& documentsToRemove,
                                           bool generateNewRevisionIds) {
   // simon: originally VST was not allowed here, but in 3.7 the content-type
   // is properly set, so we can use it
@@ -1435,6 +1448,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
   // First parse and collect all markers, we assemble everything in one
   // large builder holding an array
+  documentsToRemove.clear();
   documentsToInsert.clear();
   documentsToInsert.openArray();
 
@@ -1471,17 +1485,35 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         documentsToInsert.openObject();
 
         TRI_ASSERT(doc.isObject());
-        for (auto it : VPackObjectIterator(doc)) {
+        bool checkKey = true;
+        for (auto it : VPackObjectIterator(doc, true)) {
+          // only check for "_key" attribute here if we still have to.
+          // once we have seen it, it will not show up again in the same document
+          bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString);
   
-          if (isUsersCollection &&
-              arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString) {
-            // ignore _key for users
-            continue;
+          if (isKey) {
+            // prevent checking for _key twice in the same document
+            checkKey = false;
+
+            if (isUsersCollection) {
+              // ignore _key for _users
+              continue;
+            }
+            if (!documentsToRemove.empty()) {
+              // for any document key that we have tracked in documentsToRemove,
+              // we now got a new version to insert, so we need to remove the key
+              // from documentsToRemove.
+              // this is expensive, but we only have to pay for it if there are
+              // REPLICATION_MARKER_REMOVE markers present, which can only happen
+              // with MMFiles dumps from <= 3.6
+              documentsToRemove.erase(it.value.copyString());
+            }
           }
 
           documentsToInsert.add(it.key);
 
           if (generateNewRevisionIds && 
+              !isKey && 
               arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
             char ridBuffer[11];
             RevisionId newRid = physical->newRevisionId();
@@ -1492,6 +1524,12 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         }
 
         documentsToInsert.close();
+      } else if (type == REPLICATION_MARKER_REMOVE) {
+        // keep track of which documents to remove.
+        // in case we add a document to remove here that is already in documentsToInsert,
+        // this case will be detected later.
+        TRI_ASSERT(doc.isString());
+        documentsToRemove.emplace(doc.copyString());
       }
     }
 
@@ -1500,12 +1538,13 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
   // close array
   documentsToInsert.close();
-  
+
   return {};
 }
 
 Result RestReplicationHandler::parseBatchForSystemCollection(std::string const& collectionName,
                                                              VPackBuilder& documentsToInsert,
+                                                             std::unordered_set<std::string>& documentsToRemove,
                                                              bool generateNewRevisionIds) {
   TRI_ASSERT(documentsToInsert.isEmpty());
 
@@ -1516,7 +1555,7 @@ Result RestReplicationHandler::parseBatchForSystemCollection(std::string const& 
 
   Result res = trx.begin();
   if (res.ok()) {
-    res = parseBatch(trx, collectionName, documentsToInsert, generateNewRevisionIds);
+    res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   }
   // transaction will end here, without anything written
   return res;
@@ -1524,7 +1563,8 @@ Result RestReplicationHandler::parseBatchForSystemCollection(std::string const& 
 
 Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds) {
   VPackBuilder documentsToInsert;
-  Result res = parseBatchForSystemCollection(StaticStrings::AnalyzersCollection, documentsToInsert, generateNewRevisionIds);
+  std::unordered_set<std::string> documentsToRemove;
+  Result res = parseBatchForSystemCollection(StaticStrings::AnalyzersCollection, documentsToInsert, documentsToRemove, generateNewRevisionIds);
 
   if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature = _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
@@ -1542,7 +1582,8 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool gene
 
 Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevisionIds) {
   VPackBuilder documentsToInsert;
-  Result res = parseBatchForSystemCollection(StaticStrings::UsersCollection, documentsToInsert, generateNewRevisionIds);
+  std::unordered_set<std::string> documentsToRemove;
+  Result res = parseBatchForSystemCollection(StaticStrings::UsersCollection, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   if (res.fail()) {
     return res;
   }
@@ -1580,16 +1621,14 @@ Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevision
 Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx,
                                                        std::string const& collectionName,
                                                        bool generateNewRevisionIds) {
-  // we'll build all document to insert in this builder
+  // we'll build all documents to insert in this builder
   VPackBuilder documentsToInsert;
-  Result res = parseBatch(trx, collectionName, documentsToInsert, generateNewRevisionIds);
+  std::unordered_set<std::string> documentsToRemove;
+  Result res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   if (res.fail()) {
     return res;
   }
 
-  // Now try to insert all keys for which the last marker was a document
-  // marker, note that these could still be replace markers!
-  VPackSlice requestSlice = documentsToInsert.slice();
   OperationOptions options(_context);
   options.silent = false;
   options.ignoreRevs = true;
@@ -1597,25 +1636,53 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   options.waitForSync = false;
   options.overwriteMode = OperationOptions::OverwriteMode::Replace;
   OperationResult opRes(Result(), options);
+
+  // only go into the remove documents case when we really have to.
+  if (!documentsToRemove.empty()) {
+    VPackBuilder toRemove;
+    toRemove.openArray();
+    for (auto const& it : documentsToRemove) {
+      toRemove.openObject();
+      toRemove.add(StaticStrings::KeyString, VPackValue(it));
+      toRemove.close();
+    }
+    toRemove.close();
+    // we let failing removes succeed here. in case a document is not found upon remove,
+    // the end result will be the same (document does not exist). in addition, the removal
+    // case  is an edge case for old dumps from MMFiles from <= 3.6
+    trx.remove(collectionName, toRemove.slice(), options);
+
+    // if we have pending removes we need to rewrite the entire documentsToInsert array.
+    // this is expensive, but an absolute edge case as mentioned before
+    documentsToInsert = VPackCollection::filter(documentsToInsert.slice(), [&documentsToRemove](VPackSlice const& current, VPackValueLength) {
+      TRI_ASSERT(current.isObject());
+      VPackSlice key = current.get(StaticStrings::KeyString);
+      return key.isString() && documentsToRemove.find(key.copyString()) == documentsToRemove.end();
+    });
+  }
+
+  // Now try to insert all keys for which the last marker was a document marker
+  VPackSlice requestSlice = documentsToInsert.slice();
+
   try {
     opRes = trx.insert(collectionName, requestSlice, options);
     if (opRes.fail()) {
       LOG_TOPIC("e6280", WARN, Logger::CLUSTER)
-          << "Could not insert " << requestSlice.length()
+          << "could not insert " << requestSlice.length()
           << " documents for restore: " << opRes.result.errorMessage();
       return opRes.result;
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("8e8e1", WARN, Logger::CLUSTER)
-        << "Could not insert documents for restore exception: " << ex.what();
+        << "could not insert documents for restore exception: " << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC("f1e7f", WARN, Logger::CLUSTER)
-        << "Could not insert documents for restore exception: " << ex.what();
+        << "could not insert documents for restore exception: " << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     LOG_TOPIC("368bb", WARN, Logger::CLUSTER)
-        << "Could not insert documents for restore exception.";
+        << "could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
