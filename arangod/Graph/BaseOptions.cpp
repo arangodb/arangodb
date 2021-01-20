@@ -460,7 +460,7 @@ void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
   _cache = std::move(testCache);
 }
 
-arangodb::aql::FixedVarExpressionContext BaseOptions::getExpressionCtx() const {
+arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx() const {
   return _expressionCtx;
 }
 

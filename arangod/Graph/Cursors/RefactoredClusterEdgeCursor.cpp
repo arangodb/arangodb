@@ -123,19 +123,19 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 
 void RefactoredClusterEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
                                         uint64_t depth) {
-  // OLD SS Variant
-  /*_currentCursor = 0;
-  for (auto& info : _lookupInfo) {
-    info.rearmVertex(vertex, _trx, _tmpVar);
-  }*/
-
   _edgeList.clear();
   _cursorPosition = 0;
 
   TRI_ASSERT(trx() != nullptr);
+  TRI_ASSERT(_cache != nullptr);
 
   Result res = fetchEdgesFromEngines(*trx(), *_cache, _expressionContext,
                                      vertexId, depth, _edgeList); // TODO: check vertexId copy
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  // _httpRequests += _cache->engines()->size(); TODO: increase http requests in stats
 }
 
 void RefactoredClusterEdgeCursor::readAll(aql::TraversalStats& stats, Callback const& callback) {
@@ -179,4 +179,8 @@ void RefactoredClusterEdgeCursor::readAll(aql::TraversalStats& stats, Callback c
 
 arangodb::transaction::Methods* RefactoredClusterEdgeCursor::trx() const {
   return _trx;
+}
+
+arangodb::aql::FixedVarExpressionContext const& RefactoredClusterEdgeCursor::getExpressionContext() {
+  return _expressionContext;
 }

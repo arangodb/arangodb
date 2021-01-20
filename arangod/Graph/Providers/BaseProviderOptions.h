@@ -70,13 +70,13 @@ struct BaseProviderOptions {
 
 struct ClusterBaseProviderOptions {
  public:
-  ClusterBaseProviderOptions(arangodb::aql::FixedVarExpressionContext expressionContext, ClusterTraverserCache* cache);
+  ClusterBaseProviderOptions(arangodb::aql::FixedVarExpressionContext const& expressionContext, ClusterTraverserCache* cache);
 
-  arangodb::aql::FixedVarExpressionContext const& getExpressionContext() const;
+  arangodb::aql::FixedVarExpressionContext const& getExpressionContext();
   ClusterTraverserCache* getCache();
 
  private:
-  arangodb::aql::FixedVarExpressionContext _expressionCtx;
+  arangodb::aql::FixedVarExpressionContext const& _expressionCtx; // not allowed to be a copy!
   ClusterTraverserCache* _cache;
 };
 

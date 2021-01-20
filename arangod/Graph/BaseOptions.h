@@ -183,7 +183,7 @@ struct BaseOptions {
   }
 
   aql::Variable const* tmpVar(); // TODO check public
-  arangodb::aql::FixedVarExpressionContext getExpressionCtx() const;
+  arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;

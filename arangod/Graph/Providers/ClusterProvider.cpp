@@ -97,7 +97,8 @@ ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
 }
 
 std::unique_ptr<RefactoredClusterEdgeCursor> ClusterProvider::buildCursor() {
-  return std::make_unique<RefactoredClusterEdgeCursor>(trx(), _opts.getExpressionContext(), _opts.getCache());
+  return std::make_unique<RefactoredClusterEdgeCursor>(trx(), _opts.getExpressionContext(),
+                                                       _opts.getCache());
 }
 
 auto ClusterProvider::startVertex(VertexType vertex) -> Step {
@@ -130,8 +131,8 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
 
   // _query->vpackOptions()
 
-
   LOG_DEVEL << "expanding: " << vertex.getID().toString();
+  _cursor->rearm(vertex.getID().stringRef(), 0);
 
   /* NOTE: OLD SingleServer Variant
   TRI_ASSERT(_cursor != nullptr);

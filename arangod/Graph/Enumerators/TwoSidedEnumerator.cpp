@@ -170,8 +170,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     // the queue again, in order to remove them from the loosend list.
   }
   auto step = _queue.pop();
+  LOG_DEVEL << "Got step from queue: " << step.getVertex().getID().toString();
+  LOG_DEVEL << "Appending to pathstore:";
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
+    LOG_DEVEL << "Expanding in TSE: " << n.getVertex().getID().toString();
     ValidationResult res = _validator.validatePath(n);
 
     // Check if other Ball knows this Vertex.

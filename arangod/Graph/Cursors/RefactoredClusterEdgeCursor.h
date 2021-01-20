@@ -110,6 +110,7 @@ class RefactoredClusterEdgeCursor {
 
  private:
   [[nodiscard]] transaction::Methods* trx() const;
+  [[nodiscard]] arangodb::aql::FixedVarExpressionContext const& getExpressionContext();
 
  protected:
   std::vector<arangodb::velocypack::Slice> _edgeList;
