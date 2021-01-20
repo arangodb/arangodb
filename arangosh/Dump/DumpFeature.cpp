@@ -749,9 +749,11 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
 // dump data from single server
 Result DumpFeature::runSingleDump(httpclient::SimpleHttpClient& client,
                                   std::string const& dbName) {
-  auto [result, batchId] = ::startBatch(client, "");
-  if (result.fail()) {
-    return result;
+  Result res;
+  uint64_t batchId;
+  std::tie(res, batchId) = ::startBatch(client, "");
+  if (res.fail()) {
+    return res;
   }
   TRI_DEFER(::endBatch(client, "", batchId));
 
