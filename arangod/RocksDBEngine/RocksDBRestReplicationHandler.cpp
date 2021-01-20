@@ -455,6 +455,15 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
+  if (numDocs > 1000000 && quick == "true") {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("count", VPackValue(numDocs));
+    result.close();
+    generateResult(rest::ResponseCode::OK, result.slice());
+    return;
+  }
+
   // keysId = <batchId>-<cid>
   std::string keysId = StringUtils::itoa(ctx->id());
   keysId.push_back('-');

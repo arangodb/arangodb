@@ -134,6 +134,9 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 
+  /// @brief quick replication keys limit
+  uint64_t _quickKeysLimit;
+
   Counter& _inventoryRequests;
 };
 
