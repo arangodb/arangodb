@@ -356,6 +356,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
                                   bool ignoreDistributeShardsLikeErrors);
 
+
+  /// @brief helper function for processRestoreCoordinatorAnalyzersBatch() and
+  /// processRestoreUsersBatch().
+  Result parseBatchForSystemCollection(std::string const& collectionName,
+                                       VPackBuilder& documentsToInsert,
+                                       bool generateNewRevisionIds);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////

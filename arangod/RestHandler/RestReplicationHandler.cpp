@@ -1504,30 +1504,33 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
   return {};
 }
 
+Result RestReplicationHandler::parseBatchForSystemCollection(std::string const& collectionName,
+                                                             VPackBuilder& documentsToInsert,
+                                                             bool generateNewRevisionIds) {
+  TRI_ASSERT(documentsToInsert.isEmpty());
+
+  // this "fake" transaction here is only needed to get access to the underlying
+  // system collection. we will not write anything into the collection here
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
+
+  Result res = trx.begin();
+  if (res.ok()) {
+    res = parseBatch(trx, collectionName, documentsToInsert, generateNewRevisionIds);
+  }
+  // transaction will end here, without anything written
+  return res;
+}
+
 Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds) {
   VPackBuilder documentsToInsert;
+  Result res = parseBatchForSystemCollection(StaticStrings::AnalyzersCollection, documentsToInsert, generateNewRevisionIds);
 
-  {
-    // this "fake" transaction here is only needed to get access to the underlying
-    // _analyzers collection. we will not write anything into the collection here
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, StaticStrings::AnalyzersCollection, AccessMode::Type::READ);
-
-    Result res = trx.begin();
-    if (res.ok()) {
-      res = parseBatch(trx, StaticStrings::AnalyzersCollection, documentsToInsert, generateNewRevisionIds);
-    }
-    if (res.fail()) {
-      return res;
-    }
-    // transaction will end here, without anything written
-  }
-
-  if (!documentsToInsert.slice().isEmptyArray()) {
+  if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature = _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
     return analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice());
   }
-  return {};
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1539,21 +1542,9 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool gene
 
 Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevisionIds) {
   VPackBuilder documentsToInsert;
-
-  {
-    // this "fake" transaction here is only needed to get access to the underlying
-    // _users collection. we will not write anything into the collection here
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection, AccessMode::Type::READ);
-
-    Result res = trx.begin();
-    if (res.ok()) {
-      res = parseBatch(trx, StaticStrings::UsersCollection, documentsToInsert, generateNewRevisionIds);
-    }
-    if (res.fail()) {
-      return res;
-    }
-    // transaction will end here, without anything written
+  Result res = parseBatchForSystemCollection(StaticStrings::UsersCollection, documentsToInsert, generateNewRevisionIds);
+  if (res.fail()) {
+    return res;
   }
 
   std::string aql(
