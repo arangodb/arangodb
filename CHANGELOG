@@ -3,7 +3,7 @@ devel
 
 * Make AQL optimizer rule "splice-subqueries" mandatory, in the sense that it cannot be
   disabled anymore. As a side effect of this change, there will no query execution plans
-  created by 3.8 that contain execution nodes of type `SubqueryNode`. `SubqueryNodes`
+  created by 3.8 that contain execution nodes of type `SubqueryNode`. `SubqueryNode`s
   will be only used during query planning and optimization, but at the end of the query
   optimization phase will all have been replaced with nodes of type `SubqueryStartNode`
   and `SubqueryEndNode`.
