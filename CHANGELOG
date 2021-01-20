@@ -12,6 +12,12 @@ devel
   intentionally turned off. The code for executing non-spliced subqueries can be removed
   in 3.9.
 
+* Normalize user-provided input/output directory names in
+  arangoimport, arangoexport, arangodump and arangorestore 
+  before splitting them into path components, in the sense that now 
+  both forward and backward slashes can be used on Windows,
+  even interchangingly.
+
 * Added the following bit handling functions to AQL:
 
   - BIT_AND(array): and-combined result
