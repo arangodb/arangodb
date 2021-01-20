@@ -163,7 +163,9 @@ function jsDriver (options) {
   }
   localOptions['server.jwt-secret'] = 'haxxmann';
 
-  return tu.performTests(localOptions, [ 'js_test.js'], 'js_test', runInJsTest);
+  let rc = tu.performTests(localOptions, [ 'js_test.js'], 'js_test', runInJsTest);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 

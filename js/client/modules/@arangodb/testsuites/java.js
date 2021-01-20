@@ -237,7 +237,9 @@ function javaDriver (options) {
   }
   localOptions['server.jwt-secret'] = 'haxxmann';
 
-  return tu.performTests(localOptions, [ 'java_test.js'], 'java_test', runInJavaTest);
+  let rc = tu.performTests(localOptions, [ 'java_test.js'], 'java_test', runInJavaTest);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 
