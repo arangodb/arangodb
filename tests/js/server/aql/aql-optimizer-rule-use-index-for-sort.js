@@ -1063,25 +1063,6 @@ function optimizerRuleTestSuite() {
       assertFalse(indexNodes[0].reverse);
     },
     
-    testSortDescWithFilterSubquery : function () {
-      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
-      const plan = AQL_EXPLAIN(query).plan;
-      const rules = plan.rules;
-      assertNotEqual(-1, rules.indexOf(ruleName));
-      assertNotEqual(-1, rules.indexOf(secondRuleName));
-      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
-      assertNotEqual(-1, rules.indexOf("splice-subqueries"));
-
-      const nodes = plan.nodes;
-      // We expect no SortNode...
-      assertFalse(nodes.some(node => node.type === 'SortNode'));
-      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
-      // ...and one IndexNode...
-      assertTrue(indexNodes.length === 1);
-      // ...which is reversed.
-      assertTrue(indexNodes[0].reverse);
-    },
-
     testSortDescWithFilterSplicedSubquery : function () {
       const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
       const plan = AQL_EXPLAIN(query).plan;
