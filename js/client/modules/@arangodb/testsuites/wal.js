@@ -29,6 +29,7 @@ const functionsDocumentation = {
   'wal_cleanup': 'wal file cleanup tests'
 };
 
+const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -52,12 +53,16 @@ function walCleanup (options) {
   print(CYAN + 'WAL cleanup tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.walCleanup, options);
 
-  options.extraArgs['rocksdb.wal-file-timeout-initial'] = '3';
+  let opts = _.clone(options);
+  opts.extraArgs['rocksdb.wal-file-timeout-initial'] = '3';
+  opts.cluster = true;
 
-  return tu.performTests(options, testCases, 'wal_cleanup', tu.runInArangosh, {
+  let rc = tu.performTests(opts, testCases, 'wal_cleanup', tu.runInArangosh, {
     'server.authentication': 'false',
     'rocksdb.wal-file-timeout-initial': '3'
   });
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
