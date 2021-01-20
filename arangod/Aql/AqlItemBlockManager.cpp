@@ -57,7 +57,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, Register
   int tries = 0;
   do {
     TRI_ASSERT(i < numBuckets);
-
+    
     std::lock_guard<std::mutex> guard(_buckets[i]._mutex);
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
@@ -202,7 +202,7 @@ uint32_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   if (ADB_UNLIKELY(targetSize >= (1ULL << numBuckets))) {
     return (numBuckets - 1);
   }
-
+  
   uint32_t value = arangodb::NumberUtils::log2(static_cast<uint32_t>(targetSize));
   TRI_ASSERT(value < numBuckets);
   return value;

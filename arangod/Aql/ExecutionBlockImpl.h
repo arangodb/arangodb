@@ -321,7 +321,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   QueryContext const& _query;
 
   InternalState _state;
-
+  
   ExecState _execState;
 
   SkipResult _skipped{};
@@ -338,7 +338,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   typename Executor::Stats _blockStats;
 
   AqlCallStack _stackBeforeWaiting;
-
+  
   bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.

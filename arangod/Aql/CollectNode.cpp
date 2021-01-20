@@ -298,7 +298,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      std::move(aggregateTypes),
                                      std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(),
+                                     &_plan->getAst()->query().vpackOptions(), 
                                      _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(

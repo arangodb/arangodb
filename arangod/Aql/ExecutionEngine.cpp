@@ -101,7 +101,7 @@ struct TraverserEngineShardLists {
 Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
                                      MapRemoteToSnippet const& queryIds) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-
+  
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode* remoteNode = nullptr;
 
@@ -168,7 +168,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
       for (auto const& serverToSnippet : serversForRemote->second) {
         std::string const& serverID = serverToSnippet.first;
         for (std::string const& snippetId : serverToSnippet.second) {
-
+          
           remoteNode->queryId(snippetId);
           remoteNode->server(serverID);
           remoteNode->setDistributeId({""});
@@ -480,13 +480,13 @@ struct DistributedQueryInstanciator final
   ///        Returns the First Coordinator Engine, the one not in the registry.
   Result buildEngines() {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
-
+    
     // QueryIds are filled by responses of DBServer parts.
     MapRemoteToSnippet snippetIds{};
-
+    
     ServerQueryIdList& srvrQryId = _query.serverQueryIds();
     SnippetList& snippets = _query.snippets();
-
+    
     std::map<ExecutionNodeId, ExecutionNodeId> nodeAliases;
     Result res =
       _dbserverParts.buildEngines(_nodesById, snippetIds, srvrQryId, nodeAliases);
@@ -501,10 +501,10 @@ struct DistributedQueryInstanciator final
     if (res.fail()) {
       return res;
     }
-
+    
     TRI_ASSERT(snippets.size() > 0);
     TRI_ASSERT(snippets[0]->engineId() == 0);
-
+    
     bool knowsAllQueryIds = snippetIds.empty() || !srvrQryId.empty();
     TRI_ASSERT(knowsAllQueryIds);
     for (auto const& [serverDst, queryId] : srvrQryId) {
@@ -513,10 +513,10 @@ struct DistributedQueryInstanciator final
                                        std::string("no query ID known for ") + serverDst);
       }
     }
-
+    
     TRI_ASSERT(snippets[0]->engineId() == 0);
     _query.executionStats().setAliases(std::move(nodeAliases));
-
+    
     return res;
   }
 };
@@ -627,7 +627,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
                                           bool planRegisters,
                                           SerializationFormat format) {
   auto const role = arangodb::ServerState::instance()->getRole();
-
+  
   plan.findVarUsage();
   if (planRegisters) {
     plan.planRegisters();
@@ -642,7 +642,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
 #else
   bool const pushToSingleServer = false;
 #endif
-
+  
   AqlItemBlockManager& mgr = query.itemBlockManager();
 
   auto nrConstRegs = plan.root()->getRegisterPlan()->nrConstRegs;
@@ -674,24 +674,24 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-
+    
     TRI_ASSERT(snippets.size() > 0);
     TRI_ASSERT(snippets[0]->engineId() == 0);
     engine = snippets[0].get();
     root = snippets[0]->root();
-
+    
   } else {
-
+    
 #ifdef USE_ENTERPRISE
     std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
     ExecutionEngine::parallelizeTraversals(query, plan, aliases);
 #endif
-
+   
     // instantiate the engine on a local server
     EngineId eId = arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
     auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr,
                                                        format, query.sharedState());
-
+    
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {
       query.executionStats().addAlias(pair.first, pair.second);
@@ -710,7 +710,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
   TRI_ASSERT(root != nullptr);
 
   engine->setupEngineRoot(*root);
-
+      
   TRI_ASSERT(snippets.size() == 1 || ServerState::instance()->isClusterRole(role));
 }
 

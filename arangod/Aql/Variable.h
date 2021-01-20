@@ -47,7 +47,7 @@ struct Variable {
 
   /// @brief destroy the variable
   ~Variable();
-
+  
   Variable* clone() const;
 
   /// @brief registers a constant value for the variable
@@ -76,7 +76,7 @@ struct Variable {
 
 
   bool isEqualTo(Variable const& other) const;
-
+  
   /// @brief variable id
   VariableId const id;
 
@@ -87,10 +87,10 @@ struct Variable {
   /// @brief constant variable value (points to another AstNode)
   void* value;
 
-  /// @brief whether or not the source data for this variable is from a collection
+  /// @brief whether or not the source data for this variable is from a collection 
   /// (i.e. is a document). this is only used for optimizations
   bool isDataFromCollection;
-
+ 
   bool hasConstValue = false;
 
   // TODO - naming (we already have constValue member function)

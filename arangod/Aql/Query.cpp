@@ -147,7 +147,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
-
+  
   // store name of user that started the query
   _user = ExecContext::current().user();
 }
@@ -178,7 +178,7 @@ Query::~Query() {
   }
 
   _queryProfile.reset(); // unregister from QueryList
-
+  
   // log to audit log
   if (!_queryOptions.skipAudit &&
      (ServerState::instance()->isCoordinator() ||
@@ -195,10 +195,10 @@ Query::~Query() {
     ExecutionState state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
-    // unfortunately we cannot do anything here, as we are in
+    // unfortunately we cannot do anything here, as we are in 
     // the destructor
   }
-
+  
   unregisterSnippets();
 
   exitV8Context();
@@ -211,7 +211,7 @@ Query::~Query() {
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
 }
-
+  
 /// @brief return the user that started the query
 std::string const& Query::user() const {
   return _user;
@@ -236,19 +236,19 @@ bool Query::killed() const {
 /// @brief set the query to killed
 void Query::kill() {
   _queryKilled = true;
-
+  
   if (_trx->state()->isCoordinator()) {
     this->cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/false);
   }
 }
-
+  
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
 
 void Query::prepareQuery(SerializationFormat format) {
   try {
     init(/*createProfile*/ true);
-
+    
     enterState(QueryExecutionState::ValueType::PARSING);
 
     std::unique_ptr<ExecutionPlan> plan = preparePlan();
@@ -257,7 +257,7 @@ void Query::prepareQuery(SerializationFormat format) {
 
     TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
-
+    
     // keep serialized copy of unchanged plan to include in query profile
     // necessary because instantiate / execution replace vars and blocks
     bool const keepPlan = _queryOptions.profile >= ProfileLevel::Blocks &&
@@ -282,11 +282,11 @@ void Query::prepareQuery(SerializationFormat format) {
       }
       registry->registerSnippets(_snippets);
     }
-
+    
     if (_queryProfile) {
       _queryProfile->registerInQueryList();
     }
-
+    
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (arangodb::basics::Exception const& ex) {
     _resultCode = ex.code();
@@ -374,7 +374,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES) << elapsedSince(_startTime)
                                              << " Query::execute"
                                              << " this: " << (uintptr_t)this;
-
+    
   try {
     if (killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -418,7 +418,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // reserve some space in Builder to avoid frequent reallocs
         queryResult.data->reserve(16 * 1024);
         queryResult.data->openArray(/*unindexed*/true);
-
+        
         _executionPhase = ExecutionPhase::EXECUTE;
       }
       [[fallthrough]];
@@ -549,7 +549,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
                                  QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
   }
-
+  
   return ExecutionState::DONE;
 }
 
@@ -739,7 +739,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     ss->resetWakeupHandler();
-
+    
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(*queryResult.extra);
     while (state == ExecutionState::WAITING) {
@@ -782,15 +782,15 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
     // is about to shut down/be destroyed
     _queryProfile->unregisterFromQueryList();
   }
-
+  
   auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false);
   if (state == ExecutionState::WAITING) {
     return state;
   }
-
+  
   extras.openObject(/*unindexed*/true);
   _warnings.toVelocyPack(extras);
-
+  
   if (!_snippets.empty()) {
     _execStats.requests += _numRequests.load(std::memory_order_relaxed);
     _execStats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
@@ -801,7 +801,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
 
     extras.add(VPackValue("stats"));
     _execStats.toVelocyPack(extras, _queryOptions.fullCount);
-
+    
     if (_planSliceCopy) {
       extras.add("plan", VPackSlice(_planSliceCopy->data()));
     }
@@ -978,7 +978,7 @@ void Query::enterV8Context() {
       v8g->_transactionState = _trx->stateShrdPtr();
     }
   };
-
+  
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
       auto& server = vocbase().server();
@@ -1099,7 +1099,7 @@ uint64_t Query::calculateHash() const {
   } else {
     hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("inspect:false"), hashval);
   }
-
+  
   // also hash "optimizer.rules" options
   for (auto const& rule : _queryOptions.optimizerRules) {
     hashval = VELOCYPACK_HASH(rule.data(), rule.size(), hashval);
@@ -1150,7 +1150,7 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync) {
   // set the final result code (either 0 = no error, or a specific error code).
-  // this can only be changed from "not set" to either 0 ("no error") or
+  // this can only be changed from "not set" to either 0 ("no error") or 
   // > 0 (a specific error)
   TRI_ASSERT(errorCode >= TRI_ERROR_NO_ERROR);
   if (_resultCode < TRI_ERROR_NO_ERROR) {
@@ -1166,7 +1166,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync) {
       state = cleanupTrxAndEngines(errorCode);
     }
   }
-
+  
   return cleanupTrxAndEngines(errorCode);
 }
 
@@ -1239,13 +1239,13 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto& serverQueryIds = query.serverQueryIds();
   TRI_ASSERT(!serverQueryIds.empty());
-
+  
   NetworkFeature const& nf = query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
   }
-
+  
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
@@ -1257,9 +1257,9 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
   builder.openObject(true);
   builder.add(StaticStrings::Code, VPackValue(errorCode));
   builder.close();
-
+  
   query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
-
+   
   std::vector<futures::Future<Result>> futures;
   futures.reserve(serverQueryIds.size());
   auto ss = query.sharedState();
@@ -1268,7 +1268,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
   for (auto const& [serverDst, queryId] : serverQueryIds) {
 
     TRI_ASSERT(serverDst.substr(0, 7) == "server:");
-
+    
     auto f = network::sendRequest(pool, serverDst, fuerte::RestVerb::Delete,
                          "/_api/aql/finish/" + std::to_string(queryId), body, options)
     .thenValue([ss, &query](network::Response&& res) mutable -> Result {
@@ -1279,7 +1279,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
           return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                         "shutdown response of DBServer is malformed");
         }
-
+        
         VPackSlice val = res.slice().get("stats");
         if (val.isObject()) {
           ss->executeLocked([&] {
@@ -1300,7 +1300,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
             }
           }
         }
-
+        
         val = res.slice().get("code");
         if (val.isNumber()) {
           return Result{val.getNumericValue<int>()};
@@ -1312,7 +1312,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
 
     futures.emplace_back(std::move(f));
   }
-
+  
   return futures::collectAll(std::move(futures))
          .thenValue([](std::vector<futures::Try<Result>>&& results) -> Result{
            for (futures::Try<Result>& tryRes : results) {
@@ -1332,18 +1332,18 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   } else if (exp == ShutdownState::InProgress) {
     return ExecutionState::WAITING;
   }
-
+  
   TRI_ASSERT (exp == ShutdownState::None);
   if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress,
                                               std::memory_order_relaxed)) {
     return ExecutionState::WAITING; // someone else got here
   }
-
+  
   enterState(QueryExecutionState::ValueType::FINALIZATION);
-
+  
   // simon: do not unregister _queryProfile here, since kill() will be called
   //        under the same QueryList lock
-
+  
   // The above condition is not true if we have already waited.
   LOG_TOPIC("fc22c", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
@@ -1369,10 +1369,10 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
     return ExecutionState::DONE;
   }
-
+  
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(_sharedState);
-
+  
   ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
     LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
       << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
@@ -1381,6 +1381,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
       return true;
     });
   });
-
+  
   return ExecutionState::WAITING;
 }

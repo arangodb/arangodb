@@ -357,7 +357,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   // We can only add shadow rows if source and this are different blocks
   TRI_ASSERT(!sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
-  block().makeShadowRow(_baseIndex, 0);
+  block().makeShadowRow(_baseIndex, 0); 
   doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);
 }
 
@@ -436,7 +436,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   }
   auto constexpr delta = depthDelta(adaptRowDepth);
   size_t const rowDepth = baseRowDepth + delta;
-
+    
   auto const roffset = rowDepth + 1;
   TRI_ASSERT(roffset <= registersToKeep().size());
   auto idx = registersToKeep().size() - roffset;

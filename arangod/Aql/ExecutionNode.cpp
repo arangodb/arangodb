@@ -374,7 +374,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
     case MUTEX:
       return new MutexNode(plan, slice);
     case WINDOW:{
-
+      
       Variable* rangeVar =
           Variable::varFromVPack(plan->getAst(), slice, "rangeVariable", /*optional*/true);
 
@@ -398,7 +398,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
           aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
         }
       }
-
+      
       auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
       WindowBounds bounds(type, slice);
       return new WindowNode(plan, slice, std::move(bounds),
@@ -496,7 +496,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
-
+  
   if (regsToKeepStackSlice.isArray()) {
     // || regsToKeepStackSlice.length() == 0) {
     _regsToKeepStack.reserve(regsToKeepStackSlice.length());
@@ -1638,14 +1638,14 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above must not
     // be multiplied with the number of items in this collection
-    estimate.estimatedNrItems *= estimatedNrItems;
+    estimate.estimatedNrItems *= estimatedNrItems; 
   }
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
   estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
-
+  
   return estimate;
 }
 
@@ -1903,7 +1903,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic",
                       VPackValue(func->hasFlag(Function::Flags::Deterministic)));
-            nodes.add("canAccessDocuments",
+            nodes.add("canAccessDocuments", 
                       VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
             nodes.add("canRunOnDBServerCluster",
                       VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
@@ -2026,9 +2026,9 @@ ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
-Expression* CalculationNode::expression() const {
+Expression* CalculationNode::expression() const { 
   TRI_ASSERT(_expression != nullptr);
-  return _expression.get();
+  return _expression.get(); 
 }
 
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {

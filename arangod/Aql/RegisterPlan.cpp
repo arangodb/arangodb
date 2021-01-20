@@ -49,7 +49,7 @@ using namespace arangodb::aql;
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
   if (!registerId.isConstRegister() && registerId.rawValue() >= RegisterPlan::MaxRegisterId.rawValue()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, 
                                    std::string("too many registers (") + std::to_string(RegisterPlan::MaxRegisterId.rawValue()) + ") needed for AQL query");
   }
 }
@@ -90,7 +90,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   }
 #endif
-  
+
   // will remain constant for the node throughout this function
   std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
   VarSet const varsUsedLater = en->getVarsUsedLater();
@@ -102,7 +102,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
-  
+
   if (explain) {
     plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
   }
@@ -312,7 +312,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   }
 
 #endif
-  
+
   // We need to delete those variables that have been used here but are
   // not used any more later:
   en->setRegsToClear(std::move(regsToClear));

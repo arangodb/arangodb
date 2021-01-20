@@ -63,10 +63,10 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
-    : _ast(ast),
-      _node(node),
-      _data(nullptr),
-      _type(UNPROCESSED),
+    : _ast(ast), 
+      _node(node), 
+      _data(nullptr), 
+      _type(UNPROCESSED), 
       _expressionContext(nullptr) {
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -97,7 +97,7 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   prepareForExecution(ctx);
 
   TRI_ASSERT(_type != UNPROCESSED);
-
+      
   _expressionContext = ctx;
   auto guard = scopeGuard([this] {
     _expressionContext = nullptr;
@@ -268,12 +268,12 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     }
     // fall-through to linear search
   }
-
+  
   // use linear search
 
   if (!right.isDocvec() && !right.isRange() &&
       !left.isDocvec() && !left.isRange()) {
-    // optimization for the case in which rhs is a Velocypack array, and we
+    // optimization for the case in which rhs is a Velocypack array, and we 
     // can simply use a VelocyPack iterator to walk through it. this will
     // be a lot more efficient than using right.at(i) in case the array is
     // of type Compact (without any index tables)
@@ -282,7 +282,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     VPackArrayIterator it(right.slice());
     while (it.valid()) {
       int compareResult = arangodb::basics::VelocyPackHelper::compare(lhs, it.value(), false, vopts);
-
+    
       if (compareResult == 0) {
         // item found in the list
         return true;
@@ -310,7 +310,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 /// @brief analyze the expression (determine its type)
 void Expression::determineType() {
   TRI_ASSERT(_type == UNPROCESSED);
-
+  
   TRI_ASSERT(_data == nullptr);
   TRI_ASSERT(_accessor == nullptr);
 
@@ -342,7 +342,7 @@ void Expression::determineType() {
 void Expression::initAccessor(ExpressionContext* ctx) {
   TRI_ASSERT(_type == ATTRIBUTE_ACCESS);
   TRI_ASSERT(_accessor == nullptr);
-
+  
   TRI_ASSERT(_node->numMembers() == 1);
   auto member = _node->getMemberUnchecked(0);
   std::vector<std::string> parts{_node->getString()};
@@ -390,7 +390,7 @@ void Expression::prepareForExecution(ExpressionContext* ctx) {
 
 /// @brief execute an expression of type SIMPLE, the convention is that
 /// the resulting AqlValue will be destroyed outside eventually
-AqlValue Expression::executeSimpleExpression(AstNode const* node,
+AqlValue Expression::executeSimpleExpression(AstNode const* node, 
                                              bool& mustDestroy, bool doCopy) {
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
@@ -510,9 +510,9 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(AstNode const* node,
   TRI_ASSERT(resolver != nullptr);
 
   return result.get(
-      *resolver,
-      arangodb::velocypack::StringRef(static_cast<char const*>(node->getData()), node->getStringLength()),
-      mustDestroy,
+      *resolver, 
+      arangodb::velocypack::StringRef(static_cast<char const*>(node->getData()), node->getStringLength()), 
+      mustDestroy, 
       true
   );
 }
@@ -609,7 +609,7 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
   if (n == 0) {
     return AqlValue(AqlValueHintEmptyArray());
   }
-
+    
   auto& trx = _expressionContext->trx();
 
   transaction::BuilderLeaser builder(&trx);
@@ -1374,7 +1374,7 @@ AqlValue Expression::executeSimpleExpressionTernary(AstNode const* node,
     }
     return executeSimpleExpression(node->getMemberUnchecked(1), mustDestroy, true);
   }
-
+  
   TRI_ASSERT(node->numMembers() == 3);
 
   AqlValue condition =
@@ -1531,7 +1531,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
       return value;
     }
   }
-
+  
   auto& vopts = _expressionContext->trx().vpackOptions();
 
   VPackBuffer<uint8_t> buffer;
@@ -1626,7 +1626,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
     TRI_ASSERT(!mustDestroy);
     r = 0.0;
   }
-
+  
   if (r == 0.0) {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV || node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       // division by zero
@@ -1639,7 +1639,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
       return AqlValue(AqlValueHintNull());
     }
   }
-
+  
   mustDestroy = false;
   double result;
 
@@ -1675,19 +1675,19 @@ void Expression::replaceNode(AstNode* node) {
   }
 }
 
-Ast* Expression::ast() const noexcept {
+Ast* Expression::ast() const noexcept { 
   TRI_ASSERT(_ast != nullptr);
-  return _ast;
+  return _ast; 
 }
 
 AstNode const* Expression::node() const {
   TRI_ASSERT(_node != nullptr);
-  return _node;
+  return _node; 
 }
 
-AstNode* Expression::nodeForModification() const {
+AstNode* Expression::nodeForModification() const { 
   TRI_ASSERT(_node != nullptr);
-  return _node;
+  return _node; 
 }
 
 bool Expression::canRunOnDBServer(bool isOneShard) {

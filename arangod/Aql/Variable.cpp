@@ -43,9 +43,9 @@ char const* const Variable::NAME_CURRENT = "$CURRENT";
 
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
-    : id(id),
-      name(std::move(name)),
-      value(nullptr),
+    : id(id), 
+      name(std::move(name)), 
+      value(nullptr), 
       isDataFromCollection(isDataFromCollection) {}
 
 Variable::Variable(arangodb::velocypack::Slice const& slice)
@@ -58,18 +58,18 @@ Variable::Variable(arangodb::velocypack::Slice const& slice)
 
 /// @brief destroy the variable
 Variable::~Variable() = default;
-
-Variable* Variable::clone() const {
-  return new Variable(name, id, isDataFromCollection);
+  
+Variable* Variable::clone() const { 
+  return new Variable(name, id, isDataFromCollection); 
 }
-
+  
 bool Variable::isUserDefined() const {
   TRI_ASSERT(!name.empty());
   char const c = name[0];
   // variables starting with a number are not user-defined
   return (c < '0' || c > '9');
 }
-
+  
 bool Variable::needsRegister() const {
   TRI_ASSERT(!name.empty());
   // variables starting with a number are not user-defined
