@@ -263,7 +263,7 @@ struct StoredValue {
 
   mutable VPackBuffer<uint8_t> buffer;
   transaction::Methods const& trx;
-  velocypack::Slice const& document;
+  velocypack::Slice const document;
   irs::string_ref fieldName;
   irs::string_ref collection;
   std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
