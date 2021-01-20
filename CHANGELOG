@@ -1,7 +1,9 @@
 devel
 -----
 
-* back/slash normalise directory names before splitting it in arangoimp
+* Normalize directory names in arangoimport before splitting them into path
+  components, in the sense that now both forward and backward slashes work 
+  can be used on Windows, even interchangingly.
 
 * Added the following bit handling functions to AQL:
 
