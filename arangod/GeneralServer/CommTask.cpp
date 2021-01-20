@@ -350,12 +350,10 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   }
 
   // forward to correct server if necessary
-  bool forwarded;
-  auto res = handler->forwardRequest(forwarded);
-  if (forwarded) {
+  if (auto res = handler->forwardRequest(); res.has_value()) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal([self(shared_from_this()), handler(std::move(handler)),
-                              messageId](futures::Try<Result>&& /*ignored*/) noexcept {
+    std::move(res).value().thenFinal([self(shared_from_this()), handler(std::move(handler)),
+                                      messageId](futures::Try<Result>&& /*ignored*/) noexcept {
       try {
         self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
       } catch (...) {

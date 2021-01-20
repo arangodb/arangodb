@@ -1,6 +1,8 @@
 #ifndef FUTURES_TRAITS_H
 #define FUTURES_TRAITS_H
 
+#define FUTURES_COUNT_ALLOC 1
+
 namespace mellon {
 
 template <typename, typename>
@@ -71,6 +73,12 @@ template<typename Tag, typename T>
 using user_defined_promise_additions_t = typename user_defined_promise_additions<Tag, T>::type;
 
 namespace detail {
+#ifdef FUTURES_COUNT_ALLOC
+extern std::atomic<std::size_t> number_of_allocations;
+extern std::atomic<std::size_t> number_of_bytes_allocated;
+#endif
+
+
 template <typename Tag>
 struct tag_trait_helper {
   template <typename tag, typename = void>
@@ -207,6 +215,10 @@ struct tag_trait_helper {
   template<typename T>
   static T* allocate() {
     if constexpr (has_allocator<Tag>::value) {
+#if FUTURES_COUNT_ALLOC
+      number_of_allocations.fetch_add(1, std::memory_order_relaxed);
+      number_of_bytes_allocated.fetch_add(sizeof(T), std::memory_order_relaxed);
+#endif
       using allocator = typename tag_trait<Tag>::allocator;
       return allocator::template allocate<T>();
     } else {
@@ -217,6 +229,10 @@ struct tag_trait_helper {
   template<typename T>
   static T* allocate(std::nothrow_t) {
     if constexpr (has_allocator<Tag>::value) {
+#if FUTURES_COUNT_ALLOC
+      number_of_allocations.fetch_add(1, std::memory_order_relaxed);
+      number_of_bytes_allocated.fetch_add(sizeof(T), std::memory_order_relaxed);
+#endif
       using allocator = typename tag_trait<Tag>::allocator;
       return allocator::template allocate<T>(std::nothrow);
     } else {

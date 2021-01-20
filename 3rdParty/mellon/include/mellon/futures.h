@@ -950,7 +950,7 @@ struct future
     }
     std::swap(_base, o._base);
   }
-  future& operator=(future&& o) noexcept {
+  future& operator=(future&& o) noexcept = delete; /* {
     if (_base) {
       std::move(*this).abandon();
     }
@@ -963,7 +963,7 @@ struct future
     }
     std::swap(_base, o._base);
     return *this;
-  }
+  }*/
 
   template <typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
   future(future<U, Tag>&& o) noexcept : future(std::move(o).template as<T>()) {}
@@ -1087,6 +1087,10 @@ struct future
 
     return detail::insert_continuation_final<Tag, T, F>(_base.release(),
                                                         std::forward<F>(f));
+  }
+
+  auto&& finalize() {
+    return std::move(*this);
   }
 
   /**

@@ -99,15 +99,14 @@ void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
   _statistics = std::move(stat);
 }
 
-futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
-  forwarded = false;
+std::optional<futures::Future<Result>> RestHandler::forwardRequest() {
   if (!ServerState::instance()->isCoordinator()) {
-    return futures::makeFuture(Result());
+    return std::nullopt;
   }
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
-    return futures::makeFuture(forwardResult.result());
+    return std::nullopt;
   }
 
   auto forwardContent = forwardResult.get();
@@ -121,21 +120,16 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   if (serverId.empty()) {
     // no need to actually forward
-    return futures::makeFuture(Result());
+    return std::nullopt;
   }
 
   NetworkFeature& nf = server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
-    // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
+    return std::nullopt;
   }
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
-
-  forwarded = true;
 
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
@@ -146,7 +140,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
-  // always remove HTTP "Connection" header, so that we don't relay 
+  // always remove HTTP "Connection" header, so that we don't relay
   // "Connection: Close" or "Connection: Keep-Alive" or such
   headers.erase(StaticStrings::Connection);
 
@@ -170,7 +164,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(900);
-  
+
   if (useVst && _request->contentType() == rest::ContentType::UNSET) {
     // request is using VST, but doesn't have a Content-Type header set.
     // it is likely VelocyPack content, so let's assume that here.
@@ -182,20 +176,20 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   }
 
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
-    
+
   for (auto const& i : _request->values()) {
     options.param(i.first, i.second);
   }
-  
+
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
 
   VPackStringRef resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
-  
+
   nf.trackForwardedRequest();
- 
+
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      _request->requestPath(),
                                      std::move(payload), options, std::move(headers));
@@ -209,7 +203,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
     _response->setContentType(fuerte::v1::to_string(response.response().contentType()));
-    
+
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
       if (_response == nullptr) {
@@ -220,7 +214,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     } else {
       _response->setPayload(std::move(*response.response().stealPayload()));
     }
-    
+
 
     auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
@@ -232,7 +226,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       _response->setHeader(it.first, it.second);
     }
     _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
-    
+
     return Result();
   };
   return std::move(future).thenValue(cb);
@@ -330,7 +324,7 @@ void RestHandler::runHandlerStateMachine() {
         shutdownExecute(true); // may not be moved down
 
         _state = HandlerState::DONE;
-        
+
         // compress response if required
         compressResponse();
         // Callback may stealStatistics!

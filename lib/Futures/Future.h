@@ -65,7 +65,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   struct assertion_handler {
     void operator()(bool condition) const noexcept {
       if (!condition) {
-        //::arangodb::CrashHandler::assertionFailure();
+        ::arangodb::CrashHandler::crash("future library assertion triggered");
       }
     }
   };
@@ -107,7 +107,8 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
     }
   };
 
-  static constexpr auto small_value_size = 1024;
+  static constexpr auto finally_prealloc_size = 32;
+  static constexpr auto small_value_size = 64;
   static constexpr bool disable_temporaries = false;
 
   template<typename T, template<typename> typename Fut>

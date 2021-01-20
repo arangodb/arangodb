@@ -505,11 +505,13 @@ Future<Result> transaction::Methods::commitAsync() {
     return futures::makeFuture(Result());
   }
 
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::commitTransaction(*this);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isRunningInCluster()) {
+      // first commit transaction on subordinate servers
+      return ClusterTrxMethods::commitTransaction(*this);
+    }
+    return futures::makeFuture(Result());
+  });
 
   return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
@@ -539,11 +541,13 @@ Future<Result> transaction::Methods::abortAsync() {
     return futures::makeFuture(Result());
   }
 
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::abortTransaction(*this);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isRunningInCluster()) {
+      // first commit transaction on subordinate servers
+      return ClusterTrxMethods::abortTransaction(*this);
+    }
+    return futures::makeFuture(Result());
+  });
 
   return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally

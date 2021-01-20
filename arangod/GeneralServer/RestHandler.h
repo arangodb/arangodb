@@ -34,6 +34,7 @@
 #include <atomic>
 #include <string_view>
 #include <thread>
+#include <optional>
 
 namespace arangodb {
 namespace application_features {
@@ -89,7 +90,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
-  futures::Future<Result> forwardRequest(bool& forwarded);
+  std::optional<futures::Future<Result>> forwardRequest();
 
   void handleExceptionPtr(std::exception_ptr) noexcept;
 
