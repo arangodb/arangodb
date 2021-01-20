@@ -38,6 +38,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/files.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -726,6 +727,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
     TRI_ASSERT(_options.outputPath.size() > 0);
     _options.outputPath.pop_back();
   }
+  TRI_NormalizePath(_options.outputPath);
 
   uint32_t clamped =
       boost::algorithm::clamp(_options.threadCount, 1,

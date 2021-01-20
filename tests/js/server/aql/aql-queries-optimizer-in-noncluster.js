@@ -176,29 +176,28 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test4', 'test6' ] RETURN c._key) FOR c IN " + cn + " FILTER c._key IN parents SORT c._key RETURN c._key";
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
-      assertEqual([ "SingletonNode", "SubqueryNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryStartNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SubqueryEndNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
 
       // ascending order - input descending
       expected = [ 'test5', 'test7' ];
       query = "LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test7', 'test5' ] RETURN c._key) FOR c IN " + cn + " FILTER c._key IN parents SORT c._key RETURN c._key";
       actual = getQueryResults(query);
       assertEqual(expected, actual);
-      assertEqual([ "SingletonNode", "SubqueryNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryStartNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SubqueryEndNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
 
       // descending order - input ascending
       expected = [ 'test8', 'test6' ];
       query = "LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test6', 'test8' ] RETURN c._key) FOR c IN " + cn + " FILTER c._key IN parents SORT c._key DESC RETURN c._key";
       actual = getQueryResults(query);
       assertEqual(expected, actual);
-      assertEqual([ "SingletonNode", "SubqueryNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryStartNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SubqueryEndNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
 
       // descending order - input descending
       expected = [ 'test9', 'test7' ];
       query = "LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test9', 'test7' ] RETURN c._key) FOR c IN " + cn + " FILTER c._key IN parents SORT c._key DESC RETURN c._key";
       actual = getQueryResults(query);
       assertEqual(expected, actual);
-      assertEqual([ "SingletonNode", "SubqueryNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
-
+      assertEqual([ "SingletonNode", "SubqueryStartNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SubqueryEndNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +265,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "SubqueryNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryStartNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SubqueryEndNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,7 +369,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "SubqueryNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryStartNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SubqueryEndNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,7 +457,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "SubqueryNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryStartNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SubqueryEndNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
 
       internal.db._drop(en);
     },
