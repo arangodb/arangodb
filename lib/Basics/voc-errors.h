@@ -1928,6 +1928,11 @@ constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               
 /// Plan could not be modified while creating or deleting Analyzers revision
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN              = 7021;
 
+/// 8001: ERROR_AIR_EXECUTION_ERROR
+/// "error during AIR execution"
+/// During the execution of an AIR program an error occurred
+constexpr int TRI_ERROR_AIR_EXECUTION_ERROR                                     = 8001;
+
 
 /// register all errors for ArangoDB
 void TRI_InitializeErrorMessages();

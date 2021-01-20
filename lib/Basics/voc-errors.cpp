@@ -365,4 +365,5 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, "hot backup conflict");
   REG_ERROR(ERROR_HOT_BACKUP_DBSERVERS_AWOL, "hot backup not all db servers reachable");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, "analyzers in plan could not be modified");
+  REG_ERROR(ERROR_AIR_EXECUTION_ERROR, "error during AIR execution");
 }
