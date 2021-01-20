@@ -135,7 +135,7 @@ void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
 }
 
 void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
-  for (auto& s : plan.subQueryNodes) {
+  for (auto& s : plan.subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
     subqueryPlan.nrConstRegs = plan.nrConstRegs;

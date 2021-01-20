@@ -477,7 +477,7 @@ void RegisterPlanT<T>::shrink(T* start) {
     bool const depthChange = (previous == nullptr || previous->getDepth() != depth);
 
     if (depthChange) {
-      auto neededRegisters = static_cast<RegisterCount>(maxRegisterId + 1);
+      auto neededRegisters = static_cast<RegisterCount>(maxRegisterId.rawValue() + 1);
       if (nrRegs[depth] > neededRegisters) {
         // the current RegisterPlan has superfluous registers planned for this 
         // depth. so let's put in some more effort and remove them.

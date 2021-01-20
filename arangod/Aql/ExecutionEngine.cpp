@@ -52,7 +52,7 @@ namespace {
 RegisterId findVariableRegister(RegisterPlan& plan, Variable const* var) {
   RegisterId reg = plan.variableToOptionalRegisterId(var);
   if (reg == RegisterPlan::MaxRegisterId) {
-    for (auto s : plan.subQueryNodes) {
+    for (auto s : plan.subqueryNodes) {
       reg = findVariableRegister(*ExecutionNode::castTo<SubqueryNode*>(s)->getSubquery()->getRegisterPlan(), var);
       if (reg != RegisterPlan::MaxRegisterId) {
         break;
