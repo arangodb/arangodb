@@ -291,7 +291,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertEqual("padded", p.keyOptions.type);
-      // todo: broken. assertFalse(p.keyOptions.allowUserKeys);
+      assertFalse(p.keyOptions.allowUserKeys);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -325,7 +325,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertEqual("uuid", p.keyOptions.type);
-      // todo: broken assertFalse(p.keyOptions.allowUserKeys);
+      assertFalse(p.keyOptions.allowUserKeys);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);

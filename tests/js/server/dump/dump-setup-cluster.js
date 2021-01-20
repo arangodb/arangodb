@@ -367,7 +367,7 @@ function setupSmartGraphRegressionTest() {
   c = db._create("UnitTestsDumpKeygenPadded", {
     keyOptions: {
       type: "padded",
-      //allowUserKeys: false
+      allowUserKeys: false
     },
     numberOfShards : 2
   });
@@ -382,7 +382,7 @@ function setupSmartGraphRegressionTest() {
   c = db._create("UnitTestsDumpKeygenUuid", {
     keyOptions: {
       type: "uuid",
-      //allowUserKeys: false
+      allowUserKeys: false
     },
     numberOfShards : 2
   });
