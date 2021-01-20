@@ -27,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
@@ -492,6 +493,7 @@ void ImportFeature::start() {
     ih.setFrom(_fromCollectionPrefix);
     ih.setTo(_toCollectionPrefix);
 
+    TRI_NormalizePath(_filename);
     // import type
     if (_typeImport == "csv") {
       std::cout << "Starting CSV import..." << std::endl;

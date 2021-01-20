@@ -131,6 +131,7 @@ class MockV8Server : public MockServer,
                      public IResearchLogSuppressor {
  public:
   MockV8Server(bool startFeatures = true);
+  ~MockV8Server();
 };
 
 /// @brief a server with features added that allow to execute AQL queries
