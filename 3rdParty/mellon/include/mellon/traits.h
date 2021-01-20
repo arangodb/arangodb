@@ -76,6 +76,9 @@ namespace detail {
 #ifdef FUTURES_COUNT_ALLOC
 extern std::atomic<std::size_t> number_of_allocations;
 extern std::atomic<std::size_t> number_of_bytes_allocated;
+extern std::atomic<std::size_t> number_of_inline_value_placements;
+extern std::atomic<std::size_t> number_of_temporary_objects;
+extern std::atomic<std::size_t> number_of_prealloc_usage;
 #endif
 
 

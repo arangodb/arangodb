@@ -468,6 +468,9 @@ void insert_continuation_final(continuation_base<Tag, T>* base, F&& f) noexcept 
   if (mem != nullptr) {
     new (mem) continuation_final<T, F, deleter_destroy>(std::in_place, std::forward<F>(f));
     cont = mem;
+#ifdef FUTURES_COUNT_ALLOC
+    ::mellon::detail::number_of_prealloc_usage.fetch_add(1, std::memory_order_relaxed);
+#endif
   } else {
     cont = detail::allocate_frame_noexcept<Tag, continuation_final<T, F, deleter_dealloc>>(
         std::in_place, std::forward<F>(f));
@@ -830,6 +833,9 @@ struct future_temporary
   template <typename G, std::enable_if_t<std::is_nothrow_invocable_v<G, R&&>, int> = 0,
             typename S = std::invoke_result_t<G, R&&>>
   auto and_then(G&& f) && noexcept {
+#ifdef FUTURES_COUNT_ALLOC
+    ::mellon::detail::number_of_temporary_objects.fetch_add(1, std::memory_order_relaxed);
+#endif
     auto&& composition =
         detail::compose(std::forward<G>(f),
                         std::move(detail::function_store<F>::function_self()));
@@ -850,6 +856,9 @@ struct future_temporary
 
   template <typename G, std::enable_if_t<std::is_nothrow_invocable_r_v<void, G, R&&>, int> = 0>
   void finally(G&& f) && noexcept {
+#ifdef FUTURES_COUNT_ALLOC
+    ::mellon::detail::number_of_temporary_objects.fetch_add(1, std::memory_order_relaxed);
+#endif
     auto&& composition =
         detail::compose(std::forward<G>(f),
                         std::move(detail::function_store<F>::function_self()));
@@ -995,6 +1004,9 @@ struct future
   explicit future(std::in_place_t, Args&&... args) noexcept(
       std::conjunction_v<std::is_nothrow_constructible<T, Args...>, std::bool_constant<is_value_inlined>>) {
     if constexpr (is_value_inlined) {
+#ifdef FUTURES_COUNT_ALLOC
+      ::mellon::detail::number_of_inline_value_placements.fetch_add(1, std::memory_order_relaxed);
+#endif
       detail::internal_store<Tag, T>::emplace(std::forward<Args>(args)...);
       _base.reset(FUTURES_INVALID_POINTER_INLINE_VALUE(Tag, T));
     } else {
