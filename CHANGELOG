@@ -4,6 +4,23 @@ devel
 * Fix some issues with key generators not properly taking into account the
   `allowUserKeys` attribute when in a cluster.
 
+* Make AQL optimizer rule "splice-subqueries" mandatory, in the sense that it cannot be
+  disabled anymore. As a side effect of this change, there will no query execution plans
+  created by 3.8 that contain execution nodes of type `SubqueryNode`. `SubqueryNode`s
+  will only be used during query planning and optimization, but at the end of the query
+  optimization phase will all have been replaced with nodes of types `SubqueryStartNode`
+  and `SubqueryEndNode`.
+  The code to execute non-spliced subqueries remains in place so that 3.8 can still
+  execute queries planned on a 3.7 instance with the "splice-subqueries" optimizer rule
+  intentionally turned off. The code for executing non-spliced subqueries can be removed
+  in 3.9.
+
+* Normalize user-provided input/output directory names in
+  arangoimport, arangoexport, arangodump and arangorestore 
+  before splitting them into path components, in the sense that now 
+  both forward and backward slashes can be used on Windows,
+  even interchangingly.
+
 * Added the following bit handling functions to AQL:
 
   - BIT_AND(array): and-combined result
