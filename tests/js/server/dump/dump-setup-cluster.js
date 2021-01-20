@@ -216,78 +216,6 @@ function setupSatelliteGraphs() {
   const expected = [_.range(0, 100+1).map(i => "v" + (i % 100 + 1))];
   assertEqual(expected, res.toArray());
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test padded keygen
-////////////////////////////////////////////////////////////////////////////////
-
-function testKeygenPadded () {
-      var c = db._collection("UnitTestsDumpKeygenPadded");
-      var p = c.properties();
-  print(p)
-      assertEqual(2, c.type()); // document
-      assertFalse(p.waitForSync);
-      assertEqual("padded", p.keyOptions.type);
-      assertFalse(p.keyOptions.allowUserKeys);
-
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
-  // assertEqual(1000, c.count());
-
-      let allDocs = {};
-  let count = 0;
-  c.toArray().forEach(doc => {
-    print(doc)
-        allDocs[doc.value] = doc;
-        count ++;
-      });
-      print(allDocs);
-  assertEqual(1000, count);
-      let lastKey = "";
-      for (var i = 0; i < 1000; ++i) {
-        var doc = allDocs[i];
-
-        assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-        assertEqual(i, doc.value);
-        assertEqual({ value: [ i, i ] }, doc.more);
-        lastKey = doc._key;
-      }
-      doc = c.save({});
-      assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test uuid keygen
-////////////////////////////////////////////////////////////////////////////////
-
-function testKeygenUuid() {
-      var c = db._collection("UnitTestsDumpKeygenUuid");
-      var p = c.properties();
-
-      assertEqual(2, c.type()); // document
-      assertFalse(p.waitForSync);
-      assertEqual("uuid", p.keyOptions.type);
-      assertFalse(p.keyOptions.allowUserKeys);
-
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual(1000, c.count());
-
-  let allDocs = {};
-  let count = 0;
-      c.toArray().forEach(doc => {
-        allDocs[doc.value] = doc;
-        count ++;
-      });
-  assertEqual(1000, count);
-      print(allDocs)
-      let docs = [];
-      for (var i = 0; i < 1000; ++i) docs.push({"a": i});
-      
-      let savedDocs = c.save(docs);
-      savedDocs.forEach(doc => {
-        assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");
-      });
-    }
 
 /**
  * @brief Only if enterprise mode:
@@ -439,24 +367,22 @@ function setupSmartGraphRegressionTest() {
   c = db._create("UnitTestsDumpKeygenPadded", {
     keyOptions: {
       type: "padded",
-      allowUserKeys: false
+      //allowUserKeys: false
     },
     numberOfShards : 2
   });
-  c.save({})
-  print(c.toArray())
+
   docs = [];
   for (i = 0; i < 1000; ++i) {
     docs.push({ value: i, more: { value: [ i, i ] } });
   }
   c.save(docs);
-  testKeygenPadded()
   
   // custom key options
   c = db._create("UnitTestsDumpKeygenUuid", {
     keyOptions: {
       type: "uuid",
-      allowUserKeys: false
+      //allowUserKeys: false
     },
     numberOfShards : 2
   });
@@ -465,7 +391,7 @@ function setupSmartGraphRegressionTest() {
     docs.push({ value: i });
   }
   c.save(docs);
-  testKeygenUuid()
+
   // strings
   c = db._create("UnitTestsDumpStrings");
   var texts = [
