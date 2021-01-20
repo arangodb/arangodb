@@ -72,12 +72,18 @@ void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
 
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class NoSubqueryChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+  bool before(ExecutionNode* node) override {
+    TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY);
+    return false;
+  }
+};
 
 // Check the plan for inconsistencies, like more than one parent or dependency,
 // or mismatching parents and dependencies in adjacent nodes.
 class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
+  explicit PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
 
   bool before(ExecutionNode* node) override {
     bool ok = true;
@@ -370,6 +376,15 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   // finalize plans
   for (auto& plan : _plans.list) {
     plan.first->findVarUsage();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
+      // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
+      continue;
+    }
+
+    NoSubqueryChecker checker;
+    plan.first->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
   }
 
   // do cost estimation

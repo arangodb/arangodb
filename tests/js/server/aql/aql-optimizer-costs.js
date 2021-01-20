@@ -194,12 +194,12 @@ function optimizerCostsTestSuite () {
       assertEqual(4, node.estimatedNrItems);
       
       // find the subquery node of the plan
-      node = helper.findExecutionNodes(plan, "SubqueryNode")[0];
+      node = helper.findExecutionNodes(plan, "SubqueryEndNode")[0];
       // subquery always produces one result
       assertEqual(1, node.estimatedNrItems);
 
       // find the enumeratelistnode in the subquery
-      node = helper.findExecutionNodes(node.subquery, "EnumerateListNode")[0];
+      node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];
       assertEqual(4, node.estimatedNrItems);
     },
 
