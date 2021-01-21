@@ -1,13 +1,15 @@
 devel
 -----
 
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
 * Fixed error reporting for hotbackup restore from dbservers back to
   coordinators. This could for example swallow out of disk errors during
   hotbackup restore.
 
-* Fixed rare objectId conflict for indexes
+* Fixed rare objectId conflict for indexes.
 
-* Fix for OASIS-409. Fixed indexing _id attribute at recovery
+* Fix for OASIS-409. Fixed indexing _id attribute at recovery.
 
 * Add shard-parallelism to arangodump when dumping collections with multiple
   shards.
