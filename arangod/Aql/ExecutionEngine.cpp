@@ -734,8 +734,8 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
     } else {
       auto executor = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
       TRI_ASSERT(executor != nullptr);
-      // TODO - is this actually correct??
-      resultRegister(executor->getInputRegisterId());
+      // the ReturnExecutor always writes its output into register 0
+      resultRegister(0);
     }
   }
 

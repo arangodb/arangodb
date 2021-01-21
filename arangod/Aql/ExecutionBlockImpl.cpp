@@ -1802,12 +1802,6 @@ RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enab
   return _executorInfos.getOutputRegister();
 }
 
-template <>
-template <>
-RegisterId ExecutionBlockImpl<ReturnExecutor>::getInputRegisterId() const noexcept {
-  return _executorInfos.getInputRegisterId();
-}
-
 template <class Executor>
 void ExecutionBlockImpl<Executor>::init() {
   TRI_ASSERT(!_initialized);
