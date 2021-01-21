@@ -819,10 +819,6 @@ struct future_temporary
       private detail::internal_store<Tag, T> {
   static constexpr auto is_value_inlined = detail::internal_store<Tag, T>::stores_value;
 
-  static_assert(
-      !is_future_v<R>,
-      "init_future<init_future<T>> is a bad idea and thus not supported");
-
   future_temporary(future_temporary const&) = delete;
   future_temporary& operator=(future_temporary const&) = delete;
   future_temporary(future_temporary&& o) noexcept

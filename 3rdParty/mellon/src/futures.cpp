@@ -15,6 +15,7 @@ const char* promise_abandoned_error::what() const noexcept {
 #include <unistd.h>
 
 #include <iostream>
+#include <sstream>
 
 namespace {
 template <typename T, std::size_t N>
@@ -33,7 +34,8 @@ std::ostream& operator<<(std::ostream& os, std::array<T, N> const& arr) {
 
 struct allocation_printer {
   ~allocation_printer() {
-    std::cerr << "[FUTURES] number_of_allocations=" << mellon::detail::number_of_allocations
+    std::stringstream ss;
+    ss << "[FUTURES] number_of_allocations=" << mellon::detail::number_of_allocations
               << " number_of_bytes_allocated=" << mellon::detail::number_of_bytes_allocated
               << " number_of_inline_value_placements=" << mellon::detail::number_of_inline_value_placements
               << " number_of_temporary_objects=" << mellon::detail::number_of_temporary_objects
@@ -45,6 +47,7 @@ struct allocation_printer {
               << " histogram_final_lambda_sizes=" << mellon::detail::histogram_final_lambda_sizes
               << " number_of_promises_created=" << mellon::detail::number_of_promises_created
               << std::endl;
+    std::cout << ss.str();
   }
 };
 
