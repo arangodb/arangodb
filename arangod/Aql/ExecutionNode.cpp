@@ -1946,7 +1946,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegisterId outputRegister = variableToRegisterId(_outVariable);
-  TRI_ASSERT(_outVariable->hasConstValue == outputRegister.isConstRegister());
+  TRI_ASSERT((_outVariable->type() == Variable::Type::Const) == outputRegister.isConstRegister());
 
   VarSet inVars;
   _expression->variables(inVars);
@@ -1976,14 +1976,14 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),
-                          _outVariable->hasConstValue ? RegIdSet{} : RegIdSet{outputRegister});
+                          (_outVariable->type() == Variable::Type::Const) ? RegIdSet{} : RegIdSet{outputRegister});
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(), std::move(expInVars) /* required by expression.execute */,
       std::move(expInRegs)); /* required by expression.execute */
 
-  if (_outVariable->hasConstValue) {
+  if (_outVariable->type() == Variable::Type::Const) {
     // TODO - can we simply use the IdExecutor instead?
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Constant>>>(
         &engine, this,std::move(registerInfos), std::move(executorInfos));

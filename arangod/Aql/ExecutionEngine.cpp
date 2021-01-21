@@ -650,7 +650,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
     mgr.initializeConstValueBlock(nrConstRegs);
     plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
                                        block = mgr.getConstValueBlock()](Variable* var) {
-      if (var->hasConstValue) {
+      if (var->type() == Variable::Type::Const) {
         RegisterId reg = findVariableRegister(*plan, var);
         if (reg != RegisterPlan::MaxRegisterId) {
           TRI_ASSERT(reg.isConstRegister());

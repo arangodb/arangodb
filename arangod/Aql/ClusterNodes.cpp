@@ -306,7 +306,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     regId = (*it).second.registerId;
 
     TRI_ASSERT(regId.isConstRegister() || regId < RegisterPlan::MaxRegisterId);
-    TRI_ASSERT(regId.isConstRegister() == _variable->hasConstValue);
+    TRI_ASSERT(regId.isConstRegister() == (_variable->type() == Variable::Type::Const));
 
     if (_alternativeVariable != _variable) {
       // use second variable

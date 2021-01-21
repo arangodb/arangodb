@@ -151,7 +151,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(!regsToKeepStack.empty());
     regsToKeepStack.back().clear();
     for (auto const var : varsValid) {
-      if (!var->hasConstValue && !isSetHere(var) && isUsedLater(var)) {
+      if (var->type() == Variable::Type::Var && !isSetHere(var) && isUsedLater(var)) {
         auto reg = plan->variableToRegisterId(var);
         regsToKeepStack.back().emplace(reg);
       }
@@ -191,7 +191,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     RegIdSet regsToReuse;
     for (auto& [regId, variable] : regVarMap) {
       TRI_ASSERT(regId.isVariableRegister());
-      TRI_ASSERT(!variable->hasConstValue);
+      TRI_ASSERT(variable->type() == Variable::Type::Var);
       if (!varsUsedLater.contains(variable)) {
         regsToReuse.emplace(regId);
       }
@@ -507,18 +507,16 @@ RegisterId RegisterPlanT<T>::registerVariable(Variable const* v,
                                               std::set<RegisterId>& unusedRegisters) {
 
   RegisterId regId;
-  if (v->hasConstValue) {
+  if (v->type() == Variable::Type::Const) {
     regId = RegisterId::makeConstRegisterId((unsigned)nrConstRegs++);
   } else if (unusedRegisters.empty()) {
     regId = addRegister();
-    TRI_ASSERT(regId.isConstRegister() == v->hasConstValue);
   } else {
     auto iter = unusedRegisters.begin();
     regId = *iter;
-    TRI_ASSERT(regId.isConstRegister() == v->hasConstValue);
     unusedRegisters.erase(iter);
   }
-  TRI_ASSERT(regId.isConstRegister() == v->hasConstValue);
+  TRI_ASSERT(regId.isConstRegister() == v->type() == Variable::Type::Const);
 
   bool inserted;
   std::tie(std::ignore, inserted) = varInfo.try_emplace(v->id, VarInfo(depth, regId));
@@ -587,7 +585,7 @@ auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
     auto const& varsUsedLater = varsUsedLaterStack[idx];
 
     for (auto const var : stackEntry) {
-      if (var->hasConstValue) {
+      if (var->type() != Variable::Type::Var) {
         continue;
       }
       auto reg = variableToRegisterId(var);

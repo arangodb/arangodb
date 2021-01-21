@@ -1625,7 +1625,6 @@ void arangodb::aql::keepConstValuesInConstRegisters(Optimizer* opt,
         // soon, leaving us with an AqlValue with a dangling pointer!
         const_cast<Variable*>(var)->constantValue =
             AqlValue(nn->expression()->execute(&exprContext, mustDestroy).slice());
-        const_cast<Variable*>(var)->hasConstValue = true;
       } else {
         TRI_ASSERT(AqlValue::Compare(nullptr, var->constantValue,
                                      nn->expression()->execute(&exprContext, mustDestroy),

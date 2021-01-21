@@ -53,7 +53,6 @@ Variable::Variable(arangodb::velocypack::Slice const& slice)
       name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
       value(),
       isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)),
-      hasConstValue(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "hasConstValue", false)),
       constantValue(slice.get("constantValue")) {}
 
 /// @brief destroy the variable
@@ -82,10 +81,11 @@ void Variable::toVelocyPack(VPackBuilder& builder) const {
   builder.add("id", VPackValue(id));
   builder.add("name", VPackValue(name));
   builder.add("isDataFromCollection", VPackValue(isDataFromCollection));
-  builder.add("hasConstValue", VPackValue(hasConstValue));
-  builder.add(VPackValue("constantValue"));
-  constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
-                              /*allowUnindexed*/ true);
+  if (type() == Variable::Type::Const) {
+    builder.add(VPackValue("constantValue"));
+    constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
+                                /*allowUnindexed*/ true);
+  }
 }
 
 /// @brief replace a variable by another
@@ -124,3 +124,9 @@ bool Variable::isEqualTo(Variable const& other) const {
   return (id == other.id) && (name == other.name);
 }
 
+Type Variable::type() const noexcept {
+  if (constantValue.isNone()) {
+    return Type::Var;
+  }
+  return Type::Const;
+}

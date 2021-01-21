@@ -40,6 +40,14 @@ namespace aql {
 class Ast;
 
 struct Variable {
+  /// @brief indicates the type of the variable
+  enum class Type {
+    /// @brief a variable with a value determined while executing the query
+    Var,
+    /// @brief a variable with a constant value
+    Const
+  };
+
   /// @brief create the variable
   Variable(std::string name, VariableId id, bool isDataFromCollection);
 
@@ -77,6 +85,8 @@ struct Variable {
 
   bool isEqualTo(Variable const& other) const;
   
+  Type type() const noexcept;
+
   /// @brief variable id
   VariableId const id;
 
@@ -91,9 +101,9 @@ struct Variable {
   /// (i.e. is a document). this is only used for optimizations
   bool isDataFromCollection;
  
-  bool hasConstValue = false;
-
   // TODO - naming (we already have constValue member function)
+  /// @brief for const variables, this stores the constant value determine while
+  /// initializing the plan.
   AqlValue constantValue;
 
   /// @brief name of $OLD variable

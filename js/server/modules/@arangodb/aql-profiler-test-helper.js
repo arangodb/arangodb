@@ -375,12 +375,10 @@ function assertIsProfilePlanObject (plan) {
   // TODO add deep checks for plan.collections
 
   for (let variable of plan.variables) {
-    expect(variable).to.have.all.keys([
+    expect(variable).to.include.all.keys([
       'id',
       'name',
       'isDataFromCollection',
-      'hasConstValue',
-      'constantValue',
     ]);
 
     expect(variable.id).to.be.a('number');

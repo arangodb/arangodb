@@ -105,7 +105,7 @@ struct RegisterId {
   }
 
   constexpr bool operator<=(const RegisterId& rhs) const noexcept {
-    return _value < rhs._value;
+    return _value <= rhs._value;
   }
 
   constexpr bool operator==(const RegisterId& rhs) const noexcept {
