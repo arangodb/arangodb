@@ -1,6 +1,10 @@
 v3.6.11 (2021-01-15)
 --------------------
 
+* Fixed error reporting for hotbackup restore from dbservers back to
+  coordinators. This could for example swallow out of disk errors during
+  hotbackup restore.
+
 * Fix a bug in the agency Supervision which could lead to removeFollower jobs
   constantly being created and immediately stopped again.
 
