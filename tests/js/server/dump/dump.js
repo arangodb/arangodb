@@ -278,19 +278,23 @@ function dumpTestSuite () {
       var c = db._collection("UnitTestsDumpKeygenPadded");
       var p = c.properties();
 
-      print(p)
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertEqual("padded", p.keyOptions.type);
-      assertEqual(2286, p.keyOptions.lastValue);
+      assertEqual(2279, p.keyOptions.lastValue);
       assertFalse(p.keyOptions.allowUserKeys);
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(1001, c.count());
 
       let allDocs = {};
+      let nonDeletedDoc;
       c.toArray().forEach(doc => {
-        allDocs[doc.value] = doc;
+        if (doc.hasOwnProperty('value')) {
+          allDocs[doc.value] = doc;
+        } else {
+          nonDeletedDoc = doc;
+        }
       });
       
       let lastKey = "";
@@ -302,8 +306,7 @@ function dumpTestSuite () {
         assertEqual({ value: [ i, i ] }, doc.more);
         lastKey = doc._key;
       }
-      var doc = allDocs[1001];
-
+      var doc = nonDeletedDoc;
       assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
       lastKey = doc._key;
       doc = c.save({});
