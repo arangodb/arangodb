@@ -360,7 +360,7 @@ class PaddedKeyGenerator : public KeyGenerator {
       return std::string();
     }
 
-    return encode(tick);
+    return KeyGeneratorHelper::encodePadded(tick);
   }
 
   /// @brief validate a key
@@ -377,7 +377,7 @@ class PaddedKeyGenerator : public KeyGenerator {
   /// @brief track usage of a key
   void track(char const* p, size_t length) override {
     // check the numeric key part
-    uint64_t value = decode(p, length);
+    uint64_t value = KeyGeneratorHelper::decodePadded(p, length);
     if (value > 0) {
       track(value);
     }
@@ -395,59 +395,6 @@ class PaddedKeyGenerator : public KeyGenerator {
 
   /// @brief track a value (internal)
   virtual void track(uint64_t value) = 0;
-
- private:
-  uint64_t decode(char const* p, size_t length) {
-    uint64_t result = 0;
-
-    if (length != sizeof(uint64_t) * 2) {
-      return result;
-    }
-
-    char const* e = p + length;
-    while (p < e) {
-      uint64_t high, low;
-      uint8_t c = (uint8_t)(*p++);
-      if (c >= 'a' && c <= 'f') {
-        high = (c - 'a') + 10;
-      } else if (c >= '0' && c <= '9') {
-        high = (c - '0');
-      } else {
-        return 0;
-      }
-      c = (uint8_t)(*p++);
-      if (c >= 'a' && c <= 'f') {
-        low = (c - 'a') + 10;
-      } else if (c >= '0' && c <= '9') {
-        low = (c - '0');
-      } else {
-        return 0;
-      }
-      result += ((high << 4) | low) << ((e - p) / 2);
-    }
-
-    return result;
-  }
-
-  std::string encode(uint64_t value) {
-    // convert to big endian
-    uint64_t big = basics::hostToBig(value);
-
-    uint8_t const* p = reinterpret_cast<uint8_t const*>(&big);
-    uint8_t const* e = p + sizeof(value);
-
-    char buffer[16];
-    uint8_t* out = reinterpret_cast<uint8_t*>(&buffer[0]);
-    while (p < e) {
-      uint8_t c = (uint8_t)(*p++);
-      uint8_t n1 = c >> 4;
-      uint8_t n2 = c & 0x0F;
-      *out++ = ((n1 < 10) ? ('0' + n1) : ('a' + n1 - 10));
-      *out++ = ((n2 < 10) ? ('0' + n2) : ('a' + n2 - 10));
-    }
-
-    return std::string(&buffer[0], sizeof(uint64_t) * 2);
-  }
 };
 
 /// @brief padded key generator for a single server
@@ -488,7 +435,7 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
         tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
         break;
       }
-    } while(!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
+    } while (!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
 
 
     return tick;
@@ -764,6 +711,59 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlic
      }}};
 
 }  // namespace
+
+uint64_t KeyGeneratorHelper::decodePadded(char const* data, size_t length) {
+  uint64_t result = 0;
+
+  if (length != sizeof(uint64_t) * 2) {
+    return result;
+  }
+
+  char const* p = data;
+  char const* e = p + length;
+  while (p < e) {
+    uint64_t high, low;
+    uint8_t c = (uint8_t)(*p++);
+    if (c >= 'a' && c <= 'f') {
+      high = (c - 'a') + 10;
+    } else if (c >= '0' && c <= '9') {
+      high = (c - '0');
+    } else {
+      return 0;
+    }
+    c = (uint8_t)(*p++);
+    if (c >= 'a' && c <= 'f') {
+      low = (c - 'a') + 10;
+    } else if (c >= '0' && c <= '9') {
+      low = (c - '0');
+    } else {
+      return 0;
+    }
+    result += ((high << 4) | low) << (uint64_t(8) * ((e - p) / 2));
+  }
+
+  return result;
+}
+
+std::string KeyGeneratorHelper::encodePadded(uint64_t value) {
+  // convert to big endian
+  uint64_t big = basics::hostToBig(value);
+
+  uint8_t const* p = reinterpret_cast<uint8_t const*>(&big);
+  uint8_t const* e = p + sizeof(value);
+
+  char buffer[16];
+  uint8_t* out = reinterpret_cast<uint8_t*>(&buffer[0]);
+  while (p < e) {
+    uint8_t c = (uint8_t)(*p++);
+    uint8_t n1 = c >> 4;
+    uint8_t n2 = c & 0x0F;
+    *out++ = ((n1 < 10) ? ('0' + n1) : ('a' + n1 - 10));
+    *out++ = ((n2 < 10) ? ('0' + n2) : ('a' + n2 - 10));
+  }
+
+  return std::string(&buffer[0], sizeof(uint64_t) * 2);
+}
 
 /// @brief create the key generator
 KeyGenerator::KeyGenerator(bool allowUserKeys)
