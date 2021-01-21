@@ -456,7 +456,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         if (headerRev != 0) {
           builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revInBody)));
         }
       }
 
