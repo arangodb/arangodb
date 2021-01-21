@@ -193,7 +193,7 @@ class Methods {
   }
   
   /// @brief options used, not dump options
-  velocypack::Options const& vpackOptions() const;
+  TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
   /// @brief begin the transaction
   Result begin();

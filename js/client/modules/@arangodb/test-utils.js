@@ -1089,3 +1089,4 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.diffArray = diffArray;
 exports.pathForTesting = pathForTesting;
+exports.findEndpoint = findEndpoint;

@@ -539,6 +539,12 @@ bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcep
     return false;
   }
 
+  // Intentionally do not compare _collectioName here.
+  // It should be filled equally during upgrade/creation
+  // And during upgrade difference in name (filled/not filled) should not
+  // trigger link recreation!
+
+
   return true;
 }
 
@@ -751,6 +757,15 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     }
   }
 
+  if (slice.hasKey(StaticStrings::CollectionNameField)) {
+    TRI_ASSERT(ServerState::instance()->isClusterRole());
+    auto const field = slice.get(StaticStrings::CollectionNameField);
+    if (!field.isString()) {
+      return false;
+    }
+    _collectionName = field.copyString();
+  }
+
   return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults, mask, &_analyzerDefinitions);
 }
 
@@ -797,6 +812,11 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
     }
   }
 
+  if (writeAnalyzerDefinition && ServerState::instance()->isClusterRole()
+      && (!mask || mask->_collectionName)
+      && !_collectionName.empty()) { // for old-style link meta do not emit empty value to match stored definition
+     addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
+  }
 
   return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
 }
@@ -807,6 +827,7 @@ size_t IResearchLinkMeta::memory() const noexcept {
   size += _analyzers.size() * sizeof(decltype(_analyzers)::value_type);
   size += _sort.memory();
   size += _storedValues.memory();
+  size += _collectionName.size();
   size += FieldMeta::memory();
 
   return size;
