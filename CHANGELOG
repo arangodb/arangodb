@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed error reporting for hotbackup restore from dbservers back to
+  coordinators. This could for example swallow out of disk errors during
+  hotbackup restore.
+
 * Fixed rare objectId conflict for indexes
 
 * Fix for OASIS-409. Fixed indexing _id attribute at recovery
