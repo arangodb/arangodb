@@ -1,4 +1,11 @@
-v3.6.11 (2021-01-15)
+v3.6.12 (XXXX-XX-XX)
+--------------------
+
+* Fix some issues with key generators not properly taking into account the
+  `allowUserKeys` attribute when in a cluster.
+
+
+v3.6.11 (2020-01-15)
 --------------------
 
 * Fix a bug in the agency Supervision which could lead to removeFollower jobs
