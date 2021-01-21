@@ -1,6 +1,9 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fix some issues with key generators not properly taking into account the
+  `allowUserKeys` attribute when in a cluster.
+
 * Updated arangosync to 1.2.2.
 
 * Minor and rare AQL performance improvement, in nested subqueries:
