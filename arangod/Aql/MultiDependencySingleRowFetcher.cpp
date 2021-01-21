@@ -226,7 +226,7 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
                                               AqlCallSet const& aqlCallSet)
     -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
   TRI_ASSERT(_callsInFlight.size() == numberDependencies());
-   if (!_maximumSkipReport.isInitialized()) {
+  if (!_maximumSkipReport.isInitialized()) {
     size_t levels = stack.subqueryLevel();
     initializeReports(levels);
   }
