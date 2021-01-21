@@ -1,6 +1,11 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Prepare register planning for rolling upgrades. Previously, changes in
+  register planning from 3.7 to a minor future version (i.e. 3.8) could cause
+  queries executed by a 3.7 coordinator in combination with a minor future
+  version (i.e. 3.8) DBServer to fail during a rolling upgrade.
+
 * Fixed rare objectId conflict for indexes.
 
 * Fix for OASIS-409: fixed indexing _id attribute at recovery.
