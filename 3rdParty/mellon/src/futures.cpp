@@ -66,9 +66,7 @@ std::atomic<std::size_t> mellon::detail::number_of_promises_created = 0;
 
 std::array<std::atomic<std::size_t>, 10> mellon::detail::histogram_value_sizes{};
 std::array<std::atomic<std::size_t>, 10> mellon::detail::histogram_final_lambda_sizes{};
-
-
-extern std::string mellon::detail::message_prefix;
+std::string mellon::detail::message_prefix;
 
 allocation_printer printer;
 #endif
