@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
 * Add shard-parallelism to arangodump when dumping collections with multiple
   shards.
   Previously, arangodump could execute a dump concurrently on different 
