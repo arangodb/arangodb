@@ -5,6 +5,11 @@ v3.7.7 (XXXX-XX-XX)
 
 * Fix for OASIS-409: fixed indexing _id attribute at recovery.
 
+* Print a version mismatch (major/minor version difference) between the arangosh
+  version and the remote arangod version at arangosh startup.
+
+* Fix a potential shutdown deadlock in AgencyCache.
+
 * Updated arangosync to 1.2.2.
 
 * Minor and rare AQL performance improvement, in nested subqueries:
