@@ -478,8 +478,8 @@ void insert_continuation_final(continuation_base<Tag, T>* base, F&& f) noexcept 
 
 #ifdef FUTURES_COUNT_ALLOC
   std::size_t lambda_size = sizeof(continuation_final<T, F, deleter_destroy>);
-  double lambda_log2 = std::log2(std::max(0ul, lambda_size - 1) / 8);
-  std::size_t bucket = static_cast<std::size_t>(std::max(0., lambda_log2));
+  double lambda_log2 = std::max(0.0, std::log2(lambda_size) - 3.0);
+  std::size_t bucket = static_cast<std::size_t>(std::max(0., std::ceil(lambda_log2) - 1));
 
   ::mellon::detail::number_of_final_usage.fetch_add(1, std::memory_order_relaxed);
   ::mellon::detail::histogram_final_lambda_sizes[bucket]
@@ -1027,8 +1027,8 @@ struct future
       std::conjunction_v<std::is_nothrow_constructible<T, Args...>, std::bool_constant<is_value_inlined>>) {
 #ifdef FUTURES_COUNT_ALLOC
     std::size_t lambda_size = sizeof(T);
-    double lambda_log2 = std::log2(std::max(0ul, lambda_size - 1) / 8);
-    std::size_t bucket = static_cast<std::size_t>(std::max(0., lambda_log2));
+    double lambda_log2 = std::max(0.0, std::log2(lambda_size) - 3.0);
+    std::size_t bucket = static_cast<std::size_t>(std::max(0., std::ceil(lambda_log2) - 1));
     ::mellon::detail::histogram_value_sizes[bucket].fetch_add(1, std::memory_order_relaxed);
 #endif
     if constexpr (is_value_inlined) {
