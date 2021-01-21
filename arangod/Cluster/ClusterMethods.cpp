@@ -540,7 +540,10 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        collinfo.keyGenerator()->track(p, l);
+        int res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
     }
 
