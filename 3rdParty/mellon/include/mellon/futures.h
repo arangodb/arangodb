@@ -1489,6 +1489,9 @@ struct promise_type_based_extension<expect::expected<T>, Tag> {
  */
 template <typename T, typename Tag>
 auto make_promise() -> std::pair<future<T, Tag>, promise<T, Tag>> {
+#ifdef FUTURES_COUNT_ALLOC
+  ::mellon::detail::number_of_promises_created.fetch_add(1, std::memory_order_relaxed);
+#endif
   auto start =
       detail::tag_trait_helper<Tag>::template allocate_construct<detail::continuation_start<Tag, T>>();
   return std::make_pair(future<T, Tag>{start}, promise<T, Tag>{start});

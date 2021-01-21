@@ -43,6 +43,7 @@ struct allocation_printer {
               << " number_of_step_usage=" << mellon::detail::number_of_step_usage
               << " histogram_value_sizes=" << mellon::detail::histogram_value_sizes
               << " histogram_final_lambda_sizes=" << mellon::detail::histogram_final_lambda_sizes
+              << " number_of_promises_created=" << mellon::detail::number_of_promises_created
               << std::endl;
   }
 };
@@ -57,6 +58,7 @@ std::atomic<std::size_t> mellon::detail::number_of_prealloc_usage = 0;
 std::atomic<std::size_t> mellon::detail::number_of_inline_value_allocs = 0;
 std::atomic<std::size_t> mellon::detail::number_of_final_usage = 0;
 std::atomic<std::size_t> mellon::detail::number_of_step_usage = 0;
+std::atomic<std::size_t> mellon::detail::number_of_promises_created = 0;
 
 std::array<std::atomic<std::size_t>, 10> mellon::detail::histogram_value_sizes{};
 std::array<std::atomic<std::size_t>, 10> mellon::detail::histogram_final_lambda_sizes{};
