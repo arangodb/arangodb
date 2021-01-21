@@ -79,6 +79,14 @@ extern std::atomic<std::size_t> number_of_bytes_allocated;
 extern std::atomic<std::size_t> number_of_inline_value_placements;
 extern std::atomic<std::size_t> number_of_temporary_objects;
 extern std::atomic<std::size_t> number_of_prealloc_usage;
+
+
+extern std::atomic<std::size_t> number_of_inline_value_allocs;
+extern std::atomic<std::size_t> number_of_final_usage;
+extern std::atomic<std::size_t> number_of_step_usage;
+
+extern std::array<std::atomic<std::size_t>, 10> histogram_value_sizes;
+extern std::array<std::atomic<std::size_t>, 10> histogram_final_lambda_sizes;
 #endif
 
 

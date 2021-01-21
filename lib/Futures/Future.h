@@ -50,17 +50,6 @@ struct scheduler_addition {};
 
 template <>
 struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
-  struct allocator {
-    // TODO is this how you do such things?
-    template <typename T>
-    static T* allocate() {
-      return reinterpret_cast<T*>(::operator new(sizeof(T)));
-    }
-    template <typename T>
-    static T* allocate(std::nothrow_t) noexcept {
-      return reinterpret_cast<T*>(::operator new(sizeof(T), std::nothrow));
-    }
-  };
 
   /* */
   struct assertion_handler {
