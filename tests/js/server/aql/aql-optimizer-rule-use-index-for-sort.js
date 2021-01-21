@@ -270,20 +270,17 @@ function optimizerRuleTestSuite() {
         "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a RETURN [v.a]"
       ];
       var QResults = [];
-      var i = 0;
-      queries.forEach(function(query) {
-        var j;
-
-        var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+      queries.forEach(function(query, i) {
+        let result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
         assertEqual([ ruleName ], 
-                    removeAlwaysOnClusterRules(result.plan.rules), query);
+                    removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"), query);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       
         assertTrue(isEqual(QResults[0], QResults[1]), "result " + i + " is equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (j = 1; j < allresults.results.length; j++) {
+        for (let j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
                        "while execution of '" + query +
@@ -292,14 +289,13 @@ function optimizerRuleTestSuite() {
                        "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
         }
-        i++;
       });
 
     },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule has an effect, but the sort is kept in place since 
-    //   the index can't fullfill all the sorting.
+    //   the index can't fulfill all the sorting.
     ////////////////////////////////////////////////////////////////////////////////
     testRuleHasEffectButSortsStill : function () {
       var queries = [
@@ -308,11 +304,10 @@ function optimizerRuleTestSuite() {
           + colNameOther + " SORT w.j, w.h RETURN  w.f ) SORT v.a RETURN [v.a]"
       ];
       var QResults = [];
-      var i = 0;
-      queries.forEach(function(query) {
+      queries.forEach(function(query, i) {
         var j;
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-        assertEqual([ ruleName ], removeAlwaysOnClusterRules(result.plan.rules));
+        assertEqual([ ruleName ], removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"));
         hasIndexNode(result);
         hasSortNode(result);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
@@ -320,7 +315,7 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
         var allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (j = 1; j < allresults.results.length; j++) {
+        for (let j = 1; j < allresults.results.length; j++) {
           assertTrue(isEqual(allresults.results[0],
                              allresults.results[j]),
                      "while execution of '" + query +
@@ -329,7 +324,6 @@ function optimizerRuleTestSuite() {
                      "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                     );
         }
-        i++;
       });
     },
 
@@ -1047,28 +1041,9 @@ function optimizerRuleTestSuite() {
       assertTrue(seen);
     },
     
-    testSortAscWithFilterSubquery : function () {
-      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b ASC RETURN v)`;
-      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['-splice-subqueries']}}).plan;
-      const rules = plan.rules;
-      assertNotEqual(-1, rules.indexOf(ruleName));
-      assertNotEqual(-1, rules.indexOf(secondRuleName));
-      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
-      assertEqual(-1, rules.indexOf("splice-subqueries"));
-
-      const nodes = helper.findExecutionNodes(plan, "SubqueryNode")[0].subquery.nodes;
-      // We expect no SortNode...
-      assertFalse(nodes.some(node => node.type === 'SortNode'));
-      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
-      // ...and one IndexNode...
-      assertEqual(1, indexNodes.length);
-      // ...which is not reversed.
-      assertFalse(indexNodes[0].reverse);
-    },
-
     testSortAscWithFilterSplicedSubquery : function () {
       const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b ASC RETURN v)`;
-      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
+      const plan = AQL_EXPLAIN(query).plan;
       const rules = plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
@@ -1088,28 +1063,9 @@ function optimizerRuleTestSuite() {
       assertFalse(indexNodes[0].reverse);
     },
     
-    testSortDescWithFilterSubquery : function () {
-      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
-      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['-splice-subqueries']}}).plan;
-      const rules = plan.rules;
-      assertNotEqual(-1, rules.indexOf(ruleName));
-      assertNotEqual(-1, rules.indexOf(secondRuleName));
-      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
-      assertEqual(-1, rules.indexOf("splice-subqueries"));
-
-      const nodes = helper.findExecutionNodes(plan, "SubqueryNode")[0].subquery.nodes;
-      // We expect no SortNode...
-      assertFalse(nodes.some(node => node.type === 'SortNode'));
-      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
-      // ...and one IndexNode...
-      assertTrue(indexNodes.length === 1);
-      // ...which is reversed.
-      assertTrue(indexNodes[0].reverse);
-    },
-
     testSortDescWithFilterSplicedSubquery : function () {
       const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
-      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
+      const plan = AQL_EXPLAIN(query).plan;
       const rules = plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
