@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertEqual, assertTrue, assertEqual, assertMatch, fail */
+/*global arango, assertEqual, assertTrue, assertFalse,, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
@@ -320,13 +320,22 @@ function AllowUserKeysSuite () {
     
     testAllowUserKeysTrueDefaultSharding : function () {
       generators().forEach((generator) => {
-        let c = db._create(cn, { keyOptions: { type: generator, allowUserKeys: true } });
+        let c = db._create(cn, { keyOptions: { type: generator, allowUserKeys: true }, numberOfShards: 2 });
         try {
+          let p = c.properties();
+          assertTrue(p.keyOptions.allowUserKeys);
+          assertEqual(generator, p.keyOptions.type);
+
           let doc = c.insert({ _key: "1234" }); 
           assertEqual("1234", doc._key);
           assertEqual(1, c.count());
           doc = c.document("1234");
           assertEqual("1234", doc._key);
+
+          doc = c.insert({});
+          assertMatch(/^[a-zA-z0-9]+/, doc._key);
+          assertEqual(2, c.count());
+          assertTrue(c.exists(doc._key));
         } finally {
           db._drop(cn);
         }
@@ -335,14 +344,23 @@ function AllowUserKeysSuite () {
     
     testAllowUserKeysFalseDefaultSharding : function () {
       generators().forEach((generator) => {
-        let c = db._create(cn, { keyOptions: { type: generator, allowUserKeys: false } });
+        let c = db._create(cn, { keyOptions: { type: generator, allowUserKeys: false }, numberOfShards: 2 });
         try {
+          let p = c.properties();
+          assertFalse(p.keyOptions.allowUserKeys);
+          assertEqual(generator, p.keyOptions.type);
+
           c.insert({ _key: "1234" }); 
           fail();
         } catch (err) {
           assertEqual(0, c.count());
           assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
                      err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
+
+          let doc = c.insert({});
+          assertMatch(/^[a-zA-z0-9]+/, doc._key);
+          assertEqual(1, c.count());
+          assertTrue(c.exists(doc._key));
         } finally {
           db._drop(cn);
         }
@@ -355,14 +373,23 @@ function AllowUserKeysSuite () {
       }
 
       generators().forEach((generator) => {
-        let c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: generator, allowUserKeys: true } });
+        let c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: generator, allowUserKeys: true }, numberOfShards: 2 });
         try {
+          let p = c.properties();
+          assertTrue(p.keyOptions.allowUserKeys);
+          assertEqual(generator, p.keyOptions.type);
+
           c.insert({ _key: "1234" }); 
           fail();
         } catch (err) {
           assertEqual(0, c.count());
           assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
                      err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
+          
+          let doc = c.insert({});
+          assertMatch(/^[a-zA-z0-9]+/, doc._key);
+          assertEqual(1, c.count());
+          assertTrue(c.exists(doc._key));
         } finally {
           db._drop(cn);
         }
@@ -375,14 +402,23 @@ function AllowUserKeysSuite () {
       }
 
       generators().forEach((generator) => {
-        let c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: generator, allowUserKeys: false } });
+        let c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: generator, allowUserKeys: false }, numberOfShards: 2 });
         try {
+          let p = c.properties();
+          assertFalse(p.keyOptions.allowUserKeys);
+          assertEqual(generator, p.keyOptions.type);
+
           c.insert({ _key: "1234" }); 
           fail();
         } catch (err) {
           assertEqual(0, c.count());
           assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
                      err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
+          
+          let doc = c.insert({});
+          assertMatch(/^[a-zA-z0-9]+/, doc._key);
+          assertEqual(1, c.count());
+          assertTrue(c.exists(doc._key));
         } finally {
           db._drop(cn);
         }
@@ -392,7 +428,7 @@ function AllowUserKeysSuite () {
   };
 }
 
-//jsunity.run(TraditionalSuite);
+jsunity.run(TraditionalSuite);
 jsunity.run(AllowUserKeysSuite);
 
 return jsunity.done();
