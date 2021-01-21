@@ -115,6 +115,9 @@
     docs.push({ value: i, more: { value: [ i, i ] } });
   }
   c.save(docs);
+  let d = c.save({});
+  c.save({}); // create another one inbetween...
+  c.remove(d);
 
   // custom key options
   c = db._create("UnitTestsDumpKeygenPadded", {
@@ -123,12 +126,17 @@
       allowUserKeys: false
     }
   });
+
   docs = [];
   for (i = 0; i < 1000; ++i) {
     docs.push({ value: i, more: { value: [ i, i ] } });
   }
   c.save(docs);
-
+  d = c.save({});
+  c.save({}); // create another one inbetween...
+  c.remove(d);
+  print(c.properties())
+  
   // custom key options
   c = db._create("UnitTestsDumpKeygenUuid", {
     keyOptions: {
