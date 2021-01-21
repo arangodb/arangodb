@@ -37,28 +37,37 @@ using namespace arangodb;
 using namespace arangodb::result;
 
 Result::Result(int errorNumber)
-    : _error(std::make_unique<Error>(errorNumber)) {}
+    : _error(errorNumber == TRI_ERROR_NO_ERROR ? nullptr : std::make_unique<Error>(errorNumber)) {
+}
 
 Result::Result(int errorNumber, std::string const& errorMessage)
-    : _error(std::make_unique<Error>(errorNumber, errorMessage)) {}
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {}
 
 Result::Result(int errorNumber, std::string&& errorMessage)
-    : _error(std::make_unique<Error>(errorNumber, std::move(errorMessage))) {}
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, std::move(errorMessage))) {}
 
 Result::Result(int errorNumber, std::string_view const& errorMessage)
-    : _error(std::make_unique<Error>(errorNumber, errorMessage)) {}
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {}
 
 Result::Result(int errorNumber, const char* errorMessage)
-    : _error(std::make_unique<Error>(errorNumber, errorMessage)) {}
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {}
 
 Result::Result(Result const& other)
-    : _error(std::make_unique<Error>(*other._error)) {}
+    : _error(other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error)) {}
 
 Result::Result(Result&& other) noexcept : _error(std::move(other._error)) {}
 
 auto Result::operator=(Result const& other) -> Result& {
   // TODO does this handle self-assignment correctly?
-  _error = std::make_unique<Error>(*other._error);
+  _error = other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error);
   return *this;
 }
 
@@ -73,7 +82,11 @@ auto Result::ok() const noexcept -> bool { return _error == nullptr; }
 auto Result::fail() const noexcept -> bool { return !ok(); }
 
 auto Result::errorNumber() const noexcept -> int {
-  return _error == nullptr ? TRI_ERROR_NO_ERROR : _error->errorNumber();
+  if (_error == nullptr) {
+    return TRI_ERROR_NO_ERROR;
+  } else {
+    return _error->errorNumber();
+  }
 }
 
 auto Result::is(int errorNumber) const noexcept -> bool {
