@@ -1,6 +1,8 @@
 v3.6.12 (XXXX-XX-XX)
 --------------------
 
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
 * Fix some issues with key generators not properly taking into account the
   `allowUserKeys` attribute when in a cluster.
 
