@@ -1,6 +1,9 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Print a version mismatch (major/minor version difference) between the arangosh
+  version and the remote arangod version at arangosh startup.
+
 * Fix a potential shutdown deadlock in AgencyCache.
 
 * Updated arangosync to 1.2.2.
