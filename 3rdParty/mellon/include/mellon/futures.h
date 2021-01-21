@@ -392,7 +392,7 @@ struct deleter_destroy {
 
 template<std::size_t size, std::size_t max, std::size_t align>
 struct size_tester {
-  //static_assert(size <= max);
+//  static_assert(size <= max);
   static_assert(align == 8);
 };
 
@@ -418,8 +418,8 @@ struct memory_buffer {
 
 template <>
 struct memory_buffer<0> {
-  template <typename T, typename... Args>
-  T* try_allocate(Args&&...) noexcept {
+  template <typename T>
+  T* try_allocate() noexcept {
     return nullptr;
   }
 };
@@ -477,9 +477,12 @@ void insert_continuation_final(continuation_base<Tag, T>* base, F&& f) noexcept 
   }
 
 #ifdef FUTURES_COUNT_ALLOC
+  std::size_t lambda_size = sizeof(continuation_final<T, F, deleter_destroy>);
+  double lambda_log2 = std::log2(std::max(0ul, lambda_size - 1) / 8);
+  std::size_t bucket = static_cast<std::size_t>(std::max(0., lambda_log2));
+
   ::mellon::detail::number_of_final_usage.fetch_add(1, std::memory_order_relaxed);
-  ::mellon::detail::histogram_final_lambda_sizes[static_cast<std::size_t>(std::log2(
-                                                     sizeof(std::decay_t<F>) / 8))]
+  ::mellon::detail::histogram_final_lambda_sizes[bucket]
       .fetch_add(1, std::memory_order_relaxed);
 #endif
 
@@ -1027,7 +1030,10 @@ struct future
   explicit future(std::in_place_t, Args&&... args) noexcept(
       std::conjunction_v<std::is_nothrow_constructible<T, Args...>, std::bool_constant<is_value_inlined>>) {
 #ifdef FUTURES_COUNT_ALLOC
-    ::mellon::detail::histogram_value_sizes[std::log2(sizeof(T) / 8)].fetch_add(1, std::memory_order_relaxed);
+    std::size_t lambda_size = sizeof(T);
+    double lambda_log2 = std::log2(std::max(0ul, lambda_size - 1) / 8);
+    std::size_t bucket = static_cast<std::size_t>(std::max(0., lambda_log2));
+    ::mellon::detail::histogram_value_sizes[bucket].fetch_add(1, std::memory_order_relaxed);
 #endif
     if constexpr (is_value_inlined) {
 #ifdef FUTURES_COUNT_ALLOC
