@@ -515,8 +515,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
   });
 
-  return waitForFuture(std::move(f).then_bind([=, opOptions = opOptions, buffer(std::move(buffer))](OperationResult opRes) {
-    return _activeTrx->finishAsync(opRes.result).thenValue([=, opOptions = opOptions, opRes(std::move(opRes))](Result&& res) {
+  return waitForFuture(std::move(f).then_bind([=, cname = std::move(cname), opOptions = opOptions, buffer(std::move(buffer))](OperationResult opRes) mutable {
+    return _activeTrx->finishAsync(opRes.result).thenValue([=, cname = std::move(cname), opOptions = opOptions, opRes = std::move(opRes)](Result&& res) {
       // ...........................................................................
       // outside write transaction
       // ...........................................................................
