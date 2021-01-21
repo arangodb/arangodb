@@ -103,6 +103,9 @@ class VstCommTask final : public GeneralCommTask<T> {
   static constexpr size_t maxChunkSize = 30 * 1024;
 
  private:
+
+  std::string const& url(VstRequest* req);
+
   std::map<uint64_t, Message> _messages;
 
   // the queue is dynamically sized because we can't guarantee that

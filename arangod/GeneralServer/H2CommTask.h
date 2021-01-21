@@ -114,6 +114,10 @@ class H2CommTask final : public GeneralCommTask<T> {
   Stream* findStream(int32_t sid);
 
  private:
+
+  /// @brief used to generate the full url for debugging
+  std::string const& url(HttpRequest* req);
+
   velocypack::Buffer<uint8_t> _outbuffer;
 
   boost::lockfree::queue<H2Response*, boost::lockfree::capacity<H2MaxConcurrentStreams>> _responses;

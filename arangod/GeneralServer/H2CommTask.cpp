@@ -462,6 +462,15 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 #endif
 
 template <SocketType T>
+std::string const& H2CommTask<T>::url(HttpRequest* req) {
+  if (_url.empty() && req != nullptr) {
+    _url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+  }
+  return _url;
+}
+
+template <SocketType T>
 void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
@@ -477,13 +486,11 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
 
   // from here on we will send a response, the connection is not IDLE
   _numProcessing.fetch_add(1, std::memory_order_relaxed);
-  _url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
-    (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   {
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
         << "\"h2-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(req->requestType()) << "\",\"" << _url << "\"";
+        << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     VPackStringRef body = req->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -573,7 +580,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << this->_connectionInfo.clientAddress
       << "\",\""
       //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << _url << "\",\"" << static_cast<int>(res->responseCode()) << "\","
+      << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode()) << "\","
       << Logger::FIXED(totalTime, 6) << "," << Logger::FIXED(queueTime, 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());

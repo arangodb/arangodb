@@ -55,11 +55,11 @@ struct TransactionStatistics {
   Counter& _numRead;
   Counter& _numWrite;
   Counter& _numReplicate;
-  Histogram<log_scale_t<float>>& _rocksdb_insert_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_read_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_replace_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_remove_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_update_msec;
+  Histogram<log_scale_t<float>>& _rocksdb_insert_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_read_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_replace_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_remove_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_update_usec;
 };
 
 struct ServerStatistics {
