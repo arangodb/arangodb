@@ -573,7 +573,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << this->_connectionInfo.clientAddress
       << "\",\""
       //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(res->responseCode()) << "\","
+      << _url << "\",\"" << static_cast<int>(res->responseCode()) << "\","
       << Logger::FIXED(totalTime, 6) << "," << Logger::FIXED(queueTime, 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());
