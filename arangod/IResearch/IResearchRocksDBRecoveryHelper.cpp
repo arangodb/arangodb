@@ -195,7 +195,16 @@ void ensureLink(arangodb::DatabaseFeature& db,
         << "' to the collection '" << cid << "' in the database '" << dbId;
     return;
   }
-
+  // we need to keep objectId
+  if (indexSlice.hasKey(arangodb::StaticStrings::ObjectId)) {
+    json.add(arangodb::StaticStrings::ObjectId, indexSlice.get(arangodb::StaticStrings::ObjectId));
+  } else {
+    LOG_TOPIC("ed031", WARN, arangodb::iresearch::TOPIC)
+        << "Missing objectId in jSON definition for link '" << iid.id()
+        << "' to the collection '" << cid << "' in the database '" << dbId
+        << "'. ObjectId will be regenerated";
+  }
+  
   json.close();
 
   bool created;

@@ -223,13 +223,11 @@ class TraditionalKeyGenerator : public KeyGenerator {
   int validate(char const* p, size_t length, bool isRestore) override {
     int res = KeyGenerator::validate(p, length, isRestore);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (res == TRI_ERROR_NO_ERROR) {
+      track(p, length);
     }
 
-    track(p, length);
-
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   /// @brief track usage of a key
@@ -371,13 +369,11 @@ class PaddedKeyGenerator : public KeyGenerator {
   int validate(char const* p, size_t length, bool isRestore) override {
     int res = KeyGenerator::validate(p, length, isRestore);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (res == TRI_ERROR_NO_ERROR) {
+      track(p, length);
     }
 
-    track(p, length);
-
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   /// @brief track usage of a key
@@ -579,22 +575,20 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   int validate(char const* p, size_t length, bool isRestore) override {
     int res = KeyGenerator::validate(p, length, isRestore);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (res == TRI_ERROR_NO_ERROR) {
+      char const* s = p;
+      char const* e = s + length;
+      TRI_ASSERT(s != e);
+      do {
+        if (*s < '0' || *s > '9') {
+          return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+        }
+      } while (++s < e);
+
+      track(p, length);
     }
 
-    char const* s = p;
-    char const* e = s + length;
-    TRI_ASSERT(s != e);
-    do {
-      if (*s < '0' || *s > '9') {
-        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-      }
-    } while (++s < e);
-
-    track(p, length);
-
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   /// @brief track usage of a key
@@ -776,7 +770,8 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
 
 /// @brief create the key generator
 KeyGenerator::KeyGenerator(bool allowUserKeys)
-    : _allowUserKeys(allowUserKeys) {}
+    : _allowUserKeys(allowUserKeys),
+      _isDBServer(ServerState::instance()->isDBServer()) {}
 
 /// @brief build a VelocyPack representation of the generator in the builder
 void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
@@ -816,8 +811,9 @@ int KeyGenerator::validate(char const* p, size_t length, bool isRestore) {
 /// @brief check global key attributes
 int KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
   // user has specified a key
-  if (length > 0 && !_allowUserKeys && !isRestore) {
+  if (length > 0 && !_allowUserKeys && !isRestore && !_isDBServer) {
     // we do not allow user-generated keys
+    // note: on a DB server the coordinator will already have generated the key
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
   }
 

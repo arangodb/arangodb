@@ -321,6 +321,9 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       createInfo.setId(clusterInfo.uniqid());
     }
+    if (server.getFeature<ClusterFeature>().forceOneShard()) {
+      createInfo.sharding("single");
+    }
 
     res = ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
     if (res.ok()) {
