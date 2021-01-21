@@ -183,7 +183,7 @@ class Result final {
   }
 
  private:
-  std::unique_ptr<Error> _error = nullptr;
+  std::unique_ptr<arangodb::result::Error> _error = nullptr;
 };
 
 }  // namespace arangodb

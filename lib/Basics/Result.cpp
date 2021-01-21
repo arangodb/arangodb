@@ -34,6 +34,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::result;
 
 Result::Result(int errorNumber)
     : _error(std::make_unique<Error>(errorNumber)) {}

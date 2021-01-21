@@ -29,7 +29,7 @@
 #include <string>
 #include <string_view>
 
-namespace arangodb {
+namespace arangodb::result {
 
 // arangodb::Error is used in arangodb::Result
 
@@ -187,6 +187,6 @@ class Error final {
   std::string _errorMessage;
 };
 
-}
+}  // namespace arangodb::result
 
 #endif  // ARANGODB_BASICS_RESULT_ERROR_H

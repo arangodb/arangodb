@@ -33,6 +33,7 @@
 #include <ostream>
 
 using namespace arangodb;
+using namespace arangodb::result;
 
 Error::Error() noexcept(noexcept(std::allocator<char>()))
     : _errorNumber(TRI_ERROR_NO_ERROR) {}
@@ -133,7 +134,7 @@ std::string Error::errorMessage() && {
   return TRI_errno_string(_errorNumber);
 }
 
-std::ostream& operator<<(std::ostream& out, arangodb::Error const& error) {
+std::ostream& operator<<(std::ostream& out, arangodb::result::Error const& error) {
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);
