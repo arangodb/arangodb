@@ -117,6 +117,8 @@ class AqlItemBlockManager {
 
   Bucket _buckets[numBuckets];
 
+  /// @brief the AqlItemBlock used to store the values of const variables
+  // Note: we are using a raw pointer here, because the AqlItemBlock destructor is protected.
   AqlItemBlock* _constValueBlock = nullptr;
 };
 

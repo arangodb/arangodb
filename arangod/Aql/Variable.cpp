@@ -124,7 +124,7 @@ bool Variable::isEqualTo(Variable const& other) const {
   return (id == other.id) && (name == other.name);
 }
 
-Type Variable::type() const noexcept {
+Variable::Type Variable::type() const noexcept {
   if (constantValue.isNone()) {
     return Type::Var;
   }

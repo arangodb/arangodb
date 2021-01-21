@@ -516,7 +516,7 @@ RegisterId RegisterPlanT<T>::registerVariable(Variable const* v,
     regId = *iter;
     unusedRegisters.erase(iter);
   }
-  TRI_ASSERT(regId.isConstRegister() == v->type() == Variable::Type::Const);
+  TRI_ASSERT(regId.isConstRegister() == (v->type() == Variable::Type::Const));
 
   bool inserted;
   std::tie(std::ignore, inserted) = varInfo.try_emplace(v->id, VarInfo(depth, regId));

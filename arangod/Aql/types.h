@@ -81,8 +81,9 @@ struct RegisterId {
 
   constexpr unsigned rawValue() const noexcept { return _value; }
   constexpr unsigned value() const noexcept {
-    if (isVariableRegister())
+    if (isVariableRegister()) {
       return _value;
+    }
     return _value - constRegisterIdOffset;
   }
 

@@ -1602,6 +1602,7 @@ void arangodb::aql::keepConstValuesInConstRegisters(Optimizer* opt,
   for (auto const& n : distributeNodes) {
     auto nn = ExecutionNode::castTo<DistributeNode*>(n);
     vars.insert(nn->variable());
+    // it doesn't matter that alternativeVariable() can be null here
     vars.insert(nn->alternativeVariable());
   }
 
