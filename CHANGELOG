@@ -1,6 +1,8 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
 * Print a version mismatch (major/minor version difference) between the arangosh
   version and the remote arangod version at arangosh startup.
 
