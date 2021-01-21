@@ -2148,46 +2148,20 @@ class IResearchFeatureTestCoordinator
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
-  arangodb::tests::mocks::MockV8Server server;
+  arangodb::tests::mocks::MockCoordinator server;
 
  private:
-  arangodb::ServerState::RoleEnum _serverRoleBefore;
-  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
 
  protected:
   IResearchFeatureTestCoordinator()
-      : server(false),
-        _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
-    server.getFeature<arangodb::ClusterFeature>().allocateMembers();
+      : server(false) {
 
     arangodb::tests::init();
 
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
     arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
-
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
-    server.addFeature<arangodb::FlushFeature>(false);
-    server.addFeature<arangodb::QueryRegistryFeature>(false);
-    server.addFeature<arangodb::ServerSecurityFeature>(false);
+    // we will start Upgrade feature under our control
+    server.untrackFeature<arangodb::UpgradeFeature>();
     server.startFeatures();
-
-    arangodb::AgencyCommHelper::initialize("arango");
-    arangodb::network::ConnectionPool::Config poolConfig;
-    poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    poolConfig.numIOThreads = 1;
-    poolConfig.maxOpenConnections = 3;
-    poolConfig.verifyHosts = false;
-    _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
-    arangodb::AsyncAgencyCommManager::initialize(server.server());
-    arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
-    arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4001");
-    arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
-    poolConfig.clusterInfo->startSyncers();
-  }
-
-  ~IResearchFeatureTestCoordinator() {
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
-    arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
   arangodb::consensus::index_t agencyTrx(std::string const& key, std::string const& value) {
@@ -2274,15 +2248,6 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
       "{ \"version\": 0, \"tasks\": {} }");
   auto collectionId = std::to_string(41);
   auto viewId = std::to_string(42);
-
-  // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
-
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
-  feature.validateOptions(server.server().options());
-  feature.collectOptions(server.server().options());
-  feature.prepare();  // register iresearch view type
-  feature.start();    // register upgrade tasks
 
   server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
@@ -2397,50 +2362,23 @@ class IResearchFeatureTestDBServer
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
-  arangodb::tests::mocks::MockV8Server server;
+  arangodb::tests::mocks::MockDBServer server;
 
  private:
 
-  arangodb::ServerState::RoleEnum _serverRoleBefore;
-  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
-
  protected:
   IResearchFeatureTestDBServer()
-      : server(false),
-        _serverRoleBefore(arangodb::ServerState::instance()->getRole()),
-        _pool(nullptr) {
+      : server(false) {
 
 
     arangodb::tests::init();
 
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
     arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
 
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
-    server.addFeature<arangodb::FlushFeature>(false);
-    server.addFeature<arangodb::QueryRegistryFeature>(false);
-    server.addFeature<arangodb::ServerSecurityFeature>(false);
+    //server.addFeature<arangodb::SchedulerFeature>(true);
+    // we will control UgradeFeature start!
+    server.untrackFeature<arangodb::UpgradeFeature>();
     server.startFeatures();
-
-    arangodb::AgencyCommHelper::initialize("arango");
-
-    arangodb::network::ConnectionPool::Config poolConfig;
-    poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    poolConfig.numIOThreads = 1;
-    poolConfig.maxOpenConnections = 3;
-    poolConfig.verifyHosts = false;
-    _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
-    arangodb::AsyncAgencyCommManager::initialize(server.server());
-    arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
-    arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
-
-    arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
-    poolConfig.clusterInfo->startSyncers();
-  }
-
-  ~IResearchFeatureTestDBServer() {
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
-    arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
   // version 0 data-source path
@@ -2470,6 +2408,15 @@ class IResearchFeatureTestDBServer
     dataPath += std::to_string(link.id().id());
     return dataPath;
   }
+
+  
+  void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
+    vocbase = server.createDatabase(name);
+    ASSERT_NE(nullptr, vocbase);
+    ASSERT_EQ(name, vocbase->name());
+    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, vocbase->type());
+  }
+
 };
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
@@ -2484,14 +2431,6 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       "}");
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
-  // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
-
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
-  feature.validateOptions(server.server().options());
-  feature.collectOptions(server.server().options());
-  feature.prepare();  // register iresearch view type
-  feature.start();    // register upgrade tasks
 
   server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
@@ -2564,15 +2503,6 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
 
-  // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
-
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
-  feature.validateOptions(server.server().options());
-  feature.collectOptions(server.server().options());
-  feature.prepare();  // register iresearch view type
-  feature.start();    // register upgrade tasks
-
   server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -2636,4 +2566,92 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   logicalView = vocbase.lookupView(logicalView->name());
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
   EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory removed after upgrade
+}
+
+TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
+  // test db-server (with directory)
+  //auto collectionJson = arangodb::velocypack::Parser::fromJson(
+  //    "{ \"name\": \"testCollection\", \"id\":999 }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 1 "
+      "}");
+
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
+      "\"includeAllFields\": true }");
+  // assume step 1 already finished
+  auto versionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"version\": 1, \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
+
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+
+  auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  auto versionFilename = StorageEngineMock::versionFilenameResult;
+  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  });
+  StorageEngineMock::versionFilenameResult =
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
+  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+
+  auto& engine = *static_cast<StorageEngineMock*>(
+      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+  engine.views.clear();
+
+  TRI_vocbase_t* vocbase;
+  createTestDatabase(vocbase);
+  auto& clusterInfo =
+      vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+
+  //server.createCollection("testDatabase", "999", "testCollection");
+  auto logicalCollectionCluster = clusterInfo.getCollection("testDatabase", "_analyzers");//createCollection(collectionJson->slice());
+  ASSERT_FALSE(!logicalCollectionCluster);
+
+  // now we have standart collections in ClusterInfo
+  // we need corresponding collection in vocbase with the same id!
+  // FIXME: remove this as soon as proper DBServer mock will be ready
+  // and  createTestDatabase will actually fill collections in vocbase
+  std::string collectionJson = "{ \"isSystem\":true, \"name\": \"_analyzers\", \"id\":";
+  collectionJson.append(std::to_string(logicalCollectionCluster->id())).append("}");
+  auto logicalCollection = vocbase->createCollection(VPackParser::fromJson(collectionJson)->slice());
+
+  auto logicalView = vocbase->createView(viewJson->slice());
+  ASSERT_FALSE(!logicalView);
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  bool created;
+  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  ASSERT_TRUE(created);
+  ASSERT_FALSE(!index);
+  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  ASSERT_FALSE(!link);
+  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+
+  {
+    auto indexes = logicalCollection->getIndexes();
+    for (auto& index : indexes) {
+      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        VPackBuilder builder;
+        index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+        ASSERT_FALSE(builder.slice().hasKey("collectionName"));
+      }
+    }
+  }
+
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, true, false).ok());  // run upgrade
+
+  {
+    auto indexes = logicalCollection->getIndexes();
+    for (auto& index : indexes) {
+      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        VPackBuilder builder;
+        index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+        auto slice = builder.slice();
+        ASSERT_TRUE(slice.hasKey("collectionName"));
+        ASSERT_EQ("_analyzers", slice.get("collectionName").copyString());
+      }
+    }
+  }
 }

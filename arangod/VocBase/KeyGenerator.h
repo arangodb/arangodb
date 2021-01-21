@@ -96,6 +96,8 @@ class KeyGenerator {
  protected:
   /// @brief whether or not the users can specify their own keys
   bool const _allowUserKeys;
+  /// @brief whether or not we are running on a DB server
+  bool const _isDBServer;
 };
 
 }  // namespace arangodb
