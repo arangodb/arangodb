@@ -1,6 +1,8 @@
 v3.6.11 (XXXX-XX-XX)
 --------------------
 
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
 * Fix a bug in the agency Supervision which could lead to removeFollower jobs
   constantly being created and immediately stopped again.
 
