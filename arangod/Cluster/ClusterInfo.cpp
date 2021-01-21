@@ -321,7 +321,6 @@ void ClusterInfo::cleanup() {
     _currentCollections.clear();
     _shardIds.clear();
   }
-
 }
 
 void ClusterInfo::triggerBackgroundGetIds() {
@@ -1983,7 +1982,10 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   auto agencyCallback =
     std::make_shared<AgencyCallback>(
       _server, "Current/Databases/" + database.getName(), dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r =_agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -2252,7 +2254,11 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
                               _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   });
@@ -2589,7 +2595,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           _server, "Current/Collections/" + databaseName + "/" + info.collectionID,
           closure, true, false);
 
-    _agencyCallbackRegistry->registerCallback(agencyCallback);
+    Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    if (r.fail()) {
+      return r;
+    }
+
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
@@ -3015,7 +3025,11 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [this, &agencyCallback]() -> void {
       _agencyCallbackRegistry->unregisterCallback(agencyCallback);
@@ -3948,7 +3962,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
 
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -4200,7 +4218,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
 
-
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
     std::vector<std::string>{AgencyCommHelper::path(planCollKey)});
@@ -4318,7 +4335,11 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -5643,7 +5664,7 @@ void ClusterInfo::startSyncers() {
   }
 }
 
-void ClusterInfo::shutdownSyncers() {
+void ClusterInfo::drainSyncers() {
   {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
@@ -5663,6 +5684,10 @@ void ClusterInfo::shutdownSyncers() {
     }
     _waitCurrent.clear();
   }
+}
+
+void ClusterInfo::shutdownSyncers() {
+  drainSyncers();
 
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
@@ -5673,6 +5698,8 @@ void ClusterInfo::shutdownSyncers() {
 }
 
 void ClusterInfo::waitForSyncersToStop() {
+  drainSyncers();
+
   auto start = std::chrono::steady_clock::now();
   while ((_planSyncer != nullptr && _planSyncer->isRunning()) ||
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
@@ -5693,6 +5720,28 @@ VPackSlice PlanCollectionReader::indexes() {
   } else {
     TRI_ASSERT(res.isArray());
     return res;
+  }
+}
+  
+CollectionWatcher::CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
+    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
+
+  std::string databaseName = collection.vocbase().name();
+  std::string collectionID = std::to_string(collection.id().id());
+  std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
+
+  _agencyCallback = std::make_shared<AgencyCallback>(
+      collection.vocbase().server(), where,
+      [this](VPackSlice const& result) {
+        if (result.isNone()) {
+          _present.store(false);
+        }
+        return true;
+      },
+      true, false);
+  Result res = _agencyCallbackRegistry->registerCallback(_agencyCallback);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 }
 
@@ -5754,15 +5803,14 @@ void ClusterInfo::SyncerThread::run() {
       return notify(result);
     };
 
-  auto _acb =
+  auto acb =
     std::make_shared<AgencyCallback>(_server, _section + "/Version", update, true, false);
-  bool registered = _cr->registerCallback(_acb);
-  if (!registered) {
+  Result res = _cr->registerCallback(std::move(acb));
+  if (res.fail()) {
     LOG_TOPIC("70e05", FATAL, arangodb::Logger::CLUSTER)
-      << "Failed to register callback with local registery ";
+      << "Failed to register callback with local registry: " << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
-
 
   // This first call needs to be done or else we might miss all potential until
   // such time, that we are ready to receive. Under no circumstances can we assume
@@ -5792,19 +5840,36 @@ void ClusterInfo::SyncerThread::run() {
       }
       try {
         _f();
+      } catch (basics::Exception const& ex) {
+        if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+          LOG_TOPIC("9d1f5", WARN, arangodb::Logger::CLUSTER)
+            << "caught an error while loading " << _section << ": " << ex.what();
+        }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section << ": " << ex.what();
+        LOG_TOPIC("752c4", WARN, arangodb::Logger::CLUSTER)
+          << "caught an error while loading " << _section << ": " << ex.what();
       } catch (...) {
-        LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section;
+        LOG_TOPIC("30968", WARN, arangodb::Logger::CLUSTER)
+          << "caught an error while loading " << _section;
       }
     }
     // next round...
   }
 
-  _cr->unregisterCallback(_acb);
-
+  try {
+    _cr->unregisterCallback(acb);
+  } catch (basics::Exception const& ex) {
+    if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+      LOG_TOPIC("39336", WARN, arangodb::Logger::CLUSTER)
+        << "caught exception while unregistering callback: " << ex.what();
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("66f2f", WARN, arangodb::Logger::CLUSTER)
+      << "caught exception while unregistering callback: " << ex.what();
+  } catch (...) {
+    LOG_TOPIC("995cd", WARN, arangodb::Logger::CLUSTER)
+      << "caught unknown exception while unregistering callback";
+  }
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {

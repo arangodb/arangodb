@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertEqual, assertNotEqual, arango */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -97,8 +97,26 @@ function dumpIntegrationSuite () {
     }
   };
 
-  let checkDataFile = function(tree, path, compressed, readable, cn) {
+  let checkDataFile = function(tree, path, compressed, envelopes, readable, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+    let checkData = function(data, envelopes) {
+      assertEqual(1000, data.length);
+      data.forEach(function(line) {
+        line = JSON.parse(line);
+        if (envelopes) {
+          assertEqual(2300, line.type);
+          assertTrue(line.hasOwnProperty('data'));
+          assertTrue(line.data.hasOwnProperty('_key'));
+          assertTrue(line.data.hasOwnProperty('_rev'));
+        } else {
+          assertFalse(line.hasOwnProperty('type'));
+          assertFalse(line.hasOwnProperty('data'));
+          assertTrue(line.hasOwnProperty('_key'));
+          assertTrue(line.hasOwnProperty('_rev'));
+        }
+      });
+    };
+
     if (compressed) {
       assertTrue(readable);
 
@@ -106,26 +124,14 @@ function dumpIntegrationSuite () {
       assertEqual(-1, tree.indexOf(prefix + ".data.json"));
       
       let data = fs.readGzip(fs.join(path, prefix + ".data.json.gz")).toString().trim().split('\n');
-      assertEqual(1000, data.length);
-      data.forEach(function(line) {
-        line = JSON.parse(line);
-        assertEqual(2300, line.type);
-        assertTrue(line.data.hasOwnProperty('_key'));
-        assertTrue(line.data.hasOwnProperty('_rev'));
-      });
+      checkData(data, envelopes);
     } else {
       assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
       assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
       
       if (readable) {
         let data = fs.readFileSync(fs.join(path, prefix + ".data.json")).toString().trim().split('\n');
-        assertEqual(1000, data.length);
-        data.forEach(function(line) {
-          line = JSON.parse(line);
-          assertEqual(2300, line.type);
-          assertTrue(line.data.hasOwnProperty('_key'));
-          assertTrue(line.data.hasOwnProperty('_rev'));
-        });
+        checkData(data, envelopes);
       } else {
         try {
           // cannot read encrypted file
@@ -160,6 +166,51 @@ function dumpIntegrationSuite () {
       db._drop(cn + "Other");
     },
     
+    testDumpCompressedEncryptedNoEnvelope: function () {
+      if (!require("internal").isEnterprise()) {
+        return;
+      }
+
+      let keyfile = fs.getTempFile();
+      let path = fs.getTempFile();
+      try {
+        // 32 bytes of garbage
+        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
+
+        let args = ['--compress-output', 'true', '--envelope', 'false', '--encryption.keyfile', keyfile, '--collection', cn];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "aes-256-ctr");
+        checkStructureFile(tree, path, false, cn);
+        checkDataFile(tree, path, false, false, false, cn);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpOverwriteUncompressedNoEnvelope: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, false, true, true, cn);
+        
+        // second dump, which overwrites
+        args = ['--compress-output', 'false', '--envelope', 'false', '--overwrite', 'true', '--collection', cn];
+        tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, false, false, true, cn);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
     testDumpCompressedEncrypted: function () {
       if (!require("internal").isEnterprise()) {
         return;
@@ -175,7 +226,7 @@ function dumpIntegrationSuite () {
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "aes-256-ctr");
         checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, false, cn);
+        checkDataFile(tree, path, false, true, false, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -207,14 +258,14 @@ function dumpIntegrationSuite () {
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, true, cn);
+        checkDataFile(tree, path, true, true, true, cn);
         
         // second dump, which overwrites
         args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn];
         tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, true, cn);
+        checkDataFile(tree, path, true, true, true, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -229,14 +280,14 @@ function dumpIntegrationSuite () {
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, true, cn);
+        checkDataFile(tree, path, false, true, true, cn);
         
         // second dump, which overwrites
         args = ['--compress-output', 'false', '--overwrite', 'true', '--collection', cn];
         tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, true, cn);
+        checkDataFile(tree, path, false, true, true, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -259,14 +310,14 @@ function dumpIntegrationSuite () {
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "aes-256-ctr");
         checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, false, cn);
+        checkDataFile(tree, path, false, true, false, cn);
 
         // second dump, which overwrites
         args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
         tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "aes-256-ctr");
         checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, false, cn);
+        checkDataFile(tree, path, false, true, false, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -289,7 +340,7 @@ function dumpIntegrationSuite () {
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, true, cn);
+        checkDataFile(tree, path, true, true, true, cn);
         
         // second dump, which overwrites
         // this is expected to have an exit code of 1
@@ -309,16 +360,16 @@ function dumpIntegrationSuite () {
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, true, cn);
+        checkDataFile(tree, path, true, true, true, cn);
         
         // second dump, which overwrites
         args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn + "Other"];
         tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, true, cn);
+        checkDataFile(tree, path, true, true, true, cn);
         checkStructureFile(tree, path, true, cn + "Other");
-        checkDataFile(tree, path, true, true, cn + "Other");
+        checkDataFile(tree, path, true, true, true, cn + "Other");
       } finally {
         try {
           fs.removeDirectory(path);
@@ -359,7 +410,7 @@ function dumpIntegrationSuite () {
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
         checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, true, cn);
+        checkDataFile(tree, path, true, true, true, cn);
       } finally {
         try {
           fs.removeDirectory(path);

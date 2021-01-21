@@ -679,7 +679,7 @@ void ClusterFeature::stop() {
     // the cluster setup.
     ServerState::instance()->logoff(10.0);
   }
-
+  
   // Make sure ClusterInfo's syncer threads have stopped.
   waitForSyncersToStop();
 

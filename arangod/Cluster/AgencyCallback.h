@@ -159,7 +159,7 @@ class AgencyCallback {
   /// this variable is protected by the condition variable! 
   bool _wasSignaled;
 
-  /// Determined when registered in registery. Default: true 
+  /// Determined when registered in registry. Default: true 
   bool _local;
 };
 

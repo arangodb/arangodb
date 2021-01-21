@@ -87,8 +87,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramNone);
-        assertEqual([ ], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, { }, paramNone);
+        assertEqual([ ], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
 
@@ -173,8 +173,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, { }, paramEnabled);
+        assertEqual([ ], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
         result = AQL_EXPLAIN(query, { }, paramNone);
       });
     },
