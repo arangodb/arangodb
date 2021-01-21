@@ -243,13 +243,14 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertEqual("autoincrement", p.keyOptions.type);
+      assertEqual(42049, p.keyOptions.lastValue);
       assertFalse(p.keyOptions.allowUserKeys);
       assertEqual(7, p.keyOptions.offset);
       assertEqual(42, p.keyOptions.increment);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual(1000, c.count());
+      assertEqual(1001, c.count());
 
       for (var i = 0; i < 1000; ++i) {
         var doc = c.document(String(7 + (i * 42)));
@@ -259,7 +260,7 @@ function dumpTestSuite () {
         assertEqual({ value: [ i, i ] }, doc.more);
       }
       doc = c.save({});
-      assertEqual(doc._key, "42007");
+      assertEqual(doc._key, "42091");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,14 +271,15 @@ function dumpTestSuite () {
       var c = db._collection("UnitTestsDumpKeygenPadded");
       var p = c.properties();
 
+      print(p)
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertEqual("padded", p.keyOptions.type);
+      assertEqual(2286, p.keyOptions.lastValue);
       assertFalse(p.keyOptions.allowUserKeys);
-
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual(1000, c.count());
+      assertEqual(1001, c.count());
 
       let allDocs = {};
       c.toArray().forEach(doc => {
@@ -293,6 +295,10 @@ function dumpTestSuite () {
         assertEqual({ value: [ i, i ] }, doc.more);
         lastKey = doc._key;
       }
+      var doc = allDocs[1001];
+
+      assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
+      lastKey = doc._key;
       doc = c.save({});
       assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
     },
