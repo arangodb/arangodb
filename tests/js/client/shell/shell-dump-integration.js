@@ -32,6 +32,7 @@ let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/process-utils');
 let db = arangodb.db;
+let isCluster = require("internal").isCluster();
 
 function dumpIntegrationSuite () {
   'use strict';
@@ -72,13 +73,18 @@ function dumpIntegrationSuite () {
     assertEqual(expected, data);
   };
 
-  let checkStructureFile = function(tree, path, readable, cn) {
+  let structureFile = function(path, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
     let structure = prefix + ".structure.json";
     if (!fs.isFile(fs.join(path, structure))) {
       // seems necessary in cluster
       structure = cn + ".structure.json";
     }
+    return structure;
+  };
+
+  let checkStructureFile = function(tree, path, readable, cn) {
+    let structure = structureFile(path, cn);
     assertTrue(fs.isFile(fs.join(path, structure)), structure);
     assertNotEqual(-1, tree.indexOf(structure));
 
@@ -153,11 +159,84 @@ function dumpIntegrationSuite () {
       db._drop(cn + "Other");
       c = db._create(cn + "Other", { numberOfShards: 3 });
       c.insert(docs);
+      
+      db._drop(cn + "Padded");
+      c = db._create(cn + "Padded", { keyOptions: { type: "padded" }, numberOfShards: 3 });
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({});
+      }
+      c.insert(docs);
+      
+      db._drop(cn + "AutoIncrement");
+      if (!isCluster) {
+        c = db._create(cn + "AutoIncrement", { keyOptions: { type: "autoincrement" }, numberOfShards: 3 });
+        docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({});
+        }
+        c.insert(docs);
+      }
     },
 
     tearDownAll: function () {
       db._drop(cn);
       db._drop(cn + "Other");
+      db._drop(cn + "Padded");
+      db._drop(cn + "AutoIncrement");
+    },
+    
+    testDumpAutoIncrementKeyGenerator: function () {
+      if (isCluster) {
+        // autoincrement key generator is not supported in cluster
+        return;
+      }
+
+      let keyfile = fs.getTempFile();
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', cn + 'AutoIncrement', '--dump-data', 'false'];
+        let tree = runDump(path, args, 0); 
+        checkStructureFile(tree, path, true, cn + 'AutoIncrement');
+        let structure = structureFile(path, cn + 'AutoIncrement');
+        let data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
+        assertEqual("autoincrement", data.parameters.keyOptions.type);
+        let c = db._collection(cn + 'AutoIncrement');
+        assertEqual(1000, c.count());
+        let p = c.properties();
+        let lastValue = p.keyOptions.lastValue;
+        assertTrue(lastValue > 0, lastValue);
+        assertEqual(lastValue, data.parameters.keyOptions.lastValue);
+
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpPaddedKeyGenerator: function () {
+      let keyfile = fs.getTempFile();
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', cn + 'Padded', '--dump-data', 'false'];
+        let tree = runDump(path, args, 0); 
+        checkStructureFile(tree, path, true, cn + 'Padded');
+        let structure = structureFile(path, cn + 'Padded');
+        let data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
+        assertEqual("padded", data.parameters.keyOptions.type);
+        let c = db._collection(cn + 'Padded');
+        assertEqual(1000, c.count());
+        let p = c.properties();
+        let lastValue = p.keyOptions.lastValue;
+        assertTrue(lastValue > 0, lastValue);
+        assertEqual(lastValue, data.parameters.keyOptions.lastValue);
+
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
     },
     
     testDumpCompressedEncrypted: function () {
