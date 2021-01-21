@@ -1,10 +1,14 @@
-v3.7.6 (XXXX-XX-XX)
+v3.7.7 (XXXX-XX-XX)
 -------------------
 
 * Prepare register planning for rolling upgrades. Previously, changes in
   register planning from 3.7 to 3.8 could cause queries executed by a 3.7
   coordinator in combination with a 3.8 DBServer to fail during a rolling
   upgrade.
+
+
+v3.7.6 (XXXX-XX-XX)
+-------------------
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.45.6.
 
