@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,103 +17,105 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_RESULT_H
-#define ARANGODB_BASICS_RESULT_H 1
+// Note that error.h uses ARANGODB_BASICS_ERROR_H!
+#ifndef ARANGODB_BASICS_RESULT_ERROR_H
+#define ARANGODB_BASICS_RESULT_ERROR_H
 
 #include <iosfwd>
 #include <memory>
 #include <string>
 #include <string_view>
 
-#include "Basics/Error.h"
-
 namespace arangodb {
-class Result final {
- public:
-  Result(bool /*avoidCastingErrors*/) = delete;
 
-  Result() noexcept = default;
+// arangodb::Error is used in arangodb::Result
+
+class Error final {
+ public:
+  Error(bool /*avoidCastingErrors*/) = delete;
+
+  Error() noexcept(noexcept(std::allocator<char>()));
 
   // cppcheck-suppress noExplicitConstructor
-  /* implicit */ Result(int errorNumber);
+  /* implicit */ Error(int errorNumber) noexcept(noexcept(std::allocator<char>()));
 
-  Result(int errorNumber, std::string const& errorMessage);
+  Error(int errorNumber, std::string const& errorMessage);
 
   /**
    * @brief Construct with error number and message
    * @param  errorNumber   Said error number
    * @param  errorMessage  Said error message
    */
-  Result(int errorNumber, std::string&& errorMessage);
+  Error(int errorNumber, std::string&& errorMessage) noexcept;
 
-  Result(int errorNumber, std::string_view const& errorMessage);
+  Error(int errorNumber, std::string_view const& errorMessage);
 
-  Result(int errorNumber, const char* errorMessage);
+  Error(int errorNumber, const char* errorMessage);
 
   /**
    * @brief Construct as copy
    * @param  other  To copy from
    */
-  Result(Result const& other);
+  Error(Error const& other);
 
   /**
    * @brief Construct as clone
    * @param  other  The prototype
    */
-  Result(Result&& other) noexcept;
+  Error(Error&& other) noexcept;
 
   /**
    * @brief Assignment operator
    * @param  other  To assign from
-   * @return        Refernece to ourselves
+   * @return        Refernce to ourselves
    */
-  auto operator=(Result const& other) -> Result&;
+  Error& operator=(Error const& other);
 
   /**
    * @brief Assignment operator
    * @param  other  To assign from
-   * @return        Reference to ourselves
+   * @return        Refernce to ourselves
    */
-  auto operator=(Result&& other) noexcept -> Result&;
+  Error& operator=(Error&& other) noexcept;
 
  public:
   /**
    * @brief  Nomen est omen
    * @return OK?
    */
-  [[nodiscard]] auto ok() const noexcept -> bool;
+  bool ok() const noexcept;
 
   /**
    * @see ok()
    */
-  [[nodiscard]] auto fail() const noexcept -> bool;
+  bool fail() const noexcept;
 
   /**
    * @brief  Get error number
    * @return error number
    */
-  [[nodiscard]] auto errorNumber() const noexcept -> int;
+  int errorNumber() const noexcept;
 
   /**
    * @brief  Is specific error
    * @param errorNumber Said specific error
    * @return            Equality with specific error
    */
-  [[nodiscard]] auto is(int errorNumber) const noexcept -> bool;
+  bool is(int errorNumber) const noexcept;
 
   /**
    * @see is(int errorNumber)
    */
-  [[nodiscard]] auto isNot(int errorNumber) const -> bool;
+  bool isNot(int errorNumber) const;
 
   /**
    * @brief  Reset to ok, error message is cleared.
    * @return            Reference to ourselves
    */
-  auto reset() -> Result&;
+  Error& reset();
 
   /**
    * @brief  Reset to specific error number.
@@ -122,7 +123,7 @@ class Result final {
    * @param errorNumber Said specific error number
    * @return            Reference to ourselves
    */
-  auto reset(int errorNumber) -> Result&;
+  Error& reset(int errorNumber);
 
   /**
    * @brief  Reset to specific error number with message.
@@ -131,7 +132,7 @@ class Result final {
    * @param errorMessage Said specific error message
    * @return            Reference to ourselves
    */
-  auto reset(int errorNumber, std::string const& errorMessage) -> Result&;
+  Error& reset(int errorNumber, std::string const& errorMessage);
 
   /**
    * @brief  Reset to specific error number with message.
@@ -140,58 +141,52 @@ class Result final {
    * @param errorMessage Said specific error message
    * @return            Reference to ourselves
    */
-  auto reset(int errorNumber, std::string&& errorMessage) noexcept -> Result&;
+  Error& reset(int errorNumber, std::string&& errorMessage) noexcept;
 
   /**
    * @brief  Reset to other error.
    * @param  other  Said specific error
    * @return        Reference to ourselves
    */
-  auto reset(Result const& other) -> Result&;
+  Error& reset(Error const& other);
 
   /**
    * @brief  Reset to other error.
    * @param  other  Said specific error
    * @return        Reference to ourselves
    */
-  auto reset(Result&& other) noexcept -> Result&;
+  Error& reset(Error&& other) noexcept;
 
   /**
    * @brief  Get error message
    * @return Our error message
    */
-  [[nodiscard]] auto errorMessage() const& -> std::string;
+  std::string errorMessage() const&;
 
   /**
    * @brief  Get error message
    * @return Our error message
    */
-  auto errorMessage() && -> std::string;
+  std::string errorMessage() &&;
 
   template <typename S>
   void resetErrorMessage(S&& msg) {
-    // TODO This message doesn't make sense any longer, remove it
-    if (_error != nullptr) {
-      _error->resetErrorMessage(std::forward<S>(msg));
-    }
+    _errorMessage.assign(std::forward<S>(msg));
   }
 
   template <typename S>
   void appendErrorMessage(S&& msg) {
-    // TODO This message doesn't make sense any longer, remove it
-    _error->appendErrorMessage(std::forward<S>(msg));
+    if (_errorMessage.empty() && fail()) {
+      _errorMessage.append(errorMessage());
+    }
+    _errorMessage.append(std::forward<S>(msg));
   }
 
  private:
-  std::unique_ptr<Error> _error = nullptr;
+  int _errorNumber;
+  std::string _errorMessage;
 };
 
-}  // namespace arangodb
+}
 
-/**
- * @brief  Print to output stream
- * @return Said output stream
- */
-std::ostream& operator<<(std::ostream& out, arangodb::Result const& result);
-
-#endif
+#endif  // ARANGODB_BASICS_RESULT_ERROR_H
