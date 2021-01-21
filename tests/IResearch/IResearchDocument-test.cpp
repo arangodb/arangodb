@@ -47,6 +47,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -72,6 +73,46 @@
 namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+
+using AssertFieldFunc = void(arangodb::tests::mocks::MockAqlServer&,
+                             arangodb::iresearch::FieldIterator const&);
+
+using IdentityAnalyzer = arangodb::iresearch::IdentityAnalyzer;
+
+template<typename Analyzer, typename Server>
+void assertField(
+    Server& server,
+    arangodb::iresearch::Field const& value,
+    std::string const& expectedName) {
+  SCOPED_TRACE(testing::Message("Expected name: ") << expectedName);
+
+  auto* analyzer = dynamic_cast<Analyzer*>(&value.get_tokens());
+  ASSERT_NE(nullptr, analyzer);
+  if constexpr (std::is_base_of_v<irs::analysis::analyzer, Analyzer>) {
+    ASSERT_EQ(mangleString(expectedName, irs::type<Analyzer>::name()), value.name());
+    auto& analyzers = server.template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    const auto expectedAnalyzerPtr = irs::analysis::analyzers::get(
+      irs::type<Analyzer>::name(),
+      irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    ASSERT_NE(nullptr, expectedAnalyzerPtr);
+
+    const auto prefix = !std::is_same_v<arangodb::iresearch::IdentityAnalyzer, Analyzer>
+      ? arangodb::StaticStrings::SystemDatabase + "::"
+      : "";
+
+    auto const expectedArangoSearchAnalyzerPtr = analyzers.get(
+      prefix + std::string(irs::type<Analyzer>::name()),
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+      true);
+    ASSERT_NE(nullptr, expectedArangoSearchAnalyzerPtr);
+
+    ASSERT_EQ(expectedAnalyzerPtr->type(), analyzer->type());
+    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features(), value.features());
+  } else if constexpr (std::is_base_of_v<irs::token_stream, Analyzer>) {
+    ASSERT_EQ(expectedName, value.name());
+  }
+}
 
 struct TestAttribute : public irs::attribute {
   static constexpr irs::string_ref type_name() noexcept {
@@ -239,10 +280,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_construct) {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY);
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(VPackSlice::emptyObjectSlice(), linkMeta);
   EXPECT_FALSE(it.valid());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_nested_delimiter) {
@@ -293,7 +334,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
 
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
-  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // default analyzer
   auto const expected_analyzer =
@@ -321,7 +362,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
   }
 
   EXPECT_TRUE(expectedValues.empty());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) {
@@ -372,7 +413,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
 
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
-  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // default analyzer
   auto const expected_analyzer =
@@ -400,7 +441,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
   }
 
   EXPECT_TRUE(expectedValues.empty());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_fields) {
@@ -532,7 +573,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   auto& value = *it;
   EXPECT_EQ(mangleStringIdentity("boost"), value.name());
@@ -547,7 +588,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
 
   ++it;
   EXPECT_FALSE(it.valid());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filtered_2) {
@@ -585,7 +626,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   EXPECT_FALSE(it.valid());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empty_analyzers) {
@@ -623,7 +664,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empt
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   EXPECT_FALSE(it.valid());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_check_value_types) {
@@ -663,7 +704,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
-  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // stringValue (with IdentityAnalyzer)
   {
@@ -681,7 +722,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // stringValue (with EmptyAnalyzer)
   {
@@ -697,7 +738,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // nullValue
   {
@@ -709,7 +750,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // trueValue
   {
@@ -721,7 +762,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // falseValue
   {
@@ -733,7 +774,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // smallIntValue
   {
@@ -745,7 +786,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // smallNegativeIntValue
   {
@@ -757,7 +798,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // bigIntValue
   {
@@ -769,7 +810,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // bigNegativeIntValue
   {
@@ -781,7 +822,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // smallDoubleValue
   {
@@ -793,7 +834,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // bigDoubleValue
   {
@@ -805,7 +846,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // bigNegativeDoubleValue
   {
@@ -817,7 +858,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 
   ++it;
   EXPECT_FALSE(it.valid());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_reset) {
@@ -966,7 +1007,7 @@ TEST_F(IResearchDocumentTest,
 
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
-  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // default analyzer
   auto const expected_analyzer =
@@ -975,7 +1016,7 @@ TEST_F(IResearchDocumentTest,
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
 
-  for (; it != arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL); ++it) {
+  for (; it != arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)); ++it) {
     auto& field = *it;
     std::string const actualName = std::string(field.name());
     EXPECT_EQ(1, expectedValues.erase(actualName));
@@ -986,7 +1027,7 @@ TEST_F(IResearchDocumentTest,
   }
 
   EXPECT_TRUE(expectedValues.empty());
-  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance) {
@@ -1043,7 +1084,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // nested.foo (with IdentityAnalyzer)
   {
@@ -1062,7 +1103,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // nested.foo (with EmptyAnalyzer)
   {
@@ -1076,7 +1117,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   for (size_t i = 0; i < 4; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("keys"), value.name());
@@ -1092,7 +1133,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // boost
   {
@@ -1110,7 +1151,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // depth
   {
@@ -1122,7 +1163,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // fields.fieldA (with IdenityAnalyzer)
   {
@@ -1140,7 +1181,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // fields.fieldA (with EmptyAnalyzer)
   {
@@ -1153,7 +1194,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // listValuation (with IdenityAnalyzer)
   {
@@ -1171,7 +1212,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // listValuation (with EmptyAnalyzer)
   {
@@ -1184,7 +1225,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // locale
   {
@@ -1196,7 +1237,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // array[0].id
   {
@@ -1210,7 +1251,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   for (size_t i = 0; i < 3; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // IdentityAnalyzer
     {
@@ -1229,7 +1270,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // EmptyAnalyzer
     {
@@ -1245,7 +1286,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   for (size_t i = 0; i < 3; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // IdentityAnalyzer
     {
@@ -1264,7 +1305,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // EmptyAnalyzer
     {
@@ -1278,7 +1319,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // array[1].id (IdentityAnalyzer)
   {
@@ -1296,7 +1337,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // array[1].id (EmptyAnalyzer)
   {
@@ -1308,7 +1349,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   ASSERT_TRUE(it.valid());
-  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+  ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
   // array[2].id (IdentityAnalyzer)
   {
@@ -1322,7 +1363,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   for (size_t i = 0; i < 3; ++i) {
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // IdentityAnalyzer
     {
@@ -1341,7 +1382,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // EmptyAnalyzer
     {
@@ -1355,121 +1396,6 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   ++it;
   EXPECT_FALSE(it.valid());
-==== BASE ====
-}
-
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance_object_analyzer) {
-  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
-  auto sysVocbase = sysDatabase.use();
-
-  auto const json = arangodb::velocypack::Parser::fromJson(
-  "{ \
-    \"nested\": { \"foo\": \"str\" }, \
-    \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"analyzers\": [], \
-    \"boost\": \"10\", \
-    \"depth\": 20, \
-    \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
-    \"listValuation\": \"ignored\", \
-    \"locale\": null, \
-    \"array\" : [ \
-      { \"id\" : 1, \"subarr\" : [ \"1\", \"2\", \"3\" ], \"subobj\" : { \"id\" : 1 } }, \
-      { \"subarr\" : [ \"4\", \"5\", \"6\" ], \"subobj\" : { \"name\" : \"foo\" }, \"id\" : \"2\" }, \
-      { \"id\" : 3, \"subarr\" : [ \"7\", \"8\", \"9\" ], \"subobj\" : { \"id\" : 2 } } \
-    ] \
-  }");
-
-  auto const linkMetaJson = arangodb::velocypack::Parser::fromJson(
-      "{ \
-    \"includeAllFields\" : true, \
-    \"trackListPositions\" : true, \
-    \"fields\" : { \
-       \"boost\" : { \"analyzers\": [ \"identity\" ] }, \
-       \"keys\" : { \"trackListPositions\" : false, \"analyzers\": [ \"identity\", \"iresearch-vpack-analyzer\" ] }, \
-       \"depth\" : { \"trackListPositions\" : true }, \
-       \"fields\" : { \"includeAllFields\" : false, \"fields\" : { \"fieldA\" : { \"includeAllFields\" : true } } }, \
-       \"listValuation\" : { \"includeAllFields\" : false }, \
-       \"array\" : { \
-         \"fields\" : { \"subarr\" : { \"trackListPositions\" : false }, \"subobj\": { \"includeAllFields\" : false }, \"id\" : { } } \
-       } \
-     }, \
-    \"analyzers\": [ \"identity\", \"iresearch-document-empty\", \"iresearch-vpack-analyzer\" ] \
-  }");
-
-  arangodb::iresearch::IResearchLinkMeta linkMeta;
-  std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
-
-  std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
-
-  std::function<AssertFieldFunc> const assertFields[] = {
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "nested"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "nested.foo"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "nested.foo"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "analyzers"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "boost"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("depth")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "fields"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "fields.fieldA"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "fields.fieldA.name"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "fields.fieldA.name"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "listValuation"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "listValuation"); },
-    [](auto& server, auto const& it) { assertField<irs::null_token_stream>(server, *it, mangleNull("locale")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0]"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].id")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0].subobj"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1]"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1].subobj"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].id"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].id"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2]"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].id")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2].subobj"); },
-  };
-
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY);
-  it.reset(json->slice(), linkMeta);
-
-  for (auto& assertField : assertFields) {
-    ASSERT_TRUE(it.valid());
-    assertField(server, it);
-    ++it;
-  }
-
-  ASSERT_FALSE(it.valid());
-==== BASE ====
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
@@ -1573,7 +1499,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // stringValue (with IdentityAnalyzer)
     {
@@ -1592,7 +1518,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     ++it;
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL), it);
+    ASSERT_NE(arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)), it);
 
     // stringValue (with EmptyAnalyzer)
     {
@@ -1607,7 +1533,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     ++it;
     ASSERT_FALSE(it.valid());
-    ASSERT_EQ(arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL), it);
+    ASSERT_EQ(arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)), it);
 
     analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer' will not be optimized out
   }
@@ -1638,7 +1564,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
-    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL));
+    ASSERT_NE(it, arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)));
 
     // stringValue (with EmptyAnalyzer)
     {
@@ -1653,7 +1579,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     ++it;
     ASSERT_FALSE(it.valid());
-    ASSERT_EQ(arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL), it);
+    ASSERT_EQ(arangodb::iresearch::FieldIterator(trx, irs::string_ref::NIL, arangodb::IndexId(0)), it);
 
     analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer' will not be optimized out
   }
@@ -2200,7 +2126,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
 
-  arangodb::RevisionId rev;
+  TRI_voc_rid_t rev;
   VPackBuilder document;
   {
     auto analyzersCollection = sysVocbase->useCollection(arangodb::StaticStrings::AnalyzersCollection, false);
@@ -2270,7 +2196,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
 
-  arangodb::RevisionId rev;
+  TRI_voc_rid_t rev;
   VPackBuilder document;
   {
     auto analyzersCollection = sysVocbase->useCollection(arangodb::StaticStrings::AnalyzersCollection, false);

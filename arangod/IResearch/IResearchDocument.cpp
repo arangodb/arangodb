@@ -338,7 +338,8 @@ Field& Field::operator=(Field&& rhs) {
 // ----------------------------------------------------------------------------
 
 FieldIterator::FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection,  IndexId linkId)
-    : _trx(&trx), _collection(collection), _linkId(linkId),
+    : _nameBuffer(BufferPool.emplace().release()),  // FIXME don't use shared_ptr
+      _trx(&trx), _collection(collection), _linkId(linkId),
       _isDBServer(ServerState::instance()->isDBServer()) {
 
   // initialize iterator's value
@@ -450,7 +451,7 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
         LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
           << "Value for `_id` attribute could not be indexed for document "
           << transaction::helpers::extractKeyFromDocument(baseSlice).toString()
-          << ". To recover please recreate corresponding ArangoSearch links.";
+          << ". To recover please recreate corresponding ArangoSearch link '" << _linkId << "'";
         return false;
       }
     } else {
@@ -473,48 +474,9 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
 
   auto& name = nameBuffer();
 
-  switch (value.type()) {
-    case VPackValueType::Array: {
-      valueRef = iresearch::ref<char>(value);
-      valueType = AnalyzerValueType::Array;
-    } break;
-    case VPackValueType::Object: {
-      valueRef = iresearch::ref<char>(value);
-      valueType = AnalyzerValueType::Object;
-    } break;
-    case VPackValueType::String: {
-      valueRef = iresearch::getStringRef(value);
-      valueType = AnalyzerValueType::String;
-    } break;
-    case VPackValueType::Custom: {
-      TRI_ASSERT(!_slice.isNone());
-      if (_isDBServer) {
-        if (!_collection.empty()) {
-          _valueBuffer = getDocumentId(_collection, _slice);
-        } else {
-          LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
-            << "Value for `_id` attribute could not be indexed for document "
-            << transaction::helpers::extractKeyFromDocument(_slice).toString()
-            << ". To recover please recreate corresponding ArangoSearch link '" << _linkId << "'";
-          return false;
-        }
-      } else {
-         _valueBuffer = transaction::helpers::extractIdString(
-             _trx->resolver(), value, _slice);
-      }
-      valueRef = _valueBuffer;
-      valueType = AnalyzerValueType::String;
-    } break;
-    default:
-      TRI_ASSERT(false);
-      return false;
-  }
-
-  if (!pool->accepts(valueType)) {
-    return false;
-  }
-
-  iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+  // it's important to unconditionally mangle name
+  // since we unconditionally unmangle it in 'next'
+  iresearch::kludge::mangleStringField(name, valueAnalyzer);
 
   // init stream
   auto analyzer = pool->get();
