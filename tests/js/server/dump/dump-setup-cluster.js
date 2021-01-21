@@ -377,6 +377,10 @@ function setupSmartGraphRegressionTest() {
     docs.push({ value: i, more: { value: [ i, i ] } });
   }
   c.save(docs);
+  c.save(docs);
+  d = c.save({});
+  c.save({}); // create another one inbetween...
+  c.remove(d);
   
   // custom key options
   c = db._create("UnitTestsDumpKeygenUuid", {
@@ -391,6 +395,10 @@ function setupSmartGraphRegressionTest() {
     docs.push({ value: i });
   }
   c.save(docs);
+  c.save(docs);
+  d = c.save({});
+  c.save({}); // create another one inbetween...
+  c.remove(d);
 
   // strings
   c = db._create("UnitTestsDumpStrings");

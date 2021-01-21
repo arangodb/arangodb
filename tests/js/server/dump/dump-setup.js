@@ -135,7 +135,6 @@
   d = c.save({});
   c.save({}); // create another one inbetween...
   c.remove(d);
-  print(c.properties())
   
   // custom key options
   c = db._create("UnitTestsDumpKeygenUuid", {
