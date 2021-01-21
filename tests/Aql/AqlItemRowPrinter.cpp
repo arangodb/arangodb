@@ -25,8 +25,8 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Slice.h>
 
@@ -48,7 +48,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
   }
 
   auto monitor = ResourceMonitor{};
-  auto manager = AqlItemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  auto manager = AqlItemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   struct {
     void operator()(std::ostream& stream, InputAqlItemRow const&) {

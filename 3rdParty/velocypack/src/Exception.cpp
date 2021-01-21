@@ -64,6 +64,8 @@ char const* Exception::message(ExceptionType type) noexcept {
       return "Cannot translate key";
     case KeyNotFound:
       return "Key not found";
+    case BadTupleSize:
+      return "Array size does not match tuple size";
     case BuilderNotSealed:
       return "Builder value not yet sealed";
     case BuilderNeedOpenObject:

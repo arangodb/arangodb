@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,16 +37,25 @@ using namespace arangodb::consensus;
 
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
-  AgencyCallbackRegistry& callbackRegistry)
+  AgencyCallbackRegistry& callbackRegistry,
+  int shutdownCode)
   : Thread(server, "AgencyCache"), 
     _commitIndex(0), 
     _readDB(server, nullptr, "readDB"),
+    _shutdownCode(shutdownCode),
     _initialized(false), 
     _callbackRegistry(callbackRegistry), 
     _lastSnapshot(0),
     _callbacksCount(
       _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {}
+        "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#else
+  TRI_ASSERT(_shutdownCode == TRI_ERROR_SHUTTING_DOWN);
+#endif
+}
 
 AgencyCache::~AgencyCache() {
   try {
@@ -253,10 +262,9 @@ void AgencyCache::handleCallbacksNoLock(
 }
 
 
-
 void AgencyCache::run() {
-
   using namespace std::chrono;
+  
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
   {
@@ -379,8 +387,6 @@ void AgencyCache::run() {
                 TRI_ASSERT(rs.get("log").isArray());
                 LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                   "Applying to cache " << rs.get("log").toJson();
-                pc.clear();
-                cc.clear();
                 for (auto const& i : VPackArrayIterator(rs.get("log"))) {
                   pc.clear();
                   cc.clear();
@@ -389,7 +395,7 @@ void AgencyCache::run() {
                     _readDB.applyTransaction(i); // apply logs
                     _commitIndex = i.get("index").getNumber<uint64_t>();
 
-                    {
+                   {
                       std::lock_guard g(_callbacksLock);
                       handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
                     }
@@ -421,7 +427,7 @@ void AgencyCache::run() {
               triggerWaiting(commitIndex);
               if (firstIndex > 0) {
                 if (!toCall.empty()) {
-                invokeCallbacks(toCall);
+                  invokeCallbacks(toCall);
                 }
               } else {
                 invokeAllCallbacks();
@@ -482,7 +488,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
         pp->setValue(Result());
       }
     } else {
-      pp->setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pp->setValue(Result(_shutdownCode));
     }
     pit = _waiting.erase(pit);
   }
@@ -490,23 +496,26 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
 }
 
 /// Register local callback
-bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
+Result AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
   std::string const ckey = Store::normalize(AgencyCommHelper::path(key));
   LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER) << "Registering callback for " << ckey;
 
   size_t size = 0;
   {
     std::lock_guard g(_callbacksLock);
+    // insertion into the multimap should always succeed, except in case of OOM
     _callbacks.emplace(ckey, id);
     size = _callbacks.size();
+    _callbacksCount = uint64_t(size);
   }
 
-  _callbacksCount = uint64_t(size);
 
   LOG_TOPIC("31415", TRACE, Logger::CLUSTER)
     << "Registered callback for key " << ckey << " with id " << id << ", callbacks: " << size;
-  // this method always returns ok.
-  return true;
+  // this method always returns ok, except in case of OOM (in this case it will throw).
+  // to keep some API compatibility with AgencyCallbackRegistry::registerCallback(...), 
+  // we make this function return a Result, too, even though it is not really needed here
+  return {};
 }
 
 /// Unregister local callback
@@ -527,9 +536,9 @@ void AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id)
       }
     }
     size = _callbacks.size();
+  _callbacksCount = uint64_t(size);
   }
 
-  _callbacksCount = uint64_t(size);
 
   LOG_TOPIC("034cc", TRACE, Logger::CLUSTER)
     << "Unregistered callback for key " << ckey << " with id " << id << ", callbacks: " << size;
@@ -544,31 +553,48 @@ void AgencyCache::beginShutdown() {
     std::lock_guard g(_waitLock);
     auto pit = _waiting.begin();
     while (pit != _waiting.end()) {
-      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      pit->second.setValue(Result(_shutdownCode));
       ++pit;
     }
     _waiting.clear();
   }
 
   // trigger all callbacks
-  {
-    std::lock_guard g(_callbacksLock);
-    for (auto const& i : _callbacks) {
-      auto cb = _callbackRegistry.getCallback(i.second);
-      if (cb != nullptr) {
-        LOG_TOPIC("76bb8", DEBUG, Logger::CLUSTER)
-          << "Agency callback " << i << " has been triggered. refetching!";
-        try {
-          cb->refetchAndUpdate(true, false);
-        } catch (arangodb::basics::Exception const& e) {
-          LOG_TOPIC("c3111", WARN, Logger::AGENCYCOMM)
-            << "Error executing callback: " << e.message();
-        }
+  while (true) {
+    // this is a bit complicated... we pop one callback from the list of
+    // available calls while holding the _callbacksLock, but we release the
+    // lock afterwards, so that we can call into the _callbackRegistry without
+    // holding the _callbacksLock
+    uint64_t callbackId;
+    {
+      std::lock_guard g(_callbacksLock);
+      if (_callbacks.empty()) {
+        // we are intentionally _not_ setting the metric to 0 here, as the metrics
+        // may already be unavailable. As we are in shutdown anyway here, this should
+        // not cause major issues.
+        // _callbacksCount = 0;
+        break;
       }
-    }
-    if (!_callbacks.empty()) {
-      _callbacks.clear();
-      _callbacksCount = 0;
+      auto it = _callbacks.begin();
+      TRI_ASSERT(it != _callbacks.end());
+      callbackId = it->second;
+      _callbacks.erase(it);
+      // we are intentionally _not_ setting the metric to 0 here, as the metrics
+      // may already be unavailable. As we are in shutdown anyway here, this should
+      // not cause major issues.
+      // _callbacksCount -= 1;
+    } // release _callbacksLock
+
+    auto cb = _callbackRegistry.getCallback(callbackId);
+    if (cb != nullptr) {
+      LOG_TOPIC("76bb8", DEBUG, Logger::CLUSTER)
+        << "Agency callback " << callbackId << " has been triggered. refetching!";
+      try {
+        cb->refetchAndUpdate(true, false);
+      } catch (arangodb::basics::Exception const& e) {
+        LOG_TOPIC("c3111", WARN, Logger::AGENCYCOMM)
+          << "Error executing callback: " << e.message();
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,8 +76,6 @@ void writeError(int code, arangodb::GeneralResponse* response) {
 
 
 namespace arangodb {
-
-ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
@@ -176,8 +174,6 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-
-  INSTANCE = this;
 }
 
 void ReplicationFeature::start() {
@@ -322,9 +318,8 @@ double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
                                            arangodb::ServerState::Mode mode) {
   std::string endpoint;
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
-    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  if (isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = globalReplicationApplier();
     if (applier != nullptr) {
       endpoint = applier->endpoint();
       // replace tcp:// with http://, and ssl:// with https://

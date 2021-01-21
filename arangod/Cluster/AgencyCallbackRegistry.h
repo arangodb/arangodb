@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "RestServer/Metrics.h"
 
 #include <memory>
@@ -45,7 +46,7 @@ class AgencyCallbackRegistry {
   ~AgencyCallbackRegistry();
 
   /// @brief register a callback
-  bool registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
+  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
 
   /// @brief unregister a callback
   bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);

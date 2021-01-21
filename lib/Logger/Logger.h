@@ -280,6 +280,7 @@ class Logger {
                   LogLevel level, size_t topicId, std::string const& message);
 
   static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
+                     bool forceDirect,
                      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
                          [](std::unique_ptr<LogMessage>&) -> void {});
 

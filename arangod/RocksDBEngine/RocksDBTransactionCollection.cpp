@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +30,9 @@
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Statistics/ServerStatistics.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"

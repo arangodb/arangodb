@@ -2095,11 +2095,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
     bogus);
 
-  arangodb::network::ConnectionPool::Config poolConfig;
+  arangodb::network::ConnectionPool::Config poolConfig(server.server().getFeature<arangodb::MetricsFeature>());
   poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
+  poolConfig.name = "IResearchAnalyzerFeatureTest";
 
   AsyncAgencyStorePoolMock pool(server.server(), poolConfig);
   arangodb::AgencyCommHelper::initialize("arango");

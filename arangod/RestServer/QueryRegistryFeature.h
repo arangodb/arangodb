@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,8 +46,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
-  // tracks a query, using execution time
-  void trackQuery(double time);
+  // tracks a query start
+  void trackQueryStart() noexcept;
+  // tracks a query completion, using execution time
+  void trackQueryEnd(double time);
   // tracks a slow query, using execution time
   void trackSlowQuery(double time);
 
@@ -105,6 +107,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Counter& _totalQueryExecutionTime;
   Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
+  Gauge<uint64_t>& _runningQueries;
 };
 
 }  // namespace arangodb

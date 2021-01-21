@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,18 +23,19 @@
 
 #include "v8-agency.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -44,10 +45,16 @@ using namespace arangodb::consensus;
 static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   Agent* agent = nullptr;
   try {
-    TRI_GET_GLOBALS();
     AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
     VPackBuilder builder;
@@ -65,8 +72,14 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
 
   TRI_V8_TRY_CATCH_END
@@ -75,10 +88,16 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   Agent* agent = nullptr;
   try {
-    TRI_GET_GLOBALS();
     AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
@@ -100,10 +119,16 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   Agent* agent = nullptr;
   try {
-    TRI_GET_GLOBALS();
     AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
@@ -129,10 +154,16 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   Agent* agent = nullptr;
   try {
-    TRI_GET_GLOBALS();
     AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,7 +103,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
  public:
   MyWALDumper(RocksDBEngine& engine, WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f, size_t maxResponseSize)
-      : WalAccessContext(filter, f),
+      : WalAccessContext(engine.server(), filter, f),
         _engine(engine),
         _definitionsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                            ->GetID()),

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ RestStatus RestDebugHandler::execute() {
 
   if (len == 0 || len > 2) {
     generateNotImplemented(
-        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl");
+        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
     return RestStatus::DONE;
   }
 
@@ -104,8 +104,21 @@ RestStatus RestDebugHandler::execute() {
         break;
         // Fall through
     }
+  } else if (suffixes[0] == "crash") {
+    if (type == rest::RequestType::PUT) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      TRI_TerminateDebugging("crashing server by REST call");
+      return RestStatus::DONE;
+#else
+      generateNotImplemented(
+          "ILLEGAL /_admin/debug/crash only available in Maintainer "
+          "Build");
+#endif
+    } else {
+      generateNotImplemented("ILLEGAL /_admin/debug/crash supports only PUT");
+    }
   }
   generateNotImplemented(
-      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl");
+      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
   return RestStatus::DONE;
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,7 +58,9 @@ class Builder;
 class Slice;
 class StringRef;
 }  // namespace velocypack
+
 class CursorRepository;
+struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
@@ -162,8 +164,8 @@ struct TRI_vocbase_t {
                                                    // replication is assessing
                                                    // the state of the vocbase
 
-  // structures for user-defined volatile data
-  void* _userStructures;
+  // structures for volatile cache data (used from JavaScript)
+  std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
  public:
   /// @brief checks if a database name is allowed

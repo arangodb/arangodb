@@ -714,7 +714,7 @@ function GenericAqlSetupPathSuite(type) {
           // We do not sync shard-locks, so no deadlock possible
           return false;
         }
-        // If any of the writes is exclusive we enfoce sequential locking
+        // If any of the writes is exclusive we enforce sequential locking
         return fExclusive === USE_EXCLUSIVE || sExclusive === USE_EXCLUSIVE;
       };
 
@@ -831,7 +831,9 @@ if (internal.isCluster()) {
   jsunity.run(AqlGraphSetupPathSuite);
   jsunity.run(AqlNamedGraphSetupPathSuite);
   jsunity.run(AqlViewSetupPathSuite);
-  jsunity.run(AqlSatelliteSetupPathSuite);
+  if (internal.isEnterprise()) {
+    jsunity.run(AqlSatelliteSetupPathSuite);
+  }
 }
 
 return jsunity.done();

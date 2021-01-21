@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 
 #include "zlib.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Basics/operating-system.h"
 
@@ -150,12 +151,17 @@ class ManagedDirectory {
     void skip(size_t count);
 
    private:
+    void writeNoLock(char const* data, size_t length);
+    TRI_read_return_t readNoLock(char* buffer, size_t length);
+
+   private:
     ManagedDirectory const& _directory;
     std::string _path;
     int _flags;
     int _fd;
     int _gzfd;     // duplicate fd for gzip close
     gzFile _gzFile;
+    Mutex mutable _mutex;
 #ifdef USE_ENTERPRISE
     std::unique_ptr<EncryptionFeature::Context> _context;
 #endif

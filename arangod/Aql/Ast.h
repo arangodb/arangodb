@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -384,6 +384,9 @@ class Ast {
 
   AstNode* createNodeFunctionCall(char const* functionName, size_t length,
                                   AstNode const* arguments);
+
+  /// @brief create an AST function call node for aggregate functions
+  AstNode* createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments);
 
   /// @brief create an AST range node
   AstNode* createNodeRange(AstNode const*, AstNode const*);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ struct IResearchLinkHelper {
   /// @brief return a reference to a static VPackSlice of an empty index
   ///        definition
   //////////////////////////////////////////////////////////////////////////////
-  static velocypack::Slice const& emptyIndexSlice();
+  static arangodb::velocypack::Builder emptyIndexSlice(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare two link definitions for equivalience if used to create a
@@ -105,7 +105,8 @@ struct IResearchLinkHelper {
     IResearchViewSort const* primarySort = nullptr,
     irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
-    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
+    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice(), // id for normalized
+    irs::string_ref collectionName = irs::string_ref::NIL
   );
 
   ////////////////////////////////////////////////////////////////////////////////

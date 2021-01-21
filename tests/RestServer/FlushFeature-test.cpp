@@ -79,9 +79,6 @@ class FlushFeatureTest
     features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
-    arangodb::DatabaseFeature::DATABASE =
-        &server.getFeature<arangodb::DatabaseFeature>();
-
     for (auto& f : features) {
       f.first.prepare();
     }

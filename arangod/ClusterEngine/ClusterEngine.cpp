@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,6 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -80,6 +79,10 @@ bool ClusterEngine::isRocksDB() const {
 bool ClusterEngine::isMock() const {
   return ClusterEngine::Mocking ||
          (_actualEngine && _actualEngine->name() == "Mock");
+}
+
+HealthData ClusterEngine::healthCheck() {
+  return {};
 }
 
 ClusterEngineType ClusterEngine::engineType() const {

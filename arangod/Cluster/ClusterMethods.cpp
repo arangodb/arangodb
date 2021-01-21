@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,7 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Utilities.h"
+#include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
@@ -539,7 +540,10 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        collinfo.keyGenerator()->track(p, l);
+        int res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
     }
 
@@ -599,6 +603,14 @@ bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
 bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
   return true;
 }
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to demangle hidden collections names
+////////////////////////////////////////////////////////////////////////////////
+#ifndef USE_ENTERPRISE
+void ClusterMethods::realNameFromSmartName(std::string&) { }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1957,7 +1969,6 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                              std::vector<VPackSlice>& result) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
-  auto& datalake = travCache.datalake();
   size_t& filtered = travCache.filteredDocuments();
   size_t& read = travCache.insertedDocuments();
 
@@ -2031,7 +2042,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
 
       arangodb::velocypack::HashedStringRef idRef(id);
-      auto resE = cache.emplace(idRef, e);
+      auto resE = cache.try_emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
@@ -2041,11 +2052,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
     }
     if (!allCached) {
-      if (datalake.empty()) {
-        //avoid frequent reallocations for some results
-        datalake.reserve(8);
-      }
-      datalake.emplace_back(std::move(payload));
+      travCache.datalake().add(std::move(payload));
     }
   }
   return {};
@@ -2070,7 +2077,6 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                              size_t& read) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
-  auto& datalake = travCache.datalake();
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -2144,11 +2150,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
     }
     if (!allCached) {
-      if (datalake.empty()) {
-        //avoid frequent reallocations for some results
-        datalake.reserve(8);
-      }
-      datalake.emplace_back(std::move(payload));
+      travCache.datalake().add(std::move(payload));
     }
   }
   return {};
@@ -2171,7 +2173,6 @@ void fetchVerticesFromEngines(
     bool forShortestPath) {
   
   auto const* engines = travCache.engines();
-  auto& datalake = travCache.datalake();
 
   // TODO map id => ServerID if possible
   // And go fast-path
@@ -2232,7 +2233,7 @@ void fetchVerticesFromEngines(
 
       TRI_ASSERT(result.find(key) == result.end());
       if (!cached) {
-        datalake.emplace_back(std::move(payload));
+        travCache.datalake().add(std::move(payload));
         cached = true;
       }
       // Protected by datalake
@@ -3800,7 +3801,6 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   }
 
   // Perform the requests
-//  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
   for (Future<network::Response>& f : futures) {
      network::Response const& r = f.get();
 

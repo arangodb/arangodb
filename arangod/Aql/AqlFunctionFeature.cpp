@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +39,6 @@ namespace aql {
 
 using FF = Function::Flags;
 
-AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
-
 AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
@@ -56,9 +54,6 @@ void AqlFunctionFeature::collectOptions(std::shared_ptr<options::ProgramOptions>
 void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 void AqlFunctionFeature::prepare() {
-  // set singleton
-  AQLFUNCTIONS = this;
-
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
   addTypeCastFunctions();
@@ -70,17 +65,6 @@ void AqlFunctionFeature::prepare() {
   addGeometryConstructors();
   addDateFunctions();
   addMiscFunctions();
-}
-
-void AqlFunctionFeature::unprepare() {
-  // Just unlink nothing more todo
-  AQLFUNCTIONS = nullptr;
-}
-
-/// @brief returns a reference to a built-in function
-Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
-  TRI_ASSERT(AQLFUNCTIONS != nullptr);
-  return AQLFUNCTIONS->byName(name);
 }
 
 void AqlFunctionFeature::add(Function const& func) {
@@ -138,7 +122,7 @@ Function const* AqlFunctionFeature::byName(std::string const& name) const {
 
 void AqlFunctionFeature::addTypeCheckFunctions() {
   // common flags for all these functions
-  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, 
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable,
                                    FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
 
   // type check functions
@@ -218,11 +202,11 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
   add({"IN_RANGE", ".,.,.,.,.", flags, &Functions::InRange }); // (attribute, lower, upper, include lower, include upper)
-  
+
   // special flags:
   // not deterministic and not cacheable
   auto nonDeterministicFlags = Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
-  add({"RANDOM_TOKEN", ".", nonDeterministicFlags, &Functions::RandomToken});  
+  add({"RANDOM_TOKEN", ".", nonDeterministicFlags, &Functions::RandomToken});
   add({"UUID", "", nonDeterministicFlags, &Functions::Uuid});
 }
 
@@ -253,11 +237,24 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", flags, &Functions::Radians});
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
+  
+  add({"BIT_AND", ".|.", flags, &Functions::BitAnd});
+  add({"BIT_OR", ".|.", flags, &Functions::BitOr});
+  add({"BIT_XOR", ".|.", flags, &Functions::BitXOr});
+  add({"BIT_NEGATE", ".,.", flags, &Functions::BitNegate});
+  add({"BIT_TEST", ".,.", flags, &Functions::BitTest});
+  add({"BIT_POPCOUNT", ".", flags, &Functions::BitPopcount});
+  add({"BIT_SHIFT_LEFT", ".,.,.", flags, &Functions::BitShiftLeft});
+  add({"BIT_SHIFT_RIGHT", ".,.,.", flags, &Functions::BitShiftRight});
+  add({"BIT_CONSTRUCT", ".", flags, &Functions::BitConstruct});
+  add({"BIT_DECONSTRUCT", ".", flags, &Functions::BitDeconstruct});
+  add({"BIT_TO_STRING", ".,.", flags, &Functions::BitToString});
+  add({"BIT_FROM_STRING", ".", flags, &Functions::BitFromString});
 
   // special flags:
   // not deterministic and not cacheable
   auto nonDeterministicFlags = Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
-  add({"RAND", "", nonDeterministicFlags, &Functions::Rand}); 
+  add({"RAND", "", nonDeterministicFlags, &Functions::Rand});
 }
 
 void AqlFunctionFeature::addListFunctions() {
@@ -353,7 +350,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   // special flags:
   // not deterministic and non-cacheable, can only run on DB servers in OneShard mode
   auto documentFlags = Function::makeFlags(FF::CanRunOnDBServerOneShard, FF::CanReadDocuments);
-  add({"DOCUMENT", "h.|.", documentFlags, &Functions::Document});  
+  add({"DOCUMENT", "h.|.", documentFlags, &Functions::Document});
 }
 
 void AqlFunctionFeature::addGeoFunctions() {
@@ -417,6 +414,8 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
   add({"DATE_UTCTOLOCAL", ".,.", flags, &Functions::DateUtcToLocal});
   add({"DATE_LOCALTOUTC", ".,.", flags, &Functions::DateLocalToUtc});
+  add({"DATE_TIMEZONE", "", flags, &Functions::DateTimeZone});
+  add({"DATE_TIMEZONES", "", flags, &Functions::DateTimeZones});
   add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
 
   // special flags:
@@ -437,18 +436,21 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
-  
+
   // only function without a C++ implementation
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable), nullptr});  
-  
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable), nullptr});
+
   // the following functions are not eligible to run on DB servers
   auto validationFlags = Function::makeFlags(FF::None);
   add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
 
+  // Call AIR
+  add({"CALL_GREENSPUN", ".|+", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard), &Functions::CallGreenspun});
+
   // special flags:
   // deterministic, not cacheable. only on coordinator
-  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  
+  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});
   add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard), &Functions::Fail});  // not deterministic and not cacheable
   add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
   add({"NOEVAL", ".", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!

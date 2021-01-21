@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -227,7 +227,7 @@ void RestTasksHandler::registerTask(bool byId) {
       command = cmdSlice.copyString();
     }
 
-    if (!Task::tryCompile(isolate, command)) {
+    if (!Task::tryCompile(server(), isolate, command)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "cannot compile command");
       return;

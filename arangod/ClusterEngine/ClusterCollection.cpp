@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -319,21 +319,21 @@ Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRe
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                arangodb::velocypack::StringRef const& /*key*/,
-                               ManagedDocumentResult& /*result*/) {
+                               IndexIterator::DocumentCallback const& /*cb*/) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+// read using a token!
+bool ClusterCollection::read(transaction::Methods* /*trx*/,
+                             LocalDocumentId const& /*documentId*/,
+                             IndexIterator::DocumentCallback const& /*cb*/) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
                                      ManagedDocumentResult& /*result*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-// read using a token!
-bool ClusterCollection::readDocumentWithCallback(transaction::Methods* /*trx*/,
-                                                 LocalDocumentId const& /*documentId*/,
-                                                 IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

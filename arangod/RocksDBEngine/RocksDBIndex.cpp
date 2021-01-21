@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,9 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
     : Index(id, collection, name, attributes, unique, sparse),
       _cf(cf),
       _cache(nullptr),
-      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr),
+      _cacheEnabled(
+          useCache && !collection.system() &&
+          collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _objectId(::ensureObjectId(objectId)) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamilyManager::get(
                                         RocksDBColumnFamilyManager::Family::Definitions));
@@ -85,7 +87,9 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
     : Index(id, collection, info),
       _cf(cf),
       _cache(nullptr),
-      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr),
+      _cacheEnabled(
+          useCache && !collection.system() &&
+          collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _objectId(::ensureObjectId(
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId))) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamilyManager::get(
@@ -108,8 +112,10 @@ RocksDBIndex::~RocksDBIndex() {
   if (useCache()) {
     try {
       TRI_ASSERT(_cache != nullptr);
-      TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-      CacheManagerFeature::MANAGER->destroyCache(_cache);
+      auto* manager =
+          _collection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+      TRI_ASSERT(manager != nullptr);
+      manager->destroyCache(_cache);
     } catch (...) {
     }
   }
@@ -176,9 +182,11 @@ void RocksDBIndex::createCache() {
 
   TRI_ASSERT(!_collection.system() && !ServerState::instance()->isCoordinator());
   TRI_ASSERT(_cache.get() == nullptr);
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  auto* manager =
+      _collection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+  TRI_ASSERT(manager != nullptr);
   LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
-  _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
+  _cache = manager->createCache(cache::CacheType::Transactional);
   TRI_ASSERT(_cacheEnabled);
 }
 
@@ -186,11 +194,13 @@ void RocksDBIndex::destroyCache() {
   if (!_cache) {
     return;
   }
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  auto* manager =
+      _collection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+  TRI_ASSERT(manager != nullptr);
   // must have a cache...
   TRI_ASSERT(_cache.get() != nullptr);
   LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
-  CacheManagerFeature::MANAGER->destroyCache(_cache);
+  manager->destroyCache(_cache);
   _cache.reset();
 }
 
@@ -209,8 +219,10 @@ Result RocksDBIndex::drop() {
   // Try to drop the cache as well.
   if (_cache) {
     try {
-      TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-      CacheManagerFeature::MANAGER->destroyCache(_cache);
+      auto* manager =
+          _collection.vocbase().server().getFeature<CacheManagerFeature>().manager();
+      TRI_ASSERT(manager != nullptr);
+      manager->destroyCache(_cache);
       // Reset flag
       _cache.reset();
     } catch (...) {

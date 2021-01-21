@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -187,7 +187,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     [](irs::string_ref const& key) -> bool {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField
           && key != iresearch::StaticStrings::PrimarySortField
-          && key != iresearch::StaticStrings::StoredValuesField;
+          && key != iresearch::StaticStrings::StoredValuesField
+          && key != iresearch::StaticStrings::CollectionNameField;
   };
 
   auto* acceptor = &propertiesAcceptor;
