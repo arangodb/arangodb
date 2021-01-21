@@ -32,8 +32,8 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
-const pu = require('@arangodb/testutils/process-utils');
-const tu = require('@arangodb/testutils/test-utils');
+const pu = require('@arangodb/process-utils');
+const tu = require('@arangodb/test-utils');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -60,12 +60,6 @@ function runArangodRecovery (params) {
     }
   }
 
-  let additionalParams= {
-    'log.foreground-tty': 'true',
-    'database.ignore-datafile-errors': 'false', // intentionally false!
-  };
-
-
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
@@ -76,7 +70,6 @@ function runArangodRecovery (params) {
   let crashLog = fs.join(crashLogDir, 'crash.log');
 
   if (params.setup) {
-    additionalParams['javascript.script-parameter'] = 'setup';
     try {
       // clean up crash log before next test
       fs.remove(crashLog);
@@ -141,11 +134,24 @@ function runArangodRecovery (params) {
 
     params.args = args;
 
-    argv = toArgv(Object.assign(params.args, additionalParams));
+    argv = toArgv(
+      Object.assign(params.args,
+                    {
+                      'log.foreground-tty': 'true',
+                      'javascript.script-parameter': 'setup'
+                    }
+                   )
+    );
   } else {
-    additionalParams['javascript.script-parameter'] = 'recory';
-    argv = toArgv(Object.assign(params.args, additionalParams));
-    
+    argv = toArgv(
+      Object.assign(params.args,
+                    {
+                      'log.foreground-tty': 'true',
+                      'database.ignore-datafile-errors': 'false', // intentionally false!
+                      'javascript.script-parameter': 'recovery'
+                    }
+                   )
+    );
     if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
@@ -208,7 +214,21 @@ function recovery (options) {
         count: count,
         testDir: ""
       };
-      runArangodRecovery(params);
+
+      for (let phase = 1; ; ++phase) {
+        runArangodRecovery(params);
+
+        // check if a CONTINUE file exists
+        let continueFile = fs.join(params.args['temp.path'], "CONTINUE");
+        // very likely the CONTINUE file does not exist.
+
+        // the test we now run _may_ write a CONTINUE file.
+        // if it does, we keep looping here until the test fails
+        // or we don't have any CONTINUE file
+        if (!fs.exists(continueFile)) {
+          break;
+        }
+      }
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
