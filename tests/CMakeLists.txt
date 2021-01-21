@@ -24,6 +24,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp

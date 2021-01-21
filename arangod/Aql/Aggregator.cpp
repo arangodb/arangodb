@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
+#include "Aql/Functions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -829,6 +830,93 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
   }
 };
 
+struct BitFunctionAnd {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 & value2;
+  }
+};
+
+struct BitFunctionOr {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 | value2;
+  }
+};
+
+struct BitFunctionXOr {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 ^ value2;
+  }
+};
+
+template <typename BitFunction>
+struct AggregatorBitFunction : public Aggregator, BitFunction {
+  explicit AggregatorBitFunction(velocypack::Options const* opts)
+      : Aggregator(opts), result(0), invalid(false), invoked(false) {}
+
+  void reset() override {
+    result = 0;
+    invalid = false;
+    invoked = false;
+  }
+
+  void reduce(AqlValue const& cmpValue) override {
+    if (!invalid) {
+      if (cmpValue.isNull(true)) {
+        // ignore `null` values here
+        return;
+      }
+      if (cmpValue.isNumber()) {
+        double const number = cmpValue.toDouble();
+        if (!std::isnan(number) && number >= 0.0) {
+          int64_t value = cmpValue.toInt64();
+          if (value <= static_cast<int64_t>(Functions::bitFunctionsMaxSupportedValue)) {
+            TRI_ASSERT(value >= 0 && value <= UINT32_MAX);
+            if (invoked) {
+              result = this->compute(result, static_cast<uint64_t>(value));
+            } else {
+              result = static_cast<uint64_t>(value);
+              invoked = true;
+            }
+            return;
+          }
+        }
+      }
+    
+      invalid = true;
+    }
+  }
+
+  AqlValue stealValue() override final {
+    if (invalid || !invoked) {
+      reset();
+      return AqlValue(AqlValueHintNull());
+    }
+
+    uint64_t r = result;
+    reset();
+    return AqlValue(AqlValueHintUInt(r));
+  }
+
+  uint64_t result;
+  bool invalid;
+  bool invoked;
+};
+
+struct AggregatorBitAnd : public AggregatorBitFunction<BitFunctionAnd> {
+  explicit AggregatorBitAnd(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
+struct AggregatorBitOr : public AggregatorBitFunction<BitFunctionOr> {
+  explicit AggregatorBitOr(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
+struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
+  explicit AggregatorBitXOr(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
 /// @brief all available aggregators with their meta data
 std::unordered_map<std::string, AggregatorInfo> const aggregators = {
     {"LENGTH",
@@ -970,7 +1058,23 @@ std::unordered_map<std::string, AggregatorInfo> const aggregators = {
      {[](velocypack::Options const* opts) {
         return std::make_unique<AggregatorCountDistinctStep2>(opts);
       },
-      doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}}};
+      doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}},
+    {"BIT_AND",
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorBitAnd>(opts);
+      },
+      doesRequireInput, official, "BIT_AND", "BIT_AND"}},
+    {"BIT_OR",
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorBitOr>(opts);
+      },
+      doesRequireInput, official, "BIT_OR", "BIT_OR"}},
+    {"BIT_XOR",
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorBitXOr>(opts);
+      },
+      doesRequireInput, official, "BIT_XOR", "BIT_XOR"}},
+};
 
 /// @brief aliases (user-visible) for aggregation functions
 std::unordered_map<std::string, std::string> const aliases = {

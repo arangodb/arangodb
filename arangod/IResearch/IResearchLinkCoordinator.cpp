@@ -66,7 +66,7 @@ namespace iresearch {
 IResearchLinkCoordinator::IResearchLinkCoordinator(IndexId id, LogicalCollection& collection)
     : arangodb::ClusterIndex(id, collection, ::getEngineType(),
                              arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
-                             IResearchLinkHelper::emptyIndexSlice()),
+                             IResearchLinkHelper::emptyIndexSlice(0).slice()), // we don`t have objectId`s on coordinator
       IResearchLink(id, collection) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
