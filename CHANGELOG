@@ -5,11 +5,46 @@ devel
 
 * Fix for OASIS-409. Fixed indexing _id attribute at recovery
 
-* Normalize user-provided input/output directory names in
-  arangoimport, arangoexport, arangodump and arangorestore 
-  before splitting them into path components, in the sense that now 
-  both forward and backward slashes can be used on Windows,
-  even interchangingly.
+* Add shard-parallelism to arangodump when dumping collections with multiple
+  shards.
+  Previously, arangodump could execute a dump concurrently on different 
+  collections, but it did not parallelize the dump for multiple shards of the
+  same collection.
+  This change should speed up dumping of collections with multiple shards.
+  When dumping multiple shards of the same collection concurrently, parallelism 
+  is still limited by all these threads needing to serialize their chunks into
+  the same (shared) output file. 
+
+* Add option `--envelope` to arangodump, to control if each dumped document
+  should be wrapped into a small JSON wrapper (e.g. `{"type":2300,"data":{...}}`).
+  This JSON wrapper is not necessary anymore since ArangoDB 3.8, so omitting
+  it produces smaller (and slightly faster) dumps.
+  Restoring a dump without these JSON wrappers is handled automatically by
+  ArangoDB 3.8 and higher. However, restoring a dump without these JSON wrappers
+  into previous versions (pre v3.8) is not supported. Thus the option should
+  only be used if the client tools (arangodump, arangorestore) and the arangod
+  server are all using v3.8 or higher.
+  The default value for this option is `true`, meaning the JSON wrappers will
+  be stored as part of the dump. This is compatible with all previous verions.
+
+* Fix some issues with key generators not properly taking into account the
+  `allowUserKeys` attribute when in a cluster.
+
+* Make AQL optimizer rule "splice-subqueries" mandatory, in the sense that it 
+  cannot be disabled anymore. As a side effect of this change, there will no 
+  query execution plans created by 3.8 that contain execution nodes of type 
+  `SubqueryNode`. `SubqueryNode`s will only be used during query planning and 
+  optimization, but at the end of the query optimization phase will all have 
+  been replaced with nodes of types `SubqueryStartNode` and `SubqueryEndNode`.
+  The code to execute non-spliced subqueries remains in place so that 3.8 can 
+  still execute queries planned on a 3.7 instance with the "splice-subqueries" 
+  optimizer rule intentionally turned off. The code for executing non-spliced 
+  subqueries can be removed in 3.9.
+
+* Normalize user-provided input/output directory names in arangoimport, 
+  arangoexport, arangodump and arangorestore before splitting them into path 
+  components, in the sense that now both forward and backward slashes can be 
+  used on Windows, even interchangingly.
 
 * Added the following bit handling functions to AQL:
 
