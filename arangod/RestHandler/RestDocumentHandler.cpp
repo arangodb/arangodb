@@ -476,7 +476,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         if (headerRev.isSet()) {
           builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
         } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
-          builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
+          builder.add(StaticStrings::RevString, VPackValue(revInBody.toString()));
         }
       }
 
