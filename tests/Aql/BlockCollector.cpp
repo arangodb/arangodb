@@ -41,7 +41,7 @@ size_t BlockCollector::totalSize() const { return _totalSize; }
 RegisterId BlockCollector::nrRegs() const {
   TRI_ASSERT(_totalSize > 0);
   TRI_ASSERT(!_blocks.empty());
-  return static_cast<RegisterId>(_blocks[0]->numRegisters());
+  return static_cast<RegisterId::value_t>(_blocks[0]->numRegisters());
 }
 
 void BlockCollector::clear() {

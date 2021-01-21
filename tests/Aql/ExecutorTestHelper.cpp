@@ -49,7 +49,7 @@ auto asserthelper::RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualR
     }
   }
 
-  for (RegisterId reg = 0; reg < expected->numRegisters(); ++reg) {
+  for (RegisterId::value_t reg = 0; reg < expected->numRegisters(); ++reg) {
     auto const& x =
         actual->getValueReference(actualRow, onlyCompareRegisters
                                                  ? onlyCompareRegisters->at(reg)
@@ -72,7 +72,7 @@ auto asserthelper::ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
   auto const& x = actual->getValueReference(actualRow, actualRegister);
   auto const& y = expected->getValueReference(expectedRow, expectedRegister);
   EXPECT_TRUE(AqlValuesAreIdentical(x, y))
-      << "Row " << actualRow << " Column " << actualRegister << " do not agree. "
+      << "Row " << actualRow << " Column " << actualRegister.rawValue() << " do not agree. "
       << x.slice().toJson(&vpackOptions) << " vs. " << y.slice().toJson(&vpackOptions);
 }
 
@@ -93,7 +93,7 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
 
   for (size_t row = 0; row < (std::min)(actual->numRows(), expected->numRows()); ++row) {
     // Compare registers
-    for (RegisterId reg = 0; reg < outRegs; ++reg) {
+    for (RegisterId::value_t reg = 0; reg < outRegs; ++reg) {
       RegisterId actualRegister =
           onlyCompareRegisters ? onlyCompareRegisters->at(reg) : reg;
       ValidateAqlValuesAreEqual(actual, row, actualRegister, expected, row, reg);
