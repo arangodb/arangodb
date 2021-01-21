@@ -1,6 +1,10 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed rare objectId conflict for indexes.
+
+* Fix for OASIS-409: fixed indexing _id attribute at recovery.
+
 * Fix some issues with key generators not properly taking into account the
   `allowUserKeys` attribute when in a cluster.
 
