@@ -687,6 +687,8 @@ void ClusterFeature::stop() {
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
+
+  _agencyCache.reset();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
