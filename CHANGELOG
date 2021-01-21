@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make `padded` and `autoincrement` key generators export their `lastValue` 
+  values, so that they are available in dumps and can be restored elsewhere
+  from a dump.
+
 * Fix decoding of values in `padded` key generator when restoring from a dump.
 
 * Fixed error reporting for hotbackup restore from dbservers back to
