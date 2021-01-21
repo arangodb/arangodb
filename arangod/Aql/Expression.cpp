@@ -271,8 +271,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
   
   // use linear search
 
-  if (!right.isDocvec() && !right.isRange() &&
-      !left.isDocvec() && !left.isRange()) {
+  if (!right.isRange() && !left.isRange()) {
     // optimization for the case in which rhs is a Velocypack array, and we 
     // can simply use a VelocyPack iterator to walk through it. this will
     // be a lot more efficient than using right.at(i) in case the array is

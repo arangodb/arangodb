@@ -187,7 +187,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     [](irs::string_ref const& key) -> bool {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField
           && key != iresearch::StaticStrings::PrimarySortField
-          && key != iresearch::StaticStrings::StoredValuesField;
+          && key != iresearch::StaticStrings::StoredValuesField
+          && key != iresearch::StaticStrings::CollectionNameField;
   };
 
   auto* acceptor = &propertiesAcceptor;

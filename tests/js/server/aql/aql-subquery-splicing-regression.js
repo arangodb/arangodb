@@ -28,11 +28,10 @@
 /// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db,
-  indexId;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
 
 // This example was produced by Jan Steeman to reproduce a
 // crash in the TraversalExecutor code
@@ -94,24 +93,12 @@ var createBaseGraph = function() {
   contains.save({_from: chair._id, _to: wood._id});
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function traversalResetRegression2Suite() {
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
     setUpAll: function() {
       cleanup();
       createBaseGraph();
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function() {
       cleanup();
@@ -134,7 +121,7 @@ function traversalResetRegression2Suite() {
                          "@product": productCollectionName,
                          "@material": materialCollectionName };
 
-      var actual = db._query(query, bindVars);
+      let actual = db._query(query, bindVars);
       assertEqual(actual.toArray().sort(), expectedResult.sort());
     }
   };
@@ -142,14 +129,10 @@ function traversalResetRegression2Suite() {
 
 // Regression test suite for https://github.com/arangodb/arangodb/issues/13099
 function subqueryFetchTooMuchRegressionSuite() {
-  const splice = {optimizer: {rules: ["+splice-subqueries"] }};
-  const nonSplice = {optimizer: {rules: ["-splice-subqueries"] }};
-  const countSplice = {...splice, fullCount: true};
-  const countNonSplice = {...nonSplice, fullCount: true};
+  const count = {fullCount: true};
   return {
     setUpAll: function() {},
     tearDownAll: function() {},
-
 
     testSubqueryEndHitShadowRowFirst: function() {
       // This tests needs to fill an AQL itemBlock, s.t. one shadowRow
@@ -174,23 +157,15 @@ function subqueryFetchTooMuchRegressionSuite() {
       `;
       {
         // Data
-        const q1 = db._query(query, {}, splice);
-        const res1 = q1.toArray();
-        const q2 = db._query(query, {}, nonSplice);
-        const res2 = q2.toArray();
-        assertEqual(res1, res2);
-        // Make sure splice is better
-        const stat1 = q1.getExtra().stats;
-        const stat2 = q2.getExtra().stats;
-        assertTrue(stat1.executionTime < stat2.executionTime);
+        const q = db._query(query);
+        const res = q.toArray();
+        assertEqual([ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], res);
       }
       {
         // FullCount
-        const stat1 = db._query(query, {}, countSplice).getExtra().stats;
-        const stat2 = db._query(query, {}, countNonSplice).getExtra().stats;
-        assertEqual(stat1.fullCount, stat2.fullCount);
-        assertEqual(stat1.filtered, stat2.filtered);
-        assertTrue(stat1.executionTime < stat2.executionTime);
+        const stat = db._query(query, {}, count).getExtra().stats;
+        assertEqual(9999, stat.fullCount);
+        assertEqual(11, stat.filtered);
       }
     },
 
@@ -217,32 +192,19 @@ function subqueryFetchTooMuchRegressionSuite() {
       `;
       {
         // Data
-        const q1 = db._query(query, {}, splice);
-        const res1 = q1.toArray();
-        const q2 = db._query(query, {}, nonSplice);
-        const res2 = q2.toArray();
-        assertEqual(res1, res2);
-
-        // Make sure splice is better
-        const stat1 = q1.getExtra().stats;
-        const stat2 = q2.getExtra().stats;
-        assertTrue(stat1.executionTime < stat2.executionTime);
+        const q = db._query(query);
+        const res = q.toArray();
+        assertEqual([ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], res);
       }
       {
         // FullCount
-        const stat1 = db._query(query, {}, countSplice).getExtra().stats;
-        const stat2 = db._query(query, {}, countNonSplice).getExtra().stats;
-        assertEqual(stat1.fullCount, stat2.fullCount);
-        assertEqual(stat1.filtered, stat2.filtered);
-        assertTrue(stat1.executionTime < stat2.executionTime);
+        const stat = db._query(query, {}, count).getExtra().stats;
+        assertEqual(10000, stat.fullCount);
+        assertEqual(9999, stat.filtered);
       }
     }
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(traversalResetRegression2Suite);
 jsunity.run(subqueryFetchTooMuchRegressionSuite);

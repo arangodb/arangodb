@@ -30,6 +30,7 @@
 #include "IResearchLinkMeta.h"
 #include "VelocyPackHelper.h"
 
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
@@ -125,7 +126,7 @@ struct Field {
 ////////////////////////////////////////////////////////////////////////////////
 class FieldIterator {
  public:
-  explicit FieldIterator(arangodb::transaction::Methods& trx);
+  explicit FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection, IndexId linkId);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -193,7 +194,10 @@ class FieldIterator {
   std::string _valueBuffer;  // need temporary buffer for custom types in VelocyPack
   VPackBuffer<uint8_t> _buffer; // buffer for stored values
   arangodb::transaction::Methods* _trx;
+  irs::string_ref _collection;
   Field _value;  // iterator's value
+  IndexId _linkId;    
+  bool _isDBServer;
 }; // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +222,25 @@ struct DocumentPrimaryKey {
 
   DocumentPrimaryKey() = delete;
 };  // DocumentPrimaryKey
+
+struct StoredValue {
+  StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const doc, IndexId lid);
+
+  bool write(irs::data_output& out) const;
+
+  irs::string_ref const& name() const noexcept {
+    return fieldName;
+  }
+
+  mutable VPackBuffer<uint8_t> buffer;
+  transaction::Methods const& trx;
+  velocypack::Slice const document;
+  irs::string_ref fieldName;
+  irs::string_ref collection;
+  std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
+  IndexId linkId;
+  bool isDBServer;
+}; // StoredValue
 
 }  // namespace iresearch
 }  // namespace arangodb
