@@ -99,7 +99,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       }
     }
   };
-
+  
   var explain = function (result) {
     return helper.getCompactPlan(result).map(function(node)
                                              { return node.type; });
@@ -169,7 +169,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
       }
     },
-
+    
     testNumericKeyUpdate : function () {
       try {
         db._query("UPDATE { _key: 1234 } WITH { value: 1 } IN " + cn1);
@@ -178,7 +178,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
       }
     },
-
+    
     testNumericKeyReplace : function () {
       try {
         db._query("REPLACE { _key: 1234 } WITH { value: 1 } IN " + cn1);
@@ -187,7 +187,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
       }
     },
-
+    
     testNumericKeyRemove : function () {
       try {
         db._query("REMOVE { _key: 1234 } IN " + cn1);
@@ -199,7 +199,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
     testFetchDocumentWithOldAttribute : function() {
       let doc = c1.save({ _key: "oldDoc", old: "abc" });
-
+      
       const queries = [
         [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._id", cn1 + "/oldDoc" ],
         [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._key", "oldDoc" ],
@@ -216,10 +216,10 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(query[1], result[0]);
       });
     },
-
+    
     testFetchDocumentWithNewAttribute : function() {
       let doc = c1.save({ _key: "newDoc", "new": "abc" });
-
+      
       const queries = [
         [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._id", cn1 + "/newDoc" ],
         [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._key", "newDoc" ],
@@ -236,7 +236,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(query[1], result[0]);
       });
     },
-
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test plans that should result
     ////////////////////////////////////////////////////////////////////////////////
@@ -342,11 +342,11 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
-        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, true, setupC1, 0],
+        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, true, setupC1, 0],          
         [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],        
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, s, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, s, 0],
@@ -396,19 +396,19 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
         [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],          
         [ "REPLACE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD._key", 10, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],   
         [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, setupC1, 0],
 
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '-1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0 ],
-
+        
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [doc, NEW, a]`, 9, 2, true, setupC1, 0],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 7, 4, true, setupC1, 0],
@@ -428,7 +428,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ],
       ];
-
+      
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
