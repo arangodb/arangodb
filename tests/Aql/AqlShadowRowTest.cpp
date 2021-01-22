@@ -123,7 +123,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
-    auto outputRegisters = RegIdSet{static_cast<RegisterId::value_t>(numRegisters)};
+    auto outputRegisters = RegIdSet{numRegisters};
     size_t maxShadowRowDepth = 0;
     for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
@@ -159,7 +159,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
             bool mustDestroy = true;
             AqlValue clonedValue = shadowRowData.clone();
             AqlValueGuard guard{clonedValue, mustDestroy};
-            testee.consumeShadowRow(static_cast<RegisterId::value_t>(numRegisters), source, guard);
+            testee.consumeShadowRow(numRegisters, source, guard);
           }
           ASSERT_TRUE(testee.produced());
           testee.advanceRow();

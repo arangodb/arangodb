@@ -126,8 +126,8 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = RegisterId::maxVariableRegisterId;
-  // TODO - remove MaxRegisterId in favor of RegisterId::maxVariableRegisterId
+  static constexpr RegisterId MaxRegisterId = RegisterId::maxRegisterId;
+  // TODO - remove MaxRegisterId in favor of RegisterId::maxRegisterId
 
   /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;

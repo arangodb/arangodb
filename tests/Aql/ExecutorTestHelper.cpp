@@ -72,7 +72,7 @@ auto asserthelper::ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
   auto const& x = actual->getValueReference(actualRow, actualRegister);
   auto const& y = expected->getValueReference(expectedRow, expectedRegister);
   EXPECT_TRUE(AqlValuesAreIdentical(x, y))
-      << "Row " << actualRow << " Column " << actualRegister.rawValue() << " do not agree. "
+      << "Row " << actualRow << " Column " << actualRegister.value() << " do not agree. "
       << x.slice().toJson(&vpackOptions) << " vs. " << y.slice().toJson(&vpackOptions);
 }
 

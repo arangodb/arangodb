@@ -177,22 +177,22 @@ class SharedExecutionBlockImplTest {
     auto readAble = RegIdSet{};
     auto writeAble = RegIdSet{};
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId::value_t i = 0; i <= inputRegisters.rawValue(); ++i) {
+      for (RegisterId::value_t i = 0; i <= inputRegisters.value(); ++i) {
         readAble.emplace(i);
       }
-      for (RegisterId::value_t i = inputRegisters.rawValue() + 1; i <= outputRegisters.rawValue(); ++i) {
+      for (RegisterId::value_t i = inputRegisters.value() + 1; i <= outputRegisters.value(); ++i) {
         writeAble.emplace(i);
       }
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId::value_t i = 0; i <= outputRegisters.rawValue(); ++i) {
+      for (RegisterId::value_t i = 0; i <= outputRegisters.value(); ++i) {
         writeAble.emplace(i);
       }
     }
     RegIdSetStack registersToKeep = {readAble, readAble, readAble};
     RegisterCount regsToRead =
-        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters.rawValue() + 1;
+        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters.value() + 1;
     RegisterCount regsToWrite =
-        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters.rawValue() + 1;
+        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters.value() + 1;
     return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {}, registersToKeep);
   }
 
@@ -1108,7 +1108,7 @@ class ExecutionBlockImplExecuteIntegrationTest
                          RegisterId reg, size_t expected) const -> void {
     ASSERT_NE(block, nullptr);
     ASSERT_GT(block->numRows(), row);
-    ASSERT_GE(block->numRegisters(), reg.rawValue());
+    ASSERT_GE(block->numRegisters(), reg.value());
     auto const& value = block->getValueReference(row, reg);
     ASSERT_TRUE(value.isNumber());
     EXPECT_EQ(static_cast<size_t>(value.toInt64()), expected);
@@ -1221,7 +1221,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       call.fullCount = false;
       return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
-    auto const inReg = outReg == 0 ? RegisterPlan::MaxRegisterId : outReg.rawValue() - 1;
+    auto const inReg = outReg == 0 ? RegisterPlan::MaxRegisterId : outReg.value() - 1;
     auto registerInfos = makeRegisterInfos(inReg, outReg);
     auto executorInfos = makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
     auto producer =
@@ -1405,7 +1405,7 @@ class ExecutionBlockImplExecuteIntegrationTest
         auto got = result->getValueReference(i, testReg).slice();
         EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *expectedIt, false))
             << "Expected: " << expectedIt.value().toJson() << " got: " << got.toJson()
-            << " in row " << i << " and register " << testReg.rawValue();
+            << " in row " << i << " and register " << testReg.value();
         expectedIt++;
       }
     } else {
@@ -1862,7 +1862,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       auto got = block->getValueReference(0, outReg).slice();
       EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *it, false))
           << "Expected: " << it.value().toJson() << " got: " << got.toJson()
-          << " in row " << i << " and register " << outReg.rawValue();
+          << " in row " << i << " and register " << outReg.value();
       if (i == 0) {
         // The first data row includes skip
         EXPECT_EQ(skipped.getSkipCount(), offset);

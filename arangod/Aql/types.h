@@ -60,44 +60,87 @@ struct Collection;
 /// @brief type for variable ids
 typedef uint32_t VariableId;
 
-typedef size_t RegisterCount;
+typedef uint16_t RegisterCount;
 
 /// @brief type for register numbers/ids
 struct RegisterId {
-  using value_t = unsigned;
-  RegisterId() = default;
+  enum class Type : uint16_t {
+    Regular = 0,
+    Const = 1
+  };
 
-  static constexpr unsigned maxVariableRegisterId = 1000;
-  static constexpr unsigned constRegisterIdOffset = 2000;
+  using value_t = uint16_t;
+  static_assert(std::is_same_v<value_t, RegisterCount>);
 
-  constexpr static RegisterId makeConstRegisterId(value_t value) {
-    return RegisterId(value + constRegisterIdOffset);
+  constexpr RegisterId() = default;
+
+  static constexpr value_t maxRegisterId = 1000;
+  
+  constexpr RegisterId(value_t v, Type type = Type::Regular)
+      : _value(v), _type(type) {
+    TRI_ASSERT(v <= maxRegisterId);
   }
 
-  // TODO - make constructor explicit and adapt code where necessary
-  constexpr RegisterId(unsigned v) : _value(v) {
-    TRI_ASSERT(v <= maxVariableRegisterId || v >= constRegisterIdOffset);
+  constexpr static RegisterId makeConst(value_t value) noexcept {
+    return RegisterId(value, Type::Const);
   }
 
-  constexpr unsigned rawValue() const noexcept { return _value; }
-  constexpr unsigned value() const noexcept {
-    if (isVariableRegister()) {
-      return _value;
-    }
-    return _value - constRegisterIdOffset;
+  constexpr static RegisterId makeRegular(value_t value) noexcept {
+    return RegisterId(value, Type::Regular);
   }
 
-  constexpr bool isConstRegister() const noexcept {
-    return _value >= constRegisterIdOffset;
+  static RegisterId fromUInt32(uint32_t value) noexcept {
+    RegisterId result;
+    std::memcpy(&result, &value, sizeof(result));
+    TRI_ASSERT(result.isValid());
+    return result;
   }
-  constexpr bool isVariableRegister() const noexcept { return _value <= maxVariableRegisterId; }
-  constexpr bool isValid() const noexcept { return isConstRegister() || isVariableRegister(); }
+
+  uint32_t toUInt32() const noexcept {
+    uint32_t result = 0;
+    std::memcpy(&result, this, sizeof(result));
+    return result;
+  }
+
+  constexpr value_t value() const noexcept {
+    TRI_ASSERT(type() <= Type::Const);
+    return _value;
+  }
+
+  constexpr Type type() const noexcept { return _type; }
+
+  constexpr bool isConstRegister() const noexcept { return _type == Type::Const; }
+  constexpr bool isRegularRegister() const noexcept { return _type == Type::Regular; }
+
+  constexpr bool isValid() const noexcept { return _value < maxRegisterId && _type <= Type::Const; }
+
+  constexpr RegisterId& operator++() noexcept { 
+    ++_value;
+    TRI_ASSERT(isValid());
+    return *this;
+  }
+
+  constexpr RegisterId& operator++(int) noexcept {
+    ++_value;
+    TRI_ASSERT(isValid());
+    return *this;
+  }
+
+  constexpr RegisterId operator+(int16_t v) noexcept {
+    return RegisterId(_value + v, _type);
+  }
+
+  constexpr RegisterId operator-(int16_t v) noexcept {
+    return RegisterId(_value - v, _type);
+  }
 
   constexpr bool operator<(const RegisterId& rhs) const noexcept {
+    TRI_ASSERT(type() == rhs.type())
     return _value < rhs._value;
   }
 
   constexpr bool operator>(const RegisterId& rhs) const noexcept {
+    TRI_ASSERT(type() == rhs.type())
     return _value > rhs._value;
   }
 
@@ -106,22 +149,23 @@ struct RegisterId {
   }
 
   constexpr bool operator<=(const RegisterId& rhs) const noexcept {
+    TRI_ASSERT(type() == rhs.type())
     return _value <= rhs._value;
   }
 
   constexpr bool operator==(const RegisterId& rhs) const noexcept {
-    return _value == rhs._value;
+    return type() == rhs.type() && _value == rhs._value;
   }
 
   constexpr bool operator!=(const RegisterId& rhs) const noexcept {
-    return _value != rhs._value;
+    return type() != rhs.type() || _value != rhs._value;
   }
 
  private:
-  static_assert(maxVariableRegisterId < constRegisterIdOffset);
-
-  unsigned _value;
+  uint16_t _value = 0;
+  Type _type = Type::Regular;
 };
+static_assert(sizeof(RegisterId) == sizeof(uint32_t));
 
 /// @brief type of a query id
 typedef uint64_t QueryId;

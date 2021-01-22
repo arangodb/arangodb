@@ -142,10 +142,10 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -234,10 +234,10 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inputRegister};
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -342,14 +342,14 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
-  if (inKeyRegister < RegisterPlan::MaxRegisterId) {
+  if (inKeyRegister.value() < RegisterId::maxRegisterId) {
     readableInputRegisters.emplace(inKeyRegister);
   }
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -429,14 +429,14 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
-  if (inKeyRegister < RegisterPlan::MaxRegisterId) {
+  if (inKeyRegister.value() < RegisterId::maxRegisterId) {
     readableInputRegisters.emplace(inKeyRegister);
   }
   auto writableOutputRegisters = RegIdSet{};;
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -543,10 +543,10 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
   auto writableOutputRegisters = RegIdSet{};;
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));

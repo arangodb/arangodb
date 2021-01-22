@@ -48,13 +48,13 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t
 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
                                                     RegIdFlatSet const& registers,
-                                                    size_t newNrRegs) const {
+                                                    RegisterCount newNrRegs) const {
   SharedAqlItemBlockPtr block = manager.requestBlock(1, newNrRegs);
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNumRegisters() <= newNrRegs);
     // Should we transform this to output row and reuse copy row?
-    for (RegisterId::value_t col = 0; col < getNumRegisters(); col++) {
+    for (RegisterId col(0); col < getNumRegisters(); col++) {
       if (registers.find(col) == registers.end()) {
         continue;
       }

@@ -305,7 +305,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     regId = (*it).second.registerId;
 
-    TRI_ASSERT(regId.isConstRegister() || regId < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(regId.value() < RegisterId::maxRegisterId);
     TRI_ASSERT(regId.isConstRegister() == (_variable->type() == Variable::Type::Const));
 
     if (_alternativeVariable != _variable) {
@@ -314,7 +314,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       alternativeRegId = (*it).second.registerId;
 
-      TRI_ASSERT(alternativeRegId < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(alternativeRegId.value() < RegisterId::maxRegisterId);
     } else {
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
@@ -621,17 +621,17 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto readableInputRegisters = RegIdSet{};
-  if (in < RegisterPlan::MaxRegisterId) {
+  if (in.value() < RegisterId::maxRegisterId) {
     readableInputRegisters.emplace(in);
   }
   auto writableOutputRegisters = RegIdSet{};
-  if (out < RegisterPlan::MaxRegisterId) {
+  if (out.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(out);
   }
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.value() < RegisterId::maxRegisterId) {
     writableOutputRegisters.emplace(outputOld);
   }
 

@@ -51,10 +51,10 @@ using namespace arangodb::aql;
 namespace {
 RegisterId findVariableRegister(RegisterPlan& plan, Variable const* var) {
   RegisterId reg = plan.variableToOptionalRegisterId(var);
-  if (reg == RegisterPlan::MaxRegisterId) {
+  if (reg.value() == RegisterId::maxRegisterId) {
     for (auto s : plan.subqueryNodes) {
       reg = findVariableRegister(*ExecutionNode::castTo<SubqueryNode*>(s)->getSubquery()->getRegisterPlan(), var);
-      if (reg != RegisterPlan::MaxRegisterId) {
+      if (reg.value() != RegisterId::maxRegisterId) {
         break;
       }
     }
@@ -652,7 +652,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
                                        block = mgr.getConstValueBlock()](Variable* var) {
       if (var->type() == Variable::Type::Const) {
         RegisterId reg = findVariableRegister(*plan, var);
-        if (reg != RegisterPlan::MaxRegisterId) {
+        if (reg.value() != RegisterId::maxRegisterId) {
           TRI_ASSERT(reg.isConstRegister());
           AqlValue value = var->constantValue;
           block->emplaceValue(0, reg.value(), std::move(value));

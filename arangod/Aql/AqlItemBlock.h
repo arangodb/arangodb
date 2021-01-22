@@ -133,8 +133,8 @@ class AqlItemBlock {
   template <typename... Args>
   // std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
   void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    TRI_ASSERT(varNr.isVariableRegister());
-    auto address = getAddress(index, varNr.rawValue());
+    TRI_ASSERT(varNr.isRegularRegister());
+    auto address = getAddress(index, varNr.value());
     AqlValue* p = &_data[address];
     //TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place

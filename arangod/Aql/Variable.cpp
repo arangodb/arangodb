@@ -126,7 +126,7 @@ bool Variable::isEqualTo(Variable const& other) const {
 
 Variable::Type Variable::type() const noexcept {
   if (constantValue.isNone()) {
-    return Type::Var;
+    return Type::Regular;
   }
   return Type::Const;
 }

@@ -42,8 +42,8 @@ class Ast;
 struct Variable {
   /// @brief indicates the type of the variable
   enum class Type {
-    /// @brief a variable with a value determined while executing the query
-    Var,
+    /// @brief a regular variable with a value determined while executing the query
+    Regular,
     /// @brief a variable with a constant value
     Const
   };

@@ -88,9 +88,9 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
-    auto const outputRegister = RegisterId{inputRegister.rawValue() + 1};
+    auto const outputRegister = RegisterId{inputRegister.value() + 1};
     auto inputRegisterSet = RegIdSet{};
-    for (RegisterId::value_t r = 0; r <= inputRegister.rawValue(); ++r) {
+    for (RegisterId::value_t r = 0; r <= inputRegister.value(); ++r) {
       inputRegisterSet.emplace(r);
     }
     auto outputRegisterSet = RegIdSet{outputRegister};
@@ -104,7 +104,7 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
-    auto const outputRegister = RegisterId{inputRegister.rawValue() + 1};
+    auto const outputRegister = RegisterId{inputRegister.value() + 1};
 
     return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
   }

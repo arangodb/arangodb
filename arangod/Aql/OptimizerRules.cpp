@@ -1613,26 +1613,28 @@ void arangodb::aql::keepConstValuesInConstRegisters(Optimizer* opt,
 
   ::arangodb::containers::SmallVector<ExecutionNode*> calculationNodes{a};
   plan->findNodesOfType(calculationNodes, EN::CALCULATION, true);
-  for (auto const& n : calculationNodes) {
+  for (auto const n : calculationNodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
     auto var = nn->outVariable();
     if (nn->expression()->isConstant() && !vars.contains(var)) {
       // this calculation node produces a const value, so we already evaluate
       // the expression and store it in the variable.
       bool mustDestroy;  // can be ignored here
-      if (var->constantValue.isEmpty()) {
+      if (var->constantValue.isNone()) {
         // We need to create a new AqlValue that copies the data here, otherwise
         // the data might be owned by the expression which might be destroyed to
         // soon, leaving us with an AqlValue with a dangling pointer!
         const_cast<Variable*>(var)->constantValue =
             AqlValue(nn->expression()->execute(&exprContext, mustDestroy).slice());
+
+        TRI_ASSERT(!var->constantValue.isNone());
+        // TODO - should not modify variables!
       } else {
         TRI_ASSERT(AqlValue::Compare(nullptr, var->constantValue,
                                      nn->expression()->execute(&exprContext, mustDestroy),
                                      true) == 0);
       }
 
-      // TODO - remove the calculation node from the plan
       modified = true;
     }
   }
@@ -3109,8 +3111,8 @@ struct SortToIndexNode final
     // resolve all FILTER variables into their appropriate filter conditions
     TRI_ASSERT(!_filters.empty());
     for (auto const& filter : _filters.back()) {
-      TRI_ASSERT(filter.isVariableRegister());
-      auto it = _variableDefinitions.find(filter.rawValue());
+      TRI_ASSERT(filter.isRegularRegister());
+      auto it = _variableDefinitions.find(filter.value());
       if (it != _variableDefinitions.end()) {
         // AND-combine all filter conditions we found, and fill constAttributes
         // and nonNullAttributes as we go along

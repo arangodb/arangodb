@@ -473,7 +473,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId.value() < RegisterId::maxRegisterId);
     outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
@@ -481,7 +481,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (isEdgeOutVariableUsedLater()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId.value() < RegisterId::maxRegisterId);
     outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
                                       it->second.registerId);
@@ -489,7 +489,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (isPathOutVariableUsedLater()) {
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId.value() < RegisterId::maxRegisterId);
     outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
                                       it->second.registerId);

@@ -80,7 +80,7 @@ std::ostream& operator<<(std::ostream& out, WindowInput const& agg) {
   out << b.toJson() << " ";
   out << agg.name;
   if (agg.inReg != RegisterPlan::MaxRegisterId) {
-    out << " reg: " << agg.inReg.rawValue();
+    out << " reg: " << agg.inReg.value();
   }
   return out;
 }

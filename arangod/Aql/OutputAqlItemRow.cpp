@@ -449,8 +449,8 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
         TRI_ASSERT(sourceRow.isInitialized());
       }
 #endif
-      TRI_ASSERT(itemId.isVariableRegister());
-      if (ignoreMissing && itemId.rawValue() >= sourceRow.getNumRegisters()) {
+      TRI_ASSERT(itemId.isRegularRegister());
+      if (ignoreMissing && itemId.value() >= sourceRow.getNumRegisters()) {
         continue;
       }
       if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {

@@ -846,8 +846,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     {
       VPackArrayBuilder guard(&nodes);
       for (auto const& oneRegisterID : _regsToClear) {
-        TRI_ASSERT(oneRegisterID.isVariableRegister());
-        nodes.add(VPackValue(oneRegisterID.rawValue()));
+        TRI_ASSERT(oneRegisterID.isRegularRegister());
+        nodes.add(VPackValue(oneRegisterID.value()));
       }
     }
 
@@ -869,8 +869,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       for (auto const& stackEntry : getRegsToKeepStack()) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& reg : stackEntry) {
-          TRI_ASSERT(reg.isVariableRegister());
-          nodes.add(VPackValue(reg.rawValue()));
+          TRI_ASSERT(reg.isRegularRegister());
+          nodes.add(VPackValue(reg.value()));
         }
       }
     }
@@ -896,8 +896,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         for (auto const& stackEntry : unusedRegsStack) {
           VPackArrayBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
-            TRI_ASSERT(reg.isVariableRegister());
-            nodes.add(VPackValue(reg.rawValue()));
+            TRI_ASSERT(reg.isRegularRegister());
+            nodes.add(VPackValue(reg.value()));
           }
         }
       }
@@ -912,7 +912,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           for (auto const& reg : stackEntry) {
             using std::to_string;
             // TODO - need to handle const registers here?
-            nodes.add(VPackValue(to_string(reg.first.rawValue())));
+            nodes.add(VPackValue(to_string(reg.first.value())));
             reg.second->toVelocyPack(nodes);
           }
         }
