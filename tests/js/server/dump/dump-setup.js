@@ -135,6 +135,7 @@
   d = c.save({});
   c.save({}); // create another one inbetween...
   c.remove(d);
+  process.env['paddedLastValue'] = c.properties().keyOptions.lastValue;
   
   // custom key options
   c = db._create("UnitTestsDumpKeygenUuid", {
