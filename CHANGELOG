@@ -1,6 +1,24 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed some situations of
+  [...]
+  SUBQUERY
+  FILTER
+  LIMIT
+  [...]
+  in AQL queries, yielding incorrect responses. A distributed state within the
+  subquery was not resetted correctly. This could also lead into "shrink" errors
+  of AQL item blocks, or much higher query runtimes.
+  Fixes:
+  - BTS-252
+  - ES-687
+  - github issue: #13099
+  - github issue: #13124
+  - github issue: #13147
+  - github issue: #13305
+  - DEVSUP-665
+
 * Fix a bug in the agency Supervision which could lead to removeFollower
   jobs constantly being created and immediately stopped again.
 

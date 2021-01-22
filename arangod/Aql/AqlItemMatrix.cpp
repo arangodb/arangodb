@@ -212,3 +212,25 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   }
   return _stopIndexInLastBlock + 1 < _blocks.back()->size();
 }
+
+[[nodiscard]] auto AqlItemMatrix::skipAllShadowRowsOfDepth(size_t depth)
+    -> std::tuple<size_t, ShadowAqlItemRow> {
+  if (_blocks.empty()) {
+    // Nothing to do
+    return {0, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
+  }
+  size_t skipped = 0;
+  while (stoppedOnShadowRow()) {
+    auto shadow = popShadowRow();
+    if (shadow.getDepth() > depth) {
+      return {skipped, shadow};
+    }
+    if (shadow.getDepth() == depth) {
+      skipped++;
+    }
+  }
+  // If we get here we only have data left, and have not run over a
+  // shadowRow we shall not skip. Drop all
+  clear();
+  return {skipped, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
+}
