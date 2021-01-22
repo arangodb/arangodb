@@ -465,7 +465,6 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
 
   Logger::setRole(roleToString(role)[0]);
   _role.store(role, std::memory_order_release);
-  ::mellon::detail::message_prefix = roleToString(role);
 
   LOG_TOPIC("61a39", DEBUG, Logger::CLUSTER)
       << "We successfully announced ourselves as " << roleToString(role)

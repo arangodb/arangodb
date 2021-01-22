@@ -1,7 +1,7 @@
 #ifndef FUTURES_TRAITS_H
 #define FUTURES_TRAITS_H
 
-#define FUTURES_COUNT_ALLOC 1
+//#define FUTURES_COUNT_ALLOC 0
 
 namespace mellon {
 

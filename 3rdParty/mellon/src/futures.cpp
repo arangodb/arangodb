@@ -10,12 +10,13 @@ detail::invalid_pointer_type detail::invalid_pointer_promise_fulfilled;
 const char* promise_abandoned_error::what() const noexcept {
   return "promise abandoned";
 }
-
+#ifdef FUTURES_COUNT_ALLOC
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <iostream>
 #include <sstream>
+
 
 namespace {
 template <typename T, std::size_t N>
@@ -72,4 +73,5 @@ std::array<std::atomic<std::size_t>, 10> mellon::detail::histogram_final_lambda_
 std::string mellon::detail::message_prefix;
 
 allocation_printer printer;
+#endif
 #endif
