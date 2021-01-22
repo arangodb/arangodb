@@ -97,78 +97,88 @@ template<typename T> class Gauge : public Metric {
   Gauge(Gauge const&) = delete;
   ~Gauge() = default;
   
-  std::ostream& print (std::ostream&) const;
+  std::ostream& print(std::ostream&) const;
 
   T fetch_add(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
-      _g.fetch_add(t, mo);
+      return _g.fetch_add(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
       } while (!_g.compare_exchange_weak(tmp, tmp + t, mo, std::memory_order_relaxed));
+      return tmp;
     }
-    return _g;
   }
-  Gauge<T>& operator+=(T const& t) {
+  
+  Gauge<T>& operator+=(T const& t) noexcept {
     fetch_add(t, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T> operator++() {
-    return Gauge<T>(fetch_add(1, std::memory_order_relaxed));
-  }
-  Gauge<T>& operator++(int) {
+  
+  // prefix increment
+  Gauge<T>& operator++() noexcept {
     fetch_add(1, std::memory_order_relaxed);
     return *this;
   }
 
+  // postfix increment. as this would be inefficient, we simply forbid it
+  Gauge<T>& operator++(int) = delete;
+
   T fetch_sub(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
-      _g.fetch_sub(t, mo);
+      return _g.fetch_sub(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
       } while (!_g.compare_exchange_weak(tmp, tmp - t, mo, std::memory_order_relaxed));
+      return tmp;
     }
-    return _g;
   }
-  Gauge<T>& operator-=(T const& t) {
+  
+  Gauge<T>& operator-=(T const& t) noexcept {
     fetch_sub(t, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T> operator--() {
-    return Gauge<T>(fetch_sub(1, std::memory_order_relaxed));
-  }
-  Gauge<T>& operator--(int) {
+  
+  // prefix decrement
+  Gauge<T>& operator--() noexcept {
     fetch_sub(1, std::memory_order_relaxed);
     return *this;
   }
-
-  Gauge<T>& operator*=(T const& t) {
+  
+  // postfix decrement. as this would be inefficient, we simply forbid it
+  Gauge<T>& operator--(int) = delete;
+  
+  Gauge<T>& operator*=(T const& t) noexcept {
     T tmp(_g.load(std::memory_order_relaxed));
     do {
     } while (!_g.compare_exchange_weak(tmp, tmp * t));
     return *this;
   }
-  Gauge<T>& operator/=(T const& t) {
+  
+  Gauge<T>& operator/=(T const& t) noexcept {
     TRI_ASSERT(t != T(0));
     T tmp(_g.load(std::memory_order_relaxed));
     do {
     } while (!_g.compare_exchange_weak(tmp, tmp / t));
     return *this;
   }
-  Gauge<T>& operator=(T const& t) {
+  
+  Gauge<T>& operator=(T const& t) noexcept {
     _g.store(t, std::memory_order_relaxed);
     return *this;
   }
-  T load(std::memory_order mo = std::memory_order_relaxed) const { return _g.load(mo); }
-  virtual void toPrometheus(std::string& result) const override {
+  
+  T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
+  
+  void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n" + name();
     if (!labels().empty()) {
       result += "{" + labels() + "}";
     }
     result += " " + std::to_string(load()) + "\n";
-  };
+  }
  private:
   std::atomic<T> _g;
 };
