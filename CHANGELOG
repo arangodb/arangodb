@@ -3,14 +3,23 @@ devel
 
 * Added metrics for document read and write operations:
 
-  - `arangodb_num_document_reads`: Total number of document reads since process start.
-  - `arangodb_num_document_writes: Total number of document writes since process start.
-  - `arangodb_num_document_replications`: Number of document replications since process start.
-  - `arangodb_insert_time`: Histogram of all insert times [us]
-  - `arangodb_read_time`: Histogram of all read times [us]
-  - `arangodb_replace_time`: Histogram of all replace times [us]
-  - `arangodb_remove_time`: Histogram of all remove times [us]
-  - `arangodb_update_time`: Histogram of all update times [us]
+  - `arangodb_num_document_reads`: Total number of document reads since 
+     process start.
+  - `arangodb_num_document_writes: Total number of attempts document writes 
+     since process start (includes successful and failed writes).
+  - `arangodb_num_document_replications`: Total number of document replication
+     write operations since process start.
+  - `arangodb_num_document_truncations`: Total number of documents truncated 
+     since process start.
+  - `arangodb_insert_time`: Histogram of all document insert times [us].
+  - `arangodb_read_time`: Histogram of all document read times [us].
+  - `arangodb_replace_time`: Histogram of all document replace times [us].
+  - `arangodb_remove_time`: Histogram of all document remove times [us].
+  - `arangodb_update_time`: Histogram of all document update times [us].
+
+* Make `padded` and `autoincrement` key generators export their `lastValue` 
+  values, so that they are available in dumps and can be restored elsewhere
+  from a dump.
 
 * Improved logging for error 1489 ("a shard leader refuses to perform a 
   replication operation"). The log message will now provide the database and
