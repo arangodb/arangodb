@@ -30,7 +30,7 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
-let pu = require('@arangodb/testutils/process-utils');
+let pu = require('@arangodb/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 
@@ -245,51 +245,6 @@ function dumpIntegrationSuite () {
       }
     },
     
-    testDumpCompressedEncryptedNoEnvelope: function () {
-      if (!require("internal").isEnterprise()) {
-        return;
-      }
-
-      let keyfile = fs.getTempFile();
-      let path = fs.getTempFile();
-      try {
-        // 32 bytes of garbage
-        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
-
-        let args = ['--compress-output', 'true', '--envelope', 'false', '--encryption.keyfile', keyfile, '--collection', cn];
-        let tree = runDump(path, args, 0); 
-        checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false, cn);
-        checkDataFile(tree, path, false, false, false, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {}
-      }
-    },
-    
-    testDumpOverwriteUncompressedNoEnvelope: function () {
-      let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
-        let tree = runDump(path, args, 0); 
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, true, true, cn);
-        
-        // second dump, which overwrites
-        args = ['--compress-output', 'false', '--envelope', 'false', '--overwrite', 'true', '--collection', cn];
-        tree = runDump(path, args, 0); 
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, false, false, true, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {}
-      }
-    },
-    
     testDumpCompressedEncrypted: function () {
       if (!require("internal").isEnterprise()) {
         return;
@@ -456,46 +411,6 @@ function dumpIntegrationSuite () {
       }
     },
     
-    testDumpJustOneInvalidCollection: function () {
-      let path = fs.getTempFile();
-      try {
-        let args = ['--collection', 'foobarbaz'];
-        let tree = runDump(path, args, 1);
-        checkEncryption(tree, path, "none");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {}
-      }
-    },
-    
-    testDumpJustInvalidCollections: function () {
-      let path = fs.getTempFile();
-      try {
-        let args = ['--collection', 'foobarbaz', '--collection', 'knarzknarzknarz'];
-        let tree = runDump(path, args, 1); 
-        checkEncryption(tree, path, "none");
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {}
-      }
-    },
-    
-    testDumpOneValidCollection: function () {
-      let path = fs.getTempFile();
-      try {
-        let args = ['--compress-output', 'true', '--collection', cn, '--collection', 'knarzknarzknarz'];
-        let tree = runDump(path, args, 0); 
-        checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, cn);
-        checkDataFile(tree, path, true, true, true, cn);
-      } finally {
-        try {
-          fs.removeDirectory(path);
-        } catch (err) {}
-      }
-    },
   };
 }
 
