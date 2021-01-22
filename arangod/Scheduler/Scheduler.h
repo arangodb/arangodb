@@ -142,9 +142,6 @@ class Scheduler {
   struct WorkItemBase {
     virtual ~WorkItemBase() = default;
     virtual void invoke() = 0;
-  
-    /// @brief the date/time when the item was queued
-    std::chrono::time_point<std::chrono::steady_clock> queueStart;
   };
 
   template<typename F>

@@ -230,8 +230,6 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
     return false;
   }
   
-  auto const now = std::chrono::steady_clock::now();
-
   // use memory order acquire to make sure, pushed item is visible
   uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t const jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
@@ -246,8 +244,6 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
   TRI_ASSERT(queueNo < NumberOfQueues);
   TRI_ASSERT(isStopping() == false);
       
-  work->queueStart = now;
-
   if (!_queues[queueNo].bounded_push(work.get())) {
     _jobsSubmitted.fetch_sub(1, std::memory_order_release);
 
@@ -267,6 +263,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
 
   if (approxQueueLength > _maxFifoSizes[3] / 2) {
     if ((::queueWarningTick++ & 0xFFu) == 0) {
+      auto const& now = std::chrono::steady_clock::now();
       if (::conditionQueueFullSince == time_point{}) {
         logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSizes[LowPriorityQueue], approxQueueLength);
         ::conditionQueueFullSince = now;
