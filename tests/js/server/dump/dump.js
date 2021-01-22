@@ -320,7 +320,7 @@ function dumpTestSuite () {
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual(1000, c.count());
+      assertEqual(1001, c.count());
 
       let allDocs = {};
       c.toArray().forEach(doc => {
