@@ -95,14 +95,11 @@ template<typename T> class Gauge : public Metric {
     : Metric(name, help, labels) {
     _g.store(val);
   }
-  
   Gauge(Gauge const&) = delete;
   ~Gauge() = default;
-  
-  std::ostream& print(std::ostream&) const;
-  
-  Gauge<T>& operator+=(T const& t) noexcept {
-    if constexpr (std::is_integral_v<T>) {
+  std::ostream& print (std::ostream&) const;
+  Gauge<T>& operator+=(T const& t) {
+    if constexpr(std::is_integral_v<T>) {
       _g.fetch_add(t);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
@@ -112,9 +109,8 @@ template<typename T> class Gauge : public Metric {
     }
     return *this;
   }
-
-  Gauge<T>& operator-=(T const& t) noexcept {
-    if constexpr (std::is_integral_v<T>) {
+  Gauge<T>& operator-=(T const& t) {
+    if constexpr(std::is_integral_v<T>) {
       _g.fetch_sub(t);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
@@ -124,36 +120,33 @@ template<typename T> class Gauge : public Metric {
     }
     return *this;
   }
-
-  Gauge<T>& operator*=(T const& t) noexcept {
-    T tmp(_g.load(std::memory_order_relaxed));
-    while (!_g.compare_exchange_weak(tmp, tmp * t)) { /*nothing*/ }
+  Gauge<T>& operator*=(T const& t) {
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(
+                 tmp, tmp * t));
     return *this;
   }
-
-  Gauge<T>& operator/=(T const& t) noexcept {
+  Gauge<T>& operator/=(T const& t) {
     TRI_ASSERT(t != T(0));
-    T tmp(_g.load(std::memory_order_relaxed));
-    while (!_g.compare_exchange_weak(tmp, tmp / t)) { /*nothing*/ }
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(tmp, tmp / t));
     return *this;
   }
-
-  Gauge<T>& operator=(T const& t) noexcept {
+  Gauge<T>& operator=(T const& t) {
     _g.store(t);
     return *this;
   }
-
-  T load() const noexcept { return _g.load(); }
-
-  void toPrometheus(std::string& result) const override {
+  T load() const { return _g.load(); }
+  virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n" + name();
     if (!labels().empty()) {
       result += "{" + labels() + "}";
     }
     result += " " + std::to_string(load()) + "\n";
-  }
-
+  };
  private:
   std::atomic<T> _g;
 };

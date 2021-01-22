@@ -690,17 +690,11 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
 
 std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
-  auto checkAllQueues = [this](std::chrono::time_point<std::chrono::steady_clock> const& now) noexcept -> WorkItemBase* {
+  auto checkAllQueues = [this]() -> WorkItemBase* {
     WorkItemBase* res = nullptr;
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
         _metricsQueueLengths[i].get() -= 1;
-        if (i == LowPriorityQueue) {
-          // when we popped an item from the low priority queue, update our estimate
-          // for the last on-queue duration. this estimate can wildly vary, but it is
-          // still better than nothing
-          setLastLowPriorityDequeueTime(std::chrono::duration_cast<std::chrono::milliseconds>(now - res->queueStart).count());
-        }
         return res;
       }
     }
@@ -711,22 +705,20 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
   };
 
   while (!state->_stop) {
-    auto const loopStart = std::chrono::steady_clock::now();
-    auto now = loopStart;
-
+    auto loopStart = std::chrono::steady_clock::now();
     uint64_t timeOutForNow = state->_queueRetryTime_us;
     if (loopStart - state->_lastJobStarted.load(std::memory_order_acquire) >
         std::chrono::seconds(1)) {
       timeOutForNow = 0;
     }
     do {
-      WorkItemBase* work = checkAllQueues(now);
+      WorkItemBase* work = checkAllQueues();
       if (work != nullptr) {
         return std::unique_ptr<WorkItemBase>(work);
       }
       cpu_relax();
-      now = std::chrono::steady_clock::now();
-    } while ((now - loopStart) < std::chrono::microseconds(timeOutForNow));
+    } while ((std::chrono::steady_clock::now() - loopStart) <
+             std::chrono::microseconds(timeOutForNow));
 
     std::unique_lock<std::mutex> guard(state->_mutex);
     // Now let's one more time check all the queues under the mutex before we
@@ -743,8 +735,7 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     state->_sleeping = true;
     _numAwake.fetch_sub(1, std::memory_order_relaxed);
 
-    now = std::chrono::steady_clock::now();
-    WorkItemBase* work = checkAllQueues(now);
+    WorkItemBase* work = checkAllQueues();
     if (work != nullptr) {
       // Fix the sleep indicators:
       state->_sleeping = false;
