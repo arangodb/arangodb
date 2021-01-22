@@ -93,7 +93,7 @@ template<typename T> class Gauge : public Metric {
   Gauge(T const& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
     : Metric(name, help, labels) {
-    _g.store(val);
+    _g.store(val, std::memory_order_relaxed);
   }
   Gauge(Gauge const&) = delete;
   ~Gauge() = default;
@@ -101,7 +101,7 @@ template<typename T> class Gauge : public Metric {
 
   T fetch_add(T t, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     if constexpr(std::is_integral_v<T>) {
-      _g.fetch_add(t);
+      _g.fetch_add(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
@@ -113,10 +113,17 @@ template<typename T> class Gauge : public Metric {
     fetch_add(t, std::memory_order_relaxed);
     return *this;
   }
+  Gauge<T> operator++() {
+    return Gauge<T>(fetch_add(1, std::memory_order_relaxed));
+  }
+  Gauge<T>& operator++(int) {
+    fetch_add(1, std::memory_order_relaxed);
+    return *this;
+  }
 
   T fetch_sub(T t, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     if constexpr(std::is_integral_v<T>) {
-      _g.fetch_sub(t);
+      _g.fetch_sub(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
@@ -126,6 +133,13 @@ template<typename T> class Gauge : public Metric {
   }
   Gauge<T>& operator-=(T const& t) {
     fetch_sub(t, std::memory_order_relaxed);
+    return *this;
+  }
+  Gauge<T> operator--() {
+    return Gauge<T>(fetch_sub(1, std::memory_order_relaxed));
+  }
+  Gauge<T>& operator--(int) {
+    fetch_sub(1, std::memory_order_relaxed);
     return *this;
   }
 
@@ -143,10 +157,10 @@ template<typename T> class Gauge : public Metric {
     return *this;
   }
   Gauge<T>& operator=(T const& t) {
-    _g.store(t);
+    _g.store(t, std::memory_order_relaxed);
     return *this;
   }
-  T load() const { return _g.load(); }
+  T load(std::memory_order mo = std::memory_order_relaxed) const { return _g.load(mo); }
   virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n" + name();
