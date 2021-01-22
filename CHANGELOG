@@ -5,6 +5,11 @@ devel
   the amount of time it takes a low priority queue item to bubble up to the 
   queue's head (in ms).
 
+* Fixed some wrong behavior in single document updates. If the option
+  ignoreRevs=false was given and the precondition _rev was given in the body
+  but the _key was given in the URL path, then the rev was wrongly taken
+  as 0, rather than using the one from the document body.
+
 * Make `padded` and `autoincrement` key generators export their `lastValue` 
   values, so that they are available in dumps and can be restored elsewhere
   from a dump.
