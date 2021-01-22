@@ -271,6 +271,14 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchViewStoredValues const& storedValues() const noexcept;
 
+  /// @brief sets the _collectionName in Link meta. Used in cluster only to store
+  /// linked collection name (as shard name differs from the cluster-wide collection name)
+  /// @param name  collectioName to set. Should match existing value of  the _collectionName
+  /// if it is not empty. 
+  /// @return true if name not existed in link before and was actually set by this call,
+  /// false otherwise
+  bool setCollectionName(irs::string_ref name) noexcept;
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats

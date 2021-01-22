@@ -38,7 +38,7 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchLinkMock::IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection)
-    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
+    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed

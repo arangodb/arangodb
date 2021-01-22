@@ -29,12 +29,16 @@
 #include <utils/singleton.hpp>
 
 #include "IResearchLink.h"
+#include "IResearchDocument.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#ifdef USE_ENTERPRISE
+#include "Cluster/ClusterMethods.h"
+#endif
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
@@ -155,45 +159,7 @@ inline Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // Stored value field
   {
-    struct StoredValue {
-      StoredValue(transaction::Methods const& trx, VPackSlice const& document) : trx(trx), document(document) {}
-
-      bool write(irs::data_output& out) const {
-        auto size = fields->size();
-        for (auto const& storedValue : *fields) {
-          auto slice = get(document, storedValue.second, VPackSlice::nullSlice());
-          // null value optimization
-          if (1 == size && slice.isNull()) {
-            return true;
-          }
-
-          // _id field
-          if (slice.isCustom()) {
-            TRI_ASSERT(1 == storedValue.second.size() &&
-                       storedValue.second[0].name == arangodb::StaticStrings::IdString);
-            buffer.reset();
-            VPackBuilder builder(buffer);
-            builder.add(VPackValue(transaction::helpers::extractIdString(
-              trx.resolver(), slice, document)));
-            slice = builder.slice();
-            // a builder is destroyed but a buffer is alive
-          }
-          out.write_bytes(slice.start(), slice.byteSize());
-        }
-        return true;
-      }
-
-      irs::string_ref const& name() const noexcept {
-        return fieldName;
-      }
-
-      mutable VPackBuffer<uint8_t> buffer;
-      transaction::Methods const& trx;
-      velocypack::Slice const& document;
-      irs::string_ref fieldName;
-      std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
-    } field(trx, document); // StoredValue
-
+    StoredValue field(trx, meta._collectionName, document, id);
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
@@ -608,7 +574,7 @@ AsyncLinkHandle::AsyncLinkHandle(IResearchLink* link)
 }
 
 AsyncLinkHandle::~AsyncLinkHandle() {
- --LinksCount;
+  --LinksCount;
 }
 
 void AsyncLinkHandle::reset() {
@@ -1098,6 +1064,33 @@ Result IResearchLink::init(
     // cluster-wide link
     auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
 
+    // upgrade step for old link definition without collection name
+    // this could be received from  agency while shard of the collection was moved (or added)
+    // to the server.
+    // New links already has collection name set, but here we must get this name on our own
+    if (meta._collectionName.empty()) {
+      if (clusterWideLink) {// could set directly
+        LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC) << "Setting collection name '" << _collection.name() << "' for new link '"
+          << this->id().id() << "'";
+        meta._collectionName = _collection.name();
+      } else {
+        meta._collectionName = ci.getCollectionNameForShard(_collection.name());
+        LOG_TOPIC("86ece", TRACE, iresearch::TOPIC) << "Setting collection name '" << meta._collectionName << "' for new link '"
+          << this->id().id() << "'";
+      }
+      if (ADB_UNLIKELY(meta._collectionName.empty())) {
+        LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
+          << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
+      }
+
+#ifdef USE_ENTERPRISE
+      // enterprise name is not used in _id so should not be here!
+      if (ADB_LIKELY(!meta._collectionName.empty())) {
+        arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
+      }
+#endif
+    }
+
     if (!clusterWideLink) {
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
@@ -1521,7 +1514,7 @@ Result IResearchLink::insert(
   auto insertImpl = [this, &trx, &doc, &documentId](
                         irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIterator body(trx);
+      FieldIterator body(trx, _meta._collectionName, _id);
 
       return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
     } catch (basics::Exception const& e) {
@@ -1751,8 +1744,7 @@ Result IResearchLink::remove(
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
     auto ptr = irs::memory::make_unique<LinkTrxState>(
-      std::move(lock), *(_dataStore._writer)
-    );
+      std::move(lock), *(_dataStore._writer));
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
@@ -1824,6 +1816,20 @@ Index::IndexType IResearchLink::type() const {
 
 char const* IResearchLink::typeName() const {
   return IResearchLinkHelper::type().c_str();
+}
+
+bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
+  TRI_ASSERT(!name.empty());
+  if (_meta._collectionName.empty()) {
+    auto nonConstMeta = const_cast<IResearchLinkMeta*>(&_meta);
+    nonConstMeta->_collectionName = name;
+    return true;
+  }
+  LOG_TOPIC_IF("5573c", ERR, iresearch::TOPIC, name != _meta._collectionName)
+        << "Collection name mismatch for arangosearch link '" << id() << "'."
+        << " Meta name '" << _meta._collectionName << "' setting name '" << name << "'";
+  TRI_ASSERT(name == _meta._collectionName);
+  return false;
 }
 
 Result IResearchLink::unload() {
