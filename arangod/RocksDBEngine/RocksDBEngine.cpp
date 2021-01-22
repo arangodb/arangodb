@@ -1274,9 +1274,9 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
   return rocksutils::convertStatus(res);
 }
 
-int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
-                                               DataSourceId cid, VPackSlice const& slice,
-                                               RocksDBLogValue&& logValue) {
+Result RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
+                                                  DataSourceId cid, VPackSlice const& slice,
+                                                  RocksDBLogValue&& logValue) {
   rocksdb::DB* db = _db->GetRootDB();
 
   RocksDBKey key;
@@ -1293,8 +1293,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
             key.string(), value.string());
   rocksdb::Status res = db->Write(wo, &batch);
 
-  auto result = rocksutils::convertStatus(res);
-  return result.errorNumber();
+  return rocksutils::convertStatus(res);
 }
 
 Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
@@ -1328,7 +1327,7 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
 
 void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) {
-  const DataSourceId cid = collection.id();
+  DataSourceId const cid = collection.id();
   TRI_ASSERT(cid.isSet());
 
   auto builder = collection.toVelocyPackIgnore(
@@ -1336,11 +1335,11 @@ void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
       LogicalDataSource::Serialization::PersistenceWithInProgress);
   TRI_UpdateTickServer(cid.id());
 
-  int res =
+  Result res =
       writeCreateCollectionMarker(vocbase.id(), cid, builder.slice(),
                                   RocksDBLogValue::CollectionCreate(vocbase.id(), cid));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
@@ -1487,12 +1486,12 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
-  int res =
+  Result res =
       writeCreateCollectionMarker(vocbase.id(), collection.id(), builder.slice(),
                                   RocksDBLogValue::CollectionChange(vocbase.id(),
                                                                     collection.id()));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
@@ -1503,12 +1502,12 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
-  int res = writeCreateCollectionMarker(
+  Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
                                         arangodb::velocypack::StringRef(oldName)));
 
-  return arangodb::Result(res);
+  return res;
 }
 
 Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
