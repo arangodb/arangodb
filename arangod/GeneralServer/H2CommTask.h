@@ -130,7 +130,6 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   std::atomic<bool> _signaledWrite{false};
 
-  std::string _url;
 };
 }  // namespace rest
 }  // namespace arangodb

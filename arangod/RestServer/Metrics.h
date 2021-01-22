@@ -92,11 +92,11 @@ template<typename T> class Gauge : public Metric {
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
-    : Metric(name, help, labels) {
-    _g.store(val, std::memory_order_relaxed);
-  }
+    : Metric(name, help, labels), _g(val) { }
+  
   Gauge(Gauge const&) = delete;
   ~Gauge() = default;
+  
   std::ostream& print (std::ostream&) const;
 
   T fetch_add(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {

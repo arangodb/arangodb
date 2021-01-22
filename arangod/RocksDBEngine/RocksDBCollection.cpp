@@ -685,8 +685,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     _meta.adjustNumberDocuments(seq, /*revision*/ newRevisionId(),
                                 -static_cast<int64_t>(numDocs));
 
-    _statistics._numTruncate.count(numDocs);
-
     {
       READ_LOCKER(idxGuard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -774,6 +772,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     trackWaitForSync(&trx, options);
 
   }
+
+  _statistics._numTruncate.count(found);
 
   // reset to previous value after truncate is finished
   state->options().intermediateCommitCount = prvICC;

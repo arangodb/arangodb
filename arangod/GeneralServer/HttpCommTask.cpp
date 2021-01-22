@@ -388,11 +388,11 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 
 template <SocketType T>
 std::string const& HttpCommTask<T>::url() {
-  if (_url.empty() && _request != nullptr) {
-    _url = std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+  if (this->_url.empty() && _request != nullptr) {
+    this->_url = std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
       (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
   }
-  return _url;
+  return this->_url;
 }
 
 template <SocketType T>

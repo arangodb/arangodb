@@ -463,11 +463,11 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 
 template <SocketType T>
 std::string const& H2CommTask<T>::url(HttpRequest* req) {
-  if (_url.empty() && req != nullptr) {
-    _url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+  if (this->_url.empty() && req != nullptr) {
+    this->_url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
       (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   }
-  return _url;
+  return this->_url;
 }
 
 template <SocketType T>

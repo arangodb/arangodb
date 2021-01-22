@@ -237,11 +237,11 @@ static void DTraceVstCommTaskProcessMessage(size_t) {}
 
 template <SocketType T>
 std::string const& VstCommTask<T>::url(VstRequest* req) {
-  if (_url.empty() && req != nullptr) {
-    _url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+  if (this->_url.empty() && req != nullptr) {
+    this->_url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
       (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   }
-  return _url;
+  return this->_url;
 }
 
 /// process a VST message
