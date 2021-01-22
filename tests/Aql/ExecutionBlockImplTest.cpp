@@ -55,6 +55,68 @@ namespace aql {
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
+// The numbers here are random, but all of them are below 1000 which is the default batch size
+static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
+
+static constexpr auto skipCall = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 15;
+  return res;
+};
+
+static constexpr auto softLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.softLimit = 35u;
+  return res;
+};
+
+static constexpr auto hardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 76u;
+  return res;
+};
+
+static constexpr auto fullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 17u;
+  res.fullCount = true;
+  return res;
+};
+
+static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.softLimit = 64u;
+  return res;
+};
+
+static constexpr auto skipAndHardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 32;
+  res.hardLimit = 51u;
+  return res;
+};
+static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 8;
+  res.hardLimit = 57u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlyFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlySkipAndCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
+
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
 
@@ -2368,68 +2430,6 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     skipAsserter.reset();
   }
 }
-
-// The numbers here are random, but all of them are below 1000 which is the default batch size
-static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
-
-static constexpr auto skipCall = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 15;
-  return res;
-};
-
-static constexpr auto softLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.softLimit = 35u;
-  return res;
-};
-
-static constexpr auto hardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 76u;
-  return res;
-};
-
-static constexpr auto fullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 17u;
-  res.fullCount = true;
-  return res;
-};
-
-static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.softLimit = 64u;
-  return res;
-};
-
-static constexpr auto skipAndHardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 32;
-  res.hardLimit = 51u;
-  return res;
-};
-static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 8;
-  res.hardLimit = 57u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlyFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlySkipAndCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
 
 INSTANTIATE_TEST_CASE_P(
     ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,

@@ -392,7 +392,6 @@ class PaddedKeyGenerator : public KeyGenerator {
       }
     } while (!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
 
-
     return KeyGeneratorHelper::encodePadded(tick);
   }
 
@@ -434,7 +433,7 @@ class PaddedKeyGenerator : public KeyGenerator {
  protected:
   /// @brief generate a key value (internal)
   virtual uint64_t generateValue() = 0;
- 
+
  private:
   std::atomic<uint64_t> _lastValue;
 };
