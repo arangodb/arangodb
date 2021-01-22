@@ -478,7 +478,7 @@ void insert_continuation_final(continuation_base<Tag, T>* base, F&& f) noexcept 
 
 #ifdef FUTURES_COUNT_ALLOC
   std::size_t lambda_size = sizeof(continuation_final<T, F, deleter_destroy>);
-  double lambda_log2 = std::max(0.0, std::log2(lambda_size) - 3.0);
+  double lambda_log2 = std::max(0.0, std::log2(lambda_size) - 2.0);
   std::size_t bucket = static_cast<std::size_t>(std::max(0., std::ceil(lambda_log2) - 1));
 
   ::mellon::detail::number_of_final_usage.fetch_add(1, std::memory_order_relaxed);
@@ -887,6 +887,9 @@ struct future_temporary
 
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
+#ifdef FUTURES_COUNT_ALLOC
+        ::mellon::detail::number_of_and_then_on_inline_future.fetch_add(1, std::memory_order_relaxed);
+#endif
         std::invoke(composition, detail::internal_store<Tag, T>::cast_move());
         cleanup_local_state();
         return;
@@ -906,6 +909,9 @@ struct future_temporary
   auto finalize() && noexcept -> future<R, Tag> {
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
+#ifdef FUTURES_COUNT_ALLOC
+        ::mellon::detail::number_of_and_then_on_inline_future.fetch_add(1, std::memory_order_relaxed);
+#endif
         static_assert(std::is_nothrow_move_constructible_v<R>);
         auto f =
             future<R, Tag>(std::in_place,
@@ -1027,7 +1033,7 @@ struct future
       std::conjunction_v<std::is_nothrow_constructible<T, Args...>, std::bool_constant<is_value_inlined>>) {
 #ifdef FUTURES_COUNT_ALLOC
     std::size_t lambda_size = sizeof(T);
-    double lambda_log2 = std::max(0.0, std::log2(lambda_size) - 3.0);
+    double lambda_log2 = std::max(0.0, std::log2(lambda_size) - 2.0);
     std::size_t bucket = static_cast<std::size_t>(std::max(0., std::ceil(lambda_log2) - 1));
     ::mellon::detail::histogram_value_sizes[bucket].fetch_add(1, std::memory_order_relaxed);
 #endif
@@ -1101,6 +1107,9 @@ struct future
   auto and_then_direct(F&& f) && noexcept -> future<R, Tag> {
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
+#ifdef FUTURES_COUNT_ALLOC
+        ::mellon::detail::number_of_and_then_on_inline_future.fetch_add(1, std::memory_order_relaxed);
+#endif
         auto fut = future<R, Tag>{std::in_place,
                                   std::invoke(std::forward<F>(f), this->cast_move())};
         cleanup_local_state();
@@ -1121,6 +1130,9 @@ struct future
   void finally(F&& f) && noexcept {
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
+#ifdef FUTURES_COUNT_ALLOC
+        ::mellon::detail::number_of_and_then_on_inline_future.fetch_add(1, std::memory_order_relaxed);
+#endif
         std::invoke(std::forward<F>(f), detail::internal_store<Tag, T>::cast_move());
         cleanup_local_state();
         return;

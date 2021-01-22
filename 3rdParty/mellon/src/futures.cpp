@@ -39,14 +39,15 @@ struct allocation_printer {
        << " number_of_allocations=" << mellon::detail::number_of_allocations
        << " number_of_bytes_allocated=" << mellon::detail::number_of_bytes_allocated
        << " number_of_inline_value_placements=" << mellon::detail::number_of_inline_value_placements
-       << " number_of_temporary_objects=" << mellon::detail::number_of_temporary_objects
-       << " number_of_prealloc_usage=" << mellon::detail::number_of_prealloc_usage
        << " number_of_inline_value_allocs=" << mellon::detail::number_of_inline_value_allocs
-       << " number_of_final_usage=" << mellon::detail::number_of_final_usage
-       << " number_of_step_usage=" << mellon::detail::number_of_step_usage
        << " histogram_value_sizes=" << mellon::detail::histogram_value_sizes
-       << " histogram_final_lambda_sizes=" << mellon::detail::histogram_final_lambda_sizes
+       << " number_of_and_then_on_inline_future=" << mellon::detail::number_of_and_then_on_inline_future
+       << " number_of_temporary_objects=" << mellon::detail::number_of_temporary_objects
+       << " number_of_step_usage=" << mellon::detail::number_of_step_usage
        << " number_of_promises_created=" << mellon::detail::number_of_promises_created
+       << " number_of_prealloc_usage=" << mellon::detail::number_of_prealloc_usage
+       << " number_of_final_usage=" << mellon::detail::number_of_final_usage
+       << " histogram_final_lambda_sizes=" << mellon::detail::histogram_final_lambda_sizes
        << std::endl;
     std::cout << ss.str();
   }
@@ -63,6 +64,8 @@ std::atomic<std::size_t> mellon::detail::number_of_inline_value_allocs = 0;
 std::atomic<std::size_t> mellon::detail::number_of_final_usage = 0;
 std::atomic<std::size_t> mellon::detail::number_of_step_usage = 0;
 std::atomic<std::size_t> mellon::detail::number_of_promises_created = 0;
+
+std::atomic<std::size_t> mellon::detail::number_of_and_then_on_inline_future = 0;
 
 std::array<std::atomic<std::size_t>, 10> mellon::detail::histogram_value_sizes{};
 std::array<std::atomic<std::size_t>, 10> mellon::detail::histogram_final_lambda_sizes{};
