@@ -292,7 +292,7 @@ function dumpTestSuite () {
       assertFalse(p.waitForSync);
       assertEqual("padded", p.keyOptions.type);
       assertFalse(p.keyOptions.allowUserKeys);
-      // TODO: assertEqual(2279, p.keyOptions.lastValue);
+      assertEqual(process.env['paddedLastValue'], p.keyOptions.lastValue);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);

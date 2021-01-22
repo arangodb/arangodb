@@ -372,16 +372,16 @@ function setupSmartGraphRegressionTest() {
     numberOfShards : 2
   });
 
-  docs = [];
+  let docs = [];
   for (i = 0; i < 1000; ++i) {
     docs.push({ value: i, more: { value: [ i, i ] } });
   }
   c.save(docs);
-  c.save(docs);
-  d = c.save({});
+  let d = c.save({});
   c.save({}); // create another one inbetween...
   c.remove(d);
-  
+  process.env['paddedLastValue'] = c.properties().keyOptions.lastValue;
+
   // custom key options
   c = db._create("UnitTestsDumpKeygenUuid", {
     keyOptions: {
@@ -394,7 +394,6 @@ function setupSmartGraphRegressionTest() {
   for (i = 0; i < 1000; ++i) {
     docs.push({ value: i });
   }
-  c.save(docs);
   c.save(docs);
   d = c.save({});
   c.save({}); // create another one inbetween...

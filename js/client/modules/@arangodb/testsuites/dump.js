@@ -28,6 +28,7 @@
 
 const functionsDocumentation = {
   'dump': 'dump tests',
+  'dump_mixed_cluster_single': 'dump tests - dump cluster restore single',
   'dump_authentication': 'dump tests with authentication',
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
@@ -47,6 +48,7 @@ const fs = require('fs');
 const _ = require('lodash');
 const hb = require("@arangodb/hotbackup");
 const sleep = require("internal").sleep;
+const db = require("internal").db;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -60,6 +62,7 @@ const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f
 
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
+  'dump_mixed_cluster_single': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
@@ -70,16 +73,18 @@ const testPaths = {
 };
 
 class DumpRestoreHelper {
-  constructor(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
+  constructor(instanceInfo, options, secondOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
     this.instanceInfo = instanceInfo;
     this.options = options;
+    this.secondOptions = secondOptions;
+    this.restartServer = options.cluster !== secondOptions.cluster;
     this.clientAuth = clientAuth;
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
     this.which = which;
     this.fn = afterServerStart(instanceInfo);
     this.results = {failed: 1};
-    this.arangosh = tu.runInArangosh.bind(this, this.options, this.instanceInfo);
+    this.arangosh = tu.runInLocalArangosh.bind(this, this.options, this.instanceInfo);
     this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceInfo);
     this.dumpConfig.setOutputDirectory('dump');
     this.dumpConfig.setIncludeSystem(true);
@@ -242,6 +247,7 @@ class DumpRestoreHelper {
 
   runTests(file, database) {
     this.print('dump after restore');
+    db._useDatabase(database);
     if (this.restoreConfig.haveSetAllDatabases()) {
       // if we dump with multiple databases, it remains with the original name.
       database = 'UnitTestsDumpSrc';
@@ -252,18 +258,21 @@ class DumpRestoreHelper {
 
   runReTests(file, database) {
     this.print('revalidating modifications');
+    db._useDatabase(database);
     this.results.test = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.test);
   }
 
   tearDown(file) {
     this.print('teardown');
+    db._useDatabase('_system');
     this.results.tearDown = this.arangosh(file);
     return this.validate(this.results.tearDown);
   }
 
   restoreOld(directory) {
     this.print('restoreOld');
+    db._useDatabase('_system');
     this.restoreOldConfig.setInputDirectory(directory, true);
     this.results.restoreOld = this.arangorestoreOld();
     return this.validate(this.results.restoreOld);
@@ -271,12 +280,14 @@ class DumpRestoreHelper {
 
   testRestoreOld(file) {
     this.print('test restoreOld');
+    db._useDatabase('_system');
     this.results.testRestoreOld = this.arangosh(file);
     return this.validate(this.results.testRestoreOld);
   }
 
   restoreFoxxComplete(database) {
     this.print('Foxx Apps with full restore');
+    // db._useDatabase(database);
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.setIncludeSystem(true);
     this.results.restoreFoxxComplete = this.arangorestore();
@@ -285,12 +296,14 @@ class DumpRestoreHelper {
 
   testFoxxComplete(file, database) {
     this.print('Test Foxx Apps after full restore');
+    db._useDatabase(database);
     this.results.testFoxxComplete = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxComplete);
   }
 
   restoreFoxxAppsBundle(database) {
     this.print('Foxx Apps restore _apps then _appbundles');
+    db._useDatabase('_system');
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.restrictToCollection('_apps');
     this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
@@ -305,12 +318,14 @@ class DumpRestoreHelper {
 
   testFoxxAppsBundle(file, database) {
     this.print('Test Foxx Apps after _apps then _appbundles restore');
+    db._useDatabase(database);
     this.results.testFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
   }
 
   restoreFoxxBundleApps(database) {
     this.print('Foxx Apps restore _appbundles then _apps');
+    db._useDatabase(database);
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.restrictToCollection('_appbundles');
     this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
@@ -325,6 +340,7 @@ class DumpRestoreHelper {
 
   testFoxxBundleApps(file, database) {
     this.print('Test Foxx Apps after _appbundles then _apps restore');
+    db._useDatabase(database);
     this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
   }
@@ -341,6 +357,7 @@ class DumpRestoreHelper {
 
   restoreHotBackup() {
     this.print("restoring backup - start");
+    db._useDatabase('_system');
     let list = this.listHotBackup();
     let backupName;
     Object.keys(list).forEach(function (name, i) {
@@ -395,10 +412,10 @@ function getClusterStrings(options) {
   }
 }
 
-function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
+function dump_backend (firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
   print(CYAN + which + ' tests...' + RESET);
 
-  let instanceInfo = pu.startInstance('tcp', options, serverAuthInfo, which);
+  let instanceInfo = pu.startInstance('tcp', firstOptions, serverAuthInfo, which);
 
   if (instanceInfo === false) {
     let rc =  {
@@ -410,7 +427,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
     };
     return rc;
   }
-  const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
+  const helper = new DumpRestoreHelper(instanceInfo, firstOptions, secondOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
@@ -418,7 +435,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
 
-  if (options.hasOwnProperty("multipleDumps") && options.multipleDumps) {
+  if (firstOptions.hasOwnProperty("multipleDumps") && firstOptions.multipleDumps) {
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('_system', true) ||
         !helper.dumpFrom('UnitTestsDumpSrc', true) ||
@@ -444,7 +461,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   }
 
   if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
-    const notCluster = getClusterStrings(options).notCluster;
+    const notCluster = getClusterStrings(secondOptions).notCluster;
     const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
     const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
     if (!helper.restoreOld(restoreDir) ||
@@ -455,7 +472,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
 
   if (tstFiles.hasOwnProperty("foxxTest")) {
     const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-    if (options.hasOwnProperty("multipleDumps") && options.multipleDumps) {
+    if (secondOptions.hasOwnProperty("multipleDumps") && secondOptions.multipleDumps) {
       helper.adjustRestoreToDump();
       helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
     }
@@ -484,7 +501,27 @@ function dump (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend(options, options, {}, {}, options, options, 'dump', tstFiles, function(){});
+}
+
+function dumpMixedClusterSingle (options) {
+  let clOptions = _.clone(options);
+  clOptions.cluster = true;
+  let sgOptions = _.clone(options);
+  sgOptions.cluster = false;
+  let cl = getClusterStrings(clOptions);
+  let sg = getClusterStrings(sgOptions);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + cl.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
+    dumpCleanup: 'cleanup-nothing.js',
+    dumpAgain: 'dump' + sg.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + sg.cluster + '.js',
+    dumpCheckGraph: 'check-graph.js',
+    foxxTest: 'check-foxx.js'
+  };
+
+  return dump_backend(clOptions, sgOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpMultiple (options) {
@@ -503,7 +540,7 @@ function dumpMultiple (options) {
     deactivateCompression: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
+  return dump_backend(dumpOptions, dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
 }
 
 function dumpNoEnvelope (options) {
@@ -523,7 +560,7 @@ function dumpNoEnvelope (options) {
     deactivateEnvelopes: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){});
+  return dump_backend(dumpOptions, dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){});
 }
 
 function dumpWithCrashes (options) {
@@ -543,7 +580,7 @@ function dumpWithCrashes (options) {
     activateFailurePoint: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
+  return dump_backend(dumpOptions, dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
 }
 
 function dumpAuthentication (options) {
@@ -581,7 +618,7 @@ function dumpAuthentication (options) {
   options.multipleDumps = true;
   options['server.jwt-secret'] = 'haxxmann';
 
-  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  return dump_backend(options, options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
 }
 
 function dumpEncrypted (options) {
@@ -625,7 +662,7 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
+  return dump_backend(options, options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
 }
 
 function dumpMaskings (options) {
@@ -662,7 +699,7 @@ function dumpMaskings (options) {
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+  return dump_backend(options, options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
 }
 
 function hotBackup (options) {
@@ -686,7 +723,7 @@ function hotBackup (options) {
   };
 
   let which = "dump";
-  // /return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+  // /return dump_backend(options, options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
   print(CYAN + which + ' tests...' + RESET);
 
   let addArgs = {};
@@ -768,6 +805,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump'] = dump;
   defaultFns.push('dump');
+  
+  testFns['dump_mixed_cluster_single'] = dumpMixedClusterSingle;
+  defaultFns.push('dump_mixed_cluster_single');
   
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');
