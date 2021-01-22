@@ -58,38 +58,45 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
         _metrics.counter("arangodb_collection_lock_sequential_mode", 0,
                          "Number of transactions using sequential locking of "
                          "collections to avoid deadlocking")),
-      _numRead(
+      _numReads(
         _metrics.counter("arangodb_num_document_reads", 0,
-                         "Number of document reads oprations since process start")),
-      _numWrite(
+                         "Total number of document read operations")),
+      _numWrites(
         _metrics.counter("arangodb_num_document_writes", 0,
-                         "Number of document writes operations since process start")),
-      _numTruncate(
-        _metrics.counter("arangodb_num_document_truncations", 0,
-                         "Number of document truncate operations since process start")),
-      _numReplicate(
-        _metrics.counter("arangodb_num_document_replications", 0,
-                         "Number of document replication oprations since process start")),
-      _rocksdb_insert_usec(
-        _metrics.histogram("arangodb_insert_time",
-                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
-                           "Total time of successful a document insertion [us]")),
+                         "Total number of document write operations (excl. synchronous replication)")),
+      _numWritesReplication(
+        _metrics.counter("arangodb_num_document_writes_replication", 0,
+                         "Total number of document write oprations by synchronous replication")),
+      _numTruncates(
+        _metrics.counter("arangodb_num_collection_truncates", 0,
+                         "Total number of collection truncate operations (excl. synchronous replication)")),
+      _numTruncatesReplication(
+        _metrics.counter("arangodb_num_collection_truncates_replication", 0,
+                         "Total number of collection truncate operations by synchronous replication")),
       _rocksdb_read_usec(
-        _metrics.histogram("arangodb_read_time",
+        _metrics.histogram("arangodb_document_read_time",
                            log_scale_t(2.f, 10.0f, 1.e6f, 10),
-                           "Total time of successful a document read [us]")),
+                           "Total time spent in document read operations [us]")),
+      _rocksdb_insert_usec(
+        _metrics.histogram("arangodb_document_insert_time",
+                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
+                           "Total time spent in document insert operations [us]")),
       _rocksdb_replace_usec(
-        _metrics.histogram("arangodb_replace_time",
+        _metrics.histogram("arangodb_document_replace_time",
                            log_scale_t(2.f, 10.0f, 1.e6f, 10),
-                           "Total time of successful a document replacement [us]")),
+                           "Total time spent in document replace operations [us]")),
       _rocksdb_remove_usec(
-        _metrics.histogram("arangodb_remove_time",
+        _metrics.histogram("arangodb_document_remove_time",
                            log_scale_t(2.f, 10.0f, 1.e6f, 10),
-                           "Total time of successful a document removal [us]")),
+                           "Total time spent in document remove operations [us]")),
       _rocksdb_update_usec(
-        _metrics.histogram("arangodb_update_time",
+        _metrics.histogram("arangodb_document_update_time",
                            log_scale_t(2.f, 10.0f, 1.e6f, 10),
-                           "Total time of successful a document update [us]")) {}
+                           "Total time spent in document update operations [us]")),
+      _rocksdb_truncate_usec(
+        _metrics.histogram("arangodb_collection_truncate_time",
+                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
+                           "Total time spent in collcection truncate operations [us]")) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods

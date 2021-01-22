@@ -137,12 +137,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
- protected:
+ private:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 RevisionId expectedRev, ManagedDocumentResult& previous,
                 OperationOptions& options);
 
- private:
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 

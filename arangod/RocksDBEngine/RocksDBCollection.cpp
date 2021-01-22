@@ -104,6 +104,64 @@ void reverseIdxOps(arangodb::PhysicalCollection::IndexContainerType const& index
   }
 }
 
+/// @brief helper RAII base class to count and time-track a CRUD operation
+struct TimeTracker {
+  TimeTracker(TimeTracker const&) = delete;
+  TimeTracker& operator=(TimeTracker const&) = delete;
+
+  explicit TimeTracker(Histogram<log_scale_t<float>>& histogram) noexcept
+      : histogram(histogram),
+        start(getTime()) {}
+
+  ~TimeTracker() {
+    histogram.count(std::chrono::duration<float, std::micro>(getTime() - start).count());
+  }
+
+  std::chrono::time_point<std::chrono::steady_clock> getTime() const noexcept {
+    return std::chrono::steady_clock::now();
+  }
+  
+  Histogram<log_scale_t<float>>& histogram;
+  std::chrono::time_point<std::chrono::steady_clock> const start;
+};
+
+/// @brief helper RAII class to count and time-track a CRUD read operation
+struct ReadTimeTracker : public TimeTracker {
+  ReadTimeTracker(Histogram<log_scale_t<float>>& histogram, 
+                  arangodb::TransactionStatistics& _statistics) noexcept
+      : TimeTracker(histogram) {
+    ++_statistics._numReads;
+  }
+};
+
+/// @brief helper RAII class to count and time-track CRUD write operations
+struct WriteTimeTracker : public TimeTracker {
+  WriteTimeTracker(Histogram<log_scale_t<float>>& histogram, 
+                   arangodb::TransactionStatistics& _statistics,
+                   arangodb::OperationOptions const& options) noexcept
+      : TimeTracker(histogram) {
+    if (options.isSynchronousReplicationFrom.empty()) {
+      ++_statistics._numWrites;
+    } else {
+      ++_statistics._numWritesReplication;
+    }
+  }
+};
+
+/// @brief helper RAII class to count and time-track truncate operations
+struct TruncateTimeTracker : public TimeTracker {
+  TruncateTimeTracker(Histogram<log_scale_t<float>>& histogram, 
+                      arangodb::TransactionStatistics& _statistics,
+                      arangodb::OperationOptions const& options) noexcept
+      : TimeTracker(histogram) {
+    if (options.isSynchronousReplicationFrom.empty()) {
+      ++_statistics._numTruncates;
+    } else {
+      ++_statistics._numTruncatesReplication;
+    }
+  }
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -606,6 +664,8 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 ///////////////////////////////////
 
 Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+  ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_usec, _statistics, options);
+
   TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
@@ -723,12 +783,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   uint64_t found = 0;
 
-  // when we leave this function, we still need to update the truncate counter metric
-  // appropriately
-  auto updateCounters = scopeGuard([this, &found]() {
-    _statistics._numTruncate.count(found);
-  });
-
   VPackBuilder docBuffer;
   auto iter = mthds->NewIterator(ro, documentBounds.columnFamily());
   for (iter->Seek(documentBounds.start());
@@ -776,8 +830,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     trackWaitForSync(&trx, options);
   }
-
-  _statistics._numTruncate.count(found);
 
   // reset to previous value after truncate is finished
   state->options().intermediateCommitCount = prvICC;
@@ -844,11 +896,8 @@ Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
                                IndexIterator::DocumentCallback const& cb) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  ++_statistics._numRead;
 
-  using namespace std::chrono;
-  using clock = steady_clock;
-  auto start = clock::now();
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_usec, _statistics);
 
   rocksdb::PinnableSlice ps;
   Result res;
@@ -865,7 +914,6 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
-  _statistics._rocksdb_read_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -873,7 +921,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb) const {
-  ++_statistics._numRead;
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_usec, _statistics);
   return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
 }
 
@@ -881,11 +929,7 @@ bool RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
-  ++_statistics._numRead;
-
-  using namespace std::chrono;
-  using clock = steady_clock;
-  auto start = clock::now();
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_usec, _statistics);
 
   bool ret = false;
 
@@ -900,7 +944,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       ret = true;;
     }
   }
-  _statistics._rocksdb_read_usec.count(duration<float, std::micro>(clock::now() - start).count());
+
   return ret;
 }
 
@@ -909,15 +953,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
 
-  if (options.isSynchronousReplicationFrom.empty()) {
-    ++_statistics._numWrite;
-  } else {
-    ++_statistics._numReplicate;
-  }
-
-  using namespace std::chrono;
-  using clock = steady_clock;
-  auto start = clock::now();
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_usec, _statistics, options);
 
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -948,7 +984,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     res.reset(r);
     return res;
   }
-
 
   LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
 
@@ -983,7 +1018,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
-  _statistics._rocksdb_insert_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -992,15 +1026,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
 
-  if (options.isSynchronousReplicationFrom.empty()) {
-    ++_statistics._numWrite;
-  } else {
-    ++_statistics._numReplicate;
-  }
-
-  using namespace std::chrono;
-  using clock = steady_clock;
-  auto start = clock::now();
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_usec, _statistics, options);
 
   Result res;
 
@@ -1046,7 +1072,6 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     TRI_ASSERT(!resultMdr.empty());
 
     trackWaitForSync(trx, options);
-    _statistics._rocksdb_update_usec.count(duration<float, std::micro>(clock::now() - start).count());
     return res;
   }
 
@@ -1119,8 +1144,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
 
     guard.finish(hasPerformedIntermediateCommit);
   }
-  _statistics._rocksdb_update_usec.count(duration<float, std::micro>(clock::now() - start).count());
-
+    
   return res;
 }
 
@@ -1129,19 +1153,9 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
 
-  ++_statistics._numRead;
-
-  if (options.isSynchronousReplicationFrom.empty()) {
-    ++_statistics._numWrite;
-  } else {
-    ++_statistics._numReplicate;
-  }
-
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_usec, _statistics, options);
+  
   Result res;
-
-  using namespace std::chrono;
-  using clock = steady_clock;
-  auto start = clock::now();
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1249,13 +1263,15 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
-  _statistics._rocksdb_replace_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return res;
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_usec, _statistics, options);
+
   VPackSlice keySlice;
 
   if (slice.isString()) {
@@ -1289,19 +1305,18 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_usec, _statistics, options);
+
   return remove(trx, documentId, /*expectedRev*/ RevisionId::none(), previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  RevisionId expectedRev, ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
-  ++_statistics._numWrite;
+  // all callers that get here must make sure that this operation is properly
+  // counted and time-tracked, metrics-wise!
+
   Result res;
-
-  using namespace std::chrono;
-  using clock = steady_clock;
-  auto start = clock::now();
-
   if (!documentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -1353,7 +1368,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 
     guard.finish(hasPerformedIntermediateCommit);
   }
-  _statistics._rocksdb_remove_usec.count(duration<float, std::micro>(clock::now() - start).count());
+  
   return res;
 }
 

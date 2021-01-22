@@ -3,19 +3,28 @@ devel
 
 * Added metrics for document read and write operations:
 
-  - `arangodb_num_document_reads`: Total number of document reads since 
-     process start.
-  - `arangodb_num_document_writes: Total number of attempts document writes 
-     since process start (includes successful and failed writes).
-  - `arangodb_num_document_replications`: Total number of document replication
-     write operations since process start.
-  - `arangodb_num_document_truncations`: Total number of documents truncated 
-     since process start.
-  - `arangodb_insert_time`: Histogram of all document insert times [us].
-  - `arangodb_read_time`: Histogram of all document read times [us].
-  - `arangodb_replace_time`: Histogram of all document replace times [us].
-  - `arangodb_remove_time`: Histogram of all document remove times [us].
-  - `arangodb_update_time`: Histogram of all document update times [us].
+  - `arangodb_num_document_reads`: Total number of document read operations
+    (successful and failed).
+  - `arangodb_num_document_writes: Total number of document write operations
+    (successful and failed), excluding synchronous replication.
+  - `arangodb_num_document_writes_replication`: Total number of document write
+    operations (successful and failed) by synchronous replication.
+  - `arangodb_num_document_truncates`: Total number of collection truncate 
+    operations (successful and failed), excluding synchronous replication.
+  - `arangodb_num_document_truncates_replication`: Total number of collection truncate 
+    operations (successful and failed) by synchronous replication.
+  - `arangodb_document_read_time`: Execution time histogram of all document read 
+    operations (successful and failed) [us].
+  - `arangodb_document_insert_time`: Execution time histogram of all document insert 
+    operations (successful and failed) [us].
+  - `arangodb_document_replace_time`: Execution time histogram of all document replace 
+    operations (successful and failed) [us].
+  - `arangodb_document_remove_time`: Execution time histogram of all document remove 
+    operations (successful and failed) [us].
+  - `arangodb_document_update_time`: Execution time histogram of all document update 
+    operations (successful and failed) [us].
+  - `arangodb_collection_truncate_time`: Execution time histogram of all collection 
+    truncate operations (successful and failed) [us].
 
 * Make `padded` and `autoincrement` key generators export their `lastValue` 
   values, so that they are available in dumps and can be restored elsewhere
