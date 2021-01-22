@@ -1,6 +1,10 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed error reporting for hotbackup restore from dbservers back to
+  coordinators. This could for example swallow out of disk errors during
+  hotbackup restore.
+
 * Fix decoding of values in `padded` key generator when restoring from a dump.
 
 * Fixed some situations of
