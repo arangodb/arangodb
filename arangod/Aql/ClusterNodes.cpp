@@ -305,7 +305,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     regId = (*it).second.registerId;
 
-    TRI_ASSERT(regId.value() < RegisterId::maxRegisterId);
+    TRI_ASSERT(regId.isValid());
     TRI_ASSERT(regId.isConstRegister() == (_variable->type() == Variable::Type::Const));
 
     if (_alternativeVariable != _variable) {
@@ -314,7 +314,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       alternativeRegId = (*it).second.registerId;
 
-      TRI_ASSERT(alternativeRegId.value() < RegisterId::maxRegisterId);
+      TRI_ASSERT(alternativeRegId.isValid());
     } else {
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }

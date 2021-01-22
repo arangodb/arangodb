@@ -185,7 +185,7 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other,
   auto const eq = [options](auto left, auto right) {
     return 0 == AqlValue::Compare(options, left, right, false);
   };
-  for (RegisterId::value_t i = 0; i < getNumRegisters(); ++i) {
+  for (RegisterId i(0); i < getNumRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
     }

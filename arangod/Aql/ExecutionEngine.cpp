@@ -49,11 +49,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-RegisterId findVariableRegister(RegisterPlan& plan, Variable const* var) {
-  RegisterId reg = plan.variableToOptionalRegisterId(var);
+RegisterId findVariableRegister(RegisterPlan& plan, VariableId varId) {
+  RegisterId reg = plan.variableToOptionalRegisterId(varId);
   if (reg.value() == RegisterId::maxRegisterId) {
     for (auto s : plan.subqueryNodes) {
-      reg = findVariableRegister(*ExecutionNode::castTo<SubqueryNode*>(s)->getSubquery()->getRegisterPlan(), var);
+      reg = findVariableRegister(*ExecutionNode::castTo<SubqueryNode*>(s)->getSubquery()->getRegisterPlan(), varId);
       if (reg.value() != RegisterId::maxRegisterId) {
         break;
       }
@@ -645,20 +645,35 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
   
   AqlItemBlockManager& mgr = query.itemBlockManager();
 
-  auto nrConstRegs = plan.root()->getRegisterPlan()->nrConstRegs;
-  if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
-    mgr.initializeConstValueBlock(nrConstRegs);
-    plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
-                                       block = mgr.getConstValueBlock()](Variable* var) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    // check that all const variables in the AST are also part of the
+    // plan's constVariables and vice versa
+    auto constVars = plan.constVariables(); // we intentionally copy here!
+    plan.getAst()->variables()->visit([&constVars](Variable* var) {
       if (var->type() == Variable::Type::Const) {
-        RegisterId reg = findVariableRegister(*plan, var);
-        if (reg.value() != RegisterId::maxRegisterId) {
-          TRI_ASSERT(reg.isConstRegister());
-          AqlValue value = var->constantValue;
-          block->emplaceValue(0, reg.value(), std::move(value));
-        }
+        auto it = constVars.find(var->id);
+        TRI_ASSERT(it != constVars.end());
+        constVars.erase(it);
       }
     });
+    TRI_ASSERT(constVars.empty());
+  }
+#endif
+
+  auto registerPlan = plan.root()->getRegisterPlan();
+  auto nrConstRegs = registerPlan->nrConstRegs;
+  if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
+    mgr.initializeConstValueBlock(nrConstRegs);
+    auto constValueBlock = mgr.getConstValueBlock();
+
+    for (auto& [id, value] : plan.constVariables()) {
+      RegisterId reg = findVariableRegister(*registerPlan, id);
+      TRI_ASSERT(reg.isValid() && reg.isConstRegister());
+      constValueBlock->emplaceValue(0, reg, std::move(value));
+      // the constValueBlock takes ownership, so we have to clear out the value in the plan
+      value = AqlValue{};
+    }
   }
   TRI_ASSERT(nrConstRegs == 0 || mgr.getConstValueBlock()->numRegisters() == nrConstRegs);
 
@@ -735,7 +750,7 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
       auto executor = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
       TRI_ASSERT(executor != nullptr);
       // the ReturnExecutor always writes its output into register 0
-      resultRegister(0);
+      resultRegister(RegisterId(0));
     }
   }
 
@@ -764,7 +779,7 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block)
 void arangodb::aql::ExecutionEngine::reset() {
   _root = nullptr;
   _blocks.clear();
-  _resultRegister = 0;
+  _resultRegister = RegisterPlan::MaxRegisterId;
   _initializeCursorCalled = false;
   _sharedState.reset();
 }

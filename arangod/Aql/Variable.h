@@ -85,7 +85,9 @@ struct Variable {
 
   bool isEqualTo(Variable const& other) const;
   
-  Type type() const noexcept;
+  Type type() const noexcept { return _type; }
+
+  void setType(Type value) noexcept { _type = value; }
 
   /// @brief variable id
   VariableId const id;
@@ -104,7 +106,7 @@ struct Variable {
   // TODO - naming (we already have constValue member function)
   /// @brief for const variables, this stores the constant value determine while
   /// initializing the plan.
-  AqlValue constantValue;
+  //AqlValue constantValue;
 
   /// @brief name of $OLD variable
   static char const* const NAME_OLD;
@@ -114,6 +116,9 @@ struct Variable {
 
   /// @brief name of $CURRENT variable
   static char const* const NAME_CURRENT;
+
+private:
+  Type _type = Type::Regular;
 };
 }  // namespace aql
 }  // namespace arangodb

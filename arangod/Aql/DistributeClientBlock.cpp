@@ -60,7 +60,7 @@ DistributeClientBlock::DistributeClientBlock(ExecutionEngine& engine,
                                              RegisterInfos const& registerInfos)
     : _blockManager(engine.itemBlockManager()), registerInfos(registerInfos) {
   // We only get shared ptrs to const data. so we need to copy here...
-  auto executorInfos = IdExecutorInfos{false, 0, "", false};
+  auto executorInfos = IdExecutorInfos{false, RegisterId(0), "", false};
   auto idExecutorRegisterInfos =
       RegisterInfos{{},
                     {},

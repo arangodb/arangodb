@@ -598,8 +598,8 @@ auto AqlItemBlock::slice(arangodb::containers::SmallVector<std::pair<size_t, siz
     size_t const modifiedTo = std::min<size_t>(to, _maxModifiedRowIndex);
 
     for (size_t row = from; row < modifiedTo; row++, targetRow++) {
-      for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
-        ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
+      for (RegisterId col(0); col < _numRegisters; col++) {
+        ::copyValueOver(cache, _data[getAddress(row, col.value())], targetRow, col, res);
       }
       res->copySubqueryDepthFromOtherBlock(targetRow, *this, row, false);
     }
@@ -644,8 +644,8 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   for (size_t chosenIdx = from; chosenIdx < modifiedTo; ++chosenIdx, ++resultRow) {
     size_t const row = chosen[chosenIdx];
 
-    for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
-      ::copyValueOver(cache, _data[getAddress(row, col)], resultRow, col, res);
+    for (RegisterId col(0); col < _numRegisters; col++) {
+      ::copyValueOver(cache, _data[getAddress(row, col.value())], resultRow, col, res);
     }
     res->copySubqueryDepthFromOtherBlock(resultRow, *this, row, false);
   }
@@ -827,7 +827,7 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
       } else {
         // regular value 
         TRI_ASSERT(column < _numRegisters);
-        a = getValueReference(i, column);
+        a = getValueReference(i, RegisterId(column));
       }
 
       // determine current state
@@ -989,17 +989,19 @@ void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
 }
 
 AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
-  // TODO - avoid check for internal calls
+  // TODO - avoid check for internal calls where we know the type of the register
   if (varNr.isConstRegister()) {
-    return _manager.getConstValueBlock()->getValue(0, varNr.value());
+    auto* block = _manager.getConstValueBlock();
+    return block->_data[block->getAddress(0, varNr.value())];
   }
   return _data[getAddress(index, varNr.value())];
 }
 
 AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId varNr) const {
-  // TODO - avoid check for internal calls
+  // TODO - avoid check for internal calls where we know the type of the register
   if (varNr.isConstRegister()) {
-    return _manager.getConstValueBlock()->getValueReference(0, varNr.value());
+    auto* block = _manager.getConstValueBlock();
+    return block->_data[block->getAddress(0, varNr.value())];
   }
   return _data[getAddress(index, varNr.value())];
 }

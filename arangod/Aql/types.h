@@ -76,6 +76,7 @@ struct RegisterId {
 
   static constexpr value_t maxRegisterId = 1000;
   
+  // TODO - make constructor explicit (requires a lot of changes in test code)
   constexpr RegisterId(value_t v, Type type = Type::Regular)
       : _value(v), _type(type) {
     TRI_ASSERT(v <= maxRegisterId);
@@ -89,16 +90,17 @@ struct RegisterId {
     return RegisterId(value, Type::Regular);
   }
 
-  static RegisterId fromUInt32(uint32_t value) noexcept {
-    RegisterId result;
-    std::memcpy(&result, &value, sizeof(result));
+  constexpr static RegisterId fromUInt32(uint32_t value) noexcept {
+    auto v = static_cast<value_t>(value);
+    auto type = static_cast<Type>(value >> (sizeof(value_t) * 8));
+    RegisterId result (v, type);
     TRI_ASSERT(result.isValid());
     return result;
   }
 
   uint32_t toUInt32() const noexcept {
-    uint32_t result = 0;
-    std::memcpy(&result, this, sizeof(result));
+    uint32_t result = _value;
+    result |= static_cast<uint32_t>(_type) << (sizeof(value_t) * 8);
     return result;
   }
 
@@ -157,10 +159,17 @@ struct RegisterId {
     return type() == rhs.type() && _value == rhs._value;
   }
 
+  constexpr bool operator==(const value_t& rhs) const noexcept {
+    return _value == rhs;
+  }
+
   constexpr bool operator!=(const RegisterId& rhs) const noexcept {
     return type() != rhs.type() || _value != rhs._value;
   }
 
+  constexpr bool operator!=(const value_t& rhs) const noexcept {
+    return _value != rhs;
+  }
  private:
   uint16_t _value = 0;
   Type _type = Type::Regular;

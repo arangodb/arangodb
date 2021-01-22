@@ -285,6 +285,10 @@ class ExecutionPlan {
 
   bool fullCount() const noexcept;
 
+  std::unordered_map<VariableId, AqlValue>& constVariables() noexcept { return _constVariables; }
+
+  void populateVariableTypes();
+
  private:
   template <WalkerUniqueness U>
   /// @brief find nodes of certain types
@@ -426,6 +430,9 @@ class ExecutionPlan {
 
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
+
+  /// @brief contains the values of variables with constant values
+  std::unordered_map<VariableId, AqlValue> _constVariables;
 };
 
 }  // namespace aql

@@ -222,7 +222,7 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
       auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
-      TRI_ASSERT(inReg.isConstRegister() || inReg.value() < RegisterId::maxRegisterId);
+      TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
     }
     // else: no input variable required

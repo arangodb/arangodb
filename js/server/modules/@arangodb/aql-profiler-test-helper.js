@@ -336,12 +336,14 @@ function assertIsProfilePlanObject (plan) {
     'estimatedCost',
     'estimatedNrItems',
     'isModificationQuery',
+    'constVariables',
   ]);
 
   expect(plan.nodes).to.be.an('array');
   expect(plan.rules).to.be.an('array');
   expect(plan.collections).to.be.an('array');
   expect(plan.variables).to.be.an('array');
+  expect(plan.constVariables).to.be.an('array');
   expect(plan.estimatedCost).to.be.a('number');
   expect(plan.estimatedNrItems).to.be.a('number');
 
@@ -379,10 +381,21 @@ function assertIsProfilePlanObject (plan) {
       'id',
       'name',
       'isDataFromCollection',
+      'variableType',
     ]);
 
     expect(variable.id).to.be.a('number');
     expect(variable.name).to.be.a('string');
+    expect(variable.variableType).to.be.a('number');
+  }
+
+  for (let variable of plan.constVariables) {
+    expect(variable).to.include.all.keys([
+      'variableId',
+      'value',
+    ]);
+
+    expect(variable.variableId).to.be.a('number');
   }
 }
 

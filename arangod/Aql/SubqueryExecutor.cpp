@@ -172,7 +172,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
           AqlValueMaterializer materializer(&vopts);
           for (size_t i = 0; i < block->numRows(); ++i) {
             AqlValueMaterializer materializer(&vopts);
-            VPackSlice slice = materializer.slice(block->getValueReference(i, 0), false);
+            VPackSlice slice = materializer.slice(block->getValueReference(i, RegisterId(0)), false);
             _subqueryResultsBuilder.add(slice);
           }
         }

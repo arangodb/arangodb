@@ -430,7 +430,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _regsToClear.reserve(regsToClearList.length());
   for (VPackSlice it : VPackArrayIterator(regsToClearList)) {
-    _regsToClear.insert(it.getNumericValue<RegisterId::value_t>());
+    _regsToClear.insert(RegisterId(it.getNumericValue<RegisterId::value_t>()));
   }
 
   auto allVars = plan->getAst()->variables();
@@ -510,7 +510,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
       regsToKeep.reserve(stackEntrySlice.length());
       for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-        regsToKeep.insert(it.getNumericValue<RegisterId::value_t>());
+        regsToKeep.insert(RegisterId(it.getNumericValue<RegisterId::value_t>()));
       }
     }
   } else if (!regsToKeepStackSlice.isNone()) {
@@ -1976,14 +1976,14 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),
-                          (_outVariable->type() == Variable::Type::Const) ? RegIdSet{} : RegIdSet{outputRegister});
+                          outputRegister.isRegularRegister() ? RegIdSet{outputRegister} : RegIdSet{});
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(), std::move(expInVars) /* required by expression.execute */,
       std::move(expInRegs)); /* required by expression.execute */
 
-  if (_outVariable->type() == Variable::Type::Const) {
+  if (outputRegister.isConstRegister()) {
     // TODO - can we simply use the IdExecutor instead?
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Constant>>>(
         &engine, this,std::move(registerInfos), std::move(executorInfos));

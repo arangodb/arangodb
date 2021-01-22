@@ -1616,25 +1616,23 @@ void arangodb::aql::keepConstValuesInConstRegisters(Optimizer* opt,
   for (auto const n : calculationNodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
     auto var = nn->outVariable();
-    if (nn->expression()->isConstant() && !vars.contains(var)) {
+    auto& constVariables = plan->constVariables();
+    if (nn->expression()->isConstant() && !vars.contains(var) &&
+        constVariables.find(var->id) == constVariables.end()) {
       // this calculation node produces a const value, so we already evaluate
       // the expression and store it in the variable.
+      
       bool mustDestroy;  // can be ignored here
-      if (var->constantValue.isNone()) {
-        // We need to create a new AqlValue that copies the data here, otherwise
-        // the data might be owned by the expression which might be destroyed to
-        // soon, leaving us with an AqlValue with a dangling pointer!
-        const_cast<Variable*>(var)->constantValue =
-            AqlValue(nn->expression()->execute(&exprContext, mustDestroy).slice());
+      // We need to create a new AqlValue that copies the data here, otherwise
+      // the data might be owned by the expression which might be destroyed to
+      // soon, leaving us with an AqlValue with a dangling pointer!
+      auto value = AqlValue(nn->expression()->execute(&exprContext, mustDestroy).slice());
+      constVariables.emplace(var->id, std::move(value));
 
-        TRI_ASSERT(!var->constantValue.isNone());
-        // TODO - should not modify variables!
-      } else {
-        TRI_ASSERT(AqlValue::Compare(nullptr, var->constantValue,
-                                     nn->expression()->execute(&exprContext, mustDestroy),
-                                     true) == 0);
-      }
-
+      // TODO - theoretically we could completely remove the CalculationNode from the plan.
+      // But then we would have to add a separate step to register the const variables in the
+      // RegisterPlan, and we would have to adapt a lot of tests. But this is something we
+      // should consider for the future.
       modified = true;
     }
   }

@@ -381,6 +381,10 @@ ExecutionPlan::~ExecutionPlan() {
   for (auto& x : _ids) {
     delete x.second;
   }
+
+  for (auto& [id, value] : _constVariables) {
+    value.destroy();
+  }
 }
 
 /// @brief create an execution plan from an AST
@@ -519,6 +523,16 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose,
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   builder.add("isModificationQuery", VPackValue(ast->containsModificationNode()));
+
+  builder.add(VPackValue("constVariables"));
+  builder.openArray();
+  for (auto const& [id, value] : _constVariables) {
+    builder.openObject();
+    builder.add("variableId", VPackValue(id));
+    builder.add("value", value.slice());
+    builder.close();
+  }
+  builder.close();
 
   builder.close();
 }
@@ -2406,6 +2420,19 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     }
   }
 
+  VPackSlice constVariables = slice.get("constVariables");
+  if (!constVariables.isNone()) {
+    if (!constVariables.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                    "plan \"constVariables\" attribute is not an array");
+    }
+    for (VPackSlice const it : VPackArrayIterator(constVariables)) {
+      auto varId = it.get("variableId").getNumericValue<VariableId>();
+      VPackSlice value = it.get("value");
+      _constVariables.emplace(varId, value);
+    }
+  }
+
   return ret;
 }
 
@@ -2552,6 +2579,15 @@ AstNode const* ExecutionPlan::resolveVariableAlias(AstNode const* node) const {
     }
   }
   return node;
+}
+
+void ExecutionPlan::populateVariableTypes() {
+  auto& vars = *getAst()->variables();
+  for (auto& v : _constVariables) {
+    auto var = vars.getVariable(v.first);
+    TRI_ASSERT(var != nullptr);
+    var->setType(Variable::Type::Const);
+  }
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

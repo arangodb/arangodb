@@ -450,7 +450,7 @@ void RegisterPlanT<T>::shrink(T* start) {
   };
   
   // max RegisterId used by nodes on the current depth
-  RegisterId maxRegisterId = 0;
+  RegisterId maxRegisterId(0);
   
   // node at which the current depth starts
   T* depthStart = start;
@@ -491,7 +491,7 @@ void RegisterPlanT<T>::shrink(T* start) {
       
       // new depth starting, so update the start node for the depth
       depthStart = previous;
-      maxRegisterId = 0;
+      maxRegisterId = RegisterId(0);
     }
     
     // walk upwards
@@ -619,9 +619,8 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const -> R
 }
 
 template <typename T>
-auto RegisterPlanT<T>::variableToOptionalRegisterId(Variable const* variable) const -> RegisterId {
-  TRI_ASSERT(variable != nullptr);
-  auto it = varInfo.find(variable->id);
+auto RegisterPlanT<T>::variableToOptionalRegisterId(VariableId varId) const -> RegisterId {
+  auto it = varInfo.find(varId);
   if (it != varInfo.end()) {
     return it->second.registerId;
   }

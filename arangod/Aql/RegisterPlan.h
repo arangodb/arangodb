@@ -126,7 +126,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = RegisterId::maxRegisterId;
+  static constexpr RegisterId MaxRegisterId = RegisterId(RegisterId::maxRegisterId);
   // TODO - remove MaxRegisterId in favor of RegisterId::maxRegisterId
 
   /// @brief Only used when the register plan is being explained
@@ -153,7 +153,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
-  auto variableToOptionalRegisterId(Variable const* variable) const -> RegisterId;
+  auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
 
   auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
                       std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;

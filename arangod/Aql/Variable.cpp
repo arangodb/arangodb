@@ -41,6 +41,26 @@ char const* const Variable::NAME_NEW = "$NEW";
 /// @brief name of $CURRENT variable
 char const* const Variable::NAME_CURRENT = "$CURRENT";
 
+const std::map<Variable::Type, std::string> VariableTypeMap{
+    {Variable::Type::Const, "const"},
+    {Variable::Type::Regular, "regular"},
+};
+
+namespace {
+  Variable::Type translateVariableType(std::string const& value) {
+    for (auto const& [type, string] : VariableTypeMap) {
+      if (value == string) {
+        return type;
+      }
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected variableType " + value);
+  }
+  
+  std::string const& translateVariableType(Variable::Type value) {
+    return VariableTypeMap.at(value);
+  }
+}
+
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
     : id(id), 
@@ -53,7 +73,7 @@ Variable::Variable(arangodb::velocypack::Slice const& slice)
       name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
       value(),
       isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)),
-      constantValue(slice.get("constantValue")) {}
+      _type(translateVariableType(arangodb::basics::VelocyPackHelper::getStringValue(slice, "variableType", "regular"))) {}
 
 /// @brief destroy the variable
 Variable::~Variable() = default;
@@ -81,11 +101,7 @@ void Variable::toVelocyPack(VPackBuilder& builder) const {
   builder.add("id", VPackValue(id));
   builder.add("name", VPackValue(name));
   builder.add("isDataFromCollection", VPackValue(isDataFromCollection));
-  if (type() == Variable::Type::Const) {
-    builder.add(VPackValue("constantValue"));
-    constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
-                                /*allowUnindexed*/ true);
-  }
+  builder.add("variableType", VPackValue(translateVariableType(_type)));
 }
 
 /// @brief replace a variable by another
@@ -122,11 +138,4 @@ Variable* Variable::varFromVPack(Ast* ast, arangodb::velocypack::Slice const& ba
 
 bool Variable::isEqualTo(Variable const& other) const {
   return (id == other.id) && (name == other.name);
-}
-
-Variable::Type Variable::type() const noexcept {
-  if (constantValue.isNone()) {
-    return Type::Regular;
-  }
-  return Type::Const;
 }
