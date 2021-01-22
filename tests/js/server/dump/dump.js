@@ -306,11 +306,10 @@ function dumpTestSuite () {
         assertEqual({ value: [ i, i ] }, doc.more);
         lastKey = doc._key;
       }
-      var doc = nonDeletedDoc;
-      assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-      lastKey = doc._key;
-      doc = c.save({});
-      assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
+      assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
+      lastKey = nonDeletedDoc._key;
+      nonDeletedDoc = c.save({});
+      assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
