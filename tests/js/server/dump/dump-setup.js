@@ -149,6 +149,9 @@
     docs.push({ value: i });
   }
   c.save(docs);
+  d = c.save({});
+  c.save({}); // create another one inbetween...
+  c.remove(d);
 
   // strings
   c = db._create("UnitTestsDumpStrings");
