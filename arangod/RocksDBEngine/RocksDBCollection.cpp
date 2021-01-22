@@ -861,7 +861,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
-  _statistics._rocksdb_read_msec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_read_usec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -896,7 +896,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       ret = true;;
     }
   }
-  _statistics._rocksdb_read_msec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_read_usec.count(duration<float,std::micro>(clock::now() - start).count());
   return ret;
 }
 
@@ -979,7 +979,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
-  _statistics._rocksdb_insert_msec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_insert_usec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -1042,7 +1042,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     TRI_ASSERT(!resultMdr.empty());
 
     trackWaitForSync(trx, options);
-    _statistics._rocksdb_update_msec.count(duration<float,std::micro>(clock::now() - start).count());
+    _statistics._rocksdb_update_usec.count(duration<float,std::micro>(clock::now() - start).count());
     return res;
   }
 
@@ -1115,7 +1115,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
 
     guard.finish(hasPerformedIntermediateCommit);
   }
-  _statistics._rocksdb_update_msec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_update_usec.count(duration<float,std::micro>(clock::now() - start).count());
 
   return res;
 }
@@ -1245,7 +1245,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
-  _statistics._rocksdb_replace_msec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_replace_usec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -1349,7 +1349,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 
     guard.finish(hasPerformedIntermediateCommit);
   }
-  _statistics._rocksdb_remove_msec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_remove_usec.count(duration<float,std::micro>(clock::now() - start).count());
   return res;
 }
 

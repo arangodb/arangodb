@@ -60,28 +60,36 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
                          "collections to avoid deadlocking")),
       _numRead(
         _metrics.counter("arangodb_num_document_reads", 0,
-                         "Number of document reads since process start")),
+                         "Number of document reads oprations since process start")),
       _numWrite(
         _metrics.counter("arangodb_num_document_writes", 0,
-                         "Number of document writes since process start")),
+                         "Number of document writes operations since process start")),
+      _numTruncate(
+        _metrics.counter("arangodb_num_document_truncations", 0,
+                         "Number of document truncate operations since process start")),
       _numReplicate(
         _metrics.counter("arangodb_num_document_replications", 0,
-                         "Number of document replications since process start")),
-      _rocksdb_insert_msec(
+                         "Number of document replication oprations since process start")),
+      _rocksdb_insert_usec(
         _metrics.histogram("arangodb_insert_time",
-                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Insert a document [us]")),
-      _rocksdb_read_msec(
+                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
+                           "Total time of successful a document insertion [us]")),
+      _rocksdb_read_usec(
         _metrics.histogram("arangodb_read_time",
-                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Read a document [us]")),
-      _rocksdb_replace_msec(
+                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
+                           "Total time of successful a document read [us]")),
+      _rocksdb_replace_usec(
         _metrics.histogram("arangodb_replace_time",
-                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Replace a document [us]")),
-      _rocksdb_remove_msec(
+                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
+                           "Total time of successful a document replacement [us]")),
+      _rocksdb_remove_usec(
         _metrics.histogram("arangodb_remove_time",
-                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Remove a document [us]")),
-      _rocksdb_update_msec(
+                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
+                           "Total time of successful a document removal [us]")),
+      _rocksdb_update_usec(
         _metrics.histogram("arangodb_update_time",
-                           log_scale_t(std::exp(1.f), 10.0f, 1.e6f, 10), "Update a document [us]")) {}
+                           log_scale_t(2.f, 10.0f, 1.e6f, 10),
+                           "Total time of successful a document update [us]")) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
