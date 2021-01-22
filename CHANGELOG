@@ -1,6 +1,8 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
 * Fixed some situations of
   [...]
   SUBQUERY
