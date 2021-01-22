@@ -53,7 +53,7 @@ const db = require("internal").db;
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
+const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
@@ -73,8 +73,9 @@ const testPaths = {
 };
 
 class DumpRestoreHelper {
-  constructor(instanceInfo, options, secondOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
-    this.instanceInfo = instanceInfo;
+  constructor(options, secondOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
+    this.serverOptions = serverOptions;
+    this.instanceInfo = {};
     this.options = options;
     this.secondOptions = secondOptions;
     this.restartServer = options.cluster !== secondOptions.cluster;
@@ -82,52 +83,73 @@ class DumpRestoreHelper {
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
     this.which = which;
-    this.fn = afterServerStart(instanceInfo);
     this.results = {failed: 1};
-    this.arangosh = tu.runInLocalArangosh.bind(this, this.options, this.instanceInfo);
-    this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceInfo);
-    this.dumpConfig.setOutputDirectory('dump');
-    this.dumpConfig.setIncludeSystem(true);
+    this.dumpConfig = false;
+    this.restoreConfig = false;
+    this.restoreOldConfig = false;
+    this.afterServerStart = afterServerStart;
+  }
 
-    if (dumpOptions.hasOwnProperty("maskings")) {
-       this.dumpConfig.setMaskings(dumpOptions.maskings);
+  bindInstanceInfo(options) {
+    this.arangosh = tu.runInLocalArangosh.bind(this, options, this.instanceInfo);
+    if (!this.dumpConfig) {
+      // the dump config will only be configured for the first instance.
+      this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceInfo);
+      this.dumpConfig.setOutputDirectory('dump');
+      this.dumpConfig.setIncludeSystem(true);
+      if (this.dumpOptions.hasOwnProperty("maskings")) {
+        this.dumpConfig.setMaskings(this.dumpOptions.maskings);
+      }
+      if (this.dumpOptions.allDatabases) {
+        this.dumpConfig.setAllDatabases();
+      }
     }
-    if (dumpOptions.allDatabases) {
-      this.dumpConfig.setAllDatabases();
-    }
-
-    this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
-    this.restoreConfig.setInputDirectory('dump', true);
-    this.restoreConfig.setIncludeSystem(true);
-
-    this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
-    this.restoreOldConfig.setInputDirectory('dump', true);
-    this.restoreOldConfig.setIncludeSystem(true);
-    this.restoreOldConfig.setRootDir(pu.TOP_DIR);
-
-    if (dumpOptions.encrypted) {
+    if (this.dumpOptions.encrypted) {
       this.dumpConfig.activateEncryption();
     }
-    if (restoreOptions.encrypted) {
+
+    if (!this.restoreConfig) {
+      this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
+      this.restoreConfig.setInputDirectory('dump', true);
+      this.restoreConfig.setIncludeSystem(true);
+    } else {
+      this.restoreConfig.setEndpoint(this.instanceInfo.endpoint);
+    }
+    if (!this.restoreOldConfig) {
+      this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
+      this.restoreOldConfig.setInputDirectory('dump', true);
+      this.restoreOldConfig.setIncludeSystem(true);
+      this.restoreOldConfig.setRootDir(pu.TOP_DIR);
+    } else {
+      this.restoreOldConfig.setEndpoint(this.instanceInfo.endpoint);
+    }
+    this.setOptions();
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+    this.fn = this.afterServerStart(this.instanceInfo);
+  }
+  setOptions() {
+    if (this.restoreOptions.encrypted) {
       this.restoreConfig.activateEncryption();
       this.restoreOldConfig.activateEncryption();
     }
-    if (dumpOptions.compressed) {
+    if (this.dumpOptions.compressed) {
       this.dumpConfig.activateCompression();
     }
-    if (options.deactivateCompression) {
+    if (this.options.deactivateCompression) {
       this.dumpConfig.deactivateCompression();
     }
-    if (options.deactivateEnvelopes) {
+    if (this.options.deactivateEnvelopes) {
       this.dumpConfig.deactivateEnvelopes();
     }
-    if (restoreOptions.allDatabases) {
+    if (this.restoreOptions.allDatabases) {
       this.restoreConfig.setAllDatabases();
       this.restoreOldConfig.setAllDatabases();
     } else {
       this.restoreOldConfig.setDatabase('_system');
     }
-    if (restoreOptions.activateFailurePoint) {
+    if (this.restoreOptions.activateFailurePoint) {
       print("Activating failure point");
       this.restoreConfig.activateFailurePoint();
       this.restoreOldConfig.deactivateFailurePoint();
@@ -135,14 +157,55 @@ class DumpRestoreHelper {
       this.restoreConfig.deactivateFailurePoint();
       this.restoreOldConfig.deactivateFailurePoint();
     }
-
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
-    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir, this.options.coreCheck);
   }
-
   print (s) {
     print(CYAN + Date() + ': ' + this.which + ' and Restore - ' + s + RESET);
+  }
+
+  startFirstInstance() {
+    this.instanceInfo = pu.startInstance('tcp', this.options, this.serverOptions, this.which);
+
+    if (this.instanceInfo === false) {
+      let rc =  {
+        failed: 1,
+      };
+      this.results = {
+        failed: 1,
+        [this.which]: {
+          status: false,
+          message: 'failed to start server!'
+        }};
+      return false;
+    }
+    this.bindInstanceInfo(this.options);
+    return true;
+  }
+
+  restartInstance() {
+    if (this.restartServer) {
+      print(CYAN + 'Shutting down...' + RESET);
+      this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+      print(CYAN + 'done.' + RESET);
+      this.which = this.which + "_2";
+      this.instanceInfo = pu.startInstance('tcp', this.secondOptions, this.serverOptions, this.which);
+
+      if (this.instanceInfo === false) {
+        let rc =  {
+          failed: 1,
+        };
+        this.results = {
+          failed: 1,
+          [this.which]: {
+            status: false,
+            message: 'failed to start the second server!'
+          }};
+        return false;
+      }
+      this.bindInstanceInfo(this.secondOptions);
+      return true;
+
+    }
+    return true;
   }
 
   adjustRestoreToDump() {
@@ -173,6 +236,10 @@ class DumpRestoreHelper {
   extractResults() {
     if (this.fn !== undefined) {
       fs.remove(this.fn);
+    }
+    if (this.instanceInfo === false) {
+      print(RED + 'no instance running. Nothing to stop!' + RESET);
+      return this.results;
     }
     print(CYAN + 'Shutting down...' + RESET);
     this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
@@ -415,19 +482,10 @@ function getClusterStrings(options) {
 function dump_backend (firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
   print(CYAN + which + ' tests...' + RESET);
 
-  let instanceInfo = pu.startInstance('tcp', firstOptions, serverAuthInfo, which);
-
-  if (instanceInfo === false) {
-    let rc =  {
-      failed: 1,
-    };
-    rc[which] = {
-      status: false,
-      message: 'failed to start server!'
-    };
-    return rc;
-  }
-  const helper = new DumpRestoreHelper(instanceInfo, firstOptions, secondOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
+  const helper = new DumpRestoreHelper(firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
+  if (! helper.startFirstInstance()) {
+    return helper.extractResults();
+  }    
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
@@ -441,6 +499,7 @@ function dump_backend (firstOptions, secondOptions, serverAuthInfo, clientAuth, 
         !helper.dumpFrom('UnitTestsDumpSrc', true) ||
         !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
         !helper.runCleanupSuite(cleanupFile) ||
+        !helper.restartInstance() ||
         !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
         !helper.restoreTo('_system', { separate: true }) ||
         !helper.runTests(testFile,'UnitTestsDumpDst') ||
@@ -453,6 +512,7 @@ function dump_backend (firstOptions, secondOptions, serverAuthInfo, clientAuth, 
         !helper.dumpFrom('UnitTestsDumpSrc') ||
         !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
         !helper.runCleanupSuite(cleanupFile) ||
+        !helper.restartInstance() ||
         !helper.restoreTo('UnitTestsDumpDst') ||
         !helper.runTests(testFile,'UnitTestsDumpDst') ||
         !helper.tearDown(tearDownFile)) {
@@ -515,7 +575,7 @@ function dumpMixedClusterSingle (options) {
     dumpSetup: 'dump-setup' + cl.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
     dumpCleanup: 'cleanup-nothing.js',
-    dumpAgain: 'dump' + sg.cluster + '.js',
+    dumpAgain: 'dump-mixed' + sg.cluster + '.js',
     dumpTearDown: 'dump-teardown' + sg.cluster + '.js',
     dumpCheckGraph: 'check-graph.js',
     foxxTest: 'check-foxx.js'
@@ -741,19 +801,11 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  let instanceInfo = pu.startInstance('tcp', options, addArgs, which);
+  const helper = new DumpRestoreHelper(options, options, addArgs, options, options, which, function(){});
+  if (! helper.startFirstInstance()) {
+    return helper.extractResults();
+  }    
 
-  if (instanceInfo === false) {
-    let rc =  {
-      failed: 1,
-    };
-    rc[which] = {
-      status: false,
-      message: 'failed to start server!'
-    };
-    return rc;
-  }
-  const helper = new DumpRestoreHelper(instanceInfo, options, {}, options, options, which, function(){});
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const dumpCheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheck));
   const dumpModify = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpModify));
@@ -761,6 +813,7 @@ function hotBackup (options) {
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   if (!helper.runSetupSuite(setupFile) ||
       !helper.dumpFrom('UnitTestsDumpSrc') ||
+      !helper.restartInstance() ||
       !helper.restoreTo('UnitTestsDumpDst') ||
       !helper.isAlive() ||
       !helper.createHotBackup() ||
