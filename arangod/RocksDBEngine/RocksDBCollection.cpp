@@ -719,11 +719,16 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
-  auto const tmp = std::min<uint64_t>(prvICC, 10000);
-  state->options().intermediateCommitCount = tmp;
-  _statistics._numTruncate.count(tmp);
+  state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
 
   uint64_t found = 0;
+
+  // when we leave this function, we still need to update the truncate counter metric
+  // appropriately
+  auto updateCounters = scopeGuard([this, &found]() {
+    _statistics._numTruncate.count(found);
+  });
+
   VPackBuilder docBuffer;
   auto iter = mthds->NewIterator(ro, documentBounds.columnFamily());
   for (iter->Seek(documentBounds.start());
@@ -770,7 +775,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     guard.finish(hasPerformedIntermediateCommit);
 
     trackWaitForSync(&trx, options);
-
   }
 
   _statistics._numTruncate.count(found);
@@ -794,7 +798,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_TerminateDebugging("SegfaultAfterAllCommits");
   }
-  return Result{};
+  return {};
 }
 
 Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
@@ -814,7 +818,7 @@ Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef ke
   // index. this can happen for "older" collections
   TRI_ASSERT(result.first.isSet());
   TRI_ASSERT(result.second.isSet());
-  return Result();
+  return {};
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice const& key,
@@ -861,7 +865,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
-  _statistics._rocksdb_read_usec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_read_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -896,7 +900,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       ret = true;;
     }
   }
-  _statistics._rocksdb_read_usec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_read_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return ret;
 }
 
@@ -979,7 +983,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
-  _statistics._rocksdb_insert_usec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_insert_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -1042,7 +1046,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     TRI_ASSERT(!resultMdr.empty());
 
     trackWaitForSync(trx, options);
-    _statistics._rocksdb_update_usec.count(duration<float,std::micro>(clock::now() - start).count());
+    _statistics._rocksdb_update_usec.count(duration<float, std::micro>(clock::now() - start).count());
     return res;
   }
 
@@ -1115,7 +1119,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
 
     guard.finish(hasPerformedIntermediateCommit);
   }
-  _statistics._rocksdb_update_usec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_update_usec.count(duration<float, std::micro>(clock::now() - start).count());
 
   return res;
 }
@@ -1245,7 +1249,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     guard.finish(hasPerformedIntermediateCommit);
   }
 
-  _statistics._rocksdb_replace_usec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_replace_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return res;
 }
 
@@ -1349,7 +1353,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 
     guard.finish(hasPerformedIntermediateCommit);
   }
-  _statistics._rocksdb_remove_usec.count(duration<float,std::micro>(clock::now() - start).count());
+  _statistics._rocksdb_remove_usec.count(duration<float, std::micro>(clock::now() - start).count());
   return res;
 }
 
