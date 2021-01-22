@@ -55,8 +55,6 @@ struct TransactionStatistics {
   // Total number of times we used a fallback to sequential locking
   Counter& _sequentialLocks;
   
-  // Total number of read operations in storage engine
-  Counter& _numReads;
   // Total number of write operations in storage engine (excl. sync replication)
   Counter& _numWrites;
   // Total number of write operations in storage engine by sync replication

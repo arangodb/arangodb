@@ -114,7 +114,8 @@ struct TimeTracker {
         start(getTime()) {}
 
   ~TimeTracker() {
-    histogram.count(std::chrono::duration<float, std::micro>(getTime() - start).count());
+    // unit is seconds here
+    histogram.count(std::chrono::duration<float>(getTime() - start).count());
   }
 
   std::chrono::time_point<std::chrono::steady_clock> getTime() const noexcept {
@@ -128,22 +129,20 @@ struct TimeTracker {
 /// @brief helper RAII class to count and time-track a CRUD read operation
 struct ReadTimeTracker : public TimeTracker {
   ReadTimeTracker(Histogram<log_scale_t<float>>& histogram, 
-                  arangodb::TransactionStatistics& _statistics) noexcept
-      : TimeTracker(histogram) {
-    ++_statistics._numReads;
-  }
+                  arangodb::TransactionStatistics& /*statistics*/) noexcept
+      : TimeTracker(histogram) {}
 };
 
 /// @brief helper RAII class to count and time-track CRUD write operations
 struct WriteTimeTracker : public TimeTracker {
   WriteTimeTracker(Histogram<log_scale_t<float>>& histogram, 
-                   arangodb::TransactionStatistics& _statistics,
+                   arangodb::TransactionStatistics& statistics,
                    arangodb::OperationOptions const& options) noexcept
       : TimeTracker(histogram) {
     if (options.isSynchronousReplicationFrom.empty()) {
-      ++_statistics._numWrites;
+      ++statistics._numWrites;
     } else {
-      ++_statistics._numWritesReplication;
+      ++statistics._numWritesReplication;
     }
   }
 };
@@ -151,13 +150,13 @@ struct WriteTimeTracker : public TimeTracker {
 /// @brief helper RAII class to count and time-track truncate operations
 struct TruncateTimeTracker : public TimeTracker {
   TruncateTimeTracker(Histogram<log_scale_t<float>>& histogram, 
-                      arangodb::TransactionStatistics& _statistics,
+                      arangodb::TransactionStatistics& statistics,
                       arangodb::OperationOptions const& options) noexcept
       : TimeTracker(histogram) {
     if (options.isSynchronousReplicationFrom.empty()) {
-      ++_statistics._numTruncates;
+      ++statistics._numTruncates;
     } else {
-      ++_statistics._numTruncatesReplication;
+      ++statistics._numTruncatesReplication;
     }
   }
 };
