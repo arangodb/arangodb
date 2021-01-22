@@ -467,7 +467,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
           RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
                                        _logicalCollection.id(), indexInfo.slice()));
     }
-  } while(false);
+  } while (false);
 
   // cleanup routine
   if (res.fail()) { // We could not create the index. Better abort
