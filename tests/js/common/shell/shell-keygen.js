@@ -428,7 +428,56 @@ function AllowUserKeysSuite () {
   };
 }
 
+function PersistedLastValueSuite () {
+  'use strict';
+
+  let generators = function() {
+    let generators = [
+      "padded",
+    ];
+    if (!cluster) {
+      generators.push("autoincrement");
+    }
+    return generators;
+  };
+
+  return {
+    setUp : function () {
+      db._drop(cn);
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+    
+    testPersistedLastValue : function () {
+      generators().forEach((generator) => {
+        let c = db._create(cn, { keyOptions: { type: generator }, numberOfShards: 2 });
+        try {
+          let p = c.properties();
+          assertTrue(p.keyOptions.allowUserKeys);
+          assertEqual("number", typeof p.keyOptions.lastValue, generator);
+          let lastValue = p.keyOptions.lastValue;
+          assertEqual(0, lastValue);
+
+          for (let i = 0; i < 10; ++i) {
+            c.insert({}); 
+            p = c.properties();
+            let newLastValue = p.keyOptions.lastValue;
+            assertTrue(newLastValue > lastValue);
+            lastValue = newLastValue;
+          }
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+
+  };
+}
+
 jsunity.run(TraditionalSuite);
 jsunity.run(AllowUserKeysSuite);
+jsunity.run(PersistedLastValueSuite);
 
 return jsunity.done();

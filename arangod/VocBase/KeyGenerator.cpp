@@ -195,6 +195,23 @@ enum class GeneratorType : int {
 /// @brief for older compilers
 typedef std::underlying_type<GeneratorType>::type GeneratorMapType;
 
+uint64_t readLastValue(VPackSlice options) {
+  uint64_t lastValue = 0;
+
+  if (VPackSlice lastValueSlice = options.get(StaticStrings::LastValue); lastValueSlice.isNumber()) {
+    double v = lastValueSlice.getNumericValue<double>();
+    if (v < 0.0) {
+      // negative lastValue is not allowed
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+          "'lastValue' value must be greater than zero");
+    }
+
+    lastValue = lastValueSlice.getNumericValue<uint64_t>();
+  }
+  return lastValue;
+}
+
 /// Actual key generators following...
 
 /// @brief base class for traditional key generators
@@ -204,7 +221,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   explicit TraditionalKeyGenerator(bool allowUserKeys)
       : KeyGenerator(allowUserKeys) {}
 
-  bool hasDynamicState() const override { return true; }
+  bool hasDynamicState() const override final { return true; }
 
   /// @brief generate a key
   std::string generate() override final {
@@ -261,8 +278,8 @@ class TraditionalKeyGenerator : public KeyGenerator {
 class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
-  explicit TraditionalKeyGeneratorSingle(bool allowUserKeys)
-      : TraditionalKeyGenerator(allowUserKeys), _lastValue(0) {
+  explicit TraditionalKeyGeneratorSingle(bool allowUserKeys, uint64_t lastValue)
+      : TraditionalKeyGenerator(allowUserKeys), _lastValue(lastValue) {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
   }
 
@@ -297,7 +314,7 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
         tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
         break;
       }
-    } while(!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
+    } while (!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
 
     return tick;
   }
@@ -347,20 +364,33 @@ class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
 class PaddedKeyGenerator : public KeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGenerator(bool allowUserKeys)
-      : KeyGenerator(allowUserKeys) {}
+  explicit PaddedKeyGenerator(bool allowUserKeys, uint64_t lastValue)
+      : KeyGenerator(allowUserKeys), _lastValue(lastValue) {}
 
-  bool hasDynamicState() const override { return true; }
-
+  bool hasDynamicState() const override final { return true; }
+  
   /// @brief generate a key
   std::string generate() override {
     uint64_t tick = generateValue();
-
-    if (ADB_UNLIKELY(tick == 0)) {
+    
+    if (ADB_UNLIKELY(tick == 0 || tick == UINT64_MAX)) {
       // unlikely case we have run out of keys
       // returning an empty string will trigger an error on the call site
       return std::string();
     }
+
+    auto lastValue = _lastValue.load(std::memory_order_relaxed);
+    if (ADB_UNLIKELY(lastValue >= UINT64_MAX - 1ULL)) {
+      // oops, out of keys!
+      return std::string();
+    }
+
+    do {
+      if (tick <= lastValue) {
+        tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
+        break;
+      }
+    } while (!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
 
     return KeyGeneratorHelper::encodePadded(tick);
   }
@@ -377,85 +407,51 @@ class PaddedKeyGenerator : public KeyGenerator {
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) override {
+  void track(char const* p, size_t length) override final {
     // check the numeric key part
     uint64_t value = KeyGeneratorHelper::decodePadded(p, length);
     if (value > 0) {
-      track(value);
+      auto lastValue = _lastValue.load(std::memory_order_relaxed);
+      while (value > lastValue) {
+        // and update our last value
+        if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
+          break;
+        }
+      }
     }
   }
 
   /// @brief build a VelocyPack representation of the generator in the builder
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final {
     KeyGenerator::toVelocyPack(builder);
     builder.add("type", VPackValue("padded"));
+    
+    // add our own specific values
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue.load(std::memory_order_relaxed)));
   }
 
  protected:
   /// @brief generate a key value (internal)
   virtual uint64_t generateValue() = 0;
 
-  /// @brief track a value (internal)
-  virtual void track(uint64_t value) = 0;
+ private:
+  std::atomic<uint64_t> _lastValue;
 };
 
 /// @brief padded key generator for a single server
 class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGeneratorSingle(bool allowUserKeys)
-      : PaddedKeyGenerator(allowUserKeys), _lastValue(0) {
+  explicit PaddedKeyGeneratorSingle(bool allowUserKeys, uint64_t lastValue)
+      : PaddedKeyGenerator(allowUserKeys, lastValue) {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  }
-
-  /// @brief build a VelocyPack representation of the generator in the builder
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
-    PaddedKeyGenerator::toVelocyPack(builder);
-
-    // add our own specific values
-    builder.add(StaticStrings::LastValue, VPackValue(_lastValue.load(std::memory_order_relaxed)));
   }
 
  private:
   /// @brief generate a key
   uint64_t generateValue() override {
-    uint64_t tick = TRI_NewTickServer();
-
-    if (ADB_UNLIKELY(tick == UINT64_MAX)) {
-      // oops, out of keys!
-      return 0;
-    }
-
-    auto lastValue = _lastValue.load(std::memory_order_relaxed);
-    if (ADB_UNLIKELY(lastValue >= UINT64_MAX - 1ULL)) {
-      // oops, out of keys!
-      return 0;
-    }
-
-    do {
-      if (tick <= lastValue) {
-        tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
-        break;
-      }
-    } while (!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
-
-
-    return tick;
+    return TRI_NewTickServer();
   }
-
-  /// @brief generate a key value (internal)
-  void track(uint64_t value) override {
-    auto lastValue = _lastValue.load(std::memory_order_relaxed);
-    while (value > lastValue) {
-      // and update our last value
-      if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
-        break;
-      }
-    }
-  }
-
- private:
-  std::atomic<uint64_t> _lastValue;
 };
 
 /// @brief padded key generator for a coordinator
@@ -468,17 +464,14 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
 class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
-      : PaddedKeyGenerator(allowUserKeys), _ci(ci) {
+  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys, uint64_t lastValue)
+      : PaddedKeyGenerator(allowUserKeys, lastValue), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
   uint64_t generateValue() override { return _ci.uniqid(); }
-
-  /// @brief generate a key value (internal)
-  void track(uint64_t /* value */) override {}
 
  private:
   ClusterInfo& _ci;
@@ -488,8 +481,8 @@ class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
 class AutoIncrementKeyGenerator final : public KeyGenerator {
  public:
   /// @brief create the generator
-  AutoIncrementKeyGenerator(bool allowUserKeys, uint64_t offset, uint64_t increment)
-      : KeyGenerator(allowUserKeys), _lastValue(0), _offset(offset), _increment(increment) {}
+  AutoIncrementKeyGenerator(bool allowUserKeys, uint64_t lastValue, uint64_t offset, uint64_t increment)
+      : KeyGenerator(allowUserKeys), _lastValue(lastValue), _offset(offset), _increment(increment) {}
 
   bool hasDynamicState() const override { return true; }
 
@@ -513,7 +506,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
 
       TRI_ASSERT(keyValue > lastValue);
       // update our last value
-    } while(!_lastValue.compare_exchange_weak(lastValue, keyValue, std::memory_order_relaxed));
+    } while (!_lastValue.compare_exchange_weak(lastValue, keyValue, std::memory_order_relaxed));
 
     return arangodb::basics::StringUtils::itoa(keyValue);
   }
@@ -568,8 +561,8 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
 
  private:
   std::atomic<uint64_t> _lastValue;  // last value assigned
-  const uint64_t _offset;  // start value
-  const uint64_t _increment;  // increment value
+  uint64_t const _offset;  // start value
+  uint64_t const _increment;  // increment value
 };
 
 /// @brief uuid key generator
@@ -644,7 +637,7 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
          return new TraditionalKeyGeneratorCluster(ci, allowUserKeys);
        }
-       return new TraditionalKeyGeneratorSingle(allowUserKeys);
+       return new TraditionalKeyGeneratorSingle(allowUserKeys, ::readLastValue(options));
      }},
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
      [](application_features::ApplicationServer&, bool allowUserKeys,
@@ -654,12 +647,11 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
                                         "the specified key generator is not "
                                         "supported for sharded collections");
        }
+
        uint64_t offset = 0;
        uint64_t increment = 1;
-
-       VPackSlice const incrementSlice = options.get("increment");
-
-       if (incrementSlice.isNumber()) {
+       
+       if (VPackSlice incrementSlice = options.get("increment"); incrementSlice.isNumber()) {
          double v = incrementSlice.getNumericValue<double>();
          if (v <= 0.0) {
            // negative or 0 increment is not allowed
@@ -678,9 +670,7 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
          }
        }
 
-       VPackSlice const offsetSlice = options.get("offset");
-
-       if (offsetSlice.isNumber()) {
+       if (VPackSlice offsetSlice = options.get("offset"); offsetSlice.isNumber()) {
          double v = offsetSlice.getNumericValue<double>();
          if (v < 0.0) {
            // negative or 0 offset is not allowed
@@ -697,7 +687,7 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
          }
        }
 
-       return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
+       return new AutoIncrementKeyGenerator(allowUserKeys, ::readLastValue(options), offset, increment);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::UUID),
      [](application_features::ApplicationServer&, bool allowUserKeys, VPackSlice) -> KeyGenerator* {
@@ -708,9 +698,9 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
         VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-         return new PaddedKeyGeneratorCluster(ci, allowUserKeys);
+         return new PaddedKeyGeneratorCluster(ci, allowUserKeys, ::readLastValue(options));
        }
-       return new PaddedKeyGeneratorSingle(allowUserKeys);
+       return new PaddedKeyGeneratorSingle(allowUserKeys, ::readLastValue(options));
      }}};
 
 }  // namespace
