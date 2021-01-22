@@ -341,14 +341,20 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
                     engine.writeCreateCollectionMarker(vocbase.id(), collection->id(),
                                                        builder.slice(),
                                                        arangodb::RocksDBLogValue::Empty());
+                if (res.fail()) {
+                  LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
+                    << "Unable to store updated link information on upgrade for collection '"
+                    << name << "' for link " << indexPtr->id().id() 
+                    << ": " << res.errorMessage();;
+                }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               } else if (selector.engineName() != "Mock") { // for unit tests just ignore write to storage
 #else
               } else {
 #endif
-                 TRI_ASSERT(false);
-                 LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
-                   << "Unsupported engine '" << selector.engineName() << "' for link upgrade task";
+                TRI_ASSERT(false);
+                LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
+                  << "Unsupported engine '" << selector.engineName() << "' for link upgrade task";
               }
             }
           }
@@ -375,10 +381,9 @@ bool upgradeSingleServerArangoSearchView0_1(
     }
 
     arangodb::velocypack::Builder builder;
-    arangodb::Result res;
 
     builder.openObject();
-    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence); // get JSON with meta + 'version'
+    arangodb::Result res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence); // get JSON with meta + 'version'
     builder.close();
 
     if (!res.ok()) {
