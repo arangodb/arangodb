@@ -5,6 +5,43 @@ v3.7.7 (XXXX-XX-XX)
   coordinators. This could for example swallow out of disk errors during
   hotbackup restore.
 
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
+* Fixed some situations of
+  [...]
+  SUBQUERY
+  FILTER
+  LIMIT
+  [...]
+  in AQL queries, yielding incorrect responses. A distributed state within the
+  subquery was not resetted correctly. This could also lead into "shrink" errors
+  of AQL item blocks, or much higher query runtimes.
+  Fixes:
+  - BTS-252
+  - ES-687
+  - github issue: #13099
+  - github issue: #13124
+  - github issue: #13147
+  - github issue: #13305
+  - DEVSUP-665
+
+* Fix a bug in the agency Supervision which could lead to removeFollower
+  jobs constantly being created and immediately stopped again.
+
+* Limit additional replicas in failover cases to +2.
+
+* Prepare register planning for rolling upgrades. Previously, changes in
+  register planning from 3.7 to a minor future version (i.e. 3.8) could cause
+  queries executed by a 3.7 coordinator in combination with a minor future
+  version (i.e. 3.8) DBServer to fail during a rolling upgrade.
+
+* Fixed rare objectId conflict for indexes.
+
+* Fix for OASIS-409: fixed indexing _id attribute at recovery.
+
+* Fix some issues with key generators not properly taking into account the
+  `allowUserKeys` attribute when in a cluster.
+
 * Added the following bit handling functions to AQL:
 
   - BIT_AND(array): and-combined result

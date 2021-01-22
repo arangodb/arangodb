@@ -339,12 +339,11 @@ function ahuacatlSubqueryTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this tests a rather complex interna of AQL execution combinations
-/// A subquery should only be executed if it has an input row
-/// A count collect block will produce an output even if it does not get an input
-/// specifically it will rightfully count 0.
-/// The insert block will write into the collection if it gets an input.
-/// Even if the outer subquery is skipped. Henve we require to have documents
-/// inserted here.
+/// A subquery should only be executed if it has an input row, a count is supposed
+/// to count empty subqueries (e.g. no data row arrived)
+/// However in this case, the entire subquery is not executed once,
+/// so the count should not be triggered, and should not write an output row
+/// hence the INSERT will not be executed and we will not write a document.
 ////////////////////////////////////////////////////////////////////////////////
     testCollectWithinEmptyNestedSubquery: function () {
       const colName = "UnitTestSubqueryCollection";

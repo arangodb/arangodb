@@ -189,7 +189,22 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
       // We need to delete those variables that have been used here but are not
       // used any more later:
-      en->setRegsToClear(std::move(regsToClear));
+      if (!mayReuseRegisterImmediately) {
+        // For passthrough blocks, the registers to clear may not be reused
+        // immediately, i.e. earliest in the following block.
+        en->setRegsToClear(std::move(regsToClear));
+      } else {
+        // For non-passthrough-blocks, registers may be reused immediately.
+        // Thus regsToClear can overlap with actually used registers at the same
+        // block.
+        // However, regsToClear is just ignored in 3.7 in non-passthrough
+        // blocks. So it was okay to set regsToClear here, even if they are
+        // possibly reused immediately.
+        // However, to be compatible with 3.8 for rolling upgrades, which no
+        // longer ignores regsToClear on non-passthrough blocks, we don't set it
+        // at all.
+        en->setRegsToClear({});
+      }
     } break;
   }
 
