@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added metric `arangodb_scheduler_current_current_queue_time` to estimate
+  the amount of time it takes a low priority queue item to bubble up to the 
+  queue's head (in ms).
+
 * Fix decoding of values in `padded` key generator when restoring from a dump.
 
 * Fixed error reporting for hotbackup restore from dbservers back to
