@@ -104,8 +104,8 @@ IndexIterator& RefactoredClusterEdgeCursor::LookupInfo::cursor() {
 RefactoredClusterEdgeCursor::RefactoredClusterEdgeCursor(
     arangodb::transaction::Methods* trx,
     arangodb::aql::FixedVarExpressionContext const& expressionContext,
-    ClusterTraverserCache* cache)
-    : _currentCursor(0), _trx(trx), _expressionContext(expressionContext), _cache(cache) {}
+    ClusterTraverserCache* cache, bool backward)
+    : _currentCursor(0), _trx(trx), _expressionContext(expressionContext), _cache(cache), _backward(backward) {}
 
 RefactoredClusterEdgeCursor::~RefactoredClusterEdgeCursor() {}
 
@@ -129,8 +129,15 @@ void RefactoredClusterEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId
   TRI_ASSERT(trx() != nullptr);
   TRI_ASSERT(_cache != nullptr);
 
-  Result res = fetchEdgesFromEngines(*trx(), *_cache, _expressionContext,
-                                     vertexId, depth, _edgeList); // TODO: check vertexId copy
+
+  // Default trav. variant
+  //Result res = fetchEdgesFromEngines(*trx(), *_cache, _expressionContext,
+  // vertexId, depth, _edgeList); // TODO: check vertexId copy
+
+  // shortest path variant?
+  transaction::BuilderLeaser b(trx());
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+  Result res = fetchEdgesFromEngines(*trx(), *_cache, b->slice(), _backward, _edgeList, _cache->insertedDocuments());
 
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -139,41 +146,8 @@ void RefactoredClusterEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId
 }
 
 void RefactoredClusterEdgeCursor::readAll(aql::TraversalStats& stats, Callback const& callback) {
-  TRI_ASSERT(!_lookupInfo.empty());
-  for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
-    auto& cursor = _lookupInfo[_currentCursor].cursor();
-    LogicalCollection* collection = cursor.collection();
-    auto cid = collection->id();
-    if (cursor.hasExtra()) {
-      cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
-        stats.addScannedIndex(1);
-#ifdef USE_ENTERPRISE
-        if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-          return false;
-        }
-#endif
-        callback(EdgeDocumentToken(cid, token), edge, _currentCursor);
-        return true;
-      });
-    } else {
-      cursor.all([&](LocalDocumentId const& token) {
-        return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-          stats.addScannedIndex(1);
-#ifdef USE_ENTERPRISE
-          if (_trx->skipInaccessible()) {
-            // TODO: we only need to check one of these
-            VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
-            VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-            if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-              return false;
-            }
-          }
-#endif
-          callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
-          return true;
-        });
-      });
-    }
+  for (VPackSlice const& edge : _edgeList) {
+    callback(EdgeDocumentToken(edge), edge, _cursorPosition);
   }
 }
 

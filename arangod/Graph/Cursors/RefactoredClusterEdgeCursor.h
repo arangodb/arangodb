@@ -88,7 +88,7 @@ class RefactoredClusterEdgeCursor {
  public:
   RefactoredClusterEdgeCursor(arangodb::transaction::Methods* trx,
                               arangodb::aql::FixedVarExpressionContext const& expressionContext,
-                              ClusterTraverserCache* cache);
+                              ClusterTraverserCache* cache, bool backward);
   ~RefactoredClusterEdgeCursor();
 
   using Callback =
@@ -102,6 +102,7 @@ class RefactoredClusterEdgeCursor {
   arangodb::transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext const& _expressionContext;
   arangodb::graph::ClusterTraverserCache* _cache;
+  bool _backward;
 
  public:
   void readAll(aql::TraversalStats& stats, Callback const& callback);

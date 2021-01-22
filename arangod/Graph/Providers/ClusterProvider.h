@@ -78,6 +78,10 @@ struct ClusterProvider {
         return !operator<(other);
       }
 
+      void setVertex(VertexType thisIsATest) {
+        _vertex = thisIsATest;
+      }
+
      private:
       VertexType _vertex;
     };
@@ -87,8 +91,7 @@ struct ClusterProvider {
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
       explicit Edge() : _token() { _token = EdgeDocumentToken(); }
 
-      void addToBuilder(ClusterProvider& provider,
-                        arangodb::velocypack::Builder& builder) const;
+      void addToBuilder(ClusterProvider& provider, arangodb::velocypack::Builder& builder) const;
       EdgeDocumentToken const& getID() const;
       bool isValid() const;
 
@@ -111,7 +114,12 @@ struct ClusterProvider {
       return "<Step><Vertex>: " + _vertex.getID().toString();
     }
     bool isProcessable() const { return !isLooseEnd(); }
-    bool isLooseEnd() const { return false; }
+    bool isLooseEnd() const { return _fetched ? false : true; }
+    void setFetched() { _fetched = true; }
+    void setFetched(VertexType thisIsATest) {
+      _vertex.setVertex(thisIsATest);
+      _fetched = true;
+    }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
@@ -120,11 +128,12 @@ struct ClusterProvider {
    private:
     Vertex _vertex;
     Edge _edge;
+    bool _fetched;
   };
 
  public:
   ClusterProvider(arangodb::aql::QueryContext& queryContext, ClusterBaseProviderOptions opts,
-                       arangodb::ResourceMonitor& resourceMonitor);
+                  arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
   ClusterProvider(ClusterProvider&&) = default;
   ~ClusterProvider() = default;
@@ -133,7 +142,7 @@ struct ClusterProvider {
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;                           // rocks
+      -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
 
@@ -156,12 +165,6 @@ struct ClusterProvider {
 
   [[nodiscard]] arangodb::aql::QueryContext* query() const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Persist the given id string. The return value is guaranteed to
-  ///        stay valid as long as this cache is valid
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
-
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor
@@ -172,20 +175,6 @@ struct ClusterProvider {
   arangodb::aql::QueryContext* _query;
 
   arangodb::ResourceMonitor* _resourceMonitor;
-
-  // RefactoredTraverserCache _cache;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Set of all strings persisted in the stringHeap. So we can save some
-  ///        memory by not storing them twice.
-  //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Stringheap to take care of _id strings, s.t. they stay valid
-  ///        during the entire traversal.
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::StringHeap _stringHeap;
 
   ClusterBaseProviderOptions _opts;
 

@@ -122,11 +122,7 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::fetchResults(
     ResultList& results) -> void {
   std::vector<Step*> looseEnds{};
-#if 0
-// Please keep this for now.
-// This code needs to be activated and properly implemented as soon
-// as we have a Cluster Prodiver in plave, that can produce non-processable
-// steps
+
   if (_direction == Direction::FORWARD) {
     for (auto& [step, unused] : results) {
       if (!step.isProcessable()) {
@@ -149,7 +145,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     // or that we need to refetch at some later point.
     // TODO: maybe we can combine this with prefetching of paths
   }
-#endif
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
@@ -161,17 +156,19 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+
     // Will throw all network errors here
-    /*
     auto&& preparedEnds = futureEnds.get();
+    for (auto const& end : preparedEnds) {
+      LOG_DEVEL << "Prepare this loose end now: " << end->getVertex().getID().toString();
+    }
     LOG_DEVEL << "needs to be implemented: " << preparedEnds;
-    */
+
     // TODO we somehow need to handover those looseends to - (future - not yet implemented and not relevant yet)
     // the queue again, in order to remove them from the loosend list.
   }
   auto step = _queue.pop();
   LOG_DEVEL << "Got step from queue: " << step.getVertex().getID().toString();
-  LOG_DEVEL << "Appending to pathstore:";
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
     LOG_DEVEL << "Expanding in TSE: " << n.getVertex().getID().toString();
@@ -179,7 +176,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
-
     if ((getDepth() + other.getDepth() >= _minDepth) && !res.isFiltered()) {
       // One side of the path is checked, the other side is unclear:
       // We need to combine the test of both sides.
@@ -188,7 +184,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // TODO: Check if the GLOBAL holds true for weightedEdges
       other.matchResultsInShell(n, results, _validator);
     }
-
     if (!res.isPruned()) {
       // Add the step to our shell
       _shell.emplace(std::move(n));
@@ -209,6 +204,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Step const& match, ResultList& results, PathValidator const& otherSideValidator)
     -> void {
   auto [first, last] = _shell.equal_range(match);
+  LOG_DEVEL << "match results in shell";
   if (_direction == FORWARD) {
     while (first != last) {
       auto res = _validator.validatePath(*first, otherSideValidator);
@@ -368,6 +364,8 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     }
   }
 
+  LOG_DEVEL << "result size is: " << _results.size();
+  LOG_DEVEL << "Now we need to fetch results aka. looseEnds";
   fetchResults();
 }
 
@@ -414,8 +412,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::fetchResults()
     -> void {
+  LOG_DEVEL << "fetchResults in TwoSidedEnumerator";
   if (!_resultsFetched && !_results.empty()) {
+    LOG_DEVEL << "Fetch left";
     _left.fetchResults(_results);
+    LOG_DEVEL << "Fetch right";
     _right.fetchResults(_results);
   }
   _resultsFetched = true;
