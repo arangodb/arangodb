@@ -477,10 +477,14 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
           builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
         } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
           builder.add(StaticStrings::RevString, VPackValue(revInBody.toString()));
+          headerRev = revInBody;   // make sure that we report 412 and not 409
         }
       }
 
       body = builder.slice();
+    } else if (!headerRev.isSet() && revInBody.isSet() &&
+               opOptions.ignoreRevs == false) {
+      headerRev = revInBody;   // make sure that we report 412 and not 409
     }
   }
 

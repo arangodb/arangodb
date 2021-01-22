@@ -156,7 +156,7 @@ describe ArangoDB do
         body = "{ \"_rev\": \"658993\", \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
 
-        doc.code.should eq(409)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -232,7 +232,7 @@ describe ArangoDB do
         body = "{ \"_key\" : \"hello\", \"_rev\" : \"658993\", \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
 
-        doc.code.should eq(409)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -747,7 +747,7 @@ describe ArangoDB do
         body = "{ \"_rev\": \"658993\", \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
 
-        doc.code.should eq(409)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -823,7 +823,7 @@ describe ArangoDB do
         body = "{ \"_key\" : \"hello\", \"_rev\" : \"658993\", \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
 
-        doc.code.should eq(409)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
