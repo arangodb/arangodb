@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed some wrong behaviour in single document updates. If the option
+* Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
   but the _key was given in the URL path, then the rev was wrongly taken
   as 0, rather than using the one from the document body.
