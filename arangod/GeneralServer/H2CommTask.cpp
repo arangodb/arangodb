@@ -571,9 +571,6 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
     return;
   }
 
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
-  double const queueTime = stat.ELAPSED_WHILE_QUEUED();
-
   // and give some request information
   LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
       << "\"h2-request-end\",\"" << (void*)this << "\",\""
@@ -581,7 +578,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << "\",\""
       //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
       << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6) << "," << Logger::FIXED(queueTime, 6);
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);

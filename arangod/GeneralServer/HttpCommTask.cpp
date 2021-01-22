@@ -608,17 +608,14 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
-  double const queueTime = stat.ELAPSED_WHILE_QUEUED();
 
-  using namespace std::chrono;
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress << "\",\""
       << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
       << url() << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6) << "," << Logger::FIXED(queueTime, 6) ;
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
 
   // sendResponse is always called from a scheduler thread
   boost::asio::post(this->_protocol->context.io_context,
