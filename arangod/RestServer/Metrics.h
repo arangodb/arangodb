@@ -99,7 +99,7 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
 
-  T fetch_add(T arg, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_add(T t, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_add(t);
     } else {
@@ -107,14 +107,14 @@ template<typename T> class Gauge : public Metric {
       do {
       } while (!_g.compare_exchange_weak(tmp, tmp + t, mo, std::memory_order_relaxed));
     }
-    return *this;
+    return _g;
   }
   Gauge<T>& operator+=(T const& t) {
     fetch_add(t, std::memory_order_relaxed);
-    return *this
+    return *this;
   }
 
-  T fetch_sub(T arg, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_sub(T t, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_sub(t);
     } else {
@@ -122,11 +122,11 @@ template<typename T> class Gauge : public Metric {
       do {
       } while (!_g.compare_exchange_weak(tmp, tmp - t, mo, std::memory_order_relaxed));
     }
-    return *this;
+    return _g;
   }
   Gauge<T>& operator-=(T const& t) {
     fetch_sub(t, std::memory_order_relaxed);
-    return *this
+    return *this;
   }
 
   Gauge<T>& operator*=(T const& t) {
