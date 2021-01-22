@@ -225,6 +225,7 @@ class DumpRestoreHelper {
       // if we dump with multiple databases, it remains with the original name.
       database = 'UnitTestsDumpSrc';
     }
+    db._useDatabase(database);
     this.results.test = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.test);
   }
