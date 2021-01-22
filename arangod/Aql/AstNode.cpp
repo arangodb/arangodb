@@ -1487,7 +1487,7 @@ bool AstNode::isAttributeAccessForVariable(
 }
 
 /// @brief recursively clear flags
-void AstNode::clearFlagsRecursive() {
+void AstNode::clearFlagsRecursive() noexcept {
   clearFlags();
   size_t const n = numMembers();
 
@@ -2652,64 +2652,64 @@ void AstNode::markFinalized(AstNode* subtreeRoot) {
 
 template <typename... Args>
 std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags(AstNodeFlagType flag,
-                                                               Args... args) {
+                                                               Args... args) noexcept {
   return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) +
          makeFlags(args...);
 }
 
-std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags() {
+std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags() noexcept {
   return static_cast<std::underlying_type<AstNodeFlagType>::type>(0);
 }
 
-bool AstNode::hasFlag(AstNodeFlagType flag) const {
+bool AstNode::hasFlag(AstNodeFlagType flag) const noexcept {
   return ((flags & static_cast<decltype(flags)>(flag)) != 0);
 }
 
-void AstNode::clearFlags() { 
+void AstNode::clearFlags() noexcept { 
   // clear all flags but this one
   flags &= AstNodeFlagType::FLAG_INTERNAL_CONST; 
 }
 
-void AstNode::setFlag(AstNodeFlagType flag) const { flags |= flag; }
+void AstNode::setFlag(AstNodeFlagType flag) const noexcept { flags |= flag; }
 
-void AstNode::setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const {
+void AstNode::setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const noexcept {
   flags |= (typeFlag | valueFlag);
 }
 
-void AstNode::removeFlag(AstNodeFlagType flag) const { flags &= ~flag; }
+void AstNode::removeFlag(AstNodeFlagType flag) const noexcept { flags &= ~flag; }
 
-bool AstNode::isSorted() const {
+bool AstNode::isSorted() const noexcept {
   return ((flags & (DETERMINED_SORTED | VALUE_SORTED)) == (DETERMINED_SORTED | VALUE_SORTED));
 }
 
-bool AstNode::isNullValue() const {
+bool AstNode::isNullValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_NULL);
 }
 
-bool AstNode::isIntValue() const {
+bool AstNode::isIntValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_INT);
 }
 
-bool AstNode::isDoubleValue() const {
+bool AstNode::isDoubleValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_DOUBLE);
 }
 
-bool AstNode::isNumericValue() const {
+bool AstNode::isNumericValue() const noexcept {
   return (type == NODE_TYPE_VALUE &&
           (value.type == VALUE_TYPE_INT || value.type == VALUE_TYPE_DOUBLE));
 }
 
-bool AstNode::isBoolValue() const {
+bool AstNode::isBoolValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_BOOL);
 }
 
-bool AstNode::isStringValue() const {
+bool AstNode::isStringValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING);
 }
 
-bool AstNode::isArray() const { return (type == NODE_TYPE_ARRAY); }
+bool AstNode::isArray() const noexcept { return (type == NODE_TYPE_ARRAY); }
 
-bool AstNode::isObject() const { return (type == NODE_TYPE_OBJECT); }
+bool AstNode::isObject() const noexcept { return (type == NODE_TYPE_OBJECT); }
 
 AstNode const* AstNode::getAttributeAccessForVariable(bool allowIndexedAccess) const {
   if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION &&
@@ -2936,7 +2936,7 @@ void AstNode::setData(void const* v) {
   setData(const_cast<void*>(v));
 }
 
-void AstNode::freeComputedValue() {
+void AstNode::freeComputedValue() noexcept {
   if (_computedValue != nullptr && !hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST)) {
     delete[] _computedValue;
     _computedValue = nullptr;

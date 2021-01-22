@@ -23,6 +23,8 @@
 #ifndef VELOCYPACK_DESERIALIZER_H
 #define VELOCYPACK_DESERIALIZER_H
 
+#include <unordered_set>
+
 #include "array.h"
 #include "attribute.h"
 #include "conditional.h"

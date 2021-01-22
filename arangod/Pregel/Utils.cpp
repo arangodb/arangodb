@@ -64,8 +64,10 @@ std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::asyncModeKey = "asyncMode";
 std::string const Utils::useMemoryMapsKey = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
+std::string const Utils::activateAllKey = "reset-all-active";
 
 std::string const Utils::globalSuperstepKey = "gss";
+std::string const Utils::phaseFirstStepKey = "phase-first-step";
 std::string const Utils::vertexCountKey = "vertexCount";
 std::string const Utils::edgeCountKey = "edgeCount";
 std::string const Utils::shardIdKey = "shrdId";
@@ -81,6 +83,11 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
+std::string const Utils::reportsKey = "reports";
+
+std::string const Utils::workerToMasterMessagesKey = "workerToMasterMessages";
+std::string const Utils::masterToWorkerMessagesKey = "masterToWorkerMessages";
+
 
 std::string Utils::baseUrl(std::string const& prefix) {
   return Utils::apiPrefix + prefix + "/";

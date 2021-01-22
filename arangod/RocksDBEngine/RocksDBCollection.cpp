@@ -685,7 +685,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     _meta.adjustNumberDocuments(seq, /*revision*/ newRevisionId(),
                                 -static_cast<int64_t>(numDocs));
 
-    _statistics._numWrite.count(numDocs);
+    _statistics._numTruncate.count(numDocs);
 
     {
       READ_LOCKER(idxGuard, _indexesLock);
@@ -723,7 +723,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   uint64_t const prvICC = state->options().intermediateCommitCount;
   auto const tmp = std::min<uint64_t>(prvICC, 10000);
   state->options().intermediateCommitCount = tmp;
-  _statistics._numWrite.count(tmp);
+  _statistics._numTruncate.count(tmp);
 
   uint64_t found = 0;
   VPackBuilder docBuffer;

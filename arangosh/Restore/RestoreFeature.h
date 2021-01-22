@@ -94,6 +94,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
+    bool useEnvelope{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     bool failOnUpdateContinueFile{false};
@@ -138,11 +139,11 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-
     VPackSlice collection;
+    bool useEnvelope;
 
-    JobData(ManagedDirectory&, RestoreFeature&, RestoreProgressTracker& progressTracker,
-            Options const&, Stats&, VPackSlice const&);
+    JobData(ManagedDirectory& directory, RestoreFeature& feature, RestoreProgressTracker& progressTracker,
+            Options const& options, Stats& stats, VPackSlice collection, bool useEnvelope);
   };
 
  private:

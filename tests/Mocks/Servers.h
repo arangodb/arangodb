@@ -87,6 +87,15 @@ class MockServer {
     return _server.addFeature<Type, As>(std::forward<Args>(args)...);
   }
 
+  // make previously added feature untracked.
+  // useful for successors of base mock servers
+  // that want to exclude some standart features from
+  // bootstrapping
+  template <typename Type>
+  void untrackFeature() {
+    _features.erase(&getFeature<Type>());
+  }
+
   // convenience method to fetch feature, equivalent to server().getFeature....
   template <typename T>
   T& getFeature() {
@@ -131,6 +140,7 @@ class MockV8Server : public MockServer,
                      public IResearchLogSuppressor {
  public:
   MockV8Server(bool startFeatures = true);
+  ~MockV8Server();
 };
 
 /// @brief a server with features added that allow to execute AQL queries
@@ -183,6 +193,13 @@ class MockClusterServer : public MockServer,
   // Implementation knows the place when all features are included
   consensus::index_t agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
+  
+  // creation of collection is separated
+  // as for DBerver at first maintenance should
+  // create database and only after collections
+  // will be populated in plan.
+  void agencyCreateCollections(std::string const& name);
+
   void agencyDropDatabase(std::string const& name);
 
  private:

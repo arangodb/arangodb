@@ -54,6 +54,7 @@ struct TransactionStatistics {
   Counter& _sequentialLocks;
   Counter& _numRead;
   Counter& _numWrite;
+  Counter& _numTruncate;
   Counter& _numReplicate;
   Histogram<log_scale_t<float>>& _rocksdb_insert_usec;
   Histogram<log_scale_t<float>>& _rocksdb_read_usec;

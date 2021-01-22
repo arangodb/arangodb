@@ -1,6 +1,12 @@
 include_directories(.)
 
 # ----------------------------------------
+# Greenspun tests
+# ----------------------------------------
+
+add_subdirectory(Greenspun)
+
+# ----------------------------------------
 # Fuerte tests
 # ----------------------------------------
 
@@ -78,6 +84,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
@@ -119,6 +126,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
+  Aql/OldSubqueriesTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryHelper.cpp
   Aql/RegisterPlanTest.cpp
@@ -213,6 +221,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/KPathFinderTest.cpp
   Graph/KPathFinderTest_Refactored.cpp
   Graph/KShortestPathsFinder.cpp
+  Greenspun/PrimitivesTest.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp

@@ -981,12 +981,26 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
-  // Now handle the subqueries:
-  for (auto& s : v->subQueryNodes) {
+  if (v->subqueryNodes.empty() && super == nullptr) {
+    // shrink RegisterPlan by cutting off all unused rightmost registers
+    // from each depth. this is a completely optional performance
+    // optimization. turning it off should not affect correctness,
+    // only performance.
+    // note: we are intentionally not performing this optimization
+    // in case the query still contains old style subqueries. 
+    // in that case, the register planning optimization would be slightly
+    // more complex to perform. 99.99% of queries should not be affected
+    // by this optimization being turned off, because old-style subqueries
+    // are only around in case except someone intentionally turned off
+    // subquery optimizations. 
+    v->shrink(this);
+  }
+
+  // Now handle old-style subqueries:
+  for (auto& s : v->subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
   }
-  walker.reset();
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
@@ -1138,6 +1152,36 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
     : _id(id), _depth(0), _varUsageValid(false), _isInSplicedSubquery(false), _plan(plan) {}
 
 ExecutionNodeId ExecutionNode::id() const { return _id; }
+
+void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto assertNotContained = [](RegisterId maxRegister, auto const& container) noexcept {
+    std::for_each(container.begin(), container.end(), [maxRegister](RegisterId regId) {
+      TRI_ASSERT(regId <= maxRegister);
+    });
+  };
+  assertNotContained(maxRegister, _regsToClear);
+  // validate all levels of _regsToKeepStack
+  for (auto const& regsToKeep : _regsToKeepStack) {
+    assertNotContained(maxRegister, regsToKeep); 
+  }
+#endif
+  
+  auto removeRegisters = [maxRegister](auto& container) {
+    for (auto it = container.begin(); it != container.end(); /* no hoisting */) {
+      if ((*it) > maxRegister) {
+        it = container.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  };
+
+  auto it = _registerPlan->unusedRegsByNode.find(_id);
+  if (it != _registerPlan->unusedRegsByNode.end()) {
+    removeRegisters(it->second.back());
+  }
+}
 
 void ExecutionNode::swapFirstDependency(ExecutionNode* node) {
   TRI_ASSERT(hasDependency());
@@ -1889,7 +1933,6 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   TRI_ASSERT(expression() != nullptr);
 
-
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),
                           RegIdSet{outputRegister});
@@ -2088,7 +2131,7 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
 
   // The const_cast has been taken from previous implementation.
   auto executorInfos =
-      SubqueryExecutorInfos(*subquery, outReg, const_cast<SubqueryNode*>(this)->isConst());
+      SubqueryExecutorInfos(*subquery, engine.getQuery(), outReg, const_cast<SubqueryNode*>(this)->isConst());
   if (isModificationNode()) {
     return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
