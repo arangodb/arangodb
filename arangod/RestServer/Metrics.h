@@ -99,7 +99,7 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
 
-  T fetch_add(T t, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_add(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_add(t, mo);
     } else {
@@ -121,7 +121,7 @@ template<typename T> class Gauge : public Metric {
     return *this;
   }
 
-  T fetch_sub(T t, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_sub(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_sub(t, mo);
     } else {
