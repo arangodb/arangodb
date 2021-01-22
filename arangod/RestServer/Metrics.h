@@ -98,40 +98,48 @@ template<typename T> class Gauge : public Metric {
   Gauge(Gauge const&) = delete;
   ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
-  Gauge<T>& operator+=(T const& t) {
+
+  T fetch_add(T arg, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_add(t);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
-      } while (!_g.compare_exchange_weak(
-                 tmp, tmp + t));
+      } while (!_g.compare_exchange_weak(tmp, tmp + t, mo, std::memory_order_relaxed));
     }
     return *this;
   }
-  Gauge<T>& operator-=(T const& t) {
+  Gauge<T>& operator+=(T const& t) {
+    fetch_add(t, std::memory_order_relaxed);
+    return *this
+  }
+
+  T fetch_sub(T arg, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     if constexpr(std::is_integral_v<T>) {
       _g.fetch_sub(t);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
-      } while (!_g.compare_exchange_weak(
-                 tmp, tmp - t));
+      } while (!_g.compare_exchange_weak(tmp, tmp - t, mo, std::memory_order_relaxed));
     }
     return *this;
   }
+  Gauge<T>& operator-=(T const& t) {
+    fetch_sub(t, std::memory_order_relaxed);
+    return *this
+  }
+
   Gauge<T>& operator*=(T const& t) {
-      T tmp(_g.load(std::memory_order_relaxed));
-      do {
-      } while (!_g.compare_exchange_weak(
-                 tmp, tmp * t));
+    T tmp(_g.load(std::memory_order_relaxed));
+    do {
+    } while (!_g.compare_exchange_weak(tmp, tmp * t));
     return *this;
   }
   Gauge<T>& operator/=(T const& t) {
     TRI_ASSERT(t != T(0));
-      T tmp(_g.load(std::memory_order_relaxed));
-      do {
-      } while (!_g.compare_exchange_weak(tmp, tmp / t));
+    T tmp(_g.load(std::memory_order_relaxed));
+    do {
+    } while (!_g.compare_exchange_weak(tmp, tmp / t));
     return *this;
   }
   Gauge<T>& operator=(T const& t) {
@@ -314,7 +322,7 @@ struct log_scale_t : public scale_t<T> {
   T base() const {
     return _base;
   }
- 
+
  private:
   T _base, _div;
   double _lbase;
@@ -354,7 +362,7 @@ struct lin_scale_t : public scale_t<T> {
     b.add("scale-type", VPackValue("linear"));
     scale_t<T>::toVelocyPack(b);
   }
- 
+
  private:
   T _base, _div;
 };
