@@ -76,6 +76,8 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
 
+#include <sstream>
+
 using namespace arangodb;
 using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
@@ -86,6 +88,17 @@ using Future = futures::Future<T>;
 namespace {
 
 enum class ReplicationType { NONE, LEADER, FOLLOWER };
+
+Result buildRefusalResult(LogicalCollection const& collection, char const* operation, 
+                          OperationOptions const& options, std::string const& leader) {
+  std::stringstream msg;
+  msg << TRI_errno_string(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION)
+      << ": shard: " << collection.vocbase().name() << "/" << collection.name()
+      << ", operation: " << operation 
+      << ", from: " << options.isSynchronousReplicationFrom 
+      << ", current leader: " << leader;
+  return Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, msg.str());
+}
 
 // wrap vector inside a static function to ensure proper initialization order
 std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback>& getDataSourceRegistrationCallbacks() {
@@ -1037,7 +1050,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+        return OperationResult(
+            ::buildRefusalResult(*collection, "insert", options, theLeader), 
+            options);
       }
     }
   }  // isDBServer - early block
@@ -1335,18 +1350,20 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+        return OperationResult(
+            ::buildRefusalResult(*collection, (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace" : "update"), options, theLeader), 
+            options);
       }
     }
   }  // isDBServer - early block
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
-//  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
-//
-//  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-//    return OperationResult(lockResult);
-//  }
+  //  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
+  //
+  //  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+  //    return OperationResult(lockResult);
+  //  }
 
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
@@ -1555,7 +1572,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+        return OperationResult(
+            ::buildRefusalResult(*collection, "remove", options, theLeader), 
+            options);
       }
     }
   }  // isDBServer - early block
@@ -1775,7 +1794,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return futures::makeFuture(
-            OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+            OperationResult(
+                ::buildRefusalResult(*collection, "truncate", options, theLeader), 
+                options));
       }
     }
   }  // isDBServer - early block

@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improved logging for error 1489 ("a shard leader refuses to perform a 
+  replication operation"). The log message will now provide the database and
+  shard name plus the differing information about the shard leader.
+
 * Fix decoding of values in `padded` key generator when restoring from a dump.
 
 * Fixed error reporting for hotbackup restore from dbservers back to
