@@ -113,6 +113,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
                                           << ", fromTick " << fromTick;
   }
 
+  VPackBuilder builder; // will be recycled for every batch
+
   auto clock = std::chrono::steady_clock();
   auto startTime = clock.now();
     
@@ -204,9 +206,11 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
               "number of historic logfiles on the leader.");
     }
 
+    builder.clear();
+
     ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
+    r = applyLog(response.get(), fromTick, applyStats, builder, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;

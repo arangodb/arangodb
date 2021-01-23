@@ -140,12 +140,12 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
                                       std::string const& endpoint,
                                       std::string const& database, std::string const& clientId,
                                       double timeout, uint64_t& id) {
-  std::string error("startReadLockOnLeader: Failed to get read lock - ");
-
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
+  
+  std::string error("startReadLockOnLeader: Failed to get read lock");
 
   network::RequestOptions options;
   options.database = database;
@@ -164,18 +164,17 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
       id = std::stoull(idSlice.get(ID).copyString());
-      return arangodb::Result();
     } catch (std::exception const&) {
-      error += " expecting id to be uint64_t ";
+      error += " - expecting id to be uint64_t ";
       error += idSlice.toJson();
-      return arangodb::Result(TRI_ERROR_INTERNAL, error);
+      res.reset(TRI_ERROR_INTERNAL, error);
     } catch (...) {
       TRI_ASSERT(false);
-      return arangodb::Result(TRI_ERROR_INTERNAL, error);
+      res.reset(TRI_ERROR_INTERNAL, error);
     }
-  } else {
-    return res;
-  }
+  } 
+
+  return res;
 }
 
 static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
@@ -224,14 +223,15 @@ static arangodb::Result addShardFollower(
     std::string const& database, std::string const& shard, uint64_t lockJobId,
     std::string const& clientId, SyncerId const syncerId,
     std::string const& clientInfoString, double timeout = 120.0) {
-  LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
-      << "addShardFollower: tell the leader to put us into the follower "
-         "list for " << database << "/" << shard << "...";
 
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
+  
+  LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
+      << "addShardFollower: tell the leader to put us into the follower "
+         "list for " << database << "/" << shard << "...";
 
   try {
     auto& df = pool->config().clusterInfo->server().getFeature<DatabaseFeature>();
@@ -486,10 +486,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     std::shared_ptr<VPackBuilder> sy) {
 
   auto& vocbase = col->vocbase();
-
   auto database = vocbase.name();
-
-  auto shard = col->name();
 
   std::string leaderId;
   if (config.hasKey(LEADER_ID)) {
@@ -502,6 +499,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   configuration.validate();
 
   // database-specific synchronization
+  // note: syncer must be created via a shared_ptr, as it will use shared_from_this() 
+  // internally.
   auto syncer = std::make_shared<DatabaseInitialSyncer>(vocbase, configuration);
 
   if (!leaderId.empty()) {
@@ -584,15 +583,15 @@ static arangodb::Result replicationSynchronizeCatchup(
     std::string const context = "catching up delta changes for shard " + database + "/" + collection;
     r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
-    r = Result(ex.code(), ex.what());
+    r.reset(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    r = Result(TRI_ERROR_INTERNAL, ex.what());
+    r.reset(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
+    r.reset(TRI_ERROR_INTERNAL, "unknown exception");
   }
 
   if (r.fail()) {
-    LOG_TOPIC("fa2ab", ERR, Logger::REPLICATION)
+    LOG_TOPIC("fa2ab", WARN, Logger::REPLICATION)
         << "syncCollectionFinalize failed: " << r.errorMessage();
   }
 
@@ -624,15 +623,15 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
     std::string const context = "final synchronization of shard " + database + "/" + collection;
     r = syncer.syncCollectionFinalize(collection, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
-    r = Result(ex.code(), ex.what());
+    r.reset(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    r = Result(TRI_ERROR_INTERNAL, ex.what());
+    r.reset(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
+    r.reset(TRI_ERROR_INTERNAL, "unknown exception");
   }
 
   if (r.fail()) {
-    LOG_TOPIC("e8056", ERR, Logger::REPLICATION)
+    LOG_TOPIC("e8056", WARN, Logger::REPLICATION)
         << "syncCollectionFinalize failed: " << r.errorMessage();
   }
 

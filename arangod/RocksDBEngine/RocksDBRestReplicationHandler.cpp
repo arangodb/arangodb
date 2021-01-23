@@ -370,6 +370,13 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
+  
+  // "collection" is optional, and may in the DB server case contain the name of
+  // a single shard for shard synchronization
+  std::string collection;
+  if (!isGlobal) {
+    collection = _request->value("collection");
+  }
 
   VPackBuilder builder;
   builder.openObject();
@@ -381,8 +388,15 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
     ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
-    TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    if (collection.empty()) {
+      // all collections in database
+      res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
+      TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    } else {
+      // single collection/shard in database
+      res = ctx->getInventory(_vocbase, collection, builder);
+      TRI_ASSERT(builder.hasKey("collections"));
+    }
   }
 
   if (res.fail()) {
@@ -391,7 +405,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  const std::string snapTick = std::to_string(ctx->snapshotTick());
+  std::string const snapTick = std::to_string(ctx->snapshotTick());
   // <state>
   builder.add("state", VPackValue(VPackValueType::Object));
   builder.add("running", VPackValue(true));

@@ -1,6 +1,11 @@
 devel
 -----
 
+* Improve shard synchronization protocol by only transferring the required
+  parts of the inventory from leader to follower. Previously, for each shard
+  the entire inventory was exchanged, which included all shards of the
+  respective database with all their details.
+
 * Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
   but the _key was given in the URL path, then the rev was wrongly taken

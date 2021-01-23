@@ -120,7 +120,7 @@ arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& conn
   if (leaderId.empty()) {
     // invalid leader id
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("invalid server id in response") + endpointString);
+                  std::string("invalid server id in response") + leaderIdString);
   }
 
   if (leaderIdString == connection.localServerId()) {
@@ -132,11 +132,11 @@ arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& conn
   }
 
   // server."engine"
-  std::string engineString = "unknown";
-  Slice const engine = server.get("engine");
-  if (engine.isString()) {
+  if (Slice engine = server.get("engine"); engine.isString()) {
     // the attribute "engine" is optional, as it was introduced later
-    engineString = engine.copyString();
+    leader.engine = engine.copyString();
+  } else {
+    leader.engine = "unknown";
   }
 
   std::string const versionString(version.copyString());
@@ -157,7 +157,6 @@ arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& conn
   leader.lastLogTick = lastLogTick;
   leader.lastUncommittedLogTick = lastUncommittedLogTick;
   leader.active = running;
-  leader.engine = engineString;
 
   LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
       << "connected to leader at " << leader.endpoint << ", id "
@@ -474,13 +473,14 @@ Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSynce
     return buildHttpError(response.get(), url, connection);
   }
 
-  VPackBuilder builder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   Result r = parseResponse(builder, response.get());
   if (r.fail()) {
     return r;
   }
 
-  VPackSlice const slice = builder.slice();
+  VPackSlice slice = builder.slice();
 
   if (!slice.isObject()) {
     LOG_TOPIC("22327", DEBUG, Logger::REPLICATION)

@@ -462,7 +462,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     if (!_config.isChild()) {
       batchFinish();
     }
-    return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
+    return Result(TRI_ERROR_INTERNAL, "an unknown exception occurred");
   }
 }
 
@@ -1863,6 +1863,16 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_config.applier._includeFoxxQueues) {
     url += "&includeFoxxQueues=true";
   }
+  
+  // use an optmization here for shard synchronization: only fetch the inventory 
+  // including a single shard. this can greatly reduce the size of the response.
+  if (ServerState::instance()->isDBServer() &&
+      !_config.isChild() &&
+      _config.applier._skipCreateDrop &&
+      _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
+      _config.applier._restrictCollections.size() == 1) {
+    url += "&collection=" + arangodb::basics::StringUtils::urlEncode(*(_config.applier._restrictCollections.begin()));
+  }
 
   // send request
   _config.progress.set("fetching leader inventory from " + url);
@@ -1888,7 +1898,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
             url + ": invalid response type for initial data. expecting array");
   }
 
-  VPackSlice const slice = builder.slice();
+  VPackSlice slice = builder.slice();
   if (!slice.isObject()) {
     LOG_TOPIC("3b1e6", DEBUG, Logger::REPLICATION)
         << "client: DatabaseInitialSyncer::run - inventoryResponse is not an "
@@ -1899,7 +1909,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
                       _config.leader.endpoint + url + ": invalid JSON");
   }
 
-  return Result();
+  return r;
 }
 
 /// @brief handle the inventory response of the leader
