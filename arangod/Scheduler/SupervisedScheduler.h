@@ -212,7 +212,8 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _ongoingLowPriorityGauge;
   
   /// @brief amount of time it took for the last low prio item to be dequeued
-  /// (time between queuing and dequeing) [ms]
+  /// (time between queuing and dequeing) [ms].
+  /// this metric is only updated probabilistically
   Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
 
   std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;

@@ -1,9 +1,14 @@
 devel
 -----
 
-* Added metric `arangodb_scheduler_current_current_queue_time` to estimate
-  the amount of time it takes a low priority queue item to bubble up to the 
-  queue's head (in ms).
+* Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that provides 
+  the time (in millseconds) it took for the most recent low priority scheduler queue 
+  item to bubble up to the queue's head. This metric can be used to estimate the
+  queuing time for incoming requests. 
+  The metric will be updated probabilistically when a request is pulled from the 
+  scheduler queue, and may remain at its previous value for a while if only few
+  requests are coming in or remain permanently at its previous value if no further 
+  requests are incoming at all.
 
 * Added metrics for document read and write operations:
 

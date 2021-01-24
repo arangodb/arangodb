@@ -30,6 +30,7 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -197,8 +198,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "Total number of ongoing RestHandlers coming from "
           "the low prio queue")),
       _metricsLastLowPriorityDequeueTime(_server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_scheduler_queue_current_dequeue_time [ms]", uint64_t(0),
-          "Current estimated amount of time for a low priority queue to bubble up to the queue's head")),
+          "arangodb_scheduler_low_prio_queue_last_dequeue_time", uint64_t(0),
+          "Last recorded dequeue time for a low priority queue item [ms]")),
       _metricsQueueLengths{
           _server.getFeature<arangodb::MetricsFeature>().gauge(
               "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
@@ -229,7 +230,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
   if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
     return false;
   }
-  
+
   // use memory order acquire to make sure, pushed item is visible
   uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t const jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
@@ -243,7 +244,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
 
   TRI_ASSERT(queueNo < NumberOfQueues);
   TRI_ASSERT(isStopping() == false);
-      
+
   if (!_queues[queueNo].bounded_push(work.get())) {
     _jobsSubmitted.fetch_sub(1, std::memory_order_release);
 
@@ -663,9 +664,10 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   if (queueIndex == MediumPriorityQueue) {
     // We can work on med if less than 75% of the workers are busy
     size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers * 3 / 4) : _maxNumWorkers - 2;
-
     return threadsWorking < limit;
   }
+
+  TRI_ASSERT(queueIndex == LowPriorityQueue);
 
   // We limit the number of ongoing low priority jobs to prevent a cluster
   // from getting overwhelmed
@@ -687,10 +689,19 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
 
 std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
-  auto checkAllQueues = [this]() -> WorkItemBase* {
-    WorkItemBase* res = nullptr;
+  auto checkAllQueues = [this](uint64_t& maxCheckedQueue) -> WorkItemBase* {
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
-      if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
+      if (!this->canPullFromQueue(i)) {
+        // if we can't pull from high prio, then we will not be able to
+        // pull from medium prio.
+        // if we can't pull from medium prio, then we will not be able to
+        // pull from low prio.
+        // so we can as well abort the search here and exit.
+        break;
+      }
+      maxCheckedQueue = i;
+      WorkItemBase* res;
+      if (this->_queues[i].pop(res)) {
         _metricsQueueLengths[i].get() -= 1;
         return res;
       }
@@ -701,21 +712,37 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     return nullptr;
   };
 
+  // how often did we check for new work without success
+  uint64_t iterations = 0;
+  uint64_t maxCheckedQueue = 0;
+
   while (!state->_stop) {
+    // do the first check for new work without calculating any timeouts etc.
+    // only if we find nothing to do, we will invest time to calculate a 
+    // timeout
+    WorkItemBase* work = checkAllQueues(maxCheckedQueue);
+    if (work != nullptr) {
+      return std::unique_ptr<WorkItemBase>(work);
+    }
+    
+    ++iterations;
+    
     auto loopStart = std::chrono::steady_clock::now();
-    uint64_t timeOutForNow = state->_queueRetryTime_us;
+    uint64_t timeoutForNow = state->_queueRetryTime_us;
     if (loopStart - state->_lastJobStarted.load(std::memory_order_acquire) >
         std::chrono::seconds(1)) {
-      timeOutForNow = 0;
+      timeoutForNow = 0;
     }
+
     do {
-      WorkItemBase* work = checkAllQueues();
+      cpu_relax();
+      
+      work = checkAllQueues(maxCheckedQueue);
       if (work != nullptr) {
         return std::unique_ptr<WorkItemBase>(work);
       }
-      cpu_relax();
     } while ((std::chrono::steady_clock::now() - loopStart) <
-             std::chrono::microseconds(timeOutForNow));
+             std::chrono::microseconds(timeoutForNow));
 
     std::unique_lock<std::mutex> guard(state->_mutex);
     // Now let's one more time check all the queues under the mutex before we
@@ -732,12 +759,22 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     state->_sleeping = true;
     _numAwake.fetch_sub(1, std::memory_order_relaxed);
 
-    WorkItemBase* work = checkAllQueues();
+    work = checkAllQueues(maxCheckedQueue);
     if (work != nullptr) {
       // Fix the sleep indicators:
       state->_sleeping = false;
       _numAwake.fetch_add(1, std::memory_order_relaxed);
       return std::unique_ptr<WorkItemBase>(work);
+    }
+    
+    // nothing to do for a long time, but the previously stored dequeue time 
+    // is still set to something > 5ms (note: we use 5 here because a deque time 
+    // of > 0ms is not very unlikely for any request)
+    if (maxCheckedQueue == LowPriorityQueue &&
+        iterations >= 10 &&
+        _metricsLastLowPriorityDequeueTime.load(std::memory_order_relaxed) > 5) {
+      // set the dequeue time back to 0.
+      setLastLowPriorityDequeueTime(0);
     }
 
     if (state->_sleepTimeout_ms == 0) {
@@ -876,18 +913,21 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
 
 void SupervisedScheduler::trackBeginOngoingLowPriorityTask() {
   if (!_server.isStopping()) {
-    _ongoingLowPriorityGauge += 1;
+    ++_ongoingLowPriorityGauge;
   }
 }
 
 void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
   if (!_server.isStopping()) {
-    _ongoingLowPriorityGauge -= 1;
+    --_ongoingLowPriorityGauge;
   }
 }
 
 void SupervisedScheduler::setLastLowPriorityDequeueTime(uint64_t time) noexcept {
-  _metricsLastLowPriorityDequeueTime.operator=(time);
+  // update only probabilistically, in order to reduce contention on the gauge
+  if ((basics::SharedPRNG::rand() & 7) == 0) {
+    _metricsLastLowPriorityDequeueTime.operator=(time);
+  }
 }
 
 double SupervisedScheduler::approximateQueueFillGrade() const {
