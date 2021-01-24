@@ -462,6 +462,15 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 #endif
 
 template <SocketType T>
+std::string const& H2CommTask<T>::url(HttpRequest* req) {
+  if (this->_url.empty() && req != nullptr) {
+    this->_url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+  }
+  return this->_url;
+}
+
+template <SocketType T>
 void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
@@ -477,15 +486,11 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
 
   // from here on we will send a response, the connection is not IDLE
   _numProcessing.fetch_add(1, std::memory_order_relaxed);
-
   {
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
         << "\"h2-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(req->requestType()) << "\",\""
-        << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
-        << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
-        << "\"";
+        << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     VPackStringRef body = req->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -566,16 +571,14 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
     return;
   }
 
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
-
   // and give some request information
   LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
       << "\"h2-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress
       << "\",\""
       //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(res->responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6);
+      << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode()) << "\","
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);
