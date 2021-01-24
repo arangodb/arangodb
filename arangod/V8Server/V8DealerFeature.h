@@ -85,11 +85,13 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   uint64_t _maxContextInvocations;  // maximum number of V8 context invocations
   bool _allowAdminExecute;
   bool _allowJavaScriptTransactions;
+  bool _allowJavaScriptTasks;
   bool _enableJS;
 
  public:
   bool allowAdminExecute() const { return _allowAdminExecute; }
-  bool allowJavaScriptTransactions() const { return _allowJavaScriptTransactions; }
+  bool allowJavaScriptTransactions() const { return _allowJavaScriptTransactions || _allowAdminExecute; }
+  bool allowJavaScriptTasks() const { return _allowJavaScriptTasks || _allowAdminExecute; }
 
   bool addGlobalContextMethod(std::string const&);
   void collectGarbage();

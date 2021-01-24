@@ -30,7 +30,7 @@
 
 if (getOptions === true) {
   return {
-    'javascript.transactions': "false",
+    'javascript.tasks': "false",
     'javascript.allow-admin-execute': "false"
   };
 }
@@ -41,29 +41,20 @@ const db = require('internal').db;
 const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const internal = require('internal');
-const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'execute-transaction');
+const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'execute-task');
 
 require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function testSuite() {
-  const cn = "UnitTestsTransaction";
-
   return {
-    setUp : function() {
-      db._drop(cn);
-      db._create(cn);
-    },
-
-    tearDown : function() {
-      db._drop(cn);
-    },
-
-    testJavaScriptTransaction : function() {
-      // JavaScript transactions should be affected by the setting and fail
+    testJavaScriptTask : function() {
+      // JavaScript tasks should not work
       try {
-        db._executeTransaction({ 
-          collections: { read: cn },
-          action: function() {},
+        require('@arangodb/tasks').register({
+          command: function() {
+            require("console").log("this task must not run!");
+            throw "peng!";
+          }
         });
         fail();
       } catch (err) {
@@ -71,7 +62,7 @@ function testSuite() {
       }
     },
     
-    testJavaScriptTransactionFromFoxx : function() {
+    testJavaScriptTaskFromFoxx : function() {
       const mount = '/test';
 
       FoxxManager.install(basePath, mount);
@@ -82,30 +73,6 @@ function testSuite() {
       } finally {
         FoxxManager.uninstall(mount, {force: true});
       } 
-    },
-
-    testNonJavaScriptTransaction : function() {
-      // non-JavaScript transactions should not be affected by the setting
-      const opts = {
-        collections: { write: cn },
-      };
-      
-      const trx = db._createTransaction(opts);
-      try {
-        const tc = trx.collection(cn);
-        assertEqual(0, tc.count());
-        for (let i = 0; i < 10; ++i) {
-          tc.insert({ _key: "test" + i });
-        }
-        assertEqual(10, tc.count());
-        assertEqual(0, db[cn].count());
-        trx.commit();
-      
-        assertEqual(10, db[cn].count());
-      } catch (err) {
-        trx.abort();
-        throw err;
-      }
     },
 
   };

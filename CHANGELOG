@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added startup option `--javascript.tasks` to allow turning off JavaScript tasks
+  if not needed. The default value for this option is `true`, meaning JavaScript 
+  tasks are available as before.
+  However, with this option they can be turned off by admins to limit the amount
+  of JavaScript user code that is executed.
+
 * Added metrics for document read and write operations:
 
   - `arangodb_document_writes: Total number of document write operations
@@ -182,7 +188,7 @@ devel
 * Added startup option `--javascript.transactions` to allow turning off JavaScript
   transactions if not needed. The default value for this option is `true`, meaning
   JavaScript transactions are available as before.
-  However, using this option they can be turned off by admins to limit the amount
+  However, with this option they can be turned off by admins to limit the amount
   of JavaScript user code that is executed.
 
 * Introduce a default memory limit for AQL queries, to prevent rogue queries from
