@@ -1,7 +1,7 @@
 devel
 -----
 
-* Allow {} paceholder string also in `--ldap.search-filter`.
+* Allow {USER} paceholder string also in `--ldap.search-filter`.
 
 * Added metrics for document read and write operations:
 
