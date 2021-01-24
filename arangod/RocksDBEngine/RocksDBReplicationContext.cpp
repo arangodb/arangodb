@@ -297,10 +297,12 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
   ExecContext const& exec = ExecContext::current();
   if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
     auto collection = vocbase.lookupCollection(collectionName);
-    if (collection->status() != TRI_VOC_COL_STATUS_DELETED &&
-        collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
-      // dump inventory data for collection/shard into result
-      collection->toVelocyPackForInventory(result);
+    if (collection != nullptr) {
+      if (collection->status() != TRI_VOC_COL_STATUS_DELETED &&
+          collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
+        // dump inventory data for collection/shard into result
+        collection->toVelocyPackForInventory(result);
+      }
     }
   }
 

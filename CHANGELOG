@@ -5,7 +5,7 @@ devel
   parts of the inventory from leader to follower. Previously, for each shard
   the entire inventory was exchanged, which included all shards of the
   respective database with all their details.
-  In addition, save 3 cluster-internal requests per shard in the shard
+  In addition, save 3 cluster-internal requests per shard in the initial shard
   synchronization protocol by reusing already existing information in the
   different steps of the replication process.
 
