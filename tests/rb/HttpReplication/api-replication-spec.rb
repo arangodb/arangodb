@@ -549,6 +549,72 @@ describe ArangoDB do
     end
 
 ################################################################################
+## batches and logger state requests
+################################################################################
+
+    context "dealing with batches and logger state" do
+      after do
+        ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
+      end
+
+      it "creates a batch, without state request" do
+        doc = ArangoDB.post(api + "/batch", :body => "{}")
+        doc.code.should eq(200)
+        @batchId = doc.parsed_response['id']
+        @batchId.should  match(/^\d+$/)
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('id')
+        all['id'].should match(/^\d+$/)
+        all.should have_key('lastTick')
+        all['lastTick'].should match(/^\d+$/)
+        
+        all.should_not have_key('state')
+      end
+      
+      it "creates a batch, with state request" do
+        doc = ArangoDB.post(api + "/batch?state=true", :body => "{}")
+        doc.code.should eq(200)
+        @batchId = doc.parsed_response['id']
+        @batchId.should  match(/^\d+$/)
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('id')
+        all.should have_key('lastTick')
+        all['id'].should match(/^\d+$/)
+        all['lastTick'].should match(/^\d+$/)
+        
+        all.should have_key('state')
+        state = all['state']
+        state.should have_key('state')
+        state['state'].should have_key('running')
+        state['state']['running'].should eq(true)
+        state['state'].should have_key('lastLogTick')
+        state['state']['lastLogTick'].should match(/^\d+$/)
+        state['state'].should have_key('lastUncommittedLogTick')
+        state['state']['lastUncommittedLogTick'].should match(/^\d+$/)
+        state['state']['lastLogTick'].should eq(state['state']['lastUncommittedLogTick'])
+        state['state'].should have_key('totalEvents')
+        state['state'].should have_key('time')
+
+        # make sure that all tick values in the response are equal
+        all['lastTick'].should eq(state['state']['lastLogTick'])
+
+        state.should have_key('server')
+        state['server'].should have_key('version')
+        state['server'].should have_key('engine')
+        state['server']['engine'].should eq('rocksdb')
+        state['server'].should have_key('serverId')
+
+        state.should have_key('clients')
+        state['clients'].length.should eq(0)
+      end
+
+    end
+
+################################################################################
 ## inventory / dump
 ################################################################################
 

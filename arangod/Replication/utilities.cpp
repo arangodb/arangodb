@@ -50,7 +50,7 @@ struct TRI_vocbase_t;
 
 namespace {
 /// @brief handle the state response of the leader
-arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& connection,
+arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection const& connection,
                                            arangodb::replutils::LeaderInfo& leader,
                                            arangodb::velocypack::Slice const& slice,
                                            char const* context) {
@@ -81,17 +81,6 @@ arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& conn
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("lastLogTick is 0 in response") + endpointString);
   }
-
-  // state."lastUncommittedLogTick"
-  TRI_voc_tick_t lastUncommittedLogTick = lastLogTick;
-  tick = state.get("lastUncommittedLogTick");
-  if (tick.isString()) {
-    lastUncommittedLogTick = arangodb::basics::VelocyPackHelper::stringUInt64(tick);
-  }
-
-  // state."running"
-  bool running =
-      arangodb::basics::VelocyPackHelper::getBooleanValue(state, "running", false);
 
   // process "server" section
   Slice const server = slice.get("server");
@@ -155,19 +144,22 @@ arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& conn
   leader.minorVersion = minor;
   leader.serverId = leaderId;
   leader.lastLogTick = lastLogTick;
-  leader.lastUncommittedLogTick = lastUncommittedLogTick;
-  leader.active = running;
 
-  LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
-      << "connected to leader at " << leader.endpoint << ", id "
-      << leader.serverId.id() << ", version " << leader.majorVersion << "."
-      << leader.minorVersion << ", last log tick " << leader.lastLogTick
-      << ", last uncommitted log tick " << leader.lastUncommittedLogTick
-      << ", engine " << leader.engine
-      << (context != nullptr ? ", context: " : "")
-      << (context != nullptr ? context : "");
+  if (context == nullptr) {
+    LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
+      << "connected to leader at " << leader.endpoint 
+      << ", id " << leader.serverId.id() 
+      << ", version " << leader.majorVersion << "." << leader.minorVersion 
+      << ", last log tick " << leader.lastLogTick
+      << ", engine " << leader.engine;
+  } else {
+    LOG_TOPIC("6c921", INFO, arangodb::Logger::REPLICATION)
+      << "connected to leader at " << leader.endpoint 
+      << ", version " << leader.majorVersion << "." << leader.minorVersion 
+      << ": " << context;
+  }
 
-  return Result();
+  return {};
 }
 }  // namespace
 
@@ -252,7 +244,8 @@ constexpr double BatchInfo::DefaultTimeout;
 ///        only effective with the incremental sync (optional)
 Result BatchInfo::start(replutils::Connection const& connection,
                         replutils::ProgressInfo& progress, replutils::LeaderInfo& leader,
-                        SyncerId const syncerId, std::string const& patchCount) {
+                        SyncerId const& syncerId, char const* context,
+                        std::string const& patchCount) {
   // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
     return {TRI_ERROR_INTERNAL};
@@ -272,6 +265,11 @@ Result BatchInfo::start(replutils::Connection const& connection,
     }
     if (!connection.clientInfo().empty()) {
       parameters.add("clientInfo", connection.clientInfo());
+    }
+    if (!leader.serverId.isSet()) {
+      // if we haven't fetched the leader state yet, fetch it now.
+      // in the ideal case, this can save us one request
+      parameters.add("state", "true");
     }
     return Location(Path{path}, Query{parameters}, std::nullopt).toString();
   }();
@@ -306,11 +304,22 @@ Result BatchInfo::start(replutils::Connection const& connection,
     return r;
   }
 
-  VPackSlice const slice = builder.slice();
+  VPackSlice slice = builder.slice();
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "start batch response is not an object");
   }
+ 
+  if (!leader.serverId.isSet()) {
+    // if we don't have any info about the leader state yet, fetch the
+    // info from the response now and update our state
+    if (VPackSlice state = slice.get("state"); state.isObject()) {
+      r = ::handleLeaderStateResponse(connection, leader, state, context);
+      if (r.fail()) {
+        return r;
+      }
+    }
+  } 
 
   std::string const batchId =
       basics::VelocyPackHelper::getStringValue(slice, "id", "");

@@ -88,7 +88,8 @@ std::string const TTL("ttl");
 using namespace std::chrono;
 
 SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescription const& desc)
-  : ActionBase(feature, desc) {
+  : ActionBase(feature, desc),
+    _leaderInfo(arangodb::replutils::LeaderInfo::createEmpty()) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -121,6 +122,18 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
+}
+  
+std::string const& SynchronizeShard::clientInfoString() const { 
+  return _clientInfoString;
+}
+
+arangodb::replutils::LeaderInfo const& SynchronizeShard::leaderInfo() const {
+  return _leaderInfo;
+}
+
+void SynchronizeShard::setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo) {
+  _leaderInfo = leaderInfo;
 }
 
 SynchronizeShard::~SynchronizeShard() = default;
@@ -481,8 +494,9 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
 }
 
 static arangodb::ResultT<SyncerId> replicationSynchronize(
+    SynchronizeShard& job,
     std::shared_ptr<arangodb::LogicalCollection> const& col,
-    VPackSlice const& config, std::string const& clientInfoString,
+    VPackSlice const& config,
     std::shared_ptr<VPackBuilder> sy) {
 
   auto& vocbase = col->vocbase();
@@ -495,13 +509,11 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config, database);
-  configuration.setClientInfo(clientInfoString);
+  configuration.setClientInfo(job.clientInfoString());
   configuration.validate();
 
   // database-specific synchronization
-  // note: syncer must be created via a shared_ptr, as it will use shared_from_this() 
-  // internally.
-  auto syncer = std::make_shared<DatabaseInitialSyncer>(vocbase, configuration);
+  auto syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
   if (!leaderId.empty()) {
     syncer->setLeaderId(leaderId);
@@ -510,7 +522,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    std::string const context = "synchronization of shard " + database + "/" + col->name();
+    std::string const context = "syncing shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
   
     if (r.fail()) {
@@ -519,6 +531,9 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
           << ": " << r.errorMessage();
       THROW_ARANGO_EXCEPTION(r);
     }
+
+    // store leader info for later, so that the next phases don't need to acquire it again
+    job.setLeaderInfo(syncer->leaderInfo());
 
     {
       VPackObjectBuilder o(sy.get());
@@ -556,6 +571,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 static arangodb::Result replicationSynchronizeCatchup(
+    SynchronizeShard const& job,
     application_features::ApplicationServer& server, VPackSlice const& conf,
     double timeout, TRI_voc_tick_t& tickReached, bool& didTimeout) {
   didTimeout = false;
@@ -572,16 +588,16 @@ static arangodb::Result replicationSynchronizeCatchup(
 
   auto& df = server.getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
+  auto syncer = DatabaseTailingSyncer::create(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
-    syncer.setLeaderId(leaderId);
+    syncer->setLeaderId(leaderId);
   }
 
   Result r;
   try {
     std::string const context = "catching up delta changes for shard " + database + "/" + collection;
-    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout, context.c_str());
+    r = syncer->syncCollectionCatchup(job.leaderInfo(), collection, timeout, tickReached, didTimeout, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r.reset(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -592,13 +608,14 @@ static arangodb::Result replicationSynchronizeCatchup(
 
   if (r.fail()) {
     LOG_TOPIC("fa2ab", WARN, Logger::REPLICATION)
-        << "syncCollectionFinalize failed: " << r.errorMessage();
+        << "syncCollectionCatchup failed: " << r.errorMessage();
   }
 
   return r;
 }
 
-static arangodb::Result replicationSynchronizeFinalize(application_features::ApplicationServer& server,
+static arangodb::Result replicationSynchronizeFinalize(SynchronizeShard const& job,
+                                                       application_features::ApplicationServer& server,
                                                        VPackSlice const& conf) {
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
@@ -612,16 +629,16 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
 
   auto& df = server.getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
+  auto syncer = DatabaseTailingSyncer::create(guard.database(), configuration, fromTick, /*useTick*/ true);
 
   if (!leaderId.empty()) {
-    syncer.setLeaderId(leaderId);
+    syncer->setLeaderId(leaderId);
   }
 
   Result r;
   try {
-    std::string const context = "final synchronization of shard " + database + "/" + collection;
-    r = syncer.syncCollectionFinalize(collection, context.c_str());
+    std::string const context = "finalizing shard " + database + "/" + collection;
+    r = syncer->syncCollectionFinalize(job.leaderInfo(), collection, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r.reset(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -850,7 +867,7 @@ bool SynchronizeShard::first() {
       auto details = std::make_shared<VPackBuilder>();
 
       ResultT<SyncerId> syncRes =
-          replicationSynchronize(collection, config.slice(), _clientInfoString, details);
+          replicationSynchronize(*this, collection, config.slice(), details);
 
       auto sy = details->slice();
       auto const endTime = system_clock::now();
@@ -1016,7 +1033,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // We only allow to hold this lock for 60% of the timeout time, so to avoid
     // any issues with Locks timeouting on the Leader and the Client not
     // recognizing it.
-    res = replicationSynchronizeCatchup(feature().server(), builder.slice(),
+    res = replicationSynchronizeCatchup(*this, feature().server(), builder.slice(),
                                         timeout * 0.6, tickReached, didTimeout);
 
     if (!res.ok()) {
@@ -1094,7 +1111,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     builder.add("connectTimeout", VPackValue(60.0));
   }
 
-  res = replicationSynchronizeFinalize(feature().server(), builder.slice());
+  res = replicationSynchronizeFinalize(*this, feature().server(), builder.slice());
 
   if (!res.ok()) {
     std::string errorMessage(

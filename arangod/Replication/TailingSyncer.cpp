@@ -1423,6 +1423,7 @@ retry:
         Result r = syncer->run(_state.applier._incremental);
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
+          TRI_ASSERT(lastLogTick > 0);
           LOG_TOPIC("ee130", INFO, Logger::REPLICATION)
               << "automatic resynchronization for " << _applier->databaseName()
               << " finished. restarting continuous replication applier from "
