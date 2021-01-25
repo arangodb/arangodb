@@ -1100,8 +1100,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
           }
 
           return Result(dropResult.errorNumber(),
-                        std::string("unable to drop collection '") + name +
-                            "': " + dropResult.errorMessage());
+                        arangodb::basics::StringUtils::concatT(
+                            "unable to drop collection '", name,
+                            "': ", dropResult.errorMessage()));
         }
       } catch (basics::Exception const& ex) {
         LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
@@ -1399,7 +1400,8 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   Result res = trx.begin();
 
   if (!res.ok()) {
-    res.reset(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
+    res.reset(res.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                     "unable to start transaction: ", res.errorMessage()));
     return res;
   }
 
@@ -1473,7 +1475,9 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         if (res.is(TRI_ERROR_HTTP_CORRUPTED_JSON)) {
           using namespace std::literals::string_literals;
           auto data = std::string(ptr, pos);
-          res.appendErrorMessage(" in message '"s + data + "'");
+          res.withError([&](result::Error& err) {
+            err.appendErrorMessage(" in message '"s + data + "'");
+          });
         }
         return res;
       }
@@ -1952,7 +1956,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
     res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
-      return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
+      return res.reset(res.errorNumber(),
+                       StringUtils::concatT("could not create index: ", res.errorMessage()));
     }
   }
 

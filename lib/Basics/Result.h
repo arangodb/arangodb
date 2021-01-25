@@ -29,7 +29,7 @@
 #include <string>
 #include <string_view>
 
-#include "Basics/Error.h"
+#include "Basics/ResultError.h"
 
 namespace arangodb {
 class Result final {
@@ -160,26 +160,24 @@ class Result final {
    * @brief  Get error message
    * @return Our error message
    */
-  [[nodiscard]] auto errorMessage() const& -> std::string;
+  [[nodiscard]] auto errorMessage() const -> std::string_view;
 
-  /**
-   * @brief  Get error message
-   * @return Our error message
-   */
-  auto errorMessage() && -> std::string;
-
-  template <typename S>
-  void resetErrorMessage(S&& msg) {
-    // TODO This message doesn't make sense any longer, remove it
+  template <typename F, std::enable_if_t<std::is_invocable_r_v<void, F, arangodb::result::Error&>, int> = 0>
+  auto withError(F&& f) -> Result& {
     if (_error != nullptr) {
-      _error->resetErrorMessage(std::forward<S>(msg));
+      std::forward<F>(f)(*_error);
     }
+
+    return *this;
   }
 
-  template <typename S>
-  void appendErrorMessage(S&& msg) {
-    // TODO This message doesn't make sense any longer, remove it
-    _error->appendErrorMessage(std::forward<S>(msg));
+  template <typename F, std::enable_if_t<std::is_invocable_r_v<arangodb::result::Error, F, arangodb::result::Error const&>, int> = 0>
+  auto mapError(F&& f) -> Result {
+    if (_error != nullptr) {
+      return Result{errorNumber(), std::forward<F>(f)(*_error)};
+    }
+
+    return *this;
   }
 
  private:
@@ -192,6 +190,6 @@ class Result final {
  * @brief  Print to output stream
  * @return Said output stream
  */
-std::ostream& operator<<(std::ostream& out, arangodb::Result const& result);
+auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream&;
 
 #endif

@@ -66,13 +66,11 @@ Result::Result(Result const& other)
 Result::Result(Result&& other) noexcept : _error(std::move(other._error)) {}
 
 auto Result::operator=(Result const& other) -> Result& {
-  // TODO does this handle self-assignment correctly?
   _error = other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error);
   return *this;
 }
 
 auto Result::operator=(Result&& other) noexcept -> Result& {
-  // TODO does this handle self-assignment correctly?
   _error = std::move(other._error);
   return *this;
 }
@@ -103,10 +101,8 @@ auto Result::reset() -> Result& {
 auto Result::reset(int errorNumber) -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
     _error = nullptr;
-  } else if (_error == nullptr) {
-    _error = std::make_unique<Error>(errorNumber);
   } else {
-    _error->reset(errorNumber);
+    _error = std::make_unique<Error>(errorNumber);
   }
 
   return *this;
@@ -115,10 +111,8 @@ auto Result::reset(int errorNumber) -> Result& {
 auto Result::reset(int errorNumber, std::string const& errorMessage) -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
     _error = nullptr;
-  } else if (_error == nullptr) {
-    _error = std::make_unique<Error>(errorNumber, errorMessage);
   } else {
-    _error->reset(errorNumber, errorMessage);
+    _error = std::make_unique<Error>(errorNumber, errorMessage);
   }
 
   return *this;
@@ -127,10 +121,8 @@ auto Result::reset(int errorNumber, std::string const& errorMessage) -> Result& 
 auto Result::reset(int errorNumber, std::string&& errorMessage) noexcept -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
     _error = nullptr;
-  } else if (_error == nullptr) {
-    _error = std::make_unique<Error>(errorNumber, std::move(errorMessage));
   } else {
-    _error->reset(errorNumber, std::move(errorMessage));
+    _error = std::make_unique<Error>(errorNumber, std::move(errorMessage));
   }
 
   return *this;
@@ -142,19 +134,11 @@ auto Result::reset(Result&& other) noexcept -> Result& {
   return *this = std::move(other);
 }
 
-auto Result::errorMessage() const& -> std::string {
+auto Result::errorMessage() const -> std::string_view {
   if (_error == nullptr) {
     return {};
   } else {
     return _error->errorMessage();
-  }
-}
-
-auto Result::errorMessage() && -> std::string {
-  if (_error == nullptr) {
-    return {};
-  } else {
-    return std::move(*_error).errorMessage();
   }
 }
 

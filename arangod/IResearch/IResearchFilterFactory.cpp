@@ -1270,7 +1270,8 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
     }
 
     auto rv = fromExpression(filter, ctx, filterCtx, node);
-    return rv.reset(rv.errorNumber(), "in from binary equation" + rv.errorMessage());
+    return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                          "in from binary equation", rv.errorMessage()));
   }
 
   irs::by_term* termFilter = nullptr;
@@ -1290,7 +1291,9 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
 
   if (node.numMembers() != 2) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "wrong number of arguments in range expression: " + rv.errorMessage());
+    return rv.reset(TRI_ERROR_BAD_PARAMETER,
+                    arangodb::basics::StringUtils::concatT(
+                        "wrong number of arguments in range expression: ", rv.errorMessage()));
   }
 
   // ranges are always true
@@ -1543,7 +1546,9 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
   if (node.numMembers() != 3) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "error in Array comparison operator: " + rv.errorMessage());
+    return rv.reset(rv.errorNumber(),
+                    arangodb::basics::StringUtils::concatT(
+                        "error in Array comparison operator: ", rv.errorMessage()));
   }
 
   auto const* valueNode = node.getMemberUnchecked(0);
@@ -1621,12 +1626,16 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
         // not supported by IResearch, but could be handled by ArangoDB
         auto rv = fromExpression(filter, ctx, subFilterCtx, std::move(exprNode));
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "while getting array: ", rv.errorMessage()));
         }
       } else {
         auto rv = SubFilterFactory::byNodeSubFilter(filter, normalized, ctx, subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "while getting array: ", rv.errorMessage()));
         }
       }
     }
@@ -1679,7 +1688,9 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
       for (size_t i = 0; i < n; ++i) {
         auto rv = SubFilterFactory::byValueSubFilter(filter, fieldName, value.at(i), arrayExpansionNodeType, ctx, subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "failed to create filter because: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "failed to create filter because: ", rv.errorMessage()));
         }
       }
       return {};
@@ -1786,14 +1797,16 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
       // not supported by IResearch, but could be handled by ArangoDB
       auto rv = fromExpression(filter, ctx, subFilterCtx, std::move(exprNode));
       if (rv.fail()) {
-        return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+        return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                              "while getting array: ", rv.errorMessage()));
       }
     } else {
       auto* termFilter = filter ? &filter->add<irs::by_term>() : nullptr;
 
       auto rv = byTerm(termFilter, normalized, ctx, subFilterCtx);
       if (rv.fail()) {
-        return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+        return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                              "while getting array: ", rv.errorMessage()));
       }
     }
   }
@@ -1808,7 +1821,9 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (node.numMembers() != 2) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "error in from In" + rv.errorMessage());
+    return rv.reset(rv.errorNumber(),
+                    arangodb::basics::StringUtils::concatT("error in from In",
+                                                           rv.errorMessage()));
   }
 
   auto const* valueNode = node.getMemberUnchecked(1);
@@ -1891,7 +1906,9 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
         // failed to create a filter
         auto rv = byTerm(&filter->add<irs::by_term>(), *attributeNode, value.at(i), ctx, subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "failed to create filter because: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "failed to create filter because: ", rv.errorMessage()));
         }
       }
 
@@ -1926,7 +1943,8 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (node.numMembers() != 1) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "Bad node in negation" + rv.errorMessage());
+    return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                          "Bad node in negation", rv.errorMessage()));
   }
 
   auto const* member = node.getMemberUnchecked(0);
@@ -2158,7 +2176,8 @@ Result fromFuncBoost(
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
 
   if (rv.fail()) {
-    return {rv.errorNumber(), "error in sub-filter context: " + rv.errorMessage()};
+    return {rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                  "error in sub-filter context: ", rv.errorMessage())};
   }
 
   return {};
@@ -2589,11 +2608,9 @@ Result oneArgumentfromFuncPhrase(char const* funcName,
                                  VPackSlice elem,
                                  irs::string_ref& term) {
   if (elem.isArray() && elem.length() != 1) {
-    auto res = error::invalidArgsCount<error::ExactValue<1>>(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
+    return error::invalidArgsCount<error::ExactValue<1>>(subFuncName).withError([&](result::Error& err) {
+      err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+    });
   }
   auto actualArg = elem.isArray() ? elem.at(0) : elem;
 
@@ -2685,21 +2702,15 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                irs::by_edit_distance_options& opts,
                                std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
-    auto res = error::nondeterministicArgs(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::nondeterministicArgs(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
   auto const argc = ElementTraits::numMembers(args);
   constexpr size_t min = 3 - First;
   constexpr size_t max = 5 - First;
   if (argc < min || argc > max) {
-    auto res = error::invalidArgsCount<error::Range<min, max>>(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::invalidArgsCount<error::Range<min, max>>(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   if constexpr (0 == First) { // this is done only for AstNode so don`t bother with traits
@@ -2718,10 +2729,8 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   auto res = ElementTraits::evaluateArg(target, targetValue, funcName, args, 1 - First, isFilter, ctx);
 
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   typename ElementTraits::ValueType tmpValue; // can reuse value for int64_t and bool
@@ -2731,10 +2740,8 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   res = ElementTraits::evaluateArg(maxDistance, tmpValue, funcName, args, 2 - First, isFilter, ctx);
 
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   if (maxDistance < 0) {
@@ -2751,10 +2758,9 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
     res = ElementTraits::evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError([&](result::Error& err) {
+        err.appendErrorMessage(errorSuffix);
+      });
     }
   }
 
@@ -2782,10 +2788,9 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
     res = ElementTraits::evaluateArg(maxTerms, tmpValue, funcName, args, 4 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError([&](result::Error& err) {
+        err.appendErrorMessage(errorSuffix);
+      });
     }
   }
 
@@ -2889,20 +2894,17 @@ Result fromFuncPhraseTerms(char const* funcName,
   }
 
   if (!ElementTraits::isDeterministic(array)) {
-    auto res = error::nondeterministicArgs(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
+    return error::nondeterministicArgs(subFuncName).withError([&](result::Error& err) {
+      err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+    });
   }
 
   auto const argc = ElementTraits::numMembers(array);
   if (0 == argc) {
-    auto res = error::invalidArgsCount<error::OpenRange<false, 1>>(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
+    return error::invalidArgsCount<error::OpenRange<false, 1>>(subFuncName)
+        .withError([&](result::Error& err) {
+          err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+        });
   }
 
   irs::by_terms_options::search_terms terms;
@@ -2912,10 +2914,9 @@ Result fromFuncPhraseTerms(char const* funcName,
     auto res = ElementTraits::evaluateArg(term, termValue, subFuncName, array, i, filter != nullptr, ctx);
 
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-      };
+      return res.withError([&](result::Error& err) {
+        err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+      });
     }
     if (analyzer != nullptr) {
       // reset analyzer
@@ -2949,20 +2950,14 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
                            bool& ret,
                            std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
-    auto res = error::nondeterministicArgs(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::nondeterministicArgs(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
   auto const argc = ElementTraits::numMembers(args);
 
   if (5 - First != argc) {
-    auto res = error::invalidArgsCount<error::ExactValue<5 - First>>(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::invalidArgsCount<error::ExactValue<5 - First>>(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   if constexpr (0 == First) {
@@ -2980,39 +2975,31 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
   typename ElementTraits::ValueType includeValue;
   auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName, args, 3 - First, isFilter, ctx);
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   // (4 - First) argument defines inclusion of upper boundary
   res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args, 4 - First, isFilter, ctx);
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   // (1 - First) argument defines a lower boundary
   {
     auto res = ElementTraits::getMemberValue(args, 1 - First, funcName, min, isFilter, ctx, ret);
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
   // (2 - First) argument defines an upper boundary
   {
     auto res = ElementTraits::getMemberValue(args, 2 - First, funcName, max, isFilter, ctx, ret);
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
 
@@ -3061,24 +3048,20 @@ Result fromFuncPhraseInRange(char const* funcName,
   }
 
   if (!min.isString()) {
-    res = error::typeMismatch(subFuncName, 1, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
-                              ArgsTraits<VPackSlice>::scopedType(min));
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::typeMismatch(subFuncName, 1, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
+                               ArgsTraits<VPackSlice>::scopedType(min))
+        .withError(
+            [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
   irs::string_ref const minStrValue = getStringRef(min);
 
   if (!max.isString()) {
-    res = error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
-                              ArgsTraits<VPackSlice>::scopedType(max));
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
+                               ArgsTraits<VPackSlice>::scopedType(max))
+        .withError(
+            [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
-irs::string_ref const maxStrValue = getStringRef(max);
+  irs::string_ref const maxStrValue = getStringRef(max);
 
   if (filter) {
     auto& opts = filter->mutable_options()->push_back<irs::by_range_options>(firstOffset);
@@ -3660,10 +3643,8 @@ Result fromFuncInRange(
 
   res = ::byRange(filter, *field, min, minInclude, max, maxInclude, ctx, filterCtx);
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      "error in byRange: " + res.errorMessage()
-    };
+    return {res.errorNumber(),
+            arangodb::basics::StringUtils::concatT("error in byRange: ", res.errorMessage())};
   }
   return {};
 }
@@ -3979,7 +3960,9 @@ Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (node.numMembers() != 1) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "wrong number of parameters: " + rv.errorMessage());
+    return rv.reset(rv.errorNumber(),
+                    arangodb::basics::StringUtils::concatT(
+                        "wrong number of parameters: ", rv.errorMessage()));
   }
 
   auto const* member = node.getMemberUnchecked(0);

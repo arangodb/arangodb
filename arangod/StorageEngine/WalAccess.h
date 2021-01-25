@@ -70,7 +70,7 @@ struct WalAccessResult {
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
   int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
   void reset(Result const& other) { _result.reset(); }
 
   // access methods

@@ -130,7 +130,7 @@ add_library(arango STATIC
   Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
-  Basics/Error.cpp
+  Basics/ResultError.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
