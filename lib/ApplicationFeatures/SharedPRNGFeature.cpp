@@ -63,6 +63,7 @@ uint64_t SharedPRNGFeature::id() const noexcept {
 }
 
 uint64_t SharedPRNGFeature::rand() noexcept { 
+  TRI_ASSERT(_prngs != nullptr);
   return _prngs[id() & (stripes - 1)].next(); 
 }
 
