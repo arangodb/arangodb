@@ -113,6 +113,9 @@ enum class RequestLane {
 
   // Used by futures that have been delayed using Scheduler::delay.
   DELAYED_FUTURE,
+
+  // undefined request lane, used only in the beginning
+  UNDEFINED,
 };
 
 enum class RequestPriority {
@@ -162,6 +165,9 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::HIGH;
     case RequestLane::CONTINUATION:
       return RequestPriority::MED;
+    case RequestLane::UNDEFINED: {
+      TRI_ASSERT(false);
+    }
   }
   return RequestPriority::LOW;
 }
