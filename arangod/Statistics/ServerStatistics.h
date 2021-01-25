@@ -60,13 +60,13 @@ struct TransactionStatistics {
   std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
 
   // Total number of write operations in storage engine (excl. sync replication)
-  Counter& _numWrites;
+  std::optional<std::reference_wrapper<Counter>> _numWrites;
   // Total number of write operations in storage engine by sync replication
-  Counter& _numWritesReplication;
+  std::optional<std::reference_wrapper<Counter>> _numWritesReplication;
   // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
-  Counter& _numTruncates;
+  std::optional<std::reference_wrapper<Counter>> _numTruncates;
   // Total number of truncate operations (not number of documents truncated!) by sync replication
-  Counter& _numTruncatesReplication;
+  std::optional<std::reference_wrapper<Counter>> _numTruncatesReplication;
 
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_read_sec;
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_insert_sec;
