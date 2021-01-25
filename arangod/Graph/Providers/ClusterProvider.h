@@ -69,6 +69,7 @@ struct ClusterProvider {
       explicit Vertex(VertexType v) : _vertex(v){};
 
       VertexType const& getID() const;
+      VPackSlice const& getData() const;
 
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
@@ -82,8 +83,13 @@ struct ClusterProvider {
         _vertex = thisIsATest;
       }
 
+      void setData(VPackSlice slice) {
+        _data = slice;
+      }
+
      private:
       VertexType _vertex;
+      VPackSlice _data;
     };
 
     class Edge {
@@ -116,9 +122,9 @@ struct ClusterProvider {
     bool isProcessable() const { return !isLooseEnd(); }
     bool isLooseEnd() const { return _fetched ? false : true; }
     void setFetched() { _fetched = true; }
-    void setFetched(VertexType thisIsATest) {
-      _vertex.setVertex(thisIsATest);
-      _fetched = true;
+    void setData(VPackSlice slice) {
+      _vertex.setData(slice);
+      setFetched();
     }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }

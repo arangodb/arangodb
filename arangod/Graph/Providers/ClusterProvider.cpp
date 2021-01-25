@@ -80,6 +80,11 @@ ClusterProvider::Step::~Step() = default;
 VertexType const& ClusterProvider::Step::Vertex::getID() const {
   return _vertex;
 }
+
+VPackSlice const& ClusterProvider::Step::Vertex::getData() const {
+  return _data;
+}
+
 EdgeDocumentToken const& ClusterProvider::Step::Edge::getID() const {
   return _token;
 }
@@ -209,7 +214,8 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
         for (auto const& looseEnd : looseEnds) {
           if (looseEnd->getVertex().getID().equals(key)) {
             LOG_DEVEL << "found entry in loose ends";
-            looseEnd->setFetched(_opts.getCache()->persistString(key));
+            // looseEnd->setFetched(_opts.getCache()->persistString(key)); // TODO: remove
+            looseEnd->setData(pair.value);
             result.emplace_back(std::move(looseEnd));
           }
         }
@@ -262,12 +268,15 @@ void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
   // NOTE: OLD SingleServer Variant
   //_cache.insertVertexIntoResult(_stats, vertex.getID(), builder);
   LOG_DEVEL << "trying to add vertex into result:";
+  TRI_ASSERT(!vertex.getData().isNull());  // TODO CHECK better assert (e.g. _fetched <- maybe move to vertex from parent step element)
+  builder.add(vertex.getData());
+  /*
   bool test = _opts.getCache()->appendVertex(vertex.getID().stringRef(), builder);
   if (test) {
     LOG_DEVEL << "Could find entry in cache.";
   } else {
     LOG_DEVEL << "Could NOT find entry in cache.";
-  }
+  }*/
 };
 
 void ClusterProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
