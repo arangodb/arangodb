@@ -68,7 +68,8 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   struct abandoned_promise_handler {
     T operator()() const noexcept {
       // call arangodb crash handler for abandoned promise
-      std::terminate();
+      ::arangodb::CrashHandler::crash(
+          "a promise was abandoned that could not be handled via exception");
     }
   };
 

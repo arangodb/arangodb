@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <queue>
+#include <utility>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -267,7 +268,7 @@ static void ReportOffSync(LogicalCollection const* col, ShardMap const* shardIds
 }
 
 ShardDistributionReporter::ShardDistributionReporter(ClusterInfo* ci, network::Sender sender)
-    : _ci(ci), _send(sender) {
+    : _ci(ci), _send(std::move(sender)) {
   TRI_ASSERT(_ci != nullptr);
 }
 
