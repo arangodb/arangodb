@@ -56,32 +56,6 @@ struct EdgeDocumentToken;
 
 class RefactoredClusterEdgeCursor {
  public:
-  struct LookupInfo {
-    LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate);
-    ~LookupInfo();
-
-    LookupInfo(LookupInfo const&) = delete;
-    LookupInfo(LookupInfo&&) noexcept;
-    LookupInfo& operator=(LookupInfo const&) = delete;
-
-    void rearmVertex(VertexType vertex, transaction::Methods* trx,
-                     arangodb::aql::Variable const* tmpVar);
-
-    IndexIterator& cursor();
-
-   private:
-    // This struct does only take responsibility for the expression
-    // NOTE: The expression can be nullptr!
-    transaction::Methods::IndexHandle _idxHandle;
-    std::unique_ptr<aql::Expression> _expression;
-    aql::AstNode* _indexCondition;
-
-    std::unique_ptr<IndexIterator> _cursor;
-
-    // Position of _from / _to in the index search condition
-    std::optional<size_t> _conditionMemberToUpdate;
-  };
 
   enum Direction { FORWARD, BACKWARD };
 
@@ -95,10 +69,6 @@ class RefactoredClusterEdgeCursor {
       std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
 
  private:
-  aql::Variable const* _tmpVar;
-  size_t _currentCursor;
-  std::vector<LookupInfo> _lookupInfo;
-
   arangodb::transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext const& _expressionContext;
   arangodb::graph::ClusterTraverserCache* _cache;
