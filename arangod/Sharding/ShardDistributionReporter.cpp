@@ -349,17 +349,20 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
             // Ask them
             std::vector<network::FutureRes> futures;
-            futures.reserve(serversToAsk.size());
+            futures.reserve(serversToAsk.size() + 1);
+            futures.emplace_back(std::move(leaderF));
             for (auto const& server : serversToAsk) {
               auto f = _send("server:" + server, fuerte::RestVerb::Get, path,
                              body, reqOpts, headers);
               futures.emplace_back(std::move(f));
             }
 
+            auto responses = futures::collectAll(futures).await_unwrap();
+
             // Wait for responses
             // First wait for Leader
             {
-              auto const& res = std::move(leaderF).await_unwrap();
+              auto const& res = responses.front().unwrap();
               if (res.fail()) {
                 // We did not even get count for leader, use defaults
                 continue;
@@ -386,8 +389,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             }
 
             {
-              auto responses = futures::collectAll(futures).await_unwrap();
-              for (futures::Try<network::Response> const& response : responses) {
+              for (size_t i = 1; i < responses.size(); ++i) {
+                futures::Try<network::Response> const& response = responses[i];
                 if (!response.has_value() || response.unwrap().fail()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be

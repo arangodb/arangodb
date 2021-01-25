@@ -174,10 +174,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
-  auto status = std::move(f).await_with_timeout(std::chrono::milliseconds(350));
-  ASSERT_TRUE(status.has_value());
-
-  network::Response& res = status.value().unwrap();
+  network::Response const& res = std::move(f).await_unwrap();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -218,10 +215,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
-  auto status = std::move(f).await_with_timeout(std::chrono::milliseconds(350));
-  ASSERT_TRUE(status.has_value());
-
-  network::Response& res = status.value().unwrap();
+  network::Response const& res = std::move(f).await_unwrap();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());

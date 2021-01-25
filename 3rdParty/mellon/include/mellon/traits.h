@@ -151,22 +151,22 @@ struct tag_trait_helper {
   struct has_is_type_inlined<tag, T, std::void_t<decltype(tag_trait<tag>::template is_type_inlined<T>)>>
       : std::true_type {};
 
-  static void assert_true(bool condition) noexcept {
+  static void assert_true(bool condition, const char *msg) noexcept {
     if constexpr (has_assertion_handler<Tag>::value) {
       using assertion_handler = typename tag_trait<Tag>::assertion_handler;
-      static_assert(std::is_nothrow_invocable_r_v<void, assertion_handler, bool>);
-      assertion_handler{}(condition);
+      static_assert(std::is_nothrow_invocable_r_v<void, assertion_handler, bool, const char*>);
+      assertion_handler{}(condition, msg);
     } else {
       static_assert(!std::is_same_v<default_tag, Tag>);
-      tag_trait_helper<default_tag>::assert_true(condition);
+      tag_trait_helper<default_tag>::assert_true(condition, msg);
     }
   }
 
-  static void debug_assert_true(bool condition) noexcept {
+  static void debug_assert_true(bool condition, const char *msg) noexcept {
     if constexpr (has_debug_assertion_handler<Tag>::value) {
       using assertion_handler = typename tag_trait<Tag>::debug_assertion_handler;
-      static_assert(std::is_nothrow_invocable_r_v<void, assertion_handler, bool>);
-      assertion_handler{}(condition);
+      static_assert(std::is_nothrow_invocable_r_v<void, assertion_handler, bool, const char*>);
+      assertion_handler{}(condition, msg);
     }
   }
 

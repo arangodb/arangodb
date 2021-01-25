@@ -16,7 +16,7 @@ TEST_F(BindTests, simple_bind_test) {
         EXPECT_EQ(x, 14);
         return std::move(f2);
       })
-      .finally([this](std::string y) noexcept {
+      .finally([this](std::string const& y) noexcept {
         EXPECT_EQ(y, "hello world");
         reached_last.signal();
       });
@@ -130,5 +130,5 @@ TEST_F(BindTests, then_bind_expected_test) {
       });
 
   std::move(p1).fulfill(14);
-  std::move(p2).throw_exception<std::runtime_error>("test exception");
+  std::move(p2).abandon(); // f2 was abandoned in lambda destructor
 }

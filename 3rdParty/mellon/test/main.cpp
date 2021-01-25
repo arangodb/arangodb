@@ -237,6 +237,18 @@ TEST(HandlerTest, test_abandoned_promise_handler) {
   ASSERT_TRUE(HandlerTest::handler<int>::was_called);
 }
 
+TEST(HandlerTest, test_abandoned_promise_handler2) {
+  auto&& [f, p] = mellon::make_promise<int, handler_test_tag>();
+
+  HandlerTest::handler<int>::was_called = false;
+  std::move(p).abandon();
+  std::move(f).finally([](int x) noexcept {
+    EXPECT_EQ(x, 0);  // should be default constructed by the handler
+  });
+
+  ASSERT_TRUE(HandlerTest::handler<int>::was_called);
+}
+
 TEST(HandlerTest, test_abandoned_future_handler) {
   auto&& [f, p] = mellon::make_promise<int, handler_test_tag>();
   std::move(p).fulfill(1);
@@ -245,26 +257,14 @@ TEST(HandlerTest, test_abandoned_future_handler) {
   ASSERT_TRUE(HandlerTest::handler<int>::was_called);
 }
 
-#include "../arangodb.h"
-
-struct ArangoDBTests {};
-
-TEST(ArangoDBTests, test_futures) {
-  using namespace arangodb;
-  auto&& [f, p] = futures::makePromise<futures::Try<int>>();
-
-  std::move(p).fulfill(12);
-
-  auto f2 = std::move(f).then([](int x) {
-                          return x * 2;
-                        }).finalize();
-
-  EXPECT_TRUE(f2.holds_inline_value());
-
-  std::move(f2).finally([](expected<int> && e) noexcept {
-    EXPECT_EQ(e.unwrap(), 24);
-  });
+TEST(HandlerTest, test_abandoned_future_handler_2) {
+  auto&& [f, p] = mellon::make_promise<int, handler_test_tag>();
+  std::move(f).abandon();
+  HandlerTest::handler<int>::was_called = false;
+  std::move(p).fulfill(1);
+  ASSERT_TRUE(HandlerTest::handler<int>::was_called);
 }
+
 
 
 int main(int argc, char** argv) {

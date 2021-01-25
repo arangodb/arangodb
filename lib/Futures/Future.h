@@ -53,15 +53,15 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
 
   /* */
   struct assertion_handler {
-    void operator()(bool condition) const noexcept {
+    void operator()(bool condition, const char*msg) const noexcept {
       if (!condition) {
-        ::arangodb::CrashHandler::crash("future library assertion triggered");
+        ::arangodb::CrashHandler::crash(msg);
       }
     }
   };
 
   struct debug_assertion_handler {
-    void operator()(bool condition) const noexcept { TRI_ASSERT(condition); }
+    void operator()(bool condition, const char*) const noexcept { TRI_ASSERT(condition) }
   };
 
   template <typename T>

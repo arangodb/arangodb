@@ -17,12 +17,12 @@ using my_test_tags =
 template <>
 struct mellon::tag_trait<default_test_tag> {
   struct assertion_handler {
-    void operator()(bool test) const noexcept {
+    void operator()(bool test, const char* msg) const noexcept {
       if (!test) {
         std::abort();
       }
-      ASSERT_TRUE(test);
-    }  // TRI_ASSERT(test);
+      ASSERT_TRUE(test) << msg;
+    }
   };
 
   template <typename T>

@@ -130,7 +130,7 @@ struct tag_trait<default_tag> {
   };
 
   struct assertion_handler {
-    void operator()(bool test) const noexcept {
+    void operator()(bool test, const char*) const noexcept {
       if (!test) {
         std::abort();
       }
@@ -231,7 +231,8 @@ template <typename Tag, typename T, typename... Args,
           std::enable_if_t<std::is_constructible_v<T, Args...>, int> = 0>
 void fulfill_continuation(continuation_base<Tag, T>* base,
                           Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
-  detail::tag_trait_helper<Tag>::debug_assert_true(base != nullptr);
+  detail::tag_trait_helper<Tag>::debug_assert_true(
+      base != nullptr, "continuation pointer is null");
   base->emplace(std::forward<Args>(args)...);  // this can throw an exception
 
   // the remainder should be noexcept
@@ -245,6 +246,12 @@ void fulfill_continuation(continuation_base<Tag, T>* base,
       if (expected != FUTURES_INVALID_POINTER_FUTURE_ABANDONED(T)) {
         std::invoke(*expected, base->cast_move());
         // FIXME this is a recursive call. Build this a loop!
+      } else {
+        detail::tag_trait_helper<Tag>::assert_true(
+            expected == FUTURES_INVALID_POINTER_FUTURE_ABANDONED(T),
+            "invalid continuation state");
+        detail::handler_helper<Tag, T>::abandon_future(base->cast_move());
+        static_assert(std::is_nothrow_destructible_v<T>);
       }
 
       base->destroy();
@@ -255,7 +262,8 @@ void fulfill_continuation(continuation_base<Tag, T>* base,
 
 template <typename Tag, typename T>
 void abandon_continuation(continuation_base<Tag, T>* base) noexcept {
-  detail::tag_trait_helper<Tag>::debug_assert_true(base != nullptr);
+  detail::tag_trait_helper<Tag>::debug_assert_true(
+      base != nullptr, "continuation pointer is null");
   continuation<T>* expected = nullptr;
   if (!base->_next.compare_exchange_strong(expected, FUTURES_INVALID_POINTER_FUTURE_ABANDONED(T),
                                            std::memory_order_release,
@@ -265,8 +273,8 @@ void abandon_continuation(continuation_base<Tag, T>* base) noexcept {
       static_assert(std::is_nothrow_destructible_v<T>);
       base->destroy();
     } else {
-      detail::tag_trait_helper<Tag>::assert_true(
-          expected == FUTURES_INVALID_POINTER_PROMISE_ABANDONED(T));
+      detail::tag_trait_helper<Tag>::assert_true(expected == FUTURES_INVALID_POINTER_PROMISE_ABANDONED(T),
+                                                 "invalid continuation state");
     }
 
     delete base;
@@ -275,7 +283,8 @@ void abandon_continuation(continuation_base<Tag, T>* base) noexcept {
 
 template <typename Tag, typename T>
 void abandon_promise(continuation_start<Tag, T>* base) noexcept {
-  detail::tag_trait_helper<Tag>::debug_assert_true(base != nullptr);
+  detail::tag_trait_helper<Tag>::debug_assert_true(
+      base != nullptr, "continuation pointer is null");
   continuation<T>* expected = nullptr;
   if (!base->_next.compare_exchange_strong(expected, FUTURES_INVALID_POINTER_PROMISE_ABANDONED(T),
                                            std::memory_order_release,
@@ -294,7 +303,7 @@ auto allocate_frame_noexcept(Args&&... args) noexcept -> T* {
                 "type should be nothrow constructable");
   auto frame = detail::tag_trait_helper<Tag>::template allocate<T>(std::nothrow);
   new (frame) T(std::forward<Args>(args)...);
-  detail::tag_trait_helper<Tag>::assert_true(frame != nullptr);
+  detail::tag_trait_helper<Tag>::assert_true(frame != nullptr, "critical allocation failed");
   return frame;
 }
 
@@ -304,7 +313,8 @@ auto insert_continuation_step(continuation_base<Tag, T>* base, G&& f) noexcept
   static_assert(std::is_nothrow_invocable_r_v<R, F, T&&>);
   static_assert(std::is_nothrow_destructible_v<T>);
 
-  detail::tag_trait_helper<Tag>::debug_assert_true(base != nullptr);
+  detail::tag_trait_helper<Tag>::debug_assert_true(
+      base != nullptr, "continuation pointer is null");
 
   if (base->_next.load(std::memory_order_acquire) ==
       FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T)) {
@@ -326,8 +336,8 @@ auto insert_continuation_step(continuation_base<Tag, T>* base, G&& f) noexcept
   continuation<T>* expected = nullptr;
   if (!base->_next.compare_exchange_strong(expected, step, std::memory_order_release,
                                            std::memory_order_acquire)) {  // ask mpoeter
-    detail::tag_trait_helper<Tag>::assert_true(
-        expected == FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T));
+    detail::tag_trait_helper<Tag>::assert_true(expected == FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T),
+                                               "invalid continuation state");
     if constexpr (future<R, Tag>::is_value_inlined) {
       auto fut = future<R, Tag>{std::in_place, std::invoke(step->function_self(),
                                                            base->cast_move())};
@@ -465,7 +475,8 @@ void insert_continuation_final(continuation_base<Tag, T>* base, F&& f) noexcept 
   static_assert(std::is_nothrow_invocable_r_v<void, F, T&&>);
   static_assert(std::is_nothrow_constructible_v<F, F>);
   static_assert(std::is_nothrow_destructible_v<T>);
-  detail::tag_trait_helper<Tag>::debug_assert_true(base != nullptr);
+  detail::tag_trait_helper<Tag>::debug_assert_true(
+      base != nullptr, "continuation pointer is null");
 
   if (base->_next.load(std::memory_order_acquire) ==
       FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T)) {
@@ -501,16 +512,21 @@ void insert_continuation_final(continuation_base<Tag, T>* base, F&& f) noexcept 
         std::in_place, std::forward<F>(f));
   }
 
-  detail::tag_trait_helper<Tag>::assert_true(cont != nullptr);
+  detail::tag_trait_helper<Tag>::assert_true(
+      cont != nullptr, "finally allocation failed unexpectedly");
   continuation<T>* expected = nullptr;
   if (!base->_next.compare_exchange_strong(expected, cont, std::memory_order_release,
                                            std::memory_order_acquire)) {  // ask mpoeter
-    detail::tag_trait_helper<Tag>::assert_true(
-        expected == FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T));
-    cont->operator()(base->cast_move());  // TODO we can get rid of this virtual call
-    base->destroy();
+    if (expected == FUTURES_INVALID_POINTER_PROMISE_ABANDONED(T)) {
+      cont->operator()(detail::handler_helper<Tag, T>::abandon_promise());
+    } else {
+      detail::tag_trait_helper<Tag>::assert_true(expected == FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T),
+          "invalid continuation state");
+      cont->operator()(base->cast_move());  // TODO we can get rid of this virtual call
+      base->destroy();
+    }
+
     delete base;
-    delete cont;
   }
 }
 
@@ -898,7 +914,8 @@ struct future_temporary
     if (_base) {
       std::move(*this).abandon();
     }
-    detail::tag_trait_helper<Tag>::assert_true(_base == nullptr);
+    detail::tag_trait_helper<Tag>::assert_true(_base == nullptr,
+                                               "invalid future state");
     detail::function_store<F>::operator=(std::move(o));
     if constexpr (is_value_inlined) {
       if (o.holds_inline_value()) {
@@ -1062,7 +1079,8 @@ struct future
     if (_base) {
       std::move(*this).abandon();
     }
-    detail::tag_trait_helper<Tag>::assert_true(_base == nullptr);
+    detail::tag_trait_helper<Tag>::assert_true(_base == nullptr,
+                                               "invalid future state");
     if constexpr (is_value_inlined) {
       if (o.holds_inline_value()) {
         detail::internal_store<Tag, T>::emplace(o.cast_move());
