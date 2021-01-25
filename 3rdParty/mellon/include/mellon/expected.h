@@ -30,12 +30,26 @@ template <typename F, typename... Args, std::enable_if_t<std::is_invocable_v<F, 
           typename R = std::invoke_result_t<F, Args...>, std::enable_if_t<!is_expected_v<R>, int> = 0>
 auto captured_invoke(F&& f, Args&&... args) noexcept -> expected<R>;
 
+/**
+ * Invokes `f` with `args...` and captures the returns the result. If
+ * and exception is thrown is it also captured and returned instead.
+ * @tparam F Callable
+ * @tparam Args Argument types
+ * @tparam R Return value of `f`.
+ * @param f Callable
+ * @param args Argument values
+ * @return `expected<R>` as result of `f(args...)` or a exception.
+ */
 template <typename F, typename... Args, std::enable_if_t<std::is_invocable_v<F, Args...>, int> = 0,
           typename R = std::invoke_result_t<F, Args...>, std::enable_if_t<is_expected_v<R>, int> = 0>
 auto captured_invoke(F&& f, Args&&... args) noexcept -> R;
 
 namespace detail {
 
+/**
+ * Common base class for specialisations of `expected<T>`.
+ * @tparam T value type
+ */
 template <typename T>
 struct expected_base {
   /**
@@ -54,7 +68,7 @@ struct expected_base {
    * Tests whether this holds an exception of type `E`. This method is slow
    * because it has to rethrow the exception to inspect its type.
    * @tparam E
-   * @return
+   * @return true if `this` holds an exception of type `E`.
    */
   template <typename E>
   [[nodiscard]] bool has_exception() const noexcept {
@@ -119,7 +133,8 @@ struct expected_base {
   }
 
   /**
-   * Rethrows any exception with `E` constructed using `args...`.
+   * Rethrows any exception with `E` constructed using `args...`. `E` is
+   * constructed only if an exception is present.
    * @tparam E
    * @tparam Args
    * @param args
@@ -173,10 +188,8 @@ struct expected_base {
   using value_type = T;
 
  private:
-  [[nodiscard]] expected<T>& self() & {
-    return static_cast<expected<T>&>(*this);
-  }
-  [[nodiscard]] expected<T> const& self() const& {
+  [[nodiscard]] expected<T>& self() { return static_cast<expected<T>&>(*this); }
+  [[nodiscard]] expected<T> const& self() const {
     return static_cast<expected<T> const&>(*this);
   }
 };
@@ -191,20 +204,44 @@ template <typename T>
 struct expected : detail::expected_base<T> {
   static_assert(!std::is_void_v<T> && !std::is_reference_v<T>);
 
+  /**
+   * Default constructs a value into the result. Only available if `T` is
+   * default constructible.
+   */
   template <typename U = T, std::enable_if_t<std::is_default_constructible_v<U>, int> = 0>
   expected() noexcept(std::is_nothrow_default_constructible_v<T>)
       : expected(std::in_place) {}
 
+  /**
+   * Stores the exception pointer.
+   * @param p exception pointer
+   */
   /* implicit */ expected(std::exception_ptr p) noexcept
       : _exception(std::move(p)), _has_value(false) {}
+  /**
+   * Stores the given value.
+   * @param t value
+   */
   /* implicit */ expected(T t) noexcept(std::is_nothrow_move_constructible_v<T>)
       : _value(std::move(t)), _has_value(true) {}
 
-  template <typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int> = 0>
+  /**
+   * In place constructs a `T` using the given parameters. If the constructor
+   * of `T` throws an exception it is *not* captured in the expected but bubbles
+   * up.
+   * @tparam Args argument types
+   * @param ts argument values
+   */
+  template <typename... Args, std::enable_if_t<std::is_constructible_v<T, Args...>, int> = 0>
   explicit expected(std::in_place_t,
-                    Ts&&... ts) noexcept(std::is_nothrow_constructible_v<T, Ts...>)
-      : _value(std::forward<Ts>(ts)...), _has_value(true) {}
+                    Args&&... ts) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+      : _value(std::forward<Args>(ts)...), _has_value(true) {}
 
+  /**
+   * Move constructor. Only available if `T` is move constructible.
+   * @tparam U
+   * @param o
+   */
   template <typename U = T, std::enable_if_t<std::is_move_constructible_v<U>, int> = 0>
   /* implicit */ expected(expected&& o) noexcept(std::is_nothrow_move_constructible_v<T>)
       : _has_value(o._has_value) {
@@ -215,8 +252,16 @@ struct expected : detail::expected_base<T> {
     }
   }
 
+  /**
+   * Conversion constructor. Only present if `U` is convertible to `T`.
+   * Converts a value from `U` to `T` and keeps all exceptions. Exceptions during
+   * conversion are not captured.
+   * @tparam U
+   * @param u
+   */
   template <typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
-  expected(expected<U>&& u) : expected(std::move(u).template as<T>()) {}
+  expected(expected<U>&& u) noexcept(false /* std::is_nothrow_convertible_v<U, T> C++20 */)
+      : expected(std::move(u).template as<T>()) {}
 
   ~expected() {
     if (_has_value) {
@@ -343,6 +388,9 @@ struct expected : detail::expected_base<T> {
   const bool _has_value;
 };
 
+/**
+ * Void specialised version of expected. Stores a single exception pointer.
+ */
 template <>
 struct expected<void> : detail::expected_base<void> {
   expected() = default;
@@ -367,6 +415,12 @@ struct expected<void> : detail::expected_base<void> {
     return nullptr;
   }
 
+  /**
+   * Invokes `f` if no exception is present. Otherwise does nothing.
+   * @tparam F
+   * @param f
+   * @return captured return value of `f`.
+   */
   template <typename F, std::enable_if_t<std::is_invocable_v<F>, int> = 0>
   auto map_value(F&& f) && noexcept -> expected<std::invoke_result_t<F>> {
     if (has_error()) {
@@ -382,7 +436,6 @@ struct expected<void> : detail::expected_base<void> {
 
 template <typename F, typename... Args, std::enable_if_t<std::is_invocable_v<F, Args...>, int>,
           typename R, std::enable_if_t<!is_expected_v<R>, int>>
-
 auto captured_invoke(F&& f, Args&&... args) noexcept -> expected<R> {
   try {
     if constexpr (std::is_void_v<R>) {
@@ -398,7 +451,6 @@ auto captured_invoke(F&& f, Args&&... args) noexcept -> expected<R> {
 
 template <typename F, typename... Args, std::enable_if_t<std::is_invocable_v<F, Args...>, int>,
           typename R, std::enable_if_t<is_expected_v<R>, int>>
-
 auto captured_invoke(F&& f, Args&&... args) noexcept -> R {
   try {
     return std::invoke(std::forward<F>(f), std::forward<Args>(args)...);

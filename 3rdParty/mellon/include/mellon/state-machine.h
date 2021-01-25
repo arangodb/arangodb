@@ -4,6 +4,10 @@
 #include <functional>
 #include <stdexcept>
 
+/*
+ * THIS IS STILL WORK IN PROGRESS
+ */
+
 template <auto state, typename F>
 struct state_function_pair : F {
   explicit state_function_pair(F f) : F(std::move(f)) {}

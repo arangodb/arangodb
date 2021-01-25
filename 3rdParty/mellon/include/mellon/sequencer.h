@@ -3,6 +3,10 @@
 #include "futures.h"
 #include "utilities.h"
 
+/*
+ * THIS IS STILL WORK IN PROGRESS
+ */
+
 namespace mellon {
 
 template <typename T>
@@ -170,7 +174,7 @@ struct sequence_builder_impl<FutureTag, InputType, OutputType, std::index_sequen
 
   template <typename G, typename U = OutputType,
             std::enable_if_t<expect::is_expected_v<U>, int> = 0, typename V = typename U::value_type,
-            std::enable_if_t<is_tuple_v<V>, int> = 0, typename ReturnValue = apply_result_t<G, V>,
+            std::enable_if_t<detail::is_tuple_v<V>, int> = 0, typename ReturnValue = detail::apply_result_t<G, V>,
             std::enable_if_t<is_future_v<ReturnValue>, int> = 0, typename ValueType = typename ReturnValue::value_type,
             std::enable_if_t<!expect::is_expected_v<ValueType>, int> = 0>
   auto then_do(G&& g) && {
