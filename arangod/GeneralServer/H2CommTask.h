@@ -113,6 +113,9 @@ class H2CommTask final : public GeneralCommTask<T> {
   Stream* findStream(int32_t sid);
 
  private:
+
+  std::string const& url(HttpRequest* req);
+
   velocypack::Buffer<uint8_t> _outbuffer;
 
   boost::lockfree::queue<H2Response*, boost::lockfree::capacity<H2MaxConcurrentStreams>> _responses;
@@ -125,7 +128,6 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   std::atomic<bool> _signaledWrite{false};
 
-  std::string _url;
 };
 }  // namespace rest
 }  // namespace arangodb

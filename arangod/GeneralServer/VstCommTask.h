@@ -59,6 +59,9 @@ class VstCommTask final : public GeneralCommTask<T> {
                                                           uint64_t messageId) override;
 
  private:
+
+  std::string const& url(VstRequest* req);
+
   // Process the given incoming chunk.
   bool processChunk(fuerte::vst::Chunk const& chunk);
   /// process a VST message
@@ -69,7 +72,6 @@ class VstCommTask final : public GeneralCommTask<T> {
   // process the VST 1000 request type
   void handleVstAuthRequest(velocypack::Slice header, uint64_t messageId);
 
- private:
   using MessageID = uint64_t;
 
   struct Message {
@@ -102,7 +104,6 @@ class VstCommTask final : public GeneralCommTask<T> {
   /// default max chunksize is 30kb in arangodb in all versions
   static constexpr size_t maxChunkSize = 30 * 1024;
 
- private:
   std::map<uint64_t, Message> _messages;
 
   // the queue is dynamically sized because we can't guarantee that
@@ -124,7 +125,7 @@ class VstCommTask final : public GeneralCommTask<T> {
   bool _authenticated;
   rest::AuthenticationMethod _authMethod;
   fuerte::vst::VSTVersion _vstVersion;
-  std::string _url;
+
 };
 }  // namespace rest
 }  // namespace arangodb

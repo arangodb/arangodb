@@ -52,14 +52,22 @@ struct TransactionStatistics {
   // histogram for lock acquisition (in seconds)
   Histogram<log_scale_t<double>>& _lockTimes;
   Counter& _sequentialLocks;
-  Counter& _numRead;
-  Counter& _numWrite;
-  Counter& _numReplicate;
-  Histogram<log_scale_t<float>>& _rocksdb_insert_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_read_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_replace_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_remove_msec;
-  Histogram<log_scale_t<float>>& _rocksdb_update_msec;
+
+  // Total number of write operations in storage engine (excl. sync replication)
+  Counter& _numWrites;
+  // Total number of write operations in storage engine by sync replication
+  Counter& _numWritesReplication;
+  // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
+  Counter& _numTruncates;
+  // Total number of truncate operations (not number of documents truncated!) by sync replication
+  Counter& _numTruncatesReplication;
+
+  Histogram<log_scale_t<float>>& _rocksdb_read_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_insert_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_replace_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_remove_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_update_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_truncate_sec;
 };
 
 struct ServerStatistics {

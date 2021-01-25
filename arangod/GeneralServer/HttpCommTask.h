@@ -74,6 +74,8 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void writeResponse(RequestStatistics::Item stat);
 
  private:
+  std::string const& url();
+
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
@@ -89,7 +91,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
-  std::string _url;
 
   bool const _allowMethodOverride;  /// allow method override
 };
