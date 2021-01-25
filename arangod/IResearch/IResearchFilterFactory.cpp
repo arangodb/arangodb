@@ -2731,7 +2731,6 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   auto res = ElementTraits::evaluateArg(target, targetValue, funcName, args, 1 - First, isFilter, ctx);
 
   if (res.fail()) {
-    auto res = error::nondeterministicArgs(funcName);
     res.appendErrorMessage(errorSuffix);
     return res;
   }
