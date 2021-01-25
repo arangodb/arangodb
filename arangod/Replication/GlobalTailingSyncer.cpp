@@ -48,6 +48,18 @@ GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& 
   _state.databaseName = StaticStrings::SystemDatabase;
 }
 
+std::shared_ptr<GlobalTailingSyncer> GlobalTailingSyncer::create(ReplicationApplierConfiguration const& configuration,
+                                                                 TRI_voc_tick_t initialTick, bool useTick) {
+  // enable make_shared on a class with a private constructor
+  struct Enabler final : GlobalTailingSyncer {
+    Enabler(ReplicationApplierConfiguration const& configuration,
+           TRI_voc_tick_t initialTick, bool useTick) 
+      : GlobalTailingSyncer(configuration, initialTick, useTick) {}
+  };
+
+  return std::make_shared<Enabler>(configuration, initialTick, useTick);
+}
+
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
   TRI_ASSERT(!_state.leader.endpoint.empty());
   TRI_ASSERT(_state.leader.serverId.isSet());
@@ -86,9 +98,9 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     // no translations yet... query leader inventory to find names of all
     // collections
     try {
-      GlobalInitialSyncer init(_state.applier);
+      auto syncer = GlobalInitialSyncer::create(_state.applier);
       VPackBuilder inventoryResponse;
-      Result res = init.getInventory(inventoryResponse);
+      Result res = syncer->getInventory(inventoryResponse);
       _queriedTranslations = true;
 
       if (res.fail()) {

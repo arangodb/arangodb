@@ -7,14 +7,22 @@ devel
   memory for allocating the striped PRNG instance there, plus some CPU time 
   for initializing it. 
 
-* Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that provides 
-  the time (in millseconds) it took for the most recent low priority scheduler queue 
-  item to bubble up to the queue's head. This metric can be used to estimate the
-  queuing time for incoming requests. 
-  The metric will be updated probabilistically when a request is pulled from the 
-  scheduler queue, and may remain at its previous value for a while if only few
-  requests are coming in or remain permanently at its previous value if no further 
-  requests are incoming at all.
+* Improve shard synchronization protocol by only transferring the required
+  parts of the inventory from leader to follower. Previously, for each shard
+  the entire inventory was exchanged, which included all shards of the
+  respective database with all their details.
+  In addition, save 3 cluster-internal requests per shard in the initial shard
+  synchronization protocol by reusing already existing information in the
+  different steps of the replication process.
+
+* Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that 
+  provides the time (in millseconds) it took for the most recent low priority 
+  scheduler queue item to bubble up to the queue's head. This metric can be 
+  used to estimate the queuing time for incoming requests. 
+  The metric will be updated probabilistically when a request is pulled from 
+  the scheduler queue, and may remain at its previous value for a while if 
+  only few requests are coming in or remain permanently at its previous value 
+  if no further requests are incoming at all.
 
 * Allow {USER} placeholder string also in `--ldap.search-filter`.
 

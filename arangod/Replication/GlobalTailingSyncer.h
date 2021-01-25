@@ -28,15 +28,24 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "TailingSyncer.h"
 
+#include <memory>
+
 namespace arangodb {
 class GlobalReplicationApplier;
 
 class GlobalTailingSyncer : public TailingSyncer {
- public:
-  GlobalTailingSyncer(ReplicationApplierConfiguration const&, TRI_voc_tick_t initialTick,
+ private:
+  // constructor is private, as GlobalTailingSyncer uses shared_from_this() and
+  // we must ensure that it is only created via make_shared.
+  GlobalTailingSyncer(ReplicationApplierConfiguration const&, 
+                      TRI_voc_tick_t initialTick,
                       bool useTick);
-
+  
  public:
+  static std::shared_ptr<GlobalTailingSyncer> create(ReplicationApplierConfiguration const&, 
+                                                     TRI_voc_tick_t initialTick,
+                                                     bool useTick);
+
   /// @brief return the syncer's replication applier
   GlobalReplicationApplier* applier() const {
     return static_cast<GlobalReplicationApplier*>(_applier);
@@ -57,6 +66,7 @@ class GlobalTailingSyncer : public TailingSyncer {
 
   bool _queriedTranslations;
 };
+
 }  // namespace arangodb
 
 #endif
