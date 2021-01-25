@@ -800,7 +800,7 @@ void QueryCache::excludeSystem() {
 /// @brief determine which lock to use for the cache entries
 unsigned int QueryCache::getPart(TRI_vocbase_t const* vocbase) const {
   uint64_t v = uintptr_t(vocbase);
-  return static_cast<int>(fasthash64_uint64(v, 0xf12345678abcdef) & (numberOfParts - 1));
+  return static_cast<int>(fasthash64_uint64(v, 0xf12345678abcdef) % numberOfParts);
 }
 
 /// @brief invalidate all entries in the cache part
