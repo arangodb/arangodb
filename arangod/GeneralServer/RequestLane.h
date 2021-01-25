@@ -23,6 +23,7 @@
 
 #ifndef ARANGOD_GENERAL_SERVER_LANE_H
 #define ARANGOD_GENERAL_SERVER_LANE_H 1
+#include "Basics/debugging.h"
 
 namespace arangodb {
 enum class RequestLane {

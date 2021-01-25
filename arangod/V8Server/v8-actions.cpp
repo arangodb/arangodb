@@ -1549,7 +1549,7 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
   }
 
   for (auto& f : futures) {
-    network::Response const& res = f.get();  // throws exceptions upwards
+    network::Response const& res = std::move(f).await_unwrap();  // throws exceptions upwards
     int commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;
