@@ -58,7 +58,22 @@ class SupervisedScheduler final : public Scheduler {
   void trackBeginOngoingLowPriorityTask();
   void trackEndOngoingLowPriorityTask();
 
+  /// @brief set the time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms]
+  void setLastLowPriorityDequeueTime(uint64_t time) noexcept;
+
   constexpr static uint64_t const NumberOfQueues = 4;
+
+  constexpr static uint64_t const HighPriorityQueue = 1;
+  constexpr static uint64_t const MediumPriorityQueue = 2;
+  constexpr static uint64_t const LowPriorityQueue = 3;
+
+  static_assert(HighPriorityQueue < NumberOfQueues);
+  static_assert(MediumPriorityQueue < NumberOfQueues);
+  static_assert(LowPriorityQueue < NumberOfQueues);
+  
+  static_assert(HighPriorityQueue < MediumPriorityQueue);
+  static_assert(MediumPriorityQueue < LowPriorityQueue);
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   double approximateQueueFillGrade() const override;
@@ -138,7 +153,7 @@ class SupervisedScheduler final : public Scheduler {
   void runWorker();
   void runSupervisor();
 
-  bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override ADB_WARN_UNUSED_RESULT;
+  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override;
 
  private:
   NetworkFeature& _nf;
@@ -190,11 +205,17 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _metricsAwakeThreads;
   Gauge<uint64_t>& _metricsNumWorkingThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
-
+  
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
   Gauge<uint64_t>& _ongoingLowPriorityGauge;
+  
+  /// @brief amount of time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms].
+  /// this metric is only updated probabilistically
+  Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
+
   std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
 };
 
