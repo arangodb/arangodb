@@ -90,8 +90,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
  public:
   bool allowAdminExecute() const { return _allowAdminExecute; }
-  bool allowJavaScriptTransactions() const { return _allowJavaScriptTransactions || _allowAdminExecute; }
-  bool allowJavaScriptTasks() const { return _allowJavaScriptTasks || _allowAdminExecute; }
+  bool allowJavaScriptTransactions() const { return _allowJavaScriptTransactions; }
+  bool allowJavaScriptTasks() const { return _allowJavaScriptTasks; }
 
   bool addGlobalContextMethod(std::string const&);
   void collectGarbage();
