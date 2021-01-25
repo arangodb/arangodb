@@ -30,7 +30,7 @@
 
 if (getOptions === true) {
   return {
-    'javascript.tasks': "false",
+    'javascript.transactions': "true",
     'javascript.allow-admin-execute': "false"
   };
 }
@@ -41,38 +41,69 @@ const db = require('internal').db;
 const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const internal = require('internal');
-const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'execute-task');
+const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'execute-transaction');
 
 require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function testSuite() {
+  const cn = "UnitTestsTransaction";
+
   return {
-    testJavaScriptTask : function() {
-      // JavaScript tasks should not work
-      try {
-        require('@arangodb/tasks').register({
-          command: function() {
-            require("console").log("this task must not run!");
-            throw "peng!";
-          }
-        });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_FORBIDDEN.code, err.errorNum);
-      }
+    setUp : function() {
+      db._drop(cn);
+      db._create(cn);
+    },
+
+    tearDown : function() {
+      db._drop(cn);
+    },
+
+    testJavaScriptTransaction : function() {
+      let res = db._executeTransaction({ 
+        collections: { read: cn },
+        action: function() { return "ok!"; },
+      });
+      assertEqual("ok!", res);
     },
     
-    testJavaScriptTaskFromFoxx : function() {
+    testJavaScriptTransactionFromFoxx : function() {
       const mount = '/test';
 
       FoxxManager.install(basePath, mount);
-      try { 
-        let res = arango.GET(`/_db/_system/${mount}/execute`);
-        assertEqual(403, res.code);
-        assertTrue(res.error);
-      } finally {
-        FoxxManager.uninstall(mount, {force: true});
-      } 
+      let res = arango.GET(`/_db/_system/${mount}/execute`);
+      assertEqual({ count: 1 }, res);
+    },
+    
+    testJavaScriptTransactionViaAdminExecute : function() {
+      let body = `require('@arangodb').db._executeTransaction({ collections: { read: "${cn}" }, action: function() {} }); return "ok!"; `;
+
+      let res = arango.POST('/_db/_system/_admin/execute', body);
+      // /_admin/execute API is turned off
+      assertEqual(404, res.code);
+    },
+
+    testNonJavaScriptTransaction : function() {
+      // non-JavaScript transactions should not be affected by the setting
+      const opts = {
+        collections: { write: cn },
+      };
+      
+      const trx = db._createTransaction(opts);
+      try {
+        const tc = trx.collection(cn);
+        assertEqual(0, tc.count());
+        for (let i = 0; i < 10; ++i) {
+          tc.insert({ _key: "test" + i });
+        }
+        assertEqual(10, tc.count());
+        assertEqual(0, db[cn].count());
+        trx.commit();
+      
+        assertEqual(10, db[cn].count());
+      } catch (err) {
+        trx.abort();
+        throw err;
+      }
     },
 
   };

@@ -83,6 +83,14 @@ function testSuite() {
         FoxxManager.uninstall(mount, {force: true});
       } 
     },
+    
+    testJavaScriptTransactionViaAdminExecute : function() {
+      let body = `require('@arangodb').db._executeTransaction({ collections: { read: "${cn}" }, action: function() {} }); return "ok!"; `;
+
+      let res = arango.POST('/_db/_system/_admin/execute', body);
+      // /_admin/execute API is turned off
+      assertEqual(404, res.code);
+    },
 
     testNonJavaScriptTransaction : function() {
       // non-JavaScript transactions should not be affected by the setting
