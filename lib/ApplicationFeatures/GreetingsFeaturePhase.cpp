@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LogBufferFeature.h"
@@ -48,6 +49,7 @@ GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isC
     // These are server only features
     startsAfter<GreetingsFeature>();
     startsAfter<LogBufferFeature>();
+    startsAfter<SharedPRNGFeature>();
   }
 }
 
