@@ -140,9 +140,9 @@ struct WriteTimeTracker : public TimeTracker {
                    arangodb::OperationOptions const& options) noexcept
       : TimeTracker(histogram) {
     if (options.isSynchronousReplicationFrom.empty()) {
-      ++statistics._numWrites;
+      ++(statistics._numWrites->get());
     } else {
-      ++statistics._numWritesReplication;
+      ++(statistics._numWritesReplication->get());
     }
   }
 };
@@ -154,9 +154,9 @@ struct TruncateTimeTracker : public TimeTracker {
                       arangodb::OperationOptions const& options) noexcept
       : TimeTracker(histogram) {
     if (options.isSynchronousReplicationFrom.empty()) {
-      ++statistics._numTruncates;
+      ++(statistics._numTruncates->get());
     } else {
-      ++statistics._numTruncatesReplication;
+      ++(statistics._numTruncatesReplication->get());
     }
   }
 };
