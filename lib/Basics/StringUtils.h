@@ -443,9 +443,12 @@ template <typename... Iters>
 auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
   auto result = std::string{};
 
-  result.reserve((std::distance(iters.first, iters.second) + ... + 0));
+  constexpr auto newcap = (std::distance(iters.first, iters.second) + ... + 0);
+  result.reserve(newcap);
 
   ([&] { result.append(iters.first, iters.second); }(), ...);
+
+  TRI_ASSERT(newcap == result.length());
 
   return result;
 }
@@ -467,7 +470,8 @@ auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
   auto const valueSizes = std::distance(head.first, head.second) +
                           (std::distance(tail.first, tail.second) + ... + 0);
   auto const delimSizes = sizeof...(Iters) * delim.size();
-  result.reserve(valueSizes + delimSizes);
+  auto const newcap = valueSizes + delimSizes;
+  result.reserve(newcap);
 
   result.append(head.first, head.second);
 
@@ -477,6 +481,8 @@ auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
         result.append(tail.first, tail.second);
       }(),
       ...);
+
+  TRI_ASSERT(newcap == result.length());
 
   return result;
 }
