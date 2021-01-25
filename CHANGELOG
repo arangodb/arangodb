@@ -1,6 +1,11 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Normalize user-provided input/output directory names in arangoimport,
+  arangoexport, arangodump and arangorestore before splitting them into path
+  components, in the sense that now both forward and backward slashes can be
+  used on Windows, even interchangingly.
+
 * Make `padded` and `autoincrement` key generators export their `lastValue`
   values, so that they are available in dumps and can be restored elsewhere from
   a dump.
@@ -47,12 +52,6 @@ v3.7.7 (XXXX-XX-XX)
 
 * Fix some issues with key generators not properly taking into account the
   `allowUserKeys` attribute when in a cluster.
-
-* Normalize user-provided input/output directory names in
-  arangoimport, arangoexport, arangodump and arangorestore 
-  before splitting them into path components, in the sense that now 
-  both forward and backward slashes can be used on Windows,
-  even interchangingly.
 
 * Added the following bit handling functions to AQL:
 
