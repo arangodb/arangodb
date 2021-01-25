@@ -27,6 +27,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -87,8 +89,17 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
-
+  
   TRI_GET_GLOBALS();
+  V8DealerFeature& v8Dealer = v8g->_server.getFeature<V8DealerFeature>();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  bool allowTasks = v8Dealer.allowJavaScriptTasks() ||
+                    (v8security.isInternalContext(isolate) || v8security.isAdminScriptContext(isolate));
+  if (!allowTasks) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "JavaScript tasks are disabled");
+  }
+
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   } else if (v8g->_server.isStopping()) {
