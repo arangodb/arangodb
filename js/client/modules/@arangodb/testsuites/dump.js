@@ -576,12 +576,32 @@ function dumpMixedClusterSingle (options) {
     dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-mixed' + sg.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + sg.cluster + '.js',
+    dumpTearDown: 'dump-teardown-mixed' + sg.cluster + '.js',
     dumpCheckGraph: 'check-graph.js',
     foxxTest: 'check-foxx.js'
   };
 
   return dump_backend(clOptions, sgOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
+}
+
+function dumpMixedSingleCluster (options) {
+  let clOptions = _.clone(options);
+  clOptions.cluster = true;
+  let sgOptions = _.clone(options);
+  sgOptions.cluster = false;
+  let cl = getClusterStrings(clOptions);
+  let sg = getClusterStrings(sgOptions);
+  let tstFiles = {
+    dumpSetup: 'dump-setup-mixed' + sg.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
+    dumpCleanup: 'cleanup-nothing.js',
+    dumpAgain: 'dump-mixed' + cl.cluster + '.js',
+    dumpTearDown: 'dump-teardown-mixed' + sg.cluster + '.js',
+    dumpCheckGraph: 'check-graph.js',
+    foxxTest: 'check-foxx.js'
+  };
+
+  return dump_backend(sgOptions, clOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpMultiple (options) {
@@ -801,7 +821,7 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, options, options, which, function(){});
+  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){});
   if (! helper.startFirstInstance()) {
     return helper.extractResults();
   }    
@@ -861,6 +881,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   
   testFns['dump_mixed_cluster_single'] = dumpMixedClusterSingle;
   defaultFns.push('dump_mixed_cluster_single');
+
+  testFns['dump_mixed_single_cluster'] = dumpMixedSingleCluster;
+  defaultFns.push('dump_mixed_single_cluster');
   
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');
