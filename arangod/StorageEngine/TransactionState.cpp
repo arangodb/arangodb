@@ -162,8 +162,8 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
       // if one collection is written to, the whole transaction becomes a
-      // write-transaction
-      _type = AccessMode::Type::WRITE;
+      // write-y transaction
+      _type = std::max(_type, accessType);
     }
   }
 

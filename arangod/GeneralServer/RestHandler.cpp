@@ -28,7 +28,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -42,6 +44,8 @@
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -63,6 +67,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _statistics(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
+      _lane(RequestLane::UNDEFINED),
       _canceled(false) {}
 
 RestHandler::~RestHandler() = default;
@@ -89,6 +94,50 @@ uint64_t RestHandler::messageId() const {
   }
 
   return messageId;
+}
+  
+RequestLane RestHandler::determineRequestLane() {
+  if (_lane == RequestLane::UNDEFINED) {
+    bool found;
+    _request->header(StaticStrings::XArangoFrontend, found);
+
+    if (found) {
+      _lane = RequestLane::CLIENT_UI;
+    } else {
+      _lane = lane();
+    }
+  }
+  TRI_ASSERT(_lane != RequestLane::UNDEFINED);
+  return _lane;
+}
+
+void RestHandler::trackQueueStart() noexcept {
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _statistics.SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+}
+
+void RestHandler::trackQueueEnd() noexcept {
+  _statistics.SET_QUEUE_END();
+}
+
+void RestHandler::trackTaskStart() noexcept {
+  if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
+  }
+}
+
+void RestHandler::trackTaskEnd() noexcept {
+  if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    
+    // update the time the last low priority item spent waiting in the queue.
+    
+    // the queueing time is in ms
+    uint64_t queueTimeMs = static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
+    SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
+  }
 }
 
 RequestStatistics::Item&& RestHandler::stealStatistics() {
