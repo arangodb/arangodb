@@ -1,9 +1,51 @@
 devel
 -----
 
-* Fixed rare objectId conflict for indexes
+* Added metrics for document read and write operations:
 
-* Fix for OASIS-409. Fixed indexing _id attribute at recovery
+  - `arangodb_document_writes: Total number of document write operations
+    (successful and failed) not performed by synchronous replication.
+  - `arangodb_document_writes_replication`: Total number of document write
+    operations (successful and failed) by synchronous replication.
+  - `arangodb_collection_truncates`: Total number of collection truncate 
+    operations (successful and failed) not performed by synchronous replication.
+  - `arangodb_collection_truncates_replication`: Total number of collection truncate 
+    operations (successful and failed) by synchronous replication.
+  - `arangodb_document_read_time`: Execution time histogram of all document read 
+    operations (successful and failed) [s].
+  - `arangodb_document_insert_time`: Execution time histogram of all document insert 
+    operations (successful and failed) [s].
+  - `arangodb_document_replace_time`: Execution time histogram of all document replace 
+    operations (successful and failed) [s].
+  - `arangodb_document_remove_time`: Execution time histogram of all document remove 
+    operations (successful and failed) [s].
+  - `arangodb_document_update_time`: Execution time histogram of all document update 
+    operations (successful and failed) [s].
+  - `arangodb_collection_truncate_time`: Execution time histogram of all collection 
+    truncate operations (successful and failed) [s].
+
+* Fixed some wrong behavior in single document updates. If the option
+  ignoreRevs=false was given and the precondition _rev was given in the body
+  but the _key was given in the URL path, then the rev was wrongly taken
+  as 0, rather than using the one from the document body.
+
+* Make `padded` and `autoincrement` key generators export their `lastValue` 
+  values, so that they are available in dumps and can be restored elsewhere
+  from a dump.
+
+* Improved logging for error 1489 ("a shard leader refuses to perform a 
+  replication operation"). The log message will now provide the database and
+  shard name plus the differing information about the shard leader.
+
+* Fix decoding of values in `padded` key generator when restoring from a dump.
+
+* Fixed error reporting for hotbackup restore from dbservers back to
+  coordinators. This could for example swallow out of disk errors during
+  hotbackup restore.
+
+* Fixed rare objectId conflict for indexes.
+
+* Fix for OASIS-409. Fixed indexing _id attribute at recovery.
 
 * Add shard-parallelism to arangodump when dumping collections with multiple
   shards.

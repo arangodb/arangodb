@@ -357,7 +357,7 @@ TEST_F(StringUtilsTest, concatT) {
   EXPECT_EQ("", StringUtils::concatT(""s));
   EXPECT_EQ("", StringUtils::concatT(""sv));
   EXPECT_EQ("42", StringUtils::concatT(42));
-  EXPECT_EQ("2.5", StringUtils::concatT(2.5));
+  EXPECT_EQ("2.500000", StringUtils::concatT(2.5));
   EXPECT_EQ("hello, world", StringUtils::concatT("hello", ", ", "world"));
   EXPECT_EQ("cstr 42 stdstr view",
             StringUtils::concatT("cstr ", 42, " stdstr "s, "view"sv));
@@ -371,11 +371,11 @@ TEST_F(StringUtilsTest, joinT) {
   EXPECT_EQ("", StringUtils::joinT(", "sv, ""s));
   EXPECT_EQ("", StringUtils::joinT(", "sv, ""sv));
   EXPECT_EQ("42", StringUtils::joinT(", "sv, 42));
-  EXPECT_EQ("2.5", StringUtils::joinT(", "sv, 2.5));
+  EXPECT_EQ("2.500000", StringUtils::joinT(", "sv, 2.5));
   EXPECT_EQ(", ", StringUtils::joinT(", "sv, "", ""));
   EXPECT_EQ(", , ", StringUtils::joinT(", "sv, "", "", ""));
   EXPECT_EQ("hello, world", StringUtils::joinT(", "sv, "hello", "world"));
   EXPECT_EQ("hello, world", StringUtils::joinT(""sv, "hello", ", ", "world"));
-  EXPECT_EQ("cstr 42 stdstr view", StringUtils::joinT(""sv, "cstr ", 42, "stdstr "s, "view"sv));
+  EXPECT_EQ("cstr 42 stdstr view", StringUtils::joinT(""sv, "cstr ", 42, " stdstr "s, "view"sv));
   EXPECT_EQ("cstr, 42, stdstr, view", StringUtils::joinT(", "sv, "cstr", 42, "stdstr"s, "view"sv));
 }
