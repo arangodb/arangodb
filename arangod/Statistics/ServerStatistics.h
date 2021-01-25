@@ -55,6 +55,10 @@ struct TransactionStatistics {
   // Total number of times we used a fallback to sequential locking
   Counter& _sequentialLocks;
   
+  std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+
   // Total number of write operations in storage engine (excl. sync replication)
   Counter& _numWrites;
   // Total number of write operations in storage engine by sync replication
@@ -64,12 +68,15 @@ struct TransactionStatistics {
   // Total number of truncate operations (not number of documents truncated!) by sync replication
   Counter& _numTruncatesReplication;
 
-  Histogram<log_scale_t<float>>& _rocksdb_read_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_insert_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_replace_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_remove_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_update_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_truncate_usec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_read_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_insert_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_replace_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_remove_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_update_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_truncate_sec;
+
+  bool _exportReadWriteMetrics;
+  
 };
 
 struct ServerStatistics {

@@ -1,6 +1,9 @@
 devel
 -----
 
+* Allow read/write counters and histograms optional via
+  `--metrics.record-read-write-metrics false` default is true
+
 * Improve shard synchronization protocol by only transferring the required
   parts of the inventory from leader to follower. Previously, for each shard
   the entire inventory was exchanged, which included all shards of the
