@@ -38,33 +38,14 @@ SharedPRNGFeature::SharedPRNGFeature(application_features::ApplicationServer& se
   setOptional(true);
 }
 
-SharedPRNGFeature::~SharedPRNGFeature() {
-  if (_prngs != nullptr) {
-    // calls the destructors manually, as we only have a unique_ptr
-    // to a char[] array, and it will not call the destructors.
-    for (std::size_t i = 0; i < stripes; ++i) {
-      // delete the PRNG in place using placement delete
-      _prngs[i].~PaddedPRNG();
-    }
-    _prngs = nullptr;
-  }
-}
+SharedPRNGFeature::~SharedPRNGFeature() = default;
 
 void SharedPRNGFeature::prepare() {
-  static_assert(sizeof(xoroshiro128plus) <= alignment);
-  // bump the size of each bucket to the size of a cache line (alignment). 
-  // this allows us to have each PRNG in a seperate cache line and avoid false
-  // sharing
-  constexpr std::size_t sizePerItem = std::max(sizeof(xoroshiro128plus), alignment); 
-
   // allocate memory for all stripes.
-  // we use some overallocation here (max overallocation is <alignment> bytes) so
-  // that we can align each bucket to a cache- line. 
-  _memory = std::make_unique<char[]>(sizePerItem * stripes + alignment);
+  _prngs = std::make_unique<PaddedPRNG[]>(stripes);
 
-  // align our start pointer to the start of a cache line (alignment)
-  _prngs = reinterpret_cast<PaddedPRNG*>((reinterpret_cast<uintptr_t>(_memory.get()) + alignment) & ~(uintptr_t(alignment - 1)));
-  TRI_ASSERT((reinterpret_cast<uintptr_t>(_prngs) & (alignment - 1)) == 0);
+  PaddedPRNG* prngs = _prngs.get();
+  TRI_ASSERT((reinterpret_cast<uintptr_t>(prngs) & (sizeof(xoroshiro128plus) - 1)) == 0);
   
   splitmix64 seeder(0xdeadbeefdeadbeefULL);
 
@@ -72,9 +53,8 @@ void SharedPRNGFeature::prepare() {
   for (std::size_t i = 0; i < stripes; ++i) {
     uint64_t seed1 = seeder.next();
     uint64_t seed2 = seeder.next();
-    TRI_ASSERT((reinterpret_cast<uintptr_t>(&_prngs[i]) & (alignment - 1)) == 0);
-    // construct the PRNG in place using placement new
-    new (&_prngs[i]) PaddedPRNG(seed1, seed2);
+    TRI_ASSERT((reinterpret_cast<uintptr_t>(&prngs[i]) & (sizeof(xoroshiro128plus) - 1)) == 0);
+    prngs[i].seed(seed1, seed2);
   }
 }
   

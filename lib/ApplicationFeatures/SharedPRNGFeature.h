@@ -56,7 +56,7 @@ class SharedPRNGFeature final : public application_features::ApplicationFeature 
   struct alignas(alignment) PaddedPRNG {
     basics::xoroshiro128plus prng;
 
-    PaddedPRNG(uint64_t seed1, uint64_t seed2) {
+    void seed(uint64_t seed1, uint64_t seed2) noexcept {
       prng.seed(seed1, seed2);
     }
 
@@ -65,12 +65,8 @@ class SharedPRNGFeature final : public application_features::ApplicationFeature 
   
   static_assert(sizeof(PaddedPRNG) == alignment);
 
-  /// @brief contiguous memory which was used to allocate the PRNG buckets (with
-  /// slight overallocation).
-  std::unique_ptr<char[]> _memory;
-
-  /// @brief pointer to PRNGs, bumped to cache line boundaries
-  PaddedPRNG* _prngs;
+  /// @brief individual PRNGs
+  std::unique_ptr<PaddedPRNG[]> _prngs;
 };
 
 }  // namespace arangodb
