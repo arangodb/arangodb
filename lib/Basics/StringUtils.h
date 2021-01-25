@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 // use non-throwing, non-allocating std::from_chars etc. from standard library
 
@@ -443,7 +444,7 @@ template <typename... Iters>
 auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
   auto result = std::string{};
 
-  constexpr auto newcap = (std::distance(iters.first, iters.second) + ... + 0);
+  auto const newcap = (std::distance(iters.first, iters.second) + ... + 0);
   result.reserve(newcap);
 
   ([&] { result.append(iters.first, iters.second); }(), ...);
