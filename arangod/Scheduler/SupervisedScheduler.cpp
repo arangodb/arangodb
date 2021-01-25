@@ -592,7 +592,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   // Otherwise we might have the unlucky case that we first check dequeued,
   // then a job gets done fast (eg dequeued++, done++)
   // and then we read done.
-   uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
+  uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   TRI_ASSERT(jobsDequeued >= jobsDone);
 
