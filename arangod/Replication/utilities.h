@@ -123,16 +123,20 @@ struct ProgressInfo {
 };
 
 struct LeaderInfo {
+ private:
+  LeaderInfo() = default; // used only internally
+
+ public:
   std::string endpoint;
   std::string engine;  // storage engine (optional)
   ServerId serverId{0};
   int majorVersion{0};
   int minorVersion{0};
-  TRI_voc_tick_t lastLogTick{0};
-  TRI_voc_tick_t lastUncommittedLogTick{0};
-  bool active{false};
+  TRI_voc_tick_t lastLogTick{0}; // only used during initialSync
 
   explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
+
+  static LeaderInfo createEmpty() { return LeaderInfo(); }
 
   /// @brief returns major version number * 10000 + minor version number * 100
   uint64_t version() const;
@@ -163,7 +167,8 @@ struct BatchInfo {
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
   Result start(Connection const& connection, ProgressInfo& progress, LeaderInfo& leader,
-               SyncerId syncerId, std::string const& patchCount = "");
+               SyncerId const& syncerId, char const* context, 
+               std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
   Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);

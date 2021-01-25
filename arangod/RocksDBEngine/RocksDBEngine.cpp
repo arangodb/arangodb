@@ -2454,11 +2454,18 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 
   // "state" part
   builder.add("state", VPackValue(VPackValueType::Object));  // open
+
+  // always hard-coded to true
   builder.add("running", VPackValue(true));
+
   builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
+
+  // not used anymore in 3.8:
   builder.add("lastUncommittedLogTick", VPackValue(std::to_string(lastTick)));
-  builder.add("totalEvents",
-              VPackValue(lastTick));  // s.numEvents + s.numEventsSync
+
+  // not used anymore in 3.8:
+  builder.add("totalEvents", VPackValue(lastTick));  
+
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();
 
