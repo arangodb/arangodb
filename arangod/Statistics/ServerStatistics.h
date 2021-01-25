@@ -55,10 +55,6 @@ struct TransactionStatistics {
   // Total number of times we used a fallback to sequential locking
   Counter& _sequentialLocks;
   
-  std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
-  std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
-  std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
-
   // Total number of write operations in storage engine (excl. sync replication)
   std::optional<std::reference_wrapper<Counter>> _numWrites;
   // Total number of write operations in storage engine by sync replication
