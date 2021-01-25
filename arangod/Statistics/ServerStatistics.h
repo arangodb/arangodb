@@ -64,12 +64,12 @@ struct TransactionStatistics {
   // Total number of truncate operations (not number of documents truncated!) by sync replication
   Counter& _numTruncatesReplication;
 
-  Histogram<log_scale_t<float>>& _rocksdb_read_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_insert_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_replace_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_remove_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_update_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_truncate_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_read_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_insert_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_replace_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_remove_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_update_sec;
+  Histogram<log_scale_t<float>>& _rocksdb_truncate_sec;
 };
 
 struct ServerStatistics {
