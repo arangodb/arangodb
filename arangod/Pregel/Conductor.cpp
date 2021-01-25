@@ -723,17 +723,21 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   }
 
   size_t nrGood = 0;
-  futures::collectAll(responses).then([&nrGood](std::vector<futures::Try<network::Response>>&& results) {
-    for (auto const& tryRes : results) {
-      network::Response const& r = tryRes.unwrap();  // throws exceptions upwards
-      if (r.ok() && r.statusCode() < 400) {
-        nrGood++;
-      } else {
-        LOG_TOPIC("6ae67", ERR, Logger::PREGEL) << "received error from worker: '"
-          << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
-      }
-    }
-  }).await(mellon::yes_i_know_that_this_call_will_block);
+  std::ignore =
+      futures::collectAll(responses)
+          .then([&nrGood](std::vector<futures::Try<network::Response>>&& results) {
+            for (auto const& tryRes : results) {
+              network::Response const& r = tryRes.unwrap();  // throws exceptions upwards
+              if (r.ok() && r.statusCode() < 400) {
+                nrGood++;
+              } else {
+                LOG_TOPIC("6ae67", ERR, Logger::PREGEL)
+                    << "received error from worker: '"
+                    << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
+              }
+            }
+          })
+          .await(mellon::yes_i_know_that_this_call_will_block);
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
@@ -951,17 +955,20 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   }
 
   size_t nrGood = 0;
-  futures::collectAll(responses).thenValue([&](auto&& vec) {
-    for (auto const& tryRes : vec) {
-       network::Response const& res = tryRes.unwrap();  // throws exceptions upwards
-      if (res.ok() && res.statusCode() < 400) {
-        nrGood++;
-        if (handle) {
-          handle(res.slice());
-        }
-      }
-    }
-  }).await(mellon::yes_i_know_that_this_call_will_block);
+  std::ignore = futures::collectAll(responses)
+                    .thenValue([&](auto&& vec) {
+                      for (auto const& tryRes : vec) {
+                        network::Response const& res =
+                            tryRes.unwrap();  // throws exceptions upwards
+                        if (res.ok() && res.statusCode() < 400) {
+                          nrGood++;
+                          if (handle) {
+                            handle(res.slice());
+                          }
+                        }
+                      }
+                    })
+                    .await(mellon::yes_i_know_that_this_call_will_block);
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }

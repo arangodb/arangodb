@@ -523,7 +523,7 @@ struct future_prototype {
    *
    * @return Returns the result value of type T.
    */
-  T await(yes_i_know_that_this_call_will_block_t) && {
+  [[nodiscard]] T await(yes_i_know_that_this_call_will_block_t) && {
     struct data {
       detail::box<T> box;
       bool is_waiting = false, has_value = false;
@@ -564,7 +564,7 @@ struct future_prototype {
    * @return
    */
   template <typename Rep, typename Period>
-  std::optional<T> await_with_timeout(std::chrono::duration<Rep, Period> const& duration) && {
+  [[nodiscard]] std::optional<T> await_with_timeout(std::chrono::duration<Rep, Period> const& duration) && {
     struct await_context {
       detail::box<T> box;
       bool is_waiting = false, has_value = false, abandoned = false;
@@ -609,7 +609,7 @@ struct future_prototype {
    */
   template <typename F, std::enable_if_t<std::is_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
-  auto and_capture(F&& f) && noexcept {
+  [[nodiscard]] auto and_capture(F&& f) && noexcept {
     return move_self().and_then([f = std::forward<F>(f)](T&& v) noexcept {
       return expect::captured_invoke(f, std::move(v));
     });
@@ -621,7 +621,7 @@ struct future_prototype {
    * @return
    */
   template <typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
-  auto as() && {
+  [[nodiscard]] auto as() && {
     static_assert(!expect::is_expected_v<T>);
     if constexpr (std::is_same_v<T, U>) {
       return move_self();
@@ -634,7 +634,7 @@ struct future_prototype {
   template <typename G, std::enable_if_t<std::is_nothrow_invocable_v<G, T&&>, int> = 0,
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
-  auto bind(G&& g) {
+  [[nodiscard]] auto bind(G&& g) {
     using future_tag = typename future_trait<ReturnValue>::tag_type;
     using value_type = typename future_trait<ReturnValue>::value_type;
     auto&& [f, p] = make_promise<value_type, future_tag>();
@@ -649,7 +649,7 @@ struct future_prototype {
   template <typename G, std::enable_if_t<std::is_invocable_v<G, T&&>, int> = 0,
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
-  auto bind_capture(G&& g) {
+  [[nodiscard]] auto bind_capture(G&& g) {
     using future_tag = typename future_trait<ReturnValue>::tag_type;
     using value_type = typename future_trait<ReturnValue>::value_type;
     auto&& [f, p] = make_promise<expect::expected<value_type>, future_tag>();
@@ -751,7 +751,7 @@ struct future_temporary
 
   template <typename G, std::enable_if_t<std::is_nothrow_invocable_v<G, R&&>, int> = 0,
             typename S = std::invoke_result_t<G, R&&>>
-  auto and_then(G&& f) && noexcept {
+  [[nodiscard]] auto and_then(G&& f) && noexcept {
 #ifdef FUTURES_COUNT_ALLOC
     ::mellon::detail::number_of_temporary_objects.fetch_add(1, std::memory_order_relaxed);
 #endif
@@ -807,7 +807,7 @@ struct future_temporary
     return std::move(*this).finalize();
   }
 
-  auto finalize() && noexcept -> future<R, Tag> {
+  [[nodiscard]] auto finalize() && noexcept -> future<R, Tag> {
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
 #ifdef FUTURES_COUNT_ALLOC
@@ -981,7 +981,7 @@ struct future
    */
   template <typename F, std::enable_if_t<std::is_nothrow_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
-  auto and_then(F&& f) && noexcept {
+  [[nodiscard]] auto and_then(F&& f) && noexcept {
     if constexpr (detail::tag_trait_helper<Tag>::is_disable_temporaries()) {
       return std::move(*this).and_then_direct(std::forward<F>(f));
     } else {
@@ -1011,7 +1011,7 @@ struct future
    */
   template <typename F, std::enable_if_t<std::is_nothrow_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
-  auto and_then_direct(F&& f) && noexcept -> future<R, Tag> {
+  [[nodiscard]] auto and_then_direct(F&& f) && noexcept -> future<R, Tag> {
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
 #ifdef FUTURES_COUNT_ALLOC
@@ -1056,7 +1056,7 @@ struct future
                                                         std::forward<F>(f));
   }
 
-  auto&& finalize() { return std::move(*this); }
+  [[nodiscard]] auto&& finalize() { return std::move(*this); }
 
   /**
    * Returns true if the init_future holds a value locally.
@@ -1138,7 +1138,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    */
   template <typename F, typename U = T, std::enable_if_t<std::is_invocable_v<F, U&&>, int> = 0,
             typename R = std::invoke_result_t<F, U&&>>
-  auto then(F&& f) && noexcept {
+  [[nodiscard]] auto then(F&& f) && noexcept {
     // TODO what if `F` returns an `expected<U>`. Do we want to flatten automagically?
     static_assert(std::is_nothrow_constructible_v<F, F>,
                   "the lambda object must be nothrow constructible from "
@@ -1154,7 +1154,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
 
   template <typename F, typename U = T, std::enable_if_t<std::is_void_v<U>, int> = 0,
             std::enable_if_t<std::is_invocable_v<F>, int> = 0, typename R = std::invoke_result_t<F>>
-  auto then(F&& f) && noexcept {
+  [[nodiscard]] auto then(F&& f) && noexcept {
     static_assert(!is_future_like_v<R>);
     return std::move(self()).and_then(
         [f = std::forward<F>(f)](expect::expected<T>&& e) mutable noexcept
@@ -1182,7 +1182,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
             std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
             typename ValueType = typename future_trait<ReturnType>::value_type,
             std::enable_if_t<!expect::is_expected_v<ValueType>, int> = 0>
-  auto then_bind(G&& g) && noexcept -> future<expect::expected<ValueType>, Tag> {
+  [[nodiscard]] auto then_bind(G&& g) && noexcept -> future<expect::expected<ValueType>, Tag> {
     auto&& [f, p] = make_promise<expect::expected<ValueType>, Tag>();
     move_self().finally([g = std::forward<G>(g),
                          p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
@@ -1207,7 +1207,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
             std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
             typename ValueType = typename future_trait<ReturnType>::value_type,
             std::enable_if_t<expect::is_expected_v<ValueType>, int> = 0>
-  auto then_bind(G&& g) && noexcept -> future<ValueType, Tag> {
+  [[nodiscard]] auto then_bind(G&& g) && noexcept -> future<ValueType, Tag> {
     auto&& [f, p] = make_promise<ValueType, Tag>();
     move_self().finally([g = std::forward<G>(g),
                          p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
@@ -1239,7 +1239,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    */
   template <typename E, typename F, typename U = T,
             std::enable_if_t<std::is_invocable_r_v<U, F, E const&>, int> = 0>
-  auto catch_error(F&& f) && noexcept {
+  [[nodiscard]] auto catch_error(F&& f) && noexcept {
     return std::move(self()).and_then(
         [f = std::forward<F>(f)](expect::expected<T>&& e) noexcept -> expect::expected<T> {
           return std::move(e).template map_error<E>(f);
@@ -1252,7 +1252,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    * contained exception.
    */
   template <typename U = T, std::enable_if_t<!std::is_void_v<U>, int> = 0>
-  T await_unwrap() && {
+  [[nodiscard]] T await_unwrap() && {
     return std::move(self()).await(yes_i_know_that_this_call_will_block).unwrap();
   }
 
@@ -1272,7 +1272,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    * @return
    */
   template <typename... Args>
-  auto unwrap_or(Args&&... args) {
+  [[nodiscard]] auto unwrap_or(Args&&... args) && {
     return std::move(self()).and_then(
         [args_tuple = std::make_tuple(std::forward<Args>(args)...)](
             expect::expected<T>&& e) noexcept {
@@ -1290,7 +1290,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    * @return Future containing just a `expected<T>`.
    */
   template <typename U = T, std::enable_if_t<expect::is_expected_v<U>, int> = 0>
-  auto flatten() {
+  [[nodiscard]] auto flatten() && {
     return std::move(self()).and_then(
         [](expect::expected<T>&& e) noexcept { return std::move(e).flatten(); });
   }
@@ -1305,7 +1305,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    * @return
    */
   template <typename E, typename... Args>
-  auto rethrow_nested(Args&&... args) noexcept {
+  [[nodiscard]] auto rethrow_nested(Args&&... args) && noexcept {
     return std::move(self()).and_then(
         [args_tuple = std::make_tuple(std::forward<Args>(args)...)](
             expect::expected<T>&& e) mutable noexcept -> expect::expected<T> {
@@ -1334,7 +1334,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    * @return
    */
   template <typename W, typename E, typename... Args>
-  auto rethrow_nested_if(Args&&... args) noexcept {
+  [[nodiscard]] auto rethrow_nested_if(Args&&... args) && noexcept {
     return std::move(self()).and_then(
         [args_tuple = std::make_tuple(std::forward<Args>(args)...)](
             expect::expected<T>&& e) mutable noexcept -> expect::expected<T> {
@@ -1358,7 +1358,7 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
    * @return
    */
   template <typename U, std::enable_if_t<expect::is_expected_v<U>, int> = 0, typename R = typename U::value_type>
-  auto as() {
+  [[nodiscard]] auto as() && {
     return std::move(self()).and_then(
         [](expect::expected<T>&& e) noexcept -> expect::expected<R> {
           return std::move(e).template as<R>();

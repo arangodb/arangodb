@@ -158,7 +158,8 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   AgencyCommResult result = agency.sendTransactionWithFailover(transaction);
   if (result.successful()) {
     auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).await_unwrap();
+    std::ignore =
+        cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).await(mellon::yes_i_know_that_this_call_will_block);
 
     // we are responsible for the upgrade!
     LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER)

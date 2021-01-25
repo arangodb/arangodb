@@ -1224,7 +1224,7 @@ void SynchronizeShard::setState(ActionState state) {
     auto stoppage = clock::now() + timeout;
     auto snooze = milliseconds(100);
     while (!_feature.server().isStopping() && clock::now() < stoppage ) {
-      cluster::fetchCurrentVersion(0.1 * timeout)
+      std::ignore = cluster::fetchCurrentVersion(0.1 * timeout)
         .thenValue(
           [&v] (auto&& res) { v = res.get(); })
         .thenError<std::exception>(
@@ -1248,7 +1248,7 @@ void SynchronizeShard::setState(ActionState state) {
     // If however v is an actual positive integer, we'll wait for it to sync in out
     // ClusterInfo cache through loadCurrent.
     if (v > 0) {
-      _feature.server()
+      std::ignore = _feature.server()
           .getFeature<ClusterFeature>()
           .clusterInfo()
           .waitForCurrentVersion(v)

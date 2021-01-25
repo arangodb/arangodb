@@ -716,7 +716,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   }
 
   OperationOptions options(_context);
-  auto figures =OperationResult(Result(), options);
+  auto figures = OperationResult(Result(), options);
   if (showFigures != FiguresType::None) {
     figures = coll->figures(showFigures == FiguresType::Detailed, options).await_unwrap();
   }

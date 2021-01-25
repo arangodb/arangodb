@@ -98,16 +98,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;
 
-/*
-  struct RemoveServerContext {
-    size_t tries;
-    std::string server;
-
-    explicit RemoveServerContext(std::string s) : tries(0), server(std::move(s)) {}
-  };*/
-
-  //FutureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
-  //FutureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
 
   RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
   RestStatus handleGetCollectionShardDistribution(std::string const& collection);

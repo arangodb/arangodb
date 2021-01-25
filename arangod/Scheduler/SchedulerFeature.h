@@ -77,28 +77,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
-// This can cause ABI problems.
-/*template<typename T, template<typename> typename Fut>
-struct futures::scheduler_addition<T, Fut, futures::arangodb_tag> {
-  auto reschedule(RequestLane lane = RequestLane::CLUSTER_INTERNAL) {
-    auto&& [f, p] = futures::makePromise<T>();
-    std::move(self()).finally([lane, p = std::move(p)](T&& t) noexcept {
-      std::ignore = SchedulerFeature::SCHEDULER->queue(lane, [t = std::move(t),
-          p = std::move(p)]() mutable noexcept {
-        std::move(p).fulfill(std::move(t));
-      });
-      // WHAT HAPPENS WHEN queue fails?
-      // Then the promise p is abandoned and a ARANGO_EXPCETION with error code
-      // TRI_ERROR_PROMISE_ABANDONED is thrown into the promise.
-      // However, it is executed in this thread.
-    });
-  }
-
- private:
-  using future_type = Fut<T>;
-  future_type& self() { return static_cast<future_type&>(*this); }
-};*/
-
 }  // namespace arangodb
 
 #endif

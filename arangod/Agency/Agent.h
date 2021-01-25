@@ -36,9 +36,9 @@
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Futures/Future.h"
 #include "RestServer/MetricsFeature.h"
 
-#include "Futures/Future.h"
 
 struct TRI_vocbase_t;
 

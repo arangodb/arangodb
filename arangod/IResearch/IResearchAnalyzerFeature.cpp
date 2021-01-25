@@ -1767,7 +1767,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
     }
 
     OperationOptions options;
-    std::ignore = trx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).await_unwrap();
+    std::ignore =
+        trx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).await_unwrap();
     res = trx.commitAsync().await_unwrap();
     if (res.ok()) {
       invalidate(vocbase);
@@ -1816,7 +1817,9 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
 
       if (res.ok()) {
         OperationOptions options;
-        truncateTrx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).await_unwrap();
+        std::ignore = truncateTrx
+                          .truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options)
+                          .await_unwrap();
         res = truncateTrx.commitAsync().await_unwrap();
       }
       if (res.fail()) {
