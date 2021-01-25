@@ -1222,8 +1222,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
-  auto const tmp = std::min<uint64_t>(prvICC, 10000);
-  state->options().intermediateCommitCount = tmp;
+  state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
 
   uint64_t found = 0;
   VPackBuilder docBuffer;
