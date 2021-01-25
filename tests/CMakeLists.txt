@@ -205,9 +205,6 @@ set(ARANGODB_TESTS_SOURCES
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
-  Futures/Future-test.cpp
-  Futures/Promise-test.cpp
-  Futures/Try-test.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp

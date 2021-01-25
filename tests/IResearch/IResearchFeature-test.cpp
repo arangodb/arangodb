@@ -2192,9 +2192,9 @@ class IResearchFeatureTestCoordinator
     st = ts.specialize(current_colls_string);
     agencyTrx("/arango/Current/Collections/" + name, st);
     server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
-      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).await_unwrap();
     server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
-      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).await_unwrap();
   }
 
   void agencyDropDatabase(std::string const& name) {
@@ -2204,9 +2204,9 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Databases/" + name, st);
     agencyTrx("/arango/Current/Collections/" + name, st);
     server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
-      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).await_unwrap();
     server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
-      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).await_unwrap();
   }
 
   VPackBuilder agencyCreateIndex(
@@ -2414,7 +2414,7 @@ class IResearchFeatureTestDBServer
     return dataPath;
   }
 
-  
+
   void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);

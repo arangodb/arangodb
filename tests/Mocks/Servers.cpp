@@ -132,7 +132,7 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<arangodb::application_features::ClusterFeaturePhase>(false);
   server.addFeature<arangodb::ClusterFeature>(false);
- 
+
   // fake the exit code with which unresolved futures are returned on
   // shutdown. if we don't do this lots of places in ClusterInfo will
   // report failures during testing
@@ -525,9 +525,9 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   agencyTrx("/arango/Current/Databases/" + name, st);
 
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
-    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).await_unwrap();
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
-    agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+    agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).await_unwrap();
 }
 
 void MockClusterServer::agencyCreateCollections(std::string const& name) {
@@ -540,11 +540,11 @@ void MockClusterServer::agencyCreateCollections(std::string const& name) {
   _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-      .wait();
+      .await_unwrap();
   _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+      .await_unwrap();
 }
 
 void MockClusterServer::agencyDropDatabase(std::string const& name) {
@@ -558,11 +558,11 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
   _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-      .wait();
+      .await_unwrap();
   _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+      .await_unwrap();
 }
 
 MockDBServer::MockDBServer(bool start) : MockClusterServer() {

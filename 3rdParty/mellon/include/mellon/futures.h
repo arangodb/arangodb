@@ -677,7 +677,7 @@ inline constexpr auto has_constructor_v =
  * @tparam T Value type
  * @tparam Fut Parent class template expecting one parameter.
  */
-template <typename T, template <typename> typename Fut>
+template <typename T, template <typename> typename Fut, typename Tag>
 struct future_prototype {
   static_assert(!std::is_void_v<T>);
 
@@ -720,6 +720,55 @@ struct future_prototype {
   }
 
   /**
+   * DO NOT USE THIS FUNCTION! Awaits the future for the given amount of time.
+   * If the wait timed out a `std::nullopt` is returned, otherwise the value
+   * is returned. After the call the future is empty, regardless whether the
+   * value was there or not. If the promise is later fulfilled the
+   * `abandoned_future` handler will be called.
+   * @tparam Rep
+   * @tparam Period
+   * @param duration
+   * @return
+   */
+  template <typename Rep, typename Period>
+  std::optional<T> await_with_timeout(std::chrono::duration<Rep, Period> const& duration) && {
+    struct await_context {
+      detail::box<T> box;
+      bool is_waiting = false, has_value = false, abandoned = false;
+      std::mutex mutex;
+      std::condition_variable cv;
+    };
+
+    auto ctx = std::make_shared<await_context>();
+    move_self().finally([ctx](T&& v) noexcept {
+      bool was_waiting, was_abandoned;
+      {
+        std::unique_lock guard(ctx->mutex);
+        ctx->box.template emplace(std::move(v));
+        ctx->has_value = true;
+        was_waiting = ctx->is_waiting;
+        was_abandoned = ctx->abandoned;
+      }
+      if (ctx->abandoned) {
+        return detail::handler_helper<Tag, T>::abandon_future(std::move(v));
+      }
+      if (was_waiting) {
+        ctx->cv.notify_one();
+      }
+    });
+    std::unique_lock guard(ctx->mutex);
+    ctx->is_waiting = true;
+    ctx->cv.wait_for(guard, duration, [&] { return ctx->has_value; });
+    if (!ctx->has_value) {
+      ctx->abandoned = true;
+      return std::nullopt;
+    }
+    T value(std::move(ctx->box).ref());
+    ctx->box.destroy();
+    return value;
+  }
+
+  /**
    * Calls `f` and captures its return value in an `expected<R>`.
    * @tparam F
    * @param f
@@ -753,9 +802,9 @@ struct future_prototype {
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
   auto bind(G&& g) {
-    using Tag = typename future_trait<ReturnValue>::tag_type;
-    using ValueType = typename future_trait<ReturnValue>::value_type;
-    auto&& [f, p] = make_promise<ValueType, Tag>();
+    using future_tag = typename future_trait<ReturnValue>::tag_type;
+    using value_type = typename future_trait<ReturnValue>::value_type;
+    auto&& [f, p] = make_promise<value_type, future_tag>();
 
     move_self().finally([p = std::move(p), g = std::forward<G>(g)](T&& result) mutable noexcept {
       std::invoke(g, std::move(result)).fulfill(std::move(p));
@@ -768,16 +817,16 @@ struct future_prototype {
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
   auto bind_capture(G&& g) {
-    using Tag = typename future_trait<ReturnValue>::tag_type;
-    using ValueType = typename future_trait<ReturnValue>::value_type;
-    auto&& [f, p] = make_promise<expect::expected<ValueType>, Tag>();
+    using future_tag = typename future_trait<ReturnValue>::tag_type;
+    using value_type = typename future_trait<ReturnValue>::value_type;
+    auto&& [f, p] = make_promise<expect::expected<value_type>, future_tag>();
     move_self().finally([p = std::move(p), g = std::forward<G>(g)](T&& result) mutable noexcept {
       expect::expected<ReturnValue> expected_future =
           expect::captured_invoke(g, std::move(result));
       if (expected_future.has_error()) {
         std::move(p).fulfill(expected_future.error());
       } else {
-        std::move(expected_future).unwrap().finally([p = std::move(p)](ValueType&& v) mutable noexcept {
+        std::move(expected_future).unwrap().finally([p = std::move(p)](value_type&& v) mutable noexcept {
           std::move(p).fulfill(std::in_place, std::move(v));
         });
       }
@@ -791,8 +840,8 @@ struct future_prototype {
    * @tparam Tag (deduced)
    * @param p promise
    */
-  template <typename Tag>
-  void fulfill(promise<T, Tag>&& p) && noexcept {
+  template <typename promise_tag>
+  void fulfill(promise<T, promise_tag>&& p) && noexcept {
     move_self().finally([p = std::move(p)](T&& t) mutable noexcept {
       std::move(p).fulfill(std::move(t));
     });
@@ -805,7 +854,7 @@ struct future_prototype {
 template <typename T, template <typename> typename Fut, typename Tag>
 struct future_base : user_defined_additions_t<Tag, T, Fut>,
                      future_type_based_extensions<T, Fut, Tag> {
-  static_assert(std::is_base_of_v<future_prototype<T, Fut>, future_type_based_extensions<T, Fut, Tag>>);
+  static_assert(std::is_base_of_v<future_prototype<T, Fut, Tag>, future_type_based_extensions<T, Fut, Tag>>);
 };
 
 template <typename Tag, typename T>
@@ -814,7 +863,7 @@ using internal_store =
 }  // namespace detail
 
 template <typename T, template <typename> typename F, typename Tag>
-struct future_type_based_extensions : detail::future_prototype<T, F> {};
+struct future_type_based_extensions : detail::future_prototype<T, F, Tag> {};
 
 /**
  * A temporary object that is used to chain together multiple `and_then` calls
@@ -1243,7 +1292,7 @@ struct future
 
 template <typename T, template <typename> typename Fut, typename Tag>
 struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
-    : detail::future_prototype<expect::expected<T>, Fut> {
+    : detail::future_prototype<expect::expected<T>, Fut, Tag> {
   /**
    * If the `expected<T>` contains a value, the callback is called with the value.
    * Otherwise it is not executed. Any thrown exception is captured by the `expected<T>`.
@@ -1590,7 +1639,7 @@ inline constexpr auto is_applicable_v = is_applicable<T, F, Tup>::value;
 
 template <typename... Ts, template <typename> typename Fut, typename Tag>
 struct future_type_based_extensions<std::tuple<Ts...>, Fut, Tag>
-    : detail::future_prototype<std::tuple<Ts...>, Fut> {
+    : detail::future_prototype<std::tuple<Ts...>, Fut, Tag> {
   using tuple_type = std::tuple<Ts...>;
 
   /**

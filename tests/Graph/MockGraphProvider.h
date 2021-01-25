@@ -31,19 +31,15 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Futures/Future.h"
 #include "Transaction/Methods.h"
-#include "Aql/TraversalStats.h"
 
+#include "Aql/TraversalStats.h"
 #include "Graph/Providers/BaseStep.h"
 
 #include <velocypack/HashedStringRef.h>
 
 namespace arangodb {
-
-namespace futures {
-template <typename T>
-class Future;
-}
 
 namespace aql {
 class QueryContext;
