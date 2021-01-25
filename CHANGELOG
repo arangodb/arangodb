@@ -3,6 +3,8 @@ devel
 
 * Allow {USER} paceholder string also in `--ldap.search-filter`.
 
+* Fix agency restart with mismatching compation and log indexes.
+
 * Added metrics for document read and write operations:
 
   - `arangodb_document_writes: Total number of document write operations
