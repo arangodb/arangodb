@@ -379,9 +379,6 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
         << this->_connectionInfo.clientAddress << "\"," << stat.timingsCsv();
   }
 
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
-  double const queueTime = stat.ELAPSED_WHILE_QUEUED();
-
   // and give some request information
   LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId()
