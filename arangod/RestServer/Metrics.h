@@ -41,7 +41,7 @@
 
 class Metric {
  public:
-  Metric(std::string const& name, std::string const& help, std::string const& docs, std::string const& labels);
+  Metric(std::string const& name, std::string const& help, char const* docs,  std::string const& labels);
   virtual ~Metric();
   std::string const& help() const;
   std::string const& name() const;
@@ -69,7 +69,7 @@ struct Metrics {
 class Counter : public Metric {
  public:
   Counter(uint64_t const& val, std::string const& name, std::string const& help,
-          std::string const& docs = std::string(),
+          char const* docs = nullptr,
           std::string const& labels = std::string());
   Counter(Counter const&) = delete;
   ~Counter();
@@ -94,7 +94,7 @@ template<typename T> class Gauge : public Metric {
  public:
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
-        std::string const& docs = std::string(), std::string const& labels = std::string())
+        char const* docs = nullptr, std::string const& labels = std::string())
     : Metric(name, help, docs, labels), _g(val) {
   }
   Gauge(Gauge const&) = delete;
@@ -407,7 +407,7 @@ template<typename Scale> class Histogram : public Metric {
   Histogram() = delete;
 
   Histogram(Scale&& scale, std::string const& name, std::string const& help,
-            std::string const& docs = std::string(),
+            char const* docs = nullptr,
             std::string const& labels = std::string())
     : Metric(name, help, docs, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
@@ -415,7 +415,7 @@ template<typename Scale> class Histogram : public Metric {
       _n(_scale.n() - 1) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
-            std::string const& docs = std::string(),
+            char const* docs = nullptr,
             std::string const& labels = std::string())
     : Metric(name, help, docs, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
       _lowr(std::numeric_limits<value_type>::max()),

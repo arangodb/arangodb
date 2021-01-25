@@ -100,13 +100,13 @@ void MetricsFeature::toPrometheus(std::string& result, bool withDocs) const {
 
 Counter& MetricsFeature::counter(
   std::initializer_list<std::string> const& key, uint64_t const& val,
-  std::string const& help) {
-  return counter(metrics_key(key), val, help);
+  std::string const& help, char const* docs) {
+  return counter(metrics_key(key), val, help, docs);
 }
 
 Counter& MetricsFeature::counter(
   metrics_key const& mk, uint64_t const& val,
-  std::string const& help) {
+  std::string const& help, char const* docs) {
 
   std::string labels = mk.labels;
   if (ServerState::instance() != nullptr &&
@@ -117,7 +117,7 @@ Counter& MetricsFeature::counter(
     labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
       "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
   }
-  auto metric = std::make_shared<Counter>(val, mk.name, help, labels);
+  auto metric = std::make_shared<Counter>(val, mk.name, help, docs, labels);
   bool success = false;
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -131,8 +131,9 @@ Counter& MetricsFeature::counter(
 }
 
 Counter& MetricsFeature::counter(
-  std::string const& name, uint64_t const& val, std::string const& help) {
-  return counter(metrics_key(name), val, help);
+  std::string const& name, uint64_t const& val, std::string const& help,
+  char const* docs) {
+  return counter(metrics_key(name), val, help, docs);
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() {

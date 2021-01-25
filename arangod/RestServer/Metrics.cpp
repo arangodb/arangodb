@@ -59,8 +59,8 @@ std::string cleanDocs(std::string const& docs) {
   return s;
 }
 
-Metric::Metric(std::string const& name, std::string const& help, std::string const& docs, std::string const& labels)
-  : _name(name), _help(help), _docs(docs.empty() ? help : cleanDocs(docs)), _labels(labels) {};
+Metric::Metric(std::string const& name, std::string const& help, char const* docs, std::string const& labels)
+  : _name(name), _help(help), _docs(docs == nullptr ? help : cleanDocs(docs)), _labels(labels) {};
 
 Metric::~Metric() = default;
 
@@ -124,7 +124,7 @@ void Counter::toPrometheus(std::string& result, bool withDocs) const {
 
 Counter::Counter(
   uint64_t const& val, std::string const& name, std::string const& help,
-  std::string const& docs, std::string const& labels) :
+  char const* docs, std::string const& labels) :
   Metric(name, help, docs, labels), _c(val), _b(_c) {}
 
 Counter::~Counter() { _b.push(); }

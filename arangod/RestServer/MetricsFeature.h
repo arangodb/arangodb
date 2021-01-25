@@ -74,7 +74,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   template <typename Scale>
   Histogram<Scale>& histogram(std::string const& name, Scale const& scale,
                               std::string const& help = std::string(),
-                              std::string const& docs = std::string()) {
+                              char const* docs = nullptr) {
     return histogram<Scale>(metrics_key(name), scale, help, docs);
   }
 
@@ -82,14 +82,14 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Histogram<Scale>& histogram(std::initializer_list<std::string> const& il,
                               Scale const& scale,
                               std::string const& help = std::string(),
-                              std::string const& docs = std::string()) {
+                              char const* docs = nullptr) {
     return histogram<Scale>(metrics_key(il), scale, help, docs);
   }
 
   template <typename Scale>
   Histogram<Scale>& histogram(metrics_key const& mk, Scale const& scale,
                               std::string const& help = std::string(),
-                              std::string const& docs = std::string()) {
+                              char const* docs = nullptr) {
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
@@ -163,27 +163,29 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
+  Counter& counter(std::string const& name, uint64_t const& val, std::string const& help, char const* docs = nullptr);
   Counter& counter(std::initializer_list<std::string> const& key,
-                   uint64_t const& val, std::string const& help);
-  Counter& counter(metrics_key const& key, uint64_t const& val, std::string const& help);
+                   uint64_t const& val, std::string const& help,
+                   char const* docs = nullptr);
+  Counter& counter(metrics_key const& key, uint64_t const& val, std::string const& help, char const* docs = nullptr);
   Counter& counter(std::string const& name);
   Counter& counter(std::initializer_list<std::string> const& key);
 
   template <typename T>
-  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    return gauge(metrics_key(name), t, help);
+  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help, char const* docs = nullptr) {
+    return gauge(metrics_key(name), t, help, docs);
   }
 
   template <typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& il, T const& t,
-                  std::string const& help) {
-    return gauge(metrics_key(il), t, help);
+                  std::string const& help, char const* docs = nullptr) {
+    return gauge(metrics_key(il), t, help, docs);
   }
 
   template <typename T>
   Gauge<T>& gauge(metrics_key const& key, T const& t,
-                  std::string const& help = std::string()) {
+                  std::string const& help = std::string(),
+                  char const* docs = nullptr) {
     metrics_key mk(key);
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
@@ -195,7 +197,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
           "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
-    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, labels);
+    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, docs, labels);
     bool success = false;
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
