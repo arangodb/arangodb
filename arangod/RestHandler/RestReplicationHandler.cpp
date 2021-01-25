@@ -213,8 +213,13 @@ static Result restoreDataParser(char const* ptr, char const* pos,
           doc = value;
         }
       } else if (type == REPLICATION_MARKER_REMOVE) {
-        // edge case: only need for old dumps taken with MMFiles
-        value = slice.get("key");
+        // edge case: only needed for old dumps taken with MMFiles
+        value = slice.get(::dataString);
+        if (value.isObject()) {
+          value = value.get(StaticStrings::KeyString);
+        } else {
+          value = slice.get("key");
+        }
         if (!value.isString()) {
           type = REPLICATION_INVALID;
         } else {
