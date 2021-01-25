@@ -392,9 +392,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         }
       } else {
         ClusterBaseProviderOptions forwardProviderOptions(
-            opts->getExpressionCtx(), static_cast<ClusterTraverserCache*>(opts->cache()), false);
+            opts->getExpressionCtx(),
+            static_cast<ClusterTraverserCache*>(opts->cache()), false);
         ClusterBaseProviderOptions backwardProviderOptions(
-            opts->getExpressionCtx(), static_cast<ClusterTraverserCache*>(opts->cache()), true);
+            opts->getExpressionCtx(),
+            static_cast<ClusterTraverserCache*>(opts->cache()), true);
 
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
@@ -415,16 +417,15 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredCluster>>>(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
         } else {
-          LOG_DEVEL << "implemnt support for clusterprovideroptions in ProviderTracer"; // TODO
           LOG_DEVEL << "Using KPaths cluster tracer configuration.";
-          /*
+
           using KPathRefactoredClusterTracer = TracedKPathEnumerator<ClusterProvider>;
 
           auto kPathUnique = std::make_unique<KPathRefactoredClusterTracer>(
               ProviderTracer<ClusterProvider>{opts->query(), forwardProviderOptions,
-                              opts->query().resourceMonitor()},
+                                              opts->query().resourceMonitor()},
               ProviderTracer<ClusterProvider>{opts->query(), backwardProviderOptions,
-                              opts->query().resourceMonitor()},
+                                              opts->query().resourceMonitor()},
               std::move(enumeratorOptions), opts->query().resourceMonitor());
 
           auto executorInfos =
@@ -433,7 +434,6 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                           std::move(targetInput));
           return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredClusterTracer>>>(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
-              */
         }
       }
     } else {
