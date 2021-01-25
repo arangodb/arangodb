@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,9 @@ AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache, size_t positi
 
 AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache, size_t position) const {
   TRI_ASSERT(position < _vertices.size());
-  return cache->fetchVertexAqlResult(_vertices[position]);
+  arangodb::aql::AqlValue result;
+  cache->appendVertex(_vertices[position], result);
+  return result;
 }
 
 void ShortestPathResult::addVertex(arangodb::velocypack::StringRef v) {

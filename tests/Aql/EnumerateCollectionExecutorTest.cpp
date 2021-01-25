@@ -42,9 +42,9 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/ResourceUsage.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -97,7 +97,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   EnumerateCollectionExecutorTest()
       : AqlExecutorTestCase(),
-        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         ast(*fakedQuery.get()),
@@ -255,7 +255,7 @@ using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
 class EnumerateCollectionExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateCollectionInputParam> {
  protected:
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
   TRI_vocbase_t& vocbase;
@@ -279,7 +279,7 @@ class EnumerateCollectionExecutorTestProduce
   EnumerateCollectionExecutorInfos executorInfos;
 
   EnumerateCollectionExecutorTestProduce()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),

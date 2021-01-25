@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,7 @@ namespace pregel {
 /// continuous memory buffer with a fixed capacity
 template <typename T>
 struct TypedBuffer {
-  static_assert(std::is_default_constructible<T>::value, "");
+  static_assert(std::is_default_constructible<T>::value, "Stored type T has to be default constructible");
   
   /// close file (see close() )
   virtual ~TypedBuffer() = default;

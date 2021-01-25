@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1065,14 +1065,6 @@ void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection
   _physical->deferDropCollection(callback);
 }
 
-/// @brief reads an element from the document collection
-Result LogicalCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result) {
-  TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  return getPhysical()->read(trx, key, result);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a truncate operation (note: currently this only clears
 /// the read-cache
@@ -1088,11 +1080,6 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
 /// @brief compact-data operation
 Result LogicalCollection::compact() { return getPhysical()->compact(); }
-
-Result LogicalCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
-                                    std::pair<LocalDocumentId, RevisionId>& result) const {
-  return getPhysical()->lookupKey(trx, key, result);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
@@ -1143,17 +1130,6 @@ Result LogicalCollection::remove(transaction::Methods& trx, velocypack::Slice co
     return Result(TRI_ERROR_DEBUG);
   }
   return getPhysical()->remove(trx, slice, previous, options);
-}
-
-bool LogicalCollection::readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                                     ManagedDocumentResult& result) const {
-  return getPhysical()->readDocument(trx, token, result);
-}
-
-bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 LocalDocumentId const& token,
-                                                 IndexIterator::DocumentCallback const& cb) const {
-  return getPhysical()->readDocumentWithCallback(trx, token, cb);
 }
 
 /// @brief a method to skip certain documents in AQL write operations,

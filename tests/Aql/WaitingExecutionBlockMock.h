@@ -26,17 +26,18 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ScatterExecutor.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
-struct ResourceMonitor;
 class SkipResult;
 }  // namespace aql
 

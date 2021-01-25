@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/Reports.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -46,14 +47,19 @@ enum ExecutionState {
   DONE,         // after everyting is done
   CANCELED,     // after an terminal error or manual canceling
   IN_ERROR,     // after an error which should allow recovery
-  RECOVERING    // during recovery
+  RECOVERING,   // during recovery
+  FATAL_ERROR,  // execution can not continue because of errors
 };
-extern const char* ExecutionStateNames[7];
+extern const char* ExecutionStateNames[8];
 
 class PregelFeature;
 class MasterContext;
 class AggregatorHandler;
 struct IAlgorithm;
+
+struct Error {
+  std::string message;
+};
 
 class Conductor {
   friend class PregelFeature;
@@ -89,9 +95,11 @@ class Conductor {
   bool _asyncMode = false;
   bool _useMemoryMaps = false;
   bool _storeResults = false;
+  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
+  ReportManager _reports;
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;

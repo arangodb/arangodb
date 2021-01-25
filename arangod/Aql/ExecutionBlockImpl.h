@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -210,6 +210,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
   [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // This is a helper method to inject a prepared
+  // input range in the tests. It should simulate
+  // an ongoing query in a specific state.
+  auto testInjectInputRange(DataRange range, SkipResult skipped) -> void;
+#endif
 
  private:
   /**

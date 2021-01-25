@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -280,9 +280,9 @@ class RocksDBEngine final : public StorageEngine {
 
   Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
                              RocksDBLogValue&& logValue);
-  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
-                                  velocypack::Slice const& slice,
-                                  RocksDBLogValue&& logValue);
+  Result writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
+                                     velocypack::Slice const& slice,
+                                     RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
   std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings() const;

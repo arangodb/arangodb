@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -146,8 +147,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     }
     _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
   } else {
-
     createTransaction();
+    TRI_ASSERT(_rocksTransaction != nullptr);
+
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
     if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
       TRI_ASSERT(_options.intermediateCommitCount != UINT64_MAX ||

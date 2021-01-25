@@ -1,0 +1,20 @@
+
+if (NOT MSVC)
+    add_executable(greenspun_repl REPL.cpp)
+    target_link_libraries(greenspun_repl arango)
+    target_link_libraries(greenspun_repl arango_greenspun)
+    if (NOT USE_PRECOMPILED_V8)
+        add_dependencies(greenspun_repl v8_build)
+    endif ()
+
+    add_executable(greenspun_test PrimitivesTest.cpp)
+    target_link_libraries(greenspun_test arango)
+    target_link_libraries(greenspun_test arango_greenspun)
+    target_link_libraries(greenspun_test gtest)
+    target_compile_definitions(greenspun_test PRIVATE -DAIR_PRIMITIVE_TESTS_MAIN)
+    if (NOT USE_PRECOMPILED_V8)
+        add_dependencies(greenspun_test v8_build)
+    endif ()
+
+    target_include_directories(greenspun_test SYSTEM PRIVATE ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src)
+endif ()

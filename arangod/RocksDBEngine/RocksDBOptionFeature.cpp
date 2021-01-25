@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -146,13 +146,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
-      // TODO: this change has been made only to see if setting to true caused a performance
-      // regression or not. it will be rolled back once we know.
-      //_cacheIndexAndFilterBlocks(true),
-      //_cacheIndexAndFilterBlocksWithHighPriority(true),
       _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
       _cacheIndexAndFilterBlocksWithHighPriority(
-        rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
+          rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
       _pinl0FilterAndIndexBlocksInCache(
           rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
       _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),

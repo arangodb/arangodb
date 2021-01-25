@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,6 +120,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
+      _allowJavaScriptTransactions(true),
       _enableJS(true),
       _nextId(0),
       _stopping(false),
@@ -254,6 +255,16 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::Flags::OnCoordinator,
       arangodb::options::Flags::OnSingle,
       arangodb::options::Flags::Hidden));
+  
+  options->addOption(
+      "--javascript.transactions",
+      "enable JavaScript transactions",
+      new BooleanParameter(&_allowJavaScriptTransactions),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
 
   options->addOption(
       "--javascript.enabled", "enable the V8 JavaScript engine",
@@ -270,12 +281,18 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
 
+  // a bit of duck typing here to check if we are an agent.
+  // the problem is that the server role may be still unclear in this early
+  // phase, so we are also looking for startup options that identify an agent
+  bool const isAgent = 
+      (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_AGENT) ||
+      (result.touched("agency.activate") && *(options->get<BooleanParameter>("agency.activate")->ptr));
+
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
-      (!result.touched("console") ||
-       !*(options->get<BooleanParameter>("console")->ptr))) {
+  if (!javascriptRequestedViaOptions(options) &&
+      (isAgent || ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER)) {
     // specifying --console requires JavaScript, so we can only turn it off
-    // if not specified
+    // if not requested
     _enableJS = false;
   }
 
@@ -365,6 +382,9 @@ void V8DealerFeature::prepare() {
 }
 
 void V8DealerFeature::start() {
+  TRI_ASSERT(_enableJS);
+  TRI_ASSERT(isEnabled());
+
   if (_copyInstallation) {
     copyInstallationFiles();  // will exit process if it fails
   } else {
@@ -1714,6 +1734,20 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
   delete context;
   ++_contextsDestroyed;
+}
+
+bool V8DealerFeature::javascriptRequestedViaOptions(std::shared_ptr<ProgramOptions> const& options) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+
+  if (result.touched("console") && *(options->get<BooleanParameter>("console")->ptr)) {
+    // --console
+    return true;
+  }
+  if (result.touched("javascript.enabled") && *(options->get<BooleanParameter>("javascript.enabled")->ptr)) {
+    // --javascript.enabled
+    return true;
+  }
+  return false;
 }
 
 V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,

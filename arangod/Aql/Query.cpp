@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -84,7 +85,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              aql::QueryOptions&& options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
-      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
       _sharedState(std::move(sharedState)),
@@ -93,6 +94,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
+      _resultMemoryUsage(0),
       _queryHash(DontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
@@ -166,6 +168,9 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
 /// @brief destroys a query
 Query::~Query() {
+  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resultMemoryUsage = 0;
+
   if (_queryOptions.profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES) << elapsedSince(_startTime)
                                               << " Query::~Query queryString: "
@@ -346,7 +351,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
-  auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
+  auto plan = ExecutionPlan::instantiateFromAst(_ast.get(), true);
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -455,6 +460,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             // cache low-level pointer to avoid repeated shared-ptr-derefs
             TRI_ASSERT(queryResult.data != nullptr);
             auto& resultBuilder = *queryResult.data;
+            size_t previousLength = resultBuilder.bufferRef().byteSize();
             auto& vpackOpts = vpackOptions();
 
             size_t const n = block->numRows();
@@ -468,6 +474,13 @@ ExecutionState Query::execute(QueryResult& queryResult) {
                                  /*allowUnindexed*/true);
               }
             }
+
+            size_t newLength = resultBuilder.bufferRef().byteSize();
+            TRI_ASSERT(newLength >= previousLength);
+            size_t diff = newLength - previousLength;
+
+            _resourceMonitor.increaseMemoryUsage(diff);
+            _resultMemoryUsage += diff;
           }
 
           if (state == ExecutionState::DONE) {
@@ -659,6 +672,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent) {
+          size_t memoryUsage = 0;
           size_t const n = value->numRows();
 
           auto const& vpackOpts = vpackOptions();
@@ -673,12 +687,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                                  /*resolveExternals*/true,
                                  /*allowUnindexed*/true);
               }
+              memoryUsage += sizeof(v8::Value);
+              if (val.requiresDestruction()){
+                memoryUsage += val.memoryUsage();
+              }
 
               if (V8PlatformFeature::isOutOfMemory(isolate)) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
             }
           }
+
+          // this may throw
+          _resourceMonitor.increaseMemoryUsage(memoryUsage);
+          _resultMemoryUsage += memoryUsage;
         }
 
         if (killed()) {
@@ -855,7 +877,7 @@ QueryResult Query::explain() {
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     std::unique_ptr<ExecutionPlan> plan =
-        ExecutionPlan::instantiateFromAst(parser.ast());
+        ExecutionPlan::instantiateFromAst(parser.ast(), true);
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);

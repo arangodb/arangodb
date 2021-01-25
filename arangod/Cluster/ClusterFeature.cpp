@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -600,7 +600,7 @@ void ClusterFeature::start() {
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
       << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
 
-  auto [acb,idx] = _agencyCache->read(
+  auto [acb, idx] = _agencyCache->read(
     std::vector<std::string>{AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
   auto result = acb->slice();
 
@@ -679,7 +679,7 @@ void ClusterFeature::stop() {
     // the cluster setup.
     ServerState::instance()->logoff(10.0);
   }
-
+  
   // Make sure ClusterInfo's syncer threads have stopped.
   waitForSyncersToStop();
 
@@ -764,6 +764,7 @@ void ClusterFeature::shutdownAgencyCache() {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
+  _agencyCache.reset();
 }
 
 void ClusterFeature::notify() {

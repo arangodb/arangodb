@@ -1,6 +1,12 @@
 include_directories(.)
 
 # ----------------------------------------
+# Greenspun tests
+# ----------------------------------------
+
+add_subdirectory(Greenspun)
+
+# ----------------------------------------
 # Fuerte tests
 # ----------------------------------------
 
@@ -78,9 +84,11 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
+  Aql/AqlSharedExecutionBlockImplTest.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
@@ -118,6 +126,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
+  Aql/OldSubqueriesTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryHelper.cpp
   Aql/RegisterPlanTest.cpp
@@ -152,14 +161,12 @@ set(ARANGODB_TESTS_SOURCES
   Basics/files-test.cpp
   Basics/fpconv-test.cpp
   Basics/hashes-test.cpp
-  Basics/json-test.cpp
   Basics/overload-test.cpp
   Basics/priorityqueue-test.cpp
   Basics/string-buffer-test.cpp
   Basics/string-test.cpp
   Basics/string-utf8-normalize-test.cpp
   Basics/string-utf8-test.cpp
-  Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/CpuUsageSnapshotTest.cpp
@@ -168,6 +175,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/NumberUtilsTest.cpp
+  Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/SpinLockTest.cpp
@@ -207,9 +215,18 @@ set(ARANGODB_TESTS_SOURCES
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/GenericGraphProviderTest.cpp
+  Graph/GraphMockProviderInstances.cpp
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
+  Graph/KPathFinderTest_Refactored.cpp
   Graph/KShortestPathsFinder.cpp
+  Greenspun/PrimitivesTest.cpp
+  Graph/MockGraphProvider.cpp
+  Graph/PathStoreTest.cpp
+  Graph/PathValidatorTest.cpp
+  Graph/QueueTest.cpp
+  Graph/SingleServerProviderTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
@@ -246,6 +263,7 @@ set(ARANGODB_TESTS_SOURCES
   V8Server/v8-users-test.cpp
   V8Server/v8-views-test.cpp
   VocBase/vocbase-test.cpp
+  VocBase/KeyGenerator-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp

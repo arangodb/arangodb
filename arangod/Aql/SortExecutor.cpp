@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 
 #include <Logger/LogMacros.h>
 #include <algorithm>
@@ -77,13 +78,16 @@ SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
                                      RegIdFlatSet const& registersToClear,
                                      std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
-                                     velocypack::Options const* options, bool stable)
+                                     velocypack::Options const* options, 
+                                     arangodb::ResourceMonitor& resourceMonitor,
+                                     bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
       _limit(limit),
       _manager(manager),
       _vpackOptions(options),
+      _resourceMonitor(resourceMonitor),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
@@ -109,18 +113,26 @@ velocypack::Options const* SortExecutorInfos::vpackOptions() const noexcept {
   return _vpackOptions;
 }
 
-size_t SortExecutorInfos::limit() const noexcept { return _limit; }
+arangodb::ResourceMonitor& SortExecutorInfos::getResourceMonitor() const {
+  return _resourceMonitor;
+}
 
 AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
   return _manager;
 }
 
+size_t SortExecutorInfos::limit() const noexcept { return _limit; }
+
 SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
     : _infos(infos),
       _input(nullptr),
       _currentRow(CreateInvalidInputRowHint{}),
-      _returnNext(0) {}
-SortExecutor::~SortExecutor() = default;
+      _returnNext(0),
+      _memoryUsageForRowIndexes(0) {}
+
+SortExecutor::~SortExecutor() {
+  _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
+}
 
 void SortExecutor::initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix) {
   TRI_ASSERT(_input == nullptr);
@@ -183,8 +195,18 @@ void SortExecutor::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  
+  size_t memoryUsageForRowIndexes = _input->memoryUsageForRowIndexes();
+  // may throw
+  ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForRowIndexes);
+
   TRI_ASSERT(_input != nullptr);
   _sortedIndexes = _input->produceRowIndexes();
+  
+  // now we are responsible for tracking the memory
+  guard.steal();
+  _memoryUsageForRowIndexes = memoryUsageForRowIndexes;
+
   // comparison function
   OurLessThan ourLessThan(_infos.vpackOptions(), *_input, _infos.sortRegisters());
   if (_infos.stable()) {

@@ -470,7 +470,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     return nullptr;
   }
 
-  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
 }
 
 std::unique_ptr<arangodb::aql::Query> prepareQuery(

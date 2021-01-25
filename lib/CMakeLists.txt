@@ -34,6 +34,8 @@ set(LIB_ARANGO_LINENOISE
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ShellBase.cpp
 )
 
 set(LIB_ARANGO_DATE
@@ -145,6 +147,7 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp
@@ -167,7 +170,6 @@ add_library(arango STATIC
   Basics/files.cpp
   Basics/fpconv.cpp
   Basics/hashes.cpp
-  Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
   Basics/process-utils.cpp
@@ -177,7 +179,6 @@ add_library(arango STATIC
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Basics/vector.cpp
   Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
@@ -230,9 +231,7 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
   Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
@@ -272,6 +271,28 @@ if (USE_ENTERPRISE)
   target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
+
+
+################################################################################
+## LIB_ARANGO_AIR_SOURCES
+################################################################################
+
+set(LIB_ARANGO_AIR_SOURCES
+  Greenspun/Interpreter.cpp
+  Greenspun/Primitives.cpp
+  Greenspun/lib/DateTime.cpp
+  Greenspun/lib/Math.cpp
+  Greenspun/lib/Strings.cpp
+  Greenspun/lib/Lists.cpp
+  Greenspun/lib/Lists.h
+  Greenspun/lib/Dicts.cpp
+  Greenspun/lib/Dicts.h)
+
+add_library(arango_greenspun STATIC
+        ${LIB_ARANGO_AIR_SOURCES})
+
+target_link_libraries(arango_greenspun immer)
+target_link_libraries(arango_greenspun arango)
 
 ################################################################################
 ## LIB_ARANGO_GEO

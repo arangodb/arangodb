@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -208,7 +208,7 @@ class Manager final {
   }
 
  private:
-  void prepareOptions(transaction::Options& options);
+  Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(transaction::Options const& options) const;
   Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
                          std::vector<std::string> const& exclusiveCollections,

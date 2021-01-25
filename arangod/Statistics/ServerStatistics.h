@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,7 @@ struct TransactionStatistics {
   Counter& _transactionsAborted;
   Counter& _transactionsCommitted;
   Counter& _intermediateCommits;
+  
   // total number of lock timeouts for exclusive locks
   Counter& _exclusiveLockTimeouts;
   // total number of lock timeouts for write locks
@@ -51,7 +52,24 @@ struct TransactionStatistics {
   Counter& _lockTimeMicros;
   // histogram for lock acquisition (in seconds)
   Histogram<log_scale_t<double>>& _lockTimes;
+  // Total number of times we used a fallback to sequential locking
   Counter& _sequentialLocks;
+  
+  // Total number of write operations in storage engine (excl. sync replication)
+  Counter& _numWrites;
+  // Total number of write operations in storage engine by sync replication
+  Counter& _numWritesReplication;
+  // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
+  Counter& _numTruncates;
+  // Total number of truncate operations (not number of documents truncated!) by sync replication
+  Counter& _numTruncatesReplication;
+
+  Histogram<log_scale_t<float>>& _rocksdb_read_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_insert_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_replace_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_remove_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_update_usec;
+  Histogram<log_scale_t<float>>& _rocksdb_truncate_usec;
 };
 
 struct ServerStatistics {

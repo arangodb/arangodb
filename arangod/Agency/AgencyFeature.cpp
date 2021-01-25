@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -226,7 +226,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_compactionKeepSize == 0) {
     LOG_TOPIC("ca485", WARN, Logger::AGENCY)
-        << "agency.compaction-keep-size must not be 0, set to 1000";
+        << "agency.compaction-keep-size must not be 0, set to 50000";
     _compactionKeepSize = 50000;
   }
 
@@ -269,10 +269,9 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
        std::type_index(typeid(FoxxFeature)),
        std::type_index(typeid(FrontendFeature))});
 
-  if ((!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) &&
-      (!result.touched("javascript.enabled") || !*(options->get<BooleanParameter>("javascript.enabled")->ptr))) {
-    // specifying --console requires JavaScript, so we can only turn it off
-    // if not specified
+  if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
+    // specifying --console requires JavaScript, so we can only turn Javascript off
+    // if not requested
 
     // console mode inactive. so we can turn off V8
     disabledFeatures.emplace_back(std::type_index(typeid(ScriptFeature)));

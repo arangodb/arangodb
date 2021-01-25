@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -549,7 +549,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       << "Finished AppendEntriesRPC from " << leaderId << " with term " << term;
 
   _append_hist_msec.count(
-    duration<float,std::milli>(high_resolution_clock::now()-start).count());
+    duration<float, std::milli>(high_resolution_clock::now()-start).count());
 
   return priv_rpc_ret_t(ok, t);
 }
@@ -589,7 +589,7 @@ void Agent::sendAppendEntriesRPC() {
       // also the log entry which produced that snapshot.
       // Therefore, we will set lastConfirmed to one less than our latest
       // snapshot in this special case, and we will always fetch enough
-      // entries from the log to fulfull our duties.
+      // entries from the log to fulfill our duties.
 
       if ((steady_clock::now() - earliestPackage).count() < 0 ||
           _state.lastIndex() <= lastConfirmed) {
@@ -1410,7 +1410,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
     _write_hist_msec.count(
-      duration<float,std::milli>(high_resolution_clock::now()-start).count());
+      duration<float, std::milli>(high_resolution_clock::now()-start).count());
   }
 
   // Maximum log index
@@ -1918,7 +1918,7 @@ void Agent::compact() {
         << _config.compactionKeepSize() << " did not work.";
     } else {
       _compaction_hist_msec.count(
-        duration<float,std::milli>(clock::now()-start).count());
+        duration<float, std::milli>(clock::now()-start).count());
     }
   }
 }

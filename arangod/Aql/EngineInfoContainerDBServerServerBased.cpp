@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -390,7 +390,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
   if (dbServers.empty()) {
     // No snippets to be placed on dbservers
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
   // We at least have one Snippet, or one graph node.
   // Otherwise the locking needs to be empty.
@@ -519,7 +519,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   }
 
   cleanupGuard.cancel();
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(

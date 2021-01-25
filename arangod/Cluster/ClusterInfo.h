@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,24 +68,7 @@ struct ClusterCollectionCreationInfo;
 class CollectionWatcher {
  public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
-    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id().id());
-    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
-
-    _agencyCallback = std::make_shared<AgencyCallback>(
-        collection.vocbase().server(), where,
-        [this](VPackSlice const& result) {
-          if (result.isNone()) {
-            _present.store(false);
-          }
-          return true;
-        },
-        true, false);
-    _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  }
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection);
   ~CollectionWatcher();
 
   bool isPresent() {
@@ -435,6 +418,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+  
+  /// @brief cancel all pending wait-for-syncer operations
+  void drainSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -490,7 +476,7 @@ public:
    * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version

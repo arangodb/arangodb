@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -321,7 +321,6 @@ void ClusterInfo::cleanup() {
     _currentCollections.clear();
     _shardIds.clear();
   }
-
 }
 
 void ClusterInfo::triggerBackgroundGetIds() {
@@ -1983,7 +1982,10 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   auto agencyCallback =
     std::make_shared<AgencyCallback>(
       _server, "Current/Databases/" + database.getName(), dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r =_agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -2064,28 +2066,28 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
         analyzersPath(database.getName()), AgencyPrecondition::Type::EMPTY, true)});
 
   // And wait for our database to show up in `Current/Databases`
-  auto waitresult = waitForDatabaseInCurrent(database, trx);
+  auto waitResult = waitForDatabaseInCurrent(database, trx);
 
-  if (waitresult.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME ||
-      waitresult.errorNumber() == TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN) {
+  if (waitResult.is(TRI_ERROR_ARANGO_DUPLICATE_NAME) ||
+      waitResult.is(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN)) {
     // Early exit without cancellation if we did not do anything
-    return waitresult;
+    return waitResult;
   }
 
-  if (waitresult.fail()) {
-    // cleanup: remove database from plan
-    auto ret = cancelCreateDatabaseCoordinator(database);
-
-    if (ret.ok()) {
-      // Creation failed
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
-                    "database creation failed");
-    } else {
-      // Cleanup failed too
-      return ret;
-    }
+  if (waitResult.ok()) {
+    return waitResult;
   }
-  return Result();
+
+  // cleanup: remove database from plan
+  auto ret = cancelCreateDatabaseCoordinator(database);
+
+  if (ret.fail()) {
+    // Cleanup failed too
+    return ret;
+  }
+  // Cleanup ok, but creation failed
+  return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                "database creation failed");
 }
 
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
@@ -2153,36 +2155,65 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
   AgencyWriteTransaction trx({delPlanCollections, delPlanDatabase, incrPlan}, preCondition);
 
   size_t tries = 0;
-  // TODO: Hard coded timeout, also the retry numbers below are all
-  //       pulled out of thin air.
   double nextTimeout = 0.5;
 
   AgencyCommResult res;
-  do {
+  while (true) {
     tries++;
     res = ac.sendTransactionWithFailover(trx, nextTimeout);
 
-    if (!res.successful()) {
-      if (tries == 1) {
-        events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
+    if (res.successful()) {
+      break;
+    }
+    
+    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+      auto [acb, index] = agencyCache.read(
+        std::vector<std::string>{
+          AgencyCommHelper::path("Plan/Databases/" + database.getName())});
+
+      velocypack::Slice databaseSlice = acb->slice()[0].get(std::vector<std::string>(
+        {AgencyCommHelper::path(), "Plan", "Databases", database.getName()}));
+
+      if (!databaseSlice.isObject()) {
+        // database key in agency does _not_ exist. this can happen if on another
+        // coordinator the database gets dropped while on this coordinator we are
+        // still trying to create it
+        break;
       }
-      if (tries >= 5) {
-        nextTimeout = 5.0;
-      }
-      LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
-        << "failed to cancel creation of database " << database.getName() << " with error "
-        << res.errorMessage() << ". Retrying.";
-    } else if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
-      Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-      if (r.fail()) {
-        return r;
+
+      VPackSlice agencyId = databaseSlice.get("id");
+      VPackSlice preconditionId = builder.slice().get("id");
+      if (agencyId.isString() && preconditionId.isString() &&
+          !agencyId.isEqualString(preconditionId.stringRef())) {
+        // database key is there, but has a different id, this can happen if the
+        // database has already been dropped in the meantime and recreated, in
+        // any case, let's get us out of here...
+        break;
       }
     }
 
+    if (tries == 1) {
+      events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
+    }
+    
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
-  } while (!res.successful());
+
+    if (tries >= 5) {
+      nextTimeout = 5.0;
+    }
+      
+    LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
+      << "failed to cancel creation of database " << database.getName() << " with error "
+      << res.errorMessage() << ". Retrying.";
+
+    // enhancing our calm a bit here, so this does not put the agency under pressure
+    // too much.
+    TRI_ASSERT(nextTimeout > 0.0 && nextTimeout <= 5.0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(unsigned(1000.0 * nextTimeout)));
+  }
 
   return Result();
 }
@@ -2223,7 +2254,11 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
                               _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   });
@@ -2560,7 +2595,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           _server, "Current/Collections/" + databaseName + "/" + info.collectionID,
           closure, true, false);
 
-    _agencyCallbackRegistry->registerCallback(agencyCallback);
+    Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    if (r.fail()) {
+      return r;
+    }
+
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
@@ -2986,7 +3025,11 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [this, &agencyCallback]() -> void {
       _agencyCallbackRegistry->unregisterCallback(agencyCallback);
@@ -3919,7 +3962,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
 
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -4171,7 +4218,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
 
-
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
     std::vector<std::string>{AgencyCommHelper::path(planCollKey)});
@@ -4289,7 +4335,11 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (r.fail()) {
+    return r;
+  }
+
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
@@ -5614,7 +5664,7 @@ void ClusterInfo::startSyncers() {
   }
 }
 
-void ClusterInfo::shutdownSyncers() {
+void ClusterInfo::drainSyncers() {
   {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
@@ -5634,6 +5684,10 @@ void ClusterInfo::shutdownSyncers() {
     }
     _waitCurrent.clear();
   }
+}
+
+void ClusterInfo::shutdownSyncers() {
+  drainSyncers();
 
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
@@ -5644,6 +5698,8 @@ void ClusterInfo::shutdownSyncers() {
 }
 
 void ClusterInfo::waitForSyncersToStop() {
+  drainSyncers();
+
   auto start = std::chrono::steady_clock::now();
   while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
@@ -5664,6 +5720,28 @@ VPackSlice PlanCollectionReader::indexes() {
   } else {
     TRI_ASSERT(res.isArray());
     return res;
+  }
+}
+  
+CollectionWatcher::CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
+    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
+
+  std::string databaseName = collection.vocbase().name();
+  std::string collectionID = std::to_string(collection.id().id());
+  std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
+
+  _agencyCallback = std::make_shared<AgencyCallback>(
+      collection.vocbase().server(), where,
+      [this](VPackSlice const& result) {
+        if (result.isNone()) {
+          _present.store(false);
+        }
+        return true;
+      },
+      true, false);
+  Result res = _agencyCallbackRegistry->registerCallback(_agencyCallback);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 }
 
@@ -5706,7 +5784,9 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 }
 
 bool ClusterInfo::SyncerThread::start() {
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << currentThreadName();
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
+      << "Starting "
+      << (currentThreadName() != nullptr ? currentThreadName() : "by unknown thread");
   return Thread::start();
 }
 
@@ -5723,15 +5803,14 @@ void ClusterInfo::SyncerThread::run() {
       return notify(result);
     };
 
-  auto _acb =
+  auto acb =
     std::make_shared<AgencyCallback>(_server, _section + "/Version", update, true, false);
-  bool registered = _cr->registerCallback(_acb);
-  if (!registered) {
+  Result res = _cr->registerCallback(std::move(acb));
+  if (res.fail()) {
     LOG_TOPIC("70e05", FATAL, arangodb::Logger::CLUSTER)
-      << "Failed to register callback with local registery ";
+      << "Failed to register callback with local registry: " << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
-
 
   // This first call needs to be done or else we might miss all potential until
   // such time, that we are ready to receive. Under no circumstances can we assume
@@ -5761,19 +5840,36 @@ void ClusterInfo::SyncerThread::run() {
       }
       try {
         _f();
+      } catch (basics::Exception const& ex) {
+        if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+          LOG_TOPIC("9d1f5", WARN, arangodb::Logger::CLUSTER)
+            << "caught an error while loading " << _section << ": " << ex.what();
+        }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section << ": " << ex.what();
+        LOG_TOPIC("752c4", WARN, arangodb::Logger::CLUSTER)
+          << "caught an error while loading " << _section << ": " << ex.what();
       } catch (...) {
-        LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section;
+        LOG_TOPIC("30968", WARN, arangodb::Logger::CLUSTER)
+          << "caught an error while loading " << _section;
       }
     }
     // next round...
   }
 
-  _cr->unregisterCallback(_acb);
-
+  try {
+    _cr->unregisterCallback(acb);
+  } catch (basics::Exception const& ex) {
+    if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+      LOG_TOPIC("39336", WARN, arangodb::Logger::CLUSTER)
+        << "caught exception while unregistering callback: " << ex.what();
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("66f2f", WARN, arangodb::Logger::CLUSTER)
+      << "caught exception while unregistering callback: " << ex.what();
+  } catch (...) {
+    LOG_TOPIC("995cd", WARN, arangodb::Logger::CLUSTER)
+      << "caught unknown exception while unregistering callback";
+  }
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {
