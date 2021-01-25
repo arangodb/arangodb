@@ -30,7 +30,7 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/SharedPRNG.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -152,6 +152,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                          double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
+      _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),
@@ -925,7 +926,7 @@ void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
 
 void SupervisedScheduler::setLastLowPriorityDequeueTime(uint64_t time) noexcept {
   // update only probabilistically, in order to reduce contention on the gauge
-  if ((basics::SharedPRNG::rand() & 7) == 0) {
+  if ((_sharedPRNG.rand() & 7) == 0) {
     _metricsLastLowPriorityDequeueTime.operator=(time);
   }
 }

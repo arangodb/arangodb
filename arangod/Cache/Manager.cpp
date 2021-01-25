@@ -32,7 +32,7 @@
 
 #include "Cache/Manager.h"
 
-#include "Basics/SharedPRNG.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/voc-errors.h"
@@ -62,17 +62,19 @@ const std::uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 const std::chrono::milliseconds Manager::rebalancingGracePeriod(10);
 
-Manager::Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats)
-    : _lock(),
+Manager::Manager(SharedPRNGFeature& sharedPRNG, 
+                 PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats)
+    : _sharedPRNG(sharedPRNG),
+      _lock(),
       _shutdown(false),
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
-      _accessStats((globalLimit >= (1024 * 1024 * 1024))
+      _accessStats(sharedPRNG, 
+                   (globalLimit >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
                        : (globalLimit / (1024 * sizeof(std::uint64_t)))),
       _enableWindowedStats(enableWindowedStats),
-      _findStats(nullptr),
       _findHits(),
       _findMisses(),
       _caches(),
@@ -96,11 +98,11 @@ Manager::Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWin
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (enableWindowedStats) {
     try {
-      _findStats.reset(new Manager::FindStatBuffer(16384));
+      _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG, 16384);
       _fixedAllocation += _findStats->memoryUsage();
       _globalAllocation = _fixedAllocation;
     } catch (std::bad_alloc const&) {
-      _findStats.reset(nullptr);
+      _findStats.reset();
       _enableWindowedStats = false;
     }
   }
@@ -420,7 +422,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(Cache* cache, std::
 }
 
 void Manager::reportAccess(std::uint64_t id) {
-  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
+  if ((_sharedPRNG.rand() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(id);
   }
 }

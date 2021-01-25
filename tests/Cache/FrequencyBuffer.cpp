@@ -27,9 +27,14 @@
 #include <cstdint>
 #include <memory>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Cache/FrequencyBuffer.h"
 
+#include "Mocks/Servers.h"
+
+using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 TEST(CacheFrequencyBufferTest, test_buffer_with_uint8_entries) {
   std::uint8_t zero = 0;
@@ -39,7 +44,9 @@ TEST(CacheFrequencyBufferTest, test_buffer_with_uint8_entries) {
   // check that default construction is as expected
   ASSERT_EQ(std::uint8_t(), zero);
 
-  FrequencyBuffer<std::uint8_t> buffer(1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  FrequencyBuffer<std::uint8_t> buffer(sharedPRNG, 1024);
   ASSERT_EQ(buffer.memoryUsage(), sizeof(FrequencyBuffer<std::uint8_t>) + 1024);
 
   for (std::size_t i = 0; i < 512; i++) {
