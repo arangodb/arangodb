@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,30 +39,31 @@ struct IndexTypeFactory;  // forward declaration
 namespace arangodb {
 namespace iresearch {
 
-class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResearchLink {
+class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
  public:
-  IResearchRocksDBLink(IndexId iid, arangodb::LogicalCollection& collection);
+  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId);
 
-  void afterTruncate(TRI_voc_tick_t tick) override {
-    IResearchLink::afterTruncate(tick);
+  void afterTruncate(TRI_voc_tick_t tick,
+                     transaction::Methods* trx) override {
+    IResearchLink::afterTruncate(tick, trx);
   }
 
   bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }
 
-  arangodb::Result drop() override { return IResearchLink::drop(); }
+  Result drop() override { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  arangodb::Result insert(arangodb::transaction::Methods& trx,
-                          arangodb::RocksDBMethods* methods,
-                          arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const& doc,
-                          arangodb::OperationOptions& options) override {
-    return IResearchLink::insert(trx, documentId, doc, options.indexOperationMode);
+  Result insert(transaction::Methods& trx,
+                RocksDBMethods* /*methods*/,
+                LocalDocumentId const& documentId,
+                VPackSlice const doc,
+                OperationOptions& /*options*/) override {
+    return IResearchLink::insert(trx, documentId, doc);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
@@ -72,7 +74,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   
   void load() override { IResearchLink::load(); }
 
-  bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
+  bool matchesDefinition(VPackSlice const& slice) const override {
     return IResearchLink::matchesDefinition(slice);
   }
 
@@ -81,12 +83,11 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
     return stats().indexSize;
   }
 
-  arangodb::Result remove(arangodb::transaction::Methods& trx,
-                                  arangodb::RocksDBMethods*,
-                                  arangodb::LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  arangodb::Index::OperationMode mode) override {
-    return IResearchLink::remove(trx, documentId, doc, mode);
+  Result remove(transaction::Methods& trx,
+                RocksDBMethods*,
+                LocalDocumentId const& documentId,
+                VPackSlice const doc) override {
+    return IResearchLink::remove(trx, documentId, doc);
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -94,10 +95,10 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type<Index::Serialize>::type flags) const override;
 
-  void toVelocyPackFigures(velocypack::Builder& builder) const override {
+  void toVelocyPackFigures(VPackBuilder& builder) const override {
     IResearchLink::toVelocyPackStats(builder);
   }
 
@@ -118,27 +119,26 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
   ////////////////////////////////////////////////////////////////////////////////
-  struct IndexFactory : public arangodb::IndexTypeFactory {
+  struct IndexFactory : public IndexTypeFactory {
     friend class IResearchRocksDBLink;
 
    private:
-    IndexFactory(arangodb::application_features::ApplicationServer& server);
+    IndexFactory(application_features::ApplicationServer& server);
 
    public:
-    bool equal(arangodb::velocypack::Slice const& lhs,
-               arangodb::velocypack::Slice const& rhs) const override;
+    bool equal(VPackSlice const& lhs,
+               VPackSlice const& rhs,
+               std::string const& dbname) const override;
 
-    std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                                 arangodb::velocypack::Slice const& definition,
-                                                 IndexId id,
-                                                 bool /*isClusterConstructor*/) const override;
+    std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                       VPackSlice const& definition,
+                                       IndexId id,
+                                       bool /*isClusterConstructor*/) const override;
 
-    virtual arangodb::Result normalize(             // normalize definition
-        arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-        arangodb::velocypack::Slice definition,  // source definition
-        bool isCreation,              // definition for index creation
-        TRI_vocbase_t const& vocbase  // index vocbase
-        ) const override;
+    virtual Result normalize(VPackBuilder& normalized,
+                             VPackSlice definition,
+                             bool isCreation,
+                             TRI_vocbase_t const& vocbase) const override;
   };
 
   static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);

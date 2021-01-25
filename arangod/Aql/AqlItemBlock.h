@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Aql/AqlValue.h"
-#include "Aql/ResourceUsage.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/SmallVector.h"
 
 #include <limits>
@@ -163,7 +163,7 @@ class AqlItemBlock {
         throw;
       }
     }
-    _numEffectiveRows = std::max<size_t>(_numEffectiveRows, index + 1);
+    _maxModifiedRowIndex = std::max<size_t>(_maxModifiedRowIndex, index + 1);
   }
 
   /// @brief eraseValue, erase the current value of a register and freeing it
@@ -196,6 +196,7 @@ class AqlItemBlock {
 
   /// @brief getter for _numRows
   size_t numRows() const noexcept;
+  size_t maxModifiedRowIndex() const noexcept;
 
   /// @brief get the relevant consumable range of the block
   std::tuple<size_t, size_t> getRelevantRange() const;
@@ -206,8 +207,8 @@ class AqlItemBlock {
   /// be erased, i.e. empty / none!
   size_t numEntries() const noexcept;
   
-  /// @brief Effective number of entries in the matrix. 
-  size_t numEffectiveEntries() const noexcept;
+  /// @brief number of modified entries
+  size_t maxModifiedEntries() const noexcept;
 
   size_t capacity() const noexcept;
 
@@ -330,7 +331,7 @@ class AqlItemBlock {
  private:
   void destroy() noexcept;
 
-  ResourceMonitor& resourceMonitor() noexcept;
+  arangodb::ResourceMonitor& resourceMonitor() noexcept;
 
   void increaseMemoryUsage(size_t value);
 
@@ -366,7 +367,7 @@ class AqlItemBlock {
   RegisterCount _numRegisters = 0;
   
   /// @brief (highest) number of rows that have been written to
-  size_t _numEffectiveRows = 0;
+  size_t _maxModifiedRowIndex = 0;
   
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;

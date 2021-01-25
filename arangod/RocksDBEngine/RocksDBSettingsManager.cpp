@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
@@ -56,22 +56,22 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint64_t seqNumber) {
+arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBatch& batch,
+                               VPackBuilder& b, uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
   using arangodb::Result;
-  using arangodb::RocksDBColumnFamily;
+  using arangodb::RocksDBColumnFamilyManager;
   using arangodb::RocksDBKey;
   using arangodb::RocksDBSettingsType;
   using arangodb::StorageEngine;
 
   // now write global settings
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   b.clear();
   b.openObject();
   b.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
   b.add("hlc", VPackValue(std::to_string(TRI_HybridLogicalClock())));
-  b.add("releasedTick", VPackValue(std::to_string(engine->releasedTick())));
+  b.add("releasedTick", VPackValue(std::to_string(engine.releasedTick())));
   b.add("lastSync", VPackValue(std::to_string(seqNumber)));
   b.close();
 
@@ -82,7 +82,9 @@ arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
-  rocksdb::Status s = batch.Put(RocksDBColumnFamily::definitions(), key.string(), value);
+  rocksdb::Status s =
+      batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                key.string(), value);
   if (!s.ok()) {
     LOG_TOPIC("140ec", WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
@@ -96,13 +98,17 @@ namespace arangodb {
 
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
-RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
-    : _lastSync(0), _syncing(false), _db(db->GetRootDB()), _initialReleasedTick(0) {}
+RocksDBSettingsManager::RocksDBSettingsManager(RocksDBEngine& engine)
+    : _engine(engine),
+      _lastSync(0),
+      _syncing(false),
+      _db(engine.db()->GetRootDB()),
+      _initialReleasedTick(0) {}
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
   loadSettings();
-  EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
+  _engine.releaseTick(_initialReleasedTick);
 }
 
 bool RocksDBSettingsManager::lockForSync(bool force) {
@@ -162,18 +168,17 @@ Result RocksDBSettingsManager::sync(bool force) {
   rocksdb::WriteBatch batch;
   _tmpBuilder.clear();  // recycle our builder
 
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  auto dbfeature = arangodb::DatabaseFeature::DATABASE;
-  TRI_ASSERT(!engine->inRecovery()); // just don't
+  auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
+  TRI_ASSERT(!_engine.inRecovery());  // just don't
 
   bool didWork = false;
-  auto mappings = engine->collectionMappings();
+  auto mappings = _engine.collectionMappings();
   std::string scratch;
   scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     DataSourceId cid = pair.second;
-    TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
+    TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbid);
     if (!vocbase) {
       continue;
     }
@@ -225,12 +230,15 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
   TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
+    LOG_TOPIC("1039e", TRACE, Logger::ENGINES)
+        << "no collection data to serialize, updating lastSync to " << minSeqNr;
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
   }
 
   _tmpBuilder.clear();
-  Result res = ::writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
+  Result res = ::writeSettings(_engine, batch, _tmpBuilder,
+                               std::max(_lastSync.load(), minSeqNr));
   if (res.fail()) {
     LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
@@ -240,6 +248,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
+    LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
     _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
@@ -252,7 +261,8 @@ void RocksDBSettingsManager::loadSettings() {
 
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
-      _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
+      _db->Get(rocksdb::ReadOptions(),
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
@@ -280,7 +290,7 @@ void RocksDBSettingsManager::loadSettings() {
           _initialReleasedTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
           LOG_TOPIC("e13f4", TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
-          EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
+          _engine.releaseTick(_initialReleasedTick);
         }
 
         if (slice.hasKey("lastSync")) {
@@ -292,6 +302,8 @@ void RocksDBSettingsManager::loadSettings() {
         LOG_TOPIC("1b3de", WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";
       }
+    } else {
+      LOG_TOPIC("7558b", TRACE, Logger::ENGINES) << "no initial settings found";
     }
   }
 }

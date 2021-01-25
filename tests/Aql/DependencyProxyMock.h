@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,7 +43,7 @@ namespace aql {
 template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
-  explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+  explicit DependencyProxyMock(arangodb::ResourceMonitor& monitor,
                                ::arangodb::aql::RegisterId nrRegisters);
 
  public:
@@ -75,7 +76,7 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
 
   size_t _numFetchBlockCalls;
 
-  ::arangodb::aql::ResourceMonitor& _monitor;
+  ::arangodb::ResourceMonitor& _monitor;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
   ::arangodb::aql::SharedAqlItemBlockPtr _block;
 };
@@ -84,7 +85,7 @@ template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class MultiDependencyProxyMock
     : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
-  MultiDependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+  MultiDependencyProxyMock(arangodb::ResourceMonitor& monitor,
                            ::arangodb::aql::RegIdSet const& inputRegisters,
                            ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
 

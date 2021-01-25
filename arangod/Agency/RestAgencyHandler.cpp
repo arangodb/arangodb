@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -158,70 +158,89 @@ RestStatus RestAgencyHandler::handleTransient() {
 /// else respond
 RestStatus RestAgencyHandler::pollIndex(
   index_t const& start, double const& timeout) {
-  return waitForFuture(
-    _agent->poll(start, timeout)
-    .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
-      VPackSlice res = rb->slice();
+  auto pollResult = _agent->poll(start, timeout);
 
-      if (res.isObject() && res.hasKey("result")) {
+  if (std::get<1>(pollResult)) {
+    return waitForFuture(
+      std::move(std::get<0>(pollResult)).thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+        VPackSlice res = rb->slice();
 
-        if (res.hasKey("error")) { // leadership loss
+        if (res.isObject() && res.hasKey("result")) {
+
+          if (res.hasKey("error")) { // leadership loss
+            generateError(
+              rest::ResponseCode::SERVICE_UNAVAILABLE,
+              TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+            return;
+          }
+
+          VPackSlice slice = res.get("result");
+
+          if (slice.hasKey("log")) {
+            VPackBuilder builder;
+            {
+              VPackObjectBuilder ob(&builder);
+              builder.add(StaticStrings::Error, VPackValue(false));
+              builder.add("code", VPackValue(int(ResponseCode::OK)));
+              builder.add(VPackValue("result"));
+              VPackObjectBuilder r(&builder);
+              if (!slice.get("firstIndex").isNumber()) {
+                generateError(
+                  rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
+                return;
+              } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
+                generateError(
+                  rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
+                return;
+              }
+              uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(), i = 0;
+
+              builder.add("commitIndex", slice.get("commitIndex"));
+              VPackSlice logs = slice.get("log");
+              if (start <= firstIndex) {
+                builder.add("firstIndex", logs[i].get("index"));
+              }
+              builder.add(VPackValue("log"));
+              VPackArrayBuilder a(&builder);
+              if (start <= firstIndex) {
+                uint64_t i = start - firstIndex;
+                for (; i < logs.length(); ++i) {
+                  builder.add(logs[i]);
+                }
+              }
+            }
+            generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
+            return;
+          } else {
+            generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
+            return;
+          }
+        } else {
           generateError(
             rest::ResponseCode::SERVICE_UNAVAILABLE,
             TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
-          return;
         }
-
-        VPackSlice slice = res.get("result");
-
-        if (slice.hasKey("log")) {
-          VPackBuilder builder;
-          {
-            VPackObjectBuilder ob(&builder);
-            builder.add(StaticStrings::Error, VPackValue(false));
-            builder.add("code", VPackValue(int(ResponseCode::OK)));
-            builder.add(VPackValue("result"));
-            VPackObjectBuilder r(&builder);
-            if (!slice.get("firstIndex").isNumber()) {
-              generateError(
-                rest::ResponseCode::SERVER_ERROR,
-                TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
-              return;
-            } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
-              generateError(
-                rest::ResponseCode::SERVER_ERROR,
-                TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
-              return;
-            }
-            uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
-            builder.add("commitIndex", slice.get("commitIndex"));
-            VPackSlice logs = slice.get("log");
-            builder.add("firstIndex", logs[i].get("index"));
-            builder.add(VPackValue("log"));
-            VPackArrayBuilder a(&builder);
-            for (; i < logs.length(); ++i) {
-              builder.add(logs[i]);
-            }
-          }
-          generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
-          return;
-        } else {
-          generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
-          return;
-        }
-      } else {
+      })
+      .thenError<VPackException>([this](VPackException const& e) {
+        generateError(Result{e.errorCode(), e.what()});
+      })
+      .thenError<std::exception>([this](std::exception const& e) {
         generateError(
-          rest::ResponseCode::SERVER_ERROR,
-          TRI_ERROR_HTTP_SERVER_ERROR, "No leader");
-      }
-    })
-    .thenError<VPackException>([this](VPackException const& e) {
-      generateError(Result{e.errorCode(), e.what()});
-    })
-    .thenError<std::exception>([this](std::exception const& e) {
+          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+      }));
+  } else {
+    auto const& leader = std::get<2>(pollResult);
+    if (leader == NO_LEADER) {
       generateError(
-        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-    }));
+        rest::ResponseCode::SERVICE_UNAVAILABLE,
+        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+    } else {
+      redirectRequest(leader);
+    }
+    return RestStatus::DONE;
+  }
 
 }
 
@@ -253,11 +272,16 @@ RestStatus RestAgencyHandler::handlePoll() {
 
   // WARNING ////////////////////////////////////////////////////
   // Leader only
+  auto const& leaderId = _agent->leaderID();
   if (!_agent->leading()) {  // Redirect to leader
-    if (_agent->leaderID() == NO_LEADER) {
+    if (leaderId == NO_LEADER) {
       return reportMessage(
         rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
-    } // WARNING REDIRECTS NEEDS BE DOING
+    } else {
+      TRI_ASSERT(leaderId != _agent->id());
+      redirectRequest(leaderId);
+      return RestStatus::DONE;
+    }
   }
 
   // Get queryString index
@@ -424,7 +448,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
           _agent->commitHist().count(
-            duration<float,std::milli>(high_resolution_clock::now()-start).count());
+            duration<float, std::milli>(high_resolution_clock::now()-start).count());
         }
       }
     }
@@ -691,9 +715,10 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("leaderId", Value(_agent->leaderID()));
     body.add("commitIndex", Value(last));
     _agent->lastAckedAgo(body);
-    LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "handleConfig after lastAckedAgo";
+    LOG_TOPIC("ddeae", DEBUG, Logger::AGENCY) << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
-    body.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+    body.add("engine",
+             VPackValue(server().getFeature<EngineSelectorFeature>().engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
@@ -731,7 +756,7 @@ RestStatus RestAgencyHandler::handleState() {
     _agent->readDB(body);
   }
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptions());
   return RestStatus::DONE;
 }
 

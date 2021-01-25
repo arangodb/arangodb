@@ -33,6 +33,7 @@ var internal = require("internal");
 var arangodb = require("@arangodb");
 var fs = require("fs");
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attributes

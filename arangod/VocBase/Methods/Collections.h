@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "Futures/Future.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -80,8 +82,9 @@ struct Collections {
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
-  static arangodb::Result create(                     // create collection
-      TRI_vocbase_t& vocbase,                         // collection vocbase
+  static arangodb::Result create(  // create collection
+      TRI_vocbase_t& vocbase,      // collection vocbase
+      OperationOptions const& options,
       std::string const& name,                        // collection name
       TRI_col_type_e collectionType,                  // collection type
       arangodb::velocypack::Slice const& properties,  // collection properties
@@ -92,14 +95,15 @@ struct Collections {
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
-  static Result create(TRI_vocbase_t&, std::vector<CollectionCreationInfo> const& infos,
+  static Result create(TRI_vocbase_t&, OperationOptions const&,
+                       std::vector<CollectionCreationInfo> const& infos,
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, bool isNewDatabase,
                        std::shared_ptr<LogicalCollection> const& colPtr,
                        std::vector<std::shared_ptr<LogicalCollection>>& ret);
 
-  static Result createSystem(
-      TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase,
+  static Result createSystem(TRI_vocbase_t& vocbase, OperationOptions const&,
+                             std::string const& name, bool isNewDatabase,
                              std::shared_ptr<LogicalCollection>& ret);
   static void createSystemCollectionProperties(std::string const& collectionName,
                                                VPackBuilder& builder, TRI_vocbase_t const&);
@@ -109,7 +113,8 @@ struct Collections {
 
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice const& props);
+                                 velocypack::Slice const& props,
+                                 OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride);
@@ -124,10 +129,8 @@ struct Collections {
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
                                         LogicalCollection const& coll);
 
-  static futures::Future<Result> upgrade(TRI_vocbase_t& vocbase,
-                                         LogicalCollection const& coll);
-
-  static futures::Future<OperationResult> revisionId(Context& ctxt);
+  static futures::Future<OperationResult> revisionId(Context& ctxt,
+                                                     OperationOptions const& options);
 
   typedef std::function<void(velocypack::Slice const&)> DocCallback;
   /// @brief Helper implementation similar to ArangoCollection.all() in v8

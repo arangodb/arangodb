@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +36,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -420,6 +420,12 @@ bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   return v8g->_securityContext.isInternal();
+}
+
+bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
+  TRI_GET_GLOBALS();
+  TRI_ASSERT(v8g != nullptr);
+  return v8g->_securityContext.isAdminScript() || v8g->_securityContext.isRestAdminScript();
 }
 
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,

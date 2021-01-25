@@ -30,7 +30,7 @@
 #include "utils/integer.hpp"
 #include "utils/std.hpp"
 
-NS_BEGIN(fst)
+namespace fst {
 
 template<typename F, bool MatchInput = true>
 std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
@@ -282,6 +282,6 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
   bool error_;                       // Matcher validity
 }; // TableMatcher
 
-NS_END // fst
+} // fst
 
 #endif

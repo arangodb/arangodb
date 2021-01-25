@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for TRI_string_buffer_t
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Tim Becker
 /// @author Dr. Frank Celler
@@ -360,29 +357,17 @@ TEST(CStringBufferTest, tst_replace) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST(CStringBufferTest, tst_smpl_utils) {
-  char const* a234 = "234";
-  char const* a23412 = "23412";
-  char const* a2341212125 = "23412-12.125";
-
   // these are built on prev. tested building blocks...
   TRI_string_buffer_t sb;
   TRI_InitStringBuffer(&sb);
-  TRI_AppendInteger3StringBuffer(&sb, 123);
-
-  EXPECT_TRUE(std::string(ONETWOTHREE, STRLEN(ONETWOTHREE)) == std::string(sb._buffer, STRLEN(sb._buffer)));
-
-  TRI_ClearStringBuffer(&sb);
-  TRI_AppendInteger3StringBuffer(&sb, 1234);
-
-  EXPECT_TRUE(std::string(a234, STRLEN(a234)) == std::string(sb._buffer, STRLEN(sb._buffer)));
   
   TRI_AppendDoubleStringBuffer(&sb, 12.0);
 
-  EXPECT_TRUE(std::string(a23412, STRLEN(a23412)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE("12" == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_AppendDoubleStringBuffer(&sb, -12.125);
 
-  EXPECT_TRUE(std::string(a2341212125, STRLEN(a2341212125)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE("12-12.125" == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_DestroyStringBuffer(&sb);
 }

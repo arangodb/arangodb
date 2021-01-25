@@ -144,9 +144,9 @@ void parseSchema(std::string const& schema,
       conf._protocolType = ProtocolType::Http2;
     }
   }
-  
+
   if (conf._socketType == SocketType::Undefined ||
-             conf._protocolType == ProtocolType::Undefined) {
+      conf._protocolType == ProtocolType::Undefined) {
     throw std::runtime_error(std::string("invalid schema: ") +
                              proto.toString());
   }

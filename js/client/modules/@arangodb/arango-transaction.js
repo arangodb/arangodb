@@ -112,10 +112,16 @@ function ArangoTransaction (database, data) {
   }
 
   this._collections = data.collections;
+  let body = {collections: this._collections};
+  // copy transaction options
+  [ 'lockTimeout', 'maxTransactionSize', 'intermediateCommitSize', 'intermediateCommitCount', 'waitForSync' ].forEach(function(o) {
+    if (data.hasOwnProperty(o)) {
+      body[o] = data[o];
+    }
+  });
 
   let url = this._url() + '/begin';
-  let body = {collections: this._collections};
-  var requestResult = this._database._connection.POST(url, body);
+  let requestResult = this._database._connection.POST(url, body);
 
   arangosh.checkRequestResult(requestResult);
   this._id = requestResult.result.id;

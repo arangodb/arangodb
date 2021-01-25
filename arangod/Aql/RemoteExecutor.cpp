@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -288,10 +289,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   VPackBuilder builder(buffer, &options);
   builder.openObject(/*unindexed*/ true);
 
-  // Required for 3.5.* and earlier, dropped in 3.6.0
-  builder.add("exhausted", VPackValue(false));
-  // Used in 3.4.0 onwards
   builder.add("done", VPackValue(false));
+
   builder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::Error, VPackValue(false));
   // NOTE API change. Before all items have been send.
@@ -489,7 +488,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   arangodb::network::EndpointSpec spec;
   int res = network::resolveDestination(nf, _server, spec);
-  if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
+  if (res != TRI_ERROR_NO_ERROR) { 
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
@@ -502,9 +501,10 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_distributeId.empty()) {
-    req->header.addMeta("x-shard-id", _distributeId);
-    req->header.addMeta("shard-id", _distributeId);  // deprecated in 3.7, remove later
+    req->header.addMeta(StaticStrings::AqlShardIdHeader, _distributeId);
   }
+
+  network::addSourceHeader(nullptr, *req);
 
   LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
       << "request to '" << _server << "' '" << fuerte::to_string(type) << " "
@@ -541,40 +541,55 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
 void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const slice,
                                                              AqlCallStack const& callStack) {
-  using namespace std::string_literals;
-  traceRequest("execute", slice, "callStack="s + callStack.toString());
+  if (_profileLevel == ProfileLevel::TraceOne ||
+      _profileLevel == ProfileLevel::TraceTwo) {
+    // only stringify if profile level requires us
+    using namespace std::string_literals;
+    traceRequest("execute", slice, "callStack="s + callStack.toString());
+  }
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const slice,
                                                              size_t const atMost) {
-  using namespace std::string_literals;
-  traceRequest("getSome", slice, "atMost="s + std::to_string(atMost));
+  if (_profileLevel == ProfileLevel::TraceOne ||
+      _profileLevel == ProfileLevel::TraceTwo) {
+    // only stringify if profile level requires us
+    using namespace std::string_literals;
+    traceRequest("getSome", slice, "atMost="s + std::to_string(atMost));
+  }
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const slice,
                                                               size_t const atMost) {
-  using namespace std::string_literals;
-  traceRequest("skipSome", slice, "atMost="s + std::to_string(atMost));
+  if (_profileLevel == ProfileLevel::TraceOne ||
+      _profileLevel == ProfileLevel::TraceTwo) {
+    // only stringify if profile level requires us
+    using namespace std::string_literals;
+    traceRequest("skipSome", slice, "atMost="s + std::to_string(atMost));
+  }
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice const slice) {
-  using namespace std::string_literals;
-  traceRequest("initializeCursor", slice, ""s);
+  if (_profileLevel == ProfileLevel::TraceOne ||
+      _profileLevel == ProfileLevel::TraceTwo) {
+    // only stringify if profile level requires us
+    using namespace std::string_literals;
+    traceRequest("initializeCursor", slice, ""s);
+  }
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
                                                       VPackSlice const slice,
                                                       std::string const& args) {
-  if (_profile >= PROFILE_LEVEL_TRACE_1) {
+  if (_profileLevel == ProfileLevel::TraceOne ||
+      _profileLevel == ProfileLevel::TraceTwo) {
     auto const queryId = this->_engine->getQuery().id();
     auto const remoteQueryId = _queryId;
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)
         << "[query#" << queryId << "] remote request sent: " << rpc
         << (args.empty() ? "" : " ") << args << " registryId=" << remoteQueryId;
-    if (_profile >= PROFILE_LEVEL_TRACE_2) {
-      LOG_TOPIC("e0ae6", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] data: " << slice.toJson();
-    }
+    LOG_TOPIC_IF("e0ae6", INFO, Logger::QUERIES, _profileLevel == ProfileLevel::TraceTwo)
+        << "[query#" << queryId << "] data: " << slice.toJson();
   }
 }
 

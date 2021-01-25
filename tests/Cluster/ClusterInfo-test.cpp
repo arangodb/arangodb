@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -158,7 +159,7 @@ class ClusterInfoTest : public ::testing::Test,
         agencyStore);  // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
@@ -210,7 +211,7 @@ class ClusterInfoTest : public ::testing::Test,
     }
 
     ClusterCommControl::reset();
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
   }
 };
 
@@ -219,7 +220,7 @@ class ClusterInfoTest : public ::testing::Test,
 // -----------------------------------------------------------------------------
 
 TEST_F(ClusterInfoTest, test_drop_database) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
+  auto& database = server.getFeature<arangodb::DatabaseFeature>();
   ASSERT_NE(nullptr, database);
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_NE(nullptr, ci);
@@ -231,7 +232,9 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     // create database
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
+                 database.createDatabase(1, "testDatabase",
+                                         arangodb::velocypack::Slice::emptyObjectSlice(),
+                                         vocbase)));
     ASSERT_NE(nullptr, vocbase);
 
     // simulate heartbeat thread

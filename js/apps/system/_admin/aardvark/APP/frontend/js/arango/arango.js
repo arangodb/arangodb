@@ -963,6 +963,10 @@
     },
 
     escapeHtml: function (val) {
+      if (typeof val !== 'string') {
+        val = JSON.stringify(val, null, 2);
+      }
+
       // HTML-escape a string
       return String(val).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')

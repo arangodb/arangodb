@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -26,7 +28,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/RocksDBEventListener.h"
+#include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 
 #include "gtest/gtest.h"
 #include <string>
@@ -118,7 +120,7 @@ struct CFilesSetup {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST(RocksDBEventListenerThread, sha_a_new_file) {
+TEST(RocksDBShaCalculatorThread, sha_a_new_file) {
   CFilesSetup s;
   std::string new_sst;
   bool good;
@@ -131,11 +133,11 @@ TEST(RocksDBEventListenerThread, sha_a_new_file) {
   ret_val = TRI_WriteFile(new_sst.c_str(), "the quick brown fox", 19);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
-  good = arangodb::RocksDBEventListenerThread::shaCalcFile(new_sst.c_str());
+  good = arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
   EXPECT_TRUE(good);
 }
 
-TEST(RocksDBEventListenerThread, delete_matching_sha) {
+TEST(RocksDBShaCalculatorThread, delete_matching_sha) {
   CFilesSetup s;
   std::string new_sst, basepath, new_sha;
   bool good;
@@ -154,7 +156,7 @@ TEST(RocksDBEventListenerThread, delete_matching_sha) {
   ret_val = TRI_WriteFile(new_sha.c_str(), "", 0);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
-  good = arangodb::RocksDBEventListenerThread::deleteFile(new_sst.c_str());
+  good = arangodb::RocksDBShaCalculatorThread::deleteFile(new_sst.c_str());
   EXPECT_TRUE(good);
 }
 
@@ -162,30 +164,32 @@ TEST(RocksDBEventListenerThread, delete_matching_sha) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test checkMissingShaFiles scenarios
 ////////////////////////////////////////////////////////////////////////////////
-class TestRocksDBEventListenerThread : public arangodb::RocksDBEventListenerThread {
-public:
- TestRocksDBEventListenerThread(arangodb::application_features::ApplicationServer& server)
-     : arangodb::RocksDBEventListenerThread(server, "testListener") {
-   // sample sha values are simulated, not real
-   setup.writeFile("MANIFEST-000004", "some manifest data");
-   setup.writeFile("CURRENT", "MANIFEST-000004\n");
-   setup.writeFile("IDENTITY", "no idea what goes here");
-   setup.writeFile("037793.sst", "raw data 1");
-   setup.writeFile(
-       "037793.sha."
-       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
-       "");
-   setup.writeFile("037684.sst", "raw data 2");
-   setup.writeFile(
-       "086218.sha."
-       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
-       "");
-   setup.writeFile("086219.sst", "raw data 3");
+class TestRocksDBShaCalculatorThread : public arangodb::RocksDBShaCalculatorThread {
+ public:
+  TestRocksDBShaCalculatorThread(arangodb::application_features::ApplicationServer& server)
+      : arangodb::RocksDBShaCalculatorThread(server, "testListener") {
+    // sample sha values are simulated, not real
+    setup.writeFile("MANIFEST-000004", "some manifest data");
+    setup.writeFile("CURRENT", "MANIFEST-000004\n");
+    setup.writeFile("IDENTITY", "no idea what goes here");
+    setup.writeFile("037793.sst", "raw data 1");
+    setup.writeFile(
+        "037793.sha."
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
+        "");
+    setup.writeFile("037684.sst", "raw data 2");
+    setup.writeFile(
+        "086218.sha."
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
+        "");
+    setup.writeFile("086219.sst", "raw data 3");
   };
 
   CFilesSetup setup;
 
-  virtual std::string getRocksDBPath() {return setup._directory.c_str();}
+  virtual std::string getRocksDBPath() override {
+    return setup._directory.c_str();
+  }
 
   std::string pathName(const char * name) {
     std::string retpath;
@@ -199,7 +203,7 @@ public:
 
 TEST(CheckMissingShaFilesSimple, verify_common_situations) {
   arangodb::application_features::ApplicationServer server{nullptr, nullptr};
-  TestRocksDBEventListenerThread tr{server};
+  TestRocksDBShaCalculatorThread tr{server};
 
   tr.checkMissingShaFiles(tr.setup._directory.c_str(), 0);
 

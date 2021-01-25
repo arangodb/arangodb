@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,8 @@
 #include "GeneralServer/CommTask.h"
 
 namespace arangodb {
+class GeneralServerFeature;
+
 namespace rest {
 
 template <SocketType T>
@@ -44,31 +46,33 @@ class GeneralCommTask : public CommTask {
   void stop() override;
   
   void close(asio_ns::error_code const& err = asio_ns::error_code());
-
- protected:
   
-  /// set / reset connection timeout
-  void setTimeout(std::chrono::milliseconds millis);
+ protected:
   
   /// read from socket
   void asyncReadSome();
   
-  protected:
-  
-  // set a read timeout in asyncReadSome
-  virtual bool enableReadTimeout() const = 0;
-  
+  bool stopped() const { return _stopped.load(std::memory_order_acquire); }
+    
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
-
- protected:
+  
+  /// set / reset connection timeout
+  virtual void setIOTimeout() = 0;
   
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
-  
-  static constexpr std::chrono::seconds DefaultTimeout{120};
-  
+  static constexpr double WriteTimeout = 300.0;
+    
   std::unique_ptr<AsioSocket<T>> _protocol;
+          
+  GeneralServerFeature const& _generalServerFeature;
+  
+  bool _reading;
+  bool _writing;
+  std::string _url;
+  
+ private:
   
   std::atomic<bool> _stopped;
 };

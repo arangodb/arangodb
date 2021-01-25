@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -86,18 +87,14 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 
   // StatisticsFeature
   auto& sf = server().getFeature<StatisticsFeature>();
-  if (sf.enabled()) {
-    sf.toPrometheus(result, std::chrono::duration<double,std::milli>(
-                      std::chrono::system_clock::now().time_since_epoch()).count());
-  }
+  sf.toPrometheus(result, std::chrono::duration<double, std::milli>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
 
   // RocksDBEngine
-  auto es = EngineSelectorFeature::ENGINE;
-  if (es != nullptr) {
-    std::string const& engineName = es->typeName();
-    if (engineName == RocksDBEngine::EngineName) {
-      es->getStatistics(result);
-    }
+  auto& es = server().getFeature<EngineSelectorFeature>().engine();
+  std::string const& engineName = es.typeName();
+  if (engineName == RocksDBEngine::EngineName) {
+    es.getStatistics(result);
   }
 }
 

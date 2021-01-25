@@ -237,7 +237,7 @@ describe ArangoDB do
             ArangoDB.drop_collection(user_collection)
           end
 
-          it "can create an empty graph" do
+          it "can create an empty graph, waitForSync = #{sync}" do
             edge_definition = []
             doc = create_graph(sync, graph_name, edge_definition )
 
@@ -249,7 +249,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
           end
 
-          it "can create a graph with definitions" do
+          it "can create a graph with definitions, waitForSync = #{sync}" do
             first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             edge_definition = [first_def]
             doc = create_graph(sync, graph_name, edge_definition )
@@ -262,7 +262,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
           end
 
-          it "can create a graph with orphan collections" do
+          it "can create a graph with orphan collections, waitForSync = #{sync}" do
             orphans = [product_collection];
             doc = create_graph_orphans( sync, graph_name, [], orphans)
             doc.code.should eq(sync ? 201 : 202)
@@ -274,7 +274,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['orphanCollections'].should eq(orphans)
           end
 
-          it "can add additional edge definitions" do
+          it "can add additional edge definitions, waitForSync = #{sync}" do
             first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             edge_definition = [first_def]
             create_graph(sync, graph_name, edge_definition )
@@ -291,7 +291,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
           end
 
-          it "can modify existing edge definitions" do
+          it "can modify existing edge definitions, waitForSync = #{sync}" do
             first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             create_graph(sync, graph_name, [first_def] )
             second_def = { "collection" => friend_collection, "from" => [product_collection], "to" => [user_collection] }
@@ -306,7 +306,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
           end
 
-          it "can delete an edge definition" do
+          it "can delete an edge definition, waitForSync = #{sync}" do
             first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             edge_definition = [first_def]
             create_graph(sync, graph_name, edge_definition )
@@ -320,7 +320,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['edgeDefinitions'].should eq([])
           end
 
-          it "can add an additional orphan collection" do
+          it "can add an additional orphan collection, waitForSync = #{sync}" do
             first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             edge_definition = [first_def]
             create_graph(sync, graph_name, edge_definition )
@@ -335,7 +335,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['orphanCollections'].should eq([product_collection])
           end
 
-          it "can delete an orphan collection" do
+          it "can delete an orphan collection, waitForSync = #{sync}" do
             first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             edge_definition = [first_def]
             create_graph(sync, graph_name, edge_definition )
@@ -351,7 +351,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['orphanCollections'].should eq([])
           end
 
-          it "can delete a graph again" do
+          it "can delete a graph again, waitForSync = #{sync}" do
             definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             create_graph(sync, graph_name, [definition])
             doc = drop_graph(sync, graph_name)
@@ -360,7 +360,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(202)
           end
 
-          it "can not delete a graph twice" do
+          it "can not delete a graph twice, waitForSync = #{sync}" do
             definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             create_graph(sync, graph_name, [definition])
             drop_graph(sync, graph_name)
@@ -371,7 +371,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can not create a graph twice" do
+          it "can not create a graph twice, waitForSync = #{sync}" do
             definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             create_graph(sync, graph_name, [definition])
             doc = create_graph(sync, graph_name, [definition])
@@ -381,7 +381,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(409)
           end
 
-          it "can get a graph by name" do
+          it "can get a graph by name, waitForSync = #{sync}" do
             orphans = [product_collection];
             doc = create_graph_orphans( sync, graph_name, [], orphans)
             rev = doc.parsed_response['graph']['_rev']
@@ -396,7 +396,7 @@ describe ArangoDB do
             doc.parsed_response['graph']['orphanCollections'].should eq(orphans)
           end
 
-          it "can get a list of vertex collections" do
+          it "can get a list of vertex collections, waitForSync = #{sync}" do
             definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             create_graph(sync, graph_name, [definition])
             additional_vertex_collection(sync, graph_name, product_collection)
@@ -408,7 +408,7 @@ describe ArangoDB do
             doc.parsed_response['collections'].should eq([product_collection, user_collection])
           end
 
-          it "can get a list of edge collections" do
+          it "can get a list of edge collections, waitForSync = #{sync}" do
             definition1 = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
             definition2 = { "collection" => bought_collection, "from" => [user_collection], "to" => [product_collection] }
             create_graph(sync, graph_name, [definition1, definition2])
@@ -434,7 +434,7 @@ describe ArangoDB do
             ArangoDB.drop_collection(user_collection)
           end
 
-          it "can create a vertex" do
+          it "can create a vertex, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             doc.code.should eq(sync ? 201 : 202)
@@ -446,7 +446,7 @@ describe ArangoDB do
             doc.parsed_response['new'].should eq(nil)
           end
           
-          it "can create a vertex, returnNew" do
+          it "can create a vertex, returnNew, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name}, { "returnNew" => "true" })
             doc.code.should eq(sync ? 201 : 202)
@@ -459,7 +459,7 @@ describe ArangoDB do
             doc.parsed_response['new']['name'].should eq(name)
           end
 
-          it "can get a vertex" do
+          it "can get a vertex, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             key = doc.parsed_response['vertex']['_key']
@@ -473,7 +473,7 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_key'].should eq(key)
           end
 
-          it "can not get a non existing vertex" do
+          it "can not get a non existing vertex, waitForSync = #{sync}" do
             key = "unknownKey"
 
             doc = get_vertex(graph_name, user_collection, key)
@@ -483,7 +483,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can replace a vertex" do
+          it "can replace a vertex, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             key = doc.parsed_response['vertex']['_key']
@@ -509,7 +509,7 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_key'].should eq(key)
           end
           
-          it "can replace a vertex, returnOld" do
+          it "can replace a vertex, returnOld, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             key = doc.parsed_response['vertex']['_key']
@@ -539,7 +539,7 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_key'].should eq(key)
           end
 
-          it "can not replace a non existing vertex" do
+          it "can not replace a non existing vertex, waitForSync = #{sync}" do
             key = "unknownKey"
 
             doc = replace_vertex( sync, graph_name, user_collection, key, {"name2" => "bob"})
@@ -549,7 +549,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can update a vertex" do
+          it "can update a vertex, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             key = doc.parsed_response['vertex']['_key']
@@ -572,7 +572,7 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_key'].should eq(key)
           end
           
-          it "can update a vertex, returnOld" do
+          it "can update a vertex, returnOld, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             key = doc.parsed_response['vertex']['_key']
@@ -599,7 +599,7 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_key'].should eq(key)
           end
           
-          it "can update a vertex keepNull default(true)" do
+          it "can update a vertex keepNull default(true), waitForSync = #{sync}" do
             doc = create_vertex( sync, graph_name, user_collection, {"name" => "Alice"})
             key = doc.parsed_response['vertex']['_key']
             doc = update_vertex( sync, graph_name, user_collection, key, {"name" => nil}, "")
@@ -609,7 +609,7 @@ describe ArangoDB do
             doc.parsed_response['vertex']['name'].should eq(nil)
           end
           
-          it "can update a vertex keepNull false" do
+          it "can update a vertex keepNull false, waitForSync = #{sync}" do
             doc = create_vertex( sync, graph_name, user_collection, {"name" => "Alice"})
             key = doc.parsed_response['vertex']['_key']
             doc = update_vertex( sync, graph_name, user_collection, key, {"name" => nil}, false)
@@ -618,7 +618,7 @@ describe ArangoDB do
             doc.parsed_response['vertex'].key?('name').should eq(false)
           end
           
-          it "can update a vertex keepNull true" do
+          it "can update a vertex keepNull true, waitForSync = #{sync}" do
             doc = create_vertex( sync, graph_name, user_collection, {"name" => "Alice"})
             key = doc.parsed_response['vertex']['_key']
             doc = update_vertex( sync, graph_name, user_collection, key, {"name" => nil}, true)
@@ -628,7 +628,7 @@ describe ArangoDB do
             doc.parsed_response['vertex']['name'].should eq(nil)
           end
 
-          it "can not update a non existing vertex" do
+          it "can not update a non existing vertex, waitForSync = #{sync}" do
             key = "unknownKey"
             name2 = "Bob"
 
@@ -639,7 +639,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can delete a vertex" do
+          it "can delete a vertex, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             key = doc.parsed_response['vertex']['_key']
@@ -658,7 +658,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
           
-          it "can delete a vertex, returnOld" do
+          it "can delete a vertex, returnOld, waitForSync = #{sync}" do
             name = "Alice"
             doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
             key = doc.parsed_response['vertex']['_key']
@@ -679,7 +679,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
           
-          it "can not delete a non existing vertex" do
+          it "can not delete a non existing vertex, waitForSync = #{sync}" do
             key = "unknownKey"
 
             doc = delete_vertex( sync, graph_name, user_collection, key)
@@ -705,7 +705,7 @@ describe ArangoDB do
             ArangoDB.drop_collection(user_collection)
           end
 
-          it "can create an edge" do
+          it "can create an edge, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -722,7 +722,7 @@ describe ArangoDB do
             doc.parsed_response['new'].should eq(nil)
           end
           
-          it "can create an edge, returnNew" do
+          it "can create an edge, returnNew, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -739,7 +739,7 @@ describe ArangoDB do
             doc.parsed_response['new']['value'].should eq("foo")
           end
 
-          it "can get an edge" do
+          it "can get an edge, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -760,7 +760,7 @@ describe ArangoDB do
             doc.parsed_response['edge']['_key'].should eq(key)
           end
 
-          it "can not get a non existing edge" do
+          it "can not get a non existing edge, waitForSync = #{sync}" do
             key = "unknownKey"
 
             doc = get_edge(graph_name, friend_collection, key)
@@ -770,7 +770,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can replace an edge" do
+          it "can replace an edge, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -803,7 +803,7 @@ describe ArangoDB do
             doc.parsed_response['edge']['_key'].should eq(key)
           end
           
-          it "can replace an edge, returnOld" do
+          it "can replace an edge, returnOld, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -845,7 +845,7 @@ describe ArangoDB do
             doc.parsed_response['edge']['_key'].should eq(key)
           end
           
-          it "can not replace a non existing edge" do
+          it "can not replace a non existing edge, waitForSync = #{sync}" do
             key = "unknownKey"
 
             # Added _from and _to, because otherwise a 400 might conceal the
@@ -858,7 +858,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can not replace a non valid edge" do
+          it "can not replace a non valid edge, waitForSync = #{sync}" do
             key = "unknownKey"
             doc = replace_edge( sync, graph_name, friend_collection, key, {"type2" => "divorced", "_from" => "1", "_to" => "2"})
             doc.code.should eq(400)
@@ -867,7 +867,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(400)
           end
 
-          it "can update an edge" do
+          it "can update an edge, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -897,7 +897,7 @@ describe ArangoDB do
             doc.parsed_response['edge']['_key'].should eq(key)
           end
           
-          it "can update an edge, returnOld" do
+          it "can update an edge, returnOld, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -934,7 +934,7 @@ describe ArangoDB do
             doc.parsed_response['edge']['_key'].should eq(key)
           end
           
-          it "can update an edge keepNull default(true)" do
+          it "can update an edge keepNull default(true), waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -954,7 +954,7 @@ describe ArangoDB do
             doc.parsed_response['edge']['type'].should eq(nil)
           end
     
-          it "can update an edge keepNull true" do
+          it "can update an edge keepNull true, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -974,7 +974,7 @@ describe ArangoDB do
             doc.parsed_response['edge']['type'].should eq(nil)
           end
     
-          it "can update an edge keepNull false" do
+          it "can update an edge keepNull false, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -993,7 +993,7 @@ describe ArangoDB do
             doc.parsed_response['edge'].key?('type').should eq(false)
           end
 
-          it "can not update a non existing edge" do
+          it "can not update a non existing edge, waitForSync = #{sync}" do
             key = "unknownKey"
 
             doc = update_edge( sync, graph_name, friend_collection, key, {"type2" => "divorced"}, "")
@@ -1003,7 +1003,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can delete an edge" do
+          it "can delete an edge, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -1029,7 +1029,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
           
-          it "can delete an edge, returnOld" do
+          it "can delete an edge, returnOld, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
             v1 = v1.parsed_response['vertex']['_id']
@@ -1057,7 +1057,7 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(404)
           end
 
-          it "can not delete a non existing edge" do
+          it "can not delete a non existing edge, waitForSync = #{sync}" do
             key = "unknownKey"
 
             doc = delete_edge( sync, graph_name, friend_collection, key)
@@ -1093,81 +1093,81 @@ describe ArangoDB do
               doc.parsed_response['errorMessage'].should eq("graph 'UnitTestUnknown' not found")
             end
 
-            it "get graph" do
+            it "get graph, waitForSync = #{sync}" do
               check404(get_graph(unknown_name))
             end
 
-            it "delete graph" do
+            it "delete graph, waitForSync = #{sync}" do
               check404(drop_graph(sync, unknown_name))
             end
 
-            it "list edge collections" do
+            it "list edge collections, waitForSync = #{sync}" do
               check404(list_edge_collections(unknown_name))
             end
 
-            it "add edge definition" do
+            it "add edge definition, waitForSync = #{sync}" do
               definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
               check404(additional_edge_definition(sync, unknown_name, definition))
             end
 
-            it "change edge definition" do
+            it "change edge definition, waitForSync = #{sync}" do
               definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
               check404(change_edge_definition(sync, unknown_name, friend_collection, definition))
             end
 
-            it "delete edge definition" do
+            it "delete edge definition, waitForSync = #{sync}" do
               check404(delete_edge_definition(sync, unknown_name, friend_collection))
             end
 
-            it "list vertex collections" do
+            it "list vertex collections, waitForSync = #{sync}" do
               check404(list_vertex_collections(unknown_name))
             end
 
-            it "add vertex collection" do
+            it "add vertex collection, waitForSync = #{sync}" do
               check404(additional_vertex_collection(sync, unknown_name, user_collection))
             end
 
-            it "delete vertex collection" do
+            it "delete vertex collection, waitForSync = #{sync}" do
               check404(delete_vertex_collection( sync, unknown_name, user_collection))
             end
 
-            it "create vertex" do
+            it "create vertex, waitForSync = #{sync}" do
               check404(create_vertex( sync, unknown_name, unknown_name, {}))
             end
 
-            it "get vertex" do
+            it "get vertex, waitForSync = #{sync}" do
               check404(get_vertex(unknown_name, unknown_name, unknown_name))
             end
 
-            it "update vertex" do
+            it "update vertex, waitForSync = #{sync}" do
               check404(update_vertex( sync, unknown_name, unknown_name, unknown_name, {}))
             end
 
-            it "replace vertex" do
+            it "replace vertex, waitForSync = #{sync}" do
               check404(replace_vertex( sync, unknown_name, unknown_name, unknown_name, {}))
             end
 
-            it "delete vertex" do
+            it "delete vertex, waitForSync = #{sync}" do
               check404(delete_vertex( sync, unknown_name, unknown_name, unknown_name))
             end
 
-            it "create edge" do
+            it "create edge, waitForSync = #{sync}" do
               check404(create_edge( sync, unknown_name, unknown_name, unknown_name, unknown_name, {}))
             end
 
-            it "get edge" do
+            it "get edge, waitForSync = #{sync}" do
               check404(get_edge(unknown_name, unknown_name, unknown_name))
             end
 
-            it "update edge" do
+            it "update edge, waitForSync = #{sync}" do
               check404(update_edge( sync, unknown_name, unknown_name, unknown_name, {}))
             end
 
-            it "replace edge" do
+            it "replace edge, waitForSync = #{sync}" do
               check404(replace_edge( sync, unknown_name, unknown_name, unknown_name, {}))
             end
 
-            it "delete edge" do
+            it "delete edge, waitForSync = #{sync}" do
               check404(delete_edge( sync, unknown_name, unknown_name, unknown_name))
             end
 
@@ -1218,63 +1218,63 @@ describe ArangoDB do
               doc.parsed_response['errorNum'].should eq(1233)
             end
 
-            it "change edge definition" do
+            it "change edge definition unknown, waitForSync = #{sync}" do
               definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
               check404Edge(change_edge_definition(sync, graph_name, unknown_name, definition))
             end
 
-            it "delete edge definition" do
+            it "delete edge definition unknown, waitForSync = #{sync}" do
               check404Edge(delete_edge_definition(sync, graph_name, unknown_name))
             end
 
-            it "delete vertex collection" do
+            it "delete vertex collection unknown, waitForSync = #{sync}" do
               # this checks if a not used vertex collection can be removed of a graph
               check400VertexUnused(delete_vertex_collection( sync, graph_name, unknown_name))
             end
 
-            it "create vertex" do
+            it "create vertex unknown, waitForSync = #{sync}" do
               check404CRUD(create_vertex( sync, graph_name, unknown_name, {}))
             end
 
-            it "get vertex" do
+            it "get vertex unknown, waitForSync = #{sync}" do
               check404CRUD(get_vertex(graph_name, unknown_name, unknown_name))
             end
 
 # TODO add tests where the edge/vertex collection is not part of the graph, but
 # the given key exists!
-            it "update vertex" do
+            it "update vertex unknown, waitForSync = #{sync}" do
               check404CRUD(update_vertex( sync, graph_name, unknown_name, unknown_name, {}))
             end
 
-            it "replace vertex" do
+            it "replace vertex unknown, waitForSync = #{sync}" do
               check404CRUD(replace_vertex( sync, graph_name, unknown_name, unknown_name, {}))
             end
 
-            it "delete vertex" do
+            it "delete vertex unknown, waitForSync = #{sync}" do
               check404CRUD(delete_vertex( sync, graph_name, unknown_name, unknown_name))
             end
 
-            it "create edge" do
+            it "create edge unknown, waitForSync = #{sync}" do
               check400CRUD(create_edge( sync, graph_name, unknown_name, unknown_name, unknown_name, {}))
             end
 
-            it "get edge" do
+            it "get edge unknown, waitForSync = #{sync}" do
               check404CRUD(get_edge(graph_name, unknown_name, unknown_name))
             end
 
-            it "update edge" do
+            it "update edge unknown, waitForSync = #{sync}" do
               check404CRUD(update_edge( sync, graph_name, unknown_name, unknown_name, {}))
             end
 
-            it "replace edge (invalid key)" do
+            it "replace edge (invalid key) unknown, waitForSync = #{sync}" do
               check400CRUD(replace_edge( sync, graph_name, unknown_name, unknown_name, {}))
             end
 
-            it "replace edge (valid key, but not existing)" do
+            it "replace edge (valid key, but not existing) unknown, waitForSync = #{sync}" do
               check404(replace_edge( sync, graph_name, user_collection + "/" + unknown_name, unknown_name, {}))
             end
 
-            it "delete edge" do
+            it "delete edge unknown, waitForSync = #{sync}" do
               check404CRUD(delete_edge( sync, graph_name, unknown_name, unknown_name))
             end
 
@@ -1314,49 +1314,49 @@ describe ArangoDB do
               doc.parsed_response['errorMessage'].should include("edge attribute missing or invalid")
             end
 
-            it "get vertex" do
+            it "get vertex throw, waitForSync = #{sync}" do
               check404(get_vertex(graph_name, user_collection, unknown_name))
             end
 
-            it "update vertex" do
+            it "update vertex throw, waitForSync = #{sync}" do
               check404(update_vertex( sync, graph_name, user_collection, unknown_name, {}))
             end
 
-            it "replace vertex" do
+            it "replace vertex throw, waitForSync = #{sync}" do
               check404(replace_vertex( sync, graph_name, user_collection, unknown_name, {}))
             end
 
-            it "delete vertex" do
+            it "delete vertex throw, waitForSync = #{sync}" do
               check404(delete_vertex( sync, graph_name, user_collection, unknown_name))
             end
 
-            it "get edge" do
+            it "get edge throw, waitForSync = #{sync}" do
               check404(get_edge(graph_name, friend_collection, unknown_name))
             end
 
-            it "update edge" do
+            it "update edge throw, waitForSync = #{sync}" do
               check404(update_edge( sync, graph_name, friend_collection, unknown_name, {}))
             end
             
-            it "replace edge invalid" do
+            it "replace edge invalid throw, waitForSync = #{sync}" do
               check400(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "1", "_to" => "2"}))
             end
 
-            it "replace edge (collection does not exist) not found" do
+            it "replace edge (collection does not exist) not found, waitForSync = #{sync}" do
               # Added _from and _to, because otherwise a 400 might conceal the
               # 404. Another test checking that missing _from or _to trigger
               # errors was added to api-gharial-spec.js.
               check400Collection(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "xyz/1", "_to" => "abc/2"}))
             end
 
-            it "replace edge (document does not exist) not found" do
+            it "replace edge (document does not exist) not found, waitForSync = #{sync}" do
               # Added _from and _to, because otherwise a 400 might conceal the
               # 404. Another test checking that missing _from or _to trigger
               # errors was added to api-gharial-spec.js.
               check404(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "#{user_collection}/1", "_to" => "#{user_collection}/2"}))
             end
 
-            it "delete edge" do
+            it "delete edge throw, waitForSync = #{sync}" do
               check404(delete_edge( sync, graph_name, friend_collection, unknown_name))
             end
 

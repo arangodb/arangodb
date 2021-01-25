@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -147,6 +148,31 @@ size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
   }
   return 0;
 }
+
+size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+  size_t skipped = 0;
+  while (hasValidRow()) {
+    if (hasDataRow()) {
+      _rowIndex++;
+    } else {
+      ShadowAqlItemRow row{_block, _rowIndex};
+      auto d = row.getDepth();
+      if (d > depth) {
+        // We found a row, that we should not skip
+        // Keep it and stay there;
+        return skipped;
+      }
+      // We throw away this row
+      _rowIndex++;
+      if (d == depth) {
+        // We skipped
+        skipped++;
+      }
+    }
+  }
+  return skipped;
+}
+
 
 template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
 ExecutorState AqlItemBlockInputRange::nextState() const noexcept {

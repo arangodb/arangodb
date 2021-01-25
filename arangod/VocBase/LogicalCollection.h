@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -181,6 +181,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // query shard for a given document
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
+  int getResponsibleShard(std::string_view key, std::string& shardID);
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           std::string& shardID, bool& usesDefaultShardKeys,
@@ -242,7 +243,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures() const;
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options) const;
 
   /// @brief closes an open collection
   int close();
@@ -265,18 +267,11 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Index access (local only)
 
-  /// @brief reads an element from the document collection
-  Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& mdr);
-
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   /// @brief compact-data operation
   Result compact();
-
-  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, RevisionId>& result) const;
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options);
@@ -291,12 +286,6 @@ class LogicalCollection : public LogicalDataSource {
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 OperationOptions& options, ManagedDocumentResult& previousMdr);
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result) const;
-
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const;
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
@@ -314,7 +303,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
-  void validatorsToVelocyPack(VPackBuilder&) const;
+  void schemaToVelocyPack(VPackBuilder&) const;
   Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
   Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
 
@@ -339,7 +328,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
 
-  Result updateValidators(VPackSlice validatorArray);
+  Result updateSchema(VPackSlice schema);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -347,8 +336,6 @@ class LogicalCollection : public LogicalDataSource {
   void increaseV8Version();
 
   bool determineSyncByRevision() const;
-
-  transaction::CountCache _countCache;
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
@@ -395,6 +382,8 @@ class LogicalCollection : public LogicalDataSource {
   RevisionId const _minRevision;
 
   std::string _smartJoinAttribute;
+  
+  transaction::CountCache _countCache;
 
   // SECTION: Key Options
 
@@ -414,10 +403,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
 
-  using ValidatorVec = std::vector<std::unique_ptr<arangodb::ValidatorBase>>;
-  // `_validators` must be used with atomic accessors only!!
+  // `_schema` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
-  std::shared_ptr<ValidatorVec> _validators;
+  std::shared_ptr<arangodb::ValidatorBase> _schema;
 };
 
 }  // namespace arangodb

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "Basics/debugging.h"
 #include "Cluster/AgencyCache.h"
 #include "Network/ConnectionPool.h"
+#include "RestServer/MetricsFeature.h"
 
 namespace arangodb::fuerte {
 inline namespace v1 {
@@ -41,7 +43,7 @@ struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool
     : ConnectionPool(config), _server(server), _index(0) {}
 
   explicit AsyncAgencyStorePoolMock(arangodb::application_features::ApplicationServer& server)
-    : ConnectionPool({}), _server(server), _index(0) {}
+    : ConnectionPool(server.getFeature<arangodb::MetricsFeature>()), _server(server), _index(0) {}
 
   std::shared_ptr<arangodb::fuerte::Connection> createConnection(
     arangodb::fuerte::ConnectionBuilder&) override;

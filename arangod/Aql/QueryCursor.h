@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,17 +110,17 @@ class QueryStreamCursor final : public arangodb::Cursor {
   ExecutionState writeResult(arangodb::velocypack::Builder& builder);
 
   ExecutionState prepareDump();
+  ExecutionState finalization();
 
   void cleanupStateCallback();
 
  private:
+  velocypack::UInt8Buffer _extrasBuffer;
   std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
   std::shared_ptr<transaction::Context> _ctx; /// cache context
   std::unique_ptr<aql::Query> _query;
-
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
-  size_t _numBufferedRows; // total number of rows in _queryResults
   
   int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction

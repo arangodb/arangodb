@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/Syncer.h"
 
 #include <velocypack/Builder.h>
@@ -170,9 +171,6 @@ class TailingSyncer : public Syncer {
                                     TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
                                     bool& worked, bool& mustFetchBatch);
 
-  /// @brief determines if we can work in parallel on leader and follower
-  void checkParallel();
-
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
 
   arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
@@ -217,8 +215,8 @@ class TailingSyncer : public Syncer {
   /// @brief ignore create / drop database
   bool _ignoreDatabaseMarkers;
 
-  /// @brief whether or not leader and follower can work in parallel
-  bool _workInParallel;
+  /// @brief statistics for tailing syncer
+  ReplicationMetricsFeature::TailingSyncStats _stats;
 
   /// @brief which transactions were open and need to be treated specially
   std::unordered_map<TransactionId, std::unique_ptr<ReplicationTransaction>> _ongoingTransactions;

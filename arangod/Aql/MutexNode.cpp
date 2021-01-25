@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -78,7 +79,6 @@ std::unique_ptr<ExecutionBlock> MutexNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // simon: mchacki said this can use empty inAndOutRegs
   auto registerInfos = createRegisterInfos({}, {});
   return std::make_unique<ExecutionBlockImpl<MutexExecutor>>(&engine, this,
                                                              std::move(registerInfos), MutexExecutorInfos(_clients));

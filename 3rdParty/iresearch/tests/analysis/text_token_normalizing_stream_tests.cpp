@@ -25,7 +25,7 @@
 #include "analysis/text_token_normalizing_stream.hpp"
 #include "utils/locale_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 class text_token_normalizing_stream_tests: public ::testing::Test {
   virtual void SetUp() {
@@ -37,13 +37,17 @@ class text_token_normalizing_stream_tests: public ::testing::Test {
   }
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 #ifndef IRESEARCH_DLL
+
+TEST_F(text_token_normalizing_stream_tests, consts) {
+  static_assert("norm" == irs::type<irs::analysis::text_token_normalizing_stream>::name());
+}
 
 TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
   typedef irs::analysis::text_token_normalizing_stream::options_t options_t;
@@ -56,6 +60,7 @@ TEST_F(text_token_normalizing_stream_tests, test_normalizing) {
 
     irs::string_ref data("rUnNiNg\xd0\x81");
     irs::analysis::text_token_normalizing_stream stream(options);
+    ASSERT_EQ(irs::type<irs::analysis::text_token_normalizing_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);

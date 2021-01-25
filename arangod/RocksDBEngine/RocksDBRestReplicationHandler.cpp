@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,7 +60,9 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
-      _manager(globalRocksEngine()->replicationManager()) {}
+      _manager(
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()) {
+}
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
   // extract the request type
@@ -88,7 +90,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto* ctx = _manager->createContext(ttl, syncerId, clientId);
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    auto* ctx = _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -250,7 +253,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   auto data = builder.slice();
 
-  uint64_t const latest = latestSequenceNumber();
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  uint64_t const latest = engine.db()->GetLatestSequenceNumber();
 
   if (result.fail()) {
     generateError(GeneralResponse::responseCode(result.errorNumber()),
@@ -411,6 +415,8 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
   // to is ignored because the snapshot time is the latest point in time
+  
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   RocksDBReplicationContext* ctx = nullptr;
   // get batchId from url parameters
@@ -641,9 +647,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   bool found = false;
   uint64_t contextId = 0;
 
-  // contains dump options that might need to be inspected
-  // VPackSlice options = _request->payload();
-
   // get collection Name
   std::string const& cname = _request->value("collection");
   if (cname.empty()) {
@@ -684,6 +687,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
+  
+  bool const useEnvelope = _request->parsedValue("useEnvelope", true);
 
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
@@ -694,9 +699,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     buffer.reserve(reserve);  // avoid reallocs
     
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
-    
 
-    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
+    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope);
     // generate the result
     if (res.fail()) {
       generateError(res.result());
@@ -720,7 +724,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     StringBuffer dump(reserve, false);
 
     // do the work!
-    res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize());
+    res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize(), useEnvelope);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {

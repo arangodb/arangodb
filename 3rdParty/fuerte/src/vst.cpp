@@ -22,19 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "vst.h"
-#include "Basics/Format.h"
 
 #include <fuerte/FuerteLogger.h>
 #include <fuerte/detail/vst.h>
 #include <fuerte/helper.h>
 #include <fuerte/types.h>
-#include <boost/algorithm/string.hpp>
-
 #include <velocypack/HexDump.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/algorithm/string.hpp>
+
+#include "Basics/Format.h"
 #include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
@@ -70,7 +70,7 @@ size_t ChunkHeader::writeHeaderToVST1_0(size_t chunkDataLen,
     hdrLength = maxChunkHeaderSize;
     basics::uintToPersistentLE<uint64_t>(
         hdr + 16, _messageLength);  // total message length
-  } // else Use minimal header
+  }                                 // else Use minimal header
   basics::uintToPersistentLE<uint32_t>(
       hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
   basics::uintToPersistentLE<uint32_t>(hdr + 4, _chunkX);     // chunkX
@@ -194,13 +194,12 @@ void message::responseHeader(ResponseHeader const& header,
 
   // 3 - meta (not optional even if empty)
   builder.openObject();
-  builder.add(fu_content_type_key,
-              VPackValue(to_string(header.contentType())));
+  builder.add(fu_content_type_key, VPackValue(to_string(header.contentType())));
   if (!header.meta().empty()) {
     for (auto const& pair : header.meta()) {
       if (boost::iequals(fu_content_type_key, pair.first)) {
-         continue;
-       }
+        continue;
+      }
       builder.add(pair.first, VPackValue(pair.second));
     }
   }
@@ -479,8 +478,8 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
          static_cast<int>(MessageType::Request));
   header.database = headerSlice.at(2).copyString();  // databse
   header.restVerb =
-      static_cast<RestVerb>(headerSlice.at(3).getInt());  // rest verb
-  header.path = headerSlice.at(4).copyString();           // request (path)
+      static_cast<RestVerb>(headerSlice.at(3).getInt());    // rest verb
+  header.path = headerSlice.at(4).copyString();             // request (path)
   for (auto it : VPackObjectIterator(headerSlice.at(5))) {  // query params
     header.parameters.emplace(it.key.copyString(), it.value.copyString());
   }
@@ -606,7 +605,8 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
   if (_responseChunks.size() < _responseNumberOfChunks) {
     // Not all chunks have arrived yet
     FUERTE_LOG_VSTCHUNKTRACE
-        << "RequestItem::assemble: not all chunks have arrived" << "\n";
+        << "RequestItem::assemble: not all chunks have arrived"
+        << "\n";
     return nullptr;
   }
   FUERTE_ASSERT(_responseChunks.size() == _responseNumberOfChunks);
@@ -621,12 +621,14 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
   }
   if (!reject) {
     FUERTE_LOG_VSTCHUNKTRACE
-        << "RequestItem::assemble: fast-path, chunks are in order" << "\n";
+        << "RequestItem::assemble: fast-path, chunks are in order"
+        << "\n";
     return std::make_unique<VPackBuffer<uint8_t>>(std::move(_buffer));
   }
 
   // We now have all chunks. Sort them by index.
-  FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::assemble: sort chunks" << "\n";
+  FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::assemble: sort chunks"
+                           << "\n";
   std::sort(_responseChunks.begin(), _responseChunks.end(), chunkByIndex);
 
   // Combine chunk content

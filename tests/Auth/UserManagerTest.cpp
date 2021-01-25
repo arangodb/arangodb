@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for CuckooFilter based index selectivity estimator
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -56,17 +53,15 @@ class UserManagerTest : public ::testing::Test {
   application_features::ApplicationServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
-  Mock<DatabaseFeature> databaseFeatureMock;
-  DatabaseFeature& databaseFeature;
   auth::UserManager um;
 
   UserManagerTest()
       : server(nullptr, nullptr),
         state(ServerState::instance()),
-        databaseFeature(databaseFeatureMock.get()),
         um(server) {
     state->setRole(ServerState::ROLE_SINGLE);
-    DatabaseFeature::DATABASE = &databaseFeature;
+
+    server.addFeature<DatabaseFeature>();
   }
 
   ~UserManagerTest() {

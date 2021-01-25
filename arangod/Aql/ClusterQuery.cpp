@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -78,6 +79,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
+  // FIXME change this format to take the raw one?
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections
@@ -156,8 +158,8 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   }
   TRI_ASSERT(_trx != nullptr);
   
-  if (_profile) {
-    _profile->registerInQueryList();
+  if (_queryProfile) {  // simon: just a hack for AQL_EXECUTEJSON
+    _queryProfile->registerInQueryList();
   }
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }

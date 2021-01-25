@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,9 +52,12 @@ namespace {
 /// @brief handle the state response of the leader
 arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& connection,
                                            arangodb::replutils::LeaderInfo& leader,
-                                           arangodb::velocypack::Slice const& slice) {
+                                           arangodb::velocypack::Slice const& slice,
+                                           char const* context) {
   using arangodb::Result;
   using arangodb::velocypack::Slice;
+
+  // note: context can be a nullptr
 
   std::string const endpointString = " from endpoint '" + leader.endpoint + "'";
 
@@ -161,7 +164,9 @@ arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& conn
       << leader.serverId.id() << ", version " << leader.majorVersion << "."
       << leader.minorVersion << ", last log tick " << leader.lastLogTick
       << ", last uncommitted log tick " << leader.lastUncommittedLogTick
-      << ", engine " << leader.engine;
+      << ", engine " << leader.engine
+      << (context != nullptr ? ", context: " : "")
+      << (context != nullptr ? context : "");
 
   return Result();
 }
@@ -286,8 +291,9 @@ Result BatchInfo::start(replutils::Connection const& connection,
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   connection.lease([&](httpclient::SimpleHttpClient* client) {
+    auto headers = replutils::createHeaders();
     response.reset(client->retryRequest(rest::RequestType::POST, url,
-                                        body.c_str(), body.size()));
+                                        body.c_str(), body.size(), headers));
   });
 
   if (hasFailed(response.get())) {
@@ -367,7 +373,8 @@ Result BatchInfo::extend(replutils::Connection const& connection,
     if (id == 0) {
       return;
     }
-    response.reset(client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
+    auto headers = replutils::createHeaders();
+    response.reset(client->request(rest::RequestType::PUT, url, body.c_str(), body.size(), headers));
   });
 
   if (hasFailed(response.get())) {
@@ -407,7 +414,8 @@ Result BatchInfo::finish(replutils::Connection const& connection,
     // send request
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+      auto headers = replutils::createHeaders();
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
     });
 
     if (hasFailed(response.get())) {
@@ -428,8 +436,12 @@ LeaderInfo::LeaderInfo(ReplicationApplierConfiguration const& applierConfig) {
 #endif
 }
 
+uint64_t LeaderInfo::version() const {
+  return majorVersion * 10000 + minorVersion * 100;
+}
+
 /// @brief get leader state
-Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
+Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSyncer, char const* context) {
   if (isChildSyncer) {
     TRI_ASSERT(endpoint.empty());
     TRI_ASSERT(serverId.isSet());
@@ -450,7 +462,8 @@ Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSynce
     client->params().setMaxRetries(1);
     client->params().setRetryWaitTime(500 * 1000);  // 0.5s
 
-    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+    auto headers = replutils::createHeaders();
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
 
     // restore old settings
     client->params().setMaxRetries(maxRetries);
@@ -477,18 +490,18 @@ Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSynce
                       endpoint + ": invalid JSON");
   }
 
-  return ::handleLeaderStateResponse(connection, *this, slice);
+  return ::handleLeaderStateResponse(connection, *this, slice, context);
 }
 
 bool LeaderInfo::simulate32Client() const {
   TRI_ASSERT(!endpoint.empty() && serverId.isSet() && majorVersion != 0);
-  bool is33 = (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 3));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // allows us to test the old replication API
-  return !is33 || _force32mode;
-#else
-  return !is33;
+  if (_force32mode) {
+    return true;
+  }
 #endif
+  return version() < 30300;
 }
 
 std::unordered_map<std::string, std::string> createHeaders() {

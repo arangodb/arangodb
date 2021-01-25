@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -195,7 +195,16 @@ void ensureLink(arangodb::DatabaseFeature& db,
         << "' to the collection '" << cid.id() << "' in the database '" << dbId;
     return;
   }
-
+  // we need to keep objectId
+  if (indexSlice.hasKey(arangodb::StaticStrings::ObjectId)) {
+    json.add(arangodb::StaticStrings::ObjectId, indexSlice.get(arangodb::StaticStrings::ObjectId));
+  } else {
+    LOG_TOPIC("ed031", WARN, arangodb::iresearch::TOPIC)
+        << "Missing objectId in jSON definition for link '" << iid.id()
+        << "' to the collection '" << cid.id() << "' in the database '" << dbId
+        << "'. ObjectId will be regenerated";
+  }
+  
   json.close();
 
   bool created;
@@ -217,10 +226,14 @@ void ensureLink(arangodb::DatabaseFeature& db,
 namespace arangodb {
 namespace iresearch {
 
+IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(application_features::ApplicationServer& server)
+    : _server(server) {}
+
 void IResearchRocksDBRecoveryHelper::prepare() {
-  _dbFeature = DatabaseFeature::DATABASE;
-  _engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  _documentCF = RocksDBColumnFamily::documents()->GetID();
+  _dbFeature = &_server.getFeature<DatabaseFeature>();
+  _engine = &_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  _documentCF = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                    ->GetID();
 }
 
 void IResearchRocksDBRecoveryHelper::PutCF(
@@ -276,7 +289,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
+    impl.insert(trx, docId, doc);
   }
 
   res = trx.commit();
@@ -331,8 +344,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 #endif
 
     impl.remove(trx, docId,
-                arangodb::velocypack::Slice::emptyObjectSlice(),
-                arangodb::Index::OperationMode::internal);
+                arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   res = trx.commit();
@@ -365,7 +377,7 @@ void IResearchRocksDBRecoveryHelper::LogData(
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
         for (auto link : links) {
-          link->afterTruncate(tick);
+          link->afterTruncate(tick, nullptr);
         }
       }
 

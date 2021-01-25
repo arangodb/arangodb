@@ -34,7 +34,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/iterator.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class offset 
@@ -228,6 +228,6 @@ class attribute_provider_change final : public attribute {
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change
 
-NS_END // ROOT
+} // ROOT
 
 #endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,10 +36,12 @@
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryExecutionState.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -58,6 +60,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "Utils/Events.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -82,7 +85,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              aql::QueryOptions&& options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
-      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
       _sharedState(std::move(sharedState)),
@@ -91,10 +94,13 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
+      _resultMemoryUsage(0),
       _queryHash(DontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
+      _resultCode(-1), // -1 = "not set" yet
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
+      _embeddedQuery(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
       _queryKilled(false),
       _queryHashCalculated(false) {
 
@@ -112,7 +118,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
   }
 
   ProfileLevel level = _queryOptions.profile;
-  if (level >= PROFILE_LEVEL_TRACE_1) {
+  if (level >= ProfileLevel::TraceOne) {
     LOG_TOPIC("22a70", INFO, Logger::QUERIES) << elapsedSince(_startTime)
                                               << " Query::Query queryString: " << _queryString
                                               << " this: " << (uintptr_t)this;
@@ -124,7 +130,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
   if (bindParameters != nullptr && !bindParameters->isEmpty() &&
       !bindParameters->slice().isNone()) {
-    if (level >= PROFILE_LEVEL_TRACE_1) {
+    if (level >= ProfileLevel::TraceOne) {
       LOG_TOPIC("8c9fc", INFO, Logger::QUERIES)
           << "bindParameters: " << bindParameters->slice().toJson();
     } else {
@@ -133,7 +139,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
     }
   }
 
-  if (level >= PROFILE_LEVEL_TRACE_1) {
+  if (level >= ProfileLevel::TraceOne) {
     VPackBuilder b;
     _queryOptions.toVelocyPack(b, /*disableOptimizerRules*/ false);
     LOG_TOPIC("8979d", INFO, Logger::QUERIES) << "options: " << b.toJson();
@@ -143,9 +149,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
   _warnings.updateOptions(_queryOptions);
   
   // store name of user that started the query
-  if (!ServerState::instance()->isDBServer()) {
-    _user = ExecContext::current().user();
-  }
+  _user = ExecContext::current().user();
 }
 
 /// @brief public constructor, Used to construct a full query
@@ -157,20 +161,34 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             std::shared_ptr<VPackBuilder> const& options)
+             VPackSlice options)
     : Query(ctx, queryString, bindParameters,
-            QueryOptions(options != nullptr ? options->slice() : VPackSlice()),
-                         std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
+            QueryOptions(options),
+            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
 Query::~Query() {
-  if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
+  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resultMemoryUsage = 0;
+
+  if (_queryOptions.profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES) << elapsedSince(_startTime)
                                               << " Query::~Query queryString: "
                                               << " this: " << (uintptr_t)this;
   }
 
-  _profile.reset(); // unregister from QueryList
+  _queryProfile.reset(); // unregister from QueryList
+  
+  // log to audit log
+  if (!_queryOptions.skipAudit &&
+     (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isSingleServer())) {
+    try {
+      events::AqlQuery(*this);
+    } catch (...) {
+      // we must not make any exception escape from here!
+    }
+  }
 
   // this will reset _trx, so _trx is invalid after here
   try {
@@ -178,7 +196,7 @@ Query::~Query() {
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
     // unfortunately we cannot do anything here, as we are in 
-    // a destructor
+    // the destructor
   }
   
   unregisterSnippets();
@@ -197,6 +215,14 @@ Query::~Query() {
 /// @brief return the user that started the query
 std::string const& Query::user() const {
   return _user;
+}
+
+double Query::getLockTimeout() const noexcept {
+  return _queryOptions.transactionOptions.lockTimeout;
+}
+
+void Query::setLockTimeout(double timeout) noexcept {
+  _queryOptions.transactionOptions.lockTimeout = timeout;
 }
 
 bool Query::killed() const {
@@ -220,46 +246,58 @@ void Query::kill() {
 double Query::startTime() const noexcept { return _startTime; }
 
 void Query::prepareQuery(SerializationFormat format) {
-  init(/*createProfile*/ true);
-  enterState(QueryExecutionState::ValueType::PARSING);
+  try {
+    init(/*createProfile*/ true);
+    
+    enterState(QueryExecutionState::ValueType::PARSING);
 
-  std::unique_ptr<ExecutionPlan> plan = preparePlan();
-  TRI_ASSERT(plan != nullptr);
-  plan->findVarUsage();
+    std::unique_ptr<ExecutionPlan> plan = preparePlan();
+    TRI_ASSERT(plan != nullptr);
+    plan->findVarUsage();
 
-  TRI_ASSERT(_trx != nullptr);
-  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
-  
-  // keep serialized copy of unchanged plan to include in query profile
-  // necessary because instantiate / execution replace vars and blocks
-  const bool keepPlan = _queryOptions.profile >= PROFILE_LEVEL_BLOCKS &&
-  ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
-  if (keepPlan) {
-    _planSliceCopy = std::make_unique<VPackBufferUInt8>();
-    VPackBuilder b(*_planSliceCopy);
-    plan->toVelocyPack(b, _ast.get(), false, ExplainRegisterPlan::No);
-  }
-
-  // simon: assumption is _queryString is empty for DBServer snippets
-  const bool planRegisters = !_queryString.empty();
-  ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
-
-  _plans.push_back(std::move(plan));
-
-  if (_snippets.size() > 1) {  // register coordinator snippets
-    TRI_ASSERT(_trx->state()->isCoordinator());
-    QueryRegistry* registry = QueryRegistryFeature::registry();
-    if (!registry) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "query registry not available");
+    TRI_ASSERT(_trx != nullptr);
+    TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+    
+    // keep serialized copy of unchanged plan to include in query profile
+    // necessary because instantiate / execution replace vars and blocks
+    bool const keepPlan = _queryOptions.profile >= ProfileLevel::Blocks &&
+    ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
+    if (keepPlan) {
+      _planSliceCopy = std::make_unique<VPackBufferUInt8>();
+      VPackBuilder b(*_planSliceCopy);
+      plan->toVelocyPack(b, _ast.get(), false, ExplainRegisterPlan::No);
     }
-    registry->registerSnippets(_snippets);
-  }
-  
-  if (_profile) {
-    _profile->registerInQueryList();
-  }
 
-  enterState(QueryExecutionState::ValueType::EXECUTION);
+    // simon: assumption is _queryString is empty for DBServer snippets
+    bool const planRegisters = !_queryString.empty();
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+
+    _plans.push_back(std::move(plan));
+
+    if (_snippets.size() > 1) {  // register coordinator snippets
+      TRI_ASSERT(_trx->state()->isCoordinator());
+      QueryRegistry* registry = QueryRegistryFeature::registry();
+      if (!registry) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "query registry not available");
+      }
+      registry->registerSnippets(_snippets);
+    }
+    
+    if (_queryProfile) {
+      _queryProfile->registerInQueryList();
+    }
+    
+    enterState(QueryExecutionState::ValueType::EXECUTION);
+  } catch (arangodb::basics::Exception const& ex) {
+    _resultCode = ex.code();
+    throw;
+  } catch (std::bad_alloc const&) {
+    _resultCode = TRI_ERROR_OUT_OF_MEMORY;
+    throw;
+  } catch (...) {
+    _resultCode = TRI_ERROR_INTERNAL;
+    throw;
+  }
 }
 
 /// @brief prepare an AQL query, this is a preparation for execute, but
@@ -313,7 +351,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
-  auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
+  auto plan = ExecutionPlan::instantiateFromAst(_ast.get(), true);
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -361,7 +399,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
-
               return ExecutionState::DONE;
             }
             // if no permissions, fall through to regular querying
@@ -423,6 +460,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             // cache low-level pointer to avoid repeated shared-ptr-derefs
             TRI_ASSERT(queryResult.data != nullptr);
             auto& resultBuilder = *queryResult.data;
+            size_t previousLength = resultBuilder.bufferRef().byteSize();
             auto& vpackOpts = vpackOptions();
 
             size_t const n = block->numRows();
@@ -436,6 +474,13 @@ ExecutionState Query::execute(QueryResult& queryResult) {
                                  /*allowUnindexed*/true);
               }
             }
+
+            size_t newLength = resultBuilder.bufferRef().byteSize();
+            TRI_ASSERT(newLength >= previousLength);
+            size_t diff = newLength - previousLength;
+
+            _resourceMonitor.increaseMemoryUsage(diff);
+            _resultMemoryUsage += diff;
           }
 
           if (state == ExecutionState::DONE) {
@@ -627,6 +672,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent) {
+          size_t memoryUsage = 0;
           size_t const n = value->numRows();
 
           auto const& vpackOpts = vpackOptions();
@@ -641,12 +687,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                                  /*resolveExternals*/true,
                                  /*allowUnindexed*/true);
               }
+              memoryUsage += sizeof(v8::Value);
+              if (val.requiresDestruction()){
+                memoryUsage += val.memoryUsage();
+              }
 
               if (V8PlatformFeature::isOutOfMemory(isolate)) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
             }
           }
+
+          // this may throw
+          _resourceMonitor.increaseMemoryUsage(memoryUsage);
+          _resultMemoryUsage += memoryUsage;
         }
 
         if (killed()) {
@@ -721,12 +775,12 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 }
 
 ExecutionState Query::finalize(VPackBuilder& extras) {
-  if (_profile != nullptr &&
+  if (_queryProfile != nullptr &&
       _shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
     // the following call removes the query from the list of currently
     // running queries. so whoever fetches that list will not see a Query that
     // is about to shut down/be destroyed
-    _profile->unregisterFromQueryList();
+    _queryProfile->unregisterFromQueryList();
   }
   
   auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false);
@@ -754,24 +808,13 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   }
 
   double now = currentSteadyClockValue();
-  if (_profile != nullptr && _queryOptions.profile >= PROFILE_LEVEL_BASIC) {
-    _profile->setStateEnd(QueryExecutionState::ValueType::FINALIZATION, now);
-    _profile->toVelocyPack(extras);
+  if (_queryProfile != nullptr && _queryOptions.profile >= ProfileLevel::Basic) {
+    _queryProfile->setStateEnd(QueryExecutionState::ValueType::FINALIZATION, now);
+    _queryProfile->toVelocyPack(extras);
   }
   extras.close();
 
-  // patch executionTime stats value in place
-  // we do this because "executionTime" should include the whole span of the
-  // execution and we have to set it at the very end
-  double const rt = now - _startTime;
-//  try {
-//    basics::VelocyPackHelper::patchDouble(extras.slice().get("stats").get("executionTime"), rt);
-//  } catch (...) {
-//    // if the query has failed, the slice may not
-//    // contain a proper "stats" object once we get here.
-//  }
-
-  LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << rt 
+  LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << now - _startTime
                                              << " Query::finalize:returning"
                                              << " this: " << (uintptr_t)this;
   return ExecutionState::DONE;
@@ -834,7 +877,7 @@ QueryResult Query::explain() {
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     std::unique_ptr<ExecutionPlan> plan =
-        ExecutionPlan::instantiateFromAst(parser.ast());
+        ExecutionPlan::instantiateFromAst(parser.ast(), true);
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -924,69 +967,84 @@ bool Query::isAsyncQuery() const noexcept {
 
 /// @brief enter a V8 context
 void Query::enterV8Context() {
+  auto registerCtx = [&] {
+    // register transaction in context
+    if (_transactionContext->isV8Context()) {
+      auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
+      ctx->enterV8Context();
+    } else {
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+      v8g->_transactionState = _trx->stateShrdPtr();
+    }
+  };
+  
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
-      if (V8DealerFeature::DEALER == nullptr) {
+      auto& server = vocbase().server();
+      if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "V8 engine is disabled");
       }
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createQueryContext();
-      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
+      _v8Context = server.getFeature<V8DealerFeature>().enterContext(&_vocbase, securityContext);
 
       if (_v8Context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_RESOURCE_LIMIT,
             "unable to enter V8 context for query execution");
       }
-
-      // register transaction in context
-      TRI_ASSERT(_trx != nullptr);
-
-      v8::Isolate* isolate = v8::Isolate::GetCurrent();
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
-      auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
-      if (ctx != nullptr) {
-        ctx->enterV8Context(_trx->stateShrdPtr());
-      }
+      registerCtx();
     }
-
     TRI_ASSERT(_v8Context != nullptr);
+  } else {
+    if (!_embeddedQuery) {  // may happen for stream trx
+      registerCtx();
+    }
   }
 }
 
 /// @brief return a V8 context
 void Query::exitV8Context() {
+  auto unregister = [&] {
+    if (_transactionContext->isV8Context()) {  // necessary for stream trx
+      auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
+      ctx->exitV8Context();
+    } else {
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+      v8g->_transactionState = nullptr;
+    }
+  };
   if (!_contextOwnedByExterior) {
     if (_v8Context != nullptr) {
       // unregister transaction in context
-      v8::Isolate* isolate = v8::Isolate::GetCurrent();
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
-      auto ctx = static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
-      if (ctx != nullptr) {
-        ctx->exitV8Context();
-      }
+      unregister();
 
-      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      V8DealerFeature::DEALER->exitContext(_v8Context);
+      auto& server = vocbase().server();
+      TRI_ASSERT(server.hasFeature<V8DealerFeature>() &&
+                 server.isEnabled<V8DealerFeature>());
+      server.getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
+  } else if (!_embeddedQuery) {
+    unregister();
   }
 }
 
 /// @brief initializes the query
 void Query::init(bool createProfile) {
-  TRI_ASSERT(!_profile && !_ast);
-  if (_profile || _ast) {
+  TRI_ASSERT(!_queryProfile && !_ast);
+  if (_queryProfile || _ast) {
     // already called
     return;
   }
 
-  TRI_ASSERT(_profile == nullptr);
+  TRI_ASSERT(_queryProfile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
   if (createProfile && !ServerState::instance()->isDBServer()) {
-    _profile = std::make_unique<QueryProfile>(this);
+    _queryProfile = std::make_unique<QueryProfile>(this);
   }
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
@@ -1070,14 +1128,19 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
+int Query::resultCode() const noexcept {
+  // never return negative value from here
+  return std::max<int>(TRI_ERROR_NO_ERROR, _resultCode);
+}
+
 /// @brief enter a new state
 void Query::enterState(QueryExecutionState::ValueType state) {
   LOG_TOPIC("d8767", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
-      << " Query::enterState: " << state << " this: " << (uintptr_t)this;
-  if (_profile != nullptr) {
+      << " Query::enterState: " << arangodb::aql::QueryExecutionState::toString(state) << " this: " << (uintptr_t)this;
+  if (_queryProfile != nullptr) {
     // record timing for previous state
-    _profile->setStateDone(_execState);
+    _queryProfile->setStateDone(_execState);
   }
 
   // and adjust the state
@@ -1086,6 +1149,15 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync) {
+  // set the final result code (either 0 = no error, or a specific error code).
+  // this can only be changed from "not set" to either 0 ("no error") or 
+  // > 0 (a specific error)
+  TRI_ASSERT(errorCode >= TRI_ERROR_NO_ERROR);
+  if (_resultCode < TRI_ERROR_NO_ERROR) {
+    // result code not yet set.
+    _resultCode = errorCode;
+  }
+
   if (sync && _sharedState) {
     _sharedState->resetWakeupHandler();
     auto state = cleanupTrxAndEngines(errorCode);
@@ -1177,7 +1249,8 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
-//  options.skipScheduler = true;
+  options.continuationLane = RequestLane::CLUSTER_AQL_CONTINUATION;
+  //  options.skipScheduler = true;
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
@@ -1268,7 +1341,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
-  // simon: do not unregister _profile here, since kill() will be called
+  // simon: do not unregister _queryProfile here, since kill() will be called
   //        under the same QueryList lock
   
   // The above condition is not true if we have already waited.
@@ -1311,4 +1384,3 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   
   return ExecutionState::WAITING;
 }
-

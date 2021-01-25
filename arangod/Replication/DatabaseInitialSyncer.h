@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Containers/MerkleTree.h"
 #include "Replication/InitialSyncer.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
 
@@ -45,7 +46,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                                                   std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
       DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-      InitialSyncerIncrementalSyncStats& stats, std::string const& keysId,
+      ReplicationMetricsFeature::InitialSyncStats& stats, std::string const& keysId,
       uint64_t chunkId, std::string const& lowString,
       std::string const& highString, std::vector<std::string> const& markers);
 
@@ -89,13 +90,13 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                         ReplicationApplierConfiguration const& configuration);
 
   /// @brief run method, performs a full synchronization
-  Result run(bool incremental) override {
-    return runWithInventory(incremental, velocypack::Slice::noneSlice());
+  Result run(bool incremental, char const* context = nullptr) override {
+    return runWithInventory(incremental, velocypack::Slice::noneSlice(), context);
   }
 
   /// @brief run method, performs a full synchronization with the
   ///        given list of collections.
-  Result runWithInventory(bool incremental, velocypack::Slice collections);
+  Result runWithInventory(bool incremental, velocypack::Slice collections, char const* context = nullptr);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const& slice) override {
     return &_config.vocbase;
@@ -148,10 +149,19 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
+  enum class FormatHint {
+    // format must still be detected. this is used on the first call
+    AutoDetect,
+    // enveloped format. all documents are wrapped into a {"type":2300,"data":{...}} envelope
+    Envelope,
+    // raw documents, i.e. no envelope
+    NoEnvelope,
+  };
+
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, arangodb::LogicalCollection* coll,
-                      std::string const& leaderColl, InitialSyncerDumpStats& stats,
+                      std::string const& leaderColl, 
                       int batch, TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory
@@ -163,15 +173,15 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief handle a single dump marker
   // TODO worker-safety
   Result parseCollectionDumpMarker(transaction::Methods&, arangodb::LogicalCollection*,
-                                   arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice, FormatHint& hint);
 
   /// @brief apply the data from a collection dump
   // TODO worker-safety
   Result parseCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
 
-  /// @brief determine the number of documents in a collection
-  int64_t getSize(arangodb::LogicalCollection const& col);
+  /// @brief whether or not the collection has documents
+  bool hasDocuments(arangodb::LogicalCollection const& col);
 
   /// @brief incrementally fetch data from a collection
   // TODO worker safety

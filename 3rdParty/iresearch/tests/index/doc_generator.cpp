@@ -111,7 +111,7 @@ class break_iterator {
 } // unchecked
 } // utf8
 
-NS_BEGIN(tests)
+namespace tests {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           document implementation
@@ -527,4 +527,4 @@ void json_doc_generator::reset() {
   next_ = docs_.begin();
 }
 
-NS_END // tests
+} // tests

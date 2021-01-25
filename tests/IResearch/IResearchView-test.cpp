@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -51,7 +52,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
@@ -502,7 +502,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -569,7 +569,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
@@ -628,7 +628,7 @@ TEST_F(IResearchViewTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -793,7 +793,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -811,7 +811,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -1009,7 +1009,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1082,7 +1082,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1155,7 +1155,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1248,7 +1248,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1336,7 +1336,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1420,7 +1420,8 @@ TEST_F(IResearchViewTest, test_drop_database) {
   StorageEngineMock::before = [&beforeCount]()->void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-  arangodb::CreateDatabaseInfo testDBInfo(server.server());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testDatabase" TOSTRING(__LINE__), 3);
   ASSERT_TRUE(databaseFeature.createDatabase(std::move(testDBInfo), vocbase).ok());
   ASSERT_TRUE((nullptr != vocbase));
@@ -1497,7 +1498,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
        arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1570,7 +1571,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
        arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -1615,6 +1616,14 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
 }
 
 TEST_F(IResearchViewTest, test_emplace_cid) {
+  struct Link : public arangodb::iresearch::IResearchLink {
+    Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
+        : IResearchLink(id, col) {
+      auto json = VPackParser::fromJson(R"({ "view": "42" })");
+      EXPECT_TRUE(init(json->slice()).ok());
+    }
+  };
+
   // emplace (already in list)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 42, \"name\": \"testCollection\" }");
@@ -1656,8 +1665,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
-      EXPECT_TRUE((false == view->link(link->self()).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() does not modify view meta if cid existed previously
+      auto lock = link->self()->lock();
+      EXPECT_FALSE(view->link(link->self()).ok());
+      EXPECT_FALSE(persisted); // emplace() does not modify view meta if cid existed previously
     }
 
     // collection in view after
@@ -1671,10 +1681,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1709,18 +1719,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((persisted)); // emplace() modifies view meta if cid did not exist previously
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_TRUE(persisted); // emplace() modifies view meta if cid did not exist previously
     }
 
     // collection in view after
@@ -1734,10 +1742,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1764,14 +1772,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1779,14 +1789,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
@@ -1800,10 +1806,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1830,10 +1836,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
@@ -1841,10 +1847,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
+      Link link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
       EXPECT_TRUE((false == view->link(asyncLinkPtr).ok()));
@@ -1861,10 +1864,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
   }
 
@@ -1891,14 +1894,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       })));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // emplace cid 42
     {
+      Link link(arangodb::IndexId{42}, *logicalCollection);
+
       bool persisted = false;
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
@@ -1906,14 +1911,10 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      struct Link: public arangodb::iresearch::IResearchLink {
-        Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-            : IResearchLink(id, col) {}
-      } link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
-      EXPECT_TRUE((true == view->link(asyncLinkPtr).ok()));
-      EXPECT_TRUE((!persisted)); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
+      EXPECT_TRUE(view->link(asyncLinkPtr).ok());
+      EXPECT_FALSE(persisted); // emplace() modifies view meta if cid did not exist previously (but not persisted until after recovery)
     }
 
     // collection in view after
@@ -1921,16 +1922,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{42}};
       std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((view->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
+      EXPECT_TRUE(view->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
-      })));
+      }));
 
       for (auto& cid: expected) {
-        EXPECT_TRUE((1 == actual.erase(cid)));
+        EXPECT_EQ(1, actual.erase(cid));
       }
 
-      EXPECT_TRUE((actual.empty()));
+      EXPECT_TRUE(actual.empty());
     }
 
     // persistence fails during execution of callback
@@ -1940,7 +1941,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = []()->void { throw std::exception(); };
       auto& feature = server.getFeature<arangodb::DatabaseFeature>();
 
-      EXPECT_NO_THROW((feature.recoveryDone()));
+      EXPECT_NO_THROW(feature.recoveryDone());
     }
   }
 }
@@ -1997,14 +1998,14 @@ TEST_F(IResearchViewTest, test_insert) {
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok());
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());
@@ -2052,8 +2053,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2069,13 +2068,18 @@ TEST_F(IResearchViewTest, test_insert) {
       EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2117,10 +2121,10 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2166,10 +2170,10 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2215,7 +2219,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2247,8 +2251,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2264,9 +2266,12 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2299,8 +2304,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
@@ -2317,9 +2320,12 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2387,19 +2393,19 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice()).ok());
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), VPackSlice::noneSlice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), VPackSlice::noneSlice()).ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), VPackSlice::noneSlice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2), VPackSlice::noneSlice()).ok());
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), VPackSlice::noneSlice(), arangodb::Index::OperationMode::normal).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), VPackSlice::noneSlice()).ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());
@@ -2446,8 +2452,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2463,13 +2467,18 @@ TEST_F(IResearchViewTest, test_remove) {
       EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2511,10 +2520,10 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2560,10 +2569,10 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok())); // 2nd time
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice()).ok())); // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2609,7 +2618,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2641,8 +2650,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2658,9 +2665,12 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2693,8 +2703,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
@@ -2711,9 +2719,12 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2807,7 +2818,7 @@ TEST_F(IResearchViewTest, test_query) {
       EXPECT_TRUE((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+        EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(i), doc->slice()).ok()));
       }
 
       EXPECT_TRUE((trx.commit().ok()));
@@ -3290,7 +3301,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((link->commit().ok()));
     }
@@ -3401,7 +3412,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
         arangodb::transaction::Options()
       );
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((link->commit().ok()));
     }
@@ -3557,6 +3568,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+        ASSERT_NE(nullptr, link);
+        auto lock = link->self()->lock();
         ASSERT_TRUE((!link->self()->get())); // check that link is unregistred from view
       }
     }
@@ -3703,9 +3716,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
                                      EMPTY, EMPTY, EMPTY,
                                      arangodb::transaction::Options());
   EXPECT_TRUE((trx.begin().ok()));
-  EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(),
-                            arangodb::Index::OperationMode::normal)
-                   .ok()));
+  EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
   EXPECT_TRUE((trx.commit().ok()));
   EXPECT_TRUE((link->commit().ok()));  // commit to persisted store
     }
@@ -4282,7 +4293,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
   }
 
@@ -4362,7 +4373,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
       arangodb::transaction::Options()
     );
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
   }
 
@@ -5421,7 +5432,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto* userManager = authFeature->userManager();
     
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -7399,7 +7409,8 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
   auto& databaseFeature = server.server().getFeature<arangodb::DatabaseFeature>();
 
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-  arangodb::CreateDatabaseInfo testDBInfo(server.server());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testDatabase" TOSTRING(__LINE__), 3);
   ASSERT_TRUE(databaseFeature.createDatabase(std::move(testDBInfo), vocbase).ok());
   ASSERT_NE(nullptr, vocbase);

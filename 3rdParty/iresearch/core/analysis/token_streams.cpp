@@ -25,7 +25,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/string_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                 basic_token_stream implementation
@@ -197,4 +197,4 @@ bool null_token_stream::next() noexcept {
   return !in_use;
 }
 
-NS_END
+}

@@ -1,4 +1,4 @@
-/* global db, describe, it, beforeEach, afterEach*/
+/* global db, describe, it, beforeEach, afterEach, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -34,4 +34,10 @@ describe('Endpoint Connection test', function() {
   it('should be able to connect', function() {
     expect(db._version()).to.not.be.undefined;    
   });
+  if (require('internal').options()['server.force-json']) {
+    it('should have plain json documents', function() {
+      let req = arango.GET_RAW('/_api/version');
+      expect(req.headers['content-type']).not.to.equal('application/x-velocypack');
+    });
+  }
 });

@@ -131,6 +131,7 @@
     "ERROR_REPLICATION_START_TICK_NOT_PRESENT" : { "code" : 1414, "message" : "start tick not present" },
     "ERROR_REPLICATION_WRONG_CHECKSUM" : { "code" : 1416, "message" : "wrong checksum" },
     "ERROR_REPLICATION_SHARD_NONEMPTY" : { "code" : 1417, "message" : "shard not empty" },
+    "ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED" : { "code" : 1447, "message" : "follower transaction intermediate commit already performed" },
     "ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED" : { "code" : 1448, "message" : "creating collection failed due to precondition" },
     "ERROR_CLUSTER_SERVER_UNKNOWN" : { "code" : 1449, "message" : "got a request from an unkown server" },
     "ERROR_CLUSTER_TOO_MANY_SHARDS" : { "code" : 1450, "message" : "too many shards" },
@@ -150,7 +151,7 @@
     "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1467, "message" : "got contradicting answers from different shards" },
     "ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN" : { "code" : 1468, "message" : "not all sharding attributes given" },
     "ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES" : { "code" : 1469, "message" : "must not change the value of a shard key attribute" },
-    "ERROR_CLUSTER_UNSUPPORTED"    : { "code" : 1470, "message" : "unsupported operation or parameter" },
+    "ERROR_CLUSTER_UNSUPPORTED"    : { "code" : 1470, "message" : "unsupported operation or parameter for clusters" },
     "ERROR_CLUSTER_ONLY_ON_COORDINATOR" : { "code" : 1471, "message" : "this operation is only valid on a coordinator in a cluster" },
     "ERROR_CLUSTER_READING_PLAN_AGENCY" : { "code" : 1472, "message" : "error reading Plan in agency" },
     "ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION" : { "code" : 1473, "message" : "could not truncate collection" },
@@ -217,6 +218,7 @@
     "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
     "ERROR_QUERY_USER_ASSERT"      : { "code" : 1593, "message" : "%s" },
     "ERROR_QUERY_USER_WARN"        : { "code" : 1594, "message" : "%s" },
+    "ERROR_QUERY_WINDOW_AFTER_MODIFICATION" : { "code" : 1595, "message" : "window operation after data-modification" },
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
     "ERROR_CURSOR_BUSY"            : { "code" : 1601, "message" : "cursor is busy" },
     "ERROR_VALIDATION_FAILED"      : { "code" : 1620, "message" : "schema validation failed" },
@@ -242,6 +244,7 @@
     "ERROR_LDAP_FOUND_NO_OBJECTS"  : { "code" : 1806, "message" : "LDAP didn't found any objects" },
     "ERROR_LDAP_NOT_ONE_USER_FOUND" : { "code" : 1807, "message" : "LDAP found zero ore more than one user" },
     "ERROR_LDAP_USER_NOT_IDENTIFIED" : { "code" : 1808, "message" : "LDAP found a user, but its not the desired one" },
+    "ERROR_LDAP_OPERATIONS_ERROR"  : { "code" : 1809, "message" : "LDAP returned an operations error" },
     "ERROR_LDAP_INVALID_MODE"      : { "code" : 1820, "message" : "invalid ldap mode" },
     "ERROR_TASK_INVALID_ID"        : { "code" : 1850, "message" : "invalid task id" },
     "ERROR_TASK_DUPLICATE_ID"      : { "code" : 1851, "message" : "duplicate task id" },
@@ -316,7 +319,7 @@
     "ERROR_NO_SMART_COLLECTION"    : { "code" : 4000, "message" : "collection is not smart" },
     "ERROR_NO_SMART_GRAPH_ATTRIBUTE" : { "code" : 4001, "message" : "smart graph attribute not given" },
     "ERROR_CANNOT_DROP_SMART_COLLECTION" : { "code" : 4002, "message" : "cannot drop this smart collection" },
-    "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be prefixed with the value of the smart graph attribute" },
+    "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute" },
     "ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE" : { "code" : 4004, "message" : "attribute cannot be used as smart graph attribute" },
     "ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH" : { "code" : 4005, "message" : "smart graph attribute mismatch" },
     "ERROR_INVALID_SMART_JOIN_ATTRIBUTE" : { "code" : 4006, "message" : "invalid smart join attribute declaration" },
@@ -361,7 +364,8 @@
     "ERROR_LOCAL_LOCK_RETRY"       : { "code" : 7010, "message" : "some db servers cannot be reached for transaction locks" },
     "ERROR_HOT_BACKUP_CONFLICT"    : { "code" : 7011, "message" : "hot backup conflict" },
     "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" : 7012, "message" : "hot backup not all db servers reachable" },
-    "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" }
+    "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" },
+    "ERROR_AIR_EXECUTION_ERROR"    : { "code" : 8001, "message" : "error during AIR execution" }
   };
 
   // For compatibility with <= 3.3

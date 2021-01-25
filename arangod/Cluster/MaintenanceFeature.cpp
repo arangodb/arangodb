@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <set>
+#include <random>
 
 #include "MaintenanceFeature.h"
 
@@ -46,6 +48,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -65,6 +68,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
+      _firstRun(true),
       _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),
                                         static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
       _secondsActionsBlock(2),
@@ -83,7 +87,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   startsAfter<MetricsFeature>();
 
   setOptional(true);
-  requiresElevatedPrivileges(false); 
+  requiresElevatedPrivileges(false);
 }
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -233,7 +237,7 @@ void MaintenanceFeature::start() {
         << " for single-server or agents.";
     return;
   }
-  
+
   if (serverState->isCoordinator()) {
     // no need for maintenance on a coordinator
     return;
@@ -263,7 +267,7 @@ void MaintenanceFeature::start() {
 void MaintenanceFeature::beginShutdown() {
   if (_resignLeadershipOnShutdown && ServerState::instance()->isDBServer()) {
     struct callback_data {
-      uint64_t _jobId;  // initialised before callback
+      uint64_t _jobId;  // initialized before callback
       bool _completed;  // populated by the callback
       std::mutex _mutex;  // mutex used by callback and loop to sync access to callback_data
       std::condition_variable _cv;  // signaled if callback has found something
@@ -446,16 +450,19 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
   try {
     std::shared_ptr<Action> newAction;
 
-    size_t action_hash = description->hash();
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    std::shared_ptr<Action> curAction;
 
-    std::shared_ptr<Action> curAction =
-        findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    WRITE_LOCKER(wLock, _actionRegistryLock);
+    if (!description->isRunEvenIfDuplicate()) {
+      size_t action_hash = description->hash();
+
+      curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    }
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
       LOG_TOPIC("fead2", DEBUG, Logger::MAINTENANCE)
-          << "Did not find action with same hash: " << description << " adding to queue";
+          << "Did not find action with same hash: " << *description << " adding to queue";
       newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
@@ -947,3 +954,99 @@ void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
+void MaintenanceFeature::addDirty(std::string const& database) {
+  server().getFeature<ClusterFeature>().addDirty(database);
+}
+void MaintenanceFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
+  server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
+}
+
+std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
+  size_t left = _databasesToCheck.size();
+  bool more = false;
+  if (n >= left) {
+    n = left;
+    more = true;
+  }
+  std::unordered_set<std::string> ret(std::make_move_iterator(_databasesToCheck.end()-n),
+                                      std::make_move_iterator(_databasesToCheck.end()));
+  _databasesToCheck.erase(_databasesToCheck.end()-n,_databasesToCheck.end());
+  if (more) {
+    refillToCheck();
+  }
+  return ret;
+}
+
+void MaintenanceFeature::refillToCheck() {
+  auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine e(static_cast<unsigned int>(seed));
+  _databasesToCheck = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  // This number is not guarded relies on single threadedness of the maintenance
+  _lastNumberOfDatabases = _databasesToCheck.size();
+  std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
+}
+
+std::unordered_set<std::string> MaintenanceFeature::dirty(
+  std::unordered_set<std::string> const& more) {
+  auto& clusterFeature = server().getFeature<ClusterFeature>();
+  auto ret = clusterFeature.dirty(); // plan & current in first run
+  if (_firstRun) {
+    auto all = allDatabases();
+    ret.insert(std::make_move_iterator(all.begin()),std::make_move_iterator(all.end()));
+    _firstRun = false;
+  } else {
+    if (!more.empty()) {
+      ret.insert(more.begin(), more.end());
+    }
+  }
+  return ret;
+}
+
+std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
+  return server().getFeature<ClusterFeature>().allDatabases();
+}
+
+size_t MaintenanceFeature::lastNumberOfDatabases() const {
+  // This number is not guarded relies on single threadedness of the maintenance
+  return _lastNumberOfDatabases;
+}
+
+std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(
+  ShardID const& shardId) const {
+  auto it = _shardActionMap.find(shardId);
+  if (it == _shardActionMap.end()) {
+    return nullptr;
+  }
+  return it->second;
+}
+
+bool MaintenanceFeature::isDirty(std::string const& dbName) const {
+  return server().getFeature<ClusterFeature>().isDirty(dbName);
+}
+
+bool MaintenanceFeature::lockShard(
+  ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description) {
+  LOG_TOPIC("aaed2", DEBUG, Logger::MAINTENANCE)
+    << "Locking shard " << shardId << " for action " << *description;
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  auto pair = _shardActionMap.emplace(shardId, description);
+  return pair.second;
+}
+
+bool MaintenanceFeature::unlockShard(ShardID const& shardId) {
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  auto it = _shardActionMap.find(shardId);
+  if (it == _shardActionMap.end()) {
+    return false;
+  }
+  LOG_TOPIC("aaed3", DEBUG, Logger::MAINTENANCE)
+    << "Unlocking shard " << shardId << " for action " << *it->second;
+  _shardActionMap.erase(it);
+  return true;
+}
+
+MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
+  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE) << "Copy of shard action map taken.";
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  return _shardActionMap;
+}

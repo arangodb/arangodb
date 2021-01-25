@@ -23,12 +23,16 @@
 #include <fuerte/detail/vst.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
-
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include <sstream>
 
 #include "debugging.h"
+
+namespace {
+static std::string const emptyString;
+}
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -39,7 +43,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 void MessageHeader::setMeta(StringMap map) {
   if (!this->_meta.empty()) {
     for (auto& pair : map) {
-      this->addMeta(pair.first, pair.second);
+      this->addMeta(std::move(pair.first), std::move(pair.second));
     }
   } else {
     this->_meta = std::move(map);
@@ -49,15 +53,14 @@ void MessageHeader::setMeta(StringMap map) {
 // Get value for header metadata key, returns empty string if not found.
 std::string const& MessageHeader::metaByKey(std::string const& key,
                                             bool& found) const {
-  static std::string emptyString("");
   if (_meta.empty()) {
     found = false;
-    return emptyString;
+    return ::emptyString;
   }
   auto const& it = _meta.find(key);
   if (it == _meta.end()) {
     found = false;
-    return emptyString;
+    return ::emptyString;
   } else {
     found = true;
     return it->second;
@@ -69,8 +72,8 @@ std::string const& MessageHeader::metaByKey(std::string const& key,
 ///////////////////////////////////////////////
 
 void RequestHeader::acceptType(std::string const& type) {
-   addMeta(fu_accept_key, type);
- }
+  addMeta(fu_accept_key, type);
+}
 
 void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
@@ -90,8 +93,8 @@ void RequestHeader::parseArangoPath(std::string const& p) {
     q += 5;
     const char* pathBegin = q;
     // read until end of database name
-    while (*q != '\0' && *q != '/' && *q != '?' &&
-           *q != ' ' && *q != '\n' && *q != '\r') {
+    while (*q != '\0' && *q != '/' && *q != '?' && *q != ' ' && *q != '\n' &&
+           *q != '\r') {
       ++q;
     }
     FUERTE_ASSERT(q >= pathBegin);
@@ -107,6 +110,10 @@ void RequestHeader::parseArangoPath(std::string const& p) {
 ///////////////////////////////////////////////
 // class Message
 ///////////////////////////////////////////////
+
+ContentEncoding Message::contentEncoding() const {
+  return messageHeader().contentEncoding();
+}
 
 // content-type header accessors
 

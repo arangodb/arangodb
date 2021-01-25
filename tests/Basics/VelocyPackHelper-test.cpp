@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for VelocyPackHelper.cpp
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
@@ -47,19 +44,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-
-TEST(VPackHelperTest, tst_patch_double) {
-  VPackBuilder b;
-  b.add(VPackValue(double(1.0)));
-  
-  EXPECT_DOUBLE_EQ(double(1.0), b.slice().getDouble());
-
-  arangodb::basics::VelocyPackHelper::patchDouble(b.slice(), double(2.0));
-  EXPECT_DOUBLE_EQ(double(2.0), b.slice().getDouble());
-  
-  arangodb::basics::VelocyPackHelper::patchDouble(b.slice(), double(-34.456));
-  EXPECT_DOUBLE_EQ(double(-34.456), b.slice().getDouble());
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test compare values with equal values

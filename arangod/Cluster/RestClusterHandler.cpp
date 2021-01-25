@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -64,6 +65,9 @@ RestStatus RestClusterHandler::execute() {
     } else if (suffixes[0] == "agency-cache") {
       handleAgencyCache();
       return RestStatus::DONE;
+    } else if (suffixes[0] == "cluster-info") {
+      handleClusterInfo();
+      return RestStatus::DONE;
     }
   }
 
@@ -117,16 +121,39 @@ void RestClusterHandler::handleAgencyCache() {
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+                    "you need admin rights to produce an agency cache dump");
       return;
     }
   }
 
   auto& ac = server().getFeature<ClusterFeature>().agencyCache();
   auto acb = ac.dump();
-  
+
   generateResult(rest::ResponseCode::OK, acb->slice());
 
+}
+
+void RestClusterHandler::handleClusterInfo() {
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce a cluster info dump");
+      return;
+    }
+  }
+
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto dump = ci.toVelocyPack();
+
+  generateResult(rest::ResponseCode::OK, dump.slice());
 }
 
 /// @brief returns information about all coordinator endpoints
@@ -137,8 +164,8 @@ void RestClusterHandler::handleCommandEndpoints() {
   if (ServerState::instance()->isCoordinator()) {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
-    ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
+    ReplicationFeature& replication = server().getFeature<ReplicationFeature>();
+    if (!replication.isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
       generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
                            "automatic failover is not enabled"));
       return;

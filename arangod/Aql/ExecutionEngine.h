@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 
@@ -71,6 +72,11 @@ class ExecutionEngine {
                                   ExecutionPlan& plan,
                                   bool planRegisters,
                                   SerializationFormat format);
+
+  /// @brief Prepares execution blocks for executing provided plan
+  /// @param plan plan to execute, should be without cluster nodes. Only local execution
+  /// without db-objects access!
+  void initFromPlanForCalculation(ExecutionPlan& plan);
   
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    MapRemoteToSnippet const& queryIds);
@@ -78,6 +84,7 @@ class ExecutionEngine {
   EngineId engineId() const {
     return _engineId;
   }
+
 
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const;
@@ -114,6 +121,9 @@ class ExecutionEngine {
   /// @returns added block
   ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>);
 
+  /// @brief clears all blocks and root in Engine
+  void reset();
+
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister);
 
@@ -134,12 +144,17 @@ class ExecutionEngine {
 #endif
   
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::vector<ExecutionBlock*> const& blocksForTesting() const {
+  std::vector<std::unique_ptr<ExecutionBlock>> const& blocksForTesting() const {
     return _blocks;
   }
 #endif
   
  private:
+
+  /// @brief  optimizes root node: in case of single RETURN statement 
+  /// makes it return value directly and not copy it to output register.
+  /// Also sets root execution block as engine root
+  void setupEngineRoot(ExecutionBlock& planRoot);
   
   const EngineId _engineId;
   
@@ -152,7 +167,7 @@ class ExecutionEngine {
   std::shared_ptr<SharedQueryState> _sharedState;
 
   /// @brief all blocks registered, used for memory management
-  std::vector<ExecutionBlock*> _blocks;
+  std::vector<std::unique_ptr<ExecutionBlock>> _blocks;
 
   /// @brief root block of the engine
   ExecutionBlock* _root;

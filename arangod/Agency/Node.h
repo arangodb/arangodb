@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,6 +159,9 @@ class Node final {
 
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
+
+  /// @brief Return all keys of an object node. Result will be empty for non-objects.
+  std::vector<std::string> keys() const;
 
   /// @brief handle "op" keys in write json
   template <Operation Oper>

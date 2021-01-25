@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -82,6 +83,31 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
+  if (AccessMode::isWriteOrExclusive(this->_type) &&
+      hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    TRI_ASSERT(isCoordinator());
+
+    ClusterTrxMethods::SortedServersSet leaders{};
+    allCollections([&](TransactionCollection& c) {
+      auto shardIds = c.collection()->shardIds();
+      for (auto const& pair : *shardIds) {
+        std::vector<arangodb::ShardID> const& servers = pair.second;
+        if (!servers.empty()) {
+          leaders.emplace(servers[0]);
+        }
+      }
+      return true;  // continue
+    });
+
+    // if there is only one server we may defer the lazy locking
+    // until the first actual operation (should save one request)
+    if (leaders.size() > 1) {
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
+      if (res.fail()) {  // something is wrong
+        return res;
+      }
+    }
+  }
 
   cleanup.cancel();
   return res;
@@ -112,4 +138,11 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   
   return {};
+}
+  
+/// @brief return number of commits
+uint64_t ClusterTransactionState::numCommits() const {
+  // there are no intermediate commits for a cluster transaction, so we can
+  // return 1 for a committed transaction and 0 otherwise
+  return _status == transaction::Status::COMMITTED ? 1 : 0;
 }

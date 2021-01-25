@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,12 +43,12 @@ using namespace arangodb::aql;
 // constructor will not access it.
 template <BlockPassthrough passBlocksThrough>
 DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(
-    arangodb::aql::ResourceMonitor& monitor, ::arangodb::aql::RegisterId nrRegisters)
+    arangodb::ResourceMonitor& monitor, ::arangodb::aql::RegisterId nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
       _itemsToReturn(),
       _numFetchBlockCalls(0),
       _monitor(monitor),
-      _itemBlockManager(&_monitor, SerializationFormat::SHADOWROWS) {}
+      _itemBlockManager(_monitor, SerializationFormat::SHADOWROWS) {}
 
 /* * * * * * * * * * * * *
  * Test helper functions
@@ -132,11 +133,11 @@ size_t DependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
 
 template <BlockPassthrough passBlocksThrough>
 MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
-    arangodb::aql::ResourceMonitor& monitor,
+    arangodb::ResourceMonitor& monitor,
     RegIdSet const& inputRegisters,
     ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
-      _itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {
+      _itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
     _dependencyMocks.emplace_back(std::make_unique<DependencyProxyMock<passBlocksThrough>>(monitor, nrRegisters));

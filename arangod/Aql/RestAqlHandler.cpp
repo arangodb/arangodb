@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
@@ -161,7 +165,35 @@ void RestAqlHandler::setupClusterQuery() {
                   "body must be an object with attribute \"variables\"");
     return;
   }
-  
+
+  VPackSlice coordinatorRebootIdSlice = querySlice.get(StaticStrings::AttrCoordinatorRebootId);
+  VPackSlice coordinatorIdSlice = querySlice.get(StaticStrings::AttrCoordinatorId);
+  RebootId rebootId(0);
+  std::string coordinatorId;
+  if (!coordinatorRebootIdSlice.isNone() || !coordinatorIdSlice.isNone()) {
+    bool good = false;
+    if (coordinatorRebootIdSlice.isInteger() && coordinatorIdSlice.isString()) {
+      coordinatorId = coordinatorIdSlice.copyString();
+      try {
+        // The following will throw for negative numbers, which should not happen:
+        rebootId = RebootId(coordinatorRebootIdSlice.getUInt());
+        good = true;
+      } catch (...) {
+      }
+    }
+    if (!good) {
+      LOG_TOPIC("4251a", ERR, arangodb::Logger::AQL)
+          << "Invalid VelocyPack: \"" << StaticStrings::AttrCoordinatorRebootId
+          << "\" needs to be a positive number and \""
+          << StaticStrings::AttrCoordinatorId << "\" needs to be a non-empty string";
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                    "body must be an object with attribute \"" + StaticStrings::AttrCoordinatorRebootId +
+                        "\" and \"" + StaticStrings::AttrCoordinatorId + "\"");
+      return;
+    }
+  }
+  // Valid to not exist for upgrade scenarios!
+
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
   // to prepare create a Query object.
@@ -172,7 +204,7 @@ void RestAqlHandler::setupClusterQuery() {
   //   "WRITE"} ], initialize: false, nodes: <one of snippets[*].value>,
   //   variables: <variables slice>
   // }
-  
+
   QueryOptions options(optionsSlice);
   if (options.ttl <= 0) { // patch TTL value
     options.ttl = _queryRegistry->defaultTTL();
@@ -243,14 +275,37 @@ void RestAqlHandler::setupClusterQuery() {
 
   answerBuilder.close(); // result
   answerBuilder.close();
-  
-  _queryRegistry->insertQuery(std::move(q), ttl);
 
+  cluster::CallbackGuard rGuard;
+
+  // Now set an alarm for the case that the coordinator is restarted which
+  // initiated this query. In that case, we want to drop our piece here:
+  if (rebootId.initialized()) {
+    LOG_TOPIC("42512", TRACE, Logger::AQL)
+        << "Setting RebootTracker on coordinator " << coordinatorId
+        << " for query with id " << q->id();
+    auto& clusterFeature = _server.getFeature<ClusterFeature>();
+    auto& clusterInfo = clusterFeature.clusterInfo();
+    rGuard = clusterInfo.rebootTracker().callMeOnChange(
+        cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+        [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
+         queryId = q->id()]() {
+          queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+          LOG_TOPIC("42511", DEBUG, Logger::AQL)
+              << "Query snippet destroyed as consequence of "
+                 "RebootTracker for coordinator, db="
+              << vocbaseName << " queryId=" << queryId;
+        },
+        "Query aborted since coordinator rebooted or failed.");
+  }
+
+  _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
-// simon: only used for <= 3.6
+// simon: only used for <= 3.7.
+// can be removed in 3.9
 bool RestAqlHandler::killQuery(std::string const& idString) {
   auto qid = arangodb::basics::StringUtils::uint64(idString);
   if (qid != 0) {
@@ -283,7 +338,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(_engine != nullptr);
 
-  if (_engine->getQuery().queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
+  if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
         << "[query#" << _qId << "] remote request received: " << operation
         << " registryId=" << idString;
@@ -506,7 +561,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
   expectedPropertiesFound.emplace(StaticStrings::AqlRemoteCallStack, false);
 
-  auto callStack = std::optional<AqlCallStack>{};
+  std::optional<AqlCallStack> callStack;
 
   for (auto const it : VPackObjectIterator(slice)) {
     auto const keySlice = it.key;
@@ -565,10 +620,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
   bool found;
-  std::string shardId = _request->header("x-shard-id", found);
-  if (!found) {  // simon: deprecated in 3.7, remove later
-    shardId = _request->header("shard-id", found);
-  }
+  std::string const& shardId = _request->header(StaticStrings::AqlShardIdHeader, found);
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize
@@ -618,15 +670,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     if (shardId.empty()) {
       std::tie(state, skipped, items) =
           _engine->execute(executeCall.callStack());
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
     } else {
       std::tie(state, skipped, items) =
           _engine->executeForClient(executeCall.callStack(), shardId);
-      if (state == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
+    }
+      
+    if (state == ExecutionState::WAITING) {
+      return RestStatus::WAITING;
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
@@ -661,7 +711,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
         return RestStatus::WAITING;
       }
     }
-    // Used in 3.4.0 onwards.
     answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
     if (items.get() == nullptr) {

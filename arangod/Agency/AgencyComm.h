@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,6 @@
 #ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
 #define ARANGOD_CLUSTER_AGENCY_COMM_H 1
 
-#include <deque>
-#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -42,13 +40,15 @@
 #include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
-#include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
 class Endpoint;
+
+namespace application_features {
+class ApplicationServer;
+}
 
 namespace velocypack {
 class Builder;
@@ -337,7 +337,7 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::optional<std::pair<int, std::string_view>> parseBodyError() const;
+  [[nodiscard]] std::pair<std::optional<int>, std::optional<std::string_view>> parseBodyError() const;
 
  public:
   std::string _location = "";
@@ -574,11 +574,6 @@ class AgencyComm {
   static std::string const AGENCY_URL_PREFIX;
   static uint64_t const INITIAL_SLEEP_TIME = 5000; // microseconds
   static uint64_t const MAX_SLEEP_TIME = 50000; // microseconds
-
-#ifdef DEBUG_SYNC_REPLICATION
- public:
-  static bool syncReplDebug;
-#endif
 
  public:
   explicit AgencyComm(application_features::ApplicationServer&);

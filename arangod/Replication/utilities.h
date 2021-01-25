@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -134,8 +134,11 @@ struct LeaderInfo {
 
   explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
+  /// @brief returns major version number * 10000 + minor version number * 100
+  uint64_t version() const;
+
   /// @brief get leader state
-  Result getState(Connection& connection, bool isChildSyncer);
+  Result getState(Connection& connection, bool isChildSyncer, char const* context);
 
   /// we need to act like a 3.2 client
   bool simulate32Client() const;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,6 @@
 #include "v8-views.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -41,6 +40,8 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Collection.h>
 
 namespace {
 
@@ -184,10 +185,9 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   header.add(arangodb::StaticStrings::DataSourceType, VPackValue(type));
   header.close();
 
-  // in basics::VelocyPackHelper::merge(...) values from rhs take precedence
-  // use same merge args as in methods::Collections::create(...)
-  auto builder = arangodb::basics::VelocyPackHelper::merge(properties.slice(),
-                                                           header.slice(), false, true);
+  // in velocypack::Collections::merge(...) values from rhs take precedence
+  auto builder = arangodb::velocypack::Collection::merge(properties.slice(), header.slice(), 
+                                                         /*mergeObjects*/ true, /*nullMeansRemove*/ false); 
 
   try {
 

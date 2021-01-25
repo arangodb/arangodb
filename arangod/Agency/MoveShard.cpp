@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterHelpers.h"
 
 using namespace arangodb;
@@ -281,11 +282,13 @@ bool MoveShard::start(bool&) {
   TRI_ASSERT(planned.isArray());
 
   int found = -1;
+  int foundTo = -1;
   int count = 0;
   _toServerIsFollower = false;
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
+      foundTo = count;
       if (!_isLeader) {
         moveShardFinish(false,  false,
                "toServer must not be planned for a following shard");
@@ -308,6 +311,19 @@ bool MoveShard::start(bool&) {
     return false;
   }
 
+  // Compute group to move shards together:
+  std::vector<Job::shard_t> shardsLikeMe =
+      clones(_snapshot, _database, _collection, _shard);
+
+  if (foundTo < 0) { // _to not in Plan, then it must not be a failoverCandidate:
+    auto failoverCands = Job::findAllFailoverCandidates(
+        _snapshot, _database, shardsLikeMe);
+    if (failoverCands.find(_to) != failoverCands.end()) {
+      finish("", "", false, "toServer must not be in failoverCandidates for shard or any of its distributeShardsLike colleagues");
+      return false;
+    }
+  }
+
   if (!_isLeader) {
     if (_remainsFollower) {
       moveShardFinish(false,  false, "remainsFollower is invalid without isLeader");
@@ -320,10 +336,6 @@ bool MoveShard::start(bool&) {
     }
   }
 
-
-  // Compute group to move shards together:
-  std::vector<Job::shard_t> shardsLikeMe =
-      clones(_snapshot, _database, _collection, _shard);
 
   // Copy todo to pending
   Builder todo, pending;
@@ -406,6 +418,20 @@ bool MoveShard::start(bool&) {
 
       // --- Check that Planned servers are still as we expect
       addPreconditionUnchanged(pending, planPath, planned);
+      // Check that failoverCandidates are still as we inspected them:
+      doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &pending](Slice plan, Slice current,
+                           std::string& planPath,
+                           std::string& curPath) {
+            // take off "servers" from curPath and add
+            // "failoverCandidates":
+            std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+            foCandsPath += StaticStrings::FailoverCandidates;
+            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            if (foCands.second) {
+              addPreconditionUnchanged(pending, foCandsPath, foCands.first);
+            }
+          });
       addPreconditionShardNotBlocked(pending, _shard);
       addMoveShardToServerCanLock(pending);
       addMoveShardFromServerCanLock(pending);

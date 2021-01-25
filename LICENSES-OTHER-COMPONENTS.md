@@ -1,6 +1,7 @@
 - [Other Licenses](#other-licenses)
   * [C/C++ Libraries](#cc-libraries)
   * [Programs](#programs)
+  * [Data files](#data-files)
   * [JavaScript](#javascript)
     + [Node core modules](#node-core-modules)
     + [Bundled NPM modules](#bundled-npm-modules)
@@ -46,8 +47,8 @@ _Enterprise Edition only_
 ### date
 
 * Name: date
-* Version: 2.4.0
-* Date: 2017-12-29 20:21:36Z
+* Version: 3.0.0
+* Date: 2020-06-03
 * Project Home: https://github.com/HowardHinnant/date
 * License: https://raw.githubusercontent.com/HowardHinnant/date/master/LICENSE.txt
 * License Name: MIT License
@@ -72,6 +73,16 @@ _Enterprise Edition only_
 * License: https://raw.githubusercontent.com/eranpeer/FakeIt/master/LICENSE
 * License Name: MIT License
 * License Id: MIT
+
+### fastvalidate-utf8
+
+* Name: fastvalidate-utf8
+* Version: (none)
+* Date: 2017-02-28 13:11:35Z 
+* Project Home: https://github.com/lemire/fastvalidate-utf-8
+* License: https://raw.githubusercontent.com/lemire/fastvalidate-utf-8/master/LICENSE-APACHE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
 
 ### fpconv_dtoa
 
@@ -456,8 +467,8 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.7
-* Date: 2017-08-25 00:37:10Z
+* Version: 1.1.8
+* Date: 2020-10-29 23:00:50Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -537,11 +548,33 @@ _Enterprise Edition only_
 
 * Name: flex
 * Version: 2.5.35
-* Date: 2008-02-26 00:00:00Z
+* Date: 2008-02-26
 * Project Home: https://github.com/westes/flex
 * License: https://raw.githubusercontent.com/westes/flex/master/COPYING
 * License Comment: free as-is license (BSD-2-Clause variant),
   only used to generate code, not part of the distribution
+
+## Data files
+
+#### IANA Time Zone Database (tzdata)
+
+Name: Time Zone Database
+Version: 2020f
+Date: 2020-12-29
+Project https://www.iana.org/time-zones
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/tzdata/LICENSE
+License Name: Public Domain
+License Id: -
+
+#### Unicode CLDR Project (windowsZones.xml)
+
+Name: Unicode CLDR Project
+Version: 38.1
+Date: 2020-11-19
+Project Home: https://github.com/unicode-org/cldr
+License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
+License Name: ICU License
+License Id: ICU
 
 ## JavaScript
 

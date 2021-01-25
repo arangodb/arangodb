@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,11 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-///
-/// Portions of the code are:
-///
-/// Copyright (c) 1999, Google Inc.
-/// All rights reserved.
+////////////////////////////////////////////////////////////////////////////////
 //
 /// Redistribution and use in source and binary forms, with or without
 /// modification, are permitted provided that the following conditions are
@@ -62,9 +58,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message for a topic
-////////////////////////////////////////////////////////////////////////////////
 
 #define ARANGO_INTERNAL_LOG_HELPER(id)                        \
   ::arangodb::Logger::LINE(__LINE__)                          \
@@ -72,14 +65,23 @@
   << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
   << ::arangodb::Logger::LOGID((id))
 
-#define LOG_TOPIC(id, level, topic)                                         \
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message for a topic
+////////////////////////////////////////////////////////////////////////////////
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+#define LOG_TOPIC(id, level, topic)                                     \
+  ::arangodb::LoggerStream() << (::arangodb::LogLevel::level)           \
+                             << (topic)                                 \
+                             << ARANGO_INTERNAL_LOG_HELPER(id)
+#else
+#define LOG_TOPIC(id, level, topic)                                     \
   !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic))    \
     ? (void)nullptr                                                         \
     : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
       << (::arangodb::LogLevel::level))                                     \
       << (topic)                                                            \
       << ARANGO_INTERNAL_LOG_HELPER(id)
-
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////

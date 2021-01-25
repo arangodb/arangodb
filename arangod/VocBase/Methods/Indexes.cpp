@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -360,9 +361,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
   TRI_ASSERT(collection);
   VPackBuilder normalized;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto res = engine->indexFactory().enhanceIndexDefinition(  // normalize definition
-      input, normalized, create, collection->vocbase()       // args
+  StorageEngine& engine =
+      collection->vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  auto res = engine.indexFactory().enhanceIndexDefinition(  // normalize definition
+      input, normalized, create, collection->vocbase()      // args
   );
 
   if (res.fail()) {

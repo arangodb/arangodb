@@ -29,7 +29,7 @@
 
 #include <vector>
 
-NS_ROOT
+namespace iresearch {
 
 typedef std::vector<doc_id_t> doc_map;
 
@@ -142,6 +142,6 @@ class sorted_column final : public irs::columnstore_writer::column_output {
   column_info info_;
 }; // sorted_column
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_SORTED_COLUMN_H

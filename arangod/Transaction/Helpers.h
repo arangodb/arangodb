@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
@@ -91,12 +92,16 @@ velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
 RevisionId extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
-OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
+OperationResult buildCountResult(OperationOptions const& options,
+                                 std::vector<std::pair<std::string, uint64_t>> const& count,
                                  transaction::CountType type, uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
                              VPackSlice const& idPart, VPackSlice const& keyPart);
+
+std::string makeIdFromParts(CollectionNameResolver const* resolver,
+                            DataSourceId const& cid, VPackSlice const& keyPart);
 };  // namespace helpers
 
 /// @brief basics::StringBuffer leaser

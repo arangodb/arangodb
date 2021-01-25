@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,15 +26,20 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Builder.h>
 #include <functional>
 #include <memory>
 
-#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionVariable.h"
 
 namespace arangodb {
+class AgencyComm;
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 namespace application_features {
 class ApplicationServer;
 }
@@ -127,10 +132,16 @@ class AgencyCallback {
   void local(bool b);
   bool local() const;
   
+ private:
+  // execute callback with current value data:
+  bool execute(velocypack::Slice data);
+  
+  // execute callback without any data:
+  bool executeEmpty();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief private members
-  //////////////////////////////////////////////////////////////////////////////
+  // Compare last value and newly read one and call execute if the are
+  // different:
+  void checkValue(std::shared_ptr<velocypack::Builder>, bool forceCheck);
 
  private:
   application_features::ApplicationServer& _server;
@@ -148,17 +159,8 @@ class AgencyCallback {
   /// this variable is protected by the condition variable! 
   bool _wasSignaled;
 
-  /// Determined when registered in registery. Default: true 
+  /// Determined when registered in registry. Default: true 
   bool _local;
-
-  // execute callback with current value data:
-  bool execute(std::shared_ptr<velocypack::Builder>);
-  // execute callback without any data:
-  bool executeEmpty();
-
-  // Compare last value and newly read one and call execute if the are
-  // different:
-  void checkValue(std::shared_ptr<velocypack::Builder>, bool forceCheck);
 };
 
 }  // namespace arangodb

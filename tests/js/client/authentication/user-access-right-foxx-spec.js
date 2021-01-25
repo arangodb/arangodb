@@ -33,7 +33,7 @@
 
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const foxxManager = require('@arangodb/foxx/manager');
 const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
@@ -55,6 +55,8 @@ for (let l of rightLevels) {
   dbLevel[l] = new Set();
   colLevel[l] = new Set();
 }
+
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 helper.switchUser('root', '_system');
 helper.removeAllUsers();

@@ -32,7 +32,7 @@
 #include "utils/utf8_utils.hpp"
 #include "fst/closure.h"
 
-NS_ROOT
+namespace iresearch {
 
 struct filter_visitor;
 
@@ -533,6 +533,6 @@ IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
   const order::prepared& order,
   boost_t boost);
 
-NS_END
+}
 
 #endif

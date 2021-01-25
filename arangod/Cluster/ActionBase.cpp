@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,7 +222,15 @@ VPackBuilder ActionBase::toVelocyPack() const {
 
 ActionState ActionBase::getState() const { return _state; }
 
-void ActionBase::setState(ActionState state) { _state = state; }
+void ActionBase::setState(ActionState state) {
+  // We want to make sure that we get another maintenance run
+  // when we shift from any state to complete or failed 
+  if ((COMPLETE == state || FAILED == state) && _state != state && _description.has(DATABASE)) {
+    _feature.addDirty(_description.get(DATABASE));
+    TRI_ASSERT(!_description.get(DATABASE).empty());
+  }
+  _state = state;
+}
 
 /**
  * progress() operation is an expected future feature.  Not supported in the

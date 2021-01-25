@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalTailingSyncer.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Logger/LogMacros.h"
@@ -39,7 +41,7 @@ using namespace arangodb::httpclient;
 
 GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& configuration,
                                          TRI_voc_tick_t initialTick, bool useTick)
-    : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
+    : TailingSyncer(configuration._server.getFeature<ReplicationFeature>().globalReplicationApplier(),
                     configuration, initialTick, useTick),
       _queriedTranslations(false) {
   _ignoreDatabaseMarkers = false;
@@ -51,8 +53,7 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
   TRI_ASSERT(_state.leader.serverId.isSet());
   TRI_ASSERT(_state.leader.majorVersion != 0);
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     std::string err =
         "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC("75fa1", ERR, Logger::REPLICATION) << err;
@@ -76,8 +77,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }

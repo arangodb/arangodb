@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -60,7 +62,10 @@ void DBServerAgencySync::work() {
   _heartbeat->dispatchedJobResult(result);
 }
 
-Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
+Result DBServerAgencySync::getLocalCollections(
+  std::unordered_set<std::string> const& dirty,
+  AgencyCache::databases_t& databases) {
+
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -73,21 +78,28 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   }
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
-  VPackObjectBuilder c(&collections);
-
-  dbfeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
-    if (!vocbase.use()) {
-      return;
+  for (auto const& dbname : dirty) {
+    TRI_vocbase_t* tmp = dbfeature.useDatabase(dbname);
+    if (tmp == nullptr) {
+      continue;
     }
+    TRI_vocbase_t& vocbase = *tmp;
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
 
-    collections.add(VPackValue(vocbase.name()));
+    auto [it,created] =
+      databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
+    if (!created) {
+      LOG_TOPIC("0e9d7", ERR, Logger::MAINTENANCE)
+        << "Failed to emplace new entry in local collection cache";
+      return Result(TRI_ERROR_INTERNAL, "Failed to emplace new entry in local collection cache");
+    }
 
+    auto& collections = *it->second;
     VPackObjectBuilder db(&collections);
     auto cols = vocbase.collections(false);
 
     for (auto const& collection : cols) {
-      // note: system collections are ignored here, but the local parts of 
+      // note: system collections are ignored here, but the local parts of
       // smart edge collections are system collections, too. these are
       // included.
       if (!collection->system() || collection->isSmartChild()) {
@@ -120,9 +132,14 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         }
       }
     }
-  });
+  }
 
   return Result();
+}
+
+std::ostream& operator<<(std::ostream& o, std::shared_ptr<VPackBuilder> const& v) {
+  o << v->toJson();
+  return o;
 }
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
@@ -157,29 +174,52 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
-  uint64_t planIndex = 0;
-  auto plan = clusterInfo.getPlan(planIndex);
+  uint64_t planIndex = 0, currentIndex = 0;
 
-  if (plan == nullptr) {
-    // TODO increase log level, except during shutdown?
-    LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
-        << "DBServerAgencySync::execute no plan";
-    result.errorMessage = "DBServerAgencySync::execute no plan";
+
+  // The rationale is that even with 1000 databases and us waking up every 5 seconds,
+  // we should approximately visit every database without being dirty once per hour.
+  // That is why we divide by 720.
+  auto moreDirt = mfeature.pickRandomDirty(
+    static_cast<size_t>(std::ceil(static_cast<double>(mfeature.lastNumberOfDatabases()) / 720.)));
+  auto dirty = mfeature.dirty();
+  // Add `moreDirt` to `dirty` but remove from `moreDirt`, if already dirty anyway.
+  // Then we can reasonably be surprised if we find anything in a database in `moreDirt`.
+  for (auto it = moreDirt.begin(); it != moreDirt.end();) {
+    if (dirty.find(*it) == dirty.end()) {
+      dirty.insert(*it);
+      it++;
+    } else {
+      it = moreDirt.erase(it);
+    }
+  }
+
+  if (dirty.empty()) {
+    LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
+      << "DBServerAgencySync::execute no dirty collections";
+    result.success = true;
+    result.errorMessage = "DBServerAgencySync::execute no dirty databases";
     return result;
   }
 
+  AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
+
   auto serverId = arangodb::ServerState::instance()->getId();
 
-  VPackBuilder local;
+  // It is crucial that the following happens before we do `getLocalCollections`!
+  MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
+
+  AgencyCache::databases_t local;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(local);
+  Result glc = getLocalCollections(dirty, local);
+
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
     result.errorMessage = "Could not do getLocalCollections for phase 1: '";
     result.errorMessage.append(glc.errorMessage()).append("'");
     return result;
   }
-  LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local.toJson();
+  LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local;
 
   VPackBuilder rb;
   Result tmp;
@@ -191,8 +231,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
-    tmp = arangodb::maintenance::phaseOne(plan->slice(), planIndex, local.slice(),
-                                          serverId, mfeature, rb);
+
+    tmp = arangodb::maintenance::phaseOne(
+      plan, planIndex, dirty, moreDirt, local, serverId, mfeature, rb, currentShardLocks);
+
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -207,24 +249,28 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    auto current = clusterInfo.getCurrent();
-    if (current == nullptr) {
-      // TODO increase log level, except during shutdown?
-      LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync::execute no current";
-      result.errorMessage = "DBServerAgencySync::execute no current";
-      return result;
-    }
+    AgencyCache::databases_t current = clusterInfo.getCurrent(currentIndex, dirty);
+
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
-        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+        << "DBServerAgencySync::phaseTwo - current state: " << current;
+
+    // It is crucial that the following happens before we do `getLocalCollections`!
+    // We must lock a shard if an action for the shard is scheduled. We then unlock
+    // the shard when this action has terminated. This unlock makes the database
+    // dirty again and triggers a run of the maintenance thread. We want the outcome
+    // of the completed action to be visible in what `getLocalCollections` sees, when
+    // the dirtiness of the database is consumed. Therefore, we do it in exactly this
+    // order: First get a snapshot of the locks (copy!) and ignore the shards which
+    // have been locked *now*. Then `getLocalCollections`.
+    currentShardLocks = mfeature.getShardLocks();
 
     local.clear();
-    glc = getLocalCollections(local);
+    glc = getLocalCollections(dirty, local);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
     LOG_TOPIC("d15b5", TRACE, Logger::MAINTENANCE)
-        << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
+        << "DBServerAgencySync::phaseTwo - local state: " << local;
     if (!glc.ok()) {
       result.errorMessage = "Could not do getLocalCollections for phase 2: '";
       result.errorMessage.append(glc.errorMessage()).append("'");
@@ -234,8 +280,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
-    tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
-                                          local.slice(), serverId, mfeature, rb);
+    tmp = arangodb::maintenance::phaseTwo(
+      plan, current, currentIndex, dirty, local, serverId, mfeature, rb, currentShardLocks);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -264,7 +310,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
             auto const precondition = ao.value.get("precondition");
             if (!precondition.isNone()) {
-              // have a precondition 
+              // have a precondition
               preconditions.push_back(AgencyPrecondition(precondition.keyAt(0).copyString(),
                                                          AgencyPrecondition::Type::VALUE,
                                                          precondition.valueAt(0)));
@@ -291,16 +337,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       }
 
       if (tmp.ok()) {
+        VPackSlice planSlice = report.get("Plan");
+        VPackSlice currentSlice = report.get("Current");
         result = DBServerAgencySyncResult(
-            true,
-            report.hasKey("Plan") ? report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
-            report.hasKey("Current")
-                ? report.get("Current").get("Version").getNumber<uint64_t>()
-                : 0);
+          true, planSlice.isObject() ? planSlice.get("Index").getNumber<uint64_t>() : 0,
+          currentSlice.isObject() ? currentSlice.get("Index").getNumber<uint64_t>() : 0);
       } else {
         // Report an error:
-        result = DBServerAgencySyncResult(false, "Error in phase 2: " + tmp.errorMessage(),
-                                          0, 0);
+        result = DBServerAgencySyncResult(
+          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0);
       }
     } else {
       // This code should never run, it is only there to debug problems if

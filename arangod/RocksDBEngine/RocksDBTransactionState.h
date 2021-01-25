@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,7 +56,6 @@ struct Transaction;
 }
 
 class LogicalCollection;
-struct RocksDBDocumentOperation;
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -81,13 +80,16 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint64_t numCommits() const { return _numCommits; }
-#endif
-  uint64_t numInserts() const { return _numInserts; }
-  uint64_t numUpdates() const { return _numUpdates; }
-  uint64_t numRemoves() const { return _numRemoves; }
+  /// @brief number of commits, including intermediate commits
+  uint64_t numCommits() const override { return _numCommits; }
 
+  /// @brief number of insert operations
+  uint64_t numInserts() const { return _numInserts; }
+  /// @brief number of update/replace operations
+  uint64_t numUpdates() const { return _numUpdates; }
+  /// @brief number of remove operations
+  uint64_t numRemoves() const { return _numRemoves; }
+  
   inline bool hasOperations() const {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
@@ -208,8 +210,9 @@ class RocksDBTransactionState final : public TransactionState {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
-  uint64_t _numCommits = 0;
 #endif
+  /// @brief number of commits, including intermediate commits
+  uint64_t _numCommits;
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;

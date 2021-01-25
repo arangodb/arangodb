@@ -131,6 +131,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
+  REG_ERROR(ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED, "follower transaction intermediate commit already performed");
   REG_ERROR(ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED, "creating collection failed due to precondition");
   REG_ERROR(ERROR_CLUSTER_SERVER_UNKNOWN, "got a request from an unkown server");
   REG_ERROR(ERROR_CLUSTER_TOO_MANY_SHARDS, "too many shards");
@@ -150,7 +151,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS, "got contradicting answers from different shards");
   REG_ERROR(ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, "not all sharding attributes given");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES, "must not change the value of a shard key attribute");
-  REG_ERROR(ERROR_CLUSTER_UNSUPPORTED, "unsupported operation or parameter");
+  REG_ERROR(ERROR_CLUSTER_UNSUPPORTED, "unsupported operation or parameter for clusters");
   REG_ERROR(ERROR_CLUSTER_ONLY_ON_COORDINATOR, "this operation is only valid on a coordinator in a cluster");
   REG_ERROR(ERROR_CLUSTER_READING_PLAN_AGENCY, "error reading Plan in agency");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION, "could not truncate collection");
@@ -217,6 +218,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
+  REG_ERROR(ERROR_QUERY_WINDOW_AFTER_MODIFICATION, "window operation after data-modification");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_VALIDATION_FAILED, "schema validation failed");
@@ -242,6 +244,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_LDAP_FOUND_NO_OBJECTS, "LDAP didn't found any objects");
   REG_ERROR(ERROR_LDAP_NOT_ONE_USER_FOUND, "LDAP found zero ore more than one user");
   REG_ERROR(ERROR_LDAP_USER_NOT_IDENTIFIED, "LDAP found a user, but its not the desired one");
+  REG_ERROR(ERROR_LDAP_OPERATIONS_ERROR, "LDAP returned an operations error");
   REG_ERROR(ERROR_LDAP_INVALID_MODE, "invalid ldap mode");
   REG_ERROR(ERROR_TASK_INVALID_ID, "invalid task id");
   REG_ERROR(ERROR_TASK_DUPLICATE_ID, "duplicate task id");
@@ -316,7 +319,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_NO_SMART_COLLECTION, "collection is not smart");
   REG_ERROR(ERROR_NO_SMART_GRAPH_ATTRIBUTE, "smart graph attribute not given");
   REG_ERROR(ERROR_CANNOT_DROP_SMART_COLLECTION, "cannot drop this smart collection");
-  REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
+  REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
   REG_ERROR(ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH, "smart graph attribute mismatch");
   REG_ERROR(ERROR_INVALID_SMART_JOIN_ATTRIBUTE, "invalid smart join attribute declaration");
@@ -362,4 +365,5 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, "hot backup conflict");
   REG_ERROR(ERROR_HOT_BACKUP_DBSERVERS_AWOL, "hot backup not all db servers reachable");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, "analyzers in plan could not be modified");
+  REG_ERROR(ERROR_AIR_EXECUTION_ERROR, "error during AIR execution");
 }

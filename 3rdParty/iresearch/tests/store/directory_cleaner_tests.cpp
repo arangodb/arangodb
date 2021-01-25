@@ -31,6 +31,8 @@
 #include "store/memory_directory.hpp"
 #include "utils/directory_utils.hpp"
 
+using namespace std::chrono_literals;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------

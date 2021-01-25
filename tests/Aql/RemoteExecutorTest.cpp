@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -179,7 +180,7 @@ auto MakeSkipResult(size_t const i) -> SkipResult {
 TEST(DeSerializeAqlExecuteResultTest, test) {
   
   ResourceMonitor resourceMonitor{};
-  AqlItemBlockManager manager{&resourceMonitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager manager{resourceMonitor, SerializationFormat::SHADOWROWS};
 
   auto const testingAqlExecuteResults = std::array{
       AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},

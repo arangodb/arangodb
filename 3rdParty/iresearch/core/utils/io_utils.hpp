@@ -53,14 +53,14 @@ struct auto_##method : std::default_delete<T> \
   } \
 }
 
-NS_ROOT
-NS_BEGIN(io_utils)
+namespace iresearch {
+namespace io_utils {
 
 MAKE_DELETER(close);
 MAKE_DELETER(unlock);
 
-NS_END
-NS_END
+}
+}
 
 #define DECLARE_IO_PTR(class_name, method) \
   typedef iresearch::io_utils::auto_##method< class_name >::ptr ptr

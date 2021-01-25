@@ -25,11 +25,11 @@
 #ifndef ARANGO_CXX_DRIVER_SERVER
 #define ARANGO_CXX_DRIVER_SERVER
 
+#include <fuerte/asio_ns.h>
+
 #include <mutex>
 #include <thread>
 #include <utility>
-
-#include <fuerte/asio_ns.h>
 
 // run / runWithWork / poll for Loop mapping to ioservice
 // free function run with threads / with thread group barrier and work
@@ -50,7 +50,8 @@ class EventLoopService {
  public:
   // Initialize an EventLoopService with a given number of threads
   //  and a given number of io_contexts
-  explicit EventLoopService(unsigned int threadCount = 1, char const* name = "");
+  explicit EventLoopService(unsigned int threadCount = 1,
+                            char const* name = "");
   virtual ~EventLoopService();
 
   // Prevent copying
@@ -59,18 +60,19 @@ class EventLoopService {
 
   // io_service returns a reference to the boost io_service.
   std::shared_ptr<asio_ns::io_context>& nextIOContext() {
-    return _ioContexts[_lastUsed.fetch_add(1, std::memory_order_relaxed) % _ioContexts.size()];
+    return _ioContexts[_lastUsed.fetch_add(1, std::memory_order_relaxed) %
+                       _ioContexts.size()];
   }
-  
+
   asio_ns::ssl::context& sslContext();
-  
+
   // stop and join threads
   void stop();
 
  private:
   /// number of last used io_context
   std::atomic<uint32_t> _lastUsed;
-  
+
   /// protect ssl context creation
   std::mutex _sslContextMutex;
   /// global SSL context to use here

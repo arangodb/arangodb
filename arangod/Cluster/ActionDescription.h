@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ enum ActionState {
 };
 
 /**
- * @brief Action description for mainenance actions
+ * @brief Action description for maintenance actions
  *
  * This structure holds once initialized constant parameters of a maintenance
  * action. Members are declared const, thus thread safety guards are omitted.
@@ -65,6 +65,7 @@ struct ActionDescription final {
   ActionDescription(
       std::map<std::string, std::string> description,
       int priority,
+      bool runEvenIfDuplicate,
       std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
 
   /**
@@ -161,6 +162,15 @@ struct ActionDescription final {
     return _priority;
   }
 
+  /**
+   * @brief Get the fact if it is forced or not. If forced, the MaintenanceFeature
+   * will not sort out duplicates by hashing the description. Rather, the action
+   * will always be submitted.
+   */
+  bool isRunEvenIfDuplicate() const {
+    return _runEvenIfDuplicate;
+  }
+
  private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
@@ -170,6 +180,9 @@ struct ActionDescription final {
 
   /** @brief priority */
   int _priority;
+
+  /// @brief flag to not sort out duplicates by hashing
+  bool _runEvenIfDuplicate;
 };
 
 }  // namespace maintenance

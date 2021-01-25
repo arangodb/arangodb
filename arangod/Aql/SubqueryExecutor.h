@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,18 +31,29 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Basics/Result.h"
+#include "Transaction/Methods.h"
 
+// TODO: the entire executor is only needed to execute non-spliced subqueries sent
+// by a 3.7 coordinator. It can be removed in 3.9
 namespace arangodb {
+namespace velocypack {
+template <typename T>
+class Buffer;
+class Builder;
+}
+
 namespace aql {
 class ExecutionBlock;
 class NoStats;
 class OutputAqlItemRow;
+class QueryContext;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
 class SubqueryExecutorInfos {
  public:
-  SubqueryExecutorInfos(ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
+  SubqueryExecutorInfos(ExecutionBlock& subQuery, QueryContext& query,
+                        RegisterId outReg, bool subqueryIsConst);
 
   SubqueryExecutorInfos() = delete;
   SubqueryExecutorInfos(SubqueryExecutorInfos&&) = default;
@@ -49,12 +61,14 @@ class SubqueryExecutorInfos {
   ~SubqueryExecutorInfos() = default;
 
   inline ExecutionBlock& getSubquery() const { return _subQuery; }
+  aql::QueryContext& query() noexcept;
   inline bool returnsData() const { return _returnsData; }
   inline RegisterId outputRegister() const { return _outReg; }
   inline bool isConst() const { return _isConst; }
 
  private:
   ExecutionBlock& _subQuery;
+  QueryContext& _query;
   RegisterId const _outReg;
   bool const _returnsData;
   bool const _isConst;
@@ -124,7 +138,9 @@ class SubqueryExecutor {
  private:
   Fetcher& _fetcher;
   SubqueryExecutorInfos& _infos;
-
+  
+  transaction::Methods _trx;
+    
   // Upstream state, used to determine if we are done with all subqueries
   ExecutorState _state;
 
@@ -141,7 +157,9 @@ class SubqueryExecutor {
   ExecutionBlock& _subquery;
 
   // Place where the current subquery can store intermediate results.
-  std::unique_ptr<std::vector<SharedAqlItemBlockPtr>> _subqueryResults;
+  arangodb::velocypack::Buffer<uint8_t> _subqueryResults;
+
+  arangodb::velocypack::Builder _subqueryResultsBuilder;
 
   // Cache for the input row we are currently working on
   InputAqlItemRow _input;

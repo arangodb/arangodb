@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -267,15 +267,16 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
-  auto res = methods::Collections::create(
-      vocbase,                        // collection vocbase
-      name,                           // collection name
-      collectionType,                 // collection type
-      propSlice,                      // collection properties
-      createWaitsForSyncReplication,  // replication wait flag
-      enforceReplicationFactor,
-      false,  // is new Database?, here always false
-      coll);
+  OperationOptions options(ExecContext::current());
+  auto res = methods::Collections::create(vocbase,  // collection vocbase
+                                          options,
+                                          name,            // collection name
+                                          collectionType,  // collection type
+                                          propSlice,  // collection properties
+                                          createWaitsForSyncReplication,  // replication wait flag
+                                          enforceReplicationFactor,
+                                          false,  // is new Database?, here always false
+                                          coll);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

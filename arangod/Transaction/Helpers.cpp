@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -350,6 +350,7 @@ velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::
 }
 
 OperationResult transaction::helpers::buildCountResult(
+    OperationOptions const& options,
     std::vector<std::pair<std::string, uint64_t>> const& count,
     transaction::CountType type, uint64_t& total) {
   total = 0;
@@ -370,7 +371,7 @@ OperationResult transaction::helpers::buildCountResult(
     }
     resultBuilder.add(VPackValue(result));
   }
-  return OperationResult(Result(), resultBuilder.steal());
+  return OperationResult(Result(), resultBuilder.steal(), options);
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
@@ -381,6 +382,14 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   TRI_ASSERT(key.isString());
 
   DataSourceId cid{encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
+  return makeIdFromParts(resolver, cid, key);
+}
+
+/// @brief creates an id string from a collection name and the _key string
+std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* resolver,
+                                                  DataSourceId const& cid,
+                                                  VPackSlice const& key) {
+  TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE

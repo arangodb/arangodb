@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "v8-globals.h"
 
 #include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
 
 TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServer& server,
@@ -221,6 +222,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "value"));
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "waitForSync"));
+  CompactKey.Reset(isolate, TRI_V8_ASCII_STD_STRING(isolate, arangodb::StaticStrings::Compact));
 
   _DbCacheKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "__dbcache__"));
   _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_dbName"));

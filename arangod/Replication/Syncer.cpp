@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,6 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -125,6 +124,12 @@ arangodb::Result applyCollectionDumpMarkerInternal(
   using arangodb::OperationOptions;
   using arangodb::OperationResult;
   using arangodb::Result;
+  
+  // key must not be empty
+  VPackSlice keySlice = slice.get(arangodb::StaticStrings::KeyString);
+  if (!keySlice.isString() || keySlice.getStringLength() == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
 
   if (type == arangodb::TRI_replication_operation_e::REPLICATION_MARKER_DOCUMENT) {
     // {"type":2300,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
@@ -138,32 +143,29 @@ arangodb::Result applyCollectionDumpMarkerInternal(
     }
     // we want the conflicting other key returned in case of unique constraint
     // violation
-    options.indexOperationMode = arangodb::Index::OperationMode::internal;
+    options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
     try {
-      OperationResult opRes;
+      OperationResult opRes(Result(), options);
       bool useReplace = false;
-      VPackSlice keySlice = arangodb::transaction::helpers::extractKeyFromDocument(slice);
 
       // if we are about to process a single document marker we first check if the target 
       // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
       // on with a replace.
-      if (keySlice.isString()) {
-        std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
-        if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
-          // determine if we already have this revision or need to replace the
-          // one we have
-          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
-          if (rid.isSet() && rid == lookupResult.second) {
-            // we already have exactly this document, don't replace, just
-            // consider it already applied and bail
-            return {};
-          }
-
-          // need to replace the one we have
-          useReplace = true;
-          opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
+      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
+      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+        // determine if we already have this revision or need to replace the
+        // one we have
+        arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
+        if (rid.isSet() && rid == lookupResult.second) {
+          // we already have exactly this document, don't replace, just
+          // consider it already applied and bail
+          return {};
         }
+
+        // need to replace the one we have
+        useReplace = true;
+        opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
       }
 
       if (!useReplace) {
@@ -175,25 +177,23 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       }
 
       if (useReplace) {
-        // conflicting key is contained in opRes.errorMessage() now
-        if (keySlice.isString()) {
-          // let's check if the key we have got is the same as the one
-          // that we would like to insert
-          if (keySlice.copyString() != opRes.errorMessage()) {
-            // different key
-            if (trx.isSingleOperationTransaction()) {
-              // return a special error code from here, with the key of
-              // the conflicting document as the error message :-|
-              return Result(TRI_ERROR_ARANGO_TRY_AGAIN, opRes.errorMessage());
-            }
+        // conflicting key is contained in opRes.errorMessage() now.
+        // let's check if the key we have got is the same as the one
+        // that we would like to insert
+        if (keySlice.stringRef() != opRes.errorMessage()) {
+          // different key
+          if (trx.isSingleOperationTransaction()) {
+            // return a special error code from here, with the key of
+            // the conflicting document as the error message :-|
+            return Result(TRI_ERROR_ARANGO_TRY_AGAIN, opRes.errorMessage());
+          }
 
-            VPackBuilder tmp;
-            tmp.add(VPackValue(opRes.errorMessage()));
+          VPackBuilder tmp;
+          tmp.add(VPackValue(opRes.errorMessage()));
 
-            opRes = trx.remove(coll->name(), tmp.slice(), options);
-            if (opRes.ok() || !opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-              useReplace = false;
-            }
+          opRes = trx.remove(coll->name(), tmp.slice(), options);
+          if (opRes.ok() || !opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            useReplace = false;
           }
         }
 
@@ -215,7 +215,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
           // in case we get a unique constraint violation in a multi-document transaction,
           // we can remove the conflicting document and try again
-          options.indexOperationMode = arangodb::Index::OperationMode::normal;
+          options.indexOperationMode = arangodb::IndexOperationMode::normal;
 
           VPackBuilder tmp;
           tmp.add(VPackValue(opRes.errorMessage()));
@@ -534,7 +534,8 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    auto& server = _state.applier._server;
+    TRI_vocbase_t* vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(name);
 
     if (vocbase != nullptr) {
       _state.vocbases.try_emplace(name, *vocbase); //we can not be lazy because of the guard requires a valid ref

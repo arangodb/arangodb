@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,26 +22,26 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
+
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Basics/StaticStrings.h>
-#include <memory>
-
-#include "Scheduler.h"
 #include "SupervisedScheduler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
-#include "Statistics/RequestStatistics.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/MetricsFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -57,9 +57,9 @@ time_point lastWarningQueue = std::chrono::steady_clock::now();
 int64_t queueWarningEvents = 0;
 std::mutex queueWarningMutex;
 
-time_point lastQueueFullWarning[3];
-int64_t fullQueueEvents[3] = {0, 0, 0};
-std::mutex fullQueueWarningMutex[3];
+time_point lastQueueFullWarning[SupervisedScheduler::NumberOfQueues];
+int64_t fullQueueEvents[SupervisedScheduler::NumberOfQueues] = {0};
+std::mutex fullQueueWarningMutex[SupervisedScheduler::NumberOfQueues];
 
 void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize, uint64_t approxQueueLength) {
   auto const now = std::chrono::steady_clock::now();
@@ -81,7 +81,7 @@ void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize, uint6
   if (printLog) {
     LOG_TOPIC("dead2", WARN, Logger::THREADS)
         << "Scheduler queue with max capacity " << maxQueueSize
-        << " has approximately " << approxQueueLength 
+        << " has approximately " << approxQueueLength
         << " tasks and is filled more than 50% in last " << sinceLast.count()
         << "s (happened " << totalEvents << " times since last message)";
   }
@@ -145,50 +145,87 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
-                                         uint64_t maxQueueSize,
-                                         uint64_t fifo1Size, uint64_t fifo2Size)
+                                         uint64_t maxQueueSize, uint64_t fifo1Size,
+                                         uint64_t fifo2Size, uint64_t fifo3Size,
+                                         double ongoingMultiplier,
+                                         double unavailabilityQueueFillGrade)
     : Scheduler(server),
+      _nf(server.getFeature<NetworkFeature>()),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),
       _jobsSubmitted(0),
       _jobsDequeued(0),
       _jobsDone(0),
-      _jobsDirectExec(0),
-      _wakeupQueueLength(5),
-      _wakeupTime_ns(1000),
-      _definitiveWakeupTime_ns(100000),
-      _minNumWorker(minThreads),
-      _maxNumWorker(maxThreads),
-      _nrWorking(0),
-      _nrAwake(0),
-      _maxFifoSize(maxQueueSize),
-      _fifo1Size(fifo1Size),
-      _fifo2Size(fifo2Size),
+      _minNumWorkers(minThreads),
+      _maxNumWorkers(maxThreads),
+      _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
+      _ongoingLowPriorityLimit(static_cast<std::size_t>(ongoingMultiplier * _maxNumWorkers)),
+      _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
+      _numWorking(0),
+      _numAwake(0),
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerQueueLength, 0,
-          "Servers internal queue length")),
+          "Server's internal queue length")),
+      _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_scheduler_jobs_done", 0, "Total number of queue jobs done")),
+      _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_scheduler_jobs_submitted", 0,
+          "Total number of jobs submitted to the queue")),
+      _metricsJobsDequeued(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_scheduler_jobs_dequeued", 0,
+          "Total number of jobs dequeued")),
       _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerAwakeWorkers, 0,
           "Number of awake worker threads")),
+      _metricsNumWorkingThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_scheduler_num_working_threads", 0,
+          "Number of working threads")),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerNumWorker, 0,
-          "Number of worker threads")),
+          StaticStrings::SchedulerNumWorker, 0, "Number of worker threads")),
+      _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_scheduler_threads_started", 0,
+          "Number of scheduler threads started")),
+      _metricsThreadsStopped(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_scheduler_threads_stopped", 0,
+          "Number of scheduler threads stopped")),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
+          "arangodb_scheduler_queue_full_failures", 0,
+          "Tasks dropped and not added to internal queue")),
+      _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
+          "Total number of ongoing RestHandlers coming from "
+          "the low prio queue")),
+      _metricsQueueLengths{
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
+              "Current queue length of the maintenance priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_high_prio_queue_length", uint64_t(0),
+              "Current queue length of the high priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_medium_prio_queue_length", uint64_t(0),
+              "Current queue length of the medium priority queue in "
+              "the scheduler"),
+          _server.getFeature<arangodb::MetricsFeature>().gauge(
+              "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
+              "Current queue length of the low priority queue in "
+              "the scheduler")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
+  _queues[3].reserve(fifo3Size);
+  TRI_ASSERT(fifo3Size > 0);
 }
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> handler) {
+bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> work) {
   if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
     return false;
   }
-
-  auto work = std::make_unique<WorkItem>(std::move(handler));
 
   // use memory order acquire to make sure, pushed item is visible
   uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
@@ -201,18 +238,14 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
 
   auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
 
-  TRI_ASSERT(queueNo <= 2);
+  TRI_ASSERT(queueNo < NumberOfQueues);
   TRI_ASSERT(isStopping() == false);
 
   if (!_queues[queueNo].bounded_push(work.get())) {
     _jobsSubmitted.fetch_sub(1, std::memory_order_release);
 
-    uint64_t maxSize = _maxFifoSize;
-    if (queueNo == 1) {
-      maxSize = _fifo1Size;
-    } else if (queueNo == 2) {
-      maxSize = _fifo2Size;
-    }
+    uint64_t maxSize = _maxFifoSizes[queueNo];
+
     LOG_TOPIC("98d94", DEBUG, Logger::THREADS)
         << "unable to push job to scheduler queue: queue is full";
     logQueueFullEveryNowAndThen(queueNo, maxSize);
@@ -220,17 +253,19 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     return false;
   }
 
-  // queue now has ownership for the WorkItem
+  _metricsQueueLengths[queueNo].get() += 1;
+
+  // queue now has ownership for the WorkItemBase
   (void)work.release();  // intentionally ignore return value
 
-  if (approxQueueLength > _maxFifoSize / 2) {
+  if (approxQueueLength > _maxFifoSizes[3] / 2) {
     if ((::queueWarningTick++ & 0xFFu) == 0) {
       auto const& now = std::chrono::steady_clock::now();
       if (::conditionQueueFullSince == time_point{}) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSizes[3], approxQueueLength);
         ::conditionQueueFullSince = now;
       } else if (now - ::conditionQueueFullSince > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSizes[3], approxQueueLength);
         ::queueWarningTick = 0;
         ::conditionQueueFullSince = now;
       }
@@ -247,41 +282,60 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
   // want to do it unnecessarily. However, if we push work to a queue, we do not
   // want a sleeping worker to sleep for much longer, rather, we would like to
   // have the work done. Therefore, we follow this algorithm: If nobody is
-  // sleeping, we also do not wake up anybody (i.e. _nrAwake >= _numWorker). If
-  // there is a spinning worker (i.e. _nrAwake > _nrWorking), then we do not try
+  // sleeping, we also do not wake up anybody (i.e. _numAwake >= _numWorkers). If
+  // there is a spinning worker (i.e. _numAwake > _numWorking), then we do not try
   // to wake up anybody, however, we need to actually see a spinning worker in
   // this case. Otherwise, we walk through the threads, and wake up the first we
   // see which is sleeping.
-  uint64_t awake = _nrAwake.load(std::memory_order_relaxed);
-  if (awake == _numWorkers) {
-    // Everybody labouring away, no need to wake nobody up.
+  uint64_t numAwake = _numAwake.load(std::memory_order_relaxed);
+  if (numAwake == _numWorkers) {
+    // Everybody laboring away, no need to wake anybody up.
     return true;
   }
-  if (awake > _nrWorking.load(std::memory_order_relaxed)) {
-    // This indicates that one is spinning, let's actually see this
-    // one with out own eyes, if not, go on.
-    // Without this additional loop we run the risk that a thread which
-    // is currently spinning has already decided to go to sleep and will
-    // not look at the queue again before doing so. Since we check the
-    // _sleeping state under the mutex and the worker checks the queues
-    // again after having indicates that it sleeps, we are good.
-    std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
-    for (auto& state : _workerStates) {
-      std::unique_lock<std::mutex> guard2(state->_mutex);
-      if (!state->_sleeping && !state->_working) {
-        // Got the spinning one, good:
-        return true;
+
+
+  // This indicates that one is spinning, let's actually see this
+  // one with our own eyes, if not, go on.
+  // Without this additional loop we run the risk that a thread which
+  // is currently spinning has already decided to go to sleep and will
+  // not look at the queue again before doing so. Since we check the
+  // _sleeping state under the mutex and the worker checks the queues
+  // again after having indicates that it sleeps, we are good.
+  bool const checkSpinning = (numAwake > _numWorking.load(std::memory_order_relaxed));
+
+  // a candidate thread to notify
+  decltype(_workerStates)::iterator notifyCandidate = _workerStates.end();
+
+  std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
+
+  // make a single pass over all workerStates, to find a workerState
+  // which is either spinning (which we won't notify), or one that is
+  // sleeping (which we will notify).
+  for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
+    auto& state = (*it);
+
+    std::unique_lock<std::mutex> guard2(state->_mutex);
+
+    if (checkSpinning && !state->_sleeping && !state->_working) {
+      // Got the spinning one, good:
+      // DONT'T NOTIFY IT!
+      notifyCandidate = _workerStates.end();
+      break;
+    }
+    // look out for a sleeping workerState. the first one we find will
+    // become a candidate for being notified. however, we will only notify
+    // it if we don't look out for and find a spinning working thead.
+    if (state->_sleeping && notifyCandidate == _workerStates.end()) {
+      notifyCandidate = it;
+      if (!checkSpinning) {
+        // just use the first thing we find
+        break;
       }
     }
   }
-  std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
-  for (auto& state : _workerStates) {
-    std::unique_lock<std::mutex> guard2(state->_mutex);
-    if (state->_sleeping) {
-      guard2.unlock();
-      state->_conditionWork.notify_one();
-      break;
-    }
+
+  if (notifyCandidate != _workerStates.end()) {
+    (*notifyCandidate)->_conditionWork.notify_one();
   }
 
   return true;
@@ -363,7 +417,13 @@ void SupervisedScheduler::runWorker() {
     std::lock_guard<std::mutex> guard1(_mutex);
     id = _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
+    // obtaining the state from the end of the _workerStates list
+    // is (only) safe here because there is only one thread
+    // (SupervisedScheduler) that modifies _workerStates and
+    // that blocks until we (in this thread) have set the _ready
+    // flag on the state
     state = _workerStates.back();
+    TRI_ASSERT(!state->_ready);
   }
 
   state->_sleepTimeout_ms = 20 * (id + 1);
@@ -379,28 +439,34 @@ void SupervisedScheduler::runWorker() {
   }
 
   // inform the supervisor that this thread is alive
-  state->_ready = true;
   {
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
+    state->_ready = true;
   }
   _conditionSupervisor.notify_one();
 
-  _nrAwake.fetch_add(1, std::memory_order_relaxed);
+  _numAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
     try {
-      std::unique_ptr<WorkItem> work = getWork(state);
+      std::unique_ptr<WorkItemBase> work = getWork(state);
       if (work == nullptr) {
         break;
       }
 
       _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
 
-      state->_lastJobStarted = clock::now();
+      state->_lastJobStarted.store(clock::now(), std::memory_order_release);
       state->_working = true;
-      _nrWorking.fetch_add(1, std::memory_order_relaxed);
-      work->_handler();
-      state->_working = false;
-      _nrWorking.fetch_sub(1, std::memory_order_relaxed);
+      _numWorking.fetch_add(1, std::memory_order_relaxed);
+      try {
+        work->invoke();
+        state->_working = false;
+        _numWorking.fetch_sub(1, std::memory_order_relaxed);
+      } catch (...) {
+        state->_working = false;
+        _numWorking.fetch_sub(1, std::memory_order_relaxed);
+        throw;
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("a235e", ERR, Logger::THREADS)
           << "scheduler loop caught exception: " << ex.what();
@@ -411,11 +477,11 @@ void SupervisedScheduler::runWorker() {
 
     _jobsDone.fetch_add(1, std::memory_order_release);
   }
-  _nrAwake.fetch_sub(1, std::memory_order_relaxed);
+  _numAwake.fetch_sub(1, std::memory_order_relaxed);
 }
 
 void SupervisedScheduler::runSupervisor() {
-  while (_numWorkers < _minNumWorker) {
+  while (_numWorkers < _minNumWorkers) {
     startOneThread();
   }
 
@@ -425,8 +491,8 @@ void SupervisedScheduler::runSupervisor() {
   uint64_t roundCount = 0;
 
   while (!_stopping) {
+    uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
-    uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
     uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
 
     if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
@@ -437,9 +503,10 @@ void SupervisedScheduler::runSupervisor() {
 
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
-    uint64_t awake = _nrAwake.load(std::memory_order_relaxed);
-    uint64_t numWorker = _numWorkers.load(std::memory_order_relaxed);
-    bool sleeperFound = (awake < numWorker);
+    uint64_t numAwake = _numAwake.load(std::memory_order_relaxed);
+    uint64_t numWorkers = _numWorkers.load(std::memory_order_relaxed);
+    uint64_t numWorking = _numWorking.load(std::memory_order_relaxed);
+    bool sleeperFound = (numAwake < numWorkers);
 
     bool doStartOneThread = (((queueLength >= 3 * _numWorkers) &&
                               ((lastQueueLength + _numWorkers) < queueLength)) ||
@@ -457,21 +524,28 @@ void SupervisedScheduler::runSupervisor() {
     if (roundCount++ >= 5) {
       // approx every 0.5s update the metrics
       _metricsQueueLength.operator=(queueLength);
-      _metricsAwakeThreads.operator=(awake);
-      _metricsNumWorkerThreads.operator=(numWorker);
+      _metricsJobsDone.operator=(jobsDone);
+      _metricsJobsSubmitted.operator=(jobsSubmitted);
+      _metricsJobsDequeued.operator=(jobsDequeued);
+      _metricsAwakeThreads.operator=(numAwake);
+      _metricsNumWorkingThreads.operator=(numWorking);
+      _metricsNumWorkerThreads.operator=(numWorkers);
       roundCount = 0;
     }
 
     try {
-      if (doStartOneThread && _numWorkers < _maxNumWorker) {
+      bool haveStartedThread = false;
+
+      if (doStartOneThread && _numWorkers < _maxNumWorkers) {
         jobsStallingTick = 0;
         startOneThread();
-      } else if (doStopOneThread && _numWorkers > _minNumWorker) {
+        haveStartedThread = true;
+      } else if (doStopOneThread && _numWorkers > _minNumWorkers) {
         stopOneThread();
       }
 
       cleanupAbandonedThreads();
-      sortoutLongRunningThreads();
+      haveStartedThread |= sortoutLongRunningThreads();
 
       std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
@@ -479,7 +553,10 @@ void SupervisedScheduler::runSupervisor() {
         break;
       }
 
-      _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
+      // use a reduced wait time if we just started a new thread...
+      // it is possible that more work is coming so we should react
+      // quickly.
+      _conditionSupervisor.wait_for(guard,  std::chrono::milliseconds(haveStartedThread ? 50 : 100));
     } catch (std::exception const& ex) {
       LOG_TOPIC("3318c", WARN, Logger::THREADS)
           << "scheduler supervisor thread caught exception: " << ex.what();
@@ -503,10 +580,11 @@ bool SupervisedScheduler::cleanupAbandonedThreads() {
   return _abandonedWorkerStates.empty();
 }
 
-void SupervisedScheduler::sortoutLongRunningThreads() {
+bool SupervisedScheduler::sortoutLongRunningThreads() {
   // Detaching a thread always implies starting a new thread. Hence check here
   // if we can start a new thread.
 
+  bool haveStartedThread = true;
   size_t newThreadsNeeded = 0;
   {
     std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
@@ -521,7 +599,8 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
         continue;
       }
 
-      if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
+      if ((now - state->_lastJobStarted.load(std::memory_order_acquire)) >
+          std::chrono::seconds(5)) {
         LOG_TOPIC("efcaa", TRACE, Logger::THREADS)
             << "Detach long running thread.";
 
@@ -542,22 +621,26 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
       }
     }
   }
+
   while (newThreadsNeeded--) {
+    haveStartedThread = true;
     startOneThread();
   }
+  return haveStartedThread;
 }
 
-bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
+bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   if (queueIndex == 0) {
-    // We can always! pull from high priority
+    // We can always! pull from maintenance priority
     return true;
   }
 
   // This function should ensure the following thread reservation:
-  // 25% reserved for FastLane only
-  // upto 75% of work can go on MedLane and FastLane
-  // uptop 50% of work can go on Slow, Med and FastLane
-  TRI_ASSERT(_maxNumWorker >= 2);
+  // 12.5% (but at least 1) reserved for MAINTENANCE prio
+  // 25% (but at least 2) reserved for HIGH and MAINTENANCE only
+  // upto 75% of work can do MEDIUM and LOW
+  // uptop 50% of work can do LOW
+  TRI_ASSERT(_maxNumWorkers >= 4);
 
   // The ordering of Done and dequeued is important, hence acquire.
   // Otherwise we might have the unlucky case that we first check dequeued,
@@ -566,24 +649,46 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   TRI_ASSERT(jobsDequeued >= jobsDone);
+  uint64_t threadsWorking = jobsDequeued - jobsDone;
 
   if (queueIndex == 1) {
+    // We can work on high if less than 87.5% of the workers are busy
+    size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers * 7 / 8) : _maxNumWorkers - 1;
+    return threadsWorking < limit;
+  }
+
+  if (queueIndex == 2) {
     // We can work on med if less than 75% of the workers are busy
-    return (jobsDequeued - jobsDone) < (_maxNumWorker * 3 / 4);
+    size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers * 3 / 4) : _maxNumWorkers - 2;
+
+    return threadsWorking < limit;
+  }
+
+  // We limit the number of ongoing low priority jobs to prevent a cluster
+  // from getting overwhelmed
+  std::size_t const ongoing = _ongoingLowPriorityGauge.load();
+  if (ongoing >= _ongoingLowPriorityLimit) {
+    return false;
+  }
+
+  // Because jobs may fan out to multiple servers and shards, we also limit
+  // dequeuing based on the number of internal requests in flight
+  if (_nf.isSaturated()) {
+    return false;
   }
 
   // We can work on low if less than 50% of the workers are busy
-  return (jobsDequeued - jobsDone) < (_maxNumWorker / 2);
+  size_t limit = (_maxNumWorkers >= 8) ? (_maxNumWorkers / 2) : _maxNumWorkers - 3;
+  return threadsWorking < limit;
 }
 
-std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
+std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
-  WorkItem* work;
-
-  auto checkAllQueues = [this]() -> WorkItem* {
-    WorkItem* res = nullptr;
-    for (uint64_t i = 0; i < 3; ++i) {
+  auto checkAllQueues = [this]() -> WorkItemBase* {
+    WorkItemBase* res = nullptr;
+    for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
+        _metricsQueueLengths[i].get() -= 1;
         return res;
       }
     }
@@ -594,18 +699,17 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
   };
 
   while (!state->_stop) {
-    uint64_t triesCount = 0;
     auto loopStart = std::chrono::steady_clock::now();
     uint64_t timeOutForNow = state->_queueRetryTime_us;
-    if (loopStart - state->_lastJobStarted > std::chrono::seconds(1)) {
+    if (loopStart - state->_lastJobStarted.load(std::memory_order_acquire) >
+        std::chrono::seconds(1)) {
       timeOutForNow = 0;
     }
     do {
-      work = checkAllQueues();
+      WorkItemBase* work = checkAllQueues();
       if (work != nullptr) {
-        return std::unique_ptr<WorkItem>(work);
+        return std::unique_ptr<WorkItemBase>(work);
       }
-      triesCount++;
       cpu_relax();
     } while ((std::chrono::steady_clock::now() - loopStart) <
              std::chrono::microseconds(timeOutForNow));
@@ -623,14 +727,14 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     }
 
     state->_sleeping = true;
-    _nrAwake.fetch_sub(1, std::memory_order_relaxed);
+    _numAwake.fetch_sub(1, std::memory_order_relaxed);
 
-    work = checkAllQueues();
+    WorkItemBase* work = checkAllQueues();
     if (work != nullptr) {
       // Fix the sleep indicators:
       state->_sleeping = false;
-      _nrAwake.fetch_add(1, std::memory_order_relaxed);
-      return std::unique_ptr<WorkItem>(work);
+      _numAwake.fetch_add(1, std::memory_order_relaxed);
+      return std::unique_ptr<WorkItemBase>(work);
     }
 
     if (state->_sleepTimeout_ms == 0) {
@@ -639,7 +743,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       state->_conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
     state->_sleeping = false;
-    _nrAwake.fetch_add(1, std::memory_order_relaxed);
+    _numAwake.fetch_add(1, std::memory_order_relaxed);
   }  // while
 
   return nullptr;
@@ -650,8 +754,7 @@ void SupervisedScheduler::startOneThread() {
   {
     std::unique_lock<std::mutex> guard(_mutex);
 
-    // TRI_ASSERT(_numWorkers < _maxNumWorker);
-    if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
+    if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorkers) {
       return;  // do not add more threads than maximum allows
     }
 
@@ -669,8 +772,11 @@ void SupervisedScheduler::startOneThread() {
   }
 
   // sync with runWorker()
-  std::unique_lock<std::mutex> guard2(_mutexSupervisor);
-  _conditionSupervisor.wait(guard2, [&state]() { return state->_ready; });
+  {
+    std::unique_lock<std::mutex> guard2(_mutexSupervisor);
+    _conditionSupervisor.wait(guard2, [&state]() { return state->_ready; });
+  }
+  ++_metricsThreadsStarted;
   LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
 }
 
@@ -694,6 +800,8 @@ void SupervisedScheduler::stopOneThread() {
   }
   state->_conditionWork.notify_one();
 
+  ++_metricsThreadsStopped;
+
   // However the thread may be working on a long job. Hence we enqueue it on
   // the cleanup list and wait for its termination.
 
@@ -716,6 +824,7 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
       _working(false),
       _sleeping(false),
       _ready(false),
+      _lastJobStarted(clock::now()),
       _thread(new SupervisedSchedulerWorkerThread(scheduler._server, scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
@@ -738,17 +847,39 @@ Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const {
   uint64_t const queued = jobsSubmitted - jobsDone;
   uint64_t const working = jobsDequeued - jobsDone;
 
-  uint64_t const directExec = _jobsDirectExec.load(std::memory_order_relaxed);
-
-  return QueueStatistics{numWorkers, 0, queued, working, directExec};
+  return QueueStatistics{numWorkers, queued, working};
 }
 
 void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   QueueStatistics qs = queueStatistics();
 
-  b.add("scheduler-threads", VPackValue(qs._running));  // numWorkers
-  b.add("blocked", VPackValue(qs._blocked));            // obsolete
-  b.add("queued", VPackValue(qs._queued));
-  b.add("in-progress", VPackValue(qs._working));
-  b.add("direct-exec", VPackValue(qs._directExec));
+  b.add("scheduler-threads", VPackValue(qs._running)); // numWorkers
+  b.add("blocked", VPackValue(0)); // obsolete
+  b.add("queued", VPackValue(qs._queued)); // scheduler queue length
+  b.add("in-progress", VPackValue(qs._working)); // number of working (non-idle) threads
+  b.add("direct-exec", VPackValue(0)); // obsolete
+}
+
+void SupervisedScheduler::trackBeginOngoingLowPriorityTask() {
+  if (_server.isStopping()) {
+    return;
+  }
+  _ongoingLowPriorityGauge += 1;
+}
+
+void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
+  if (_server.isStopping()) {
+    return;
+  }
+  _ongoingLowPriorityGauge -= 1;
+}
+
+double SupervisedScheduler::approximateQueueFillGrade() const {
+  uint64_t const maxLength = _maxFifoSizes[3];
+  uint64_t const qLength = std::min<uint64_t>(maxLength, _metricsQueueLength.load());
+  return static_cast<double>(qLength) / static_cast<double>(maxLength);
+}
+
+double SupervisedScheduler::unavailabilityQueueFillGrade() const {
+  return _unavailabilityQueueFillGrade;
 }

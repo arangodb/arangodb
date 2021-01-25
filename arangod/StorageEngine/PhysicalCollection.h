@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,6 +80,13 @@ class PhysicalCollection {
 
   void drop();
 
+  /// recalculate counts for collection in case of failure, blocking
+  virtual uint64_t recalculateCounts();
+
+  /// @brief whether or not the collection contains any documents. this
+  /// function is allowed to return true even if there are no documents
+  virtual bool hasDocuments();
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -122,7 +129,8 @@ class PhysicalCollection {
                        std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures();
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options);
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -163,16 +171,17 @@ class PhysicalCollection {
                            std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result) = 0;
+                      IndexIterator::DocumentCallback const& cb) const = 0;
+  
+  /// @brief read a documument referenced by token (internal method)
+  virtual bool read(transaction::Methods* trx,
+                    LocalDocumentId const& token,
+                    IndexIterator::DocumentCallback const& cb) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocumentWithCallback(transaction::Methods* trx,
-                                        LocalDocumentId const& token,
-                                        IndexIterator::DocumentCallback const& cb) const = 0;
   /**
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might
@@ -215,15 +224,11 @@ class PhysicalCollection {
 
   RevisionId newRevisionId() const;
 
-  virtual Result upgrade();
-  virtual bool didPartialUpgrade();
-  virtual Result cleanupAfterUpgrade();
-
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
+  virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
 

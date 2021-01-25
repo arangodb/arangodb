@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -196,6 +196,9 @@ std::string urlDecode(std::string const& str);
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t len);
 
+/// @brief url encodes the string into the result buffer
+void encodeURIComponent(std::string& result, char const* src, size_t len);
+
 /// @brief uri encodes the component string
 std::string encodeURIComponent(std::string const& str);
 
@@ -210,11 +213,9 @@ std::string soundex(char const* src, size_t len);
 
 /// @brief converts input string to vector of character codes
 std::vector<uint32_t> characterCodes(char const* s, size_t length);
-std::vector<uint32_t> characterCodes(std::string const& str);
 
 /// @brief calculates the levenshtein distance between the input strings
 unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2);
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2);
 
 /// @brief calculates the levenshtein distance between the input strings
 size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2);
@@ -403,14 +404,6 @@ std::string decodeBase64U(std::string const&);
 
 /// @brief replaces incorrect path delimiter character for window and linux
 std::string correctPath(std::string const& incorrectPath);
-
-/// @brief finds n.th entry
-std::string entry(size_t const pos, std::string const& sourceStr,
-                  std::string const& delimiter = ",");
-
-/// @brief counts number of entires
-size_t numEntries(std::string const& sourceStr,
-                  std::string const& delimiter = ",");
 
 /// @brief converts to hex
 std::string encodeHex(char const* value, size_t length);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -41,10 +42,6 @@
 
 namespace arangodb {
 class TransactionState;
-// to be derived by storage engines
-struct TransactionData {
-  virtual ~TransactionData() = default;
-};
 
 namespace velocypack {
 class Builder;
@@ -54,6 +51,7 @@ class Slice;
 namespace transaction {
 class Context;
 class ManagerFeature;
+class Hints;
 struct Options;
 
 /// @brief Tracks TransasctionState instances
@@ -71,30 +69,33 @@ class Manager final {
   };
 
   struct ManagedTrx {
-    ManagedTrx(MetaType t, double ttl,
-               std::shared_ptr<TransactionState> st);
+    ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st);
     ~ManagedTrx();
 
+    bool hasPerformedIntermediateCommits() const;
     bool expired() const;
     void updateExpiry();
 
    public:
-    MetaType type;            /// managed, AQL or tombstone
+    /// @brief managed, AQL or tombstone
+    MetaType type;
+    /// @brief whether or not the transaction has performed any intermediate
+    /// commits
+    bool intermediateCommits;
     /// @brief  final TRX state that is valid if this is a tombstone
-    /// necessary to avoid getting error on a 'diamond' commit or accidantally
+    /// necessary to avoid getting error on a 'diamond' commit or accidentally
     /// repeated commit / abort messages
     transaction::Status finalStatus;
     const double timeToLive;
-    double expiryTime;  // time this expires
+    double expiryTime;                        // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
-    std::string user;         /// user owning the transaction
+    std::string user;                         /// user owning the transaction
+    std::string db;  /// database in which the transaction operates
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
 
  public:
-  typedef std::function<void(TransactionId, TransactionData const*)> TrxCallback;
-
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
@@ -118,17 +119,30 @@ class Manager final {
   void registerAQLTrx(std::shared_ptr<TransactionState> const&);
   void unregisterAQLTrx(TransactionId tid) noexcept;
 
-  /// @brief create managed transaction
-  Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                          velocypack::Slice const trxOpts);
+  /// @brief create managed transaction, also generate a tranactionId
+  ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase, velocypack::Slice trxOpts);
 
-  /// @brief create managed transaction
-  Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
+  /// @brief create managed transaction, also generate a tranactionId
+  ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
+                                          std::vector<std::string> const& readCollections,
+                                          std::vector<std::string> const& writeCollections,
+                                          std::vector<std::string> const& exclusiveCollections,
+                                          transaction::Options options, double ttl = 0.0);
+
+  /// @brief ensure managed transaction, either use the one on the given tid
+  ///        or create a new one with the given tid
+  Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
+                          velocypack::Slice trxOpts, bool isFollowerTransaction);
+
+  /// @brief ensure managed transaction, either use the one on the given tid
+  ///        or create a new one with the given tid
+  Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          transaction::Options options,
-                          double ttl = 0.0);
+                          transaction::Options options, double ttl = 0.0);
+
+  Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState>& state);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
@@ -136,10 +150,10 @@ class Manager final {
   void returnManagedTrx(TransactionId) noexcept;
 
   /// @brief get the meta transasction state
-  transaction::Status getManagedTrxStatus(TransactionId) const;
+  transaction::Status getManagedTrxStatus(TransactionId, std::string const& database) const;
 
-  Result commitManagedTrx(TransactionId);
-  Result abortManagedTrx(TransactionId);
+  Result commitManagedTrx(TransactionId, std::string const& database);
+  Result abortManagedTrx(TransactionId, std::string const& database);
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
@@ -167,13 +181,16 @@ class Manager final {
     bool ret = false;
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_writeLockHeld) {
-      LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS) << "Trying to get write lock to hold transactions...";
+      LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS)
+          << "Trying to get write lock to hold transactions...";
       ret = _rwLock.lockWrite(timeout);
       if (ret) {
-        LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS) << "Got write lock to hold transactions.";
+        LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS)
+            << "Got write lock to hold transactions.";
         _writeLockHeld = true;
       } else {
-        LOG_TOPIC("eeddc", TRACE, Logger::TRANSACTIONS) << "Did not get write lock to hold transactions.";
+        LOG_TOPIC("eeddc", TRACE, Logger::TRANSACTIONS)
+            << "Did not get write lock to hold transactions.";
       }
     }
     return ret;
@@ -183,30 +200,44 @@ class Manager final {
   void releaseTransactions() {
     std::unique_lock<std::mutex> guard(_mutex);
     if (_writeLockHeld) {
-      LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS) << "Releasing write lock to hold transactions.";
+      LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS)
+          << "Releasing write lock to hold transactions.";
       _rwLock.unlockWrite();
       _writeLockHeld = false;
     }
   }
 
  private:
+  void prepareOptions(transaction::Options& options);
+  bool isFollowerTransactionOnDBServer(transaction::Options const& options) const;
+  Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
+                         std::vector<std::string> const& exclusiveCollections,
+                         std::vector<std::string> const& writeCollections,
+                         std::vector<std::string> const& readCollections);
+  transaction::Hints ensureHints(transaction::Options& options) const;
+
   /// @brief performs a status change on a transaction using a timeout
-  Result statusChangeWithTimeout(TransactionId tid, transaction::Status status);
+  Result statusChangeWithTimeout(TransactionId tid, std::string const& database,
+                                 transaction::Status status);
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const {
     return std::hash<TransactionId>()(tid) % numBuckets;
   }
 
-  Result updateTransaction(TransactionId tid, transaction::Status status, bool clearServers);
+  Result updateTransaction(TransactionId tid, transaction::Status status,
+                           bool clearServers, std::string const& database = "" /* leave empty to operate across all databases */);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TransactionId, ManagedTrx const&)> const&) const;
-  
-  static double ttlForType(Manager::MetaType);
-  
- private:
 
+  static double ttlForType(Manager::MetaType);
+
+  bool transactionIdExists(TransactionId const& tid) const;
+  bool storeManagedState(TransactionId const& tid,
+                         std::shared_ptr<arangodb::TransactionState> state, double ttl);
+
+ private:
   ManagerFeature& _feature;
 
   struct {

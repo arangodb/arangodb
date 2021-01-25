@@ -31,8 +31,8 @@
 #include "utils/string.hpp"
 #include "shared.hpp"
 
-NS_ROOT
-NS_BEGIN(timer_utils)
+namespace iresearch {
+namespace timer_utils {
 
 struct timer_stat_t {
   std::atomic<size_t> count;
@@ -73,10 +73,10 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 
 #if defined(IRESEARCH_DEBUG) && !defined(IRESEARCH_VALGRIND)
   #define REGISTER_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
-  #define REGISTER_TIMER_DETAILED() REGISTER_TIMER(std::string(CURRENT_FUNCTION) + ":" + TOSTRING(__LINE__))
-  #define REGISTER_TIMER_DETAILED_VERBOSE() REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + std::string(CURRENT_FUNCTION))
-  #define REGISTER_TIMER_NAMED_DETAILED(timer_name) REGISTER_TIMER(std::string(CURRENT_FUNCTION) + " \"" + timer_name + "\"")
-  #define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name) REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + std::string(CURRENT_FUNCTION) + " \"" + timer_name + "\"")
+  #define REGISTER_TIMER_DETAILED() REGISTER_TIMER(std::string(IRESEARCH_CURRENT_FUNCTION) + ":" + TOSTRING(__LINE__))
+  #define REGISTER_TIMER_DETAILED_VERBOSE() REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + std::string(IRESEARCH_CURRENT_FUNCTION))
+  #define REGISTER_TIMER_NAMED_DETAILED(timer_name) REGISTER_TIMER(std::string(IRESEARCH_CURRENT_FUNCTION) + " \"" + timer_name + "\"")
+  #define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name) REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + std::string(IRESEARCH_CURRENT_FUNCTION) + " \"" + timer_name + "\"")
 #else
   #define REGISTER_TIMER(timer_name)
   #define REGISTER_TIMER_DETAILED()
@@ -112,7 +112,7 @@ IRESEARCH_API bool visit(
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API void flush_stats(std::ostream &out);
 
-NS_END // timer_utils
-NS_END // NS_ROOT
+} // timer_utils
+} // namespace iresearch {
 
 #endif

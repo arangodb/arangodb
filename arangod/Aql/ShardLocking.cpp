@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -152,11 +152,14 @@ void ShardLocking::updateLocking(Collection const* col,
     auto const shards = col->shardIds(_query.queryOptions().restrictToShards);
     // What if we have an empty shard list here?
     if (shards->empty()) {
-      LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
-          << "TEMPORARY: A collection access of a query has no result in any "
-             "shard";
-      TRI_ASSERT(false);
-      return;
+      auto const& name = col->name();
+      if (!TRI_vocbase_t::IsSystemName(name)) {
+        LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
+          << "Accessing collection: " << name << " does not translate to any shard. Aborting query."; 
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+          "Could not identify any shard belonging to collection: " + name + ". Maybe it is dropped?");
     }
     for (auto const& s : *shards) {
       info.allShards.emplace(s);

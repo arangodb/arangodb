@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,9 +103,6 @@ class Context {
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
 
-  /// @brief get velocypack options for dumping
-  arangodb::velocypack::Options* getVPackOptionsForDump();
-
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
   void storeTransactionResult(TransactionId id, bool wasRegistered,
@@ -160,7 +157,6 @@ class Context {
   ::arangodb::containers::SmallVector<std::string*, 32> _strings;
 
   arangodb::velocypack::Options _options;
-  arangodb::velocypack::Options _dumpOptions;
   
  private:
   struct {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,11 +111,10 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   bindParameters->add("@collection", VPackValue(cname));
   bindParameters->add("vertex", VPackValue(vertexId));
   bindParameters->close();
-  auto options = std::make_shared<VPackBuilder>();
 
   arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
                              aql::QueryString(queryString(dir)),
-                             bindParameters, options);
+                             bindParameters);
   return query.executeSync();
 }
 }  // namespace

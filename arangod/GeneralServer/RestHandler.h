@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,9 +63,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  static thread_local RestHandler const* CURRENT_HANDLER;
-
- public:
   RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
@@ -125,7 +122,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
   virtual void shutdownExecute(bool isFinalized) noexcept {}
 
-  // you might need to implment this in you handler
+  // you might need to implment this in your handler
   // if it will be executed in an async job
   virtual void cancel() { _canceled.store(true); }
 
@@ -147,10 +144,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   void resetResponse(rest::ResponseCode);
 
-  void generateError(rest::ResponseCode, int, std::string_view);
+  void generateError(rest::ResponseCode, int errorNumber, std::string_view errorMessage);
 
   // generates an error
-  void generateError(rest::ResponseCode, int);
+  void generateError(rest::ResponseCode, int errorCode);
 
   // generates an error
   void generateError(arangodb::Result const&);

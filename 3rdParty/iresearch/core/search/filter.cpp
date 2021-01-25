@@ -23,7 +23,7 @@
 #include "filter.hpp"
 #include "utils/singleton.hpp"
 
-NS_LOCAL
+namespace {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class emtpy_query
@@ -41,9 +41,9 @@ struct empty_query final
   }
 }; // empty_query
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            filter
@@ -73,4 +73,4 @@ filter::prepared::ptr empty::prepare(
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-NS_END // ROOT
+} // ROOT

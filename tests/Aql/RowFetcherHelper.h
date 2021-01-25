@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,11 +33,11 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/VelocyPackHelper.h"
+#include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 
-#include <Basics/Common.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -138,7 +139,7 @@ class AllRowsFetcherHelper : public arangodb::aql::AllRowsFetcher {
   arangodb::velocypack::Slice _data;
   uint64_t _nrItems;
   arangodb::aql::RegisterCount _nrRegs;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
   std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
 };

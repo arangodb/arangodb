@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,13 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -85,12 +87,12 @@ Result DatabaseTailingSyncer::saveApplierState() {
 Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& collectionName,
                                                             double timeout, bool hard,
                                                             TRI_voc_tick_t& until,
-                                                            bool& didTimeout) {
+                                                            bool& didTimeout, char const* context) {
   didTimeout = false;
 
   setAborted(false);
   // fetch leader state just once
-  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer);
+  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer, context);
   if (r.fail()) {
     return r;
   }
@@ -113,6 +115,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
   auto clock = std::chrono::steady_clock();
   auto startTime = clock.now();
+    
+  auto headers = replutils::createHeaders();
 
   while (true) {
     if (vocbase()->server().isStopping()) {
@@ -127,10 +131,14 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
                             "&collection=" + StringUtils::urlEncode(collectionName);
 
     // send request
+    double start = TRI_microtime();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+      ++_stats.numTailingRequests;
+      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0, headers));
     });
+
+    _stats.waitedForTailing += TRI_microtime() - start;
 
     if (replutils::hasFailed(response.get())) {
       until = fromTick;
@@ -139,8 +147,18 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
     if (response->getHttpReturnCode() == 204) {
       // HTTP 204 No content: this means we are done
+      TRI_ASSERT(r.ok());
+      if (hard) {
+        // now do a final sync-to-disk call. note that this can fail
+        auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+        r = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+      }
       until = fromTick;
-      return Result();
+      return r;
+    }
+  
+    if (response->hasContentLength()) {
+      _stats.numTailingBytesReceived += response->getContentLength();
     }
 
     bool found;
@@ -176,6 +194,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     if (!fromIncluded && fromTick > 0) {
       until = fromTick;
       abortOngoingTransactions();
+      ++_stats.numFollowTickNotPresent;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
@@ -226,11 +245,20 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
     if (!checkMore) {
       // done!
+      TRI_ASSERT(r.ok());
+      if (hard) {
+        // now do a final sync-to-disk call. note that this can fail
+        auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+        r = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+      }
       until = fromTick;
-      return Result();
+      return r;
     }
+
     LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
                                           << ", lastScannedTick: " << lastScannedTick;
+
+    _stats.publish();
   }
 }
 
@@ -244,8 +272,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }

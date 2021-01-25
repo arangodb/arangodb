@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -64,7 +65,7 @@ class ClientTaskQueue {
    * @return         The result status of the job
    */
   using JobProcessor =
-      std::function<Result(httpclient::SimpleHttpClient& client, JobData& jobData)>;
+      std::function<void(httpclient::SimpleHttpClient& client, JobData& jobData)>;
 
   /**
    * @brief Handles the result of an individual jobs
@@ -84,7 +85,7 @@ class ClientTaskQueue {
 
  public:
   ClientTaskQueue(application_features::ApplicationServer& server,
-                  JobProcessor processJob, JobResultHandler handleJobResult);
+                  JobProcessor processJob);
   virtual ~ClientTaskQueue();
 
  public:
@@ -192,7 +193,6 @@ class ClientTaskQueue {
   application_features::ApplicationServer& _server;
 
   JobProcessor _processJob;
-  JobResultHandler _handleJobResult;
 
   Mutex mutable _jobsLock;
   basics::ConditionVariable _jobsCondition;
@@ -211,9 +211,8 @@ class ClientTaskQueue {
 
 template <typename JobData>
 inline ClientTaskQueue<JobData>::ClientTaskQueue(application_features::ApplicationServer& server,
-                                                 JobProcessor processJob,
-                                                 JobResultHandler handleJobResult)
-    : _server(server), _processJob(processJob), _handleJobResult(handleJobResult) {}
+                                                 JobProcessor processJob)
+    : _server(server), _processJob(processJob) {}
 
 template <typename JobData>
 ClientTaskQueue<JobData>::~ClientTaskQueue() {
@@ -395,8 +394,10 @@ inline void ClientTaskQueue<JobData>::Worker::run() {
     if (job) {
       _idle.store(false);
 
-      Result result = _queue._processJob(*_client, *job);
-      _queue._handleJobResult(std::move(job), result);
+      try {
+        _queue._processJob(*_client, *job);
+      } catch (...) {
+      }
 
       _idle.store(true);
       _queue.notifyIdle();

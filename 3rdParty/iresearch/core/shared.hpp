@@ -32,6 +32,8 @@
 #include <math.h>
 #include <string>
 
+#include "types.hpp" // iresearch types
+
 #if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
   // protection against broken GCC 8.0 from Ubuntu 18.04 official repository
   #error "GCC 8.0 isn't officially supported (https://gcc.gnu.org/releases.html)"
@@ -177,6 +179,13 @@
   #undef FLOAT_T_IS_DOUBLE_T
 #endif
 
+// Windows uses wchar_t for unicode handling
+#if defined(_WIN32)
+  #define IR_NATIVE_STRING(s) L##s
+#else
+  #define IR_NATIVE_STRING(s) s
+#endif
+
 // IRESEARCH_API is used for the public API symbols. It either DLL imports or DLL exports (or does nothing for static build)
 // IRESEARCH_LOCAL is used for non-api symbols.
 // IRESEARCH_PLUGIN is used for public API symbols of plugin modules
@@ -238,12 +247,12 @@
 
 // define function name used for pretty printing
 // NOTE: the alias points to a compile time finction not a preprocessor macro
-#if defined(__GNUC__)
-  #define CURRENT_FUNCTION __PRETTY_FUNCTION__
-#elif defined(_MSC_VER)
-  #define CURRENT_FUNCTION __FUNCSIG__
+#if defined(__FUNCSIG__)
+  #define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
+#elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__)
+  #define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__
 #else
-  #define CURRENT_FUNCTION __FUNCTION__
+  #error "compiler is not supported"
 #endif
 
 #ifndef __has_feature
@@ -299,12 +308,7 @@
 
 #define UNUSED(par) (void)(par)
 
-#define NS_BEGIN(ns) namespace ns {
-#define NS_LOCAL namespace {
-#define NS_ROOT NS_BEGIN(iresearch)
-#define NS_END }
-
-NS_ROOT NS_END // ROOT namespace predeclaration
+namespace iresearch { }
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x
@@ -313,7 +317,5 @@ namespace irs = ::iresearch;
 // CMPXCHG16B requires that the destination
 // (memory) operand be 16-byte aligned
 #define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
-
-#include "types.hpp" // iresearch types
 
 #endif // IRESEARCH_SHARED_H

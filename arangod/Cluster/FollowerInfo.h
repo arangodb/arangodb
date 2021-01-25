@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,12 +48,12 @@ class Slice;
 
 class FollowerInfo {
   // This is the list of real local followers
-  std::shared_ptr<std::vector<ServerID> const> _followers;
+  std::shared_ptr<std::vector<ServerID>> _followers;
   // This is the list of followers that have been insync BEFORE we
   // triggered a failover to this server.
   // The list is filled only temporarily, and will be deleted as
   // soon as we can guarantee at least so many followers locally.
-  std::shared_ptr<std::vector<ServerID> const> _failoverCandidates;
+  std::shared_ptr<std::vector<ServerID>> _failoverCandidates;
 
   // The agencyMutex is used to synchronise access to the agency.
   // the _dataLock is used to sync the access to local data.
@@ -109,7 +109,7 @@ class FollowerInfo {
   ///        before a failover to this server has happened
   ///        The second parameter may be nullptr. It is an additional list
   ///        of declared to be insync followers. If it is nullptr the follower
-  ///        list is initialised empty.
+  ///        list is initialized empty.
   ////////////////////////////////////////////////////////////////////////////////
 
   void takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
@@ -179,9 +179,9 @@ class FollowerInfo {
 
   bool allowedToWrite() {
     {
-      auto engine = arangodb::EngineSelectorFeature::ENGINE;
-      TRI_ASSERT(engine != nullptr);
-      if (engine->inRecovery()) {
+      auto& engine =
+          _docColl->vocbase().server().getFeature<EngineSelectorFeature>().engine();
+      if (engine.inRecovery()) {
         return true;
       }
       READ_LOCKER(readLocker, _canWriteLock);

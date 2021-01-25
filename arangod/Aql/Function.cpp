@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,10 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Function.h"
+#include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
 
 using namespace arangodb::aql;
 
@@ -39,16 +44,32 @@ Function::Function(std::string const& name, char const* arguments,
       conversions() {
   initializeArguments();
 
-  // almost all AQL functions have a cxx implementation
-  // only function V8() plus the ArangoSearch functions do not
-  LOG_TOPIC("c70f6", TRACE, Logger::FIXME)
+  // almost all AQL functions have a cxx implementation, only function V8() does not have one.
+  LOG_TOPIC("c70f6", TRACE, Logger::AQL)
       << "registered AQL function '" << name
       << "'. cacheable: " << hasFlag(Flags::Cacheable)
       << ", deterministic: " << hasFlag(Flags::Deterministic)
-      << ", canRunOnDBServer: " << hasFlag(Flags::CanRunOnDBServer)
-      << ", hasCxxImplementation: " << (implementation != nullptr)
+      << ", canRunOnDBServerCluster: " << hasFlag(Flags::CanRunOnDBServerCluster)
+      << ", canRunOnDBServerOneShard: " << hasFlag(Flags::CanRunOnDBServerOneShard)
+      << ", canReadDocuments: " << hasFlag(Flags::CanReadDocuments)
+      << ", hasCxxImplementation: " << hasCxxImplementation()
       << ", hasConversions: " << !conversions.empty();
+
+  // currently being able to run on a DB server in cluster always includes being able to run
+  // on a DB server in OneShard mode. this may change at some point in the future.
+  TRI_ASSERT(!hasFlag(Flags::CanRunOnDBServerCluster) || hasFlag(Flags::CanRunOnDBServerOneShard));
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// constructor to create a function stub. only used from tests
+Function::Function(std::string const& name, FunctionImplementation implementation) 
+    : name(name), 
+      arguments("."),
+      flags(makeFlags()), 
+      implementation(implementation) {
+  initializeArguments();
+}
+#endif
 
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments
@@ -145,12 +166,22 @@ void Function::initializeArguments() {
     }
   }
 }
+  
+/// @brief whether or not the function is built using V8
+bool Function::hasV8Implementation() const noexcept {
+  return implementation == nullptr;
+}
 
-std::underlying_type<Function::Flags>::type Function::makeFlags() {
+/// @brief whether or not the function is built using C++
+bool Function::hasCxxImplementation() const noexcept {
+  return implementation != nullptr;
+}
+
+std::underlying_type<Function::Flags>::type Function::makeFlags() noexcept {
   return static_cast<std::underlying_type<Flags>::type>(Flags::None);
 }
 
-bool Function::hasFlag(Function::Flags flag) const {
+bool Function::hasFlag(Function::Flags flag) const noexcept {
   return (flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0;
 }
 
@@ -163,4 +194,28 @@ Function::Conversion Function::getArgumentConversion(size_t position) const {
     return Conversion::None;
   }
   return conversions[position];
+}
+
+void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+  builder.openObject();
+  builder.add("name", velocypack::Value(name));
+  builder.add("arguments", velocypack::Value(arguments));
+  builder.add("implementations", velocypack::Value(velocypack::ValueType::Array));
+  if (hasV8Implementation()) {
+    builder.add(velocypack::Value("js"));
+  } 
+  if (hasCxxImplementation()) {
+    builder.add(velocypack::Value("cxx"));
+  }
+  builder.close();  // implementations
+  builder.add("deterministic", velocypack::Value(hasFlag(Flags::Deterministic)));
+  builder.add("cacheable", velocypack::Value(hasFlag(Flags::Cacheable)));
+  builder.add("canRunOnDBServerCluster", velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
+  builder.add("canRunOnDBServerOneShard", velocypack::Value(hasFlag(Flags::CanRunOnDBServerOneShard)));
+  
+  // deprecated: only here for compatibility
+  builder.add("canRunOnDBServer", velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
+  
+  builder.add("stub", velocypack::Value(implementation == &Functions::NotImplemented));
+  builder.close();
 }

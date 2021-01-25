@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -473,6 +474,17 @@ inline bool findReference(aql::AstNode const& root, aql::Variable const& ref) no
 
   return !visit<true>(root, visitor);  // preorder walk
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes input binary comparison node (<, <=, >, >=) containing
+///        GEO_DISTANCE fcall and fills the specified struct
+/// @returns true if the specified 'in' nodes has been successfully normalized,
+///          false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool normalizeGeoDistanceCmpNode(
+  aql::AstNode const& in,
+  aql::Variable const& ref,
+  NormalizedCmpNode& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes input binary comparison node (==, !=, <, <=, >, >=) and

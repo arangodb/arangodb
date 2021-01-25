@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -419,6 +419,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_USER_DUPLICATE:
     case TRI_ERROR_TASK_DUPLICATE_ID:
     case TRI_ERROR_GRAPH_DUPLICATE:
+    case TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED:
       return ResponseCode::CONFLICT;
     
     case TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED:

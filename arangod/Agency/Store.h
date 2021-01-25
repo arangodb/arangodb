@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Node.h"
 #include <map>
 
@@ -111,6 +112,9 @@ class Store {
 
   /// @brief Read specified query from store
   std::vector<bool> read(query_t const& query, query_t& result) const;
+
+  /// @brief Read specified query from store
+  void read(query_t const& query, std::unordered_map<std::string,query_t>& result) const;
 
   /// @brief Read individual entry specified in slice into builder
   bool read(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&) const;

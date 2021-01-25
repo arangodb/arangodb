@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -53,10 +54,9 @@ class ClusterTraverserCacheTest : public ::testing::Test {
   graph::MockGraphDatabase gdb;
 
   ClusterTraverserCacheTest()
-      : gdb(s.server, "testVocbase")  {
-  }
+      : gdb(s.server, "testVocbase") {}
 
-  ~ClusterTraverserCacheTest() { }
+  ~ClusterTraverserCacheTest() = default;
 };
 
 TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not_cached) {
@@ -70,7 +70,8 @@ TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not
   ClusterTraverserCache testee(*q, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
-  AqlValue val = testee.fetchVertexAqlResult(arangodb::velocypack::StringRef(vertexId));
+  AqlValue val;
+  testee.appendVertex(arangodb::velocypack::StringRef(vertexId), val);
   ASSERT_TRUE(val.isNull(false));
   auto all = q->warnings().all();
   ASSERT_TRUE(all.size() == 1);
@@ -89,7 +90,7 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
   ClusterTraverserCache testee(*q, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
-  testee.insertVertexIntoResult(arangodb::velocypack::StringRef(vertexId), result);
+  testee.appendVertex(arangodb::velocypack::StringRef(vertexId), result);
 
   VPackSlice sl = result.slice();
   ASSERT_TRUE(sl.isNull());

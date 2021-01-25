@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,12 +77,11 @@ size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatch
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _upstreamState(ExecutionState::HASMORE),
-      _profile(engine->getQuery().queryOptions().getProfileLevel()),
-      _done(false),
-      _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencies(),
-      _dependencyPos(_dependencies.end()) {}
+      _dependencyPos(_dependencies.end()),
+      _profileLevel(engine->getQuery().queryOptions().getProfileLevel()),
+      _done(false) {}
 
 ExecutionBlock::~ExecutionBlock() = default;
 
@@ -130,23 +129,23 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
 }
 
 void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+  if (_profileLevel >= ProfileLevel::Blocks) {
     stats.addNode(getPlanNode()->id(), _execNodeStats);
   }
 }
 
 bool ExecutionBlock::isInSplicedSubquery() const noexcept {
-  return _isInSplicedSubquery;
+  return _exeNode != nullptr ? _exeNode->isInSplicedSubquery() : false;
 }
 
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string const& clientId) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+  if (_profileLevel >= ProfileLevel::Blocks) {
     if (_execNodeStats.runtime >= 0.0) {
       _execNodeStats.runtime -= currentSteadyClockValue();
       TRI_ASSERT(_execNodeStats.runtime < 0.0);
     }
     
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+    if (_profileLevel >= ProfileLevel::TraceOne) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery().id();
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
@@ -161,7 +160,7 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string co
 void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
                                      std::string const& clientId)  {
 
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+  if (_profileLevel >= ProfileLevel::Blocks) {
     auto const& [state, skipped, block] = result;
     auto const items = block != nullptr ? block->numRows() : 0;
 
@@ -173,7 +172,7 @@ void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
       TRI_ASSERT(_execNodeStats.runtime >= 0.0);
     }
 
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+    if (_profileLevel >= ProfileLevel::TraceOne) {
       size_t rows = 0;
       size_t shadowRows = 0;
       if (block != nullptr) {
@@ -188,7 +187,7 @@ void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
           << (clientId.empty() ? "" : " clientId=" + clientId);
       ;
 
-      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+      if (_profileLevel >= ProfileLevel::TraceTwo) {
         if (block == nullptr) {
           LOG_QUERY("9b3f4", INFO)
               << "execute type=" << node->getTypeString() << " result: nullptr";

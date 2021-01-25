@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -59,7 +60,7 @@ class DistinctCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<std::tuple<DistinctCollectSplitType>> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   // arangodb::transaction::Methods* trx;
 
   RegIdSet readableInputRegisters = RegIdSet{0};
@@ -75,7 +76,7 @@ class DistinctCollectExecutorTest
   DistinctCollectExecutorTest()
       : registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
                       1, 2, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults) {}
+        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults, monitor) {}
 };
 
 TEST_P(DistinctCollectExecutorTest, split_1) {

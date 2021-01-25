@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -61,6 +62,8 @@ class ClusterEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
+  
+  HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
@@ -151,9 +154,10 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override {
-    return {TRI_ERROR_NO_ERROR};
+  Result flushWal(bool waitForSync, bool waitForCollector) override {
+    return {};
   }
+
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
@@ -187,6 +191,8 @@ class ClusterEngine final : public StorageEngine {
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
 
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
+
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
@@ -211,7 +217,11 @@ class ClusterEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   // mock mode
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   static bool Mocking;
+#else
+  static constexpr bool Mocking = false;
+#endif
 
  private:
   /// path to arangodb data dir

@@ -130,7 +130,7 @@ describe ArangoDB do
         doc.parsed_response['sparse'].should eq(true)
       end
 
-      it "creating geo index with constraint" do
+      it "creating geo index with constraint 1" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\" ], \"geoJson\" : true, \"constraint\" : true }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-geo-json-constraint", cmd, :body => body)
@@ -148,7 +148,7 @@ describe ArangoDB do
         doc.parsed_response['sparse'].should eq(true)
       end
       
-      it "creating geo index with constraint" do
+      it "creating geo index with constraint 2" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\", \"d\" ], \"geoJson\" : false, \"unique\" : true }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-constraint", cmd, :body => body)

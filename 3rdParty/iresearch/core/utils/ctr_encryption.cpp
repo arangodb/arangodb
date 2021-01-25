@@ -25,7 +25,7 @@
 
 #include <chrono>
 
-NS_LOCAL
+namespace {
 
 void decode_ctr_header(
     const irs::bytes_ref& header,
@@ -43,9 +43,9 @@ void decode_ctr_header(
   iv = irs::bytes_ref(header.c_str() + block_size, block_size);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_cipher_stream
@@ -317,4 +317,4 @@ encryption::stream::ptr ctr_encryption::create_stream(
   return memory::make_unique<ctr_cipher_stream>(*cipher_, bytes_ref(iv.c_str(), block_size), base_counter);
 }
 
-NS_END
+}

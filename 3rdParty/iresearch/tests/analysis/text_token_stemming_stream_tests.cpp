@@ -25,17 +25,21 @@
 #include "analysis/text_token_stemming_stream.hpp"
 #include "utils/locale_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 class text_token_stemming_stream_tests: public ::testing::Test { };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 #ifndef IRESEARCH_DLL
+
+TEST_F(text_token_stemming_stream_tests, consts) {
+  static_assert("stem" == irs::type<irs::analysis::text_token_stemming_stream>::name());
+}
 
 TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // test stemming (locale irs::string_ref::NIL)
@@ -44,6 +48,7 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
     irs::string_ref data("running");
     irs::analysis::text_token_stemming_stream stream(
         irs::locale_utils::locale(irs::string_ref::NIL));
+    ASSERT_EQ(irs::type<irs::analysis::text_token_stemming_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);

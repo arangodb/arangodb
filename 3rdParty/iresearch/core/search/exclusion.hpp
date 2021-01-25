@@ -26,7 +26,7 @@
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class exclusion
@@ -102,6 +102,6 @@ class exclusion final : public doc_iterator {
   const document* excl_doc_;
 }; // exclusion
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_EXCLUSION_H

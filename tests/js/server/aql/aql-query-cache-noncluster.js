@@ -671,7 +671,7 @@ function ahuacatlQueryCacheTestSuite () {
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.json);
 
-      c1.truncate(); // this will invalidate cache
+      c1.truncate({ compact: false }); // this will invalidate cache
 
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);

@@ -4,12 +4,12 @@
 
 const _ = require('lodash');
 const internal = require('internal');
-const rp = require('@arangodb/result-processing');
+const rp = require('@arangodb/testutils/result-processing');
 
-const unitTest = require('@arangodb/testing').unitTest;
-const optionsDefaults = require('@arangodb/testing').optionsDefaults;
+const unitTest = require('@arangodb/testutils/testing').unitTest;
+const optionsDefaults = require('@arangodb/testutils/testing').optionsDefaults;
 const makeDirectoryRecursive = require('fs').makeDirectoryRecursive;
-const killRemainingProcesses = require('@arangodb/process-utils').killRemainingProcesses;
+const killRemainingProcesses = require('@arangodb/testutils/process-utils').killRemainingProcesses;
 const inspect = internal.inspect;
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-///
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Lars Maier
-///
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef VELOCYPACK_PARAMETER_LIST_H
 #define VELOCYPACK_PARAMETER_LIST_H
@@ -99,6 +98,14 @@ template <const char N[], bool required>
 using factory_builder_parameter = factory_deserialized_parameter<N, values::vpack_builder_deserializer, required>;
 template <const char N[]>
 using factory_optional_builder_parameter = factory_optional_deserialized_parameter<N, values::vpack_builder_deserializer>;
+
+
+template <const char N[], typename D, typename default_v = values::default_constructed_value<typename D::constructed_type>>
+struct factory_deserialized_default {
+  using value_type = typename D::constructed_type;
+  constexpr static auto default_value = default_v::value;
+  constexpr static auto name = N;
+};
 
 /*
  * expected_value does not generate a additional parameter to the factory but instead
@@ -268,6 +275,34 @@ struct parameter_executor<factory_slice_parameter<N, required>, H> {
   }
 };
 
+template <char const N[], typename D, typename V, typename H>
+struct parameter_executor<factory_deserialized_default<N, D, V>, H> {
+  using parameter_type = factory_deserialized_default<N, D, V>;
+  using value_type = typename parameter_type::value_type;
+  using result_type = result<std::pair<value_type, bool>, deserialize_error>;
+  constexpr static bool has_value = true;
+
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, C&& c) -> result_type {
+    using namespace std::string_literals;
+
+    auto value_slice = s.get(N);
+    if (!value_slice.isNone()) {
+      return ::arangodb::velocypack::deserializer::deserialize<D, hints::hint_list_empty, C>(
+                 value_slice, {}, std::forward<C>(c))
+          .map([](typename D::constructed_type&& t) {
+            return std::make_pair(std::move(t), true);
+          })
+          .wrap([](deserialize_error&& e) {
+            return std::move(e.wrap("when reading value of field "s + N).trace(N));
+          });
+    }
+
+    return result_type{std::make_pair(parameter_type::default_value, false)};
+  }
+};
+
 template <const char N[], typename V, typename H>
 struct parameter_executor<expected_value<N, V>, H> {
   using parameter_type = expected_value<N, V>;
@@ -349,20 +384,21 @@ struct parameter_list_executor<I, K, parameter_list<>, H, FullList> {
   template <typename T, typename C>
   static auto unpack(T& t, ::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, C &&) -> unpack_result {
-    if (s.length() != K) {
 
-      for (auto&& pair : ObjectIterator(s)) {
-        if (!FullList::contains_name(pair.key)) {
-          return unpack_result{deserialize_error{
-              "superfluous field in object: `" + pair.key.copyString() + "`"}};
+    if constexpr (!hints::hint_has_ignore_unknown<H>) {
+      if (s.length() != K) {
+        for (auto&& pair : ObjectIterator(s)) {
+          if (!FullList::contains_name(pair.key)) {
+            return unpack_result{deserialize_error{
+                "superfluous field in object: `" + pair.key.copyString() + "`"}};
+          }
         }
+
+        return unpack_result{deserialize_error{
+            "superfluous field in object, found " + std::to_string(s.length()) +
+            " fields, expected " + std::to_string(K) + " fields"}};
       }
-
-      return unpack_result{deserialize_error{
-          "superfluous field in object, found " + std::to_string(s.length()) +
-          " fields, expected " + std::to_string(K) + " fields"}};
     }
-
     return unpack_result{unit_type{}};
   }
 };

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,10 +27,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -213,9 +215,18 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
 
   // Update the collection count
-  int64_t const adj = _numInserts - _numRemoves;
+  int64_t adj = _numInserts - _numRemoves;
   if (hasOperations()) {
     TRI_ASSERT(_revision.isSet() && commitSeq != 0);
+      
+    TRI_IF_FAILURE("RocksDBCommitCounts") {
+      adj = 0;
+    }
+    TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
+      if (RandomGenerator::interval(uint16_t(100)) >= 50) {
+        adj = 0;
+      }
+    }
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
@@ -282,8 +293,9 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
-
+  
   if (!AccessMode::isWriteOrExclusive(type)) {
+    // read operations do not require any locks in RocksDB
     _lockType = type;
     return {};
   }
@@ -299,10 +311,10 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  const double timeout = _transaction->lockTimeout();
+  double const timeout = _transaction->lockTimeout();
 
-  LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid.id();
   Result res;
+  LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid.id();
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
@@ -317,14 +329,23 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     _lockType = type;
     // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually
     // acquired the lock ourselves
-    return {TRI_ERROR_LOCKED};
-  }
-
-  if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
-    LOG_TOPIC("4512c", WARN, Logger::QUERIES)
-        << "timed out after " << timeout << " s waiting for "
-        << AccessMode::typeString(type) << "-lock on collection '"
-        << _collection->name() << "'";
+    res.reset(TRI_ERROR_LOCKED);
+  } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
+    char const* actor = _transaction->actorName();
+    TRI_ASSERT(actor != nullptr);
+    std::string message = "timed out after " + std::to_string(timeout) + " s waiting for "
+        + AccessMode::typeString(type) + "-lock on collection "
+        + _transaction->vocbase().name() + "/" + _collection->name() + " on " + actor;
+    LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
+    res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
+      
+    // increase counter for lock timeouts
+    auto& stats = _transaction->statistics();
+    if (AccessMode::isExclusive(type)) {
+      ++stats._exclusiveLockTimeouts;
+    } else {
+      ++stats._writeLockTimeouts;
+    }
   }
 
   return res;
@@ -358,7 +379,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
     // read-locked
     LOG_TOPIC("2b651", ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
     TRI_ASSERT(false);
-    return {TRI_ERROR_INTERNAL, "logical error in doUnloc"};
+    return {TRI_ERROR_INTERNAL, "logical error in doUnlock"};
   }
 
   TRI_ASSERT(_collection);

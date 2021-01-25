@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -495,6 +495,18 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
   _outstandingTasks--;
 }
 
+/// TODO Improve rebalancing algorithm
+/// Currently our allocations are heavily based on usage frequency, which can
+/// lead to widly oscillating sizes and significant thrashing via background
+/// free memory tasks. Also, we currently do not attempt to shrink tables, just
+/// free memory from them. It may behoove us to revisit the algorithm. A
+/// discussion some years ago ended with the idea to institute a system inspired
+/// by redistributive taxation. At the beginning of each rebalancing period,
+/// ask each cache what limit it would like: if it needs more space, could give
+/// up some space, or if it is happy. If at least one cache says it needs more
+/// space, then collect a tax from each cache, say 5% of its current allocation.
+/// Then, given the pool of memory, and the expressed needs of each cache,
+/// attempt to allocate memory evenly, up to the additional amount requested.
 int Manager::rebalance(bool onlyCalculate) {
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 

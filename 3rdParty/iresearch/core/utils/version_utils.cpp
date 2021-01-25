@@ -23,8 +23,8 @@
 
 #include "version_utils.hpp"
 
-NS_ROOT
-NS_BEGIN(version_utils)
+namespace iresearch {
+namespace version_utils {
 
 const string_ref build_date() {
   static const std::string value = __DATE__;
@@ -54,5 +54,5 @@ const string_ref build_version() {
   return value;
 }
 
-NS_END
-NS_END
+}
+}

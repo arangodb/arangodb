@@ -25,7 +25,6 @@
 
 #include <fuerte/FuerteLogger.h>
 
-
 #ifndef ADB_LIKELY
 
 // likely/unlikely branch indicator
@@ -41,34 +40,31 @@
 
 #endif  // ADB_LIKELY
 
-
 /// @brief assert
 #ifndef FUERTE_ASSERT
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define FUERTE_ASSERT(expr)                          \
-  do {                                               \
-    if (!(ADB_LIKELY(expr))) {                       \
-      std::cout << "broken assert (" << #expr        \
-                << ") in " << __FILE__ << ":"        \
-                << __LINE__ << std::endl;            \
-      std::abort();                                  \
-    }                                                \
+#define FUERTE_ASSERT(expr)                                                 \
+  do {                                                                      \
+    if (!(ADB_LIKELY(expr))) {                                              \
+      std::cout << "broken assert (" << #expr << ") in " << __FILE__ << ":" \
+                << __LINE__ << std::endl;                                   \
+      std::abort();                                                         \
+    }                                                                       \
   } while (0)
 
 #else
 
 #define FUERTE_ASSERT(expr) \
-  while (0) {            \
-    (void)(expr);        \
-  }                      \
-  do {                   \
+  while (0) {               \
+    (void)(expr);           \
+  }                         \
+  do {                      \
   } while (0)
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #endif  // #ifndef FUERTE_ASSERT
-
 
 #endif

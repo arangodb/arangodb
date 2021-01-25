@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,6 @@
 
 using namespace arangodb::aql;
 
-// @brief constructor
 Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
 
@@ -73,12 +72,18 @@ void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
 
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class NoSubqueryChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+  bool before(ExecutionNode* node) override {
+    TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY);
+    return false;
+  }
+};
 
 // Check the plan for inconsistencies, like more than one parent or dependency,
 // or mismatching parents and dependencies in adjacent nodes.
 class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
+  explicit PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
 
   bool before(ExecutionNode* node) override {
     bool ok = true;
@@ -244,7 +249,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
     initialPlan->findVarUsage();
-    if (estimateAllPlans || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+    if (estimateAllPlans || queryOptions.profile >= ProfileLevel::Blocks) {
       // if profiling is turned on, we must do the cost estimation here
       // because the cost estimation must be done while the transaction
       // is still running
@@ -317,7 +322,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         p->findVarUsage();
         p->setValidity(false);
 
-        if (queryOptions.getProfileLevel() >= PROFILE_LEVEL_BASIC) {
+        if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
           // run rule with tracing optimizer rule execution time
           if (_stats.executionTimes == nullptr) {
             // allocate the map lazily, so we can save the initial memory allocation
@@ -371,10 +376,19 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   // finalize plans
   for (auto& plan : _plans.list) {
     plan.first->findVarUsage();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
+      // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
+      continue;
+    }
+
+    NoSubqueryChecker checker;
+    plan.first->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
   }
 
   // do cost estimation
-  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= ProfileLevel::Blocks) {
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
     // is still running

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Basics/Exceptions.h"
 #include "Containers/Enumerate.h"
 
 #include <velocypack/Builder.h>
@@ -47,16 +48,16 @@ using namespace arangodb::aql;
 // Requires RegisterPlan to be defined
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
+  if (registerId >= RegisterPlan::MaxRegisterId) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, 
+                                   std::string("too many registers (") + std::to_string(RegisterPlan::MaxRegisterId) + ") needed for AQL query");
+  }
   TRI_ASSERT(registerId < RegisterPlanT<ExecutionNode>::MaxRegisterId);
 }
 
 template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
-
-  if (explain) {
-    plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
-  }
 
 // TODO There are some difficulties with view nodes to resolve before this code
 //      can be activated. Also see the comment on assertNoVariablesMissing()
@@ -90,6 +91,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   }
 #endif
+  
+  // will remain constant for the node throughout this function
+  std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
+  VarSet const varsUsedLater = en->getVarsUsedLater();
 
   bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
 
@@ -98,8 +103,13 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
+  
+  if (explain) {
+    plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
+  }
 
   if (en->getType() == ExecutionNode::SUBQUERY) {
+    // old-style subqueries
     plan->addSubqueryNode(en);
   }
 
@@ -117,7 +127,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    * is different from the input row.
    */
   auto const planRegistersForCurrentNode = [&](T* en) -> void {
-    auto const& varsSetHere = en->getVariablesSetHere();
     for (Variable const* v : varsSetHere) {
       TRI_ASSERT(v != nullptr);
       RegisterId regId = plan->registerVariable(v, unusedRegisters.back());
@@ -125,10 +134,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  auto const updateRegsToKeep = [this](T* en, VarSet const& varsUsedLater,
-                                       VarSet const& varsValid) {
-    auto const& varsSetHere = en->getVariablesSetHere();
-
+  auto const updateRegsToKeep = [this, &varsSetHere](T* en, VarSet const& varsUsedLater,
+                                                     VarSet const& varsValid) {
     auto isSetHere = [&](Variable const* var) {
       return std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
              varsSetHere.end();
@@ -153,9 +160,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   // TODO This is here to be backwards-compatible with some view tests relying
   //      on this check. When that is cleaned up, uncomment the check further
   //      above instead and remove this.
-  auto const assertNoVariablesMissing = [this](T* en) {
+  auto const assertNoVariablesMissing = [this, &varsUsedLater](T* en) {
     if (en->getType() != ExecutionNode::RETURN) {
-      auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
       VarSet varsUsedHere;
       en->getVariablesUsedHere(varsUsedHere);
       for (auto const& v : varsUsedHere) {
@@ -193,14 +199,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
 
   RegIdSet regsToClear;
-  auto const updateRegistersToClear = [&]() {
-    // IMPORTANT NOTE:
-    // Note that in case of mayReuseRegisterImmediately, these registers can
-    // be reused, but are *still* set in regsToClear! This is *only* okay
-    // because regsToClear is only ever used in passthrough-blocks, but
-    // nodes that can create those may *not* reuse registers immediately.
+  auto const updateRegistersToClearAndReuse = [&](bool insertIntoRegsToClear) {
     if (en->getType() != ExecutionNode::RETURN) {
-      auto const& varsUsedLater = en->getVarsUsedLater();
       assertNoVariablesMissing(en);
       auto regsToReuse =
           calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
@@ -209,24 +209,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       }
 
       unusedRegisters.back().insert(regsToReuse.begin(), regsToReuse.end());
-      regsToClear.insert(regsToReuse.begin(), regsToReuse.end());
-    }
-
-  };
-
-  auto const updateRegistersToReuse = [&]() {
-    if (en->getType() != ExecutionNode::RETURN) {
-      auto const& varsUsedLater = en->getVarsUsedLater();
-      assertNoVariablesMissing(en);
-      auto regsToReuse =
-          calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
-      for (auto const& reg : regsToReuse) {
-        regVarMappingStack.back().erase(reg);
+      if (insertIntoRegsToClear) {
+        regsToClear.insert(regsToReuse.begin(), regsToReuse.end());
       }
-
-      unusedRegisters.back().insert(regsToReuse.begin(), regsToReuse.end());
     }
-
   };
 
   if (!mayReuseRegisterImmediately) {
@@ -238,41 +224,41 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       previousSubqueryNrRegs.emplace(plan->nrRegs.back());
 
       auto const& varsValid = en->getVarsValidStack();
-      auto const& varsUsedLater = en->getVarsUsedLaterStack();
+      auto const& varsUsedLaterStack = en->getVarsUsedLaterStack();
 
       auto varMap = regVarMappingStack.back();
       regVarMappingStack.push_back(std::move(varMap));
 
-      size_t const stack_size = varsUsedLater.size();
-      TRI_ASSERT(varsValid.size() == stack_size);
-      TRI_ASSERT(regVarMappingStack.size() == stack_size);
+      size_t const stackSize = varsUsedLaterStack.size();
+      TRI_ASSERT(varsValid.size() == stackSize);
+      TRI_ASSERT(regVarMappingStack.size() == stackSize);
 
       TRI_ASSERT(varsValid.size() > 1);
-      TRI_ASSERT(varsUsedLater.size() > 1);
-      auto reuseOuter = calculateRegistersToReuse(varsUsedLater[stack_size - 2],
-                                                  regVarMappingStack[stack_size - 2]);
-      auto reuseInner = calculateRegistersToReuse(varsUsedLater[stack_size - 1],
-                                                  regVarMappingStack[stack_size - 1]);
+      TRI_ASSERT(varsUsedLaterStack.size() > 1);
+      auto reuseOuter = calculateRegistersToReuse(varsUsedLaterStack[stackSize - 2],
+                                                  regVarMappingStack[stackSize - 2]);
+      auto reuseInner = calculateRegistersToReuse(varsUsedLaterStack[stackSize - 1],
+                                                  regVarMappingStack[stackSize - 1]);
 
       auto topUnused = unusedRegisters.back();
       unusedRegisters.emplace_back(std::move(topUnused));
 
-      TRI_ASSERT(unusedRegisters.size() == stack_size);
-      unusedRegisters[stack_size - 1].insert(reuseInner.begin(), reuseInner.end());
-      unusedRegisters[stack_size - 2].insert(reuseOuter.begin(), reuseOuter.end());
+      TRI_ASSERT(unusedRegisters.size() == stackSize);
+      unusedRegisters[stackSize - 1].insert(reuseInner.begin(), reuseInner.end());
+      unusedRegisters[stackSize - 2].insert(reuseOuter.begin(), reuseOuter.end());
 
       if (explain) {
         plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
       }
 
       for (auto const& reg : reuseInner) {
-        regVarMappingStack[stack_size - 1].erase(reg);
+        regVarMappingStack[stackSize - 1].erase(reg);
       }
       for (auto const& reg : reuseOuter) {
-        regVarMappingStack[stack_size - 2].erase(reg);
+        regVarMappingStack[stackSize - 2].erase(reg);
       }
 
-      updateRegsToKeep(en, varsUsedLater[varsValid.size() - 2],
+      updateRegsToKeep(en, varsUsedLaterStack[varsValid.size() - 2],
                        varsValid[varsValid.size() - 2]);  // subquery start has to update both levels of regs to keep
       regsToKeepStack.emplace_back();
 
@@ -295,11 +281,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       }
     } break;
     default: {
-      if (mayReuseRegisterImmediately) {
-        updateRegistersToReuse();
-      } else {
-        updateRegistersToClear();
-      }
+      updateRegistersToClearAndReuse(!mayReuseRegisterImmediately);
 
       if (explain) {
         plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
@@ -311,17 +293,22 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   // that are not in varsUsedLater and varsUsedHere
   if (mayReuseRegisterImmediately) {
     planRegistersForCurrentNode(en);
-    updateRegistersToClear();
+    updateRegistersToClearAndReuse(true);
   }
 
-  updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
+  updateRegsToKeep(en, varsUsedLater, en->getVarsValid());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
-                                     en->getVariablesSetHere());
+  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(), varsSetHere);
   TRI_ASSERT(regsToKeepStack == actual);
-#endif
 
+  TRI_ASSERT(!plan->nrRegs.empty());
+  for (auto regId: regsToClear) {
+    TRI_ASSERT(regId < plan->nrRegs.back());
+  }
+
+#endif
+  
   // We need to delete those variables that have been used here but are
   // not used any more later:
   en->setRegsToClear(std::move(regsToClear));
@@ -331,7 +318,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 }
 
 template <typename T>
-RegisterPlanT<T>::RegisterPlanT() : depth(0) {
+RegisterPlanT<T>::RegisterPlanT() 
+    : depth(0) {
   nrRegs.reserve(8);
   nrRegs.emplace_back(0);
 }
@@ -339,7 +327,10 @@ RegisterPlanT<T>::RegisterPlanT() : depth(0) {
 // Copy constructor used for a subquery:
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
-    : varInfo(v.varInfo), nrRegs(v.nrRegs), subQueryNodes(), depth(newdepth + 1) {
+    : varInfo(v.varInfo), 
+      nrRegs(v.nrRegs), 
+      subqueryNodes(), 
+      depth(newdepth + 1) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);
@@ -397,7 +388,7 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   other->depth = depth;
   other->varInfo = varInfo;
 
-  // No need to clone subQueryNodes because this was only used during
+  // No need to clone subqueryNodes because this was only used during
   // the buildup.
 
   return other;
@@ -405,12 +396,96 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
 
 template <typename T>
 void RegisterPlanT<T>::increaseDepth() {
-  depth++;
+  ++depth;
+
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
   auto regCount = nrRegs.back();
   nrRegs.emplace_back(regCount);
+}
+
+template <typename T>
+void RegisterPlanT<T>::shrink(T* start) {
+  // remove all registers greater than maxRegister from the ExecutionNodes 
+  // starting at current that have the same depth as current
+  auto removeRegistersGreaterThan = [](T* current, RegisterId maxRegister) {
+    auto depth = current->getDepth();
+    while (current != nullptr && current->getDepth() == depth) {
+      current->removeRegistersGreaterThan(maxRegister);
+      current = current->getFirstDependency();
+    }
+  };
+
+  // scan the execution plan upwards, starting at the root node, until
+  // we either find the end of the plan or a change in the node's depth.
+  // while scanning the ExecutionNodes of a certain depth, we keep track 
+  // of the maximum register id they use.
+  // when we are at the end of the plan or at a depth change, we know which
+  // is the maximum register id used by the depth. if it is different from
+  // the already calculated number of registers for this depth, we walk over
+  // all nodes in that depth again and remove the superfluous registers from
+  // them.
+  
+  auto maxUsedRegister = [this](auto const& container, RegisterId maxRegisterId) -> RegisterId {
+    for (auto const& v : container) {
+      auto it = varInfo.find(v->id);
+      if (it != varInfo.end()) {
+        RegisterId rv = it->second.registerId;
+        maxRegisterId = std::max(rv, maxRegisterId);
+      }
+    }
+    return maxRegisterId;
+  };
+  
+  // max RegisterId used by nodes on the current depth
+  RegisterId maxRegisterId = 0;
+  
+  // node at which the current depth starts
+  T* depthStart = start;
+
+  // loop node pointer, will be modified while iterating
+  T* current = start;
+  
+  // currently used variables, outside of loop because the set is recycled
+  VarSet varsUsedHere;
+
+  while (current != nullptr) {
+    // take the node's used registers into account
+    // the maximum used RegisterId for the current depth is tracked in
+    // maxRegisterId
+    maxRegisterId = maxUsedRegister(current->getVariablesSetHere(), maxRegisterId);
+    for (auto const& regsToKeep : current->getRegsToKeepStack()) {
+      for (auto const& regId : regsToKeep) {
+        maxRegisterId = std::max(regId, maxRegisterId);
+      }
+    }
+
+    auto depth = current->getDepth();
+    T* previous = current->getFirstDependency();
+    // check if from the next node onwards there will be a depth change, or if 
+    // we are at the end of the plan
+    bool const depthChange = (previous == nullptr || previous->getDepth() != depth);
+
+    if (depthChange) {
+      auto neededRegisters = static_cast<RegisterCount>(maxRegisterId + 1);
+      if (nrRegs[depth] > neededRegisters) {
+        // the current RegisterPlan has superfluous registers planned for this 
+        // depth. so let's put in some more effort and remove them.
+        nrRegs[depth] = neededRegisters;
+        // remove the superfluous registers from all the nodes starting at the
+        // start node of our current depth...
+        removeRegistersGreaterThan(depthStart, maxRegisterId);
+      }
+      
+      // new depth starting, so update the start node for the depth
+      depthStart = previous;
+      maxRegisterId = 0;
+    }
+    
+    // walk upwards
+    current = previous;
+  }
 }
 
 template <typename T>
@@ -450,11 +525,6 @@ void RegisterPlanT<T>::toVelocyPackEmpty(VPackBuilder& builder) {
   { VPackArrayBuilder guard(&builder); }
   builder.add(VPackValue("nrRegs"));
   { VPackArrayBuilder guard(&builder); }
-  // nrRegsHere is not used anymore and is intentionally left empty
-  // can be removed in ArangoDB 3.8
-  builder.add(VPackValue("nrRegsHere"));
-  { VPackArrayBuilder guard(&builder); }
-  builder.add("totalNrRegs", VPackValue(0));
 }
 
 template <typename T>
@@ -479,20 +549,11 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
       builder.add(VPackValue(oneRegisterID));
     }
   }
-
-  // nrRegsHere is not used anymore and is intentionally left empty
-  // can be removed in ArangoDB 3.8
-  builder.add(VPackValue("nrRegsHere"));
-  { VPackArrayBuilder guard(&builder); }
-
-  // totalNrRegs is not used anymore and is intentionally left empty
-  // can be removed in ArangoDB 3.8
-  builder.add("totalNrRegs", VPackSlice::noneSlice());
 }
 
 template <typename T>
 void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
-  subQueryNodes.emplace_back(subquery);
+  subqueryNodes.emplace_back(subquery);
 }
 
 template <typename T>

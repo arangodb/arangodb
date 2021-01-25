@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Indexes/IndexIterator.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
@@ -67,23 +68,15 @@ class SortCondition;
 struct Variable;
 }  // namespace aql
 
-namespace rest {
-enum class ResponseCode;
-}
-
-namespace traverser {
-class BaseEngine;
-}
-
 namespace transaction {
 class Context;
 struct Options;
 }  // namespace transaction
 
 /// @brief forward declarations
-class ClusterFeature;
 class CollectionNameResolver;
 class Index;
+class IndexIterator;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct IndexIteratorOptions;
@@ -105,6 +98,7 @@ class Methods {
  private:
   Methods() = delete;
   Methods(Methods const&) = delete;
+
   Methods& operator=(Methods const&) = delete;
 
  public:
@@ -122,6 +116,9 @@ class Methods {
 
   /// @brief destroy the transaction
   virtual ~Methods();
+
+  Methods(Methods&&) = default;
+  Methods& operator=(Methods&&) = default;
 
   typedef Result (*DataSourceRegistrationCallback)(LogicalDataSource& dataSource,
                                                    Methods& trx);
@@ -195,7 +192,7 @@ class Methods {
   }
   
   /// @brief options used, not dump options
-  velocypack::Options const& vpackOptions() const;
+  TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
   /// @brief begin the transaction
   Result begin();
@@ -229,7 +226,8 @@ class Methods {
   /// @brief read many documents, using skip and limit in arbitrary order
   /// The result guarantees that all documents are contained exactly once
   /// as long as the collection is not modified.
-  ENTERPRISE_VIRT OperationResult any(std::string const& collectionName);
+  ENTERPRISE_VIRT OperationResult any(std::string const& collectionName,
+                                      OperationOptions const& options);
 
   /// @brief add a collection to the transaction for read, at runtime
   DataSourceId addCollectionAtRuntime(DataSourceId cid, std::string const& collectionName,
@@ -253,8 +251,7 @@ class Methods {
   ///        lock the collection if set to false it will not lock it (make sure
   ///        it is already locked!)
   ENTERPRISE_VIRT Result documentFastPath(std::string const& collectionName,
-                                          ManagedDocumentResult* mmdr,
-                                          arangodb::velocypack::Slice const value,
+                                          arangodb::velocypack::Slice value,
                                           arangodb::velocypack::Builder& result);
 
   /// @brief return one  document from a collection, fast path
@@ -265,23 +262,23 @@ class Methods {
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
                                                arangodb::velocypack::StringRef const& key,
-                                               ManagedDocumentResult& result);
+                                               IndexIterator::DocumentCallback const& cb);
 
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant
   ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
-                                           VPackSlice const value,
+                                           VPackSlice value,
                                            OperationOptions& options) {
     return documentAsync(collectionName, value, options).get();
   }
 
   /// @brief return one or multiple documents from a collection
   Future<OperationResult> documentAsync(std::string const& collectionName,
-                                        VPackSlice const value, OperationOptions& options);
+                                        VPackSlice value, OperationOptions& options);
 
   /// @deprecated use async variant
   OperationResult insert(std::string const& cname,
-                         VPackSlice const value,
+                         VPackSlice value,
                          OperationOptions const& options) {
     return this->insertAsync(cname, value, options).get();
   }
@@ -290,11 +287,11 @@ class Methods {
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> insertAsync(std::string const& collectionName,
-                                      VPackSlice const value,
+                                      VPackSlice value,
                                       OperationOptions const& options);
   
   /// @deprecated use async variant
-  OperationResult update(std::string const& cname, VPackSlice const updateValue,
+  OperationResult update(std::string const& cname, VPackSlice updateValue,
                          OperationOptions const& options) {
     return this->updateAsync(cname, updateValue, options).get();
   }
@@ -302,11 +299,11 @@ class Methods {
   /// @brief update/patch one or multiple documents in a collection.
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  Future<OperationResult> updateAsync(std::string const& collectionName, VPackSlice const updateValue,
+  Future<OperationResult> updateAsync(std::string const& collectionName, VPackSlice updateValue,
                                       OperationOptions const& options);
   
   /// @deprecated use async variant
-  OperationResult replace(std::string const& cname, VPackSlice const replaceValue,
+  OperationResult replace(std::string const& cname, VPackSlice replaceValue,
                          OperationOptions const& options) {
     return this->replaceAsync(cname, replaceValue, options).get();
   }
@@ -314,12 +311,12 @@ class Methods {
   /// @brief replace one or multiple documents in a collection.
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  Future<OperationResult> replaceAsync(std::string const& collectionName, VPackSlice const replaceValue,
+  Future<OperationResult> replaceAsync(std::string const& collectionName, VPackSlice replaceValue,
                                        OperationOptions const& options);
 
   /// @deprecated use async variant
   OperationResult remove(std::string const& collectionName,
-                         VPackSlice const value, OperationOptions const& options) {
+                         VPackSlice value, OperationOptions const& options) {
     return removeAsync(collectionName, value, options).get();
   }
 
@@ -327,7 +324,7 @@ class Methods {
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> removeAsync(std::string const& collectionName,
-                                      VPackSlice const value, OperationOptions const& options);
+                                      VPackSlice value, OperationOptions const& options);
 
   /// @brief fetches all documents in a collection
   ENTERPRISE_VIRT OperationResult all(std::string const& collectionName, uint64_t skip,
@@ -343,13 +340,15 @@ class Methods {
                                         OperationOptions const& options);
 
   /// deprecated, use async variant
-  virtual OperationResult count(std::string const& collectionName, CountType type) {
-    return countAsync(collectionName, type).get();
+  virtual OperationResult count(std::string const& collectionName,
+                                CountType type, OperationOptions const& options) {
+    return countAsync(collectionName, type, options).get();
   }
 
   /// @brief count the number of documents in a collection
   virtual futures::Future<OperationResult> countAsync(std::string const& collectionName,
-                                                      CountType type);
+                                                      CountType type,
+                                                      OperationOptions const& options);
 
   /// @brief factory for IndexIterator objects from AQL
   /// note: the caller must have read-locked the underlying collection when
@@ -407,35 +406,35 @@ class Methods {
                              ManagedDocumentResult const* newDoc);
 
   Future<OperationResult> documentCoordinator(std::string const& collectionName,
-                                              VPackSlice const value,
+                                              VPackSlice value,
                                               OperationOptions& options);
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
-                                        VPackSlice const value, OperationOptions& options);
+                                        VPackSlice value, OperationOptions& options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
-                                            VPackSlice const value,
+                                            VPackSlice value,
                                             OperationOptions const& options);
 
   Future<OperationResult> insertLocal(std::string const& collectionName,
-                                      VPackSlice const value, OperationOptions& options);
+                                      VPackSlice value, OperationOptions& options);
 
   Future<OperationResult> modifyCoordinator(std::string const& collectionName,
-                                            VPackSlice const newValue,
+                                            VPackSlice newValue,
                                             OperationOptions const& options,
                                             TRI_voc_document_operation_e operation);
 
   Future<OperationResult> modifyLocal(std::string const& collectionName,
-                                      VPackSlice const newValue,
+                                      VPackSlice newValue,
                                       OperationOptions& options,
                                       TRI_voc_document_operation_e operation);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
-                                            VPackSlice const value,
+                                            VPackSlice value,
                                             OperationOptions const& options);
 
   Future<OperationResult> removeLocal(std::string const& collectionName,
-                                      VPackSlice const value,
+                                      VPackSlice value,
                                       OperationOptions& options);
 
   OperationResult allCoordinator(std::string const& collectionName, uint64_t skip,
@@ -444,9 +443,10 @@ class Methods {
   OperationResult allLocal(std::string const& collectionName, uint64_t skip,
                            uint64_t limit, OperationOptions& options);
 
-  OperationResult anyCoordinator(std::string const& collectionName);
+  OperationResult anyCoordinator(std::string const& collectionName,
+                                 OperationOptions const& options);
 
-  OperationResult anyLocal(std::string const& collectionName);
+  OperationResult anyLocal(std::string const& collectionName, OperationOptions const& options);
 
   Future<OperationResult> truncateCoordinator(std::string const& collectionName,
                                               OperationOptions& options);
@@ -463,13 +463,15 @@ class Methods {
       std::string const& name, AccessMode::Type type = AccessMode::Type::READ) const;
 
   futures::Future<OperationResult> countCoordinator(std::string const& collectionName,
-                                                    CountType type);
+                                                    CountType type,
+                                                    OperationOptions const& options);
 
   futures::Future<OperationResult> countCoordinatorHelper(
-      std::shared_ptr<LogicalCollection> const& collinfo,
-      std::string const& collectionName, CountType type);
+      std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName,
+      CountType type, OperationOptions const& options);
 
-  OperationResult countLocal(std::string const& collectionName, CountType type);
+  OperationResult countLocal(std::string const& collectionName, CountType type,
+                             OperationOptions const& options);
 
   /// @brief add a collection by id, with the name supplied
   Result addCollection(DataSourceId, std::string const&, AccessMode::Type);

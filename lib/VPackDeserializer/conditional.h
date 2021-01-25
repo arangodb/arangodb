@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-///
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Lars Maier
-///
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef VELOCYPACK_CONDITIONAL_H
 #define VELOCYPACK_CONDITIONAL_H
@@ -98,6 +97,22 @@ struct is_object_condition {
 
   static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
     return s.isObject();
+  }
+};
+
+struct is_array_condition {
+  using forward_hints = hints::hint_list<hints::is_array>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.isArray();
+  }
+};
+
+struct is_string_condition {
+  using forward_hints = hints::hint_list<hints::is_string>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.isString();
   }
 };
 

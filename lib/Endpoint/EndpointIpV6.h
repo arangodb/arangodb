@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@ class EndpointIpV6 final : public EndpointIp {
 
  public:
   int domain() const override { return AF_INET6; }
+  bool isBroadcastBind() const override;
 
   std::string hostAndPort() const override {
     return '[' + host() + "]:" + arangodb::basics::StringUtils::itoa(port());
