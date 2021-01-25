@@ -32,15 +32,15 @@ ResourceMonitor::~ResourceMonitor() {
   TRI_ASSERT(currentResources.memoryUsage.load(std::memory_order_relaxed) == 0);
 }
   
-void ResourceMonitor::increaseMemoryUsage(size_t value) {
-  size_t current = value + currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
+void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
+  std::size_t current = value + currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
 
   if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
     currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
   }
   
-  size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
+  std::size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
   while (peak < current) {
     if (currentResources.peakMemoryUsage.compare_exchange_weak(peak, current,
                                                                std::memory_order_release,
@@ -50,12 +50,12 @@ void ResourceMonitor::increaseMemoryUsage(size_t value) {
   }
 }
   
-void ResourceMonitor::decreaseMemoryUsage(size_t value) noexcept {
-  [[maybe_unused]] size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+void ResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
+  [[maybe_unused]] std::size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(previous >= value);
 }
   
-ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value)
+ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::size_t value)
     : _resourceMonitor(resourceMonitor), _value(value) {
   // may throw
   increase(_value);
@@ -69,14 +69,14 @@ void ResourceUsageScope::steal() noexcept {
   _value = 0;
 }
   
-void ResourceUsageScope::increase(size_t value) {
+void ResourceUsageScope::increase(std::size_t value) {
   if (value > 0) {
     // may throw
     _resourceMonitor.increaseMemoryUsage(value);
   }
 }
   
-void ResourceUsageScope::decrease(size_t value) noexcept {
+void ResourceUsageScope::decrease(std::size_t value) noexcept {
   if (value > 0) {
     _resourceMonitor.decreaseMemoryUsage(value);
   }

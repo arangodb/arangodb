@@ -19,26 +19,52 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/SharedPRNG.h"
+#include "SharedPRNGFeature.h"
+#include "Basics/Thread.h"
+#include "Basics/debugging.h"
+#include "Basics/fasthash.h"
 #include "Basics/splitmix64.h"
 
 using namespace arangodb::basics;
 
-std::unique_ptr<SharedPRNG> SharedPRNG::_global = std::make_unique<SharedPRNG>();
+namespace arangodb {
 
-PaddedPRNG::PaddedPRNG() {}
-
-void PaddedPRNG::seed(uint64_t seed1, uint64_t seed2) {
-  _prng.seed(seed1, seed2);
+SharedPRNGFeature::SharedPRNGFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "SharedPRNG"),
+      _prngs(nullptr) {
+  setOptional(true);
 }
 
-SharedPRNG::SharedPRNG() : _mask(SharedPRNG::_stripes - 1) {
+SharedPRNGFeature::~SharedPRNGFeature() = default;
+
+void SharedPRNGFeature::prepare() {
+  // allocate memory for all stripes.
+  _prngs = std::make_unique<PaddedPRNG[]>(stripes);
+
+  PaddedPRNG* prngs = _prngs.get();
+  TRI_ASSERT((reinterpret_cast<uintptr_t>(prngs) & (sizeof(xoroshiro128plus) - 1)) == 0);
+  
   splitmix64 seeder(0xdeadbeefdeadbeefULL);
-  for (size_t i = 0; i < _stripes; i++) {
+
+  // initialize all stripes
+  for (std::size_t i = 0; i < stripes; ++i) {
     uint64_t seed1 = seeder.next();
     uint64_t seed2 = seeder.next();
-    _prng[i].seed(seed1, seed2);
+    TRI_ASSERT((reinterpret_cast<uintptr_t>(&prngs[i]) & (sizeof(xoroshiro128plus) - 1)) == 0);
+    prngs[i].seed(seed1, seed2);
   }
 }
+  
+uint64_t SharedPRNGFeature::id() const noexcept {
+  return fasthash64_uint64(Thread::currentThreadNumber(), 0xdeadbeefdeadbeefULL);
+}
+
+uint64_t SharedPRNGFeature::rand() noexcept { 
+  TRI_ASSERT(_prngs != nullptr);
+  return _prngs[id() & (stripes - 1)].next(); 
+}
+
+}  // namespace arangodb
