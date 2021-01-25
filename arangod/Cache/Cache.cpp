@@ -31,7 +31,7 @@
 
 #include "Cache/Cache.h"
 
-#include "Basics/SharedPRNG.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/cpu-relax.h"
@@ -79,7 +79,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
   _tableShrdPtr->enable();
   if (_enableWindowedStats) {
     try {
-      _findStats.reset(new StatBuffer(_findStatsCapacity));
+      _findStats.reset(new StatBuffer(manager->sharedPRNG(), _findStatsCapacity));
     } catch (std::bad_alloc const&) {
       _findStats.reset(nullptr);
       _enableWindowedStats = false;
@@ -286,7 +286,7 @@ std::uint32_t Cache::hashKey(void const* key, std::size_t keySize) const {
 }
 
 void Cache::recordStat(Stat stat) {
-  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) != 0) {
+  if ((_manager->sharedPRNG().rand() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
 
@@ -317,7 +317,7 @@ bool Cache::reportInsert(bool hadEviction) {
     _insertEvictions.add(1, std::memory_order_relaxed);
   }
   _insertsTotal.add(1, std::memory_order_relaxed);
-  if ((basics::SharedPRNG::rand() & _evictionMask) == 0) {
+  if ((_manager->sharedPRNG().rand() & _evictionMask) == 0) {
     std::uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
     std::uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
     if (total > 0 && total > evictions &&
