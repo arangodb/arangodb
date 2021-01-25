@@ -61,10 +61,21 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
- public:
   void assignHandlerId();
   uint64_t handlerId() const { return _handlerId; }
   uint64_t messageId() const;
+
+  /// @brief called when the handler is queued for execution in the scheduler
+  void trackQueueStart() noexcept;
+
+  /// @brief called when the handler is dequeued in the scheduler
+  void trackQueueEnd() noexcept;
+  
+  /// @brief called when the handler execution is started
+  void trackTaskStart() noexcept;
+
+  /// @brief called when the handler execution is finalized
+  void trackTaskEnd() noexcept;
 
   GeneralRequest const* request() const { return _request.get(); }
   GeneralResponse* response() const { return _response.get(); }
@@ -101,16 +112,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
-  RequestLane getRequestLane() {
-    bool found;
-    _request->header(StaticStrings::XArangoFrontend, found);
-
-    if (found) {
-      return RequestLane::CLIENT_UI;
-    }
-
-    return lane();
-  }
+  RequestLane determineRequestLane(); 
 
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
@@ -204,6 +206,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic<std::thread::id> _executionMutexOwner;
 
   HandlerState _state;
+  RequestLane _lane;
 
  protected:
   std::atomic<bool> _canceled;

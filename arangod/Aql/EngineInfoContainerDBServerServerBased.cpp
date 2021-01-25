@@ -391,7 +391,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
   if (dbServers.empty()) {
     // No snippets to be placed on dbservers
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
   // We at least have one Snippet, or one graph node.
   // Otherwise the locking needs to be empty.
@@ -521,7 +521,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   }
 
   cleanupGuard.cancel();
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(

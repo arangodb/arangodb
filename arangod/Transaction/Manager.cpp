@@ -355,7 +355,13 @@ Result Manager::beginTransaction(transaction::Hints hints,
   return res;
 }
 
-void Manager::prepareOptions(transaction::Options& options) {
+Result Manager::prepareOptions(transaction::Options& options) {
+  Result res;
+
+  if (options.lockTimeout < 0.0) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER,
+                     "lockTimeout needs to be greater than zero");
+  }
   // enforce size limit per DBServer
   if (isFollowerTransactionOnDBServer(options)) {
     // if we are a follower, we reuse the leader's max transaction size and
@@ -400,6 +406,8 @@ void Manager::prepareOptions(transaction::Options& options) {
     options.maxTransactionSize =
         std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
   }
+
+  return res;
 }
 
 Result Manager::lockCollections(TRI_vocbase_t& vocbase,
@@ -502,7 +510,10 @@ ResultT<TransactionId> Manager::createManagedTrx(
   }
 
   // no transaction with ID exists yet, so start a new transaction
-  prepareOptions(options);
+  res = prepareOptions(options);
+  if (res.fail()) {
+    return res;
+  }
   std::shared_ptr<TransactionState> state;
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -596,7 +607,10 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   // no transaction with ID exists yet, so start a new transaction
-  prepareOptions(options);
+  res = prepareOptions(options);
+  if (res.fail()) {
+    return res;
+  }
 
   std::shared_ptr<TransactionState> state;
   try {
