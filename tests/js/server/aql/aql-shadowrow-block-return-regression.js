@@ -247,6 +247,56 @@ function collectionInSubqeryRegressionSuite() {
       const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
       const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
       deepAssertElements(splicedRes, nosplicedRes, "result");
+    },
+
+    testNestedSubqueryNothingToSortNoCollections: function() {
+      // The main query has one Run.
+      // SQ1 has no Data
+      // SQ2 will not be executed
+      // The SORT should be able to NOT sort
+      // and forward outermost subquery data
+      const query = `
+        FOR x IN 1..1
+          LET sq1 = (
+            FOR y IN []
+            LET sq2 = (
+              FOR z IN 1..2
+              SORT z
+              RETURN z
+            )
+            RETURN sq2
+          )
+          RETURN sq1
+      `;
+      const bindVars = {};
+      const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
+      const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
+      deepAssertElements(splicedRes, nosplicedRes, "result");
+    },
+
+    testNestedSubqueryNothingToSort: function() {
+      // The main query has one Run.
+      // SQ1 has no Data (collection is empty)
+      // SQ2 will not be executed
+      // The SORT should be able to NOT sort
+      // and forward outermost subquery data
+      const query = `
+        FOR x IN 1..1
+          LET sq1 = (
+            FOR y IN @@collectionName
+            LET sq2 = (
+              FOR z IN 1..2
+              SORT z
+              RETURN z
+            )
+            RETURN sq2
+          )
+          RETURN sq1
+      `;
+      const bindVars = { "@collectionName": col.name() };
+      const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
+      const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
+      deepAssertElements(splicedRes, nosplicedRes, "result");
     }
   };
 }

@@ -5655,7 +5655,7 @@ void ClusterInfo::startSyncers() {
   }
 }
 
-void ClusterInfo::shutdownSyncers() {
+void ClusterInfo::drainSyncers() {
   {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
@@ -5675,6 +5675,10 @@ void ClusterInfo::shutdownSyncers() {
     }
     _waitCurrent.clear();
   }
+}
+
+void ClusterInfo::shutdownSyncers() {
+  drainSyncers();
 
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
@@ -5684,8 +5688,9 @@ void ClusterInfo::shutdownSyncers() {
   }
 }
 
-
 void ClusterInfo::waitForSyncersToStop() {
+  drainSyncers();
+
   auto start = std::chrono::steady_clock::now();
   while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
@@ -5748,7 +5753,9 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 }
 
 bool ClusterInfo::SyncerThread::start() {
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << currentThreadName();
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
+      << "Starting "
+      << (currentThreadName() != nullptr ? currentThreadName() : "by unknown thread");
   return Thread::start();
 }
 

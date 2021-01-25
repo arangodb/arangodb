@@ -28,6 +28,7 @@
 #include "VocBase/vocbase.h"
 
 #include <array>
+#include <string>
 
 namespace arangodb {
 namespace application_features {
@@ -37,6 +38,12 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+
+// static helper functions for key generators
+struct KeyGeneratorHelper {
+  static std::string encodePadded(uint64_t value);
+  static uint64_t decodePadded(char const* p, size_t length);
+};
 
 /// generic key generator interface
 ///
@@ -96,6 +103,8 @@ class KeyGenerator {
  protected:
   /// @brief whether or not the users can specify their own keys
   bool const _allowUserKeys;
+  /// @brief whether or not we are running on a DB server
+  bool const _isDBServer;
 };
 
 }  // namespace arangodb

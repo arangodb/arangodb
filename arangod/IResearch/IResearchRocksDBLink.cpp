@@ -42,9 +42,10 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection)
-    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
-                   RocksDBColumnFamily::invalid(), false),
+IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId)
+    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
+                   RocksDBColumnFamily::invalid(),
+                   false),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -164,7 +165,8 @@ bool IResearchRocksDBLink::IndexFactory::equal(
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
     LogicalCollection& collection, VPackSlice const& definition,
     IndexId id, bool /*isClusterConstructor*/) const {
-  auto link = std::make_shared<IResearchRocksDBLink>(id, collection);
+  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, StaticStrings::ObjectId);
+  auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
   auto const res = link->init(definition, [](irs::directory& dir) {
     TRI_ASSERT(arangodb::EngineSelectorFeature::isRocksDB());

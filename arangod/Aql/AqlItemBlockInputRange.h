@@ -50,7 +50,10 @@ class AqlItemBlockInputRange {
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
   ExecutorState upstreamState() const noexcept;
+
   bool upstreamHasMore() const noexcept;
+
+  bool hasValidRow() const noexcept;
 
   bool hasDataRow() const noexcept;
 
@@ -71,6 +74,8 @@ class AqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
   size_t skipAllRemainingDataRows();
+
+  size_t skipAllShadowRowsOfDepth(size_t depth);
 
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.

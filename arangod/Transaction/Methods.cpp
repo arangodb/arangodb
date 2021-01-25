@@ -730,12 +730,13 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   } 
 
   auto translateName = [this](std::string const& collectionName) { 
-    if (_state->isDBServer() && vocbase().isOneShard()) {
+    if (_state->isDBServer()) {
       auto collection = resolver()->getCollectionStructCluster(collectionName);
       if (collection != nullptr) {
         auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         auto shards = ci.getShardList(std::to_string(collection->id()));
         if (shards != nullptr && shards->size() == 1) {
+          TRI_ASSERT(vocbase().isOneShard());
           return (*shards)[0];
         }
       }

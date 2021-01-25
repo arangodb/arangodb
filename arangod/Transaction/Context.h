@@ -94,10 +94,10 @@ class Context {
   void returnString(std::string* str) noexcept;
 
   /// @brief temporarily lease a Builder object
-  arangodb::velocypack::Builder* leaseBuilder();
+  TEST_VIRTUAL arangodb::velocypack::Builder* leaseBuilder();
 
   /// @brief return a temporary Builder object
-  void returnBuilder(arangodb::velocypack::Builder*) noexcept;
+  TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();

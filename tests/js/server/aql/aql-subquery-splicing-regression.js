@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, assertTrue, fail */
+/*global assertEqual, assertLess, AQL_EXECUTE, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for regression returning blocks to the manager
@@ -140,10 +140,111 @@ function traversalResetRegression2Suite() {
   };
 }
 
+// Regression test suite for https://github.com/arangodb/arangodb/issues/13099
+function subqueryFetchTooMuchRegressionSuite() {
+  const splice = {optimizer: {rules: ["+splice-subqueries"] }};
+  const nonSplice = {optimizer: {rules: ["-splice-subqueries"] }};
+  const countSplice = {...splice, fullCount: true};
+  const countNonSplice = {...nonSplice, fullCount: true};
+  return {
+    setUpAll: function() {},
+    tearDownAll: function() {},
+
+
+    testSubqueryEndHitShadowRowFirst: function() {
+      // This tests needs to fill an AQL itemBlock, s.t. one shadowRow
+      // for the subqueryEnd is the start of the next AQLItemBlock
+      // This will cause the upstream on subquery to be "DONE" but
+      // Bot not on the main query.
+      const query = `
+        FOR x IN 1..10000
+          LET sub = (
+            FOR y IN 1..10
+              /* We need a condition on X, but want the optimizer to not know it*/
+              LET add = x + 10000 * y
+              /* mod == x */
+              LET mod = add % 10000
+              /* on the 100 x we want to have 10 y values*/
+              FILTER mod != 1
+              RETURN 1
+          )
+          FILTER LENGTH(sub) > 0
+          LIMIT 20
+          RETURN 1
+      `;
+      {
+        // Data
+        const q1 = db._query(query, {}, splice);
+        const res1 = q1.toArray();
+        const q2 = db._query(query, {}, nonSplice);
+        const res2 = q2.toArray();
+        assertEqual(res1, res2);
+        // Make sure splice is better
+        const stat1 = q1.getExtra().stats;
+        const stat2 = q2.getExtra().stats;
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
+      {
+        // FullCount
+        const stat1 = db._query(query, {}, countSplice).getExtra().stats;
+        const stat2 = db._query(query, {}, countNonSplice).getExtra().stats;
+        assertEqual(stat1.fullCount, stat2.fullCount);
+        assertEqual(stat1.filtered, stat2.filtered);
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
+    },
+
+    testSubqueryEndHitExactEndOfInput: function() {
+      // This tests needs to fill an AQL itemBlock, s.t. one shadowRow
+      // for the subqueryEnd is the start of the next AQLItemBlock
+      // This will cause the upstream on subquery to be "DONE" but
+      // Bot not on the main query.
+      const query = `
+        FOR x IN 1..10000
+          LET sub = (
+            FOR y IN 1..10
+              /* We need a condition on X, but want the optimizer to not know it*/
+              LET add = x + 10000 * y
+              /* mod == x */
+              LET mod = add % 10000
+              /* on the 100 x we want to have 10 y values*/
+              FILTER y != 10 || mod == 100
+              RETURN 1
+          )
+          FILTER LENGTH(sub) > 0
+          LIMIT 20
+          RETURN 1
+      `;
+      {
+        // Data
+        const q1 = db._query(query, {}, splice);
+        const res1 = q1.toArray();
+        const q2 = db._query(query, {}, nonSplice);
+        const res2 = q2.toArray();
+        assertEqual(res1, res2);
+
+        // Make sure splice is better
+        const stat1 = q1.getExtra().stats;
+        const stat2 = q2.getExtra().stats;
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
+      {
+        // FullCount
+        const stat1 = db._query(query, {}, countSplice).getExtra().stats;
+        const stat2 = db._query(query, {}, countNonSplice).getExtra().stats;
+        assertEqual(stat1.fullCount, stat2.fullCount);
+        assertEqual(stat1.filtered, stat2.filtered);
+        assertTrue(stat1.executionTime < stat2.executionTime);
+      }
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(traversalResetRegression2Suite);
+jsunity.run(subqueryFetchTooMuchRegressionSuite);
 
 return jsunity.done();

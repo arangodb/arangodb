@@ -70,6 +70,13 @@ auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
   return _inputs.at(dependency).upstreamState();
 }
 
+auto MultiAqlItemBlockInputRange::hasValidRow() const noexcept -> bool {
+  return std::any_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasValidRow();
+                     });
+}
+
 auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).hasDataRow();
@@ -244,6 +251,17 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
     }
   }
   return 0;
+}
+
+auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
+    -> std::vector<size_t> {
+  size_t const n = _inputs.size();
+  std::vector<size_t> skipped{};
+  skipped.reserve(n);
+  for (auto& input : _inputs) {
+    skipped.emplace_back(input.skipAllShadowRowsOfDepth(depth));
+  }
+  return skipped;
 }
 
 // Subtract up to count rows from the local _skipped state
