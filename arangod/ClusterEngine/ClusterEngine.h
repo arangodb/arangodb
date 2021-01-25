@@ -217,7 +217,11 @@ class ClusterEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   // mock mode
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   static bool Mocking;
+#else
+  static constexpr bool Mocking = false;
+#endif
 
  private:
   /// path to arangodb data dir

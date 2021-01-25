@@ -94,6 +94,7 @@ AqlValue callFn(AstNode const& node, char const* input1, char const* input2 = nu
 template <typename T>
 T evaluate(AstNode const& node, char const* input1, char const* input2 = nullptr, char const* input3 = nullptr) {
   AqlValue actual = callFn(node, input1, input2, input3);
+  AqlValueGuard guard(actual, true);
   if constexpr (std::is_same<T, int64_t>::value) {
     EXPECT_TRUE(actual.isNumber());
     return actual.toInt64();
