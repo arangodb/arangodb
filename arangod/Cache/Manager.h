@@ -46,6 +46,8 @@
 #include <utility>
 
 namespace arangodb {
+class SharedPRNGFeature;
+
 namespace cache {
 
 class Cache;           // forward declaration
@@ -87,7 +89,9 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
+  Manager(SharedPRNGFeature& sharedPRNG,
+          PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
+
   ~Manager();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -162,6 +166,8 @@ class Manager {
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
   bool post(std::function<void()> fn);
+  
+  SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
@@ -174,6 +180,8 @@ class Manager {
       32 * 16 * sizeof(std::shared_ptr<Cache>);
   static constexpr std::uint64_t triesFast = 100;
   static constexpr std::uint64_t triesSlow = 1000;
+
+  SharedPRNGFeature& _sharedPRNG;
 
   // simple state variables
   basics::ReadWriteSpinLock _lock;

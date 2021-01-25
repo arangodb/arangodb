@@ -35,6 +35,9 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/ReplicationIterator.h"
 
+#include <string>
+#include <unordered_set>
+
 namespace arangodb {
 class ClusterInfo;
 class CollectionNameResolver;
@@ -356,17 +359,25 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
                                   bool ignoreDistributeShardsLikeErrors);
 
+
+  /// @brief helper function for processRestoreCoordinatorAnalyzersBatch() and
+  /// processRestoreUsersBatch().
+  Result parseBatchForSystemCollection(std::string const& collectionName,
+                                       VPackBuilder& documentsToInsert,
+                                       std::unordered_set<std::string>& documentsToRemove,
+                                       bool generateNewRevisionIds);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCoordinatorAnalyzersBatch();
+  Result processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreUsersBatch(std::string const& colName);
+  Result processRestoreUsersBatch(bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection
@@ -396,9 +407,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief parse an input batch
   //////////////////////////////////////////////////////////////////////////////
 
-  Result parseBatch(std::string const& collectionName,
-                    std::unordered_map<std::string, VPackValueLength>& latest,
-                    VPackBuilder& allMarkers);
+  Result parseBatch(transaction::Methods& trx,
+                    std::string const& collectionName,
+                    VPackBuilder& documentToInsert,
+                    std::unordered_set<std::string>& documentsToRemove,
+                    bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a collection, based on the VelocyPack provided

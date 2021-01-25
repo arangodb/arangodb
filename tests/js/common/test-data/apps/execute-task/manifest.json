@@ -1,0 +1,7 @@
+{
+  "name": "execute",
+  "version": "0.0.1",
+  "author": "arangodb",
+  "description": "simple test case for checking JavaScript tasks",
+  "main": "index.js"
+}

@@ -888,7 +888,6 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   }
 
   let testCode = getTestCode(file, options, instanceInfo);
-  print(testCode);
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
   try {
@@ -1107,3 +1106,4 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.diffArray = diffArray;
 exports.pathForTesting = pathForTesting;
+exports.findEndpoint = findEndpoint;
