@@ -28,7 +28,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
-#include "Basics/SharedPRNG.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
