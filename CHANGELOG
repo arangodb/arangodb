@@ -6,6 +6,13 @@ v3.7.7 (XXXX-XX-XX)
   components, in the sense that now both forward and backward slashes can be
   used on Windows, even interchangingly.
 
+* Fixed some wrong behaviour in single document updates. If the option
+  ignoreRevs=false was given and the precondition _rev was given in the body but
+  the _key was given in the URL path, then the rev was wrongly taken as 0,
+  rather than using the one from the document body.
+
+* Allow {USER} paceholder string also in `--ldap.search-filter`.
+
 * Make `padded` and `autoincrement` key generators export their `lastValue`
   values, so that they are available in dumps and can be restored elsewhere from
   a dump.
