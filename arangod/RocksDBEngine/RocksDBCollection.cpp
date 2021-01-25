@@ -137,9 +137,9 @@ struct WriteTimeTracker : public TimeTracker {
                    arangodb::OperationOptions const& options) noexcept
       : TimeTracker(histogram) {
     if (options.isSynchronousReplicationFrom.empty()) {
-      ++statistics._numWrites;
+      ++(statistics._numWrites->get());
     } else {
-      ++statistics._numWritesReplication;
+      ++(statistics._numWritesReplication->get());
     }
   }
 };
@@ -151,9 +151,9 @@ struct TruncateTimeTracker : public TimeTracker {
                       arangodb::OperationOptions const& options) noexcept
       : TimeTracker(histogram) {
     if (options.isSynchronousReplicationFrom.empty()) {
-      ++statistics._numTruncates;
+      ++(statistics._numTruncates->get());
     } else {
-      ++statistics._numTruncatesReplication;
+      ++(statistics._numTruncatesReplication->get());
     }
   }
 };
@@ -1114,6 +1114,11 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 ///////////////////////////////////
 
 Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+  
+  if (_statistics._exportReadWriteMetrics) {
+    ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_sec->get(), _statistics, options);
+  }
+
   TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
@@ -1320,7 +1325,9 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
                                        TRI_voc_rid_t& revisionId) const {
   TRI_ASSERT(key.isString());
 
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  if (_statistics._exportReadWriteMetrics) {
+    ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec->get(), _statistics);
+  }
 
   LocalDocumentId documentId;
   revisionId = 0;
@@ -1343,7 +1350,9 @@ Result RocksDBCollection::read(transaction::Methods* trx,
                                ManagedDocumentResult& result) {
   Result res;
 
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  if (_statistics._exportReadWriteMetrics) {
+    ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec->get(), _statistics);
+  }
 
   do {
     LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
@@ -1370,7 +1379,9 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  if (_statistics._exportReadWriteMetrics) {
+    ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec->get(), _statistics);
+  }
 
   bool ret = false;
 
@@ -1403,7 +1414,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
+  if (_statistics._exportReadWriteMetrics) {
+    ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec->get(), _statistics, options);
+  }
 
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
@@ -1477,7 +1490,9 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
+  if (_statistics._exportReadWriteMetrics) {
+    ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec->get(), _statistics, options);
+  }
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1599,7 +1614,9 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
+  if (_statistics._exportReadWriteMetrics) {
+    ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec->get(), _statistics, options);
+  }
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
@@ -1711,7 +1728,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
+  if (_statistics._exportReadWriteMetrics) {
+    ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec->get(), _statistics, options);
+  }
 
   VPackSlice keySlice;
 
@@ -1742,7 +1761,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
+  if (_statistics._exportReadWriteMetrics) {
+    ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec->get(), _statistics, options);
+  }
 
   return remove(trx, documentId, LocalDocumentId(), previousMdr, options);
 }
