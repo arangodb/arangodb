@@ -47,6 +47,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::basics;
 using namespace arangodb::methods;
 using namespace arangodb::rest;
 
@@ -345,7 +346,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       } else {
         // Report an error:
         result = DBServerAgencySyncResult(
-          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0);
+            false, StringUtils::concatT("Error in phase 2: ", tmp.errorMessage()), 0, 0);
       }
     } else {
       // This code should never run, it is only there to debug problems if

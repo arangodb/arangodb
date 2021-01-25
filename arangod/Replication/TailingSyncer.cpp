@@ -1170,7 +1170,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 
       if (res.fail()) {
         // apply error
-        std::string errorMsg = res.errorMessage();
+        auto errorMsg = std::string{res.errorMessage()};
 
         if (ignoreCount == 0) {
           if (lineLength > 1024) {

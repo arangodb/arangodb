@@ -118,6 +118,14 @@ auto Result::reset(int errorNumber, std::string const& errorMessage) -> Result& 
   return *this;
 }
 
+Result& Result::reset(int errorNumber, std::string_view errorMessage) {
+  return reset(errorNumber, std::string{errorMessage});
+}
+
+Result& Result::reset(int errorNumber, const char* errorMessage) {
+  return reset(errorNumber, std::string{errorMessage});
+}
+
 auto Result::reset(int errorNumber, std::string&& errorMessage) noexcept -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
     _error = nullptr;

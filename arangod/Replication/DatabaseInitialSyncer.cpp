@@ -953,6 +953,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                                                         std::string const& leaderColl,
                                                         TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::urlEncode;
+  using ::arangodb::basics::StringUtils::concatT;
 
   if (!_config.isChild()) {
     batchExtend();
@@ -1065,8 +1066,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   if (r.fail()) {
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      _config.leader.endpoint + url + ": " + r.errorMessage());
+                  concatT("got invalid response from leader at ",
+                          _config.leader.endpoint, url, ": ", r.errorMessage()));
   }
 
   VPackSlice const slice = builder.slice();
@@ -1124,9 +1125,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    std::string("unable to start transaction (") + std::string(__FILE__) +
-                        std::string(":") + std::to_string(__LINE__) +
-                        std::string("): ") + res.errorMessage());
+                    concatT("unable to start transaction (", __FILE__, ":",
+                            __LINE__, "): ", res.errorMessage()));
     }
 
     OperationOptions options;
@@ -1164,6 +1164,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCollection* coll,
                                                              std::string const& leaderColl,
                                                              TRI_voc_tick_t maxTick) {
+  using ::arangodb::basics::StringUtils::concatT;
   using ::arangodb::basics::StringUtils::urlEncode;
   using ::arangodb::transaction::Hints;
 
@@ -1239,9 +1240,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       if (!res.ok()) {
         return Result(res.errorNumber(),
-                      std::string("unable to start transaction (") + std::string(__FILE__) +
-                          std::string(":") + std::to_string(__LINE__) +
-                          std::string("): ") + res.errorMessage());
+                      concatT("unable to start transaction (", __FILE__, ":",
+                              __LINE__, "): ", res.errorMessage()));
       }
 
       OperationOptions options;
@@ -1302,7 +1302,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   Result res = trx->begin();
   if (!res.ok()) {
     return Result(res.errorNumber(),
-                  std::string("unable to start transaction: ") + res.errorMessage());
+                  concatT("unable to start transaction: ", res.errorMessage()));
   }
   auto guard = scopeGuard(
       [trx = trx.get()]() -> void { 
@@ -1405,8 +1405,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       if (r.fail()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl + ": " + r.errorMessage());
+                      concatT("got invalid response from leader at ",
+                              _config.leader.endpoint, batchUrl, ": ", r.errorMessage()));
       }
 
       VPackSlice const slice = responseBuilder.slice();
@@ -1599,6 +1599,7 @@ bool DatabaseInitialSyncer::hasDocuments(arangodb::LogicalCollection const& col)
 Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                                                VPackSlice const& indexes,
                                                bool incremental, SyncPhase phase) {
+  using ::arangodb::basics::StringUtils::concatT;
   using ::arangodb::basics::StringUtils::itoa;
 
   if (isAborted()) {
@@ -1698,9 +1699,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             Result res = trx.begin();
 
             if (!res.ok()) {
-              return Result(res.errorNumber(),
-                            std::string("unable to truncate ") + collectionMsg +
-                                ": " + res.errorMessage());
+              return Result(res.errorNumber(), concatT("unable to truncate ", collectionMsg,
+                                                       ": ", res.errorMessage()));
             }
 
             OperationOptions options;
@@ -1720,9 +1720,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             res = trx.finish(opRes.result);
 
             if (!res.ok()) {
-              return Result(res.errorNumber(),
-                            std::string("unable to truncate ") + collectionMsg +
-                                ": " + res.errorMessage());
+              return Result(res.errorNumber(), concatT("unable to truncate ", collectionMsg,
+                                                       ": ", res.errorMessage()));
             }
           } else {
             // drop a regular collection
