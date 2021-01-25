@@ -186,11 +186,15 @@ metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
 }
 
 metrics_key::metrics_key(std::string const& name) : name(name) {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
   _hash = std::hash<std::string>{}(name);
 }
 
 metrics_key::metrics_key(std::string const& name, std::string const& labels) :
   name(name), labels(labels) {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
   _hash = std::hash<std::string>{}(name + labels);
 }
 
