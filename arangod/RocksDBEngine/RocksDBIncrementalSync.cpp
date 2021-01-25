@@ -77,7 +77,8 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   if (!res.ok()) {
     return Result(res.errorNumber(),
-                  std::string("unable to start transaction: ") + res.errorMessage());
+                  basics::StringUtils::concatT("unable to start transaction: ",
+                                               res.errorMessage()));
   }
 
   VPackSlice chunk = chunkSlice.at(0);
@@ -233,8 +234,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   if (r.fail()) {
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      syncer._state.leader.endpoint + ": " + r.errorMessage());
+                  basics::StringUtils::concatT(
+                      "got invalid response from leader at ",
+                      syncer._state.leader.endpoint, ": ", r.errorMessage()));
   }
 
   VPackSlice const responseBody = builder.slice();
@@ -433,9 +435,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     if (r.fail()) {
       ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        syncer._state.leader.endpoint +
-                        ": " + r.errorMessage());
+                    basics::StringUtils::concatT(
+                        "got invalid response from leader at ",
+                        syncer._state.leader.endpoint, ": ", r.errorMessage()));
     }
 
     VPackSlice const slice = docsBuilder->slice();
@@ -483,7 +485,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                           ": document revision is invalid");
       }
 
-      auto removeConflict = [&](std::string const& conflictingKey) -> Result {
+      auto removeConflict = [&](auto const& conflictingKey) -> Result {
         keyBuilder->clear();
         keyBuilder->add(VPackValue(conflictingKey));
 
@@ -524,7 +526,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             // fall-through
           } else {
             int errorNumber = res.errorNumber();
-            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
+            res.reset(errorNumber, basics::StringUtils::concatT(TRI_errno_string(errorNumber),
+                                                   ": ", res.errorMessage()));
             return res;
           }
         }
@@ -555,7 +558,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             // fall-through
           } else {
             int errorNumber = res.errorNumber();
-            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
+            res.reset(errorNumber,
+                      basics::StringUtils::concatT(TRI_errno_string(errorNumber),
+                                                   ": ", res.errorMessage()));
             return res;
           }
         }
@@ -632,8 +637,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   if (r.fail()) {
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      syncer._state.leader.endpoint + ": " + r.errorMessage());
+                  basics::StringUtils::concatT(
+                      "got invalid response from leader at ",
+                      syncer._state.leader.endpoint, ": ", r.errorMessage()));
   }
 
   VPackSlice const chunkSlice = builder.slice();
@@ -641,8 +647,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   if (!chunkSlice.isArray()) {
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      syncer._state.leader.endpoint + ": response is no array");
+                  basics::StringUtils::concatT(
+                      "got invalid response from leader at ",
+                      syncer._state.leader.endpoint, ": response is no array"));
   }
 
   OperationOptions options;
@@ -684,8 +691,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      return Result(res.errorNumber(),
-                    std::string("unable to start transaction: ") + res.errorMessage());
+      return Result(res.errorNumber(),basics::StringUtils::concatT(
+                        "unable to start transaction: ", res.errorMessage()));
     }
 
     // We do not take responsibility for the index.

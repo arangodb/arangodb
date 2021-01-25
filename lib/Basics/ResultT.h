@@ -223,7 +223,7 @@ class ResultT {
   bool fail() const { return _result.fail(); }
   bool is(int code) { return _result.is(code); }
   int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
 
   // access methods
   Result const& result() const& { return _result; }

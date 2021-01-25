@@ -129,7 +129,8 @@ class Result final {
    * @param errorMessage Said specific error message
    * @return            Reference to ourselves
    */
-  Result& reset(int errorNumber, std::string const& errorMessage);
+  Result& reset(int errorNumber, std::string_view errorMessage);
+  Result& reset(int errorNumber, const char* errorMessage);
 
   /**
    * @brief  Reset to specific error number with message.
@@ -158,7 +159,7 @@ class Result final {
    * @brief  Get error message
    * @return Our error message
    */
-  std::string errorMessage() const&;
+  std::string_view errorMessage() const&;
 
   /**
    * @brief  Get error message

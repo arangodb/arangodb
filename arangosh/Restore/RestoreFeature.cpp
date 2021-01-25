@@ -936,6 +936,7 @@ arangodb::Result processInputDirectory(
   using arangodb::StaticStrings;
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::FileUtils::listFiles;
+  using arangodb::basics::StringUtils::concatT;
 
   auto fill = [](std::unordered_map<std::string, bool>& map, std::vector<std::string> const& requested) {
     for (auto const& name : requested) {
@@ -985,8 +986,9 @@ arangodb::Result processInputDirectory(
           VPackBuilder contentBuilder = directory.vpackFromJsonFile(file);
           VPackSlice const fileContent = contentBuilder.slice();
           if (!fileContent.isObject()) {
-            return {TRI_ERROR_INTERNAL, "could not read view file '" +
-                    directory.pathToFile(file) + "': " + directory.status().errorMessage()};
+            return {TRI_ERROR_INTERNAL,
+                    concatT("could not read view file '", directory.pathToFile(file),
+                            "': ", directory.status().errorMessage())};
           }
 
           std::string const name =
@@ -1017,8 +1019,9 @@ arangodb::Result processInputDirectory(
         VPackSlice const fileContent = fileContentBuilder.slice();
         if (!fileContent.isObject()) {
           return {TRI_ERROR_INTERNAL,
-                  "could not read collection structure file '" +
-                      directory.pathToFile(file) + "': " + directory.status().errorMessage()};
+                  concatT("could not read collection structure file '",
+                          directory.pathToFile(file),
+                          "': ", directory.status().errorMessage())};
         }
 
         VPackSlice const parameters = fileContent.get("parameters");
@@ -1613,6 +1616,7 @@ void RestoreFeature::prepare() {
 }
 
 void RestoreFeature::start() {
+  using arangodb::basics::StringUtils::concatT;
   using arangodb::httpclient::SimpleHttpClient;
 
   double const start = TRI_microtime();
@@ -1801,7 +1805,8 @@ void RestoreFeature::start() {
       }
 
       if (result.fail()) {
-        result.reset(result.errorNumber(), std::string("cannot create server connection: ") + result.errorMessage());
+        result.reset(result.errorNumber(),
+                     concatT("cannot create server connection: ", result.errorMessage()));
 
         if (!_options.force) {
           break;

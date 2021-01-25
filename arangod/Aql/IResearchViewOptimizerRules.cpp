@@ -53,6 +53,7 @@
 
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 namespace {
 
@@ -137,8 +138,10 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
       *searchCondition.root());
 
     if (filterCreated.fail()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(filterCreated.errorNumber(),
-                                     "unsupported SEARCH condition: " + filterCreated.errorMessage());
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          filterCreated.errorNumber(),
+          StringUtils::concatT("unsupported SEARCH condition: ",
+                               filterCreated.errorMessage()));
     }
   }
 

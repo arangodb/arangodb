@@ -140,6 +140,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   using arangodb::PhysicalCollection;
   using arangodb::RestReplicationHandler;
   using arangodb::Result;
+  using arangodb::basics::StringUtils::concatT;
 
   if (toFetch.empty()) {
     return Result();  // nothing to do
@@ -173,7 +174,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                     collection.name() + "' from " + url;
   config.progress.set(msg);
 
-  auto removeConflict = [&](std::string const& conflictingKey) -> Result {
+  auto removeConflict = [&](auto const& conflictingKey) -> Result {
     keyBuilder->clear();
     keyBuilder->add(VPackValue(conflictingKey));
 
@@ -218,16 +219,16 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         arangodb::replutils::parseResponse(*responseBuilder.get(), response.get());
     if (r.fail()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        config.leader.endpoint + url + ": " + r.errorMessage());
+                    concatT("got invalid response from leader at ",
+                            config.leader.endpoint, url, ": ", r.errorMessage()));
     }
 
     VPackSlice const docs = responseBuilder->slice();
     if (!docs.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        config.leader.endpoint + url +
-                        ": response is not an array");
+                    concatT("got invalid response from leader at ",
+                            config.leader.endpoint, url,
+                            ": response is not an array"));
     }
 
     for (VPackSlice leaderDoc : VPackArrayIterator(docs)) {
@@ -281,8 +282,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
           // fall-through
         } else {
           int errorNumber = res.errorNumber();
-          res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) +
-                                     ": " + res.errorMessage());
+          res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
+                                         res.errorMessage()));
           return res;
         }
       }
@@ -734,6 +735,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::boolean;
+  using ::arangodb::basics::StringUtils::concatT;
   using ::arangodb::basics::StringUtils::itoa;
   using ::arangodb::basics::StringUtils::uint64;
   using ::arangodb::basics::StringUtils::urlEncode;
@@ -872,7 +874,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    std::string("unable to start transaction: ") + res.errorMessage());
+                    concatT("unable to start transaction: ", res.errorMessage()));
     }
 
     double t = TRI_microtime();
@@ -951,6 +953,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                                                         std::string const& leaderColl,
                                                         TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::urlEncode;
+  using ::arangodb::basics::StringUtils::concatT;
 
   if (!_config.isChild()) {
     batchExtend();
@@ -1063,8 +1066,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   if (r.fail()) {
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      _config.leader.endpoint + url + ": " + r.errorMessage());
+                  concatT("got invalid response from leader at ",
+                          _config.leader.endpoint, url, ": ", r.errorMessage()));
   }
 
   VPackSlice const slice = builder.slice();
@@ -1122,9 +1125,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    std::string("unable to start transaction (") + std::string(__FILE__) +
-                        std::string(":") + std::to_string(__LINE__) +
-                        std::string("): ") + res.errorMessage());
+                    concatT("unable to start transaction (", __FILE__, ":",
+                            __LINE__, "): ", res.errorMessage()));
     }
 
     OperationOptions options;
@@ -1162,6 +1164,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCollection* coll,
                                                              std::string const& leaderColl,
                                                              TRI_voc_tick_t maxTick) {
+  using ::arangodb::basics::StringUtils::concatT;
   using ::arangodb::basics::StringUtils::urlEncode;
   using ::arangodb::transaction::Hints;
 
@@ -1237,9 +1240,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       if (!res.ok()) {
         return Result(res.errorNumber(),
-                      std::string("unable to start transaction (") + std::string(__FILE__) +
-                          std::string(":") + std::to_string(__LINE__) +
-                          std::string("): ") + res.errorMessage());
+                      concatT("unable to start transaction (", __FILE__, ":",
+                              __LINE__, "): ", res.errorMessage()));
       }
 
       OperationOptions options;
@@ -1300,7 +1302,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   Result res = trx->begin();
   if (!res.ok()) {
     return Result(res.errorNumber(),
-                  std::string("unable to start transaction: ") + res.errorMessage());
+                  concatT("unable to start transaction: ", res.errorMessage()));
   }
   auto guard = scopeGuard(
       [trx = trx.get()]() -> void { 
@@ -1403,8 +1405,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       if (r.fail()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl + ": " + r.errorMessage());
+                      concatT("got invalid response from leader at ",
+                              _config.leader.endpoint, batchUrl, ": ", r.errorMessage()));
       }
 
       VPackSlice const slice = responseBuilder.slice();
@@ -1597,6 +1599,7 @@ bool DatabaseInitialSyncer::hasDocuments(arangodb::LogicalCollection const& col)
 Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                                                VPackSlice const& indexes,
                                                bool incremental, SyncPhase phase) {
+  using ::arangodb::basics::StringUtils::concatT;
   using ::arangodb::basics::StringUtils::itoa;
 
   if (isAborted()) {
@@ -1696,9 +1699,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             Result res = trx.begin();
 
             if (!res.ok()) {
-              return Result(res.errorNumber(),
-                            std::string("unable to truncate ") + collectionMsg +
-                                ": " + res.errorMessage());
+              return Result(res.errorNumber(), concatT("unable to truncate ", collectionMsg,
+                                                       ": ", res.errorMessage()));
             }
 
             OperationOptions options;
@@ -1718,9 +1720,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             res = trx.finish(opRes.result);
 
             if (!res.ok()) {
-              return Result(res.errorNumber(),
-                            std::string("unable to truncate ") + collectionMsg +
-                                ": " + res.errorMessage());
+              return Result(res.errorNumber(), concatT("unable to truncate ", collectionMsg,
+                                                       ": ", res.errorMessage()));
             }
           } else {
             // drop a regular collection

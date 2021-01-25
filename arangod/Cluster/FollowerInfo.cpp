@@ -265,8 +265,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
       _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
       ": " + TRI_errno_string(agencyRes.errorNumber());
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
-  agencyRes.resetErrorMessage<std::string>(std::move(errorMessage));
-  return agencyRes;
+  return Result{agencyRes.errorNumber(), std::move(errorMessage)};
 }
 
 //////////////////////////////////////////////////////////////////////////////
