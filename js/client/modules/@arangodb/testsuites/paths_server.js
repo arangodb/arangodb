@@ -56,6 +56,7 @@ function paths_server(options) {
   process.env.TMPDIR = tmpPath;
   process.env.TEMP = tmpPath;
   process.env.TMP = tmpPath;
+  options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
 

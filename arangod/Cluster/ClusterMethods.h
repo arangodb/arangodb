@@ -339,6 +339,11 @@ class ClusterMethods {
   ////////////////////////////////////////////////////////////////////////////////
   static bool includeHiddenCollectionInLink(std::string const& name);
 
+  /// @brief removes smart name suffixes from collection names.
+  /// @param possiblySmartName  collection name with possible smart suffixes.
+  /// Will be modified inplace 
+  static void realNameFromSmartName(std::string& possiblySmartName);
+
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Persist collection in Agency and trigger shard creation process

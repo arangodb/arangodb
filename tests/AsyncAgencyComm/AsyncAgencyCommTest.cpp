@@ -91,7 +91,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
       response = std::make_unique<fuerte::Response>(std::move(header));
       response->setPayload(std::move(body), 0);
-    };
+    }
 
     void returnError(fuerte::Error err) {
       error = err;
