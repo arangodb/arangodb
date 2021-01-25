@@ -1,6 +1,8 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Allow {USER} paceholder string also in `--ldap.search-filter`.
+
 * Make `padded` and `autoincrement` key generators export their `lastValue`
   values, so that they are available in dumps and can be restored elsewhere from
   a dump.
