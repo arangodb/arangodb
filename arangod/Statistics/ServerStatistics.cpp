@@ -70,27 +70,27 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
       _numTruncatesReplication(
         _metrics.counter("arangodb_collection_truncates_replication", 0,
                          "Total number of collection truncate operations by synchronous replication")),
-      _rocksdb_read_usec(
+      _rocksdb_read_sec(
         _metrics.histogram("arangodb_document_read_time",
                            log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document read operations [s]")),
-      _rocksdb_insert_usec(
+                           "Total time spent in document read operations [us]")),
+      _rocksdb_insert_sec(
         _metrics.histogram("arangodb_document_insert_time",
                            log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document insert operations [s]")),
-      _rocksdb_replace_usec(
+                           "Total time spent in document insert operations [us]")),
+      _rocksdb_replace_sec(
         _metrics.histogram("arangodb_document_replace_time",
                            log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document replace operations [s]")),
-      _rocksdb_remove_usec(
+                           "Total time spent in document replace operations [us]")),
+      _rocksdb_remove_sec(
         _metrics.histogram("arangodb_document_remove_time",
                            log_scale_t<float>(10., 0.0, 1000.0, 11),
                            "Total time spent in document remove operations [s]")),
-      _rocksdb_update_usec(
+      _rocksdb_update_sec(
         _metrics.histogram("arangodb_document_update_time",
                            log_scale_t<float>(10., 0.0, 1000.0, 11),
                            "Total time spent in document update operations [s]")),
-      _rocksdb_truncate_usec(
+      _rocksdb_truncate_sec(
         _metrics.histogram("arangodb_collection_truncate_time",
                            log_scale_t<float>(10., 0.0, 1000.0, 11),
                            "Total time spent in collcection truncate operations [s]")) {}
