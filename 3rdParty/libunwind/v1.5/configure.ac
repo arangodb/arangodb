@@ -1,8 +1,8 @@
 define(pkg_major, 1)
 define(pkg_minor, 5)
-define(pkg_extra, -rc1)
+define(pkg_extra, 0)
 define(pkg_maintainer, libunwind-devel@nongnu.org)
-define(mkvers, $1.$2$3)
+define(mkvers, $1.$2.$3)
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT([libunwind],[mkvers(pkg_major, pkg_minor, pkg_extra)],[pkg_maintainer])
 AC_CONFIG_SRCDIR(src/mi/backtrace.c)

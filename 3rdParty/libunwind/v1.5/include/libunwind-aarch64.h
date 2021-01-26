@@ -184,7 +184,7 @@ struct unw_sigcontext
 	uint64_t sp;
 	uint64_t pc;
 	uint64_t pstate;
-	uint8_t __reserved[(66 * 8)] __attribute__((__aligned__(16)));
+	uint8_t __reserved[(34 * 8)] __attribute__((__aligned__(16)));
 };
 
 typedef struct
@@ -192,7 +192,7 @@ typedef struct
 	unsigned long uc_flags;
 	struct ucontext *uc_link;
 	stack_t uc_stack;
-	__sigset_t uc_sigmask;
+	sigset_t uc_sigmask;
 	struct unw_sigcontext uc_mcontext;
   } unw_tdep_context_t;
 
