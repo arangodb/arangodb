@@ -404,7 +404,7 @@ function OneShardPropertiesSuite () {
           assertEqual(props.replicationFactor, "satellite");
         } else {
           //without enterprise we can not have a replication factor of 1
-          assertEqual(props.replicationFactor, 1);
+          assertEqual(props.replicationFactor, defaultReplicationFactor);
         }
       }
     },
