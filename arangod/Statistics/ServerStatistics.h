@@ -38,6 +38,8 @@ struct TransactionStatistics {
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
   TransactionStatistics& operator=(TransactionStatistics &&) = delete;
 
+  void setupDocumentMetrics();
+
   arangodb::MetricsFeature& _metrics;
   
   Counter& _transactionsStarted;
@@ -65,6 +67,8 @@ struct TransactionStatistics {
   // Total number of truncate operations (not number of documents truncated!) by sync replication
   std::optional<std::reference_wrapper<Counter>> _numTruncatesReplication;
 
+  /// @brief the following metrics are conditional and only initialized if 
+  /// startup option `--server.export-read-write-metrics` is set
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_read_sec;
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_insert_sec;
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_replace_sec;
@@ -81,6 +85,8 @@ struct ServerStatistics {
   ServerStatistics(ServerStatistics &&) = delete;
   ServerStatistics& operator=(ServerStatistics const&) = delete;
   ServerStatistics& operator=(ServerStatistics &&) = delete;
+
+  void setupDocumentMetrics();
 
   ServerStatistics& statistics();
 
