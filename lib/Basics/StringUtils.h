@@ -444,7 +444,8 @@ template <typename... Iters>
 auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
   auto result = std::string{};
 
-  auto const newcap = (std::distance(iters.first, iters.second) + ... + 0);
+  auto const newcap =
+      static_cast<std::size_t>((std::distance(iters.first, iters.second) + ... + 0));
   result.reserve(newcap);
 
   ([&] { result.append(iters.first, iters.second); }(), ...);
