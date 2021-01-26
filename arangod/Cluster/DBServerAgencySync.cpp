@@ -216,8 +216,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
-    result.errorMessage = "Could not do getLocalCollections for phase 1: '";
-    result.errorMessage.append(glc.errorMessage()).append("'");
+    result.errorMessage =
+        StringUtils::concatT("Could not do getLocalCollections for phase 1: '",
+                             glc.errorMessage(), "'");
     return result;
   }
   LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local;
@@ -273,8 +274,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("d15b5", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - local state: " << local;
     if (!glc.ok()) {
-      result.errorMessage = "Could not do getLocalCollections for phase 2: '";
-      result.errorMessage.append(glc.errorMessage()).append("'");
+      result.errorMessage = StringUtils::concatT(
+          "Could not do getLocalCollections for phase 2: '", glc.errorMessage(),
+          "'");
       return result;
     }
 
