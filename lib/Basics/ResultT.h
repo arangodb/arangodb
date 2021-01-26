@@ -224,7 +224,7 @@ class ResultT {
   bool is(int code) { return _result.is(code); }
   int errorNumber() const { return _result.errorNumber(); }
   [[nodiscard]] std::string_view errorMessage() const& { return _result.errorMessage(); }
-  [[nodiscard]] std::string&& errorMessage() && { return std::move(_result).errorMessage(); }
+  [[nodiscard]] std::string errorMessage() && { return std::move(_result).errorMessage(); }
 
   // access methods
   Result const& result() const& { return _result; }
