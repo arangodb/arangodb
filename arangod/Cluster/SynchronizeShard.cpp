@@ -1186,13 +1186,18 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       auto result = response.combinedResult();
 
       if (result.fail()) {
-        std::string const errorMessage =
+        std::string errorMessage =
             "addShardFollower: could not add us to the leader's follower "
             "list for " + database + "/" + shard +
             ", error while recalculating count on leader: " +
             result.errorMessage();
         LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
-        return arangodb::Result(result.errorNumber(), errorMessage);
+        return arangodb::Result(result.errorNumber(), std::move(errorMessage));
+      } else {
+        auto const resultSlice = response.slice();
+        if (VPackSlice c = resultSlice.get("count"); c.isNumber()) {
+          LOG_TOPIC("bc26d", DEBUG, Logger::MAINTENANCE) << "leader's shard count response is " << c.getNumber<uint64_t>();
+        }
       }
     }
 
