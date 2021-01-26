@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertNotEqual, arango */
+/* global getOptions, assertNotEqual, assertTrue, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test metrics options
@@ -40,6 +40,8 @@ function testSuite() {
     let lines = res.body.split(/\n/);
     return lines;
   };
+
+  let db = require('@arangodb').db;
 
   return {
     testMetricsUnavailable : function() {
