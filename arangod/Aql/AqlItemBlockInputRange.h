@@ -104,6 +104,12 @@ class AqlItemBlockInputRange {
 
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
+  /**
+   * @brief Skip over all remaining data rows until the next shadow row.
+   * Count how many rows are skipped
+   */
+  [[nodiscard]] auto countAndSkipAllRemainingDataRows() -> std::size_t;
+
  private:
   bool isIndexValid(std::size_t index) const noexcept;
 

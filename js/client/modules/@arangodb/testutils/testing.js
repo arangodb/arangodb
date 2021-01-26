@@ -210,7 +210,9 @@ const optionsDefaults = {
   'skipGrey': false,
   'onlyGrey': false,
   'oneTestTimeout': 15 * 60,
-  'isAsan': false,
+  'isAsan': (
+      global.ARANGODB_CLIENT_VERSION(true).asan  ||
+      global.ARANGODB_CLIENT_VERSION(true).tsan),
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,

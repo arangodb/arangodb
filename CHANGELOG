@@ -1,16 +1,42 @@
 devel
 -----
 
-* Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that provides 
-  the time (in millseconds) it took for the most recent low priority scheduler queue 
-  item to bubble up to the queue's head. This metric can be used to estimate the
-  queuing time for incoming requests. 
-  The metric will be updated probabilistically when a request is pulled from the 
-  scheduler queue, and may remain at its previous value for a while if only few
-  requests are coming in or remain permanently at its previous value if no further 
-  requests are incoming at all.
+* Allow toggling the document read/write counters and histograms via the
+  new startup option `--server.export-read-write-metrics false`. This 
+  option defaults to `true`, so these metrics will be exposed by default.
 
-* Allow {USER} paceholder string also in `--ldap.search-filter`.
+* Upgrade libunwind to v1.5.
+
+* Added startup option `--javascript.tasks` to allow turning off JavaScript 
+  tasks if not needed. The default value for this option is `true`, meaning 
+  JavaScript tasks are available as before.
+  However, with this option they can be turned off by admins to limit the 
+  amount of JavaScript user code that is executed.
+
+* Only instantiate a striped PRNG instance for the arangod server, but not 
+  for any of the client tools (e.g. arangosh, arangodump, arangorestore). 
+  The client tools do not use the striped PRNG, so we can save a few MBs of 
+  memory for allocating the striped PRNG instance there, plus some CPU time 
+  for initializing it. 
+
+* Improve shard synchronization protocol by only transferring the required
+  parts of the inventory from leader to follower. Previously, for each shard
+  the entire inventory was exchanged, which included all shards of the
+  respective database with all their details.
+  In addition, save 3 cluster-internal requests per shard in the initial shard
+  synchronization protocol by reusing already existing information in the
+  different steps of the replication process.
+
+* Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that 
+  provides the time (in millseconds) it took for the most recent low priority 
+  scheduler queue item to bubble up to the queue's head. This metric can be 
+  used to estimate the queuing time for incoming requests. 
+  The metric will be updated probabilistically when a request is pulled from 
+  the scheduler queue, and may remain at its previous value for a while if 
+  only few requests are coming in or remain permanently at its previous value 
+  if no further requests are incoming at all.
+
+* Allow {USER} placeholder string also in `--ldap.search-filter`.
 
 * Fix agency restart with mismatching compation and log indexes.
 
@@ -19,23 +45,24 @@ devel
   - `arangodb_document_writes: Total number of document write operations
     (successful and failed) not performed by synchronous replication.
   - `arangodb_document_writes_replication`: Total number of document write
-    operations (successful and failed) by synchronous replication.
-  - `arangodb_collection_truncates`: Total number of collection truncate
-    operations (successful and failed) not performed by synchronous replication.
-  - `arangodb_collection_truncates_replication`: Total number of collection truncate
-    operations (successful and failed) by synchronous replication.
-  - `arangodb_document_read_time`: Execution time histogram of all document read
-    operations (successful and failed) [s].
-  - `arangodb_document_insert_time`: Execution time histogram of all document insert
-    operations (successful and failed) [s].
-  - `arangodb_document_replace_time`: Execution time histogram of all document replace
-    operations (successful and failed) [s].
-  - `arangodb_document_remove_time`: Execution time histogram of all document remove
-    operations (successful and failed) [s].
-  - `arangodb_document_update_time`: Execution time histogram of all document update
-    operations (successful and failed) [s].
-  - `arangodb_collection_truncate_time`: Execution time histogram of all collection
-    truncate operations (successful and failed) [s].
+    operations (successful and failed) by cluster synchronous replication.
+  - `arangodb_collection_truncates`: Total number of collection truncate 
+    operations (successful and failed) not performed by cluster synchronous 
+    replication.
+  - `arangodb_collection_truncates_replication`: Total number of collection 
+    truncate operations (successful and failed) by synchronous replication.
+  - `arangodb_document_read_time`: Execution time histogram of all document 
+    read operations (successful and failed) [s].
+  - `arangodb_document_insert_time`: Execution time histogram of all 
+    document insert operations (successful and failed) [s].
+  - `arangodb_document_replace_time`: Execution time histogram of all 
+    document replace operations (successful and failed) [s].
+  - `arangodb_document_remove_time`: Execution time histogram of all 
+    document remove operations (successful and failed) [s].
+  - `arangodb_document_update_time`: Execution time histogram of all 
+    document update operations (successful and failed) [s].
+  - `arangodb_collection_truncate_time`: Execution time histogram of all 
+    collection truncate operations (successful and failed) [s].
 
 * Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
@@ -74,15 +101,17 @@ devel
   is still limited by all these threads needing to serialize their chunks into
   the same (shared) output file.
 
-* Add option `--envelope` to arangodump, to control if each dumped document
-  should be wrapped into a small JSON wrapper (e.g. `{"type":2300,"data":{...}}`).
-  This JSON wrapper is not necessary anymore since ArangoDB 3.8, so omitting
-  it produces smaller (and slightly faster) dumps.
-  Restoring a dump without these JSON wrappers is handled automatically by
-  ArangoDB 3.8 and higher. However, restoring a dump without these JSON wrappers
-  into previous versions (pre v3.8) is not supported. Thus the option should
+* Add option `--envelope` for arangodump, to control if each dumped document
+  should be wrapped into a small JSON envelope (e.g. 
+  `{"type":2300,"data":{...}}`). This JSON envelope is not necessary anymore 
+  since ArangoDB 3.8, so omitting it can produce smaller (and slightly faster) 
+  dumps.
+  Restoring a dump without these JSON envelopers is handled automatically by
+  ArangoDB 3.8 and higher. Restoring a dump without these JSON envelopes into
+  previous versions (pre 3.8) however is not supported. Thus the option should
   only be used if the client tools (arangodump, arangorestore) and the arangod
-  server are all using v3.8 or higher.
+  server are all using v3.8 or higher, and the dumps will never be stored into
+  earlier versions.
   The default value for this option is `true`, meaning the JSON wrappers will
   be stored as part of the dump. This is compatible with all previous verions.
 
@@ -199,7 +228,7 @@ devel
 * Added startup option `--javascript.transactions` to allow turning off JavaScript
   transactions if not needed. The default value for this option is `true`, meaning
   JavaScript transactions are available as before.
-  However, using this option they can be turned off by admins to limit the amount
+  However, with this option they can be turned off by admins to limit the amount
   of JavaScript user code that is executed.
 
 * Introduce a default memory limit for AQL queries, to prevent rogue queries from
