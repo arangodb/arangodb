@@ -114,12 +114,14 @@ struct TimeTracker {
       : statistics(statistics),
         histogram(histogram) {
     if (statistics._exportReadWriteMetrics) {
+      // time measurement is not free. only do it if metrics are enabled
       start = getTime();
     }
   }
 
   ~TimeTracker() {
     if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only do it if metrics are enabled
       // unit is seconds here
       histogram->get().count(std::chrono::duration<float>(getTime() - start).count());
     }
@@ -149,6 +151,7 @@ struct WriteTimeTracker : public TimeTracker {
                    arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
     if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only track writes if metrics are enabled
       if (options.isSynchronousReplicationFrom.empty()) {
         ++(statistics._numWrites->get());
       } else {
@@ -165,6 +168,7 @@ struct TruncateTimeTracker : public TimeTracker {
                       arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
     if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only track truncates if metrics are enabled
       if (options.isSynchronousReplicationFrom.empty()) {
         ++(statistics._numTruncates->get());
       } else {
