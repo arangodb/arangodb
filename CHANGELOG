@@ -1,8 +1,9 @@
 devel
 -----
 
-* Allow read/write counters and histograms optional via
-  `--metrics.record-read-write-metrics false` default is true
+* Allow toggling the document read/write counters and histograms via the
+  new startup option `--metrics.record-read-write-metrics false`. This 
+  option defaults to `true`, so these metrics will be exposed by default.
 
 * Added startup option `--javascript.tasks` to allow turning off JavaScript 
   tasks if not needed. The default value for this option is `true`, meaning 
