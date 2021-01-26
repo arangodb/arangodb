@@ -260,7 +260,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-            res.errorMessage() > keySlice.copyString()) {
+            res.errorMessage() > keySlice.stringView()) {
           arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
           if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
             // already have exactly this revision no need to insert

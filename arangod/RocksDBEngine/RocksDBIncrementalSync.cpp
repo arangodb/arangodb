@@ -508,7 +508,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) {
+              res.errorMessage() > keySlice.stringView()) {
             // remove conflict and retry
             // errorMessage() is this case contains the conflicting key
             auto inner = removeConflict(res.errorMessage());
@@ -541,7 +541,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) {
+              res.errorMessage() > keySlice.stringView()) {
             // remove conflict and retry
             // errorMessage() is this case contains the conflicting key
             auto inner = removeConflict(res.errorMessage());
