@@ -249,6 +249,19 @@ TEST(HandlerTest, test_abandoned_promise_handler2) {
   ASSERT_TRUE(HandlerTest::handler<int>::was_called);
 }
 
+TEST(HandlerTest, test_abandoned_promise_handler3) {
+  auto&& [f, p] = mellon::make_promise<int, handler_test_tag>();
+
+  HandlerTest::handler<int>::was_called = false;
+  std::move(p).abandon();
+  std::move(f).and_then_direct([](int x) noexcept {
+    EXPECT_EQ(x, 0);  // should be default constructed by the handler
+    return 15;
+  }).finally([](auto) noexcept {});
+
+  ASSERT_TRUE(HandlerTest::handler<int>::was_called);
+}
+
 TEST(HandlerTest, test_abandoned_future_handler) {
   auto&& [f, p] = mellon::make_promise<int, handler_test_tag>();
   std::move(p).fulfill(1);

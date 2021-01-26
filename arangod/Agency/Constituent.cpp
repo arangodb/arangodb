@@ -416,7 +416,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
 /// @brief Call to election
 void Constituent::callElection() {
   using namespace std::chrono;
-  
+
   // simon: whats the minimum timeout here ?
   network::Timeout timeout(0.9 * _agent->config().minPing() * _agent->config().timeoutMult());
   auto endTime =
@@ -453,21 +453,21 @@ void Constituent::callElection() {
 
   auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.timeout = timeout;
   reqOpts.param("term", std::to_string(savedTerm)).param("candidateId", _id)
          .param("prevLogIndex", std::to_string(_agent->lastLog().index))
          .param("prevLogTerm", std::to_string(_agent->lastLog().term))
          .param("timeoutMult", std::to_string(electionEventCount));
-  
+
   // Ask everyone for their vote
   // Collect ballots. I vote for myself.
   auto yea = std::make_shared<std::atomic<size_t>>(1);
   auto nay = std::make_shared<std::atomic<size_t>>(0);
   auto maxTermReceived = std::make_shared<std::atomic<term_t>>(savedTerm);
   const size_t majority = size() / 2 + 1;
-  
+
   for (auto const& i : active) {
     if (i == _id) {
       continue;
@@ -496,7 +496,7 @@ void Constituent::callElection() {
       }
       // Count the vote as a nay
       nay->fetch_add(1);
-    });
+    }).finally([](auto&&) noexcept {}); // ignore all errors as previously
   }
 
   // We collect votes, we leave the following loop when one of the following
@@ -511,7 +511,7 @@ void Constituent::callElection() {
       followNoLock(0);  // do not adjust _term or _votedFor
       break;
     }
-    
+
     term_t t = maxTermReceived->load();
     {
       MUTEX_LOCKER(locker, _termVoteLock);
@@ -520,17 +520,17 @@ void Constituent::callElection() {
         break;
       }
     }
-    
+
     if (yea->load() >= majority) {
       lead(savedTerm);
       break;
     }
-    
+
     if (nay->load() > size() - majority) {  // Network: majority against?
       follow(0);                            // do not adjust _term or _votedFor
       break;
     }
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 

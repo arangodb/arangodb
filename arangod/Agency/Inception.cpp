@@ -166,10 +166,14 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
-          ::handleGossipResponse(r, &_agent, version);
-        });
+        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer, reqOpts)
+            .finally([=](expect::expected<network::Response> r) noexcept {
+              try {
+                ::handleGossipResponse(r.unwrap(), &_agent, version);
+              } catch (...) {
+                /* ignore */
+              }
+            });
       }
     }
 
@@ -196,10 +200,14 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
-          ::handleGossipResponse(r, &_agent, version);
-        });
+        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path, buffer, reqOpts)
+            .finally([=](expect::expected<network::Response>&& r) noexcept {
+              try {
+                ::handleGossipResponse(r.unwrap(), &_agent, version);
+              } catch (...) {
+                /* ignore */
+              }
+            });
       }
     }
 

@@ -751,7 +751,7 @@ void Agent::sendAppendEntriesRPC() {
       network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                            std::move(buffer), reqOpts).thenValue([=](network::Response r) {
         ac->operator()(r);
-      });
+      }).finally([](auto&&) noexcept {}); // ignore exceptions, as before
 
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
@@ -822,7 +822,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                        std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
-  });
+  }).finally([](auto&&) noexcept {}); // ignore exceptions, as before
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)

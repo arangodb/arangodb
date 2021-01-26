@@ -10,13 +10,55 @@ detail::invalid_pointer_type detail::invalid_pointer_promise_fulfilled;
 const char* promise_abandoned_error::what() const noexcept {
   return "promise abandoned";
 }
+
+#ifdef MELLON_RECORD_BACKTRACE
+#define UNW_LOCAL_ONLY
+#include <cxxabi.h>
+#include <libunwind.h>
+#include <iostream>
+
+thread_local std::string* detail::current_backtrace_ptr;
+
+auto detail::generate_backtrace_string() noexcept -> std::string try {
+
+  std::string bt;
+
+  unw_context_t context;
+  unw_getcontext(&context);
+
+  unw_cursor_t cursor;
+  unw_init_local(&cursor, &context);
+
+  std::size_t i = 1;
+  while (unw_step(&cursor) > 0) {
+    constexpr size_t kMax = 1024;
+    char mangled[kMax];
+    unw_word_t offset;
+    unw_get_proc_name(&cursor, mangled, kMax, &offset);
+
+    int ok;
+    size_t len = kMax;
+    char* demangled = abi::__cxa_demangle(mangled, nullptr, &len, &ok);
+
+    bt += '#';
+    bt += std::to_string(i++);
+    bt += ' ';
+    bt += (ok == 0 ? demangled : mangled);
+    bt += "\n";
+    free(demangled);
+  }
+  return bt;
+} catch (...) {
+  return std::string{};
+}
+#endif
+
 #ifdef FUTURES_COUNT_ALLOC
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <iostream>
 #include <sstream>
-
 
 namespace {
 template <typename T, std::size_t N>
