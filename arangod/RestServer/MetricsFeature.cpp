@@ -66,7 +66,7 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
   options->addOption("--server.export-read-write-metrics",
-                     "record read write metrics",
+                     "record document read/write metrics",
                      new BooleanParameter(&_exportReadWriteMetrics),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30706);
