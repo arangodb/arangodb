@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 // use non-throwing, non-allocating std::from_chars etc. from standard library
 
@@ -418,7 +419,7 @@ std::string decodeHex(std::string const& value);
 void escapeRegexParams(std::string& out, const char* ptr, size_t length);
 std::string escapeRegexParams(std::string const& in);
 
-namespace impl {
+namespace detail {
 template <typename T>
 auto constexpr isStringOrView = std::is_same_v<std::string, std::decay_t<T>> ||
                                 std::is_same_v<std::string_view, std::decay_t<T>>;
@@ -443,9 +444,13 @@ template <typename... Iters>
 auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
   auto result = std::string{};
 
-  result.reserve((std::distance(iters.first, iters.second) + ... + 0));
+  auto const newcap =
+      static_cast<std::size_t>((std::distance(iters.first, iters.second) + ... + 0));
+  result.reserve(newcap);
 
   ([&] { result.append(iters.first, iters.second); }(), ...);
+
+  TRI_ASSERT(newcap == result.length());
 
   return result;
 }
@@ -467,7 +472,8 @@ auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
   auto const valueSizes = std::distance(head.first, head.second) +
                           (std::distance(tail.first, tail.second) + ... + 0);
   auto const delimSizes = sizeof...(Iters) * delim.size();
-  result.reserve(valueSizes + delimSizes);
+  auto const newcap = valueSizes + delimSizes;
+  result.reserve(newcap);
 
   result.append(head.first, head.second);
 
@@ -477,6 +483,8 @@ auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
         result.append(tail.first, tail.second);
       }(),
       ...);
+
+  TRI_ASSERT(newcap == result.length());
 
   return result;
 }
@@ -493,7 +501,7 @@ auto joinImplStr(std::string_view delim, Args&&... args) -> std::string {
     return joinImplIter(delim, std::make_pair(args.begin(), args.end())...);
   }
 }
-}  // namespace impl
+}  // namespace detail
 
 /// @brief Creates a string concatenation of all its arguments.
 /// Arguments that aren't either a std::string, std::string_view,
@@ -501,7 +509,7 @@ auto joinImplStr(std::string_view delim, Args&&... args) -> std::string {
 /// or via `to_string`.
 template <typename... Args>
 auto concatT(Args&&... args) -> std::string {
-  return impl::concatImplStr(impl::toStringOrView(args)...);
+  return detail::concatImplStr(detail::toStringOrView(args)...);
 }
 
 /// @brief Creates a string, joining all of its arguments delimited by delim.
@@ -510,7 +518,7 @@ auto concatT(Args&&... args) -> std::string {
 /// or via `to_string`.
 template <typename... Args>
 auto joinT(std::string_view delim, Args&&... args) -> std::string {
-  return impl::joinImplStr(delim, impl::toStringOrView(args)...);
+  return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
 
 }  // namespace StringUtils
