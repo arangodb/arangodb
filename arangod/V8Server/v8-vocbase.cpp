@@ -1638,9 +1638,11 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder options;
-
   if (args.Length() >= 2 && args[1]->IsObject()) {
     TRI_V8ToVPack(isolate, options, args[1], false);
+  } else {
+    options.openObject();
+    options.close();
   }
 
   VPackBuilder users;
