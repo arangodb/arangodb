@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade libunwind to v1.5.
+
 * Added startup option `--javascript.tasks` to allow turning off JavaScript 
   tasks if not needed. The default value for this option is `true`, meaning 
   JavaScript tasks are available as before.
