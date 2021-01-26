@@ -182,9 +182,8 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
     } else if (desStatus == transaction::Status::ABORTED) {
       msg.append("aborting transaction)");
     }
-    Result res = network::resultFromBody(answer, TRI_ERROR_TRANSACTION_INTERNAL);
-    res.appendErrorMessage(msg);
-    return res;
+    return network::resultFromBody(answer, TRI_ERROR_TRANSACTION_INTERNAL)
+        .withError([&](result::Error& err) { err.appendErrorMessage(msg); });
   }
   LOG_TOPIC("fb343", DEBUG, Logger::TRANSACTIONS)
       << "failed to begin transaction on " << resp.destination;
