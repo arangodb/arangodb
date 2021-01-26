@@ -352,6 +352,180 @@ TEST(MetricsTest, test_gauge_float) {
   gauge_test<float>();
 }
 
+TEST(MetricsTest, test_gauge_operations_uint64) {
+  Gauge<uint64_t> g(0, "gauge", "Test gauge");
+
+  ASSERT_EQ(0, g.load());
+
+  // assignment
+  g = 0;
+  ASSERT_EQ(0, g.load());
+  
+  g = 123456;
+  ASSERT_EQ(123456, g.load());
+
+  g = 0;
+  ASSERT_EQ(0, g.load());
+  
+  // prefix increment
+  {
+    ASSERT_EQ(1, (++g).load());
+    ASSERT_EQ(1, g.load());
+  }
+  
+  g = 42;
+  ASSERT_EQ(42, g.load());
+  
+  // prefix decrement
+  {
+    ASSERT_EQ(41, (--g).load());
+    ASSERT_EQ(41, g.load());
+  }
+
+  g = 95;
+  ASSERT_EQ(95, g.load());
+
+  // fetch_add
+  {
+    ASSERT_EQ(95, g.fetch_add(27));
+    ASSERT_EQ(95 + 27, g.load());
+  }
+
+  g = 12345;
+  ASSERT_EQ(12345, g.load());
+
+  // fetch_sub
+  {
+    ASSERT_EQ(12345, g.fetch_sub(123));
+    ASSERT_EQ(12345 - 123, g.load());
+  }
+  
+  g = 9999;
+
+  // operator+=
+  {
+    ASSERT_EQ(9999 + 49, (g += 49).load());
+    ASSERT_EQ(9999 + 49, g.load());
+  }
+  
+  g = 9999;
+
+  // operator-=
+  {
+    ASSERT_EQ(9999 - 49, (g -= 49).load());
+    ASSERT_EQ(9999 - 49, g.load());
+  }
+  
+  g = 9999;
+
+  // operator*=
+  {
+    ASSERT_EQ(9999 * 11, (g *= 11).load());
+    ASSERT_EQ(9999 * 11, g.load());
+  }
+  
+  g = 9999;
+  
+  // operator/=
+  {
+    ASSERT_EQ(9999 / 11, (g /= 11).load());
+    ASSERT_EQ(9999 / 11, g.load());
+  }  
+
+  g = 0;
+  {
+    ASSERT_EQ(0, (g /= 10).load());
+    ASSERT_EQ(0, g.load());
+  }  
+}
+
+TEST(MetricsTest, test_gauge_operations_double) {
+  Gauge<double> g(0.0, "gauge", "Test gauge");
+  
+  ASSERT_DOUBLE_EQ(0.0, g.load());
+
+  // assignment
+  g = 0.0;
+  ASSERT_DOUBLE_EQ(0.0, g.load());
+  
+  g = 42.1;
+  ASSERT_DOUBLE_EQ(42.1, g.load());
+  
+  g = 0.0;
+  ASSERT_DOUBLE_EQ(0.0, g.load());
+
+  // prefix increment
+  {
+    ASSERT_DOUBLE_EQ(1.0, (++g).load());
+    ASSERT_DOUBLE_EQ(1.0, g.load());
+  }
+  
+  g = 42.433;
+  ASSERT_DOUBLE_EQ(42.433, g.load());
+  
+  // prefix decrement
+  {
+    ASSERT_DOUBLE_EQ(41.433, (--g).load());
+    ASSERT_DOUBLE_EQ(41.433, g.load());
+  }
+
+  g = 95.91;
+  ASSERT_DOUBLE_EQ(95.91, g.load());
+
+  // fetch_add
+  {
+    ASSERT_DOUBLE_EQ(95.91, g.fetch_add(27.33));
+    ASSERT_DOUBLE_EQ(95.91 + 27.33, g.load());
+  }
+
+  g = 12345.55;
+  ASSERT_DOUBLE_EQ(12345.55, g.load());
+
+  // fetch_sub
+  {
+    ASSERT_DOUBLE_EQ(12345.55, g.fetch_sub(123.33));
+    ASSERT_DOUBLE_EQ(12345.55 - 123.33, g.load());
+  }
+  
+  g = 9999.913;
+
+  // operator+=
+  {
+    ASSERT_DOUBLE_EQ(9999.913 + 49.1, (g += 49.1).load());
+    ASSERT_DOUBLE_EQ(9999.913 + 49.1, g.load());
+  }
+  
+  g = 9999.0001;
+
+  // operator-=
+  {
+    ASSERT_DOUBLE_EQ(9999.0001 - 49.1132, (g -= 49.1132).load());
+    ASSERT_DOUBLE_EQ(9999.0001 - 49.1132, g.load());
+  }
+  
+  g = 9999.0041;
+
+  // operator*=
+  {
+    ASSERT_DOUBLE_EQ(9999.0041 * 11.44, (g *= 11.44).load());
+    ASSERT_DOUBLE_EQ(9999.0041 * 11.44, g.load());
+  }
+  
+  g = 9999.002;
+  
+  // operator/=
+  {
+    ASSERT_DOUBLE_EQ(9999.002 / 11.5, (g /= 11.5).load());
+    ASSERT_DOUBLE_EQ(9999.002 / 11.5, g.load());
+  }  
+
+  g = 0.0;
+  {
+    ASSERT_DOUBLE_EQ(0.0, (g /= 10.0).load());
+    ASSERT_DOUBLE_EQ(0.0, g.load());
+  }  
+}
+
 template<typename Scale> void histogram_test(Scale const& scale) {
 
   using T = typename Scale::value_type;

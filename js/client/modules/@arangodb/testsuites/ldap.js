@@ -2,27 +2,27 @@
 /* global print */
 'use strict';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / DISCLAIMER
-// /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-// / @author Heiko Kernbach
+// ////////////////////////////////////////////////////////////////////////////
+// DISCLAIMER
+//
+// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// Copyright 2014 triagens GmbH, Cologne, Germany
+//
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Copyright holder is ArangoDB GmbH, Cologne, Germany
+//
+// @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -48,6 +48,7 @@ const testPaths = {
   'ldap': [tu.pathForTesting('client/authentication')],
   'ldaprole': [tu.pathForTesting('client/authentication')],
   'ldapsearch': [tu.pathForTesting('client/authentication')],
+  'ldapsearchplaceholder': [tu.pathForTesting('client/authentication')],
   'ldaprolesimple': [tu.pathForTesting('client/authentication')],
   'ldapsearchsimple': [tu.pathForTesting('client/authentication')]
 };
@@ -93,6 +94,14 @@ const ldapModeSearchConf = Object.assign({}, sharedConf, {
   'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/'
 });
 
+const ldapModeSearchPlaceholderConf = Object.assign({}, sharedConf, {
+  // Search Mode #2 RoleSearch:
+  'ldap.search-filter': 'uid={USER}',
+  'ldap.search-attribute': '',
+  'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+  'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/'
+});
+
 const ldapModeRolesSimpleConf = Object.assign({}, ldapModeRolesConf, prefixSuffix);
 const ldapModeSearchSimpleConf = Object.assign({}, ldapModeSearchConf, prefixSuffix);
 
@@ -108,6 +117,10 @@ const tests = {
   ldapModeSearch: {
     name: 'ldapModeSearch',
     conf: ldapModeSearchConf
+  },
+  ldapModeSearchPlaceholder: {
+    name: 'ldapModeSearchPlaceholder',
+    conf: ldapModeSearchPlaceholderConf
   },
   ldapModeRolesPrefixSuffix: {
     name: 'ldapModeRolesPrefixSuffix',
@@ -181,6 +194,30 @@ function authenticationLdapSearchMode (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearch.conf);
 }
 
+function authenticationLdapSearchModePlaceholder (options) {
+  if (options.skipLdap === true) {
+    print('skipping Ldap Authentication tests!');
+    return {
+      authenticationLdapPermissions: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+  const opts = parseOptions(options);
+  if (options.cluster) {
+    options.dbServers = 2;
+    options.coordinators = 2;
+  }
+
+  print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
+  let testCases = tu.scanTestPaths(testPaths.ldapsearchplaceholder, options);
+
+  print('Performing #2 Test: Search Mode');
+  print(opts.ldapModeSearch.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPlaceholder.conf);
+}
+
 function authenticationLdapRolesModePrefixSuffix (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
@@ -232,10 +269,11 @@ function authenticationLdapRolesMode (options) {
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   // just a convenience wrapper for the regular tests
-  testFns['ldap'] = [ 'ldaprole', 'ldapsearch', 'ldaprolesimple', 'ldapsearchsimple' ];
+  testFns['ldap'] = [ 'ldaprole', 'ldapsearch', 'ldapsearchplaceholder', 'ldaprolesimple', 'ldapsearchsimple' ];
 
   testFns['ldaprole'] = authenticationLdapRolesMode;
   testFns['ldapsearch'] = authenticationLdapSearchMode;
+  testFns['ldapsearchplaceholder'] = authenticationLdapSearchModePlaceholder;
   testFns['ldaprolesimple'] = authenticationLdapRolesModePrefixSuffix;
   testFns['ldapsearchsimple'] = authenticationLdapSearchModePrefixSuffix;
 

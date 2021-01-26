@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,27 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Heiko Kernbach
+/// @author Lars Maier
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/SharedPRNG.h"
-#include "Basics/splitmix64.h"
+#ifndef ARANGODB_PREGEL_GREENSPUN_DATETIME_H
+#define ARANGODB_PREGEL_GREENSPUN_DATETIME_H 1
 
-using namespace arangodb::basics;
+#include <Greenspun/Interpreter.h>
 
-std::unique_ptr<SharedPRNG> SharedPRNG::_global = std::make_unique<SharedPRNG>();
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
-PaddedPRNG::PaddedPRNG() {}
+namespace arangodb {
+namespace greenspun {
 
-void PaddedPRNG::seed(uint64_t seed1, uint64_t seed2) {
-  _prng.seed(seed1, seed2);
-}
+void RegisterAllDateTimeFunctions(Machine& ctx);
 
-SharedPRNG::SharedPRNG() : _mask(SharedPRNG::_stripes - 1) {
-  splitmix64 seeder(0xdeadbeefdeadbeefULL);
-  for (size_t i = 0; i < _stripes; i++) {
-    uint64_t seed1 = seeder.next();
-    uint64_t seed2 = seeder.next();
-    _prng[i].seed(seed1, seed2);
-  }
-}
+}  // namespace greenspun
+}  // namespace arangodb
+
+#endif

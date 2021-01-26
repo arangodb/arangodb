@@ -32,6 +32,7 @@ let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
+let isCluster = require("internal").isCluster();
 
 function restoreIntegrationSuite () {
   'use strict';
@@ -69,6 +70,393 @@ function restoreIntegrationSuite () {
 
     tearDown: function () {
       db._drop(cn);
+    },
+    
+    testRestoreAutoIncrementKeyGenerator: function () {
+      if (isCluster) {
+        // auto-increment key-generator not supported on cluster
+        return;
+      }
+
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2,
+            keyOptions: { type: "autoincrement", lastValue: 12345, increment: 3, offset: 19 }
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let p = c.properties();
+        assertEqual("autoincrement", p.keyOptions.type);
+        assertEqual(12345, p.keyOptions.lastValue);
+        assertEqual(3, p.keyOptions.increment);
+        assertEqual(19, p.keyOptions.offset);
+
+        let lastValue = p.keyOptions.lastValue;
+        for (let i = 0; i < 10; ++i) {
+          c.insert({});
+          p = c.properties();
+          let newLastValue = p.keyOptions.lastValue;
+          assertTrue(newLastValue > lastValue);
+          lastValue = newLastValue;
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestorePaddedKeyGenerator: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2,
+            keyOptions: { type: "padded", lastValue: 12345 }
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let p = c.properties();
+        assertEqual("padded", p.keyOptions.type);
+        assertEqual(12345, p.keyOptions.lastValue);
+
+        let lastValue = p.keyOptions.lastValue;
+        for (let i = 0; i < 10; ++i) {
+          c.insert({});
+          p = c.properties();
+          let newLastValue = p.keyOptions.lastValue;
+          assertTrue(newLastValue > lastValue);
+          lastValue = newLastValue;
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithRepeatedDocuments: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 1000; ++i) {
+          // will generate keys such as test0, test0, test1, test1 etc.
+          data.push({ type: 2300, data: { _key: "test" + Math.floor(i / 2), value: i, overwrite: (i % 2 === 1) } });
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+        
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        assertEqual(data.length / 2, c.count());
+        for (let i = 0; i < data.length / 2; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual((i * 2) + 1, doc.value);
+          assertTrue(doc.overwrite);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreInsertRemove: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 10; ++i) {
+          data.push({ type: 2300, data: { _key: "test" + i, value: i, old: true } });
+        }
+        for (let i = 0; i < 6; ++i) {
+          data.push({ type: 2302, key: "test" + i });
+        }
+        for (let i = 4; i < 7; ++i) {
+          data.push({ type: 2300, data: { _key: "test" + i, value: i * 2, overwrite: true } });
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+        
+        let args = ['--collection', cn, '--import-data', 'true', '--overwrite', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn), count = c.count();
+        assertEqual(6, count);
+        for (let i = 0; i < 4; ++i) {
+          assertFalse(c.exists("test" + i));
+        }
+        for (let i = 4; i < 7; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i * 2, doc.value);
+          assertTrue(doc.overwrite);
+          assertFalse(doc.hasOwnProperty('old'));
+        }
+        for (let i = 8; i < 10; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i, doc.value);
+          assertTrue(doc.old);
+          assertFalse(doc.hasOwnProperty('overwrite'));
+        }  
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithLineBreaksInData: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 1000; ++i) {
+          data.push({ type: 2300, data: { _key: "test" + i, value: i } });
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => '\n' + JSON.stringify(d)).join('\n\n'));
+        
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i, doc.value);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithEnvelopesWithDumpJsonFile: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 5000; ++i) {
+          data.push({ type: 2300, data: { _key: "test" + i, value: i } });
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+        
+        fn = fs.join(path, "dump.json");
+        fs.write(fn, JSON.stringify({
+          useEnvelopes: true
+        }));
+        
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i, doc.value);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithEnvelopesNoDumpJsonFile: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 5000; ++i) {
+          data.push({ type: 2300, data: { _key: "test" + i, value: i } });
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+        
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i, doc.value);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithoutEnvelopesWithDumpJsonFile: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 5000; ++i) {
+          data.push({ _key: "test" + i, value: i });
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+        
+        fn = fs.join(path, "dump.json");
+        fs.write(fn, JSON.stringify({
+          useEnvelopes: false
+        }));
+        
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i, doc.value);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithoutEnvelopesNoDumpJsonFile: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 5000; ++i) {
+          data.push({ _key: "test" + i, value: i });
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+        
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i, doc.value);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
     },
     
     testRestoreNumericGloballyUniqueId: function () {

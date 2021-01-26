@@ -204,6 +204,21 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestHandler/RestGraphHandler.cpp
 )
 
+set(LIB_ARANGO_PREGEL_AIR_SOURCES
+  Pregel/Algos/AIR/AIR.cpp
+  Pregel/Algos/AIR/AbstractAccumulator.cpp
+  Pregel/Algos/AIR/AccumulatorOptions.cpp
+  Pregel/Algos/AIR/Accumulators.cpp
+  Pregel/Algos/AIR/EdgeData.cpp
+  Pregel/Algos/AIR/GraphFormat.cpp
+  Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/MessageData.cpp
+  Pregel/Algos/AIR/MessageFormat.cpp
+  Pregel/Algos/AIR/VertexComputation.cpp
+  Pregel/Algos/AIR/VertexData.cpp
+  Pregel/Algos/AIR/WorkerContext.cpp
+)
+
 set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
@@ -229,6 +244,8 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
   Pregel/Recovery.cpp
+  Pregel/Reports.cpp
+  Pregel/Reports.h
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
@@ -793,6 +810,7 @@ add_library(arango_graph STATIC
 
 add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_SOURCES}
+  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
 )
 
 add_library(arango_aql STATIC
@@ -952,6 +970,7 @@ target_link_libraries(arango_network arango::validation)
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
+target_link_libraries(arango_pregel arango_greenspun)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)

@@ -280,9 +280,9 @@ class RocksDBEngine final : public StorageEngine {
 
   Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
                              RocksDBLogValue&& logValue);
-  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
-                                  velocypack::Slice const& slice,
-                                  RocksDBLogValue&& logValue);
+  Result writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
+                                     velocypack::Slice const& slice,
+                                     RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
   std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings() const;

@@ -540,7 +540,10 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        collinfo.keyGenerator()->track(p, l);
+        int res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
     }
 
@@ -600,6 +603,14 @@ bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
 bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
   return true;
 }
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to demangle hidden collections names
+////////////////////////////////////////////////////////////////////////////////
+#ifndef USE_ENTERPRISE
+void ClusterMethods::realNameFromSmartName(std::string&) { }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

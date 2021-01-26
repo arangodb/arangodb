@@ -196,8 +196,8 @@ function CollectionSuite () {
       try {
         c.load();
         for (let i = 0; i < 10000; i++) {
-          c.insert({_from:"c/v"+(i/100), _to:"c/v"+i});
-          c.insert({_to:"c/v"+(i/100), _from:"c/v"+i});
+          c.insert({_from:"c/v"+ (i / 100), _to:"c/v" + i});
+          c.insert({_to:"c/v"+ (i / 100), _from:"c/v" + i});
         }
 
         // check if edge cache is present
@@ -215,22 +215,22 @@ function CollectionSuite () {
 
         c.loadIndexesIntoMemory();
 
-        // checking if edge cach grew
+        // checking if edge cache grew
         idxs = c.getIndexes(true);
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
-            assertTrue(idx.figures.cacheSize > initial[i].cacheSize, idx);
+            assertTrue(idx.figures.cacheSize >= initial[i].cacheSize, idx);
             assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
             initial[i] = idx.figures;
           }
         });
 
         for (let i = 0; i < 10000; i++) {
-          c.outEdges("c/v"+(i/100));
-          c.inEdges("c/v"+(i/100));
+          c.outEdges("c/v" + (i / 100));
+          c.inEdges("c/v" + (i / 100));
         }
         idxs = c.getIndexes(true);
-        // cache was filled same queries, hit rate must be about
+        // cache was filled with same queries, hit rate must now increase
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
             let diff = Math.abs(initial[i].cacheSize - idx.figures.cacheSize);

@@ -100,7 +100,7 @@ class OutCache {
 template <typename M>
 class ArrayOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<velocypack::StringRef, std::vector<M>>> _shardMap;
+  std::unordered_map<PregelShard, std::unordered_map<std::string, std::vector<M>>> _shardMap;
 
   void _removeContainedMessages() override;
 
