@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow toggling the document read/write counters and histograms via the
+  new startup option `--server.export-read-write-metrics false`. This 
+  option defaults to `true`, so these metrics will be exposed by default.
+
 * Upgrade libunwind to v1.5.
 
 * Added startup option `--javascript.tasks` to allow turning off JavaScript 
