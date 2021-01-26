@@ -25,6 +25,7 @@
 #define ARANGOD_STATISTICS_SERVER_STATISTICS_H 1
 
 #include <cstdint>
+#include <optional>
 #include "RestServer/Metrics.h"
 
 namespace arangodb {
