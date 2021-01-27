@@ -608,6 +608,52 @@ function summarizeStats(deltaStats) {
   return sumStats;
 }
 
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief aggregates information from /proc about the SUT
+// //////////////////////////////////////////////////////////////////////////////
+
+function getMemProfSnapshot(instanceInfo, options, counter) {
+  if (options.memprof) {
+    let opts = {
+      method: 'get'
+    };
+    if (instanceInfo.hasOwnProperty('authOpts')) {
+      opts['jwt'] = crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    }
+    instanceInfo.arangods.forEach((arangod) => {
+      print(arangod)
+      // arangod.endpoint
+      // arangod.rootDir
+      let fn = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
+      print(fn)
+  //    arango.reconnect(arango.endpoint,
+  //                     '_system',
+  //                     options.username,
+  //                     options.password,
+  //                     false
+  //                    );
+      //    let heapdump = arango.GET('/_admin/status/memory');
+      let heapdumpReply = download(arangod.url + '/_admin/status/memory', opts);
+      if (heapdumpReply.code === 200) {
+        fs.write(fn, heapdumpReply.body);
+      } else {
+        print(`Acquiring Heapdump for ${fn} failed!`);
+        print(heapdumpReply);
+      }
+    });
+//    arango.reconnect(instanceInfo.endpoint,
+//                     '_system',
+//                     options.username,
+//                     options.password,
+//                     false
+//                    );
+  }
+}
+
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief if we forgot about processes, this safe guard will clean up and mark failed
 // //////////////////////////////////////////////////////////////////////////////
@@ -1905,6 +1951,10 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   fs.makeDirectoryRecursive(appDir);
   fs.makeDirectoryRecursive(tmpDir);
 
+  if (options.memprof) {
+    process.env['MALLOC_CONF'] = `prof:true,prof_prefix:${fs.join(rootDir,'jeprof.out')}`;
+  }
+
   let args = makeArgsArangod(options, appDir, role, tmpDir);
   let endpoint;
   let port;
@@ -2231,6 +2281,7 @@ exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
 exports.summarizeStats = summarizeStats;
+exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;
