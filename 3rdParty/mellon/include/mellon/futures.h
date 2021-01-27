@@ -347,7 +347,7 @@ struct continuation_base : memory_buffer<prealloc_size>, box<T> {
   std::mutex _abt_guard;
   std::vector<std::string>* get_backtrace() { return &_abt; }
 #else
-  std::string* get_backtrace() { return nullptr; }
+  std::vector<std::string>* get_backtrace() { return nullptr; }
 #endif
 };
 
