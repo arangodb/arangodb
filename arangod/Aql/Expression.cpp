@@ -1395,7 +1395,7 @@ AqlValue Expression::executeSimpleExpressionTernary(AstNode const* node,
 
 /// @brief execute an expression of type SIMPLE with EXPANSION
 AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool& mustDestroy) {
-  TRI_ASSERT(node->numMembers() == 5);
+  TRI_ASSERT(node->numMembers() >= 5);
   mustDestroy = false;
 
   // LIMIT
@@ -1426,6 +1426,20 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
     return AqlValue(AqlValueHintEmptyArray());
   }
 
+  // PRUNE
+  AstNode const* pruneNode = node->numMembers() > 5 ? node->getMember(5) : nullptr;
+  if (pruneNode != nullptr && pruneNode->type == NODE_TYPE_NOP) {
+    pruneNode = nullptr;
+  } else if (pruneNode != nullptr && pruneNode->isConstant()) {
+    if (pruneNode->isFalse()) {
+      // prune expression is always false
+      pruneNode = nullptr;
+    } else {
+      // prune expression is always true
+      return AqlValue(AqlValueHintEmptyArray());
+    }
+  }
+
   // FILTER
   AstNode const* filterNode = node->getMember(2);
 
@@ -1442,7 +1456,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
   }
 
   auto iterator = node->getMember(0);
-  auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
+  auto currentVariable = static_cast<Variable*>(iterator->getMember(0)->getData());
+  auto indexVariable = iterator->numMembers() > 2 ? static_cast<Variable*>(iterator->getMember(2)->getData()) : nullptr;
   auto levels = node->getIntValue(true);
 
   AqlValue value;
@@ -1476,12 +1491,15 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
         AqlValue item = v.at(i, localMustDestroy, false);
         AqlValueGuard guard(item, localMustDestroy);
 
-        bool const isArray = item.isArray();
-
-        if (!isArray || level == levels) {
+        if (level == levels) {
           builder.add(item.slice());
-        } else if (isArray && level < levels) {
-          flatten(item, level + 1);
+        } else {
+          bool const isArray = item.isArray();
+          if (!isArray) {
+            builder.add(item.slice());
+          } else if (level < levels) {
+            flatten(item, level + 1);
+          }
         }
       }
     };
@@ -1510,7 +1528,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
   AqlValueGuard guard(value, mustDestroy);
 
   // RETURN
-  // the default is to return array member unmodified
+  // the default is to return array members unmodified
   AstNode const* projectionNode = node->getMember(1);
 
   if (node->getMember(4)->type != NODE_TYPE_NOP) {
@@ -1518,12 +1536,16 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
     projectionNode = node->getMember(4);
   }
 
-  if (filterNode == nullptr && projectionNode->type == NODE_TYPE_REFERENCE &&
-      value.isArray() && offset == 0 && count == INT64_MAX) {
+  if (pruneNode == nullptr &&
+      filterNode == nullptr && 
+      projectionNode->type == NODE_TYPE_REFERENCE &&
+      value.isArray() && 
+      offset == 0 && 
+      count == INT64_MAX) {
     // no filter and no projection... we can return the array as it is
     auto other = static_cast<Variable const*>(projectionNode->getData());
 
-    if (other->id == variable->id) {
+    if (other->id == currentVariable->id) {
       // simplify `v[*]` to just `v` if it's already an array
       mustDestroy = true;
       guard.steal();
@@ -1532,6 +1554,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
   }
   
   auto& vopts = _expressionContext->trx().vpackOptions();
+
+  VPackBuffer<uint8_t> indexValueBuffer;
+  VPackBuilder indexValueBuilder(indexValueBuffer);
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -1544,9 +1569,29 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
     AqlValueGuard guard(item, localMustDestroy);
 
     AqlValueMaterializer materializer(&vopts);
-    setVariable(variable, materializer.slice(item, false));
+    // set our current value (CURRENT)
+    setVariable(currentVariable, materializer.slice(item, false));
+    
+    if (indexVariable != nullptr) {
+      indexValueBuilder.clear();
+      indexValueBuilder.add(VPackValue(i));
+      setVariable(indexVariable, indexValueBuilder.slice());
+    }
 
     bool takeItem = true;
+
+    if (pruneNode != nullptr) {
+      // have a prune expression
+      AqlValue sub = executeSimpleExpression(pruneNode, localMustDestroy, false);
+      
+      bool prune = sub.toBoolean();
+      if (localMustDestroy) {
+        sub.destroy();
+      }
+      if (prune) {
+        break;
+      }
+    }
 
     if (filterNode != nullptr) {
       // have a filter
@@ -1573,8 +1618,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
       }
     }
 
-    clearVariable(variable);
-
     if (takeItem && count > 0) {
       // number of items to pick was restricted
       if (--count == 0) {
@@ -1583,6 +1626,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
       }
     }
   }
+   
+  // it is sufficient to clear the variable only once at the end of the loop
+  clearVariable(currentVariable);
 
   builder.close();
   mustDestroy = true;
@@ -1593,7 +1639,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node, bool&
 AqlValue Expression::executeSimpleExpressionIterator(AstNode const* node,
                                                      bool& mustDestroy) {
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() == 2 || node->numMembers() == 3);
 
   return executeSimpleExpression(node->getMember(1), mustDestroy, true);
 }
@@ -1732,7 +1778,7 @@ std::string Expression::typeString() {
 }
 
 void Expression::setVariable(Variable const* variable, arangodb::velocypack::Slice value) {
-  _variables.emplace(variable, value);
+  _variables[variable] = value;
 }
 
 void Expression::clearVariable(Variable const* variable) { _variables.erase(variable); }

@@ -2147,7 +2147,12 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     getMember(1)->stringify(buffer, verbose, failIfLong);
     // filter
     buffer->appendChar(',');
-
+    
+    auto pruneNode = numMembers() > 5 ? getMember(5) : nullptr;
+    if (pruneNode != nullptr && pruneNode->type != NODE_TYPE_NOP) {
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" PRUNE "));
+      pruneNode->getMember(5)->stringify(buffer, verbose, failIfLong);
+    }
     auto filterNode = getMember(2);
     if (filterNode != nullptr && filterNode->type != NODE_TYPE_NOP) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" FILTER "));
@@ -2176,6 +2181,10 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(0)->stringify(buffer, verbose, failIfLong);
+    if (numMembers() > 2) {
+      buffer->appendChar(',');
+      getMember(2)->stringify(buffer, verbose, failIfLong);
+    }
     buffer->appendChar(')');
     return;
   }
@@ -2347,6 +2356,7 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_OPERATOR_BINARY_NIN:
       getMember(0)->findVariableAccess(currentPath, paths, findme);
       getMember(1)->findVariableAccess(currentPath, paths, findme);
+      // index variable (member #2) is not relevant here
       break;
 
     case NODE_TYPE_EXPANSION: {
@@ -2363,6 +2373,10 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
       auto returnNode = getMember(4);
       if (returnNode != nullptr) {
         returnNode->findVariableAccess(currentPath, paths, findme);
+      }
+      auto pruneNode = numMembers() > 5 ? getMember(5) : nullptr;
+      if (pruneNode != nullptr) {
+        pruneNode->findVariableAccess(currentPath, paths, findme);
       }
     } break;
     // no sub nodes, not a variable:
@@ -2486,6 +2500,15 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
         return this;
       }
       ret = getMember(1)->findReference(findme);
+      if (ret != nullptr) {
+        return ret;
+      }
+      if (numMembers() > 2) {
+        ret = getMember(2)->findReference(findme);
+        if (ret != nullptr) {
+          return ret;
+        }
+      }
       break;
 
     case NODE_TYPE_EXPANSION: {
@@ -2502,6 +2525,17 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
       ret = getMember(1)->findReference(findme);
       if (ret != nullptr) {
         return ret;
+      }
+      auto pruneNode = numMembers() > 5 ? getMember(5) : nullptr;
+      if (pruneNode != nullptr) {
+        if (pruneNode->getMember(0) == findme) {
+          return this;
+        }
+
+        ret = pruneNode->getMember(0)->findReference(findme);
+        if (ret != nullptr) {
+          return ret;
+        }
       }
       auto filterNode = getMember(2);
       if (filterNode != nullptr) {

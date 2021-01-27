@@ -420,7 +420,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> object_elements_list;
 %type <node> object_element;
 %type <strval> object_element_name;
-%type <intval> array_filter_operator;
+%type <intval> array_flatten_operator;
+%type <node> optional_array_prune;
 %type <node> optional_array_filter;
 %type <node> optional_array_limit;
 %type <node> optional_array_return;
@@ -1718,12 +1719,24 @@ object_element:
     }
   ;
 
-array_filter_operator:
+array_flatten_operator:
     T_TIMES {
       $$ = 1;
     }
-  | array_filter_operator T_TIMES {
+  | array_flatten_operator T_TIMES {
       $$ = $1 + 1;
+    }
+  ;
+
+optional_array_prune:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_STRING expression {
+      if (!TRI_CaseEqualString($1.value, "PRUNE")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+      $$ = $2;
     }
   ;
 
@@ -1848,10 +1861,14 @@ reference:
       if (variable == nullptr) {
         // variable does not exist
         // now try special variables
-        if (ast->scopes()->canUseCurrentVariable() && strcmp($1.value, "CURRENT") == 0) {
-          variable = ast->scopes()->getCurrentVariable();
-        } else if (strcmp($1.value, Variable::NAME_CURRENT) == 0) {
-          variable = ast->scopes()->getCurrentVariable();
+        if (ast->scopes()->canUseIteratorVariables()) {
+          Scopes::IteratorVariables ev = ast->scopes()->getIteratorVariables();
+
+          if (strcmp($1.value, "CURRENT") == 0 || strcmp($1.value, Variable::NAME_CURRENT) == 0) {
+            variable = ev.current;
+          } else if (strcmp($1.value, "INDEX") == 0) {
+            variable = ev.index;
+          }
         }
       }
 
@@ -1885,8 +1902,7 @@ reference:
         // create a dummy passthru node that reduces and evaluates the expansion first
         // and the expansion on top of the stack won't be chained with any other expansions
         $$ = parser->ast()->createNodePassthru($2);
-      }
-      else {
+      } else {
         $$ = $2;
       }
     }
@@ -1913,8 +1929,7 @@ reference:
         TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
         current->changeMember(1, parser->ast()->createNodeAttributeAccess(current->getMember(1), $3.value, $3.length));
         $$ = $1;
-      }
-      else {
+      } else {
         $$ = parser->ast()->createNodeAttributeAccess($1, $3.value, $3.length);
       }
     }
@@ -1927,8 +1942,7 @@ reference:
         TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
         current->changeMember(1, parser->ast()->createNodeBoundAttributeAccess(current->getMember(1), $3));
         $$ = $1;
-      }
-      else {
+      } else {
         $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
       }
     }
@@ -1941,12 +1955,11 @@ reference:
         TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
         current->changeMember(1, parser->ast()->createNodeIndexedAccess(current->getMember(1), $3));
         $$ = $1;
-      }
-      else {
+      } else {
         $$ = parser->ast()->createNodeIndexedAccess($1, $3);
       }
     }
-  | reference T_ARRAY_OPEN array_filter_operator {
+  | reference T_ARRAY_OPEN array_flatten_operator {
       // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
       if ($3 > 1 && $1->type == NODE_TYPE_EXPANSION) {
         // create a dummy passthru node that reduces and evaluates the expansion first
@@ -1955,35 +1968,37 @@ reference:
       }
 
       // create a temporary iterator variable
-      std::string const nextName = parser->ast()->variables()->nextName() + "_";
-
+      std::string const currentVariable = parser->ast()->variables()->nextName() + "_";
+      std::string const indexVariable = parser->ast()->variables()->nextName() + "_";
+ 
+      AstNode const* iterated = $1;
       if ($1->type == NODE_TYPE_EXPANSION) {
-        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1->getMember(1));
-        parser->pushStack(iterator);
+        iterated = $1->getMember(1);
       }
-      else {
-        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1);
-        parser->pushStack(iterator);
-      }
+      auto iterator = parser->ast()->createNodeIterator(currentVariable, indexVariable, iterated);
+      parser->pushStack(iterator);
 
       auto scopes = parser->ast()->scopes();
-      scopes->stackCurrentVariable(scopes->getVariable(nextName));
-    } optional_array_filter optional_array_limit optional_array_return T_ARRAY_CLOSE %prec EXPANSION {
+      Scopes::IteratorVariables ev;
+      ev.current = scopes->getVariable(currentVariable);
+      ev.index = scopes->getVariable(indexVariable);
+      scopes->stackIteratorVariables(ev);
+    } optional_array_prune optional_array_filter optional_array_limit optional_array_return T_ARRAY_CLOSE %prec EXPANSION {
       auto scopes = parser->ast()->scopes();
-      scopes->unstackCurrentVariable();
+      scopes->unstackIteratorVariables();
 
       auto iterator = static_cast<AstNode const*>(parser->popStack());
       auto variableNode = iterator->getMember(0);
       TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
       auto variable = static_cast<Variable const*>(variableNode->getData());
 
+      // $5 = PRUNE, $6 = FILTER, $7 = LIMT, $8 = RETURN/projection
       if ($1->type == NODE_TYPE_EXPANSION) {
-        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);
+        auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $6, $7, $8, $5);
         $1->changeMember(1, expand);
         $$ = $1;
-      }
-      else {
-        $$ = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);
+      } else {
+        $$ = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $6, $7, $8, $5);
       }
     }
   ;

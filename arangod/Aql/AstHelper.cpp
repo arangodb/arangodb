@@ -48,7 +48,7 @@ bool accessesSearchVariableViaReference(AstNode const* current, Variable const* 
       return false;
     }
     auto it = current->getMemberUnchecked(0);
-    if (it->type != NODE_TYPE_ITERATOR || it->numMembers() != 2) {
+    if (it->type != NODE_TYPE_ITERATOR || (it->numMembers() != 2 && it->numMembers() != 3)) {
       return false;
     }
 
@@ -92,7 +92,7 @@ bool isTargetVariable(AstNode const* node,
       TRI_ASSERT(it);
 
       // The expansion is at the very end
-      if (it->type == NODE_TYPE_ITERATOR && it->numMembers() == 2) {
+      if (it->type == NODE_TYPE_ITERATOR && (it->numMembers() == 2 || it->numMembers() == 3)) {
         if (it->getMember(0)->type != NODE_TYPE_VARIABLE) {
           return false;
         }

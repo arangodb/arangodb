@@ -527,7 +527,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs,
         auto* itr = node->getMemberUnchecked(0);
         auto* ref = node->getMemberUnchecked(1);
 
-        if (itr && itr->numMembers() == 2) {
+        if (itr && itr->numMembers() >= 2) {
           auto* var = itr->getMemberUnchecked(0);
           auto* root = itr->getMemberUnchecked(1);
 

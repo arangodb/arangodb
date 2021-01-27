@@ -112,7 +112,7 @@ Variable const* Scope::getVariable(char const* name, size_t nameLength, bool all
 }
 
 /// @brief create the scopes
-Scopes::Scopes() : _activeScopes(), _currentVariables() {
+Scopes::Scopes() {
   _activeScopes.reserve(4);
 }
 
@@ -228,24 +228,23 @@ Variable const* Scopes::getVariable(char const* name, size_t nameLength,
   return nullptr;
 }
 
-/// @brief get the $CURRENT variable
-Variable const* Scopes::getCurrentVariable() const {
-  if (_currentVariables.empty()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, Variable::NAME_CURRENT);
+/// @brief get the $CURRENT and $INDEX variables
+Scopes::IteratorVariables Scopes::getIteratorVariables() const {
+  if (_iteratorVariables.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no expansion variables registered");
   }
-  auto result = _currentVariables.back();
-  TRI_ASSERT(result != nullptr);
+  auto result = _iteratorVariables.back();
   return result;
 }
 
-/// @brief stack a $CURRENT variable from the stack
-void Scopes::stackCurrentVariable(Variable const* variable) {
-  _currentVariables.emplace_back(variable);
+/// @brief stack a $CURRENT and $INDEX variable on the stack
+void Scopes::stackIteratorVariables(Scopes::IteratorVariables const& ev) {
+  _iteratorVariables.emplace_back(ev);
 }
 
-/// @brief unregister the $CURRENT variable from the stack
-void Scopes::unstackCurrentVariable() {
-  TRI_ASSERT(!_currentVariables.empty());
+/// @brief unregister the $CURRENT and $INDEX variable from the stack
+void Scopes::unstackIteratorVariables() {
+  TRI_ASSERT(!_iteratorVariables.empty());
 
-  _currentVariables.pop_back();
+  _iteratorVariables.pop_back();
 }

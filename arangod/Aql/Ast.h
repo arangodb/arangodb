@@ -304,11 +304,15 @@ class Ast {
   AstNode* createNodeArrayLimit(AstNode const*, AstNode const*);
 
   /// @brief create an AST expansion node
-  AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeExpansion(int64_t levels, AstNode const* iterator, 
+                               AstNode const* expanded, AstNode const* filter,
+                               AstNode const* limit, AstNode const* projection,
+                               AstNode const* prune);
 
   /// @brief create an AST iterator node
-  AstNode* createNodeIterator(char const*, size_t, AstNode const*);
+  AstNode* createNodeIterator(std::string const& currentVariable,  
+                              std::string const& indexVariable, 
+                              AstNode const* expanded);
 
   /// @brief create an AST null value node
   AstNode* createNodeValueNull();

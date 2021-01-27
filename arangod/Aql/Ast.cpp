@@ -1032,19 +1032,15 @@ AstNode* Ast::createNodeArrayLimit(AstNode const* offset, AstNode const* count) 
 /// @brief create an AST expansion node, with or without a filter
 AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
                                   AstNode const* expanded, AstNode const* filter,
-                                  AstNode const* limit, AstNode const* projection) {
+                                  AstNode const* limit, AstNode const* projection,
+                                  AstNode const* prune) {
   AstNode* node = createNode(NODE_TYPE_EXPANSION);
-  node->reserve(5);
+  node->reserve(6);
   node->setIntValue(levels);
 
   node->addMember(iterator);
   node->addMember(expanded);
-
-  if (filter == nullptr) {
-    node->addMember(createNodeNop());
-  } else {
-    node->addMember(filter);
-  }
+  node->addMember(filter == nullptr ? createNodeNop() : filter);
 
   if (limit == nullptr) {
     node->addMember(createNodeNop());
@@ -1053,30 +1049,27 @@ AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
     node->addMember(limit);
   }
 
-  if (projection == nullptr) {
-    node->addMember(createNodeNop());
-  } else {
-    node->addMember(projection);
-  }
+  node->addMember(projection == nullptr ? createNodeNop() : projection);
+  node->addMember(prune == nullptr ? createNodeNop() : prune);
 
-  TRI_ASSERT(node->numMembers() == 5);
+  TRI_ASSERT(node->numMembers() == 6);
 
   return node;
 }
 
 /// @brief create an AST iterator node
-AstNode* Ast::createNodeIterator(char const* variableName, size_t nameLength,
+AstNode* Ast::createNodeIterator(std::string const& currentVariable,
+                                 std::string const& indexVariable,
                                  AstNode const* expanded) {
-  if (variableName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
   AstNode* node = createNode(NODE_TYPE_ITERATOR);
-  node->reserve(2);
+  node->reserve(3);
 
-  AstNode* variable = createNodeVariable(variableName, nameLength, false);
-  node->addMember(variable);
+  // iteration variable (CURRENT)
+  node->addMember(createNodeVariable(currentVariable.data(), currentVariable.size(), false));
   node->addMember(expanded);
+
+  // index variable (INDEX)
+  node->addMember(createNodeVariable(indexVariable.data(), indexVariable.size(), false));
 
   return node;
 }
@@ -2463,7 +2456,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
         return false;
       }
       auto it = node->getMemberUnchecked(0);
-      if (it->type != NODE_TYPE_ITERATOR || it->numMembers() != 2) {
+      if (it->type != NODE_TYPE_ITERATOR || (it->numMembers() != 2 && it->numMembers() != 3)) {
         return false;
       }
 

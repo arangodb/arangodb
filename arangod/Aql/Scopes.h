@@ -49,7 +49,6 @@ class Scope {
   /// @brief destroy the scope
   ~Scope();
 
- public:
   /// @brief return the name of a scope type
   std::string typeName() const;
 
@@ -94,8 +93,12 @@ class Scopes {
 
   /// @brief destroy the scopes
   ~Scopes();
+  
+  struct IteratorVariables {
+    Variable const* current;
+    Variable const* index;
+  };
 
- public:
   /// @brief number of currently active scopes
   inline size_t numActive() const { return _activeScopes.size(); }
 
@@ -105,10 +108,10 @@ class Scopes {
     return _activeScopes.back()->type();
   }
 
-  /// @brief whether or not the $CURRENT variable can be used at the caller's
+  /// @brief whether or not the $CURRENT and $INDEX variables can be used at the caller's
   /// current position
-  inline bool canUseCurrentVariable() const {
-    return (!_currentVariables.empty());
+  inline bool canUseIteratorVariables() const {
+    return !_iteratorVariables.empty();
   }
 
   /// @brief start a new scope
@@ -139,21 +142,21 @@ class Scopes {
   /// this also allows using special pseudo vars such as OLD and NEW
   Variable const* getVariable(char const*, size_t, bool) const;
 
-  /// @brief get the $CURRENT variable
-  Variable const* getCurrentVariable() const;
+  /// @brief get the $CURRENT and $INDEX variables
+  IteratorVariables getIteratorVariables() const;
 
-  /// @brief stack a $CURRENT variable from the stack
-  void stackCurrentVariable(Variable const*);
+  /// @brief stack the $CURRENT and $INDEX variable on the stack
+  void stackIteratorVariables(IteratorVariables const& ev);
 
-  /// @brief unregister the $CURRENT variable from the stack
-  void unstackCurrentVariable();
+  /// @brief unregister the $CURRENT and $INDEX variables from the stack
+  void unstackIteratorVariables();
 
  private:
   /// @brief currently active scopes
   std::vector<std::unique_ptr<Scope>> _activeScopes;
 
   /// @brief a stack with aliases for the $CURRENT variable
-  std::vector<Variable const*> _currentVariables;
+  std::vector<Scopes::IteratorVariables> _iteratorVariables;
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -342,10 +342,11 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
           // Check that the expansion [*] contains no inline expression;
           // members 2, 3 and 4 correspond to FILTER, LIMIT and RETURN,
           // respectively.
-          TRI_ASSERT(node->numMembers() == 5);
+          TRI_ASSERT(node->numMembers() >= 5);
           if (node->getMemberUnchecked(2)->type != NODE_TYPE_NOP ||
               node->getMemberUnchecked(3)->type != NODE_TYPE_NOP ||
-              node->getMemberUnchecked(4)->type != NODE_TYPE_NOP) {
+              node->getMemberUnchecked(4)->type != NODE_TYPE_NOP ||
+              (node->numMembers() > 5 && node->getMemberUnchecked(5)->type != NODE_TYPE_NOP)) {
             notSupported = true;
             return node;
           }
