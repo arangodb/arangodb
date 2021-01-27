@@ -39,6 +39,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #ifdef USE_ENTERPRISE

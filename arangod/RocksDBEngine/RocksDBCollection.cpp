@@ -109,54 +109,71 @@ struct TimeTracker {
   TimeTracker(TimeTracker const&) = delete;
   TimeTracker& operator=(TimeTracker const&) = delete;
 
-  explicit TimeTracker(Histogram<log_scale_t<float>>& histogram) noexcept
-      : histogram(histogram),
-        start(getTime()) {}
+  explicit TimeTracker(arangodb::TransactionStatistics const& statistics, 
+                       std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram) noexcept
+      : statistics(statistics),
+        histogram(histogram) {
+    if (statistics._exportReadWriteMetrics) {
+      // time measurement is not free. only do it if metrics are enabled
+      start = getTime();
+    }
+  }
 
   ~TimeTracker() {
-    // unit is seconds here
-    histogram.count(std::chrono::duration<float>(getTime() - start).count());
+    if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only do it if metrics are enabled
+      // unit is seconds here
+      histogram->get().count(std::chrono::duration<float>(getTime() - start).count());
+    }
   }
 
   std::chrono::time_point<std::chrono::steady_clock> getTime() const noexcept {
+    TRI_ASSERT(statistics._exportReadWriteMetrics);
     return std::chrono::steady_clock::now();
   }
   
-  Histogram<log_scale_t<float>>& histogram;
-  std::chrono::time_point<std::chrono::steady_clock> const start;
+  arangodb::TransactionStatistics const& statistics;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram;
+  std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 /// @brief helper RAII class to count and time-track a CRUD read operation
 struct ReadTimeTracker : public TimeTracker {
-  ReadTimeTracker(Histogram<log_scale_t<float>>& histogram, 
-                  arangodb::TransactionStatistics& /*statistics*/) noexcept
-      : TimeTracker(histogram) {}
+  ReadTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+                  arangodb::TransactionStatistics& statistics) noexcept
+      : TimeTracker(statistics, histogram) {}
 };
 
 /// @brief helper RAII class to count and time-track CRUD write operations
 struct WriteTimeTracker : public TimeTracker {
-  WriteTimeTracker(Histogram<log_scale_t<float>>& histogram, 
+  WriteTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
                    arangodb::TransactionStatistics& statistics,
                    arangodb::OperationOptions const& options) noexcept
-      : TimeTracker(histogram) {
-    if (options.isSynchronousReplicationFrom.empty()) {
-      ++statistics._numWrites;
-    } else {
-      ++statistics._numWritesReplication;
+      : TimeTracker(statistics, histogram) {
+    if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only track writes if metrics are enabled
+      if (options.isSynchronousReplicationFrom.empty()) {
+        ++(statistics._numWrites->get());
+      } else {
+        ++(statistics._numWritesReplication->get());
+      }
     }
   }
 };
 
 /// @brief helper RAII class to count and time-track truncate operations
 struct TruncateTimeTracker : public TimeTracker {
-  TruncateTimeTracker(Histogram<log_scale_t<float>>& histogram, 
+  TruncateTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
                       arangodb::TransactionStatistics& statistics,
                       arangodb::OperationOptions const& options) noexcept
-      : TimeTracker(histogram) {
-    if (options.isSynchronousReplicationFrom.empty()) {
-      ++statistics._numTruncates;
-    } else {
-      ++statistics._numTruncatesReplication;
+      : TimeTracker(statistics, histogram) {
+    if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only track truncates if metrics are enabled
+      if (options.isSynchronousReplicationFrom.empty()) {
+        ++(statistics._numTruncates->get());
+      } else {
+        ++(statistics._numTruncatesReplication->get());
+      }
     }
   }
 };
@@ -663,7 +680,8 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 ///////////////////////////////////
 
 Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
-  ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_usec, _statistics, options);
+
+  ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_sec, _statistics, options);
 
   TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
@@ -896,7 +914,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
                                IndexIterator::DocumentCallback const& cb) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
 
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_usec, _statistics);
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
 
   rocksdb::PinnableSlice ps;
   Result res;
@@ -920,7 +938,8 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb) const {
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_usec, _statistics);
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  
   return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
 }
 
@@ -928,7 +947,7 @@ bool RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_usec, _statistics);
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
 
   bool ret = false;
 
@@ -952,7 +971,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_usec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
 
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -1025,7 +1044,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_usec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
 
   Result res;
 
@@ -1152,7 +1171,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_usec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
   
   Result res;
 
@@ -1269,7 +1288,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
   
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_usec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
 
   VPackSlice keySlice;
 
@@ -1304,7 +1323,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_usec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
 
   return remove(trx, documentId, /*expectedRev*/ RevisionId::none(), previousMdr, options);
 }

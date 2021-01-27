@@ -355,6 +355,22 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
     _state.databaseName = vocbase.name();
   }
 }
+  
+std::shared_ptr<DatabaseInitialSyncer> DatabaseInitialSyncer::create(TRI_vocbase_t& vocbase,
+                                                                     ReplicationApplierConfiguration const& configuration) {
+  // enable make_shared on a class with a private constructor
+  struct Enabler final : public DatabaseInitialSyncer {
+    Enabler(TRI_vocbase_t& vocbase, ReplicationApplierConfiguration const& configuration)
+      : DatabaseInitialSyncer(vocbase, configuration) {}
+  };
+
+  return std::make_shared<Enabler>(vocbase, configuration);
+}
+  
+/// @brief return information about the leader
+replutils::LeaderInfo DatabaseInitialSyncer::leaderInfo() const {
+  return _config.leader;
+}
 
 /// @brief run method, performs a full synchronization
 Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory,
@@ -378,32 +394,35 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     Result r;
     if (!_config.isChild()) {
-      r = _config.leader.getState(_config.connection, _config.isChild(), context);
-
-      if (r.fail()) {
-        return r;
-      }
-    }
-
-    TRI_ASSERT(!_config.leader.endpoint.empty());
-    TRI_ASSERT(_config.leader.serverId.isSet());
-    TRI_ASSERT(_config.leader.majorVersion != 0);
-
-    LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION) << "client: got leader state";
-
-    if (!_config.isChild()) {
       // enable patching of collection count for ShardSynchronization Job
-      std::string patchCount = StaticStrings::Empty;
+      std::string patchCount;
       if (_config.applier._skipCreateDrop &&
           _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
           _config.applier._restrictCollections.size() == 1) {
         patchCount = *_config.applier._restrictCollections.begin();
       }
-
-      r = batchStart(patchCount);
+    
+      // with a 3.8 leader, this call combines fetching the leader state with starting the batch.
+      // this saves us one request per shard.
+      // a 3.7 leader will does not return the leader state together with this call, so we need
+      // to be prepared for not yet getting it here
+      r = batchStart(context, patchCount);
+      
+      if (r.ok() && !_config.leader.serverId.isSet()) {
+        // a 3.7 leader, which does not return leader state when stating a batch.
+        // so we need to fetch the leader state in addition
+        r = _config.leader.getState(_config.connection, _config.isChild(), context);
+      }
+        
       if (r.fail()) {
         return r;
       }
+     
+      TRI_ASSERT(!_config.leader.endpoint.empty());
+      TRI_ASSERT(_config.leader.serverId.isSet());
+      TRI_ASSERT(_config.leader.majorVersion != 0);
+
+      LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION) << "client: got leader state";
 
       startRecurringBatchExtension();
     }
@@ -416,9 +435,9 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     VPackBuilder inventoryResponse;  // hold response data
     if (!collections.isArray()) {
       // caller did not supply an inventory, we need to fetch it
-      Result res = fetchInventory(inventoryResponse);
-      if (!res.ok()) {
-        return res;
+      r = fetchInventory(inventoryResponse);
+      if (!r.ok()) {
+        return r;
       }
       // we do not really care about the state response
       collections = inventoryResponse.slice().get("collections");
@@ -463,7 +482,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     if (!_config.isChild()) {
       batchFinish();
     }
-    return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
+    return Result(TRI_ERROR_INTERNAL, "an unknown exception occurred");
   }
 }
 
@@ -473,7 +492,7 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
 
-  auto r = batchStart();
+  auto r = batchStart(nullptr);
   if (r.fail()) {
     return r;
   }
@@ -1864,6 +1883,16 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_config.applier._includeFoxxQueues) {
     url += "&includeFoxxQueues=true";
   }
+  
+  // use an optmization here for shard synchronization: only fetch the inventory 
+  // including a single shard. this can greatly reduce the size of the response.
+  if (ServerState::instance()->isDBServer() &&
+      !_config.isChild() &&
+      _config.applier._skipCreateDrop &&
+      _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
+      _config.applier._restrictCollections.size() == 1) {
+    url += "&collection=" + arangodb::basics::StringUtils::urlEncode(*(_config.applier._restrictCollections.begin()));
+  }
 
   // send request
   _config.progress.set("fetching leader inventory from " + url);
@@ -1889,7 +1918,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
             url + ": invalid response type for initial data. expecting array");
   }
 
-  VPackSlice const slice = builder.slice();
+  VPackSlice slice = builder.slice();
   if (!slice.isObject()) {
     LOG_TOPIC("3b1e6", DEBUG, Logger::REPLICATION)
         << "client: DatabaseInitialSyncer::run - inventoryResponse is not an "
@@ -1900,7 +1929,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
                       _config.leader.endpoint + url + ": invalid JSON");
   }
 
-  return Result();
+  return r;
 }
 
 /// @brief handle the inventory response of the leader
@@ -2063,9 +2092,9 @@ Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
   return {};
 }
 
-Result DatabaseInitialSyncer::batchStart(std::string const& patchCount) {
+Result DatabaseInitialSyncer::batchStart(char const* context, std::string const& patchCount) {
   return _config.batch.start(_config.connection, _config.progress,
-                             _config.leader, _config.state.syncerId, patchCount);
+                             _config.leader, _config.state.syncerId, context, patchCount);
 }
 
 Result DatabaseInitialSyncer::batchExtend() {

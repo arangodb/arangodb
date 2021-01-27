@@ -89,7 +89,8 @@ std::string const TTL("ttl");
 using namespace std::chrono;
 
 SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescription const& desc)
-  : ActionBase(feature, desc) {
+  : ActionBase(feature, desc),
+    _leaderInfo(arangodb::replutils::LeaderInfo::createEmpty()) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -123,6 +124,18 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
     setState(FAILED);
   }
 }
+  
+std::string const& SynchronizeShard::clientInfoString() const { 
+  return _clientInfoString;
+}
+
+arangodb::replutils::LeaderInfo const& SynchronizeShard::leaderInfo() const {
+  return _leaderInfo;
+}
+
+void SynchronizeShard::setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo) {
+  _leaderInfo = leaderInfo;
+}
 
 SynchronizeShard::~SynchronizeShard() = default;
 
@@ -141,12 +154,12 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
                                       std::string const& endpoint,
                                       std::string const& database, std::string const& clientId,
                                       double timeout, uint64_t& id) {
-  std::string error("startReadLockOnLeader: Failed to get read lock - ");
-
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
+  
+  std::string error("startReadLockOnLeader: Failed to get read lock");
 
   network::RequestOptions options;
   options.database = database;
@@ -165,18 +178,17 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
       id = std::stoull(idSlice.get(ID).copyString());
-      return arangodb::Result();
     } catch (std::exception const&) {
-      error += " expecting id to be uint64_t ";
+      error += " - expecting id to be uint64_t ";
       error += idSlice.toJson();
-      return arangodb::Result(TRI_ERROR_INTERNAL, error);
+      res.reset(TRI_ERROR_INTERNAL, error);
     } catch (...) {
       TRI_ASSERT(false);
-      return arangodb::Result(TRI_ERROR_INTERNAL, error);
+      res.reset(TRI_ERROR_INTERNAL, error);
     }
-  } else {
-    return res;
-  }
+  } 
+
+  return res;
 }
 
 static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
@@ -225,14 +237,15 @@ static arangodb::Result addShardFollower(
     std::string const& database, std::string const& shard, uint64_t lockJobId,
     std::string const& clientId, SyncerId const syncerId,
     std::string const& clientInfoString, double timeout = 120.0) {
-  LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
-      << "addShardFollower: tell the leader to put us into the follower "
-         "list for " << database << "/" << shard << "...";
 
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
+  
+  LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
+      << "addShardFollower: tell the leader to put us into the follower "
+         "list for " << database << "/" << shard << "...";
 
   try {
     auto& df = pool->config().clusterInfo->server().getFeature<DatabaseFeature>();
@@ -482,15 +495,13 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
 }
 
 static arangodb::ResultT<SyncerId> replicationSynchronize(
+    SynchronizeShard& job,
     std::shared_ptr<arangodb::LogicalCollection> const& col,
-    VPackSlice const& config, std::string const& clientInfoString,
+    VPackSlice const& config,
     std::shared_ptr<VPackBuilder> sy) {
 
   auto& vocbase = col->vocbase();
-
   auto database = vocbase.name();
-
-  auto shard = col->name();
 
   std::string leaderId;
   if (config.hasKey(LEADER_ID)) {
@@ -499,11 +510,11 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config, database);
-  configuration.setClientInfo(clientInfoString);
+  configuration.setClientInfo(job.clientInfoString());
   configuration.validate();
 
   // database-specific synchronization
-  auto syncer = std::make_shared<DatabaseInitialSyncer>(vocbase, configuration);
+  auto syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
   if (!leaderId.empty()) {
     syncer->setLeaderId(leaderId);
@@ -512,7 +523,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    std::string const context = "synchronization of shard " + database + "/" + col->name();
+    std::string const context = "syncing shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
   
     if (r.fail()) {
@@ -521,6 +532,9 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
           << ": " << r.errorMessage();
       THROW_ARANGO_EXCEPTION(r);
     }
+
+    // store leader info for later, so that the next phases don't need to acquire it again
+    job.setLeaderInfo(syncer->leaderInfo());
 
     {
       VPackObjectBuilder o(sy.get());
@@ -558,6 +572,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 static arangodb::Result replicationSynchronizeCatchup(
+    SynchronizeShard const& job,
     application_features::ApplicationServer& server, VPackSlice const& conf,
     double timeout, TRI_voc_tick_t& tickReached, bool& didTimeout) {
   didTimeout = false;
@@ -574,33 +589,34 @@ static arangodb::Result replicationSynchronizeCatchup(
 
   auto& df = server.getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
+  auto syncer = DatabaseTailingSyncer::create(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
-    syncer.setLeaderId(leaderId);
+    syncer->setLeaderId(leaderId);
   }
 
   Result r;
   try {
     std::string const context = "catching up delta changes for shard " + database + "/" + collection;
-    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout, context.c_str());
+    r = syncer->syncCollectionCatchup(job.leaderInfo(), collection, timeout, tickReached, didTimeout, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
-    r = Result(ex.code(), ex.what());
+    r.reset(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    r = Result(TRI_ERROR_INTERNAL, ex.what());
+    r.reset(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
+    r.reset(TRI_ERROR_INTERNAL, "unknown exception");
   }
 
   if (r.fail()) {
-    LOG_TOPIC("fa2ab", ERR, Logger::REPLICATION)
-        << "syncCollectionFinalize failed: " << r.errorMessage();
+    LOG_TOPIC("fa2ab", WARN, Logger::REPLICATION)
+        << "syncCollectionCatchup failed: " << r.errorMessage();
   }
 
   return r;
 }
 
-static arangodb::Result replicationSynchronizeFinalize(application_features::ApplicationServer& server,
+static arangodb::Result replicationSynchronizeFinalize(SynchronizeShard const& job,
+                                                       application_features::ApplicationServer& server,
                                                        VPackSlice const& conf) {
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
@@ -614,26 +630,26 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
 
   auto& df = server.getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
+  auto syncer = DatabaseTailingSyncer::create(guard.database(), configuration, fromTick, /*useTick*/ true);
 
   if (!leaderId.empty()) {
-    syncer.setLeaderId(leaderId);
+    syncer->setLeaderId(leaderId);
   }
 
   Result r;
   try {
-    std::string const context = "final synchronization of shard " + database + "/" + collection;
-    r = syncer.syncCollectionFinalize(collection, context.c_str());
+    std::string const context = "finalizing shard " + database + "/" + collection;
+    r = syncer->syncCollectionFinalize(job.leaderInfo(), collection, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
-    r = Result(ex.code(), ex.what());
+    r.reset(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    r = Result(TRI_ERROR_INTERNAL, ex.what());
+    r.reset(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
+    r.reset(TRI_ERROR_INTERNAL, "unknown exception");
   }
 
   if (r.fail()) {
-    LOG_TOPIC("e8056", ERR, Logger::REPLICATION)
+    LOG_TOPIC("e8056", WARN, Logger::REPLICATION)
         << "syncCollectionFinalize failed: " << r.errorMessage();
   }
 
@@ -852,7 +868,7 @@ bool SynchronizeShard::first() {
       auto details = std::make_shared<VPackBuilder>();
 
       ResultT<SyncerId> syncRes =
-          replicationSynchronize(collection, config.slice(), _clientInfoString, details);
+          replicationSynchronize(*this, collection, config.slice(), details);
 
       auto sy = details->slice();
       auto const endTime = system_clock::now();
@@ -1018,7 +1034,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // We only allow to hold this lock for 60% of the timeout time, so to avoid
     // any issues with Locks timeouting on the Leader and the Client not
     // recognizing it.
-    res = replicationSynchronizeCatchup(feature().server(), builder.slice(),
+    res = replicationSynchronizeCatchup(*this, feature().server(), builder.slice(),
                                         timeout * 0.6, tickReached, didTimeout);
 
     if (!res.ok()) {
@@ -1096,7 +1112,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     builder.add("connectTimeout", VPackValue(60.0));
   }
 
-  res = replicationSynchronizeFinalize(feature().server(), builder.slice());
+  res = replicationSynchronizeFinalize(*this, feature().server(), builder.slice());
 
   if (!res.ok()) {
     std::string errorMessage(

@@ -806,18 +806,18 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 /// and indexes, up to a specific tick value
 /// while the collections are iterated over, there will be a global lock so
 /// that there will be consistent view of collections & their properties
-/// The list of collections will be sorted if sort function is given
+/// The list of collections will be sorted by type and then name
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
                               std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
   TRI_ASSERT(result.isOpenObject());
+  
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
+  std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>> dataSourceById;
 
   // cycle on write-lock
   WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
-
-  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
-  std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>> dataSourceById;
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
@@ -876,32 +876,10 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
     }
 
     if (collection->id().id() <= maxTick) {
-      result.openObject();
-
-      // why are indexes added separately, when they are added by
-      //  collection->toVelocyPackIgnore !?
-      result.add(VPackValue("indexes"));
-      collection->getIndexesVPack(result, [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
-        // we have to exclude the primary and edge index for dump / restore
-        switch (idx->type()) {
-          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-          case Index::TRI_IDX_TYPE_EDGE_INDEX:
-            return false;
-          default:
-            flags = Index::makeFlags(Index::Serialize::Basics);
-            return !idx->isHidden();
-        }
-      });
-      result.add("parameters", VPackValue(VPackValueType::Object));
-      collection->toVelocyPackIgnore(
-          result, {"objectId", "path", "statusString", "indexes"},
-          LogicalDataSource::Serialization::Inventory);
-      result.close();
-
-      result.close();
+      collection->toVelocyPackForInventory(result);
     }
   }
-  result.close();  // </collection>
+  result.close();  // </collections>
 
   result.add("views", VPackValue(VPackValueType::Array, true));
   LogicalView::enumerate(*this, [&result](LogicalView::ptr const& view) -> bool {

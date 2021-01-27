@@ -43,8 +43,8 @@ struct ResourceUsage final {
     peakMemoryUsage = 0;
   }
 
-  std::atomic<size_t> memoryUsage;
-  std::atomic<size_t> peakMemoryUsage;
+  std::atomic<std::size_t> memoryUsage;
+  std::atomic<std::size_t> peakMemoryUsage;
 };
 
 struct ResourceMonitor final {
@@ -57,18 +57,18 @@ struct ResourceMonitor final {
 
   ~ResourceMonitor();
 
-  void setMemoryLimit(size_t value) { maxMemoryUsage = value; }
+  void setMemoryLimit(std::size_t value) { maxMemoryUsage = value; }
 
-  size_t memoryLimit() const { return maxMemoryUsage; }
+  std::size_t memoryLimit() const { return maxMemoryUsage; }
 
   /// @brief increase memory usage by <value> bytes. may throw!
-  void increaseMemoryUsage(size_t value);
+  void increaseMemoryUsage(std::size_t value);
 
-  void decreaseMemoryUsage(size_t value) noexcept;
+  void decreaseMemoryUsage(std::size_t value) noexcept;
 
   void clear() { currentResources.clear(); }
   
-  size_t peakMemoryUsage() const {
+  std::size_t peakMemoryUsage() const {
     return currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
   }
 
@@ -93,7 +93,7 @@ class ResourceUsageScope {
   ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
 
   /// @brief track <value> bytes of memory, may throw!
-  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, size_t value);
+  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, std::size_t value);
 
   ~ResourceUsageScope();
   
@@ -103,13 +103,13 @@ class ResourceUsageScope {
 
  private:
   /// @brief track <value> bytes of memory, may throw!
-  void increase(size_t value);
+  void increase(std::size_t value);
   
-  void decrease(size_t value) noexcept;
+  void decrease(std::size_t value) noexcept;
 
  private:
   ResourceMonitor& _resourceMonitor;
-  size_t _value;
+  std::size_t _value;
 };
 
 }  // namespace arangodb

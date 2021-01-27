@@ -2102,9 +2102,9 @@ void RestReplicationHandler::handleCommandSync() {
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(config));
+    syncer = GlobalInitialSyncer::create(config);
   } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, config));
+    syncer = DatabaseInitialSyncer::create(_vocbase, config);
   }
 
   Result r = syncer->run(config._incremental);

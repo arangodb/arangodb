@@ -148,6 +148,10 @@ class RocksDBReplicationContext {
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
                       bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
+  
+  // returns inventory for a single shard (DB server only!)
+  Result getInventory(TRI_vocbase_t& vocbase, std::string const& collectionName,
+                      velocypack::Builder&);
 
   void setPatchCount(std::string const& patchCount);
   std::string const& patchCount() const;

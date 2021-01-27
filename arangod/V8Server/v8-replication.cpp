@@ -220,7 +220,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   if (applierType == APPLIER_DATABASE) {
     // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
+    syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
     if (TRI_HasProperty(context, isolate, object, "leaderId")) {
       syncer->setLeaderId(TRI_ObjectToString(
@@ -230,7 +230,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     }
   } else if (applierType == APPLIER_GLOBAL) {
     configuration._skipCreateDrop = false;
-    syncer.reset(new GlobalInitialSyncer(configuration));
+    syncer = GlobalInitialSyncer::create(configuration);
   } else {
     TRI_ASSERT(false);
   }
