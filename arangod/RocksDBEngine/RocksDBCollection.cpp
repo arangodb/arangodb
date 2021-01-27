@@ -1619,7 +1619,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
