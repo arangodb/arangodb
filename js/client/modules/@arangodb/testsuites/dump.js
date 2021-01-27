@@ -146,14 +146,6 @@ class DumpRestoreHelper {
     } else {
       this.restoreOldConfig.setDatabase('_system');
     }
-    if (this.restoreOptions.activateFailurePoint) {
-      print("Activating failure point");
-      this.restoreConfig.activateFailurePoint();
-      this.restoreOldConfig.deactivateFailurePoint();
-    } else {
-      this.restoreConfig.deactivateFailurePoint();
-      this.restoreOldConfig.deactivateFailurePoint();
-    }
   }
   print (s) {
     print(CYAN + Date() + ': ' + this.which + ' and Restore - ' + s + RESET);
@@ -297,15 +289,7 @@ class DumpRestoreHelper {
     if (!this.restoreConfig.haveSetAllDatabases()) {
       this.restoreConfig.setDatabase(database);
     }
-    this.restoreConfig.disableContinue();
-    do {
-      this.results.restore = this.arangorestore();
-      if (this.results.restore.exitCode === 38) {
-        print("Failure point has terminated the application, restarting");
-        this.restoreConfig.enableContinue();
-      }
-    } while(this.results.restore.exitCode === 38);
-    this.restoreConfig.disableContinue();
+    this.results.restore = this.arangorestore();
     return this.validate(this.results.restore);
   }
 
