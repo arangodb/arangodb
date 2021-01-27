@@ -40,8 +40,8 @@ if (LINUX)
                   CFLAGS=${CMAKE_C_FLAGS}
                   CXXFLAGS=${CMAKE_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
-                  --disable-shared --enable-static
-    BUILD_COMMAND
+                  --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions
+          BUILD_COMMAND
       $(MAKE)
     BUILD_IN_SOURCE
       1
@@ -50,7 +50,6 @@ if (LINUX)
     STEP_TARGETS
       ${LIBUNWIND_LIB} libunwind
   )
-  # --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions
 
   set(LIBUNWIND_HOME "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}" PARENT_SCOPE)
   set(LIBUNWIND_LIB "${LIBUNWIND_LIB}" PARENT_SCOPE)
