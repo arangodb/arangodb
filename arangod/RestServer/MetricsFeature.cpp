@@ -68,7 +68,7 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "turn metrics for doiument read/write metrics on or off",
                      new BooleanParameter(&_exportReadWriteMetrics),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30706);
+                     .setIntroducedIn(30707);
 }
 
 bool MetricsFeature::exportAPI() const {
