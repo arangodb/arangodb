@@ -117,14 +117,17 @@ auto make_promise() -> std::pair<future<T, Tag>, promise<T, Tag>>;
 
 
 namespace detail {
+struct base_ptr_t {};
+inline constexpr base_ptr_t base_ptr{};
+
 #ifdef MELLON_RECORD_BACKTRACE
-extern thread_local std::string* current_backtrace_ptr;
-auto generate_backtrace_string() noexcept -> std::string;
+extern thread_local std::vector<std::string>* current_backtrace_ptr;
+auto generate_backtrace_string() noexcept -> std::vector<std::string>;
 #endif
 
 template <typename Tag, typename T>
 struct handler_helper {
-  static T abandon_promise(std::string* bt = nullptr) noexcept {
+  static T abandon_promise(std::vector<std::string>* bt = nullptr) noexcept {
 #ifdef MELLON_RECORD_BACKTRACE
     current_backtrace_ptr = bt;
 #endif
@@ -132,7 +135,7 @@ struct handler_helper {
   }
 
   template <typename U>
-  static void abandon_future(U&& u, std::string* bt = nullptr) noexcept {
+  static void abandon_future(U&& u, std::vector<std::string>* bt = nullptr) noexcept {
 #ifdef MELLON_RECORD_BACKTRACE
     current_backtrace_ptr = bt;
 #endif
@@ -300,7 +303,7 @@ auto insert_continuation_step(continuation_base<Tag, T>* base, G&& f) noexcept
     }
   }
 
-  return future<R, Tag>{step};
+  return future<R, Tag>{detail::base_ptr, step};
 }
 
 template <typename T>
@@ -340,9 +343,9 @@ struct continuation_base : memory_buffer<prealloc_size>, box<T> {
 
   std::atomic<continuation<T>*> _next = nullptr;
 #ifdef MELLON_RECORD_BACKTRACE
-  std::string _abt; // backtrace for abandoned objects
+  std::vector<std::string> _abt; // backtrace for abandoned objects
   std::mutex _abt_guard;
-  std::string* get_backtrace() { return &_abt; }
+  std::vector<std::string>* get_backtrace() { return &_abt; }
 #else
   std::string* get_backtrace() { return nullptr; }
 #endif
@@ -427,6 +430,8 @@ void insert_continuation_final(continuation_base<Tag, T>* base, F&& f) noexcept 
     delete base;
   }
 }
+
+
 }  // namespace detail
 
 template <typename T, typename Tag>
@@ -500,7 +505,7 @@ struct promise : promise_type_based_extension<T, Tag>,
 
   template <typename S, typename STag>
   friend auto make_promise() -> std::pair<future<S, STag>, promise<S, STag>>;
-  explicit promise(detail::continuation_start<Tag, T>* base) : _base(base) {}
+  explicit promise(detail::base_ptr_t, detail::continuation_start<Tag, T>* base) : _base(base) {}
   detail::unique_but_not_deleting_pointer<detail::continuation_start<Tag, T>> _base = nullptr;
 };
 
@@ -675,8 +680,8 @@ struct future_prototype {
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
   auto bind(G&& g) {
     using future_tag = typename future_trait<ReturnValue>::tag_type;
-    using value_type = typename future_trait<ReturnValue>::value_type;
-    auto&& [f, p] = make_promise<value_type, future_tag>();
+    using future_value_type = typename future_trait<ReturnValue>::value_type;
+    auto&& [f, p] = make_promise<future_value_type, future_tag>();
 
     move_self().finally([p = std::move(p), g = std::forward<G>(g)](T&& result) mutable noexcept {
       std::invoke(g, std::move(result)).fulfill(std::move(p));
@@ -690,15 +695,15 @@ struct future_prototype {
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
   auto bind_capture(G&& g) {
     using future_tag = typename future_trait<ReturnValue>::tag_type;
-    using value_type = typename future_trait<ReturnValue>::value_type;
-    auto&& [f, p] = make_promise<expect::expected<value_type>, future_tag>();
+    using future_value_type = typename future_trait<ReturnValue>::value_type;
+    auto&& [f, p] = make_promise<expect::expected<future_value_type>, future_tag>();
     move_self().finally([p = std::move(p), g = std::forward<G>(g)](T&& result) mutable noexcept {
       expect::expected<ReturnValue> expected_future =
           expect::captured_invoke(g, std::move(result));
       if (expected_future.has_error()) {
         std::move(p).fulfill(expected_future.error());
       } else {
-        std::move(expected_future).unwrap().finally([p = std::move(p)](value_type&& v) mutable noexcept {
+        std::move(expected_future).unwrap().finally([p = std::move(p)](future_value_type&& v) mutable noexcept {
           std::move(p).fulfill(std::in_place, std::move(v));
         });
       }
@@ -1149,7 +1154,7 @@ struct future
     a.swap(b);
   }
 
-  explicit future(detail::continuation_base<Tag, T>* ptr) noexcept
+  explicit future(detail::base_ptr_t, detail::continuation_base<Tag, T>* ptr) noexcept
       : _base(ptr) {}
 
  private:
@@ -1482,10 +1487,9 @@ auto make_promise() -> std::pair<future<T, Tag>, promise<T, Tag>> {
 #endif
   auto start =
       detail::tag_trait_helper<Tag>::template allocate_construct<detail::continuation_start<Tag, T>>();
-  return std::make_pair(future<T, Tag>{start}, promise<T, Tag>{start});
+  return std::make_pair(future<T, Tag>{detail::base_ptr, start},
+                        promise<T, Tag>{detail::base_ptr, start});
 }
-
-
 
 template <typename... Ts, template <typename> typename Fut, typename Tag>
 struct future_type_based_extensions<std::tuple<Ts...>, Fut, Tag>

@@ -15,13 +15,18 @@ const char* promise_abandoned_error::what() const noexcept {
 #define UNW_LOCAL_ONLY
 #include <cxxabi.h>
 #include <libunwind.h>
-#include <iostream>
+#include <sstream>
+#include <iomanip>
 
-thread_local std::string* detail::current_backtrace_ptr;
+#ifdef __linux__
+#include <elf.h>
+#include <sys/auxv.h>
+#endif
 
-auto detail::generate_backtrace_string() noexcept -> std::string try {
+thread_local std::vector<std::string>* detail::current_backtrace_ptr;
 
-  std::string bt;
+auto detail::generate_backtrace_string() noexcept -> std::vector<std::string> try {
+  std::vector<std::string> bt;
 
   unw_context_t context;
   unw_getcontext(&context);
@@ -29,27 +34,41 @@ auto detail::generate_backtrace_string() noexcept -> std::string try {
   unw_cursor_t cursor;
   unw_init_local(&cursor, &context);
 
-  std::size_t i = 1;
+#ifdef __linux__
+  // The address of the program headers of the executable.
+  long base = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
+#else
+  long base = 0;
+#endif
+
   while (unw_step(&cursor) > 0) {
+    unw_word_t offset, pc;
+    unw_get_reg(&cursor, UNW_REG_IP, &pc);
+
     constexpr size_t kMax = 1024;
-    char mangled[kMax];
-    unw_word_t offset;
-    unw_get_proc_name(&cursor, mangled, kMax, &offset);
+    char mangled[kMax + 1];
 
-    int ok;
-    size_t len = kMax;
-    char* demangled = abi::__cxa_demangle(mangled, nullptr, &len, &ok);
+    std::stringstream line;
+    line << "[+0x" << std::setfill('0') << std::setw (16) << std::hex << (pc - base) << "] ";
+    auto res = unw_get_proc_name(&cursor, mangled, kMax, &offset);
+    if (res == 0 || res == -UNW_ENOMEM) {
+      int ok;
+      size_t len = kMax;
+      char* demangled = abi::__cxa_demangle(mangled, nullptr, &len, &ok);
 
-    bt += '#';
-    bt += std::to_string(i++);
-    bt += ' ';
-    bt += (ok == 0 ? demangled : mangled);
-    bt += "\n";
-    free(demangled);
+      line << (ok == 0 ? demangled : mangled) << ' ' << "(+0x" << std::hex << offset << ')';
+      free(demangled);
+    } else if (res == -UNW_ENOINFO) {
+      line << "<no information available>";
+    } else {
+      line << "<symbol lookup failed: "<< -res << ">";
+    }
+    bt.emplace_back(line.str());
   }
+
   return bt;
 } catch (...) {
-  return std::string{};
+  return std::vector<std::string>{};
 }
 #endif
 

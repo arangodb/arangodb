@@ -67,6 +67,14 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   template <typename T>
   struct abandoned_promise_handler {
     T operator()() const noexcept {
+#ifdef MELLON_RECORD_BACKTRACE
+      if (mellon::detail::current_backtrace_ptr != nullptr) {
+        LOG_TOPIC("bbce8", INFO, arangodb::Logger::CRASH) << "the promise was abandoned here:";
+        for (size_t i = 0; i < mellon::detail::current_backtrace_ptr->size(); i++) {
+          LOG_TOPIC("bbce7", INFO, arangodb::Logger::CRASH) << '#' << (i+1) << ' ' << mellon::detail::current_backtrace_ptr->at(i);
+        }
+      }
+#endif
       // call arangodb crash handler for abandoned promise
       ::arangodb::CrashHandler::crash(
           "a promise was abandoned that could not be handled via exception");
@@ -77,6 +85,15 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   struct abandoned_promise_handler<::expect::expected<T>> {
     ::expect::expected<T> operator()() const noexcept {
       try {
+#ifdef MELLON_RECORD_BACKTRACE
+        if (mellon::detail::current_backtrace_ptr != nullptr) {
+          LOG_TOPIC("bbce6", INFO, arangodb::Logger::CRASH) << "the promise was abandoned here:";
+          for (size_t i = 0; i < mellon::detail::current_backtrace_ptr->size(); i++) {
+            LOG_TOPIC("bbce5", INFO, arangodb::Logger::CRASH) << '#' << (i+1) << ' ' << mellon::detail::current_backtrace_ptr->at(i);
+          }
+        }
+#endif
+        TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_PROMISE_ABANDONED);
       } catch (...) {
         return std::current_exception();
@@ -87,6 +104,14 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   template <typename T>
   struct abandoned_future_handler {
     void operator()(T&& t) const noexcept {
+#ifdef MELLON_RECORD_BACKTRACE
+      if (mellon::detail::current_backtrace_ptr != nullptr) {
+        LOG_TOPIC("bbce4", INFO, arangodb::Logger::CRASH) << "the future was abandoned here:";
+        for (size_t i = 0; i < mellon::detail::current_backtrace_ptr->size(); i++) {
+          LOG_TOPIC("bbce3", INFO, arangodb::Logger::CRASH) << '#' << (i+1) << ' ' << mellon::detail::current_backtrace_ptr->at(i);
+        }
+      }
+#endif
       TRI_ASSERT(false);
       if constexpr (::expect::is_expected_v<T>) {
         if (t.has_error()) {

@@ -9,7 +9,8 @@ foreach(_file IN LISTS immer_fuzzers)
   set_target_properties(${_target} PROPERTIES OUTPUT_NAME ${_output})
   target_compile_options(${_target} PUBLIC
     "-fsanitize=address"
-    "-fsanitize-coverage=trace-pc-guard")
+    #"-fsanitize-coverage=trace-pc-guard"
+          )
   target_link_libraries(${_target} PUBLIC
     "-fsanitize=address"
     immer-dev
