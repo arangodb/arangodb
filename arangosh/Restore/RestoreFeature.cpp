@@ -1541,6 +1541,7 @@ void RestoreFeature::prepare() {
     TRI_ASSERT(_options.inputPath.size() > 0);
     _options.inputPath.pop_back();
   }
+  TRI_NormalizePath(_options.inputPath);
 
   if (!_options.importStructure && !_options.importData) {
     LOG_TOPIC("1281f", FATAL, arangodb::Logger::RESTORE)

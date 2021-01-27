@@ -25,6 +25,7 @@
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "IResearchCommon.h"
 #include "IResearchKludge.h"
 #include "IResearchPrimaryKeyFilter.h"
@@ -274,6 +275,20 @@ inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions + meta._includeAllFields];
 }
 
+std::string getDocumentId(irs::string_ref collection,
+                          VPackSlice document) {
+  VPackStringRef const key = arangodb::transaction::helpers::extractKeyPart(document);
+  if (key.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to extract key value from document");
+  }
+  std::string resolved;
+  resolved.reserve(collection.size() + 1 + key.size());
+  resolved += collection;
+  resolved.push_back('/');
+  resolved.append(key.data(), key.size());
+  return resolved;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -322,9 +337,11 @@ Field& Field::operator=(Field&& rhs) {
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
 
-FieldIterator::FieldIterator(arangodb::transaction::Methods& trx)
+FieldIterator::FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection,  IndexId linkId)
     : _nameBuffer(BufferPool.emplace().release()),  // FIXME don't use shared_ptr
-      _trx(&trx) {
+      _trx(&trx), _collection(collection), _linkId(linkId),
+      _isDBServer(ServerState::instance()->isDBServer()) {
+
   // initialize iterator's value
 }
 
@@ -425,16 +442,22 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
       // base object isn't set
       return false;
     }
-
     auto const baseSlice = _stack.front().it.slice();
     auto& buffer = valueBuffer();
-
-    buffer = transaction::helpers::extractIdString(  // extract id
-        _trx->resolver(),                            // resolver
-        value,                                       // value
-        baseSlice                                    // base slice
-    );
-
+    if (_isDBServer) {
+      if (!_collection.empty()) {
+        buffer = getDocumentId(_collection, baseSlice);
+      } else {
+        LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
+          << "Value for `_id` attribute could not be indexed for document "
+          << transaction::helpers::extractKeyFromDocument(baseSlice).toString()
+          << ". To recover please recreate corresponding ArangoSearch link '" << _linkId << "'";
+        return false;
+      }
+    } else {
+        buffer = transaction::helpers::extractIdString(
+            _trx->resolver(), value, baseSlice);
+    }
     valueRef = buffer;
   } else {
     valueRef = iresearch::getStringRef(value);
@@ -635,6 +658,49 @@ void FieldIterator::next() {
   value = arangodb::LocalDocumentId(PrimaryKeyEndianness<Endianness>::pkToHost(
       *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(in.c_str())));
 
+  return true;
+}
+
+  StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn,
+                           VPackSlice const doc, IndexId lid)
+    : trx(t), document(doc), collection(cn),
+      linkId(lid), isDBServer(ServerState::instance()->isDBServer()) {}
+
+bool StoredValue::write(irs::data_output& out) const {
+  auto size = fields->size();
+  for (auto const& storedValue : *fields) {
+    auto slice = get(document, storedValue.second, VPackSlice::nullSlice());
+    // null value optimization
+    if (1 == size && slice.isNull()) {
+      return true;
+    }
+    // _id field
+    if (slice.isCustom()) {
+      TRI_ASSERT(1 == storedValue.second.size() &&
+                  storedValue.second[0].name == arangodb::StaticStrings::IdString);
+      buffer.reset();
+      VPackBuilder builder(buffer);
+      if (isDBServer) {
+        if (!collection.empty()) {
+          builder.add(VPackValue(getDocumentId(collection, document)));
+        } else {
+          LOG_TOPIC("bf98c", WARN, arangodb::iresearch::TOPIC)
+            << "Value for `_id` attribute could not be stored for document "
+            << transaction::helpers::extractKeyFromDocument(document).toString()
+            << ". To recover please recreate corresponding ArangoSearch link '" << linkId << "'";
+           return false;
+        }
+      } else {
+          builder.add(VPackValue(transaction::helpers::extractIdString(
+              trx.resolver(), slice, document)));
+      }
+
+      
+      slice = builder.slice();
+      // a builder is destroyed but a buffer is alive
+    }
+    out.write_bytes(slice.start(), slice.byteSize());
+  }
   return true;
 }
 

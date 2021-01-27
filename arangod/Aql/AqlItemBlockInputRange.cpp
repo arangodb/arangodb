@@ -54,6 +54,11 @@ SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
   return _block;
 }
 
+bool AqlItemBlockInputRange::hasValidRow() const noexcept {
+  // covers both data rows & shadow rows
+  return isIndexValid(_rowIndex);
+}
+
 bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
@@ -135,6 +140,31 @@ size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
   }
   return 0;
 }
+
+size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+  size_t skipped = 0;
+  while (hasValidRow()) {
+    if (hasDataRow()) {
+      _rowIndex++;
+    } else {
+      ShadowAqlItemRow row{_block, _rowIndex};
+      auto d = row.getDepth();
+      if (d > depth) {
+        // We found a row, that we should not skip
+        // Keep it and stay there;
+        return skipped;
+      }
+      // We throw away this row
+      _rowIndex++;
+      if (d == depth) {
+        // We skipped
+        skipped++;
+      }
+    }
+  }
+  return skipped;
+}
+
 
 template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
 ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
