@@ -1,10 +1,10 @@
 
-add_executable(futures-test main.cpp static-tests.cpp test-helper.cpp test-helper.h sequencer-test.cpp exception-tests.cpp inline-value-tests.cpp user-defined.cpp bind-test.cpp swap-test.cpp call-test.cpp call-generic-test.cpp await-test.cpp)
-target_compile_options(futures-test PRIVATE "-fsanitize=address")
-target_link_libraries(futures-test PRIVATE asan)
-target_link_libraries(futures-test PRIVATE gtest)
+add_executable(mellon-test main.cpp static-tests.cpp test-helper.cpp test-helper.h sequencer-test.cpp exception-tests.cpp inline-value-tests.cpp user-defined.cpp bind-test.cpp swap-test.cpp call-test.cpp call-generic-test.cpp await-test.cpp)
+target_compile_options(mellon-test PRIVATE "-fsanitize=address")
+target_link_libraries(mellon-test PRIVATE asan)
+target_link_libraries(mellon-test PRIVATE gtest)
 
-target_link_libraries(futures-test PRIVATE mellon)
+target_link_libraries(mellon-test PRIVATE mellon)
 
 enable_testing()
-add_test(NAME future-test COMMAND futures-test)
+add_test(NAME future-test COMMAND mellon-test)

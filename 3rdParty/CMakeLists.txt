@@ -178,9 +178,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 ## MELLON
 ################################################################################
 
-if (USE_MAINTAINER AND USE_LIBUNWIND)
-    set(MELLON_RECORD_BACKTRACE_ABANDONED_OBJECTS On)
-endif()
 set(MELLON_BUILD_TESTS Off) # TODO
 add_subdirectory(mellon)
 
