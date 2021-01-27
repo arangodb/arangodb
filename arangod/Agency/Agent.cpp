@@ -50,8 +50,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 using namespace std::chrono;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 // Instanciations of some declarations in AgencyCommon.h:
 
@@ -429,7 +428,7 @@ void Agent::logsForTrigger() {
     TRI_ASSERT(!logs.empty());
     if (!logs.empty()) {
       builder->add(VPackValue("result"));
-      VPackObjectBuilder e(builder.get());
+      VPackObjectBuilder e2(builder.get());
       builder->add("firstIndex", VPackValue(logs.front().index));
       builder->add("commitIndex", VPackValue(logs.back().index));
       builder->add(VPackValue("log"));
@@ -2151,7 +2150,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
               VPackObjectBuilder o(query.get());
               query->add(VPackValue(RECONFIGURE));
               {
-                VPackObjectBuilder o(query.get());
+                VPackObjectBuilder o2(query.get());
                 query->add("op", VPackValue("set"));
                 query->add(VPackValue("new"));
                 {
@@ -2171,7 +2170,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
         try {
           ret = write(query, WriteMode(false, true));
           arangodb::consensus::index_t max_index = 0;
-          if (ret.indices.size() > 0) {
+          if (!ret.indices.empty()) {
             max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
           }
           if (max_index > 0) {  // We have a RAFT index. Wait for the RAFT commit.
@@ -2439,5 +2438,4 @@ void Agent::syncActiveAndAcknowledged() {
   }
 }
 
-}  // namespace consensus
 }  // namespace arangodb

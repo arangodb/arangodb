@@ -47,7 +47,7 @@ struct box {
   }
 
  private:
-  alignas(T) std::byte value[sizeof(T)];
+  alignas(T) std::byte value[sizeof(T)] = {};
 };
 
 template <>
