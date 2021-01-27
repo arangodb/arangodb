@@ -329,14 +329,14 @@ bool TRI_CreateSymbolicLink(std::string const& target,
       ::CreateSymbolicLinkW(toWString(linkpath).data(), toWString(target).data(), 0x0);
   if (!created) {
     auto rv = translateWindowsError(::GetLastError());
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + rv.errorMessage();
+    error = StringUtils::concatT("failed to create a symlink ", target, " -> ", linkpath, " - ", rv.errorMessage());
   }
   return created;
 #else
   int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + strerror(errno);
+    error = StringUtils::concatT("failed to create a symlink ", target, " -> ", linkpath, " - ", strerror(errno));
   }
   return res == 0;
 #endif

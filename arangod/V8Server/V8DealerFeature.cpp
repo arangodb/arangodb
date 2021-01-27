@@ -163,6 +163,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _maxContextInvocations(0),
       _allowAdminExecute(false),
       _allowJavaScriptTransactions(true),
+      _allowJavaScriptTasks(true),
       _enableJS(true),
       _nextId(0),
       _stopping(false),
@@ -302,6 +303,16 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.transactions",
       "enable JavaScript transactions",
       new BooleanParameter(&_allowJavaScriptTransactions),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
+  
+  options->addOption(
+      "--javascript.tasks",
+      "enable JavaScript tasks",
+      new BooleanParameter(&_allowJavaScriptTasks),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,

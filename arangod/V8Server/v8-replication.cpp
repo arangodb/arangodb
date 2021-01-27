@@ -220,7 +220,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   if (applierType == APPLIER_DATABASE) {
     // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
+    syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
     if (TRI_HasProperty(context, isolate, object, "leaderId")) {
       syncer->setLeaderId(TRI_ObjectToString(
@@ -230,7 +230,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     }
   } else if (applierType == APPLIER_GLOBAL) {
     configuration._skipCreateDrop = false;
-    syncer.reset(new GlobalInitialSyncer(configuration));
+    syncer = GlobalInitialSyncer::create(configuration);
   } else {
     TRI_ASSERT(false);
   }
@@ -242,10 +242,10 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
       LOG_TOPIC("3d58b", DEBUG, Logger::REPLICATION)
           << "initial sync failed for database '" << vocbase.name()
           << "': " << r.errorMessage();
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(),
-                                     "cannot sync from remote endpoint: " + r.errorMessage() +
-                                         ". last progress message was: '" +
-                                         syncer->progress() + "'");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          StringUtils::concatT("cannot sync from remote endpoint: ", r.errorMessage(),
+                               ". last progress message was: '", syncer->progress(), "'"));
     }
 
     if (keepBarrier) {  // TODO: keep just for API compatibility

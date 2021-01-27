@@ -200,56 +200,63 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
                          "Number of transactions using sequential locking of "
                          "collections to avoid deadlocking",
                          arangodb_collection_lock_sequential_mode)),
-      _numWrites(
-        _metrics.counter("arangodb_document_writes", 0,
-                         "Total number of document write operations (excl. synchronous replication)",
-                         arangodb_document_writes)),
-      _numWritesReplication(
-        _metrics.counter("arangodb_document_writes_replication", 0,
-                         "Total number of document write oprations by synchronous replication",
-                         arangodb_document_writes_replication)),
-      _numTruncates(
-        _metrics.counter("arangodb_collection_truncates", 0,
-                         "Total number of collection truncate operations (excl. synchronous replication)",
-                         arangodb_collection_truncates)),
-      _numTruncatesReplication(
-        _metrics.counter("arangodb_collection_truncates_replication", 0,
-                         "Total number of collection truncate operations by synchronous replication",
-                         arangodb_collection_truncates_replication)),
-      _rocksdb_read_usec(
-        _metrics.histogram("arangodb_document_read_time",
-                           log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document read operations [s]",
-                           arangodb_document_read_time)),
-      _rocksdb_insert_usec(
-        _metrics.histogram("arangodb_document_insert_time",
-                           log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document insert operations [s]",
-                           arangodb_document_insert_time)),
-      _rocksdb_replace_usec(
-        _metrics.histogram("arangodb_document_replace_time",
-                           log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document replace operations [s]",
-                           arangodb_document_replace_time)),
-      _rocksdb_remove_usec(
-        _metrics.histogram("arangodb_document_remove_time",
-                           log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document remove operations [s]",
-                           arangodb_document_remove_time)),
-      _rocksdb_update_usec(
-        _metrics.histogram("arangodb_document_update_time",
-                           log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in document update operations [s]",
-                           arangodb_document_update_time)),
-      _rocksdb_truncate_usec(
-        _metrics.histogram("arangodb_collection_truncate_time",
-                           log_scale_t<float>(10., 0.0, 1000.0, 11),
-                           "Total time spent in collcection truncate operations [s]",
-                           arangodb_collection_truncate_time)) {}
+      _exportReadWriteMetrics(/*may be updated later*/ false) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
+void TransactionStatistics::setupDocumentMetrics() {
+  // the following metrics are conditional, so we don't initialize them in the constructor
+  _exportReadWriteMetrics = true;
+  
+  _numWrites = 
+    _metrics.counter("arangodb_document_writes", 0,
+                     "Total number of document write operations (excl. synchronous replication)",
+                     arangodb_document_writes);
+  _numWritesReplication = 
+    _metrics.counter("arangodb_document_writes_replication", 0,
+                     "Total number of document write oprations by synchronous replication",
+                     arangodb_document_writes_replication);
+  _numTruncates = 
+    _metrics.counter("arangodb_collection_truncates", 0,
+                     "Total number of collection truncate operations (excl. synchronous replication)",
+                     arangodb_collection_truncates);
+  _numTruncatesReplication = 
+    _metrics.counter("arangodb_collection_truncates_replication", 0,
+                     "Total number of collection truncate operations by synchronous replication",
+                     arangodb_collection_truncates_replication);
+  _rocksdb_read_sec = 
+    _metrics.histogram("arangodb_document_read_time",
+                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       "Total time spent in document read operations [s]",
+                       arangodb_document_read_time);
+  _rocksdb_insert_sec = 
+    _metrics.histogram("arangodb_document_insert_time",
+                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       "Total time spent in document insert operations [s]",
+                       arangodb_document_insert_time);
+  _rocksdb_replace_sec =
+    _metrics.histogram("arangodb_document_replace_time",
+                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       "Total time spent in document replace operations [s]",
+                       arangodb_document_replace_time);
+  _rocksdb_remove_sec =
+    _metrics.histogram("arangodb_document_remove_time",
+                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       "Total time spent in document remove operations [s]",
+                       arangodb_document_remove_time);
+  _rocksdb_update_sec =
+    _metrics.histogram("arangodb_document_update_time",
+                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       "Total time spent in document update operations [s]",
+                       arangodb_document_update_time);
+  _rocksdb_truncate_sec =
+    _metrics.histogram("arangodb_collection_truncate_time",
+                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       "Total time spent in collcection truncate operations [s]",
+                       arangodb_collection_truncate_time);
+}
+
+void ServerStatistics::setupDocumentMetrics() {
+  _transactionsStatistics.setupDocumentMetrics();
+}
 
 double ServerStatistics::uptime() const noexcept {
   return StatisticsFeature::time() - _startTime;

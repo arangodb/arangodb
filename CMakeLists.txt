@@ -1255,6 +1255,9 @@ endif()
 ################################################################################
 
 if (USE_MAINTAINER_MODE)
+  # If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
+  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+
   set(ERROR_FILES
     lib/Basics/voc-errors.h
     lib/Basics/voc-errors.cpp

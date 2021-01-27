@@ -149,6 +149,15 @@ size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
   return 0;
 }
 
+size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
+  size_t skipped = 0;
+  while (hasDataRow()) {
+    ++_rowIndex;
+    ++skipped;
+  }
+  return skipped;
+}
+
 size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
   size_t skipped = 0;
   while (hasValidRow()) {

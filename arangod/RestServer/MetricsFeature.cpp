@@ -51,7 +51,7 @@ using namespace arangodb::options;
 // -----------------------------------------------------------------------------
 
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Metrics"), _export(true) {
+  : ApplicationFeature(server, "Metrics"), _export(true) , _exportReadWriteMetrics(true) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<GreetingsFeaturePhase>();
@@ -60,18 +60,32 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   _serverStatistics = std::make_unique<ServerStatistics>(
       *this, StatisticsFeature::time());
+
   options->addOption("--server.export-metrics-api",
                      "turn metrics API on or off",
                      new BooleanParameter(&_export),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
+  options->addOption("--server.export-read-write-metrics",
+                     "turn metrics for doiument read/write metrics on or off",
+                     new BooleanParameter(&_exportReadWriteMetrics),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30706);
 }
 
 bool MetricsFeature::exportAPI() const {
   return _export;
 }
 
-void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
+bool MetricsFeature::exportReadWriteMetrics() const {
+  return _exportReadWriteMetrics;
+}
+
+void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (_exportReadWriteMetrics) {
+    serverStatistics().setupDocumentMetrics();
+  }
+}
 
 void MetricsFeature::toPrometheus(std::string& result, bool withDocs) const {
 
@@ -187,11 +201,15 @@ metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
 }
 
 metrics_key::metrics_key(std::string const& name) : name(name) {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
   _hash = std::hash<std::string>{}(name);
 }
 
 metrics_key::metrics_key(std::string const& name, std::string const& labels) :
   name(name), labels(labels) {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
   _hash = std::hash<std::string>{}(name + labels);
 }
 

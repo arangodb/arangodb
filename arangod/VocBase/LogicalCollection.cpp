@@ -651,6 +651,28 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   }
 }
 
+void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
+  result.openObject();
+  result.add(VPackValue("indexes"));
+  getIndexesVPack(result, [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+    // we have to exclude the primary and edge index for dump / restore
+    switch (idx->type()) {
+      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+      case Index::TRI_IDX_TYPE_EDGE_INDEX:
+        return false;
+      default:
+        flags = Index::makeFlags(Index::Serialize::Basics);
+        return !idx->isHidden();
+    }
+  });
+  result.add("parameters", VPackValue(VPackValueType::Object));
+  toVelocyPackIgnore(
+     result, {"objectId", "path", "statusString", "indexes"},
+     LogicalDataSource::Serialization::Inventory);
+  result.close(); // parameters
+  result.close(); // collection
+}
+
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem, bool isReady,
                                                         bool allInSync) const {

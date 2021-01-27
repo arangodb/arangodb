@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
+#include "Basics/StringUtils.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -38,6 +39,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& server,
@@ -176,8 +178,8 @@ bool RestEdgesHandler::readEdges() {
       return false;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                   "Error executing edges query " +
-                                       queryResult.result.errorMessage());
+        StringUtils::concatT("Error executing edges query ",
+                             queryResult.result.errorMessage()));
   }
 
   VPackSlice edges = queryResult.data->slice();
@@ -265,8 +267,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         return false;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                     "Error executing edges query " +
-                                         queryResult.result.errorMessage());
+          StringUtils::concatT("Error executing edges query ",
+                               queryResult.result.errorMessage()));
     }
 
     VPackSlice edges = queryResult.data->slice();

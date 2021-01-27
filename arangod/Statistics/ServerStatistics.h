@@ -25,6 +25,7 @@
 #define ARANGOD_STATISTICS_SERVER_STATISTICS_H 1
 
 #include <cstdint>
+#include <optional>
 #include "RestServer/Metrics.h"
 
 namespace arangodb {
@@ -36,6 +37,8 @@ struct TransactionStatistics {
   TransactionStatistics(TransactionStatistics &&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
   TransactionStatistics& operator=(TransactionStatistics &&) = delete;
+
+  void setupDocumentMetrics();
 
   arangodb::MetricsFeature& _metrics;
   
@@ -56,20 +59,25 @@ struct TransactionStatistics {
   Counter& _sequentialLocks;
   
   // Total number of write operations in storage engine (excl. sync replication)
-  Counter& _numWrites;
+  std::optional<std::reference_wrapper<Counter>> _numWrites;
   // Total number of write operations in storage engine by sync replication
-  Counter& _numWritesReplication;
+  std::optional<std::reference_wrapper<Counter>> _numWritesReplication;
   // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
-  Counter& _numTruncates;
+  std::optional<std::reference_wrapper<Counter>> _numTruncates;
   // Total number of truncate operations (not number of documents truncated!) by sync replication
-  Counter& _numTruncatesReplication;
+  std::optional<std::reference_wrapper<Counter>> _numTruncatesReplication;
 
-  Histogram<log_scale_t<float>>& _rocksdb_read_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_insert_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_replace_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_remove_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_update_usec;
-  Histogram<log_scale_t<float>>& _rocksdb_truncate_usec;
+  /// @brief the following metrics are conditional and only initialized if 
+  /// startup option `--server.export-read-write-metrics` is set
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_read_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_insert_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_replace_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_remove_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_update_sec;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_truncate_sec;
+
+  bool _exportReadWriteMetrics;
+  
 };
 
 struct ServerStatistics {
@@ -77,6 +85,8 @@ struct ServerStatistics {
   ServerStatistics(ServerStatistics &&) = delete;
   ServerStatistics& operator=(ServerStatistics const&) = delete;
   ServerStatistics& operator=(ServerStatistics &&) = delete;
+
+  void setupDocumentMetrics();
 
   ServerStatistics& statistics();
 
