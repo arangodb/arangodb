@@ -250,13 +250,13 @@ class DumpRestoreHelper {
   }
 
   runSetupSuite(path) {
-    this.print('Setting up');
+    this.print('Setting up - ' + path);
     this.results.setup = this.arangosh(path, this.clientAuth);
     return this.validate(this.results.setup);
   }
 
   runCheckDumpFilesSuite(path) {
-    this.print('Inspecting dumped files');
+    this.print('Inspecting dumped files - ' + path);
     process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
     this.results.checkDumpFiles = this.arangosh(path, this.clientAuth);
     delete process.env['dump-directory'];
@@ -264,7 +264,7 @@ class DumpRestoreHelper {
   }
 
   runCleanupSuite(path) {
-    this.print('Cleaning up');
+    this.print('Cleaning up - ' + path);
     this.results.cleanup = this.arangosh(path, this.clientAuth);
     return this.validate(this.results.cleanup);
   }
@@ -313,7 +313,7 @@ class DumpRestoreHelper {
   }
 
   runTests(file, database) {
-    this.print('dump after restore');
+    this.print('dump after restore - ' + file);
     if (this.restoreConfig.haveSetAllDatabases()) {
       // if we dump with multiple databases, it remains with the original name.
       database = 'UnitTestsDumpSrc';
@@ -324,14 +324,14 @@ class DumpRestoreHelper {
   }
 
   runReTests(file, database) {
-    this.print('revalidating modifications');
+    this.print('revalidating modifications - ' + file);
     db._useDatabase(database);
     this.results.test = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.test);
   }
 
   tearDown(file) {
-    this.print('teardown');
+    this.print('teardown - ' + file);
     db._useDatabase('_system');
     this.results.tearDown = this.arangosh(file);
     return this.validate(this.results.tearDown);
@@ -346,7 +346,7 @@ class DumpRestoreHelper {
   }
 
   testRestoreOld(file) {
-    this.print('test restoreOld');
+    this.print('test restoreOld - ' + file);
     db._useDatabase('_system');
     this.results.testRestoreOld = this.arangosh(file);
     return this.validate(this.results.testRestoreOld);
@@ -362,7 +362,7 @@ class DumpRestoreHelper {
   }
 
   testFoxxComplete(file, database) {
-    this.print('Test Foxx Apps after full restore');
+    this.print('Test Foxx Apps after full restore - ' + file);
     db._useDatabase(database);
     this.results.testFoxxComplete = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxComplete);
@@ -384,7 +384,7 @@ class DumpRestoreHelper {
   }
 
   testFoxxAppsBundle(file, database) {
-    this.print('Test Foxx Apps after _apps then _appbundles restore');
+    this.print('Test Foxx Apps after _apps then _appbundles restore - ' + file);
     db._useDatabase(database);
     this.results.testFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
@@ -406,7 +406,7 @@ class DumpRestoreHelper {
   }
 
   testFoxxBundleApps(file, database) {
-    this.print('Test Foxx Apps after _appbundles then _apps restore');
+    this.print('Test Foxx Apps after _appbundles then _apps restore - ' + file);
     db._useDatabase(database);
     this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
