@@ -28,6 +28,7 @@
 const functionsDocumentation = {
   'dump': 'dump tests',
   'dump_mixed_cluster_single': 'dump tests - dump cluster restore single',
+  'dump_mixed_single_cluster': 'dump tests - dump single restore cluster',
   'dump_authentication': 'dump tests with authentication',
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
@@ -62,6 +63,7 @@ const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_mixed_cluster_single': [tu.pathForTesting('server/dump')],
+  'dump_mixed_single_cluster': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
@@ -484,7 +486,7 @@ function dump_backend (firstOptions, secondOptions, serverAuthInfo, clientAuth, 
   const helper = new DumpRestoreHelper(firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
   if (! helper.startFirstInstance()) {
     return helper.extractResults();
-  }    
+  }
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
@@ -823,7 +825,7 @@ function hotBackup (options) {
   const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){});
   if (! helper.startFirstInstance()) {
     return helper.extractResults();
-  }    
+  }
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const dumpCheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheck));
@@ -877,13 +879,13 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump'] = dump;
   defaultFns.push('dump');
-  
+
   testFns['dump_mixed_cluster_single'] = dumpMixedClusterSingle;
   defaultFns.push('dump_mixed_cluster_single');
 
   testFns['dump_mixed_single_cluster'] = dumpMixedSingleCluster;
   defaultFns.push('dump_mixed_single_cluster');
-  
+
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');
 
@@ -895,7 +897,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_multiple'] = dumpMultiple;
   defaultFns.push('dump_multiple');
-  
+
   testFns['dump_no_envelope'] = dumpNoEnvelope;
   defaultFns.push('dump_no_envelope');
 
