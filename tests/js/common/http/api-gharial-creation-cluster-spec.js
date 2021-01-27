@@ -36,6 +36,7 @@ const extend = require('lodash').extend;
 let endpoint = {};
 
 const db = arangodb.db;
+const defaultReplicationFactor = db._properties().replicationFactor;
 
 describe('General graph creation', function () {
 
@@ -106,25 +107,25 @@ describe('General graph creation', function () {
 
         it('should be stored in the internal document', function () {
           let gdoc = db._collection('_graphs').document(gn);
-          expect(gdoc.replicationFactor).to.equal(1);
+          expect(gdoc.replicationFactor).to.equal(defaultReplicationFactor);
           expect(gdoc.minReplicationFactor).to.equal(1);
         });
 
         it('should be 1 for vertex collection', function () {
           let props = db._collection(vn).properties();
-          expect(props.replicationFactor).to.equal(1);
+          expect(props.replicationFactor).to.equal(defaultReplicationFactor);
           expect(props.minReplicationFactor).to.equal(1);
         });
 
         it('should be 1 for edge collection', function () {
           let props = db._collection(en).properties();
-          expect(props.replicationFactor).to.equal(1);
+          expect(props.replicationFactor).to.equal(defaultReplicationFactor);
           expect(props.minReplicationFactor).to.equal(1);
         });
 
         it('should be 1 for orphan collection', function () {
           let props = db._collection(on).properties();
-          expect(props.replicationFactor).to.equal(1);
+          expect(props.replicationFactor).to.equal(defaultReplicationFactor);
           expect(props.minReplicationFactor).to.equal(1);
         });
 
@@ -191,17 +192,17 @@ describe('General graph creation', function () {
 
         it('should be 1 for vertex collection', function () {
           let props = db._collection(vn2).properties();
-          expect(props.replicationFactor).to.equal(1);
+          expect(props.replicationFactor).to.equal(defaultReplicationFactor);
         });
 
         it('should be 1 for edge collection', function () {
           let props = db._collection(en2).properties();
-          expect(props.replicationFactor).to.equal(1);
+          expect(props.replicationFactor).to.equal(defaultReplicationFactor);
         });
 
         it('should be 1 for orphan collection', function () {
           let props = db._collection(on2).properties();
-          expect(props.replicationFactor).to.equal(1);
+          expect(props.replicationFactor).to.equal(defaultReplicationFactor);
         });
 
       });
@@ -251,7 +252,7 @@ describe('General graph creation', function () {
 
         it(`should be 1 for vertex collection`, function () {
           let props = db._collection(vn3).properties();
-          expect(props.replicationFactor).to.equal(1);
+          expect(props.replicationFactor).to.equal(defaultReplicationFactor);
         });
 
       });

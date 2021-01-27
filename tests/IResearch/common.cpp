@@ -911,7 +911,7 @@ arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::Applicat
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
-    throw std::runtime_error(rv.errorMessage());
+    throw std::runtime_error(rv.errorMessage().data());
   }
   return info;
 }

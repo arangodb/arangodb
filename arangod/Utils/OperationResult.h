@@ -85,7 +85,7 @@ struct OperationResult final {
     return result.errorNumber() == errorNumber;
   }
   bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
-  std::string errorMessage() const { return result.errorMessage(); }
+  std::string_view errorMessage() const { return result.errorMessage(); }
 
   inline bool hasSlice() const { return buffer != nullptr; }
   inline VPackSlice slice() const {

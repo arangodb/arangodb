@@ -605,6 +605,14 @@ bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
 }
 #endif
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to demangle hidden collections names
+////////////////////////////////////////////////////////////////////////////////
+#ifndef USE_ENTERPRISE
+void ClusterMethods::realNameFromSmartName(std::string&) { }
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
@@ -3395,7 +3403,7 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
       if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
         c = TRI_ERROR_LOCAL_LOCK_FAILED;
       }
-      finalRes = arangodb::Result(c, finalRes.errorMessage() + ", " + m);
+      finalRes = arangodb::Result(c, StringUtils::concatT(finalRes.errorMessage(), ", ", m));
     }
   };
   for (Future<network::Response>& f : futures) {
@@ -3957,7 +3965,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     if (!result.ok()) {
       // Failed to go to backup mode
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("agency lock operation resulted in ") + result.errorMessage());
+                   StringUtils::concatT("agency lock operation resulted in ",
+                                        result.errorMessage()));
       LOG_TOPIC("6c73d", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
       return result;
@@ -3988,7 +3997,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       // release the lock
       releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("failed to acquire agency dump: ") + result.errorMessage());
+                   StringUtils::concatT("failed to acquire agency dump: ",
+                                        result.errorMessage()));
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
       return result;
@@ -4093,9 +4103,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
-          std::string(
-              "failed to acquire global transaction lock on all db servers: ") +
-              result.errorMessage());
+          StringUtils::concatT(
+              "failed to acquire global transaction lock on all db servers: ",
+              result.errorMessage()));
       LOG_TOPIC("b7d09", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
@@ -4111,8 +4121,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       // release the lock
       releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("failed to hot backup on all db servers: ") +
-                       result.errorMessage());
+                   StringUtils::concatT(
+                       "failed to hot backup on all db servers: ", result.errorMessage()));
       LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
       removeLocalBackups(pool, backupId, dbServers, dummy);
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
@@ -4130,8 +4140,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         removeLocalBackups(pool, backupId, dbServers, dummy);
       }
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("failed to acquire agency dump post backup: ") +
-                       result.errorMessage() + " backup's integrity is not guaranteed");
+          StringUtils::concatT(
+                       "failed to acquire agency dump post backup: ", result.errorMessage(),
+                       " backup's integrity is not guaranteed"));
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;

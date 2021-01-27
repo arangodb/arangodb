@@ -187,7 +187,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     [](irs::string_ref const& key) -> bool {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField
           && key != iresearch::StaticStrings::PrimarySortField
-          && key != iresearch::StaticStrings::StoredValuesField;
+          && key != iresearch::StaticStrings::StoredValuesField
+          && key != iresearch::StaticStrings::CollectionNameField;
   };
 
   auto* acceptor = &propertiesAcceptor;
@@ -537,11 +538,9 @@ Result IResearchViewCoordinator::dropImpl() {
       currentCids);
 
     if (!res.ok()) {
-      return Result(
-          res.errorNumber(),
-          std::string(
-              "failed to remove links while removing arangosearch view '") +
-              name() + "': " + res.errorMessage());
+      return Result(res.errorNumber(), arangodb::basics::StringUtils::concatT("failed to remove links while removing arangosearch view '",
+                                                                              name(),
+                                                                              "': ", res.errorMessage()));
     }
   }
 

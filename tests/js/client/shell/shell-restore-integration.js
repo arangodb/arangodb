@@ -32,6 +32,7 @@ let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
+let isCluster = require("internal").isCluster();
 
 function restoreIntegrationSuite () {
   'use strict';
@@ -69,6 +70,91 @@ function restoreIntegrationSuite () {
 
     tearDown: function () {
       db._drop(cn);
+    },
+    
+    testRestoreAutoIncrementKeyGenerator: function () {
+      if (isCluster) {
+        // auto-increment key-generator not supported on cluster
+        return;
+      }
+
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2,
+            keyOptions: { type: "autoincrement", lastValue: 12345, increment: 3, offset: 19 }
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let p = c.properties();
+        assertEqual("autoincrement", p.keyOptions.type);
+        assertEqual(12345, p.keyOptions.lastValue);
+        assertEqual(3, p.keyOptions.increment);
+        assertEqual(19, p.keyOptions.offset);
+
+        let lastValue = p.keyOptions.lastValue;
+        for (let i = 0; i < 10; ++i) {
+          c.insert({});
+          p = c.properties();
+          let newLastValue = p.keyOptions.lastValue;
+          assertTrue(newLastValue > lastValue);
+          lastValue = newLastValue;
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestorePaddedKeyGenerator: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: 3,
+            type: 2,
+            keyOptions: { type: "padded", lastValue: 12345 }
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let p = c.properties();
+        assertEqual("padded", p.keyOptions.type);
+        assertEqual(12345, p.keyOptions.lastValue);
+
+        let lastValue = p.keyOptions.lastValue;
+        for (let i = 0; i < 10; ++i) {
+          c.insert({});
+          p = c.properties();
+          let newLastValue = p.keyOptions.lastValue;
+          assertTrue(newLastValue > lastValue);
+          lastValue = newLastValue;
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
     },
     
     testRestoreWithRepeatedDocuments: function () {

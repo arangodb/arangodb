@@ -24,11 +24,12 @@
 
 #include "IResearchViewExecutor.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "AqlCall.h"
+#include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -58,6 +59,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 using namespace arangodb::iresearch;
 
 namespace {
@@ -609,8 +611,9 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       infos().filterCondition().toVelocyPack(builder, true);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           rv.errorNumber(),
-          "failed to build filter while querying arangosearch view, query '" +
-              builder.toJson() + "': " + rv.errorMessage());
+          StringUtils::concatT("failed to build filter while querying "
+                               "arangosearch view, query '",
+                               builder.toJson(), "': ", rv.errorMessage()));
     }
 
     if (infos().volatileSort() || !_isInitialized) {

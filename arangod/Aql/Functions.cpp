@@ -118,6 +118,7 @@
 #endif
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace std::chrono;
 using namespace date;
@@ -928,10 +929,11 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
     }
     if (res.is(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                     res.errorMessage() + ": " + collectionName +
-                                         " [" + AccessMode::typeString(AccessMode::Type::READ) +
-                                         "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res.errorNumber(),
+          StringUtils::concatT(res.errorMessage(), ": ", collectionName, " [",
+                               AccessMode::typeString(AccessMode::Type::READ),
+                               "]"));
     }
     THROW_ARANGO_EXCEPTION(res);
   }

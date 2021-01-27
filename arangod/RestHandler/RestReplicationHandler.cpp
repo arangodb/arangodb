@@ -213,8 +213,13 @@ static Result restoreDataParser(char const* ptr, char const* pos,
           doc = value;
         }
       } else if (type == REPLICATION_MARKER_REMOVE) {
-        // edge case: only need for old dumps taken with MMFiles
-        value = slice.get("key");
+        // edge case: only needed for old dumps taken with MMFiles
+        value = slice.get(::dataString);
+        if (value.isObject()) {
+          value = value.get(StaticStrings::KeyString);
+        } else {
+          value = slice.get("key");
+        }
         if (!value.isString()) {
           type = REPLICATION_INVALID;
         } else {
@@ -1100,8 +1105,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
           }
 
           return Result(dropResult.errorNumber(),
-                        std::string("unable to drop collection '") + name +
-                            "': " + dropResult.errorMessage());
+                        arangodb::basics::StringUtils::concatT(
+                            "unable to drop collection '", name,
+                            "': ", dropResult.errorMessage()));
         }
       } catch (basics::Exception const& ex) {
         LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
@@ -1399,7 +1405,8 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   Result res = trx.begin();
 
   if (!res.ok()) {
-    res.reset(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
+    res.reset(res.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                     "unable to start transaction: ", res.errorMessage()));
     return res;
   }
 
@@ -1952,7 +1959,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
     res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
-      return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
+      return res.reset(res.errorNumber(),
+                       StringUtils::concatT("could not create index: ", res.errorMessage()));
     }
   }
 
@@ -2092,9 +2100,9 @@ void RestReplicationHandler::handleCommandSync() {
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(config));
+    syncer = GlobalInitialSyncer::create(config);
   } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, config));
+    syncer = DatabaseInitialSyncer::create(_vocbase, config);
   }
 
   Result r = syncer->run(config._incremental);
