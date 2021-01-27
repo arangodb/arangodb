@@ -1,5 +1,23 @@
 devel
 -----
+
+* On Linux, require at least 8192 usable file descriptors at startup. 
+  If less file descriptors are available to the arangod process, then the
+  startup is automatically aborted.
+
+  Even the chosen minimum value of 8192 will often not be high enough to 
+  store considerable amounts of data. However, no higher value was chosen 
+  in order to not make too many existing small installations fail at startup
+  after upgrading.
+
+  The required number of file descriptors can be configured using the startup
+  option `--server.descriptors-minimum`. It defaults to 8192, but it can be
+  increased to ensure that arangod can make use of a sufficiently high number
+  of files. Setting `--server.descriptors-minimum` to a value of `0` will 
+  make the startup require only an absolute minimum limit of 1024 file 
+  descriptors, effectively disabling the change.
+  Such low values should only be used to bypass the file descriptors check
+  in case of an emergency, but this is not recommended for production.
           
 * Added metric `arangodb_transactions_expired` to track the total number 
   of expired and then garbage-collected transactions.
@@ -509,24 +527,6 @@ devel
 
 * Fix cluster-internal replication of documents with special keys (percent
   character, which has a special meaning when used inside URLs).
-
-* On Linux at least 8192 usable file descriptors are now required by default
-  to start arangod. 
-  If less file descriptors are available to the arangod process, then the
-  startup is automatically aborted.
-
-  The chosen value of 8192 will often not be high enough to store considerable
-  amounts of data. However, no higher value was chosen in order to not make 
-  many existing installations fail after upgrading.
-
-  The required number of file descriptors can be configured using the startup
-  option `--server.descriptors-minimum`. It defaults to 8192, but it can be
-  increased to ensure that arangod can make use of a sufficiently high number
-  of files. Setting `--server.descriptors-minimum` to a value of `0` will 
-  make the startup apply only an absolute minimum limit of 1024 file 
-  descriptors.
-  Such low values should only be used to bypass the file descriptors check
-  in case of an emergency, but this is not recommended for production.
 
 * Fix AQL cost estimate of spliced subqueries which could lead to overly large
   numbers in the explain output of such queries.

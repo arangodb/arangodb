@@ -58,7 +58,7 @@ struct FileDescriptors {
 
     if (res != 0) {
       LOG_TOPIC("17d7b", FATAL, arangodb::Logger::SYSCALL)
-          << "cannot get the file descriptor limit: " << strerror(errno);
+          << "cannot get the file descriptors limit value: " << strerror(errno);
       FATAL_ERROR_EXIT();
     }
 

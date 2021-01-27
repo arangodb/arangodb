@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H
-#define ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H 1
+#ifndef ARANGOD_REST_SERVER_FILE_DESCRIPTORS_FEATURE_H
+#define ARANGOD_REST_SERVER_FILE_DESCRIPTORS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
