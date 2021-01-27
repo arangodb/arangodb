@@ -2203,20 +2203,20 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
       static_cast<char const*>(memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
 
   if (p == nullptr || *p == '\0') {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
   }
 
   std::string const name(handle, p - handle);
   collection = resolver()->getCollectionStructCluster(name);
 
   if (collection == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   key = p + 1;
   outLength = length - (key - handle);
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 // Unified replication of operations. May be inserts (with or without
@@ -2247,10 +2247,11 @@ Future<Result> Methods::replicateOperations(
     TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
     url.push_back('/');
     VPackValueLength len;
-    const char* ptr = value.get(StaticStrings::KeyString).getString(len);
+    char const* ptr = value.get(StaticStrings::KeyString).getString(len);
     basics::StringUtils::encodeURIComponent(url, ptr, len);
   }
 
+  char const* opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -2265,15 +2266,19 @@ Future<Result> Methods::replicateOperations(
           reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
         }
       }
+      opName = "insert";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
+      opName = "update";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
       requestType = arangodb::fuerte::RestVerb::Put;
+      opName = "replace";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
       requestType = arangodb::fuerte::RestVerb::Delete;
+      opName = "remove";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
     default:
@@ -2381,9 +2386,9 @@ Future<Result> Methods::replicateOperations(
             vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
 
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
-                << "synchronous replication: follower "
-                << follower << " for shard " << collection->name()
-                << " in database " << collection->vocbase().name() 
+                << "synchronous replication of " << opName << " operation: "
+                << "follower " << follower << " for shard " 
+                << collection->vocbase().name() << "/" << collection->name()
                 << " refused the operation: " << r.errorMessage();
           }
         }
@@ -2395,9 +2400,9 @@ Future<Result> Methods::replicateOperations(
 
       if (!replicationWorked) {
         LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-            << "synchronous replication: dropping follower "
-            << follower << " for shard " << collection->name()
-            << " in database " << collection->vocbase().name() 
+            << "synchronous replication of " << opName << " operation: "
+            << ": dropping follower " << follower << " for shard " 
+            << collection->vocbase().name() << "/" << collection->name()
             << ": " << resp.combinedResult().errorMessage();
         
         Result res = collection->followers()->remove(follower);
@@ -2406,9 +2411,9 @@ Future<Result> Methods::replicateOperations(
           _state->removeKnownServer(follower);
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-              << "synchronous replication: could not drop follower "
-              << follower << " for shard " << collection->name() 
-              << " in database " << collection->vocbase().name() 
+              << "synchronous replication of " << opName << " operation: "
+              << "could not drop follower " << follower << " for shard " 
+              << collection->vocbase().name() << "/" << collection->name() 
               << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }

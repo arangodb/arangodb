@@ -123,6 +123,7 @@ struct TimeTracker {
     if (statistics._exportReadWriteMetrics) {
       // metrics collection is not free. only do it if metrics are enabled
       // unit is seconds here
+      TRI_ASSERT(histogram.has_value());
       histogram->get().count(std::chrono::duration<float>(getTime() - start).count());
     }
   }

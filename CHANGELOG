@@ -1,11 +1,14 @@
 devel
 -----
+          
+* Added metric `arangodb_transactions_expired` to track the total number 
+  of expired and then garbage-collected transactions.
 
 * Allow toggling the document read/write counters and histograms via the
   new startup option `--server.export-read-write-metrics false`. This 
   option defaults to `true`, so these metrics will be exposed by default.
 
-* Upgrade libunwind to v1.5.
+* Upgraded bundled version of libunwind to v1.5.
 
 * Added startup option `--javascript.tasks` to allow turning off JavaScript 
   tasks if not needed. The default value for this option is `true`, meaning 
@@ -52,7 +55,9 @@ devel
   - `arangodb_collection_truncates_replication`: Total number of collection 
     truncate operations (successful and failed) by synchronous replication.
   - `arangodb_document_read_time`: Execution time histogram of all document 
-    read operations (successful and failed) [s].
+    primary key read operations (successful and failed) [s]. Note: this 
+    does not include secondary index lookups, range scans and full collection
+    scans.
   - `arangodb_document_insert_time`: Execution time histogram of all 
     document insert operations (successful and failed) [s].
   - `arangodb_document_replace_time`: Execution time histogram of all 
