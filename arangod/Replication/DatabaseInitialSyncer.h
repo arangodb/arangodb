@@ -32,6 +32,8 @@
 #include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
 
+#include <memory>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -40,7 +42,7 @@ class LogicalCollection;
 class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
-class DatabaseInitialSyncer final : public InitialSyncer {
+class DatabaseInitialSyncer : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                                   arangodb::LogicalCollection* col,
                                                   std::string const& keysId);
@@ -49,8 +51,16 @@ class DatabaseInitialSyncer final : public InitialSyncer {
       ReplicationMetricsFeature::InitialSyncStats& stats, std::string const& keysId,
       uint64_t chunkId, std::string const& lowString,
       std::string const& highString, std::vector<std::string> const& markers);
+ private:
+  // constructor is private, as DatabaseInitialSyncer uses shared_from_this() and
+  // we must ensure that it is only created via make_shared.
+  DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
+                        ReplicationApplierConfiguration const& configuration);
 
  public:
+  static std::shared_ptr<DatabaseInitialSyncer> create(TRI_vocbase_t& vocbase,
+                                                       ReplicationApplierConfiguration const& configuration);
+
   /// @brief apply phases
   typedef enum {
     PHASE_NONE,
@@ -85,9 +95,6 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
     bool isChild() const;  // TODO worker safety
   };
-
-  DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
-                        ReplicationApplierConfiguration const& configuration);
 
   /// @brief run method, performs a full synchronization
   Result run(bool incremental, char const* context = nullptr) override {
@@ -147,6 +154,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
   /// @brief fetch the server's inventory, public method
   Result getInventory(arangodb::velocypack::Builder& builder);
+  
+  /// @brief return information about the leader
+  replutils::LeaderInfo leaderInfo() const;
 
  private:
   enum class FormatHint {
@@ -232,7 +242,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @param patchCount (optional)
   ///        Try to patch count of this collection (must be a collection name).
   ///        Only effective with the incremental sync.
-  Result batchStart(std::string const& patchCount = "");
+  Result batchStart(char const* context, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
   Result batchExtend();

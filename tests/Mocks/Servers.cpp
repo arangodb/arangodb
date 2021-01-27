@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
@@ -101,7 +102,8 @@ using namespace arangodb::tests::mocks;
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
   server.addFeature<arangodb::MetricsFeature>(false);
-  // We do not need any features from this phase
+  server.addFeature<arangodb::SharedPRNGFeature>(false);
+  // We do not need any further features from this phase
 }
 
 static void SetupBasicFeaturePhase(MockServer& server) {

@@ -888,7 +888,6 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   }
 
   let testCode = getTestCode(file, options, instanceInfo);
-  print(testCode);
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
   try {

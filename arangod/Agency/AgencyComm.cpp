@@ -877,7 +877,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
 
     try {
       oldValue = oldSlice.getNumber<decltype(oldValue)>();
-    } catch (velocypack::Exception& e) {
+    } catch (velocypack::Exception const& e) {
       LOG_TOPIC("74f97", ERR, Logger::AGENCYCOMM)
           << "Sync/LatestID in agency could not be parsed: " << e.what()
           << "; If this error persists, contact the ArangoDB support.";
