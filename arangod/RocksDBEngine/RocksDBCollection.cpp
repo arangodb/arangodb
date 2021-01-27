@@ -1731,7 +1731,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
 
   VPackSlice keySlice;
 
