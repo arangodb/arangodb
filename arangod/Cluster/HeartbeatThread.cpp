@@ -207,6 +207,13 @@ Coordinator, DB-Server
     failovers will most likely stack up and cause more trouble.
 )RRR";
 
+static char const* arangodb_heartbeat_failures = R"RRR(
+**Metric**
+- `arangodb_heartbeat_failures`:
+
+TO_BE_WRITTEN
+)RRR";
+
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning)
@@ -239,7 +246,8 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
           "Time required to send heartbeat [ms]", heartbeat_send_time_ms_docs)),
       _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
           StaticStrings::HeartbeatFailureCounter, 0,
-          "Counting failed heartbeat transmissions")) {}
+          "Counting failed heartbeat transmissions",
+          arangodb_heartbeat_failures)) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread

@@ -43,16 +43,30 @@
 
 using namespace arangodb;
 
+static char const* arangodb_agency_callback_registered = R"RRR(
+**Metric**
+- `arangodb_agency_callback_registered`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_agency_callback_count = R"RRR(
+**Metric**
+- `arangodb_agency_callback_count`:
+
+TO_BE_WRITTEN
+)RRR";
+
 AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
                                                std::string const& callbackBasePath)
   : _agency(server), 
     _callbackBasePath(callbackBasePath),
     _totalCallbacksRegistered(
         server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_callback_registered", 0, "Total number of agency callbacks registered")),
+          "arangodb_agency_callback_registered", 0, "Total number of agency callbacks registered", arangodb_agency_callback_registered)),
     _callbacksCount(
         server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_agency_callback_count", uint64_t(0), "Current number of agency callbacks registered")) {}
+          "arangodb_agency_callback_count", uint64_t(0), "Current number of agency callbacks registered", arangodb_agency_callback_count)) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 

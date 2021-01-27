@@ -42,10 +42,31 @@ protected:
 Metric* thisMetric;
 Metric* thatMetric;
 
+static char const* counterDocs = R"RRR(
+**Metric**
+- `counter`:
+
+This is just an example.
+)RRR";
+
+static char const* histogramDocs = R"RRR(
+**Metric**
+- `histogramDocs`:
+
+This is just an example.
+)RRR";
+
+static char const* gaugeDocs = R"RRR(
+**Metric**
+- `gaugeDocs`:
+
+This is just an example.
+)RRR";
+
 TEST_F(MetricsFeatureTest, test_counter) {
 
-  auto& counter = feature.counter("counter", 0, "one counter");
-  auto& labeledCounter = feature.counter({"counter", "label=\"label\""}, 0, "another counter");
+  auto& counter = feature.counter("counter", 0, "one counter", counterDocs);
+  auto& labeledCounter = feature.counter({"counter", "label=\"label\""}, 0, "another counter", counterDocs);
 
   ASSERT_EQ(counter.load(), 0);
   std::string s;
@@ -63,7 +84,7 @@ TEST_F(MetricsFeatureTest, test_counter) {
 
 TEST_F(MetricsFeatureTest, fail_recreate_counter) {
   try {
-    auto& counterFail = feature.counter({"counter"}, 0, "one counter");
+    auto& counterFail = feature.counter({"counter"}, 0, "one counter", counterDocs);
     ASSERT_TRUE(false);
     std::cout << counterFail.name() << std::endl;
   } catch (...) {
@@ -95,9 +116,10 @@ TEST_F(MetricsFeatureTest, test_same_counter_retrieve) {
 
 TEST_F(MetricsFeatureTest, test_histogram) {
 
-  auto& histogram = feature.histogram("hist", lin_scale_t(0.,1.,10), "linear histogram");
+  auto& histogram = feature.histogram("hist", lin_scale_t(0.,1.,10), "linear histogram", histogramDocs);
   auto& labeledHistogram = feature.histogram(
-    {"hist", "label=\"label\""}, log_scale_t(2.,0.,1.,10), "labeled logarithmic histogram");
+    {"hist", "label=\"label\""}, log_scale_t(2.,0.,1.,10),
+    "labeled logarithmic histogram", histogramDocs);
 
   std::string s;
   histogram.toPrometheus(s);
@@ -114,7 +136,7 @@ TEST_F(MetricsFeatureTest, test_histogram) {
 
 TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
   try {
-    auto& histogramFail = feature.histogram({"hist"}, lin_scale_t(0.,1.,10), "linear histogram");
+    auto& histogramFail = feature.histogram({"hist"}, lin_scale_t(0.,1.,10), "linear histogram", histogramDocs);
     ASSERT_TRUE(false);
     std::cout << histogramFail << std::endl;
   } catch (...) {
@@ -156,9 +178,9 @@ TEST_F(MetricsFeatureTest, test_same_histogram_retrieve) {
 
 TEST_F(MetricsFeatureTest, test_gauge) {
 
-  auto& gauge = feature.gauge("gauge", 2.3, "one gauge");
+  auto& gauge = feature.gauge("gauge", 2.3, "one gauge", gaugeDocs);
   auto& labeledGauge = feature.gauge(
-    {"gauge", "label=\"label\""}, 17., "labeled gauge");
+    {"gauge", "label=\"label\""}, 17., "labeled gauge", gaugeDocs);
 
   std::string s;
   gauge.toPrometheus(s);

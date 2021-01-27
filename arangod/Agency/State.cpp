@@ -57,6 +57,20 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb::basics;
 
+static char const* arangodb_agency_log_size_bytes = R"RRR(
+**Metric**
+- `arangodb_agency_log_size_bytes`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_agency_client_lookup_table_size = R"RRR(
+**Metric**
+- `arangodb_agency_client_lookup_table_size`:
+
+TO_BE_WRITTEN
+)RRR";
+
 /// Constructor:
 State::State(application_features::ApplicationServer& server)
   : _server(server),
@@ -69,10 +83,12 @@ State::State(application_features::ApplicationServer& server)
     _cur(0),
     _log_size(
       _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")),
+        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]",
+        arangodb_agency_log_size_bytes)),
     _clientIdLookupCount(
       _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_client_lookup_table_size", uint64_t(0), "Current number of entries in agency client id lookup table")) {}
+        "arangodb_agency_client_lookup_table_size", uint64_t(0), "Current number of entries in agency client id lookup table",
+        arangodb_agency_client_lookup_table_size)) {}
 
 /// Default dtor
 State::~State() = default;

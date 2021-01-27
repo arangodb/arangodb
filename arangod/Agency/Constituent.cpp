@@ -69,13 +69,21 @@ void Constituent::configure(Agent* agent) {
   }
 }
 
+static char const* arangodb_agency_term = R"RRR(
+**Metric**
+- `arangodb_agency_term`:
+
+TO_BE_WRITTEN
+)RRR";
+
 // Default ctor
 Constituent::Constituent(application_features::ApplicationServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _term(0),
       _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
-               "arangodb_agency_term", _term, "Agency's term")),
+               "arangodb_agency_term", _term, "Agency's term",
+               arangodb_agency_term)),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),

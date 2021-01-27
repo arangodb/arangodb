@@ -100,13 +100,13 @@ void MetricsFeature::toPrometheus(std::string& result, bool withDocs) const {
 
 Counter& MetricsFeature::counter(
   std::initializer_list<std::string> const& key, uint64_t const& val,
-  std::string const& help, char const* docs) {
+  std::string const& help, std::string_view const& docs) {
   return counter(metrics_key(key), val, help, docs);
 }
 
 Counter& MetricsFeature::counter(
   metrics_key const& mk, uint64_t const& val,
-  std::string const& help, char const* docs) {
+  std::string const& help, std::string_view const& docs) {
 
   std::string labels = mk.labels;
   if (ServerState::instance() != nullptr &&
@@ -132,7 +132,7 @@ Counter& MetricsFeature::counter(
 
 Counter& MetricsFeature::counter(
   std::string const& name, uint64_t const& val, std::string const& help,
-  char const* docs) {
+  std::string_view const& docs) {
   return counter(metrics_key(name), val, help, docs);
 }
 
@@ -154,7 +154,7 @@ Counter& MetricsFeature::counter(std::initializer_list<std::string> const& key) 
           TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
       } else {
         auto tmp = std::dynamic_pointer_cast<Counter>(it->second);
-        return counter(mk, 0, tmp->help());
+        return counter(mk, 0, tmp->help(), tmp->docs());
       }
     }
     try {

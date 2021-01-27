@@ -29,11 +29,18 @@
 
 using namespace arangodb;
 
+static char const* counterDocs = R"RRR(
+**Metric**
+- `counterDocs`:
+
+This is just an example.
+)RRR";
+
 TEST(MetricsServerTest, test_setup) {
   tests::mocks::MockMetricsServer server;
   MetricsFeature& feature = server.getFeature<MetricsFeature>();
 
-  auto& counter = feature.counter("counter", 0, "one counter");
+  auto& counter = feature.counter("counter", 0, "one counter", counterDocs);
   ASSERT_EQ(counter.load(), 0);
   counter.count();
   ASSERT_EQ(counter.load(), 1);

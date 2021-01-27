@@ -37,25 +37,65 @@ namespace network {
 
 using namespace arangodb::fuerte::v1;
 
+static char const* arangodb_connection_connections_current = R"RRR(
+**Metric**
+- `arangodb_connection_connections_current`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_connection_leases_successful = R"RRR(
+**Metric**
+- `arangodb_connection_leases_successful`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_connection_pool_leases_failed = R"RRR(
+**Metric**
+- `arangodb_connection_pool_leases_failed`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_connection_pool_connections_created = R"RRR(
+**Metric**
+- `arangodb_connection_pool_connections_created`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_connection_pool_lease_time_hist = R"RRR(
+**Metric**
+- `arangodb_connection_pool_lease_time_hist`:
+
+TO_BE_WRITTEN
+)RRR";
+
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config), 
       _loop(config.numIOThreads, config.name),
       _totalConnectionsInPool(
         _config.metricsFeature.gauge(
-          std::string("arangodb_connection_connections_current_") + _config.name, uint64_t(0), "Current number of connections in pool")),
+          std::string("arangodb_connection_connections_current_") + _config.name, uint64_t(0), "Current number of connections in pool",
+          arangodb_connection_connections_current)),
       _successSelect(
         _config.metricsFeature.counter(
-        std::string("arangodb_connection_leases_successful_") + _config.name, 0, "Total number of successful connection leases")),
+        std::string("arangodb_connection_leases_successful_") + _config.name, 0, "Total number of successful connection leases",
+        arangodb_connection_leases_successful)),
       _noSuccessSelect(
         _config.metricsFeature.counter(
-          std::string("arangodb_connection_pool_leases_failed_") + _config.name, 0, "Total number of failed connection leases")),
+          std::string("arangodb_connection_pool_leases_failed_") + _config.name, 0, "Total number of failed connection leases",
+          arangodb_connection_pool_leases_failed)),
       _connectionsCreated(
         _config.metricsFeature.counter(
-          std::string("arangodb_connection_pool_connections_created_") + _config.name, 0, "Total number of connections created")),
+          std::string("arangodb_connection_pool_connections_created_") + _config.name, 0, "Total number of connections created",
+          arangodb_connection_pool_connections_created)),
       _leaseHistMSec(
         _config.metricsFeature.histogram(
           std::string("arangodb_connection_pool_lease_time_hist_")+ _config.name, log_scale_t(2.f, 0.f, 1000.f, 10),
-          std::string("Time to lease a connection from pool ") + _config.name + " [us]")) {
+          std::string("Time to lease a connection from pool ") + _config.name + " [us]",
+          arangodb_connection_pool_lease_time_hist)) {
   TRI_ASSERT(config.numIOThreads > 0);
 }
 

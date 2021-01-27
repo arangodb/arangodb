@@ -30,6 +30,19 @@
 
 using namespace arangodb;
 
+namespace {
+
+std::string cleanDocs(std::string_view const& docs) {
+  // We need to trim whitespace front and back, and to quote newlines
+  // and backslashes:
+  std::string s = arangodb::basics::StringUtils::trim(std::string(docs));
+  s = arangodb::basics::StringUtils::replace(s, "\\", "\\\\");
+  s = arangodb::basics::StringUtils::replace(s, "\n", "\\n");
+  return s;
+}
+
+}
+
 std::ostream& operator<< (std::ostream& o, Metrics::counter_type const& s) {
   o << s.load();
   return o;
@@ -50,21 +63,13 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
   return o;
 }
 
-std::string cleanDocs(std::string const& docs) {
-  // We need to trim whitespace front and back, and to quote newlines
-  // and backslashes:
-  std::string s = arangodb::basics::StringUtils::trim(docs);
-  s = arangodb::basics::StringUtils::replace(s, "\\", "\\\\");
-  s = arangodb::basics::StringUtils::replace(s, "\n", "\\n");
-  return s;
-}
-
-Metric::Metric(std::string const& name, std::string const& help, char const* docs, std::string const& labels)
-  : _name(name), _help(help), _docs(docs == nullptr ? help : cleanDocs(docs)), _labels(labels) {};
+Metric::Metric(std::string const& name, std::string const& help, std::string_view const& docs, std::string const& labels)
+  : _name(name), _help(help), _docs(docs), _labels(labels) {};
 
 Metric::~Metric() = default;
 
-std::string const& Metric::docs() const { return _docs; }
+std::string Metric::cleanedDocs() const { return ::cleanDocs(_docs); }
+std::string_view const& Metric::docs() const { return _docs; }
 std::string const& Metric::help() const { return _help; }
 std::string const& Metric::name() const { return _name; }
 std::string const& Metric::labels() const { return _labels; }
@@ -114,7 +119,7 @@ void Counter::store(uint64_t const& n) {
 void Counter::toPrometheus(std::string& result, bool withDocs) const {
   _b.push();
   result += "\n#TYPE " + name() + " counter\n";
-  result += "#HELP " + name() + " " + (withDocs ? docs() : help()) + "\n";
+  result += "#HELP " + name() + " " + (withDocs ? cleanedDocs() : help()) + "\n";
   result += name();
   if (!labels().empty()) {
     result += "{" + labels() + "}";
@@ -124,7 +129,7 @@ void Counter::toPrometheus(std::string& result, bool withDocs) const {
 
 Counter::Counter(
   uint64_t const& val, std::string const& name, std::string const& help,
-  char const* docs, std::string const& labels) :
+  std::string_view const& docs, std::string const& labels) :
   Metric(name, help, docs, labels), _c(val), _b(_c) {}
 
 Counter::~Counter() { _b.push(); }

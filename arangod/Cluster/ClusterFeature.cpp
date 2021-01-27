@@ -515,6 +515,27 @@ void ClusterFeature::prepare() {
 
 }
 
+static char const* arangodb_dropped_followers_count = R"RRR(
+**Metric**
+- `arangodb_dropped_followers_count`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_refused_followers_count = R"RRR(
+**Metric**
+- `arangodb_refused_followers_count`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_sync_wrong_checksum = R"RRR(
+**Metric**
+- `arangodb_sync_wrong_checksum`:
+
+TO_BE_WRITTEN
+)RRR";
+
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
 void ClusterFeature::start() {
@@ -584,13 +605,15 @@ void ClusterFeature::start() {
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _followersDroppedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
         StaticStrings::DroppedFollowerCount, 0,
-        "Number of drop-follower events");
+        "Number of drop-follower events", arangodb_dropped_followers_count);
     _followersRefusedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
         "arangodb_refused_followers_count", 0,
-        "Number of refusal answers from a follower during synchronous replication");
+        "Number of refusal answers from a follower during synchronous replication",
+        arangodb_refused_followers_count);
     _followersWrongChecksumCounter = server().getFeature<arangodb::MetricsFeature>().counter(
         "arangodb_sync_wrong_checksum", 0,
-        "Number of times a mismatching shard checksum was detected when syncing shards");
+        "Number of times a mismatching shard checksum was detected when syncing shards",
+        arangodb_sync_wrong_checksum);
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -794,12 +817,18 @@ AgencyCache& ClusterFeature::agencyCache() {
   return *_agencyCache;
 }
 
+static char const* arangodb_agencycomm_request_time_msec = R"RRR(
+**Metric**
+- `arangodb_agencycomm_request_time_msec`:
+
+TO_BE_WRITTEN
+)RRR";
 
 void ClusterFeature::allocateMembers() {
   try {
     server().getFeature<arangodb::MetricsFeature>().histogram(
       StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
+      "Request time for Agency requests", arangodb_agencycomm_request_time_msec);
   } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);

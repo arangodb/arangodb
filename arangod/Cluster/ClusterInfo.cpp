@@ -245,6 +245,38 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Documentation for metrics used in ClusterInfo
+////////////////////////////////////////////////////////////////////////////////
+
+static char const* arangodb_load_plan_runtime = R"RRR(
+**Metric**
+- `arangodb_load_plan_runtime`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_load_plan_accum_runtime_msec = R"RRR(
+**Metric**
+- `arangodb_load_plan_accum_runtime_msec`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_load_current_runtime = R"RRR(
+**Metric**
+- `arangodb_load_current_runtime`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* arangodb_load_current_accum_runtime_msec = R"RRR(
+**Metric**
+- `arangodb_load_current_accum_runtime_msec`:
+
+TO_BE_WRITTEN
+)RRR";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -264,14 +296,18 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _uniqid(),
     _lpTimer(_server.getFeature<MetricsFeature>().histogram(
                "arangodb_load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
-               "Plan loading runtimes [ms]")),
+               "Plan loading runtimes [ms]",
+               arangodb_load_plan_runtime)),
     _lpTotal(_server.getFeature<MetricsFeature>().counter(
-               "arangodb_load_plan_accum_runtime_msec", 0, "Accumulated runtime of Plan loading [ms]")),
+               "arangodb_load_plan_accum_runtime_msec", 0, "Accumulated runtime of Plan loading [ms]",
+               arangodb_load_plan_accum_runtime_msec)),
     _lcTimer(_server.getFeature<MetricsFeature>().histogram(
                "arangodb_load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
-               "Current loading runtimes [ms]")),
+               "Current loading runtimes [ms]",
+               arangodb_load_current_runtime)),
     _lcTotal(_server.getFeature<MetricsFeature>().counter(
-               "arangodb_load_current_accum_runtime_msec", 0, "Accumulated runtime of Current loading [ms]")) {
+               "arangodb_load_current_accum_runtime_msec", 0, "Accumulated runtime of Current loading [ms]",
+               arangodb_load_current_accum_runtime_msec)) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
