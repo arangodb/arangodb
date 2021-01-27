@@ -3,6 +3,7 @@
 #include <functional>
 #include <stdexcept>
 #include <utility>
+#include <optional>
 
 namespace expect {
 
