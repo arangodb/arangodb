@@ -956,6 +956,7 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   };
   if (options.username) {
     args['server.username'] = options.username;
+    args['server.password'] = "";
   }
   if (options.password) {
     args['server.password'] = options.password;
@@ -963,10 +964,14 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   
   args = Object.assign(args, cmds);
 
+  args['log.level'] = 'info';
   if (!args.hasOwnProperty('verbose')) {
     args['log.level'] = 'warning';
   }
-  
+  if (options.extremeVerbosity) {
+    args['log.level'] = 'trace';
+  }
+
   args['flatCommands'] = [which];
 
   return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
