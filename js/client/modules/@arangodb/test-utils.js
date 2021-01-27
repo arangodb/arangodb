@@ -100,6 +100,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     serverOptions = {};
   }
 
+  let memProfCounter = 0;
   let env = {};
   let customInstanceInfos = {};
   let healthCheck = function () {return true;};
@@ -232,6 +233,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           break;
         }
 
+        pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
@@ -412,6 +414,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
+  if (continueTesting) {
+    pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
+  }
+  
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
   print(Date() + ' Shutting down...');
