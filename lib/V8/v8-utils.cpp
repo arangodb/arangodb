@@ -2994,7 +2994,7 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   char* content = TRI_SlurpFile(*name, &length);
 
   if (content == nullptr) {
-    std::string msg = TRI_last_error();
+    auto msg = std::string{TRI_last_error()};
     msg += ": while reading ";
     msg += *name;
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), msg);

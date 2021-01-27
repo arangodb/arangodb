@@ -1345,8 +1345,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     int res = createCollection(parameters, &colPtr);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res, std::string("unable to create collection: ") +
-                             TRI_errno_string(res));
+      return Result(res, StringUtils::concatT("unable to create collection: ",
+                                              TRI_errno_string(res)));
     }
     // If we get here, we must have a collection ptr.
     TRI_ASSERT(colPtr != nullptr);
@@ -2007,8 +2007,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
                       TRI_ERROR_ARANGO_DUPLICATE_NAME,
-                      std::string("unable to restore view '") + nameSlice.copyString() +
-                          ": " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
+                      StringUtils::concatT("unable to restore view '",
+                                           nameSlice.copyString(), ": ",
+                                           TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME)));
         return;
       }
 

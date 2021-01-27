@@ -292,11 +292,11 @@ std::string fuerteToArangoErrorMessage(network::Response const& res) {
       }
     }
   }
-  return TRI_errno_string(fuerteToArangoErrorCode(res));
+  return std::string{TRI_errno_string(fuerteToArangoErrorCode(res))};
 }
 
 std::string fuerteToArangoErrorMessage(fuerte::Error err) {
-  return TRI_errno_string(fuerteToArangoErrorCode(err));
+  return std::string{TRI_errno_string(fuerteToArangoErrorCode(err))};
 }
 
 int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {

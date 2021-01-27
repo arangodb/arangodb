@@ -142,6 +142,8 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::methods;
 
+namespace StringUtils = arangodb::basics::StringUtils;
+
 namespace {
 // Read the collection from Plan; this is an object to have a valid VPack
 // around to read from and to not have to carry around vpack builders.
@@ -3791,9 +3793,8 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
       break;
     } while (true);
   } catch (basics::Exception const& ex) {
-    res = Result(   // result
-        ex.code(),  // code
-        TRI_errno_string(ex.code()) + std::string(", exception: ") + ex.what());
+    res = Result(ex.code(), StringUtils::concatT(TRI_errno_string(ex.code()),
+                                                 ", exception: ", ex.what()));
   } catch (...) {
     res = Result(TRI_ERROR_INTERNAL);
   }

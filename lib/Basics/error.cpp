@@ -24,7 +24,6 @@
 #include <cstring>
 #include <unordered_map>
 
-#include "Basics/Common.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/exitcodes.h"
@@ -96,5 +95,4 @@ std::string_view TRI_errno_string(int code) noexcept {
 /// @brief initializes the error messages
 void TRI_InitializeError() {
   TRI_InitializeErrorMessages();
-  TRI_InitializeExitMessages();
 }

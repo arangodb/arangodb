@@ -144,6 +144,11 @@ void Parser::registerParseError(int errorCode, char const* format,
   return registerParseError(errorCode, buffer, line, column);
 }
 
+void Parser::registerParseError(int errorCode, std::string_view format,
+                                char const* data, int line, int column) {
+  return registerParseError(errorCode, format.data(), data, line, column);
+}
+
 /// @brief register a parse error, position is specified as line / column
 void Parser::registerParseError(int errorCode, char const* data, int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
@@ -176,7 +181,7 @@ void Parser::registerParseError(int errorCode, char const* data, int line, int c
 }
 
 /// @brief register a warning
-void Parser::registerWarning(int errorCode, char const* data, int line, int column) {
+void Parser::registerWarning(int errorCode, std::string_view data, int line, int column) {
   // ignore line and column for now
   _query.warnings().registerWarning(errorCode, data);
 }

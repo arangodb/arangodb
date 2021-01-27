@@ -53,6 +53,10 @@ void QueryWarnings::registerWarning(int code, std::string const& details) {
   registerWarning(code, details.c_str());
 }
 
+void QueryWarnings::registerWarning(int code, std::string_view details) {
+  registerWarning(code, details.data());
+}
+
 /// @brief register a warning
 void QueryWarnings::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);

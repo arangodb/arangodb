@@ -1158,8 +1158,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
     if (opRes.fail()) {
       return Result(opRes.errorNumber(),
-                    std::string("unable to truncate collection '") + coll->name() +
-                        "': " + TRI_errno_string(opRes.errorNumber()));
+                    concatT("unable to truncate collection '", coll->name(),
+                            "': ", TRI_errno_string(opRes.errorNumber())));
     }
 
     return trx.finish(opRes.result);
@@ -1273,8 +1273,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       if (opRes.fail()) {
         return Result(opRes.errorNumber(),
-                      std::string("unable to truncate collection '") + coll->name() +
-                          "': " + TRI_errno_string(opRes.errorNumber()));
+                      concatT("unable to truncate collection '", coll->name(),
+                              "': ", TRI_errno_string(opRes.errorNumber())));
       }
 
       return trx.finish(opRes.result);
@@ -1732,8 +1732,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
             if (opRes.fail()) {
               return Result(opRes.errorNumber(),
-                            std::string("unable to truncate ") + collectionMsg +
-                                ": " + TRI_errno_string(opRes.errorNumber()));
+                            concatT("unable to truncate ", collectionMsg, ": ",
+                                    TRI_errno_string(opRes.errorNumber())));
             }
 
             res = trx.finish(opRes.result);
@@ -1754,8 +1754,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             auto res = vocbase().dropCollection(col->id(), true, -1.0).errorNumber();
 
             if (res != TRI_ERROR_NO_ERROR) {
-              return Result(res, std::string("unable to drop ") + collectionMsg +
-                                     ": " + TRI_errno_string(res));
+              return Result(res, concatT("unable to drop ", collectionMsg, ": ",
+                                         TRI_errno_string(res)));
             }
           }
         }
@@ -1783,9 +1783,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     auto r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
-      return Result(r.errorNumber(), std::string("unable to create ") + collectionMsg +
-                                         ": " + TRI_errno_string(r.errorNumber()) +
-                                         ". Collection info " + parameters.toJson());
+      return Result(r.errorNumber(), concatT("unable to create ", collectionMsg,
+                                             ": ", TRI_errno_string(r.errorNumber()),
+                                             ". Collection info ", parameters.toJson()));
     }
 
     return r;

@@ -44,6 +44,7 @@
 #include "RestServer/ServerIdFeature.h"
 
 using namespace arangodb;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 /// @brief common replication applier
 struct ApplierThread : public Thread {
@@ -253,8 +254,9 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
 
   if (_state._preventStart) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_LOCKED, std::string("cannot start replication applier for ") +
-                              _databaseName + ": " + TRI_errno_string(TRI_ERROR_LOCKED));
+        TRI_ERROR_LOCKED,
+        StringUtils::concatT("cannot start replication applier for ", _databaseName,
+                             ": ", TRI_errno_string(TRI_ERROR_LOCKED)));
   }
 
   if (_state.isActive()) {

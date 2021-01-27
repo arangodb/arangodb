@@ -55,7 +55,8 @@ public:
 
   /// @brief register a warning (convenience overload)
   void registerWarning(int code, std::string const& details);
-      
+  void registerWarning(int code, std::string_view details);
+
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
   
   bool empty() const;
