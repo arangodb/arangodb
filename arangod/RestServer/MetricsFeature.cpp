@@ -65,7 +65,7 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
   options->addOption("--server.export-read-write-metrics",
-                     "record read write metrics",
+                     "turn metrics for doiument read/write metrics on or off",
                      new BooleanParameter(&_exportReadWriteMetrics),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30706);
@@ -79,7 +79,12 @@ bool MetricsFeature::exportReadWriteMetrics() const {
   return _exportReadWriteMetrics;
 }
 
-void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
+void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (_exportReadWriteMetrics) {
+    serverStatistics().setupDocumentMetrics();
+  }
+}
+
 
 void MetricsFeature::toPrometheus(std::string& result) const {
 

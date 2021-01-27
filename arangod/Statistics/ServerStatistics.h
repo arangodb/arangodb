@@ -38,12 +38,15 @@ struct TransactionStatistics {
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
   TransactionStatistics& operator=(TransactionStatistics &&) = delete;
 
+  void setupDocumentMetrics();
+
   arangodb::MetricsFeature& _metrics;
-  
+
   Counter& _transactionsStarted;
   Counter& _transactionsAborted;
   Counter& _transactionsCommitted;
   Counter& _intermediateCommits;
+
   // total number of lock timeouts for exclusive locks
   Counter& _exclusiveLockTimeouts;
   // total number of lock timeouts for write locks
@@ -52,6 +55,7 @@ struct TransactionStatistics {
   Counter& _lockTimeMicros;
   // histogram for lock acquisition (in seconds)
   Histogram<log_scale_t<double>>& _lockTimes;
+  // Total number of times we used a fallback to sequential locking
   Counter& _sequentialLocks;
 
   // Total number of write operations in storage engine (excl. sync replication)
@@ -63,6 +67,8 @@ struct TransactionStatistics {
   // Total number of truncate operations (not number of documents truncated!) by sync replication
   std::optional<std::reference_wrapper<Counter>> _numTruncatesReplication;
 
+  /// @brief the following metrics are conditional and only initialized if
+  /// startup option `--server.export-read-write-metrics` is set
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_read_sec;
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_insert_sec;
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_replace_sec;
@@ -71,6 +77,7 @@ struct TransactionStatistics {
   std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_truncate_sec;
 
   bool _exportReadWriteMetrics;
+
 };
 
 struct ServerStatistics {
@@ -79,11 +86,13 @@ struct ServerStatistics {
   ServerStatistics& operator=(ServerStatistics const&) = delete;
   ServerStatistics& operator=(ServerStatistics &&) = delete;
 
+  void setupDocumentMetrics();
+
   ServerStatistics& statistics();
 
   TransactionStatistics _transactionsStatistics;
   double const _startTime;
-  
+
   double uptime() const noexcept;
 
   explicit ServerStatistics(arangodb::MetricsFeature& metrics, double start)
