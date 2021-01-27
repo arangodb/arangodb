@@ -42,8 +42,29 @@ constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 25 * 1000 * 1000;
 }
 
+static char const* counterDocs = R"RRR(
+**Metric**
+- `counterDocs`:
+
+This is just an example.
+)RRR";
+
+static char const* histogramDocs = R"RRR(
+**Metric**
+- `histogramDocs`:
+
+TO_BE_WRITTEN
+)RRR";
+
+static char const* gaugeDocs = R"RRR(
+**Metric**
+- `gaugeDocs`:
+
+TO_BE_WRITTEN
+)RRR";
+
 TEST(MetricsTest, test_counter_concurrency) {
-  Counter c(0, "counter", "Counter");
+  Counter c(0, "counter", "Counter", counterDocs);
 
   ASSERT_EQ(c.load(),  0);
 
@@ -74,7 +95,7 @@ TEST(MetricsTest, test_counter_concurrency) {
 
 TEST(MetricsTest, test_histogram_concurrency_same) {
   lin_scale_t scale(1, 100, 4);
-  Histogram h(scale, "histogram", "Histogram");
+  Histogram h(scale, "histogram", "Histogram", histogramDocs);
 
   ASSERT_EQ(h.load(0), 0);
   ASSERT_EQ(h.load(1), 0);
@@ -111,7 +132,7 @@ TEST(MetricsTest, test_histogram_concurrency_same) {
 
 TEST(MetricsTest, test_histogram_concurrency_distributed) {
   lin_scale_t scale(1, 100, 4);
-  Histogram h(scale, "histogram", "Histogram");
+  Histogram h(scale, "histogram", "Histogram", histogramDocs);
 
   ASSERT_EQ(h.load(0), 0);
   ASSERT_EQ(h.load(1), 0);
@@ -148,7 +169,7 @@ TEST(MetricsTest, test_histogram_concurrency_distributed) {
 
 TEST(MetricsTest, test_histogram_simple) {
   lin_scale_t scale(1, 100, 4);
-  Histogram h(scale, "histogram", "Histogram");
+  Histogram h(scale, "histogram", "Histogram", histogramDocs);
 
   ASSERT_EQ(h.load(0), 0);
   ASSERT_EQ(h.load(1), 0);
@@ -230,7 +251,7 @@ TEST(MetricsTest, test_histogram_simple) {
 
 
 TEST(MetricsTest, test_counter) {
-  Counter c(0, "counter_1", "Counter 1");
+  Counter c(0, "counter_1", "Counter 1", counterDocs);
 
   ASSERT_EQ(c.load(),  0);
   c++;
@@ -253,7 +274,7 @@ template<typename T> void gauge_test() {
   T zdo = T(.1);
   T zero = T(0.);
   T one = T(1.);
-  Gauge g(zero, "gauge_1", "Gauge 1");
+  Gauge g(zero, "gauge_1", "Gauge 1", gaugeDocs);
 
   using namespace std;
   using namespace std::chrono;
@@ -353,7 +374,7 @@ TEST(MetricsTest, test_gauge_float) {
 }
 
 TEST(MetricsTest, test_gauge_operations_uint64) {
-  Gauge<uint64_t> g(0, "gauge", "Test gauge");
+  Gauge<uint64_t> g(0, "gauge", "Test gauge", gaugeDocs);
 
   ASSERT_EQ(0, g.load());
 
@@ -440,7 +461,7 @@ TEST(MetricsTest, test_gauge_operations_uint64) {
 }
 
 TEST(MetricsTest, test_gauge_operations_double) {
-  Gauge<double> g(0.0, "gauge", "Test gauge");
+  Gauge<double> g(0.0, "gauge", "Test gauge", gaugeDocs);
   
   ASSERT_DOUBLE_EQ(0.0, g.load());
 
@@ -541,7 +562,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
   if constexpr (!linear) {
     base = scale.base();
   }
-  Histogram h(scale, "hist_test", "Hist test");
+  Histogram h(scale, "hist_test", "Hist test", histogramDocs);
 
   //lower bucket bounds
   for (int i = 0; i < buckets; ++i) {
