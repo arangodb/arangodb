@@ -161,9 +161,6 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
   // whatever we got can contain a success (HTTP 2xx) or an error (HTTP >= 400) 
   if (VPackSlice answer = resp.slice(); (resp.statusCode() == fuerte::StatusOK || resp.statusCode() == fuerte::StatusCreated) &&
       answer.isObject()) {
-    //VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
-    //VPackSlice statusSlice =
-    //    answer.get(std::vector<std::string>{"result", "status"});
     VPackSlice idSlice = answer.get({"result", "id"});
     VPackSlice statusSlice = answer.get({"result", "status"});
 
