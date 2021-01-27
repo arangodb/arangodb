@@ -126,13 +126,11 @@ void Exception::appendLocation() noexcept try {
 
 /// @brief construct an error message from a template string
 std::string Exception::FillExceptionString(int code, ...) {
-  char const* format = TRI_errno_string(code);
+  char const* format = TRI_errno_string(code).data();
   TRI_ASSERT(format != nullptr);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Obviously the formatstring of the error code has to support parameters.
   TRI_ASSERT(strchr(format, '%') != nullptr);
-#endif
 
   char buffer[1024];
   va_list ap;
