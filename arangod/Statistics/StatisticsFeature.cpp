@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CpuUsageFeature.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -199,6 +200,9 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
     "Physical memory in bytes"}},
+  {"cores",
+   {"arangodb_server_statistics_cpu_cores", "gauge",
+    "Number of CPU cores visible to the arangod process"}},
   {"userPercent",
    {"arangodb_server_statistics_user_percent", "gauge",
     "Percentage of time that the system CPUs have spent in user mode"}},
@@ -234,7 +238,8 @@ std::map<std::string, std::vector<std::string>> statStrings{
 std::initializer_list<double> const BytesReceivedDistributionCuts{250, 1000, 2000, 5000, 10000};
 std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000, 5000, 10000};
 std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0, 60.0};
-std::initializer_list<double> const RequestTimeDistributionCuts{0.01, 0.05, 0.1, 0.2, 0.5, 1.0};
+std::initializer_list<double> const RequestTimeDistributionCuts{
+    0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
 
 Counter AsyncRequests;
 Counter HttpConnections;
@@ -511,6 +516,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
+  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores");
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
@@ -531,10 +537,18 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
     appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
-    appendHistogram(result, requestStats.totalTime, "totalTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.requestTime, "requestTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.queueTime, "queueTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.ioTime, "ioTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
+  appendHistogram(result, requestStats.totalTime, "totalTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.requestTime, "requestTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.queueTime, "queueTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.ioTime, "ioTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
     appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"});
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"});
 

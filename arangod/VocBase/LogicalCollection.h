@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -234,6 +234,8 @@ class LogicalCollection : public LogicalDataSource {
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
                                          Serialization context) const;
+  
+  void toVelocyPackForInventory(velocypack::Builder&) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
@@ -267,18 +269,11 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Index access (local only)
 
-  /// @brief reads an element from the document collection
-  Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& mdr);
-
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   /// @brief compact-data operation
   Result compact();
-
-  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, RevisionId>& result) const;
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options);
@@ -293,12 +288,6 @@ class LogicalCollection : public LogicalDataSource {
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 OperationOptions& options, ManagedDocumentResult& previousMdr);
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result) const;
-
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const;
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully

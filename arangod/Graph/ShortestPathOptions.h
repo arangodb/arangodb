@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,8 +98,6 @@ struct ShortestPathOptions : public BaseOptions {
 
   template<typename ListType>
   void fetchVerticesCoordinator(ListType const& vertexIds);
-
-  void isQueryKilledCallback() const;
 
   auto estimateDepth() const noexcept -> uint64_t override;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Ast.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
@@ -206,7 +207,7 @@ Ast::SpecialNodes::SpecialNodes()
 /// @brief create the AST
 Ast::Ast(QueryContext& query, AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
-      _resources(&query.resourceMonitor()),
+      _resources(query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
@@ -598,24 +599,15 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   return node;
 }
 
-/// @brief create an AST collect node, COUNT INTO
+/// @brief create an AST collect node with a single COUNT aggregator
 AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
                                      size_t nameLength, AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
-  node->reserve(2);
+  auto count = createNodeAssign(name, nameLength,
+                                createNodeAggregateFunctionCall("COUNT", createNodeArray()));
+  auto aggregators = createNodeArray(1);
+  aggregators->addMember(count);
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &_specialNodes.NopNode;
-  }
-
-  node->addMember(options);
-  node->addMember(list);
-
-  AstNode* variable = createNodeVariable(name, nameLength, true);
-  node->addMember(variable);
-
-  return node;
+  return createNodeCollect(list, aggregators, nullptr, nullptr, nullptr, options);
 }
 
 /// @brief create an AST sort node
@@ -1548,6 +1540,47 @@ AstNode const* Ast::createNodeOptions(AstNode const* options) const {
   return &_specialNodes.NopNode;
 }
 
+/// @brief create an AST function call node for aggregate functions
+AstNode* Ast::createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments) {
+  if (functionName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  auto normalized = normalizeFunctionName(functionName, strlen(functionName));
+
+  if (!Aggregator::isValid(normalized.first)) {
+    // aggregate expression must be a call to MIN|MAX|LENGTH...
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
+  }
+
+  TRI_ASSERT(arguments != nullptr);
+  TRI_ASSERT(arguments->type == NODE_TYPE_ARRAY);
+
+  if (Aggregator::requiresInput(normalized.first)) {
+    // validate number of function call arguments
+    size_t numExpectedArguments = 1; // at the moment all aggregators take only a single argument
+    if (arguments->numMembers() != numExpectedArguments) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                                    functionName, 1, 1);
+    }
+  }
+
+  // TODO - we should consider to introduce a NODE_TYPE_AGGREATE_FCALL type
+  AstNode* node = createNode(NODE_TYPE_FCALL);
+
+  // Register a pointer to the function.
+  // However, this function is never called, but the function name is later translated to an aggregator.
+  // This also implies that ATM we can only support aggregator functions that also have a matching AQL function.
+  auto& server = query().vocbase().server();
+  auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
+  TRI_ASSERT(func != nullptr);
+  node->setData(static_cast<void const*>(func));
+
+  node->addMember(arguments);
+
+  return node;
+}
+
 /// @brief create an AST function call node
 AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                      AstNode const* arguments) {
@@ -1561,7 +1594,8 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
 
   if (normalized.second) {
     // built-in function
-    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
+    auto& server = query().vocbase().server();
+    auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
     TRI_ASSERT(func != nullptr);
    
     node = createNode(NODE_TYPE_FCALL);

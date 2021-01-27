@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -396,7 +396,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
 
   size_t numRows = 0;
   for (auto const& it : _queryResults) {
-    numRows += it->numEffectiveRows();
+    numRows += it->maxModifiedRowIndex();
   }
   numRows -= _queryResultPos;
   
@@ -419,7 +419,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
     TRI_ASSERT(resultBlock != nullptr || state == ExecutionState::DONE);
 
     if (resultBlock != nullptr) {
-      numRows += resultBlock->numEffectiveRows();
+      numRows += resultBlock->maxModifiedRowIndex();
       _queryResults.push_back(std::move(resultBlock));
     }
   }

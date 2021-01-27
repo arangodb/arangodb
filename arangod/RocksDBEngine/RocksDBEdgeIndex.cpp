@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -359,30 +360,19 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // TODO Add cache retry on next call
       // Now we have something in _inplaceMemory.
       // It may be an empty array or a filled one, never mind, we cache both
-      auto entry =
-          cache::CachedValue::construct(fromTo.data(),
-                                        static_cast<uint32_t>(fromTo.size()),
-                                        _builder.slice().start(),
-                                        static_cast<uint64_t>(_builder.slice().byteSize()));
-      if (entry) {
-        bool inserted = false;
-        for (size_t attempts = 0; attempts < 10; attempts++) {
-          auto status = cc->insert(entry);
-          if (status.ok()) {
-            inserted = true;
-            break;
-          }
-          if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-            break;
-          }
-          cpu_relax();
+      size_t attempts = 0;
+      cache::Cache::Inserter inserter(*cc, fromTo.data(),
+                                      static_cast<uint32_t>(fromTo.size()),
+                                      _builder.slice().start(),
+                                      static_cast<uint64_t>(_builder.slice().byteSize()),
+                                      [&attempts](Result const& res) -> bool {
+                                        return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                               ++attempts <= 10;
+                                      });
+      if (!inserter.status.fail()) {
+        LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
+            << "Failed to cache: " << fromTo.toString();
         }
-        if (!inserted) {
-          LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
-              << "Failed to cache: " << fromTo.toString();
-          delete entry;
-        }
-      }
     }
     TRI_ASSERT(_builder.slice().isArray());
     _builderIterator = VPackArrayIterator(_builder.slice());
@@ -422,7 +412,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                    ((attr == StaticStrings::FromString) ? StaticStrings::IndexNameEdgeFrom
                                                         : StaticStrings::IndexNameEdgeTo),
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
-                   false, false, RocksDBColumnFamily::edge(),
+                   false, false,
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex),
                    basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
                    !ServerState::instance()->isCoordinator() &&
                        collection.vocbase()
@@ -436,7 +427,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString : StaticStrings::FromString),
                                      false)}}) {
-  TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex));
 
   if (!ServerState::instance()->isCoordinator()) {
     // We activate the estimator only on DBServers
@@ -763,33 +754,16 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
         // Store what we have.
         builder.close();
 
-        while (cc->isBusy()) {
-          // We should wait here, the cache will reject
-          // any inserts anyways.
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
+        size_t attempts = 0;
+        cache::Cache::Inserter inserter(*cc, previous.data(),
+                                        static_cast<uint32_t>(previous.size()),
+                                        builder.slice().start(),
+                                        static_cast<uint64_t>(builder.slice().byteSize()),
+                                        [&attempts](Result const& res) -> bool {
+                                          return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                                 ++attempts <= 10;
+                                        });
 
-        auto entry =
-            cache::CachedValue::construct(previous.data(),
-                                          static_cast<uint32_t>(previous.size()),
-                                          builder.slice().start(),
-                                          static_cast<uint64_t>(builder.slice().byteSize()));
-        if (entry) {
-          bool inserted = false;
-          for (size_t attempts = 0; attempts < 10; attempts++) {
-            auto status = cc->insert(entry);
-            if (status.ok()) {
-              inserted = true;
-              break;
-            }
-            if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-              break;
-            }
-          }
-          if (!inserted) {
-            delete entry;
-          }
-        }
         builder.clear();
       }
       // Need to store
@@ -824,27 +798,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     // We still have something to store
     builder.close();
 
-    auto entry =
-        cache::CachedValue::construct(previous.data(),
-                                      static_cast<uint32_t>(previous.size()),
-                                      builder.slice().start(),
-                                      static_cast<uint64_t>(builder.slice().byteSize()));
-    if (entry) {
-      bool inserted = false;
-      for (size_t attempts = 0; attempts < 10; attempts++) {
-        auto status = cc->insert(entry);
-        if (status.ok()) {
-          inserted = true;
-          break;
-        }
-        if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-          break;
-        }
-      }
-      if (!inserted) {
-        delete entry;
-      }
-    }
+    size_t attempts = 0;
+    cache::Cache::Inserter inserter(*cc, previous.data(),
+                                    static_cast<uint32_t>(previous.size()),
+                                    builder.slice().start(),
+                                    static_cast<uint64_t>(builder.slice().byteSize()),
+                                    [&attempts](Result const& res) -> bool {
+                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                             ++attempts <= 10;
+                                    });
   }
   LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 }

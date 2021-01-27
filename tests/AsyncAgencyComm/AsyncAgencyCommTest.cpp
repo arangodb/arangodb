@@ -91,7 +91,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
       response = std::make_unique<fuerte::Response>(std::move(header));
       response->setPayload(std::move(body), 0);
-    };
+    }
 
     void returnError(fuerte::Error err) {
       error = err;
@@ -180,11 +180,12 @@ struct AsyncAgencyCommTest
   }
 
   network::ConnectionPool::Config config() {
-    network::ConnectionPool::Config config;
+    network::ConnectionPool::Config config(server.getFeature<MetricsFeature>());
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "AsyncAgencyCommTest";
     return config;
   }
 

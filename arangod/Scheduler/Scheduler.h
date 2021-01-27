@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -152,8 +152,7 @@ class Scheduler {
 
   // Enqueues a task - this is implemented on the specific scheduler
   // May throw.
-  virtual bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) ADB_WARN_UNUSED_RESULT = 0;
-
+  [[nodiscard]] virtual bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) = 0;
 
  public:
     // delay Future returns a future that will be fulfilled after the given duration

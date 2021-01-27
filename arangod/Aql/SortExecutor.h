@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 #ifndef ARANGOD_AQL_SORT_EXECUTOR_H
 #define ARANGOD_AQL_SORT_EXECUTOR_H
 
-#include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -37,6 +36,8 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace transaction {
 class Methods;
 }
@@ -45,11 +46,11 @@ namespace aql {
 
 struct AqlCall;
 class AqlItemBlockInputMatrix;
+class AqlItemBlockManager;
 class AllRowsFetcher;
 class RegisterInfos;
 class NoStats;
 class OutputAqlItemRow;
-class AqlItemBlockManager;
 struct SortRegister;
 
 class SortExecutorInfos {
@@ -58,7 +59,9 @@ class SortExecutorInfos {
                     RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager,
-                    velocypack::Options const* options, bool stable);
+                    velocypack::Options const* options, 
+                    arangodb::ResourceMonitor& resourceMonitor,
+                    bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -75,6 +78,8 @@ class SortExecutorInfos {
 
   [[nodiscard]] std::vector<SortRegister> const& sortRegisters() const noexcept;
 
+  [[nodiscard]] arangodb::ResourceMonitor& getResourceMonitor() const;
+
   [[nodiscard]] bool stable() const;
 
   [[nodiscard]] size_t limit() const noexcept;
@@ -88,6 +93,7 @@ class SortExecutorInfos {
   std::size_t _limit;
   AqlItemBlockManager& _manager;
   velocypack::Options const* _vpackOptions;
+  arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
   bool _stable;
 };
@@ -142,6 +148,8 @@ class SortExecutor {
   std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
 
   size_t _returnNext;
+
+  size_t _memoryUsageForRowIndexes;
 };
 }  // namespace aql
 }  // namespace arangodb

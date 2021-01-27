@@ -22,7 +22,19 @@ describe('Foxx self-heal cleanup', () => {
   });
 
   it('should clean up stray bundles', () => {
-    const fakeBundlePath = path.resolve(FoxxService.rootBundlePath(), 'fakebundle.zip');
+    const rootBundlePath = FoxxService.rootBundlePath();
+    // First wait until the path exists, it is created by the selfheal
+    // mechanism of the Foxx manager, otherwise we might run into an error
+    // with the write:
+    let count = 0;
+    while (!fs.exists(rootBundlePath)) {
+      require("internal").wait(1);
+      count += 1;
+      if (count >= 60) {
+        throw "Banana";
+      }
+    }
+    const fakeBundlePath = path.resolve(rootBundlePath, 'fakebundle.zip');
     fs.write(fakeBundlePath, 'gone in 30 seconds');
     expect(fs.exists(fakeBundlePath)).to.equal(true);
     FoxxManager.heal();

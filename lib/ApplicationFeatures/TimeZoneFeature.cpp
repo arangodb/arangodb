@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,18 +50,13 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-static TimeZoneFeature* Instance = nullptr;
-
 TimeZoneFeature::TimeZoneFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TimeZone"), _binaryPath(server.getBinaryPath()) {
-  Instance = this;
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 TimeZoneFeature::~TimeZoneFeature() = default;
-
-TimeZoneFeature* TimeZoneFeature::instance() { return Instance; }
 
 void TimeZoneFeature::prepareTimeZoneData(std::string const& binaryPath,
                                           std::string const& binaryExecutionPath,

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,12 +41,13 @@ class SingleCollectionTransaction final : public transaction::Methods {
  public:
   /// @brief create the transaction, using a data-source
   SingleCollectionTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                              LogicalDataSource const& collection,
-                              AccessMode::Type accessType);
+                              LogicalDataSource const& collection, AccessMode::Type accessType,
+                              transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, using a collection name
   SingleCollectionTransaction(std::shared_ptr<transaction::Context> const&,
-                              std::string const&, AccessMode::Type);
+                              std::string const&, AccessMode::Type,
+                              transaction::Options const& options = transaction::Options());
 
   /// @brief end the transaction
   ~SingleCollectionTransaction() = default;

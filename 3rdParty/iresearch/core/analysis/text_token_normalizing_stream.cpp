@@ -403,19 +403,23 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
   std::string data_utf8;
-
-  // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
-    return false; // UTF8 conversion failure
+  irs::string_ref data_utf8_ref;
+  if (irs::locale_utils::is_utf8(state_->options.locale)) {
+    data_utf8_ref = data;
+  } else {
+    // valid conversion since 'locale_' was created with internal unicode encoding
+    if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
+      return false; // UTF8 conversion failure
+    }
+    data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8.size() > irs::integer_traits<int32_t>::const_max) {
+  if (data_utf8_ref.size() > irs::integer_traits<int32_t>::const_max) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size()))
-  );
+    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
 
   // ...........................................................................
   // normalize unicode

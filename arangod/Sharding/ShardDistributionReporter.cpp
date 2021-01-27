@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -359,7 +359,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // First wait for Leader
             {
               auto const& res = leaderF.get();
-              if (fuerteToArangoErrorCode(res) != TRI_ERROR_NO_ERROR || !res.response) {
+              if (res.fail()) {
                 // We did not even get count for leader, use defaults
                 continue;
               }
@@ -387,9 +387,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             {
               auto responses = futures::collectAll(futures).get();
               for (futures::Try<network::Response> const& response : responses) {
-                if (!response.hasValue() ||
-                    fuerteToArangoErrorCode(response.get()) != TRI_ERROR_NO_ERROR ||
-                    !response.get().response) {
+                if (!response.hasValue() || response.get().fail()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be
                   // handled by the accumulated timeout

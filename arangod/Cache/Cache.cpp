@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,10 +31,12 @@
 
 #include "Cache/Cache.h"
 
-#include "Basics/SharedPRNG.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/fasthash.h"
+#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -77,7 +79,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
   _tableShrdPtr->enable();
   if (_enableWindowedStats) {
     try {
-      _findStats.reset(new StatBuffer(_findStatsCapacity));
+      _findStats.reset(new StatBuffer(manager->sharedPRNG(), _findStatsCapacity));
     } catch (std::bad_alloc const&) {
       _findStats.reset(nullptr);
       _enableWindowedStats = false;
@@ -190,6 +192,25 @@ bool Cache::isBusy() {
   return _metadata.isResizing() || _metadata.isMigrating();
 }
 
+Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
+                          void const* value, std::size_t valueSize,
+                          std::function<bool(Result const&)> retry) {
+  std::unique_ptr<CachedValue> cv{CachedValue::construct(key, keySize, value, valueSize)};
+  if (!cv) {
+    status.reset(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  status = cache.insert(cv.get());
+  while (status.fail() && retry(status)){
+    basics::cpu_relax();
+    status = cache.insert(cv.get());
+  }
+
+  if (status.ok()) {
+    cv.release();
+  }
+}
+
 void Cache::destroy(std::shared_ptr<Cache> const& cache) {
   if (cache != nullptr) {
     cache->shutdown();
@@ -265,7 +286,7 @@ std::uint32_t Cache::hashKey(void const* key, std::size_t keySize) const {
 }
 
 void Cache::recordStat(Stat stat) {
-  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) != 0) {
+  if ((_manager->sharedPRNG().rand() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
 
@@ -296,7 +317,7 @@ bool Cache::reportInsert(bool hadEviction) {
     _insertEvictions.add(1, std::memory_order_relaxed);
   }
   _insertsTotal.add(1, std::memory_order_relaxed);
-  if ((basics::SharedPRNG::rand() & _evictionMask) == 0) {
+  if ((_manager->sharedPRNG().rand() & _evictionMask) == 0) {
     std::uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
     std::uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
     if (total > 0 && total > evictions &&
@@ -375,6 +396,18 @@ bool Cache::canMigrate() {
   return !_metadata.isMigrating();
 }
 
+/// TODO Improve freeing algorithm
+/// Currently we pick a bucket at random, free something if possible, then
+/// repeat. In a table with a low fill ratio, this will inevitably waste a lot
+/// of time visiting empty buckets. If we get unlucky, we can go an arbitrarily
+/// long time without fixing anything. We may wish to make the walk a bit more
+/// like visiting the buckets in the order of a fixed random permutation. This
+/// should be achievable by picking a random start bucket S, and a suitably
+/// large number P co-prime to the size of the table N to use as a constant
+/// offset for each subsequent step. (The sequence of numbers S, ((S + P) % N)),
+/// ((S + 2P) % N)... (S + (N-1)P) % N should form a permuation of [1, N].
+/// That way we still visit the buckets in a sufficiently random order, but we
+/// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
   if (isShutdown()) {
     return false;
@@ -419,8 +452,9 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   table->setAuxiliary(newTable);
 
   // do the actual migration
-  for (std::uint32_t i = 0; i < table->size(); i++) {
-    migrateBucket(table->primaryBucket(i), table->auxiliaryBuckets(i), newTable);
+  for (std::uint64_t i = 0; i < table->size(); i++) {  // need uint64 for end condition
+    migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
+                  table->auxiliaryBuckets(static_cast<uint32_t>(i)), newTable);
   }
 
   // swap tables

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,6 +62,8 @@ class ClusterEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
+  
+  HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
@@ -215,7 +217,11 @@ class ClusterEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   // mock mode
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   static bool Mocking;
+#else
+  static constexpr bool Mocking = false;
+#endif
 
  private:
   /// path to arangodb data dir

@@ -13590,6 +13590,102 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   ASSERT_EQ(count, one_segment_files_count);
 }
 
+TEST_P(index_test_case, ensure_no_empty_norms_written) {
+  struct empty_token_stream : irs::token_stream {
+    bool next() noexcept { return false; }
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
+      if (type == irs::type<irs::increment>::id()) {
+        return &inc;
+      }
+
+      if (type == irs::type<irs::term_attribute>::id()) {
+        return &term;
+      }
+
+      return nullptr;
+    }
+
+    irs::increment inc;
+    irs::term_attribute term;
+  };
+
+  struct empty_field {
+    irs::string_ref name() const { return "test"; };
+    irs::flags features() const {
+      return { irs::type<irs::position>::get(),
+               irs::type<irs::frequency>::get(),
+               irs::type<irs::norm>::get() };
+    }
+    irs::token_stream& get_tokens() const noexcept {
+      return stream;
+    }
+
+    mutable empty_token_stream stream;
+  } empty;
+
+  {
+    auto writer = open_writer();
+
+    // no norms is written as there is nothing to index
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(empty));
+    }
+
+    // we don't write default norms
+    {
+      const tests::templates::string_field field(
+        empty.name(), "bar", empty.features());
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    {
+      const tests::templates::string_field field(
+        empty.name(), "bar", empty.features());
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    writer->commit();
+  }
+
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = (*reader)[0];
+    ASSERT_EQ(3, segment.docs_count());
+    ASSERT_EQ(3, segment.live_docs_count());
+
+    auto field = segment.fields();
+    ASSERT_NE(nullptr, field);
+    ASSERT_TRUE(field->next());
+    auto& field_reader = field->value();
+    ASSERT_EQ(empty.name(), field_reader.meta().name);
+    ASSERT_TRUE(irs::field_limits::valid(field_reader.meta().norm));
+    ASSERT_FALSE(field->next());
+    ASSERT_FALSE(field->next());
+
+    auto column_reader = segment.column_reader(field_reader.meta().norm);
+    ASSERT_NE(nullptr, column_reader);
+    ASSERT_EQ(1, column_reader->size());
+    auto it = column_reader->iterator();
+    ASSERT_NE(nullptr, it);
+    auto payload = irs::get<irs::payload>(*it);
+    ASSERT_NE(nullptr, payload);
+    ASSERT_TRUE(it->next());
+    ASSERT_EQ(3, it->value());
+    irs::bytes_ref_input in(payload->value);
+    const auto value = irs::read_zvfloat(in);
+    ASSERT_NE(irs::norm::DEFAULT(), value);
+    ASSERT_FALSE(it->next());
+    ASSERT_FALSE(it->next());
+  }
+}
 
 INSTANTIATE_TEST_CASE_P(
   index_test_10,

@@ -387,8 +387,8 @@ _Enterprise Edition only_
 ### libunwind
 
 * Name: libunwind
-* Version: 1.4
-* Date: 2020-03-31 16:12:36Z
+* Version: 1.5
+* Date: 2020-11-10 16:16:31Z
 * Project Home: https://github.com/libunwind/libunwind
 * License: https://raw.githubusercontent.com/libunwind/libunwind/master/LICENSE
 * License Name: MIT License
@@ -559,8 +559,8 @@ _Enterprise Edition only_
 #### IANA Time Zone Database (tzdata)
 
 Name: Time Zone Database
-Version: 2020a
-Date: 2020-04-23
+Version: 2020f
+Date: 2020-12-29
 Project https://www.iana.org/time-zones
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/tzdata/LICENSE
 License Name: Public Domain
@@ -569,8 +569,8 @@ License Id: -
 #### Unicode CLDR Project (windowsZones.xml)
 
 Name: Unicode CLDR Project
-Version: 37
-Date: 2020-09-04 15:01:52Z
+Version: 38.1
+Date: 2020-11-19
 Project Home: https://github.com/unicode-org/cldr
 License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
 License Name: ICU License

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,7 +88,8 @@ CommTask::~CommTask() = default;
 // -----------------------------------------------------------------------------
 
 namespace {
-TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
+TRI_vocbase_t* lookupDatabaseFromRequest(application_features::ApplicationServer& server,
+                                         GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database name
@@ -96,13 +97,14 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
     req.setDatabaseName(StaticStrings::SystemDatabase);
   }
 
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-  return databaseFeature->useDatabase(req.databaseName());
+  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
+  return databaseFeature.useDatabase(req.databaseName());
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(GeneralRequest& req) {
-  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(req);
+bool resolveRequestContext(application_features::ApplicationServer& server,
+                           GeneralRequest& req) {
+  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -200,7 +202,8 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-        ReplicationFeature::prepareFollowerResponse(res.get(), mode);
+        auto& rf = _server.server().getFeature<ReplicationFeature>();
+        rf.prepareFollowerResponse(res.get(), mode);
         sendResponse(std::move(res), RequestStatistics::Item());
         return Flow::Abort;
       }
@@ -213,7 +216,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
   }
 
   // Step 3: Try to resolve vocbase and use
-  if (!::resolveRequestContext(req)) {  // false if db not found
+  if (!::resolveRequestContext(_server.server(), req)) {  // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
@@ -270,7 +273,8 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
 void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) const {
   ServerState::Mode mode = ServerState::mode();
   if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
-    ReplicationFeature::setEndpointHeader(&res, mode);
+    auto& rf = _server.server().getFeature<ReplicationFeature>();
+    rf.setEndpointHeader(&res, mode);
   }
   if (mode == ServerState::Mode::REDIRECT) {
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
@@ -333,8 +337,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
-  auto handler = GeneralServerFeature::HANDLER_FACTORY->createHandler(server, std::move(request),
-                                                                      std::move(response));
+  auto& factory = server.getFeature<GeneralServerFeature>().handlerFactory();
+  auto handler = factory.createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
@@ -477,18 +481,20 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 // a scheduler worker thread eventually.
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
-  handler->statistics().SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 
-  RequestLane lane = handler->getRequestLane();
+  RequestLane lane = handler->determineRequestLane();
+  handler->trackQueueStart();
+
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
 
-  // queue the operation in the scheduler, and make it eligible for direct execution
-  // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
-  // and there is currently only a single client handled by the IoContext
+  // queue the operation for execution in the scheduler
   auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
-    handler->statistics().SET_QUEUE_END();
+    handler->trackQueueEnd();
+    handler->trackTaskStart();
+
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
+      handler->trackTaskEnd();
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(), handler->stealStatistics());
@@ -515,23 +521,34 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   if (_server.server().isStopping()) {
     return false;
   }
-
-  auto const lane = handler->getRequestLane();
+ 
+  RequestLane lane = handler->determineRequestLane();
+  handler->trackQueueStart();
 
   if (jobId != nullptr) {
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
+    auto& jobManager = _server.server().getFeature<GeneralServerFeature>().jobManager();
+    jobManager.initAsyncJob(handler);
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
-      handler->runHandler([](RestHandler* h) {
-        GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
+    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler), manager(&jobManager)] {
+      handler->trackQueueEnd();
+      handler->trackTaskStart();
+
+      handler->runHandler([manager](RestHandler* h) { 
+        h->trackTaskEnd();
+        manager->finishAsyncJob(h); 
       });
     });
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
-      handler->runHandler([](RestHandler*) {});
+      handler->trackQueueEnd();
+      handler->trackTaskStart();
+      
+      handler->runHandler([](RestHandler* h) {
+        h->trackTaskEnd();
+      });
     });
   }
 }
@@ -633,8 +650,9 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
 
   // if the request asks to allow credentials, we'll check against the
   // configured allowed list of origins
+  auto const& gs = _server.server().getFeature<GeneralServerFeature>();
   std::vector<std::string> const& accessControlAllowOrigins =
-      GeneralServerFeature::accessControlAllowOrigins();
+      gs.accessControlAllowOrigins();
 
   if (!accessControlAllowOrigins.empty()) {
     if (accessControlAllowOrigins[0] == "*") {

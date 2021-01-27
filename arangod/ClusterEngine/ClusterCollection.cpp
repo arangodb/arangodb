@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,11 +64,16 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _engineType(engineType),
       _info(info),
       _selectivityEstimates(collection) {
-  if (_engineType != ClusterEngineType::RocksDBEngine &&
-      _engineType != ClusterEngineType::MockEngine) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
+    return;
   }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (_engineType == ClusterEngineType::MockEngine) {
+    return;
+  }
+#endif
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
 }
 
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
@@ -109,7 +114,11 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     if (!validators.isNone()) {
       merge.add(StaticStrings::Schema, validators);
     }
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
@@ -147,8 +156,11 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
                VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false)));
-
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
@@ -319,21 +331,21 @@ Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRe
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                arangodb::velocypack::StringRef const& /*key*/,
-                               ManagedDocumentResult& /*result*/) {
+                               IndexIterator::DocumentCallback const& /*cb*/) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+// read using a token!
+bool ClusterCollection::read(transaction::Methods* /*trx*/,
+                             LocalDocumentId const& /*documentId*/,
+                             IndexIterator::DocumentCallback const& /*cb*/) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
                                      ManagedDocumentResult& /*result*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-// read using a token!
-bool ClusterCollection::readDocumentWithCallback(transaction::Methods* /*trx*/,
-                                                 LocalDocumentId const& /*documentId*/,
-                                                 IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

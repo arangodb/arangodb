@@ -133,7 +133,7 @@ struct ResponseHeader final : public MessageHeader {
 // from (Response) a server.
 class Message {
  protected:
-  Message() = default;
+  Message() : _timestamp(std::chrono::steady_clock::now()) {}
   virtual ~Message() = default;
 
  public:
@@ -174,6 +174,13 @@ class Message {
   bool isContentTypeVPack() const;
   bool isContentTypeHtml() const;
   bool isContentTypeText() const;
+
+  std::chrono::steady_clock::time_point timestamp() const { return _timestamp; }
+  // set timestamp when it was sent
+  void timestamp(std::chrono::steady_clock::time_point t) { _timestamp = t; }
+
+ private:
+  std::chrono::steady_clock::time_point _timestamp;
 };
 
 // Request contains the message send to a server in a request.

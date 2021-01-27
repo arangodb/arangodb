@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,7 +90,8 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
       Variable const& outVariable, aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
-      iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
+      iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
+      iresearch::CountApproximate);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -105,10 +106,12 @@ class IResearchViewExecutorInfos {
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
+  bool filterConditionIsEmpty() const noexcept { return _filterConditionIsEmpty; }
   VarInfoMap const& varInfoMap() const noexcept;
   int getDepth() const noexcept;
   bool volatileSort() const noexcept;
   bool volatileFilter() const noexcept;
+  iresearch::CountApproximate countApproximate() const noexcept { return _countApproximate; }
 
   // first - sort
   // second - number of sort conditions to take into account
@@ -133,6 +136,8 @@ class IResearchViewExecutorInfos {
   VarInfoMap const& _varInfoMap;
   int const _depth;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
+  iresearch::CountApproximate _countApproximate;
+  bool _filterConditionIsEmpty;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
@@ -145,7 +150,7 @@ class IResearchViewStats {
   void operator+= (IResearchViewStats const& stats) {
     _scannedIndex += stats._scannedIndex;
   }
-  
+
   size_t getScanned() const noexcept;
 
  private:
@@ -237,6 +242,7 @@ class IResearchViewExecutorBase {
     auto getDocumentReg() const noexcept -> aql::RegisterId {
       return documentOutReg;
     }
+
     template <iresearch::MaterializeType t = iresearch::MaterializeType::Materialize,
               typename E = enabled_for_materialize_type_t<t>>
     auto getDocumentCallback() const noexcept -> IndexIterator::DocumentCallback const& {
@@ -438,6 +444,8 @@ class IResearchViewExecutor
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
+  size_t _currentSegmentPos; // current document iterator position in segment
+  size_t _totalPos; // total position for full snapshot
   LogicalCollection const* _collection{};
 
   // case ordered only:
@@ -476,7 +484,7 @@ class IResearchViewMergeExecutor
             irs::score const& score, size_t numScores,
             LogicalCollection const& collection,
             irs::doc_iterator::ptr&& pkReader,
-            size_t storedValuesIndex,
+            size_t index,
             irs::doc_iterator* sortReaderRef,
             irs::payload const* sortReaderValue,
             irs::doc_iterator::ptr&& sortReader) noexcept;
@@ -491,10 +499,11 @@ class IResearchViewMergeExecutor
     size_t numScores{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
     ColumnIterator pkReader;    // primary key reader
-    size_t storedValuesIndex;  // first stored values index
+    size_t segmentIndex;  // first stored values index
     irs::doc_iterator* sortReaderRef; // pointer to sort column reader
     irs::payload const* sortValue;    // sort column value
     irs::doc_iterator::ptr sortReader; // sort column reader
+    size_t segmentPos{0};
   };
 
   class MinHeapContext {
@@ -536,7 +545,6 @@ struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materiali
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
-
 }  // namespace aql
 }  // namespace arangodb
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,11 +49,13 @@ SingleServerTraverser::~SingleServerTraverser() = default;
 
 void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid,
                                                   VPackBuilder& result) {
-  _opts->cache()->insertVertexIntoResult(vid, result);
+  _opts->cache()->appendVertex(vid, result);
 }
 
 aql::AqlValue SingleServerTraverser::fetchVertexData(arangodb::velocypack::StringRef vid) {
-  return _opts->cache()->fetchVertexAqlResult(vid);
+  arangodb::aql::AqlValue result;
+  _opts->cache()->appendVertex(vid, result);
+  return result;
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {
@@ -72,9 +74,8 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
 
 void SingleServerTraverser::clear() { traverserCache()->clear(); }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge,
-                                      std::vector<arangodb::velocypack::StringRef>& result) {
-  return _vertexGetter->getVertex(edge, result);
+bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+  return _vertexGetter->getVertex(edge, path);
 }
 
 bool SingleServerTraverser::getSingleVertex(VPackSlice edge,

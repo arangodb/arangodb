@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,69 +127,69 @@ class ServerState {
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
 
-  bool isSingleServer() { return isSingleServer(loadRole()); }
+  bool isSingleServer() const noexcept { return isSingleServer(loadRole()); }
 
-  static bool isSingleServer(ServerState::RoleEnum role) {
+  static bool isSingleServer(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_SINGLE);
   }
 
   /// @brief check whether the server is a coordinator
-  bool isCoordinator() { return isCoordinator(loadRole()); }
+  bool isCoordinator() const noexcept { return isCoordinator(loadRole()); }
 
   /// @brief check whether the server is a coordinator
-  static bool isCoordinator(ServerState::RoleEnum role) {
+  static bool isCoordinator(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
-  bool isDBServer() { return isDBServer(loadRole()); }
+  bool isDBServer() const noexcept { return isDBServer(loadRole()); }
 
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
-  static bool isDBServer(ServerState::RoleEnum role) {
+  static bool isDBServer(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_DBSERVER);
   }
 
   /// @brief whether or not the role is a cluster-related role
-  static bool isClusterRole(ServerState::RoleEnum role) {
+  static bool isClusterRole(ServerState::RoleEnum role) noexcept {
     return (role == ServerState::ROLE_DBSERVER || role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
-  bool isClusterRole() { return (isClusterRole(loadRole())); };
+  bool isClusterRole() const noexcept { return (isClusterRole(loadRole())); };
 
   /// @brief check whether the server is an agent
-  bool isAgent() { return isAgent(loadRole()); }
+  bool isAgent() const noexcept { return isAgent(loadRole()); }
 
   /// @brief check whether the server is an agent
-  static bool isAgent(ServerState::RoleEnum role) {
+  static bool isAgent(ServerState::RoleEnum role) noexcept {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_AGENT);
   }
 
   /// @brief check whether the server is running in a cluster
-  bool isRunningInCluster() { return isClusterRole(loadRole()); }
+  bool isRunningInCluster() const noexcept { return isClusterRole(loadRole()); }
 
   /// @brief check whether the server is running in a cluster
-  static bool isRunningInCluster(ServerState::RoleEnum role) {
+  static bool isRunningInCluster(ServerState::RoleEnum role) noexcept {
     return isClusterRole(role);
   }
 
   /// @brief check whether the server is a single or coordinator
-  bool isSingleServerOrCoordinator() const {
+  bool isSingleServerOrCoordinator() const noexcept {
     return isSingleServerOrCoordinator(loadRole());
   }
   
-  static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) {
+  static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) noexcept {
     return isCoordinator(role) || isSingleServer(role);
   }
 
   /// @brief get the server role
-  inline RoleEnum getRole() const { return loadRole(); }
+  inline RoleEnum getRole() const noexcept { return loadRole(); }
 
   /// @brief register with agency, create / load server ID
   bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
@@ -272,7 +272,7 @@ class ServerState {
 
  private:
   /// @brief atomically fetches the server role
-  inline RoleEnum loadRole() const {
+  inline RoleEnum loadRole() const noexcept {
     return _role.load(std::memory_order_consume);
   }
 

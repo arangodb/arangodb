@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -243,13 +243,13 @@ Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel
       rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter;
 
   std::initializer_list<rocksdb::ColumnFamilyHandle*> const cfs = {
-    RocksDBColumnFamily::definitions(),
-    RocksDBColumnFamily::documents(),
-    RocksDBColumnFamily::primary(),
-    RocksDBColumnFamily::edge(),
-    RocksDBColumnFamily::vpack(),
-    RocksDBColumnFamily::geo(),
-    RocksDBColumnFamily::fulltext(),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex),
   };
 
   LOG_TOPIC("d8a5d", INFO, arangodb::Logger::ENGINES)

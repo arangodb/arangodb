@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,9 +60,9 @@ namespace {
 size_t defaultNumberOfThreads() {
   // use two times the number of hardware threads as the default
   size_t result = arangodb::NumberOfCores::getValue() * 2;
-  // but only if higher than 64. otherwise use a default minimum value of 64
-  if (result < 64) {
-    result = 64;
+  // but only if higher than 64. otherwise use a default minimum value of 32
+  if (result < 32) {
+    result = 32;
   }
   return result;
 }
@@ -104,8 +104,19 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      new UInt64Parameter(&_nrMinimalThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
+    // max / min number of threads
+
+  // Concurrency throttling:
+  options->addOption("--server.ongoing-low-priority-multiplier",
+                     "controls the number of low prio requests that can be "
+                     "ongoing at a given point in time, relative to the "
+                     "maximum number of request handling threads",
+                     new DoubleParameter(&_ongoingLowPriorityMultiplier),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800);
+
   options->addOption("--server.maximal-queue-size",
-                     "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
+                     "size of the priority 3 fifo", new UInt64Parameter(&_fifo3Size));
 
   options->addOption("--server.unavailability-queue-fill-grade",
                      "queue fill grade from which onwards the server is considered unavailable because of overload (ratio, use a value of 0 to disable it)", 
@@ -117,6 +128,11 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
       "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption("--server.prio2-size", "size of the priority 2 fifo",
+                     new UInt64Parameter(&_fifo2Size),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800);
 
   options->addOption("--server.prio1-size", "size of the priority 1 fifo",
                      new UInt64Parameter(&_fifo1Size),
@@ -146,12 +162,19 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _nrMaximalThreads = defaultNumberOfThreads();
   }
 
-  if (_nrMinimalThreads < 2) {
+  if (_nrMinimalThreads < 4) {
     LOG_TOPIC("bf034", WARN, arangodb::Logger::THREADS)
-        << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
-    _nrMinimalThreads = 2;
+        << "--server.minimal-threads (" << _nrMinimalThreads << ") must be at least 4";
+    _nrMinimalThreads = 4;
   }
 
+  if (_ongoingLowPriorityMultiplier < 1.0) {
+    LOG_TOPIC("0a93a", WARN, arangodb::Logger::THREADS)
+        << "--server.ongoing-low-priority-multiplier (" << _ongoingLowPriorityMultiplier
+        << ") is less than 1.0, setting to default (4.0)";
+    _ongoingLowPriorityMultiplier = 4.0;
+  }
+  
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
@@ -167,6 +190,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
   }
 
   if (_queueSize == 0) {
+    // Note that this is way smaller than the default of 4096!
     TRI_ASSERT(_nrMaximalThreads > 0);
     _queueSize = _nrMaximalThreads * 8;
     TRI_ASSERT(_queueSize > 0);
@@ -184,7 +208,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
 }
 
 void SchedulerFeature::prepare() {
-  TRI_ASSERT(2 <= _nrMinimalThreads);
+  TRI_ASSERT(4 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
   TRI_ASSERT(_queueSize > 0);
 // wait for windows fix or implement operator new
@@ -192,10 +216,11 @@ void SchedulerFeature::prepare() {
 #pragma warning(push)
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
 #endif
-  auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
-                                                     _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size,
-                                                     _unavailabilityQueueFillGrade);
+  auto sched =
+      std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads, _nrMaximalThreads,
+                                            _queueSize, _fifo1Size, _fifo2Size,
+                                            _fifo3Size, _ongoingLowPriorityMultiplier,
+                                            _unavailabilityQueueFillGrade);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

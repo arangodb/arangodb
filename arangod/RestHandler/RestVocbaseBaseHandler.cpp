@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -608,7 +608,9 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice(), !opOptions.isSynchronousReplicationFrom.empty());
+      Result res =
+          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                !opOptions.isSynchronousReplicationFrom.empty());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -656,7 +658,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
       std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice(), false);
+        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }

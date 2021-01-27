@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,8 +116,10 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder,
 bool ClusterIndex::isPersistent() const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     return true;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
+#endif
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -132,8 +134,10 @@ bool ClusterIndex::hasSelectivityEstimate() const {
            _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
+#endif
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -165,8 +169,10 @@ bool ClusterIndex::isSorted() const {
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
+#endif
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -348,9 +354,11 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
       break;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   if (_engineType == ClusterEngineType::MockEngine) {
     return node;
   }
+#endif
   TRI_ASSERT(false);
   return node;
 }

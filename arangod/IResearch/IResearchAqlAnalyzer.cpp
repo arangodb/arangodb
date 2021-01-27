@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -224,6 +224,14 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 
   virtual arangodb::aql::QueryOptions const& queryOptions() const override {
     return _queryOptions;
+  }
+
+  double getLockTimeout() const noexcept override {
+    return _queryOptions.transactionOptions.lockTimeout;
+  }
+
+  void setLockTimeout(double timeout) noexcept override {
+    _queryOptions.transactionOptions.lockTimeout = timeout;
   }
 
   /// @brief pass-thru a resolver object from the transaction context
@@ -463,7 +471,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
-    _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+    _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
   _resourceMonitor.setMemoryLimit(_options.memoryLimit);
@@ -550,7 +558,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
         }
       });
       ast->validateAndOptimize(_query->trxForOptimization());
-      _plan = ExecutionPlan::instantiateFromAst(ast);
+      _plan = ExecutionPlan::instantiateFromAst(ast, true);
     } else {
       for (auto node : _bindedNodes) {
         node->setStringValue(field.c_str(), field.size());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,7 +129,8 @@ class Result final {
    * @param errorMessage Said specific error message
    * @return            Reference to ourselves
    */
-  Result& reset(int errorNumber, std::string const& errorMessage);
+  Result& reset(int errorNumber, std::string_view errorMessage);
+  Result& reset(int errorNumber, const char* errorMessage);
 
   /**
    * @brief  Reset to specific error number with message.
@@ -158,7 +159,7 @@ class Result final {
    * @brief  Get error message
    * @return Our error message
    */
-  std::string errorMessage() const&;
+  std::string_view errorMessage() const&;
 
   /**
    * @brief  Get error message

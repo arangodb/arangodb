@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -195,7 +195,16 @@ void ensureLink(arangodb::DatabaseFeature& db,
         << "' to the collection '" << cid.id() << "' in the database '" << dbId;
     return;
   }
-
+  // we need to keep objectId
+  if (indexSlice.hasKey(arangodb::StaticStrings::ObjectId)) {
+    json.add(arangodb::StaticStrings::ObjectId, indexSlice.get(arangodb::StaticStrings::ObjectId));
+  } else {
+    LOG_TOPIC("ed031", WARN, arangodb::iresearch::TOPIC)
+        << "Missing objectId in jSON definition for link '" << iid.id()
+        << "' to the collection '" << cid.id() << "' in the database '" << dbId
+        << "'. ObjectId will be regenerated";
+  }
+  
   json.close();
 
   bool created;
@@ -221,9 +230,10 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(application_featu
     : _server(server) {}
 
 void IResearchRocksDBRecoveryHelper::prepare() {
-  _dbFeature = DatabaseFeature::DATABASE;
+  _dbFeature = &_server.getFeature<DatabaseFeature>();
   _engine = &_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  _documentCF = RocksDBColumnFamily::documents()->GetID();
+  _documentCF = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                    ->GetID();
 }
 
 void IResearchRocksDBRecoveryHelper::PutCF(

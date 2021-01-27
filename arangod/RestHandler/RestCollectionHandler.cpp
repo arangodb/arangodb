@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -143,10 +143,6 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   TRI_ASSERT(coll);
   if (sub == "checksum") {
     // /_api/collection/<identifier>/checksum
-    if (ServerState::instance()->isCoordinator()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-
     bool withRevisions = _request->parsedValue("withRevisions", false);
     bool withData = _request->parsedValue("withData", false);
 
@@ -158,7 +154,6 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     if (res.ok()) {
       {
         VPackObjectBuilder obj(&_builder, true);
-
         obj->add("checksum", VPackValue(std::to_string(checksum)));
         obj->add("revision", VPackValue(revId.toString()));
 

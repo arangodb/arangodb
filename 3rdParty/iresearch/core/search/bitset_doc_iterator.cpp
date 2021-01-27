@@ -27,45 +27,23 @@
 
 namespace iresearch {
 
-bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
-                                         const order::prepared& ord)
-  : attributes{{
-      { type<document>::id(), &doc_   },
-      { type<cost>::id(),     &cost_  },
-      { type<score>::id(),    &score_ },
-    }},
-    cost_(set.count()),
-    doc_(cost_.estimate()
-      ? doc_limits::invalid()
-      : doc_limits::eof()),
-    score_(ord),
-    begin_(set.begin()),
-    end_(set.end()),
-    next_(begin_) {
-}
-
-bitset_doc_iterator::bitset_doc_iterator(
-      const sub_reader& reader,
-      const byte_type* stats,
-      const bitset& set,
-      const order::prepared& order,
-      boost_t boost)
-  : bitset_doc_iterator(set, order) {
-  // prepare score
-  if (!order.empty()) {
-    order::prepared::scorers scorers(
-      order, reader, empty_term_reader(cost_.estimate()),
-      stats, score_.data(),
-      *this, // doc_iterator attributes
-      boost);
-
-    irs::reset(score_, std::move(scorers));
+attribute* bitset_doc_iterator::get_mutable(type_info::type_id id) noexcept {
+  if (type<document>::id() == id) {
+    return &doc_;
   }
+
+  return type<cost>::id() == id
+    ? &cost_ : nullptr;
 }
 
 bool bitset_doc_iterator::next() noexcept {
   while (!word_) {
     if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
+
       doc_.value = doc_limits::eof();
       word_ = 0;
 
@@ -84,13 +62,22 @@ bool bitset_doc_iterator::next() noexcept {
 }
 
 doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
-  next_ = begin_ + bitset::word(target);
+  while (1) {
+    next_ = begin_ + bitset::word(target);
 
-  if (next_ >= end_) {
-    doc_.value = doc_limits::eof();
-    word_ = 0;
+    if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
 
-    return doc_.value;
+      doc_.value = doc_limits::eof();
+      word_ = 0;
+
+      return doc_.value;
+    }
+
+    break;
   }
 
   base_ = doc_id_t(std::distance(begin_, next_) * bits_required<word_t>());

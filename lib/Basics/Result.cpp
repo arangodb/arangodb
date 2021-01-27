@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -96,10 +96,12 @@ Result& Result::reset(int errorNumber) {
   return *this;
 }
 
-Result& Result::reset(int errorNumber, std::string const& errorMessage) {
-  _errorNumber = errorNumber;
-  _errorMessage = errorMessage;
-  return *this;
+Result& Result::reset(int errorNumber, std::string_view errorMessage) {
+  return reset(errorNumber, std::string{errorMessage});
+}
+
+Result& Result::reset(int errorNumber, const char* errorMessage) {
+  return reset(errorNumber, std::string{errorMessage});
 }
 
 Result& Result::reset(int errorNumber, std::string&& errorMessage) noexcept {
@@ -120,7 +122,7 @@ Result& Result::reset(Result&& other) noexcept {
   return *this;
 }
 
-std::string Result::errorMessage() const& {
+std::string_view Result::errorMessage() const& {
   if (!_errorMessage.empty()) {
     return _errorMessage;
   }

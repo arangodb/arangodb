@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,7 +72,9 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     explicit NextStep(size_t sourceIdx) : sourceIdx(sourceIdx) {}
   };
 
-  /// @brief schreier vector to store the visited vertices
+  /// @brief schreier vector to store the visited vertices. 
+  /// note: for memory usage tracking, it is require to call growStorage() before
+  /// inserting into the schreier vector.
   std::vector<PathStep> _schreier;
 
   /// @brief Next free index in schreier vector.
@@ -102,7 +104,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   BreadthFirstEnumerator(arangodb::traverser::Traverser* traverser,
                          arangodb::traverser::TraverserOptions* opts);
 
-  ~BreadthFirstEnumerator() = default;
+  ~BreadthFirstEnumerator();
   
   void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
@@ -154,6 +156,10 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
 
   bool shouldPrune();
+
+  void growStorage();
+  
+  constexpr size_t pathStepSize() const noexcept;
 };
 }  // namespace graph
 }  // namespace arangodb

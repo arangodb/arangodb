@@ -285,7 +285,7 @@ class SimpleHttpClient {
   /// @brief register and dump an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string const& message, bool forceWarn = false) {
+  void setErrorMessage(std::string_view message, bool forceWarn = false) {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
@@ -297,9 +297,9 @@ class SimpleHttpClient {
   /// @brief register an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string const& message, int error) {
+  void setErrorMessage(std::string_view message, int error) {
     if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage = message + ": " + TRI_errno_string(error);
+      _errorMessage = basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
     } else {
       setErrorMessage(message);
     }

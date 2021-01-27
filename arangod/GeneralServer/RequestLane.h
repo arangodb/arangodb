@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,6 +67,11 @@ enum class RequestLane {
   // these have Medium priority.
   CLUSTER_AQL,
 
+  // For future continuations initiated as part of an AQL request from the
+  // DBserver to the Coordinator or from the Coordinator to the DBserver.
+  // These have High priority.
+  CLUSTER_AQL_CONTINUATION,
+
   // For requests from the from the Coordinator to the
   // DBserver using V8.
   CLUSTER_V8,
@@ -85,12 +90,20 @@ enum class RequestLane {
   // in-sync mode (wal tailing)
   SERVER_REPLICATION_CATCHUP,
 
+  // For synchronous replication requests on the follower
+  SERVER_SYNCHRONOUS_REPLICATION,
+
   // For periodic or one-off V8-based tasks executed by the
   // Scheduler.
   TASK_V8,
 
   // Internal tasks with low priority
   INTERNAL_LOW,
+
+  // Default continuation lane for requests (e.g. after returning from a network
+  // call). Some requests, such as CLUSTER_AQL, will have a different
+  // continuation lane for more fine-grained control.
+  CONTINUATION,
 
   // Not yet used:
   // For requests which go from the agency back to coordinators or
@@ -100,18 +113,22 @@ enum class RequestLane {
 
   // Used by futures that have been delayed using Scheduler::delay.
   DELAYED_FUTURE,
+
+  // undefined request lane, used only in the beginning
+  UNDEFINED,
 };
 
 enum class RequestPriority {
-  HIGH = 0,
-  MED = 1,
-  LOW = 2
+  MAINTENANCE = 0,
+  HIGH = 1,
+  MED = 2,
+  LOW = 3
 };
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {
     case RequestLane::CLIENT_FAST:
-      return RequestPriority::HIGH;
+      return RequestPriority::MAINTENANCE;
     case RequestLane::CLIENT_AQL:
       return RequestPriority::LOW;
     case RequestLane::CLIENT_V8:
@@ -126,6 +143,8 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::HIGH;
     case RequestLane::CLUSTER_AQL:
       return RequestPriority::MED;
+    case RequestLane::CLUSTER_AQL_CONTINUATION:
+      return RequestPriority::HIGH;
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
@@ -142,6 +161,13 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::HIGH;
     case RequestLane::DELAYED_FUTURE:
       return RequestPriority::HIGH;
+    case RequestLane::SERVER_SYNCHRONOUS_REPLICATION:
+      return RequestPriority::HIGH;
+    case RequestLane::CONTINUATION:
+      return RequestPriority::MED;
+    case RequestLane::UNDEFINED: {
+      TRI_ASSERT(false);
+    }
   }
   return RequestPriority::LOW;
 }

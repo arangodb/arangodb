@@ -330,6 +330,7 @@ ERROR_LDAP_CANNOT_START_TLS,1805,"cannot start a TLS LDAP session","can not star
 ERROR_LDAP_FOUND_NO_OBJECTS,1806,"LDAP didn't found any objects","LDAP didn't found any objects with the specified search query"
 ERROR_LDAP_NOT_ONE_USER_FOUND,1807,"LDAP found zero ore more than one user","LDAP found zero ore more than one user"
 ERROR_LDAP_USER_NOT_IDENTIFIED,1808,"LDAP found a user, but its not the desired one","LDAP found a user, but its not the desired one"
+ERROR_LDAP_OPERATIONS_ERROR,1809,"LDAP returned an operations error","LDAP returned an operations error"
 ERROR_LDAP_INVALID_MODE,1820,"invalid ldap mode","cant distinguish a valid mode for provided LDAP configuration"
 
 ################################################################################
@@ -525,3 +526,8 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","
 ## Plan Analyzers errors
 ################################################################################
 ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
+
+################################################################################
+## AIR errors
+################################################################################
+ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"

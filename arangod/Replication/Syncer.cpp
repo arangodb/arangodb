@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,6 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -181,7 +180,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         // conflicting key is contained in opRes.errorMessage() now.
         // let's check if the key we have got is the same as the one
         // that we would like to insert
-        if (keySlice.stringRef() != opRes.errorMessage()) {
+        if (keySlice.stringView() != opRes.errorMessage()) {
           // different key
           if (trx.isSingleOperationTransaction()) {
             // return a special error code from here, with the key of
@@ -535,7 +534,8 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    auto& server = _state.applier._server;
+    TRI_vocbase_t* vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(name);
 
     if (vocbase != nullptr) {
       _state.vocbases.try_emplace(name, *vocbase); //we can not be lazy because of the guard requires a valid ref

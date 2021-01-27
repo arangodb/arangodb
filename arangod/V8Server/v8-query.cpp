@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,12 +56,12 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
-                            std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
+                            std::string const& aql, std::shared_ptr<VPackBuilder> const& bindVars) {
   TRI_ASSERT(col != nullptr);
 
   arangodb::aql::Query query(transaction::V8Context::Create(col->vocbase(), true),
                              arangodb::aql::QueryString(aql),
-                             bindVars, nullptr);
+                             bindVars);
 
   arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
   if (queryResult.result.fail()) {
@@ -319,8 +319,6 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   bool withRevisions = false;
   bool withData = false;

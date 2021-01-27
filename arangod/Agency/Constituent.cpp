@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -574,17 +574,13 @@ void Constituent::run() {
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
 
   // Most recent vote
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
-                               arangodb::aql::QueryString(aql),
-                               bindVars, nullptr);
+                               arangodb::aql::QueryString(aql), nullptr);
 
     aql::QueryResult queryResult = query.executeSync();
 

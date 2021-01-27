@@ -194,6 +194,73 @@ function ResponseHeadersSuite () {
       assertEqual(result.status, 200);
       assertNotUndefined(result.headers["x-arango-async-id"]);
     },
+    
+    testForwardingNoConnectionHeader: function() {
+      let url = '/_api/version';
+      const headers = {
+        "X-Arango-Async": "store",
+      };
+      let result = sendRequest('POST', url, headers, null, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.body, {});
+      assertEqual(result.status, 202);
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
+      // connection header should be filtered out by cluster-internal 
+      // request forwarding, but not from responses given to end users
+      assertEqual("Keep-Alive", result.headers["connection"]);
+
+      const jobId = result.headers["x-arango-async-id"];
+      url = `${baseJobUrl}/${jobId}`;
+      let tries = 0;
+      while (++tries < 30) {
+        result = sendRequest('PUT', url, {}, {}, false);
+
+        if (result.status === 200) {
+          // jobs API may return HTTP 204 until job is ready
+          break;
+        }
+        require("internal").wait(0.5, false);
+      }
+      assertEqual(result.status, 200);
+      assertNotUndefined(result.headers["x-arango-async-id"]);
+      assertEqual("Keep-Alive", result.headers["connection"]);
+    },
+    
+    testForwardingConnectionHeaderClose: function() {
+      let url = '/_api/version';
+      const headers = {
+        "X-Arango-Async": "store",
+        "Connection": "Close"
+      };
+      let result = sendRequest('POST', url, headers, null, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.body, {});
+      assertEqual(result.status, 202);
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
+      // connection header should be filtered out by cluster-internal 
+      // request forwarding, but not from responses given to end users
+      assertEqual("Close", result.headers["connection"]);
+
+      const jobId = result.headers["x-arango-async-id"];
+      url = `${baseJobUrl}/${jobId}`;
+      let tries = 0;
+      while (++tries < 30) {
+        result = sendRequest('PUT', url, {"Connection": "Close"}, {}, false);
+
+        if (result.status === 200) {
+          // jobs API may return HTTP 204 until job is ready
+          break;
+        }
+        require("internal").wait(0.5, false);
+      }
+      assertEqual(result.status, 200);
+      assertNotUndefined(result.headers["x-arango-async-id"]);
+      assertEqual("Close", result.headers["connection"]);
+    },
   };
 }
 

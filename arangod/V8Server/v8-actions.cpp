@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,7 +80,8 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t*, v8::Isolate*,
 
 class v8_action_t final : public TRI_action_t {
  public:
-  v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {}
+  explicit v8_action_t(ActionFeature const& actionFeature)
+      : TRI_action_t(), _actionFeature(actionFeature), _callbacks(), _callbacksLock() {}
 
   void visit(void* data) override {
     v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
@@ -117,7 +118,7 @@ class v8_action_t final : public TRI_action_t {
     TRI_action_result_t result;
 
     // allow use database execution in rest calls?
-    bool allowUseDatabase = _allowUseDatabase || ActionFeature::ACTION->allowUseDatabase();
+    bool allowUseDatabase = _allowUseDatabase || _actionFeature.allowUseDatabase();
 
     // get a V8 context
     V8ContextGuard guard(vocbase, _isSystem ?
@@ -196,6 +197,8 @@ class v8_action_t final : public TRI_action_t {
   }
 
  private:
+  ActionFeature const& _actionFeature;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback dictionary
   //////////////////////////////////////////////////////////////////////////////
@@ -1140,7 +1143,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create an action with the given options
-  auto action = std::make_shared<v8_action_t>();
+  auto action = std::make_shared<v8_action_t>(v8g->_server.getFeature<ActionFeature>());
   ParseActionOptions(isolate, v8g, action.get(), options);
 
   // store an action with the given name
@@ -1184,8 +1187,9 @@ static void JS_ExecuteGlobalContextFunction(v8::FunctionCallbackInfo<v8::Value> 
 
   std::string const def = std::string(*utf8def, utf8def.length());
 
+  TRI_GET_GLOBALS();
   // and pass it to the V8 contexts
-  if (!V8DealerFeature::DEALER->addGlobalContextMethod(def)) {
+  if (!v8g->_server.getFeature<V8DealerFeature>().addGlobalContextMethod(def)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid action definition");
   }
@@ -1845,17 +1849,17 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CREATE_HOTBACKUP"),
+                               JS_CreateHotbackup);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_CREATE_HOTBACKUP"),
-                               JS_CreateHotbackup);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(

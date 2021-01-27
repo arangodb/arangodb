@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -93,7 +93,8 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         _cmp(index->comparator()),
         _key(trx),
         _done(false) {
-    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+    TRI_ASSERT(index->columnFamily() ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
     _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
   }
 
@@ -183,7 +184,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
         _mustSeek(true) {
-    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+    TRI_ASSERT(index->columnFamily() ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
@@ -363,14 +365,15 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 /// @brief create the index
 RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(),
+    : RocksDBIndex(iid, collection, info,
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex),
                    /*useCache*/ false),
       _deduplicate(
           arangodb::basics::VelocyPackHelper::getBooleanValue(info,
                                                               "deduplicate", true)),
       _allowPartialIndex(true),
       _estimator(nullptr) {
-  TRI_ASSERT(_cf == RocksDBColumnFamily::vpack());
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
   if (!_unique && !ServerState::instance()->isCoordinator()) {
     // We activate the estimator for all non unique-indexes.
@@ -710,11 +713,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
       if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // find conflicting document
         LocalDocumentId docId = RocksDBValue::documentId(existing);
-        auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
+        auto success = _collection.getPhysical()->read(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
              if (mode == IndexOperationMode::internal) {
-               res.resetErrorMessage(key.copyString());
+               res = Result{res.errorNumber(), key.copyString()};
              } else {
                addErrorMsg(res, key.copyString());
              }

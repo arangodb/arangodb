@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -185,7 +185,7 @@ void appendAddress(unw_word_t pc, long base, char*& dst) {
 size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info, void* ucontext) {
   // build a crash message
   char* p = s;
-  appendNullTerminatedString("ArangoDB ", p);
+  appendNullTerminatedString("💥 ArangoDB ", p);
   appendNullTerminatedString(ARANGODB_VERSION_FULL, p);
   appendNullTerminatedString(", thread ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
@@ -315,6 +315,18 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
           break;
         }
 
+        if (frame == maxFrames + skipFrames) {
+          memset(&buffer[0], 0, sizeof(buffer));
+          p = &buffer[0];
+          appendNullTerminatedString("..reached maximum frame display depth (", p);
+          p += arangodb::basics::StringUtils::itoa(uint64_t(maxFrames), p);
+          appendNullTerminatedString("). stopping backtrace", p);
+
+          length = p - &buffer[0];
+          LOG_TOPIC("bbb04", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+          break;
+        }
+
         if (frame >= skipFrames) {
           // this is a stack frame we want to display
           memset(&buffer[0], 0, sizeof(buffer));
@@ -359,7 +371,7 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
           length = p - &buffer[0];
           LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
         }
-      } while (++frame < (maxFrames + skipFrames) && unw_step(&cursor) > 0);
+      } while (++frame < (maxFrames + skipFrames + 1) && unw_step(&cursor) > 0);
       // flush logs as early as possible
       arangodb::Logger::flush();
     }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
@@ -61,7 +61,7 @@ arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBa
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
   using arangodb::Result;
-  using arangodb::RocksDBColumnFamily;
+  using arangodb::RocksDBColumnFamilyManager;
   using arangodb::RocksDBKey;
   using arangodb::RocksDBSettingsType;
   using arangodb::StorageEngine;
@@ -82,7 +82,9 @@ arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBa
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
-  rocksdb::Status s = batch.Put(RocksDBColumnFamily::definitions(), key.string(), value);
+  rocksdb::Status s =
+      batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                key.string(), value);
   if (!s.ok()) {
     LOG_TOPIC("140ec", WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
@@ -166,7 +168,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   rocksdb::WriteBatch batch;
   _tmpBuilder.clear();  // recycle our builder
 
-  auto dbfeature = arangodb::DatabaseFeature::DATABASE;
+  auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
   TRI_ASSERT(!_engine.inRecovery());  // just don't
 
   bool didWork = false;
@@ -176,7 +178,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     DataSourceId cid = pair.second;
-    TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
+    TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbid);
     if (!vocbase) {
       continue;
     }
@@ -259,7 +261,8 @@ void RocksDBSettingsManager::loadSettings() {
 
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
-      _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
+      _db->Get(rocksdb::ReadOptions(),
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found

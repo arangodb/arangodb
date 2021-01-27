@@ -877,43 +877,6 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseIndexSubSubquery : function () {
-      const query = `
-        FOR i IN ${c.name()}
-          LIMIT 1
-          RETURN (
-            FOR j IN ${c.name()}
-              FILTER j._key == i._key
-              RETURN j.value
-          )
-      `;
-
-      // copy options and turn splice-subqueries off
-      const localOpt = _.cloneDeep(opt);
-      localOpt.optimizer.rules.push('-splice-subqueries');
-
-      const plan = AQL_EXPLAIN(query, {}, localOpt).plan;
-      const nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertEqual('SingletonNode', nodeTypes[0], query);
-      const subqueryIdx = nodeTypes.indexOf('SubqueryNode');
-      const hasSubquery = subqueryIdx !== -1;
-      assertTrue(hasSubquery, query);
-
-      const subNodeTypes = plan.nodes[subqueryIdx].subquery.nodes.map(function(node) {
-        return node.type;
-      });
-      assertNotEqual(-1, subNodeTypes.indexOf('IndexNode'), query);
-      assertEqual(-1, subNodeTypes.indexOf('SortNode'), query);
-      assertEqual('ReturnNode', nodeTypes[nodeTypes.length - 1], query);
-
-      const results = AQL_EXECUTE(query, {}, opt);
-      assertTrue(results.stats.scannedFull > 0); // for the outer query
-      assertTrue(results.stats.scannedIndex > 0); // for the inner query
-    },
-
     testUseIndexSplicedSubSubquery : function () {
       const query = `
         FOR i IN ${c.name()}
@@ -975,9 +938,6 @@ function optimizerIndexesTestSuite () {
 
       var walker = function (nodes, func) {
         nodes.forEach(function(node) {
-          if (node.type === "SubqueryNode") {
-            walker(node.subquery.nodes, func);
-          }
           func(node);
         });
       };
@@ -1026,9 +986,6 @@ function optimizerIndexesTestSuite () {
 
       var walker = function (nodes, func) {
         nodes.forEach(function(node) {
-          if (node.type === "SubqueryNode") {
-            walker(node.subquery.nodes, func);
-          }
           func(node);
         });
       };
@@ -1078,9 +1035,6 @@ function optimizerIndexesTestSuite () {
 
       var walker = function (nodes, func) {
         nodes.forEach(function(node) {
-          if (node.type === "SubqueryNode") {
-            walker(node.subquery.nodes, func);
-          }
           func(node);
         });
       };
@@ -1250,9 +1204,6 @@ function optimizerIndexesTestSuite () {
 
       var walker = function (nodes, func) {
         nodes.forEach(function(node) {
-          if (node.type === "SubqueryNode") {
-            walker(node.subquery.nodes, func);
-          }
           func(node);
         });
       };

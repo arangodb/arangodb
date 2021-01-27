@@ -42,7 +42,7 @@ namespace aql {
 class AqlItemBlockTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [
               "a",
@@ -519,7 +519,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
 class AqlItemBlockClassicTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::CLASSIC};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::CLASSIC};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [
               "a",
