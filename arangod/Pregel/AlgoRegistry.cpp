@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
@@ -71,6 +73,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(application_features::ApplicationServe
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
+  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
+    return new algos::accumulators::ProgrammablePregelAlgorithm(server, userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -127,6 +131,8 @@ template <typename V, typename E, typename M>
     return createWorker(vocbase, new algos::DMID(server, userParams), body);
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body);
+  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
+    return createWorker(vocbase, new algos::accumulators::ProgrammablePregelAlgorithm(server, userParams), body);
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

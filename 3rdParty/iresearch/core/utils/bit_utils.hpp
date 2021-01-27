@@ -26,7 +26,7 @@
 #include "shared.hpp"
 #include <numeric>
 
-NS_ROOT
+namespace iresearch {
 
 template<typename T>
 inline constexpr uint32_t bits_required() noexcept {
@@ -172,7 +172,7 @@ inline constexpr T enum_bitwise_not(T v) noexcept {
   return enum_bitwise_traits<T>::Not(v);
 }
 
-NS_END
+}
 
 #define ENABLE_BITMASK_ENUM(x) \
 [[maybe_unused]] inline constexpr x operator&(x lhs, x rhs) noexcept { return irs::enum_bitwise_and(lhs, rhs); } \

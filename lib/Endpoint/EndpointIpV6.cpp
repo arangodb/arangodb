@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,3 +32,6 @@ EndpointIpV6::EndpointIpV6(EndpointType type, TransportType transport,
                            std::string const& host, uint16_t const port)
     : EndpointIp(DomainType::IPV6, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
+bool EndpointIpV6::isBroadcastBind() const {
+  return host() == "::";
+}

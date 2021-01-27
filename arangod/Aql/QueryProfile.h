@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +47,9 @@ struct QueryProfile {
   ~QueryProfile();
 
  public:
+  
+  void registerInQueryList();
+  
   /// @brief unregister the query from the list of queries, if entered
   void unregisterFromQueryList() noexcept;
 
@@ -62,9 +65,6 @@ struct QueryProfile {
 
   /// @brief convert the profile to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&) const;
-  
- private:
-  void registerInQueryList(Query* query);
 
  private:
   Query* _query;

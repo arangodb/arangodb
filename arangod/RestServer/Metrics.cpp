@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -103,7 +104,11 @@ void Counter::toPrometheus(std::string& result) const {
   _b.push();
   result += "\n#TYPE " + name() + " counter\n";
   result += "#HELP " + name() + " " + help() + "\n";
-  result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
+  result += name();
+  if (!labels().empty()) {
+    result += "{" + labels() + "}";
+  }
+  result += " " + std::to_string(load()) + "\n";
 }
 
 Counter::Counter(

@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "velocypack/Exception.h"
@@ -32,13 +30,12 @@ using namespace arangodb::velocypack;
   
 // creates a Value with the specified type Array or Object
 Value::Value(ValueType t, bool allowUnindexed)
-      : _valueType(t), _cType(CType::None) {
+      : _valueType(t), _cType(CType::None), _value(allowUnindexed) {
+  // we use the boolean part to store the allowUnindexed value
   if (allowUnindexed &&
       (_valueType != ValueType::Array && _valueType != ValueType::Object)) {
     throw Exception(Exception::InvalidValueType, "Expecting compound type");
   }
-  // we use the boolean part to store the allowUnindexed value
-  _value.b = allowUnindexed;
 }
 
 bool Value::unindexed() const {

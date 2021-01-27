@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,6 +30,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
+namespace {
+std::vector<ShardID> const emptyEdgeCollectionRestrictions;
+}
+
 WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase, VPackSlice params)
     : _vocbase(vocbase) {
   updateConfig(params);
@@ -38,6 +43,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
   VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
   VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
+  VPackSlice edgeCollectionRestrictions = params.get(Utils::edgeCollectionRestrictionsKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
@@ -52,7 +58,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   _executionNumber = execNum.getUInt();
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
-  _useMemoryMaps = params.get(Utils::useMemoryMaps).getBool();
+  _useMemoryMaps = params.get(Utils::useMemoryMapsKey).getBool();
 
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
@@ -94,7 +100,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       _localPShardIDs_hash.insert(_pregelShardIDs[shard]);
       _shardToCollectionName.try_emplace(shard, cname);
     }
-    _vertexCollectionShards.try_emplace(cname, shards);
+    _vertexCollectionShards.try_emplace(std::move(cname), std::move(shards));
   }
 
   // Ordered list of edge shards for each collection
@@ -108,8 +114,28 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       _localEdgeShardIDs.push_back(shard);
       _shardToCollectionName.try_emplace(shard, cname);
     }
-    _edgeCollectionShards.try_emplace(cname, shards);
-  }  
+    _edgeCollectionShards.try_emplace(std::move(cname), std::move(shards));
+  }
+
+  if (edgeCollectionRestrictions.isObject()) {
+    for (auto pair : VPackObjectIterator(edgeCollectionRestrictions)) {
+      CollectionID cname = pair.key.copyString();
+    
+      std::vector<ShardID> shards;
+      for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
+        shards.push_back(shardSlice.copyString());
+      }
+      _edgeCollectionRestrictions.try_emplace(std::move(cname), std::move(shards));
+    }
+  }
+}
+  
+std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(ShardID const& shard) const {
+  auto it = _edgeCollectionRestrictions.find(shard);
+  if (it != _edgeCollectionRestrictions.end()) {
+    return (*it).second;
+  }
+  return ::emptyEdgeCollectionRestrictions;
 }
 
 PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {

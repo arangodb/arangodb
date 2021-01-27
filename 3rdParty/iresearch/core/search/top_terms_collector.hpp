@@ -34,7 +34,7 @@
 #include "utils/map_utils.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename T>
 struct top_term {
@@ -294,6 +294,6 @@ template<typename State,
   const decltype(term_meta::docs_count) no_docs_{0};
 }; // top_terms_collector
 
-NS_END
+}
 
 #endif // IRESEARCH_TOP_TERMS_COLLECTOR_H

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sr AQL Datefunctions
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,7 +27,9 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlValue.h"
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
@@ -117,7 +116,7 @@ struct TestDate {
   }
 
   void buildParams(VPackFunctionParameters& input) const {
-    input.emplace_back(*_date);
+    input.emplace_back(_date->slice());
   }
 
   void validateResult(AqlValue const& result) const {
@@ -134,18 +133,19 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
   std::vector<TestDate> testees = {
 #include "IS_DATESTRING.testcases"
   };
+
+  arangodb::aql::Function fun("IS_DATESTRING", &Functions::IsDatestring);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&fun));
 
   for (auto const& testee : testees) {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
-    AqlValue res = Functions::IsDatestring(&expressionContext, &trx, params);
+    AqlValue res = Functions::IsDatestring(&expressionContext, node, params);
     testee.validateResult(res);
 
     // Free input parameters
@@ -192,18 +192,19 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
   std::vector<TestDate> testees = {
 #include "DATE_COMPARE.testcases"
   };
+  
+  arangodb::aql::Function fun("DATE_COMPARE", &Functions::DateCompare);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&fun));
 
   for (auto const& testee : testees) {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
-    AqlValue res = Functions::DateCompare(&expressionContext, &trx, params);
+    AqlValue res = Functions::DateCompare(&expressionContext, node, params);
     testee.validateResult(res);
     // Free input parameters
     for (auto& it : params) {
@@ -258,76 +259,80 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
   }
 
   void testCombinations(std::string const& f, double expected) {
-      {
-        double eps = 0.05;
-        params.clear();
-        flagBuilder.clear();
-        flagBuilder.add(VPackValue(f));
-        params.emplace_back(dateBuilder.slice().at(0));
-        params.emplace_back(dateBuilder.slice().at(1));
-        params.emplace_back(flagBuilder.slice());
-        switchBuilder.add(VPackValue(true));
-        params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
-        ASSERT_TRUE(res.isNumber());
-        double out = res.toDouble();
-        ASSERT_GE(out, expected - eps);
-        ASSERT_LE(out, expected + eps);
-        for (auto& it : params) {
-          it.destroy();
-        }
+    arangodb::aql::Function fun("DATE_DIFF", &Functions::DateDiff);
+    arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+    node.setData(static_cast<void const*>(&fun));
+
+    {
+      double eps = 0.05;
+      params.clear();
+      flagBuilder.clear();
+      flagBuilder.add(VPackValue(f));
+      params.emplace_back(dateBuilder.slice().at(0));
+      params.emplace_back(dateBuilder.slice().at(1));
+      params.emplace_back(flagBuilder.slice());
+      switchBuilder.add(VPackValue(true));
+      params.emplace_back(switchBuilder.slice());
+      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      ASSERT_TRUE(res.isNumber());
+      double out = res.toDouble();
+      ASSERT_GE(out, expected - eps);
+      ASSERT_LE(out, expected + eps);
+      for (auto& it : params) {
+        it.destroy();
       }
-      {
-        params.clear();
-        flagBuilder.clear();
-        flagBuilder.add(VPackValue(f));
-        params.emplace_back(dateBuilder.slice().at(0));
-        params.emplace_back(dateBuilder.slice().at(1));
-        params.emplace_back(flagBuilder.slice());
-        switchBuilder.add(VPackValue(false));
-        params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
-        ASSERT_TRUE(res.isNumber());
-        ASSERT_EQ(std::round(res.toDouble()), std::round(expected));
-        for (auto& it : params) {
-          it.destroy();
-        }
+    }
+    {
+      params.clear();
+      flagBuilder.clear();
+      flagBuilder.add(VPackValue(f));
+      params.emplace_back(dateBuilder.slice().at(0));
+      params.emplace_back(dateBuilder.slice().at(1));
+      params.emplace_back(flagBuilder.slice());
+      switchBuilder.add(VPackValue(false));
+      params.emplace_back(switchBuilder.slice());
+      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      ASSERT_TRUE(res.isNumber());
+      ASSERT_EQ(std::round(res.toDouble()), std::round(expected));
+      for (auto& it : params) {
+        it.destroy();
       }
-      {
-        double eps = 0.05;
-        params.clear();
-        flagBuilder.clear();
-        flagBuilder.add(VPackValue(f));
-        params.emplace_back(dateBuilder.slice().at(1));
-        params.emplace_back(dateBuilder.slice().at(0));
-        params.emplace_back(flagBuilder.slice());
-        switchBuilder.add(VPackValue(true));
-        params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
-        ASSERT_TRUE(res.isNumber());
-        double out = res.toDouble();
-        ASSERT_GE(out, -(expected + eps));
-        ASSERT_LE(out, -(expected - eps));
-        for (auto& it : params) {
-          it.destroy();
-        }
+    }
+    {
+      double eps = 0.05;
+      params.clear();
+      flagBuilder.clear();
+      flagBuilder.add(VPackValue(f));
+      params.emplace_back(dateBuilder.slice().at(1));
+      params.emplace_back(dateBuilder.slice().at(0));
+      params.emplace_back(flagBuilder.slice());
+      switchBuilder.add(VPackValue(true));
+      params.emplace_back(switchBuilder.slice());
+      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      ASSERT_TRUE(res.isNumber());
+      double out = res.toDouble();
+      ASSERT_GE(out, -(expected + eps));
+      ASSERT_LE(out, -(expected - eps));
+      for (auto& it : params) {
+        it.destroy();
       }
-      {
-        params.clear();
-        flagBuilder.clear();
-        flagBuilder.add(VPackValue(f));
-        params.emplace_back(dateBuilder.slice().at(1));
-        params.emplace_back(dateBuilder.slice().at(0));
-        params.emplace_back(flagBuilder.slice());
-        switchBuilder.add(VPackValue(false));
-        params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
-        ASSERT_TRUE(res.isNumber());
-        ASSERT_EQ(std::round(res.toDouble()), -std::round(expected));
-        for (auto& it : params) {
-          it.destroy();
-        }
+    }
+    {
+      params.clear();
+      flagBuilder.clear();
+      flagBuilder.add(VPackValue(f));
+      params.emplace_back(dateBuilder.slice().at(1));
+      params.emplace_back(dateBuilder.slice().at(0));
+      params.emplace_back(flagBuilder.slice());
+      switchBuilder.add(VPackValue(false));
+      params.emplace_back(switchBuilder.slice());
+      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      ASSERT_TRUE(res.isNumber());
+      ASSERT_EQ(std::round(res.toDouble()), -std::round(expected));
+      for (auto& it : params) {
+        it.destroy();
       }
+    }
 
   }
 };
@@ -448,18 +453,19 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
   std::vector<TestDate> testees = {
 #include "DATE_SUBTRACT.testcases"
   };
+      
+  arangodb::aql::Function fun("DATE_SUBTRACT", &Functions::DateSubtract);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&fun));
 
   for (auto const& testee : testees) {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
-    AqlValue res = Functions::DateSubtract(&expressionContext, &trx, params);
+    AqlValue res = Functions::DateSubtract(&expressionContext, node, params);
     testee.validateResult(res);
     res.destroy();
     // Free input parameters

@@ -9,7 +9,7 @@ const arango = internal.arango;
 
 const db = require("@arangodb").db;
 const users = require('@arangodb/users');
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const endpoint = arango.getEndpoint();
 
 function testSuite() {

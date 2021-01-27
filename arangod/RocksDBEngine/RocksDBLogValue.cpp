@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,71 +39,70 @@ RocksDBLogValue RocksDBLogValue::DatabaseDrop(TRI_voc_tick_t id) {
   return RocksDBLogValue(RocksDBLogType::DatabaseDrop, id);
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionCreate, dbid, cid);
+RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid, DataSourceId cid) {
+  return RocksDBLogValue(RocksDBLogType::CollectionCreate, dbid, cid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
+RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid, DataSourceId cid,
                                                 arangodb::velocypack::StringRef const& uuid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid, uuid);
+  return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid.id(), uuid);
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
+RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid, DataSourceId cid,
                                                   arangodb::velocypack::StringRef const& oldName) {
-  return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid, oldName);
+  return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid.id(), oldName);
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionChange(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionChange, dbid, cid);
+RocksDBLogValue RocksDBLogValue::CollectionChange(TRI_voc_tick_t dbid, DataSourceId cid) {
+  return RocksDBLogValue(RocksDBLogType::CollectionChange, dbid, cid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::CollectionTruncate(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
+RocksDBLogValue RocksDBLogValue::CollectionTruncate(TRI_voc_tick_t dbid, DataSourceId cid,
                                                     uint64_t objectId) {
-  return RocksDBLogValue(RocksDBLogType::CollectionTruncate, dbid, cid, objectId);
+  return RocksDBLogValue(RocksDBLogType::CollectionTruncate, dbid, cid.id(), objectId);
 }
 
-RocksDBLogValue RocksDBLogValue::IndexCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
+RocksDBLogValue RocksDBLogValue::IndexCreate(TRI_voc_tick_t dbid, DataSourceId cid,
                                              VPackSlice const& indexInfo) {
-  return RocksDBLogValue(RocksDBLogType::IndexCreate, dbid, cid, indexInfo);
+  return RocksDBLogValue(RocksDBLogType::IndexCreate, dbid, cid.id(), indexInfo);
 }
 
-RocksDBLogValue RocksDBLogValue::IndexDrop(TRI_voc_tick_t dbid,
-                                           TRI_voc_cid_t cid, IndexId iid) {
-  return RocksDBLogValue(RocksDBLogType::IndexDrop, dbid, cid, iid.id());
+RocksDBLogValue RocksDBLogValue::IndexDrop(TRI_voc_tick_t dbid, DataSourceId cid, IndexId iid) {
+  return RocksDBLogValue(RocksDBLogType::IndexDrop, dbid, cid.id(), iid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::ViewCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t vid) {
-  return RocksDBLogValue(RocksDBLogType::ViewCreate, dbid, vid);
+RocksDBLogValue RocksDBLogValue::ViewCreate(TRI_voc_tick_t dbid, DataSourceId vid) {
+  return RocksDBLogValue(RocksDBLogType::ViewCreate, dbid, vid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::ViewDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t vid,
+RocksDBLogValue RocksDBLogValue::ViewDrop(TRI_voc_tick_t dbid, DataSourceId vid,
                                           arangodb::velocypack::StringRef const& uuid) {
-  return RocksDBLogValue(RocksDBLogType::ViewDrop, dbid, vid, uuid);
+  return RocksDBLogValue(RocksDBLogType::ViewDrop, dbid, vid.id(), uuid);
 }
 
-RocksDBLogValue RocksDBLogValue::ViewChange(TRI_voc_tick_t dbid, TRI_voc_cid_t vid) {
-  return RocksDBLogValue(RocksDBLogType::ViewChange, dbid, vid);
+RocksDBLogValue RocksDBLogValue::ViewChange(TRI_voc_tick_t dbid, DataSourceId vid) {
+  return RocksDBLogValue(RocksDBLogType::ViewChange, dbid, vid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::BeginTransaction(TRI_voc_tick_t dbid, TRI_voc_tid_t tid) {
-  return RocksDBLogValue(RocksDBLogType::BeginTransaction, dbid, tid);
+RocksDBLogValue RocksDBLogValue::BeginTransaction(TRI_voc_tick_t dbid, TransactionId tid) {
+  return RocksDBLogValue(RocksDBLogType::BeginTransaction, dbid, tid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::CommitTransaction(TRI_voc_tick_t dbid, TRI_voc_tid_t tid) {
-  return RocksDBLogValue(RocksDBLogType::CommitTransaction, dbid, tid);
+RocksDBLogValue RocksDBLogValue::CommitTransaction(TRI_voc_tick_t dbid, TransactionId tid) {
+  return RocksDBLogValue(RocksDBLogType::CommitTransaction, dbid, tid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::DocumentRemoveV2(TRI_voc_rid_t rid) {
-  return RocksDBLogValue(RocksDBLogType::DocumentRemoveV2, rid);
+RocksDBLogValue RocksDBLogValue::DocumentRemoveV2(RevisionId rid) {
+  return RocksDBLogValue(RocksDBLogType::DocumentRemoveV2, rid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::SinglePut, vocbaseId, cid);
+RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId, DataSourceId cid) {
+  return RocksDBLogValue(RocksDBLogType::SinglePut, vocbaseId, cid.id());
 }
 
 RocksDBLogValue RocksDBLogValue::SingleRemoveV2(TRI_voc_tick_t vocbaseId,
-                                                TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
-  return RocksDBLogValue(RocksDBLogType::SingleRemoveV2, vocbaseId, cid, rid);
+                                                DataSourceId cid, RevisionId rid) {
+  return RocksDBLogValue(RocksDBLogType::SingleRemoveV2, vocbaseId, cid.id(), rid.id());
 }
 
 RocksDBLogValue RocksDBLogValue::TrackedDocumentInsert(LocalDocumentId docId,
@@ -245,28 +244,31 @@ TRI_voc_tick_t RocksDBLogValue::databaseId(rocksdb::Slice const& slice) {
   return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
 }
 
-TRI_voc_cid_t RocksDBLogValue::collectionId(rocksdb::Slice const& slice) {
+DataSourceId RocksDBLogValue::collectionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
-  TRI_ASSERT(RocksDBLogValue::containsCollectionId(type));
+  TRI_ASSERT(RocksDBLogValue::containsDataSourceId(type));
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
-  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t));
+  return DataSourceId{uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                           sizeof(uint64_t))};
 }
 
-TRI_voc_cid_t RocksDBLogValue::viewId(rocksdb::Slice const& slice) {
+DataSourceId RocksDBLogValue::viewId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(RocksDBLogValue::containsViewId(type));
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
-  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t));
+  return DataSourceId{uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                           sizeof(uint64_t))};
 }
 
-TRI_voc_tid_t RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
+TransactionId RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::BeginTransaction || type == RocksDBLogType::CommitTransaction);
   // <type> + 8-byte <dbId> + 8-byte <trxId>
-  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(TRI_voc_tick_t));
+  return TransactionId{uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                            sizeof(TRI_voc_tick_t))};
 }
 
 IndexId RocksDBLogValue::indexId(rocksdb::Slice const& slice) {
@@ -286,17 +288,18 @@ uint64_t RocksDBLogValue::objectId(rocksdb::Slice const& slice) {
 }
 
 /// For DocumentRemoveV2 and SingleRemoveV2
-TRI_voc_rid_t RocksDBLogValue::revisionId(rocksdb::Slice const& slice) {
+RevisionId RocksDBLogValue::revisionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (sizeof(uint64_t)));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   if (type == RocksDBLogType::DocumentRemoveV2) {
-    return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
+    return RevisionId::fromPersistent(slice.data() + sizeof(RocksDBLogType));
   } else if (type == RocksDBLogType::SingleRemoveV2) {
     TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (3 * sizeof(uint64_t)));
-    return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + 2 * sizeof(uint64_t));
+    return RevisionId::fromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                      2 * sizeof(uint64_t));
   }
   TRI_ASSERT(false);  // invalid type
-  return 0;
+  return RevisionId::none();
 }
 
 VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
@@ -370,7 +373,7 @@ bool RocksDBLogValue::containsDatabaseId(RocksDBLogType type) {
          type == RocksDBLogType::SinglePut || type == RocksDBLogType::SingleRemoveV2;
 }
 
-bool RocksDBLogValue::containsCollectionId(RocksDBLogType type) {
+bool RocksDBLogValue::containsDataSourceId(RocksDBLogType type) {
   return type == RocksDBLogType::CollectionCreate ||
          type == RocksDBLogType::CollectionDrop ||
          type == RocksDBLogType::CollectionRename ||

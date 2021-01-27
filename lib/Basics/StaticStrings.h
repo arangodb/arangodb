@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -70,6 +71,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const PreserveRevisionIds;
+  static std::string const Compact;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -210,17 +212,15 @@ class StaticStrings {
   static std::string const MultiPartContentType;
 
   // encodings
+  static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
 
   // collection attributes
   static std::string const CacheEnabled;
   static std::string const DistributeShardsLike;
-  static std::string const DoCompact;
-  static std::string const IndexBuckets;
   static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
-  static std::string const JournalSize;
   static std::string const MinReplicationFactor;
   static std::string const MinRevision;
   static std::string const NumberOfShards;
@@ -232,7 +232,6 @@ class StaticStrings {
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const SyncByRevision;
-  static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
   static std::string const Version;
@@ -257,6 +256,28 @@ class StaticStrings {
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
   static std::string const GraphName;
+  static std::string const GraphTraversalProfileLevel;
+
+  // Pregel Section Start
+
+  // Pregel Accumulator Attributes
+  static std::string const AccumulatorHot;
+  static std::string const AccumulatorCold;
+  static std::string const AccumulatorValue;
+  static std::string const AccumulatorSender;
+  static std::string const AccumulatorName;
+
+  // Pregel VertexComputation Attributes
+  static std::string const VertexComputationPregelId;
+  static std::string const VertexComputationVertexId;
+  static std::string const VertexComputationPhase;
+  static std::string const VertexComputationGlobalSuperstep;
+  static std::string const VertexComputationPhaseStep;
+  static std::string const VertexComputationMessage;
+  static std::string const VertexComputationVoteActive;
+  static std::string const VertexComputationVoteHalt;
+
+  // Pregel Section End
 
   // Query Strings
   static std::string const QuerySortASC;
@@ -268,6 +289,12 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeights;
+  static std::string const GraphQueryOrder;
+  static std::string const GraphQueryOrderBFS;
+  static std::string const GraphQueryOrderDFS;
+  static std::string const GraphQueryOrderWeighted;
+  static std::string const GraphQueryShortestPathType;
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
@@ -286,6 +313,7 @@ class StaticStrings {
   // generic attribute names
   static std::string const AttrCoordinator;
   static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrCoordinatorId;
   static std::string const AttrIsBuilding;
 
   // misc strings
@@ -300,7 +328,6 @@ class StaticStrings {
 
   // aql api strings
   static std::string const SerializationFormat;
-  static std::string const AqlRemoteApi;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;
@@ -321,6 +348,9 @@ class StaticStrings {
   static std::string const ArangoSearchAnalyzersRevision;
   static std::string const ArangoSearchCurrentAnalyzersRevision;
   static std::string const ArangoSearchSystemAnalyzersRevision;
+
+  // aql http headers
+  static std::string const AqlShardIdHeader;
 
   // validation
   static std::string const ValidationLevelNone;
@@ -361,8 +391,6 @@ class StaticStrings {
 
   static std::string const AgencyCommRequestTimeMs;
 
-  static std::string const AqlQueryRuntimeMs;
-
   static std::string const SchedulerQueueLength;
   static std::string const SchedulerAwakeWorkers;
   static std::string const SchedulerNumWorker;
@@ -374,6 +402,9 @@ class StaticStrings {
   static std::string const SupervisionAccumRuntimeMs;
   static std::string const SupervisionAccumRuntimeWaitForSyncMs;
   static std::string const SupervisionFailedServerCount;
+
+  // TODO: remove me after refactor is done
+  static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ struct BucketState {
   //////////////////////////////////////////////////////////////////////////////
   enum class Flag : std::uint32_t {
     locked = 0x00000001,
-    blacklisted = 0x00000002,
+    banished = 0x00000002,
     disabled = 0x00000004,
     evictions = 0x00000008,
     migrated = 0x00000010,

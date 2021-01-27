@@ -25,11 +25,6 @@
 
 #include "shared.hpp"
 
-#include <functional>
-#include <iostream>
-#include <ios>
-
-
 #if defined(_MSC_VER)
   // NOOP
 #elif defined (__GNUC__)
@@ -41,10 +36,7 @@
 #define FST_NO_DYNAMIC_LINKING
 #endif
 
-#include <fst/vector-fst.h>
-#include <fst/arcsort.h>
-#include <fst/matcher.h>
-#include <fst/determinize.h>
+#include <fst/fst.h>
 
 #if defined(_MSC_VER)
   // NOOP
@@ -52,18 +44,17 @@
   #pragma GCC diagnostic pop
 #endif
 
-#include "automaton_decl.hpp"
-#include "string.hpp"
+#include "utils/automaton_decl.hpp"
+#include "utils/fstext/fst_utils.hpp"
+#include "utils/string.hpp"
 
-NS_BEGIN(fst)
-NS_BEGIN(fsa)
+namespace fst {
+namespace fsa {
 
 class BooleanWeight {
  public:
   using ReverseWeight = BooleanWeight;
   using PayloadType = irs::byte_type;
-
-  static constexpr PayloadType MaxPayload = 0x3F;
 
   static const std::string& Type() {
     static const std::string type = "boolean";
@@ -79,13 +70,13 @@ class BooleanWeight {
            kCommutative | kIdempotent | kPath;
   }
 
-  constexpr BooleanWeight() noexcept : v_(Invalid) { }
+  constexpr BooleanWeight() noexcept = default;
   constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
-    : v_(PayloadType(v) | (payload << 2)) {
+    : v_(PayloadType(v)), p_(payload) {
   }
 
-  constexpr bool Member() const noexcept { return 0 == (v_ & Invalid); }
-  constexpr BooleanWeight Quantize(float delta = kDelta) const noexcept { return {}; }
+  constexpr bool Member() const noexcept { return Invalid != v_; }
+  constexpr BooleanWeight Quantize([[maybe_unused]]float delta = kDelta) const noexcept { return {};  }
   std::istream& Read(std::istream& strm) noexcept {
     v_ = strm.get();
     if (strm.fail()) {
@@ -97,10 +88,10 @@ class BooleanWeight {
     strm.put(v_);
     return strm;
   }
-  constexpr size_t Hash() const noexcept { return size_t(v_ & WeightMask); }
+  constexpr size_t Hash() const noexcept { return size_t(v_); }
   constexpr ReverseWeight Reverse() const noexcept { return *this; }
-  constexpr PayloadType Payload() const noexcept { return v_ >> 2; }
-  constexpr operator bool() const noexcept { return 0 != (v_ & True); }
+  constexpr PayloadType Payload() const noexcept { return p_; }
+  constexpr operator bool() const noexcept { return v_ == True; }
 
   friend constexpr bool operator==(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
     return lhs.Hash() == rhs.Hash();
@@ -117,6 +108,9 @@ class BooleanWeight {
   friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight, DivideType) noexcept {
     return NoWeight();
   }
+  friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight) noexcept {
+    return NoWeight();
+  }
   friend std::ostream& operator<<(std::ostream& strm, const BooleanWeight& w) {
     if (w.Member()) {
       strm << "{" << char(bool(w) + 48) << "," << int(w.Payload()) << "}";
@@ -124,84 +118,52 @@ class BooleanWeight {
     return strm;
   }
   friend constexpr bool ApproxEqual(const BooleanWeight& lhs, const BooleanWeight& rhs,
-                                    float delta = kDelta) {
+                                    [[maybe_unused]] float delta = kDelta) {
     return lhs == rhs;
   }
 
  private:
-  static constexpr PayloadType WeightMask = 0x03;
-  static constexpr PayloadType True = 1;    // "is true" mask
-  static constexpr PayloadType Invalid = 2; // "not a member" mask
+  static constexpr PayloadType False = 0;
+  static constexpr PayloadType True = 1;     // "is true" mask
+  static constexpr PayloadType Invalid = 2; // "not a member" value
 
-  // [2..7] - payload
-  // [1] - "not a member" bit
-  // [0] - true/false bit
-  PayloadType v_;
+  PayloadType v_{Invalid};
+  PayloadType p_{};
 };
 
-struct MinMaxLabel {
-  MinMaxLabel(int32_t label = kNoLabel) noexcept
+template<typename T>
+struct RangeLabel {
+  using ValueType = T;
+
+  constexpr RangeLabel() noexcept = default;
+
+  constexpr RangeLabel(ValueType label) noexcept
     : min(label), max(label) {
   }
-  MinMaxLabel(int32_t min, int32_t max) noexcept
+  constexpr RangeLabel(ValueType min, ValueType max) noexcept
     : min(min), max(max) {
   }
-
-  bool operator==(const MinMaxLabel& rhs) const noexcept {
-    return min == rhs.min && max == rhs.max;
-  }
-  bool operator!=(const MinMaxLabel& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-  bool operator<(const MinMaxLabel& rhs) const noexcept {
-    return min < rhs.min || max < rhs.max;
-  }
-  bool operator>(const MinMaxLabel& rhs) const noexcept {
-    return min > rhs.min || max > rhs.max;
-  }
-  bool operator>=(const MinMaxLabel& rhs) const noexcept {
-    return !(*this < rhs);
-  }
-  void Write(std::ostream& strm) const {
-    strm << min << max;
-  }
-  friend std::ostream& operator<<(std::ostream& strm, const MinMaxLabel& l) {
+  friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
     strm << '[' << l.min << ".." << l.max << ']';
     return strm;
   }
 
-  int32_t min{ kNoLabel };
-  int32_t max{ kNoLabel };
-};
+  ValueType min{kNoLabel};
+  ValueType max{kNoLabel};
+}; // RangeLabel
 
-struct EmptyLabel {
-  EmptyLabel() noexcept { }
-  EmptyLabel(const MinMaxLabel&) noexcept { }
-  EmptyLabel(int32_t) noexcept { }
-  bool operator==(EmptyLabel) const noexcept { return true; }
-  bool operator!=(EmptyLabel) const noexcept { return false; }
-  bool operator==(const MinMaxLabel&) const noexcept { return true; }
-  bool operator!=(const MinMaxLabel&) const noexcept { return true; }
-  bool operator==(int32_t) const noexcept { return true; }
-  bool operator!=(int32_t) const noexcept { return false; }
-  bool operator<(EmptyLabel) const noexcept { return false; }
-  bool operator>(EmptyLabel) const noexcept { return false; }
-  operator int() const noexcept { return kNoLabel; }
-  operator MinMaxLabel() const noexcept { return kNoLabel; }
-  void Write(std::ostream&) const { }
+constexpr uint64_t EncodeRange(uint32_t min, uint32_t max) noexcept {
+  return uint64_t(min) << 32 | uint64_t(max);
+}
 
-  friend bool operator==(const MinMaxLabel&, EmptyLabel) noexcept { return true; }
-  friend bool operator!=(const MinMaxLabel&, EmptyLabel) noexcept { return false; }
-  friend bool operator==(int32_t, EmptyLabel) noexcept { return true; }
-  friend bool operator!=(int32_t, EmptyLabel) noexcept { return false; }
-  friend std::ostream& operator<<(std::ostream& strm, EmptyLabel) {
-    return strm;
-  }
-};
+constexpr uint64_t EncodeRange(uint32_t v) noexcept {
+  return EncodeRange(v, v);
+}
 
+template<typename W = BooleanWeight, typename L = int32_t>
 struct Transition {
-  using Weight = BooleanWeight;
-  using Label = int32_t;
+  using Weight = W;
+  using Label = L;
   using StateId = int32_t;
 
   static const std::string &Type() {
@@ -209,118 +171,34 @@ struct Transition {
     return type;
   }
 
-  Label ilabel;
-  Label olabel;
-  //EmptyLabel olabel;
-  StateId nextstate;
-  Weight weight{Weight::Zero()}; // all arcs are trivial
+  Label ilabel{fst::kNoLabel};
+  union {
+    StateId nextstate{fst::kNoStateId};
+    fstext::EmptyLabel<Label> olabel;
+    fstext::EmptyWeight<Weight> weight; // all arcs are trivial
+  };
 
-  Transition() noexcept(std::is_nothrow_default_constructible<Weight>::value) {}
+  constexpr Transition() = default;
 
-  Transition(Label ilabel, StateId nextstate)
+  constexpr Transition(Label ilabel, StateId nextstate)
     : ilabel(ilabel),
-      olabel(ilabel),
       nextstate(nextstate) {
   }
 
   // satisfy openfst API
-  Transition(Label ilabel, Label, BooleanWeight, StateId nextstate)
+  constexpr Transition(Label ilabel, Label, Weight, StateId nextstate)
     : ilabel(ilabel),
-      olabel(ilabel),
       nextstate(nextstate) {
   }
 
   // satisfy openfst API
-  Transition(Label ilabel, Label, StateId nextstate)
-    : ilabel(ilabel),
-      olabel(ilabel),
-      nextstate(nextstate) {
-  }
-};
-
-//struct MinMaxTransition {
-//  using Weight = BooleanWeight;
-//  using Label = int64_t;
-//  using StateId = int32_t;
-//
-//  static const std::string &Type() {
-//    static const auto type = std::string("Transition");
-//    return type;
-//  }
-//  static int64_t label(int32_t min, int32_t max) noexcept {
-//    return int64_t(min) | (int64_t(max) << 32);
-//  }
-//
-//  Label ilabel;
-//  Label olabel;
-//  StateId nextstate;
-//  Weight weight;
-//
-//  MinMaxTransition() noexcept(std::is_nothrow_default_constructible<Weight>::value) {}
-//
-//  MinMaxTransition(int32_t min, int32_t max, StateId nextstate)
-//    : ilabel(MinMaxTransition::label(min, max)),
-//      olabel(kNoLabel),
-//      nextstate(nextstate) {
-//  }
-//
-//  MinMaxTransition(Label label, StateId nextstate)
-//    : ilabel(label),
-//      olabel(kNoLabel),
-//      nextstate(nextstate) {
-//  }
-//
-//  // satisfy openfst API
-//  MinMaxTransition(Label ilabel, Label /*olabel*/, BooleanWeight, StateId nextstate)
-//    : ilabel(ilabel),
-//      olabel(kNoLabel),
-//      nextstate(nextstate) {
-//  }
-//
-//  int32_t min() const noexcept { return int32_t(ilabel & INT64_C(0xFFFFFFFF)); }
-//  int32_t max() const noexcept { return int32_t((ilabel >> 32) & INT64_C(0xFFFFFFFF)); }
-//};
-
-struct MinMaxTransition {
-  using Weight = BooleanWeight;
-  using Label = MinMaxLabel;
-  using StateId = int32_t;
-
-  static const std::string &Type() {
-    static const std::string type("MinMaxTransition");
-    return type;
-  }
-
-  MinMaxLabel ilabel;
-  StateId nextstate;
-  Weight weight;
-  EmptyLabel olabel;
-
-  MinMaxTransition() noexcept(std::is_nothrow_default_constructible<Weight>::value &&
-                        std::is_nothrow_default_constructible<MinMaxLabel>::value &&
-                        std::is_nothrow_default_constructible<EmptyLabel>::value) {
-  }
-
-  MinMaxTransition(int32_t label, StateId nextstate)
-    : ilabel(label, label),
-      nextstate(nextstate) {
-  }
-
-  MinMaxTransition(int32_t min, int32_t max, StateId nextstate)
-    : ilabel(min, max),
-      nextstate(nextstate) {
-  }
-
-  // satisfy openfst API
-  MinMaxTransition(Label ilabel, Label, BooleanWeight, StateId nextstate)
+  constexpr Transition(Label ilabel, Label, StateId nextstate)
     : ilabel(ilabel),
       nextstate(nextstate) {
   }
-};
+}; // Transition
 
-using Automaton = VectorFst<Transition>;
-using AutomatonMatcher = SortedMatcher<Automaton>;
-using MinMaxAutomaton = VectorFst<MinMaxTransition>;
+static_assert(sizeof(Transition<>) == sizeof(Transition<>::Label) + sizeof(Transition<>::StateId));
 
 constexpr const int32_t kEps   = 0;        // match all + don't consume symbol
 constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol
@@ -330,33 +208,49 @@ constexpr const int32_t kSigma = kPhi - 1; // match all + consume symbol
 constexpr const int32_t kMinLabel = 0;
 constexpr const int32_t kMaxLabel = kSigma - 1;
 
-NS_END // fsa
-NS_END // fst
+} // fsa
+} // fst
 
-NS_BEGIN(std)
+namespace std {
 
-inline void swap(::fst::fsa::MinMaxLabel& lhs, ::fst::fsa::EmptyLabel& /*rhs*/) noexcept {
+template<typename T, typename W>
+inline void swap(::fst::fsa::RangeLabel<T>& lhs,
+                 typename ::fst::fstext::EmptyLabel<W>& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
 }
 
-inline void swap(int32_t& lhs, ::fst::fsa::EmptyLabel& /*rhs*/) noexcept {
-  lhs = ::fst::kNoLabel;
-}
-
-template<>
-struct hash<::fst::fsa::MinMaxLabel> {
-  size_t operator()(const ::fst::fsa::MinMaxLabel& label) const noexcept {
+template<typename T>
+struct hash<::fst::fsa::RangeLabel<T>> {
+  size_t operator()(const ::fst::fsa::RangeLabel<T>& label) const noexcept {
     return hash<uint64_t>()(uint64_t(label.min) | uint64_t(label.max) << 32);
   }
 };
 
-template<>
-struct hash<::fst::fsa::EmptyLabel> {
-  size_t operator()(::fst::fsa::EmptyLabel) const noexcept {
-    return 0;
-  }
-};
+}
 
-NS_END
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
+
+#include <fst/vector-fst.h>
+#include <fst/matcher.h>
+
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+namespace fst {
+namespace fsa {
+
+template<typename W, typename L>
+using AutomatonMatcher = SortedMatcher<Automaton<W, L>>;
+
+}
+}
 
 #endif // IRESEARCH_AUTOMATON_H

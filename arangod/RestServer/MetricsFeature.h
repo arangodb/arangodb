@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -66,6 +67,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   explicit MetricsFeature(application_features::ApplicationServer& server);
 
   bool exportAPI() const;
+  bool exportReadWriteMetrics() const;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -268,6 +270,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   std::unique_ptr<ServerStatistics> _serverStatistics;
 
   bool _export;
+  bool _exportReadWriteMetrics;
 };
 
 }  // namespace arangodb

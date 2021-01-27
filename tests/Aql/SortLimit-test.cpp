@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -103,7 +104,7 @@ class SortLimitTest
     auto options = buildOptions(rules);
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                               nullptr, options);
+                               nullptr, options->slice());
 
     auto result = query.explain();
     VPackSlice nodes = result.data->slice().get("nodes");
@@ -129,7 +130,7 @@ class SortLimitTest
     auto options = buildOptions(rules);
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                               nullptr, options);
+                               nullptr, options->slice());
     arangodb::aql::QueryResult result;
 
     while (true) {

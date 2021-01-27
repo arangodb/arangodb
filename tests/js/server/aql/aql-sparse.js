@@ -408,40 +408,45 @@ function optimizerSparseTestSuite () {
     testSparseJoinFunc : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
+      let opt = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
       let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 RETURN doc1";
-      let results = AQL_EXECUTE(query).json;
+      let results = AQL_EXECUTE(query, null, opt).json;
       assertEqual(1, results.length);
 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
       let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
-      assertEqual(1, indexes.length);
-      assertEqual(c.name(), indexes[0].collection);
-      assertEqual("doc2", indexes[0].outVariable.name);
-      assertEqual({}, indexes[0].condition);
-      assertEqual(["value1"], indexes[0].projections);
-      assertTrue(indexes[0].indexes[0].sparse);
+      assertEqual(0, indexes.length);
+      let collections = nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+      assertEqual(2, collections.length);
+      assertEqual(c.name(), collections[0].collection);
+      assertEqual("doc1", collections[0].outVariable.name);
+      assertEqual([], collections[0].projections);
+      assertEqual(c.name(), collections[1].collection);
+      assertEqual("doc2", collections[1].outVariable.name);
+      assertEqual(["value1"], collections[1].projections);
     },
     
     testSparseJoinFuncNeNull : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
+      let opt = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
       let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 != null RETURN doc1";
-      let results = AQL_EXECUTE(query).json;
+      let results = AQL_EXECUTE(query, null, opt).json;
       assertEqual(1, results.length);
 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
       let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
-      assertEqual(2, indexes.length);
+      assertEqual(1, indexes.length);
       assertEqual(c.name(), indexes[0].collection);
       assertEqual("doc1", indexes[0].outVariable.name);
       assertNotEqual({}, indexes[0].condition);
       assertTrue(indexes[0].indexes[0].sparse);
       
-      assertEqual(c.name(), indexes[1].collection);
-      assertEqual("doc2", indexes[1].outVariable.name);
-      assertEqual({}, indexes[1].condition);
-      assertEqual(["value1"], indexes[1].projections);
-      assertTrue(indexes[1].indexes[0].sparse);
+      let collections = nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+      assertEqual(1, collections.length);
+      assertEqual(c.name(), collections[0].collection);
+      assertEqual("doc2", collections[0].outVariable.name);
+      assertEqual(["value1"], collections[0].projections);
     },
     
     testSparseJoinFuncNeNullNeNull : function () {
@@ -461,23 +466,24 @@ function optimizerSparseTestSuite () {
     testSparseJoinFuncGtNull : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
+      let opt = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
       let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 > null RETURN doc1";
-      let results = AQL_EXECUTE(query).json;
+      let results = AQL_EXECUTE(query, null, opt).json;
       assertEqual(1, results.length);
 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
       let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
-      assertEqual(2, indexes.length);
+      assertEqual(1, indexes.length);
       assertEqual(c.name(), indexes[0].collection);
       assertEqual("doc1", indexes[0].outVariable.name);
       assertNotEqual({}, indexes[0].condition);
       assertTrue(indexes[0].indexes[0].sparse);
-      
-      assertEqual(c.name(), indexes[1].collection);
-      assertEqual("doc2", indexes[1].outVariable.name);
-      assertEqual({}, indexes[1].condition);
-      assertEqual(["value1"], indexes[1].projections);
-      assertTrue(indexes[1].indexes[0].sparse);
+
+      let collections = nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+      assertEqual(1, collections.length);
+      assertEqual(c.name(), collections[0].collection);
+      assertEqual("doc2", collections[0].outVariable.name);
+      assertEqual(["value1"], collections[0].projections);
     },
     
     testSparseJoinFuncGtNullGtNull : function () {

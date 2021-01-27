@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,11 +34,9 @@ constexpr char const* COLLECTION = "collection";
 constexpr char const* CREATE_COLLECTION = "CreateCollection";
 constexpr char const* CREATE_DATABASE = "CreateDatabase";
 constexpr char const* DATABASE = "database";
-constexpr char const* DO_COMPACT = "doCompact";
 constexpr char const* DROP_COLLECTION = "DropCollection";
 constexpr char const* DROP_DATABASE = "DropDatabase";
 constexpr char const* DROP_INDEX = "DropIndex";
-constexpr char const* EDGE = "edge";
 constexpr char const* ENSURE_INDEX = "EnsureIndex";
 constexpr char const* FIELDS = "fields";
 constexpr char const* FOLLOWER_ID = "followerId";
@@ -47,8 +45,6 @@ constexpr char const* GLOB_UID = "globallyUniqueId";
 constexpr char const* ID = "id";
 constexpr char const* INDEX = "index";
 constexpr char const* INDEXES = "indexes";
-constexpr char const* INDEX_BUCKETS = "indexBuckets";
-constexpr char const* JOURNAL_SIZE = "journalSize";
 constexpr char const* KEY = "key";
 constexpr char const* LOCAL_LEADER = "localLeader";
 constexpr char const* NAME = "name";
@@ -57,7 +53,6 @@ constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 constexpr char const* OP = "op";
 constexpr char const* PHASE_ONE = "phaseOne";
 constexpr char const* PHASE_TWO = "phaseTwo";
-constexpr char const* PRIMARY = "primary";
 constexpr char const* PLAN_RAFT_INDEX = "planRaftIndex";
 constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
 constexpr char const* SCHEMA = "schema";

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,17 +23,26 @@
 
 #include "SharedQueryState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Context.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SharedQueryState::SharedQueryState()
-  : _wakeupCb(nullptr), _numWakeups(0),
-    _cbVersion(0), _numTasks(0), _valid(true) {}
+SharedQueryState::SharedQueryState(application_features::ApplicationServer& server)
+    : _server(server),
+      _wakeupCb(nullptr),
+      _numWakeups(0),
+      _cbVersion(0),
+      _maxTasks(static_cast<unsigned>(_server.getFeature<QueryRegistryFeature>().maxParallelism())),
+      _numTasks(0),
+      _valid(true) {}
 
 void SharedQueryState::invalidate() {
   {
@@ -118,37 +128,36 @@ void SharedQueryState::queueHandler() {
     // We are shutting down
     return;
   }
-      
-  bool queued = scheduler->queue(RequestLane::CLUSTER_AQL,
-                                 [self = shared_from_this(),
-                                  cb = _wakeupCb,
-                                  v = _cbVersion]() {
-    
-    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-    do {
-      bool cntn = false;
-      try {
-        cntn = cb();
-      } catch (...) {}
-      
-      lck.lock();
-      if (v == self->_cbVersion) {
-        unsigned c = self->_numWakeups--;
-        TRI_ASSERT(c > 0);
-        if (c == 1 || !cntn || !self->_valid) {
-          break;
-        }
-      } else {
-        return;
-      }
-      lck.unlock();
-    } while (true);
+  bool queued =
+      scheduler->queue(RequestLane::CLUSTER_AQL_CONTINUATION,
+                       [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
+                         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-    TRI_ASSERT(lck);
-    self->queueHandler();
-  });
-  
+                         do {
+                           bool cntn = false;
+                           try {
+                             cntn = cb();
+                           } catch (...) {
+                           }
+
+                           lck.lock();
+                           if (v == self->_cbVersion) {
+                             unsigned c = self->_numWakeups--;
+                             TRI_ASSERT(c > 0);
+                             if (c == 1 || !cntn || !self->_valid) {
+                               break;
+                             }
+                           } else {
+                             return;
+                           }
+                           lck.unlock();
+                         } while (true);
+
+                         TRI_ASSERT(lck);
+                         self->queueHandler();
+                       });
+
   if (!queued) { // just invalidate
      _wakeupCb = nullptr;
      _valid = false;

@@ -1555,6 +1555,204 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
+    
+    testCustomPipelineAnalyzer : function() {
+      let analyzerName = "pipeUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"delimiter", properties:{delimiter:" "}},
+                          {type:"delimiter", properties:{delimiter:","}},
+                          {type:"norm", properties:{locale:"en", "case":"upper"}}
+                        ]}, ["position", "frequency"]);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('Quick,BrOwn FoX', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(3, result[0].length);
+          assertEqual([ "QUICK", "BROWN", "FOX" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // upper + ngram utf8 sequence
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}},
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
+       
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.pipeline[1].properties.min);
+          assertEqual(3, props.pipeline[1].properties.max);
+          assertEqual(false, props.pipeline[1].properties.preserveOriginal);
+          assertEqual("utf8", props.pipeline[1].properties.streamType);
+          assertEqual("upper", props.pipeline[0].properties["case"]);
+          assertEqual(true, props.pipeline[0].properties.accent);
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:2 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+    },
+    
+    testCustomAqlAnalyzer : function() {
+      let analyzerName = "calcUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      // soundex expression
+      {
+        analyzers.save(analyzerName,"aql",{queryString:"RETURN SOUNDEX(@param)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS(['Andrei', 'Andrey'], '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual([ ["A536"], ["A536"] ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // datetime
+      {
+        analyzers.save(analyzerName,"aql",{queryString:"RETURN DATE_ISO8601(@param)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS('1974-06-09', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ '1974-06-09T00:00:00.000Z' ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // cycle
+      {
+        analyzers.save(analyzerName,"aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS('4', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual(['2', '4'], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // pipeline for upper + ngram utf8 sequence
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}},
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
+       
+        try {
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // pipeline for ngram utf8 sequence + upper
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}},
+                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}}]});
+       
+        try {
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "aql", { queryString:"" } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+    },
+    
+    testCustomAqlAnalyzerInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"andrey"});
+        col.save({field:"mike"});
+        col.save({field:"frank"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN SOUNDEX(@param)"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        assertEqual(2, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != SOUNDEX('andrei'), 'calcUnderTest')" + 
+                                 "OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+        assertEqual(1, db._query("FOR d IN @@v  " + 
+                                 "SEARCH ANALYZER(d.field == SOUNDEX('andrei'), 'calcUnderTest') OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
     testInvalidTypeAnalyzer : function() {
       let analyzerName = "unknownUnderTest";
       try {

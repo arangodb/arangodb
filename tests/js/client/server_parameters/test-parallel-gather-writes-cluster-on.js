@@ -52,7 +52,6 @@ function testSuite() {
     
     testRule : function() {
       let stmt = new ArangoStatement(db, { query: "FOR doc IN " + cn + " UPDATE doc WITH { updated: true } IN " + cn });
-      db._explain("FOR doc IN " + cn + " UPDATE doc WITH { updated: true } IN " + cn);
       let plan = stmt.explain().plan;
       let nodes = plan.nodes;
       let gather = plan.nodes.filter(function(node) { return node.type === 'GatherNode'; });

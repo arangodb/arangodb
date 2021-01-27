@@ -33,6 +33,7 @@ var internal = require("internal");
 var arangodb = require("@arangodb");
 var fs = require("fs");
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attributes
@@ -78,7 +79,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      // some sanity check as we don't want to unintentionally remove "." or "/"
+      // some basic security checks as we don't want to unintentionally remove "." or "/"
       if (tempDir.length > 5) {
         // remove our temporary directory with all its subdirectories
         // we created it, so we don't care what's in it

@@ -1040,6 +1040,55 @@ function multiCollectionGraphSuite() {
         assertEqual(jsonResult, result, query);
       });
     },
+    
+    testEdgeCollectionBindParameterNoCol: function () {
+      var query = `WITH ${vn}
+      FOR x, e, p IN OUTBOUND '${vertex.B}' @eCol
+      SORT x._key
+      RETURN {vertex: x, path: p}`;
+      var bindVars = {
+        'eCol': en
+      };
+      var result = db._query(query, bindVars).toArray();
+      validateResult(result);
+      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+      plans.forEach(function (plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+    
+    testEdgeCollectionBindParameterNonExisting: function () {
+      var query = `WITH ${vn}
+      FOR x, e, p IN OUTBOUND '${vertex.B}' @@eCol
+      SORT x._key
+      RETURN {vertex: x, path: p}`;
+      var bindVars = {
+        '@eCol': 'FleischmannNonExisting'
+      };
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
+    
+    testEdgeCollectionBindParameterNoColNonExisting: function () {
+      var query = `WITH ${vn}
+      FOR x, e, p IN OUTBOUND '${vertex.B}' @eCol
+      SORT x._key
+      RETURN {vertex: x, path: p}`;
+      var bindVars = {
+        'eCol': 'FleischmannNonExisting'
+      };
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
 
     testStepsBindParameter: function () {
       var query = `WITH ${vn}
@@ -2333,6 +2382,24 @@ function complexFilteringSuite() {
 
     testPruneWithSubquery: function () {
       let query = `FOR v,e,p IN 1..100 OUTBOUND @start @ecol PRUNE 2 <= LENGTH(FOR w IN p.vertices FILTER w._id == v._id RETURN 1) RETURN p`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.Tri1
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
+
+    // Regression test for https://github.com/arangodb/arangodb/issues/12372
+    // While subqueries in PRUNE should have already been forbidden, there was
+    // a place in the grammar where the subquery wasn't correctly flagged.
+    testPruneWithSubquery2: function () {
+      // The additional parentheses in LENGTH are important for this test!
+      let query = `FOR v,e,p IN 1..100 OUTBOUND @start @ecol PRUNE 2 <= LENGTH((FOR w IN p.vertices FILTER w._id == v._id RETURN 1)) RETURN p`;
       try {
         let bindVars = {
           '@eCol': en,

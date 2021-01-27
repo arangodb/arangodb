@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,7 +27,6 @@
 #include <s2/s1angle.h>
 #include <s2/s2cell.h>
 #include <s2/s2cell_id.h>
-#include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2loop.h>
 #include <s2/s2point_region.h>
@@ -56,13 +56,12 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
-  TRI_ASSERT(_data == nullptr);
   if (!json.isArray() || json.length() < 2) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
 
-  VPackSlice lat = json.at(geoJson ? 1 : 0);
-  VPackSlice lng = json.at(geoJson ? 0 : 1);
+  VPackSlice lat = json.at(size_t(geoJson));
+  VPackSlice lng = json.at(1 - size_t(geoJson));
   if (!lat.isNumber() || !lng.isNumber()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
@@ -78,6 +77,15 @@ ShapeContainer::ShapeContainer(ShapeContainer&& other) noexcept
 }
 ShapeContainer::~ShapeContainer() { delete _data; }
 
+ShapeContainer& ShapeContainer::operator=(ShapeContainer&& rhs) noexcept {
+  if (this != &rhs) {
+    this->reset(rhs._data, rhs._type);
+    rhs._data = nullptr;
+    rhs._type = Type::EMPTY;
+  }
+  return *this;
+}
+
 void ShapeContainer::reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept {
   delete _data;
   _type = tt;
@@ -90,10 +98,19 @@ void ShapeContainer::reset(S2Region* ptr, Type tt) noexcept {
   _data = ptr;
 }
 
-void ShapeContainer::resetCoordinates(double lat, double lon) {
-  delete _data;
-  _type = ShapeContainer::Type::S2_POINT;
-  _data = new S2PointRegion(S2LatLng::FromDegrees(lat, lon).ToPoint());
+void ShapeContainer::resetCoordinates(S2LatLng ll) {
+  if (_type != Type::S2_POINT || !_data) {
+    delete _data;
+    _type = ShapeContainer::Type::S2_POINT;
+    _data = new S2PointRegion(ll.ToPoint());
+  } else {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto& region = dynamic_cast<S2PointRegion&>(*_data);
+#else
+    auto& region = static_cast<S2PointRegion&>(*_data);
+#endif
+    region = S2PointRegion(ll.ToPoint());
+  }
 }
 
 S2Point ShapeContainer::centroid() const noexcept {

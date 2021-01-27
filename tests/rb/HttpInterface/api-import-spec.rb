@@ -49,7 +49,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "using different documents" do
+      it "JSONA using different documents" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=array"
         body =  "[ \n"
         body += "{ \"name\" : \"John\", \"age\" : 29, \"gender\" : \"male\", \"likes\" : [ \"socket\", \"bind\", \"accept\" ] },\n"
@@ -68,7 +68,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "using different documents, type=auto" do
+      it "JSONA using different documents, type=auto" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=auto"
         body =  "[ \n"
         body += "{ \"name\" : \"John\", \"age\" : 29, \"gender\" : \"male\", \"likes\" : [ \"socket\", \"bind\", \"accept\" ] },\n"
@@ -87,7 +87,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "using whitespace" do
+      it "JSONA using whitespace" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=array"
         body =  " [\n\n      { \"name\" : \"John\", \"age\" : 29 },      \n     \n \n \r\n \n { \"rubbish\" : \"data goes in here\" }\n\n ]"
         doc = ArangoDB.log_post("#{prefix}-array-ws", cmd, :body => body)
@@ -101,7 +101,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "invalid documents" do
+      it "JSONA invalid documents" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=array"
         body =  "[ { \"this doc\" : \"isValid\" },\n{ \"this one\" : is not },\n{ \"again\" : \"this is ok\" },\n\n{ \"but this isn't\" }\n ]"
         doc = ArangoDB.log_post("#{prefix}-array-invalid", cmd, :body => body)
@@ -111,7 +111,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(400)
       end
       
-      it "empty body" do
+      it "JSONA empty body" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=array"
         body =  "" 
         doc = ArangoDB.log_post("#{prefix}-array-empty", cmd, :body => body)
@@ -122,7 +122,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(400)
       end
       
-      it "no documents" do
+      it "JSONA no documents" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=array"
         body =  "[\n\n]"
         doc = ArangoDB.log_post("#{prefix}-array-none", cmd, :body => body)
@@ -136,7 +136,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "no collection" do
+      it "JSONA no collection" do
         cmd = api + "?type=array"
         body =  "[ \n\n ]"
         doc = ArangoDB.log_post("#{prefix}-array-nocoll", cmd, :body => body)
@@ -146,7 +146,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1204)
       end
       
-      it "non-existing collection" do
+      it "JSONA non-existing collection" do
         ArangoDB.drop_collection(@cn)
 
         cmd = api + "?collection=#{@cn}&type=array"
@@ -175,7 +175,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "using different documents" do
+      it "JSONL using different documents" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=documents"
         body =  "{ \"name\" : \"John\", \"age\" : 29, \"gender\" : \"male\", \"likes\" : [ \"socket\", \"bind\", \"accept\" ] }\n"
         body += "{ \"firstName\" : \"Jane\", \"lastName\" : \"Doe\", \"age\" : 35, \"gender\" : \"female\", \"livesIn\" : \"Manila\" }\n"
@@ -192,7 +192,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "using different documents, type=auto" do
+      it "JSONL using different documents, type=auto" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=auto"
         body =  "{ \"name\" : \"John\", \"age\" : 29, \"gender\" : \"male\", \"likes\" : [ \"socket\", \"bind\", \"accept\" ] }\n"
         body += "{ \"firstName\" : \"Jane\", \"lastName\" : \"Doe\", \"age\" : 35, \"gender\" : \"female\", \"livesIn\" : \"Manila\" }\n"
@@ -209,7 +209,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "using whitespace" do
+      it "JSONL using whitespace" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=documents"
         body =  "\n\n      { \"name\" : \"John\", \"age\" : 29 }      \n     \n \n \r\n \n { \"rubbish\" : \"data goes in here\" }\n\n"
         doc = ArangoDB.log_post("#{prefix}-self-contained-ws", cmd, :body => body)
@@ -223,7 +223,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "invalid documents" do
+      it "JSONL invalid documents" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=documents"
         body =  "{ \"this doc\" : \"isValid\" }\n{ \"this one\" : is not }\n{ \"again\" : \"this is ok\" }\n\n{ \"but this isn't\" }\n"
         doc = ArangoDB.log_post("#{prefix}-self-contained-invalid", cmd, :body => body)
@@ -237,7 +237,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "empty body" do
+      it "JSONL empty body" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=documents"
         body =  "" 
         doc = ArangoDB.log_post("#{prefix}-self-contained-empty", cmd, :body => body)
@@ -251,7 +251,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "no documents" do
+      it "JSONL no documents" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=documents"
         body =  "\n\n"
         doc = ArangoDB.log_post("#{prefix}-self-contained-none", cmd, :body => body)
@@ -265,7 +265,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "no collection" do
+      it "JSONL no collection" do
         cmd = api + "?type=documents"
         body =  "\n\n"
         doc = ArangoDB.log_post("#{prefix}-self-contained-nocoll", cmd, :body => body)
@@ -275,7 +275,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1204)
       end
       
-      it "non-existing collection" do
+      it "JSONL non-existing collection" do
         ArangoDB.drop_collection(@cn)
 
         cmd = api + "?collection=#{@cn}&type=documents"
@@ -452,7 +452,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@en)
       end
 
-      it "no _from" do
+      it "JSONA no _from" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array"
         body = "[ { \"_to\" : \"" + @vn + "/vertex1\" } ]";
         doc = ArangoDB.log_post("#{prefix}-edge-json-nofrom", cmd, :body => body)
@@ -466,7 +466,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "no _to" do
+      it "JSONA no _to" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array"
         body = "[ { \"_from\" : \"" + @vn + "/vertex1\" } ]";
         doc = ArangoDB.log_post("#{prefix}-edge-json-noto", cmd, :body => body)
@@ -480,7 +480,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "with _from and _to" do
+      it "JSONA with _from and _to" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array"
         body = "[ { \"_from\" : \"" + @vn + "/vertex1\", \"_to\" : \"" + @vn + "/vertex2\" } ]"
         doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
@@ -494,7 +494,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "multiple docs, with _from and _to" do
+      it "JSONA multiple docs, with _from and _to" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array"
         body = "[\n"
         body += "{ \"a\" : 1, \"_from\" : \"" + @vn + "/vertex1\", \"_to\" : \"" + @vn + "/vertex2\" },\n"
@@ -512,7 +512,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "multiple docs, with wrong fromPrefix" do
+      it "JSONA multiple docs, with wrong fromPrefix" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=a+b"
         body = "[\n"
         body += "{ \"a\" : 1, \"_from\" : \"vertex1\", \"_to\" : \"" + @vn + "/vertex2\" }\n"
@@ -528,7 +528,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "multiple docs, with wrong toPrefix" do
+      it "JSONA multiple docs, with wrong toPrefix" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array&toPrefix=a+b"
         body = "[\n"
         body += "{ \"a\" : 1, \"_to\" : \"vertex1\", \"_from\" : \"" + @vn + "/vertex2\" }\n"
@@ -544,7 +544,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "multiple docs, with fromPrefix" do
+      it "JSONA multiple docs, with fromPrefix" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=#{@vn}"
         body = "[\n"
         body += "{ \"a\" : 1, \"_from\" : \"vertex1\", \"_to\" : \"" + @vn + "/vertex2\" },\n"
@@ -562,7 +562,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "multiple docs, with toPrefix" do
+      it "JSONA multiple docs, with toPrefix" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array&toPrefix=#{@vn}"
         body = "[\n"
         body += "{ \"a\" : 1, \"_to\" : \"vertex1\", \"_from\" : \"" + @vn + "/vertex2\" },\n"
@@ -580,7 +580,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "multiple docs, with fromPrefix and toPrefix" do
+      it "JSONA multiple docs, with fromPrefix and toPrefix" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=#{@vn}&toPrefix=#{@vn}"
         body = "[\n"
         body += "{ \"a\" : 1, \"_to\" : \"vertex1\", \"_from\" : \"vertex2\" },\n"
@@ -598,7 +598,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
       
-      it "multiple docs, with fromPrefix and toPrefix, double prefixing" do
+      it "JSONA multiple docs, with fromPrefix and toPrefix, double prefixing" do
         cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=#{@vn}&toPrefix=#{@vn}"
         body = "[\n"
         body += "{ \"a\" : 1, \"_to\" : \"#{@vn}/vertex1\", \"_from\" : \"#{@vn}/vertex2\" },\n"
@@ -731,7 +731,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@en)
       end
 
-      it "no _from" do
+      it "CSV no _from" do
         cmd = api + "?collection=#{@en}&createCollection=false"
         body  = "[ \"_to\" ]\n"
         body += "[ \"" + @vn + "/vertex1\" ]";
@@ -746,7 +746,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "no _to" do
+      it "CSV no _to" do
         cmd = api + "?collection=#{@en}&createCollection=false"
         body  = "[ \"_from\" ]\n"
         body += "[ \"" + @vn + "/vertex1\" ]"
@@ -761,7 +761,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "with _from and _to" do
+      it "CSV with _from and _to" do
         cmd = api + "?collection=#{@en}&createCollection=false"
         body  = "[ \"_from\", \"_to\" ]\n"
         body += "[ \"" + @vn + "/vertex1\", \"" + @vn + "/vertex2\" ]"
@@ -776,7 +776,7 @@ describe ArangoDB do
         doc.parsed_response['ignored'].should eq(0)
       end
 
-      it "multiple documents, with _from and _to" do
+      it "CSV multiple documents, with _from and _to" do
         cmd = api + "?collection=#{@en}&createCollection=false"
         body  = "[ \"a\", \"_from\", \"_to\", \"foo\" ]\n"
         body += "[ 1, \"" + @vn + "/vertex1\", \"" + @vn + "/vertex2\", \"\" ]\n"

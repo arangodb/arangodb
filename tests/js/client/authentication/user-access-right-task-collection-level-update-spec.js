@@ -33,10 +33,10 @@
 
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const errors = require('@arangodb').errors;
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const download = require('internal').download;
 const dbName = helper.dbName;
 const colName = helper.colName;

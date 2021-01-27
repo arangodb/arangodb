@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,7 +51,7 @@ using namespace arangodb::options;
 // -----------------------------------------------------------------------------
 
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Metrics"), _export(true) {
+  : ApplicationFeature(server, "Metrics"), _export(true) , _exportReadWriteMetrics(true) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<GreetingsFeaturePhase>();
@@ -59,18 +60,32 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   _serverStatistics = std::make_unique<ServerStatistics>(
       *this, StatisticsFeature::time());
+
   options->addOption("--server.export-metrics-api",
                      "turn metrics API on or off",
                      new BooleanParameter(&_export),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
+  options->addOption("--server.export-read-write-metrics",
+                     "turn metrics for doiument read/write metrics on or off",
+                     new BooleanParameter(&_exportReadWriteMetrics),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30706);
 }
 
 bool MetricsFeature::exportAPI() const {
   return _export;
 }
 
-void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
+bool MetricsFeature::exportReadWriteMetrics() const {
+  return _exportReadWriteMetrics;
+}
+
+void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (_exportReadWriteMetrics) {
+    serverStatistics().setupDocumentMetrics();
+  }
+}
 
 void MetricsFeature::toPrometheus(std::string& result) const {
 
@@ -86,28 +101,24 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 
   // StatisticsFeature
   auto& sf = server().getFeature<StatisticsFeature>();
-  if (sf.enabled()) {
-    sf.toPrometheus(result, std::chrono::duration<double,std::milli>(
-                      std::chrono::system_clock::now().time_since_epoch()).count());
-  }
+  sf.toPrometheus(result, std::chrono::duration<double, std::milli>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
 
   // RocksDBEngine
-  auto es = EngineSelectorFeature::ENGINE;
-  if (es != nullptr) {
-    std::string const& engineName = es->typeName();
-    if (engineName == RocksDBEngine::EngineName) {
-      es->getStatistics(result);
-    }
+  auto& es = server().getFeature<EngineSelectorFeature>().engine();
+  std::string const& engineName = es.typeName();
+  if (engineName == RocksDBEngine::EngineName) {
+    es.getStatistics(result);
   }
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   std::initializer_list<std::string> const& key, uint64_t const& val,
   std::string const& help) {
   return counter(metrics_key(key), val, help);
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   metrics_key const& mk, uint64_t const& val,
   std::string const& help) {
 
@@ -128,12 +139,12 @@ Counter& MetricsFeature::counter (
   }
   if (!success) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
+      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " already exists");
   }
   return *metric;
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   std::string const& name, uint64_t const& val, std::string const& help) {
   return counter(metrics_key(name), val, help);
 }
@@ -142,7 +153,7 @@ ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
 }
 
-Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key) {
+Counter& MetricsFeature::counter(std::initializer_list<std::string> const& key) {
   metrics_key mk(key);
   std::shared_ptr<Counter> metric = nullptr;
   std::string error;
@@ -174,7 +185,7 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
   return *metric;
 }
 
-Counter& MetricsFeature::counter (std::string const& name) {
+Counter& MetricsFeature::counter(std::string const& name) {
   return counter({name});
 }
 
@@ -189,11 +200,15 @@ metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
 }
 
 metrics_key::metrics_key(std::string const& name) : name(name) {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
   _hash = std::hash<std::string>{}(name);
 }
 
 metrics_key::metrics_key(std::string const& name, std::string const& labels) :
   name(name), labels(labels) {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
   _hash = std::hash<std::string>{}(name + labels);
 }
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -123,7 +124,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
         v8::Handle<v8::Value> args[] = {params};
 
         try {
-          v8::Handle<v8::Value> result = main->Call(TRI_IGETC, main, 1, args).FromMaybe(v8::Local<v8::Value>());;
+          v8::Handle<v8::Value> result = main->Call(TRI_IGETC, main, 1, args).FromMaybe(v8::Local<v8::Value>());
 
           if (tryCatch.HasCaught()) {
             if (tryCatch.CanContinue()) {

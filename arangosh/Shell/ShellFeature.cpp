@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -69,6 +70,13 @@ void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
 
   options->addOption("--javascript.unit-test-filter",
                      "filter testcases in suite", new StringParameter(&_unitTestFilter));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  options->addOption("--javascript.script-parameter", "script parameter",
+                     new VectorParameter<StringParameter>(&_scriptParameters));
+
+  options->addOption("--javascript.run-main", "execute function main",
+                     new BooleanParameter(&_runMain));
+#endif
 }
 
 void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -140,7 +148,7 @@ void ShellFeature::start() {
         break;
 
       case RunMode::EXECUTE_SCRIPT:
-        ok = shell.runScript(_executeScripts, _positionals, true);
+        ok = shell.runScript(_executeScripts, _positionals, true, _scriptParameters, _runMain);
         break;
 
       case RunMode::EXECUTE_STRING:
@@ -148,7 +156,7 @@ void ShellFeature::start() {
         break;
 
       case RunMode::CHECK_SYNTAX:
-        ok = shell.runScript(_checkSyntaxFiles, _positionals, false);
+        ok = shell.runScript(_checkSyntaxFiles, _positionals, false, _scriptParameters, _runMain);
         break;
 
       case RunMode::UNIT_TESTS:

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,8 +122,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Read from agency
   read_ret_t read(query_t const&);
 
-  /// @brief Long pool for higher index than given
-  futures::Future<query_t> poll(index_t const& index, double const& timeout);
+  /// @brief Long pool for higher index than given if leader or else empty builder and false
+  std::tuple<futures::Future<query_t>, bool, std::string> poll(
+    index_t const& index, double const& timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
@@ -368,6 +369,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
+  void syncActiveAndAcknowledged();
+
   /// @brief Leader election delegate
   Constituent _constituent;
 
@@ -395,7 +398,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// must be done under the write lock of _outputLog and the mutex of
   /// _waitForCV to allow a thread to wait for a change using that
   /// condition variable.
-  index_t _commitIndex;
+  /// Furthermore, we make the member atomic, such that we can occasionally
+  /// read it without the locks, for example in sendEmptyAppendEntriesRPC.
+  std::atomic<index_t> _commitIndex;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
@@ -429,11 +434,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// The following three members are protected by _tiLock:
 
   /// @brief stores for each follower the highest index log it has reported as
-  /// locally logged.
-  std::unordered_map<std::string, index_t> _confirmed;
-
-  /// @brief _lastAcked: last time we received an answer to a sendAppendEntries
-  std::unordered_map<std::string, SteadyTimePoint> _lastAcked;
+  /// locally logged, and the timestamp we last recevied an answer to sendAppendEntries
+  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>> _lastAckedIndex;
 
   /// @brief The earliest timepoint at which we will send new sendAppendEntries
   /// to a particular follower. This is a measure to avoid bombarding a
@@ -443,6 +445,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   // @brief Lock for the above time data about other agents. This
   // protects _confirmed, _lastAcked and _earliestPackage:
   mutable arangodb::Mutex _tiLock;
+
+  /// @brief Facilitate quick note of followership on leaders
+  mutable arangodb::Mutex _emptyAppendLock;
+  std::unordered_map<std::string, SteadyTimePoint> _lastEmptyAcked;
 
   /// @brief RAFT consistency lock:
   ///   _spearhead

@@ -25,7 +25,7 @@
 #include "filter_test_case_base.hpp"
 #include "search/range_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::by_range make_filter(
     const irs::string_ref& field,
@@ -1299,4 +1299,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

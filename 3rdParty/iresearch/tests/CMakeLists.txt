@@ -30,9 +30,11 @@ set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
+  ./analysis/pipeline_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
+  ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
   ./formats/formats_test_case_base.cpp
@@ -108,6 +110,7 @@ set(IReSearch_tests_sources
   ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
+  ./utils/thread_pool_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_utils_test.cpp
   ./utils/utf8_path_tests.cpp
@@ -151,7 +154,6 @@ add_executable(${IResearchTests_TARGET_NAME}-shared
 set_ipo(${IResearchTests_TARGET_NAME}-shared)
 add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
 
-# don`t forget to update scrt version below if necessary!
 add_executable(${IResearchTests_TARGET_NAME}-static
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
@@ -163,27 +165,9 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./iql/parser_test.cpp
 )
 
-if (MSVC)
-# don`t forget to update non-scrt version above if necessary!
-add_executable(${IResearchTests_TARGET_NAME}-static-scrt
-  EXCLUDE_FROM_ALL ${IReSearch_sources}
-  ${IReSearch_tests_sources} ${IReSearch_tests_headers}
-  ./analysis/text_analyzer_tests.cpp
-  ./formats/formats_10_tests.cpp
-  ./formats/formats_11_tests.cpp
-  ./formats/formats_12_tests.cpp
-  ./formats/formats_13_tests.cpp
-  ./iql/parser_test.cpp
-)
-endif()
-
 set_ipo(${IResearchTests_TARGET_NAME}-static)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
-if (MSVC)
-add_sanitizers(${IResearchTests_TARGET_NAME}-static-scrt)
-set_ipo(${IResearchTests_TARGET_NAME}-static-scrt)
-endif()
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
@@ -208,19 +192,6 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
-if(MSVC)
-add_dependencies(${IResearchTests_TARGET_NAME}-static-scrt
-  ${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-  ${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-  ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-  ${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-  ${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-  ${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-  ${IResearch_TARGET_NAME}-format-1_0-static-scrt
-  ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-  ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-)
-endif()
 
 target_include_directories(${IResearchTests_TARGET_NAME}-shared
   PRIVATE ${PROJECT_BINARY_DIR}/core
@@ -229,11 +200,6 @@ target_include_directories(${IResearchTests_TARGET_NAME}-shared
 target_include_directories(${IResearchTests_TARGET_NAME}-static
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
-if(MSVC)
-target_include_directories(${IResearchTests_TARGET_NAME}-static-scrt
-  PRIVATE ${PROJECT_BINARY_DIR}/core
-)
-endif()
 
 if(MSVC)
   target_compile_options(${IResearchTests_TARGET_NAME}-shared
@@ -241,10 +207,6 @@ if(MSVC)
   )
 
   target_compile_options(${IResearchTests_TARGET_NAME}-static
-    PRIVATE "/bigobj"
-  )
-  
-  target_compile_options(${IResearchTests_TARGET_NAME}-static-scrt
     PRIVATE "/bigobj"
   )
 endif()
@@ -260,13 +222,6 @@ set_target_properties(${IResearchTests_TARGET_NAME}-static
   OUTPUT_NAME iresearch-tests-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
 )
-if(MSVC)
-set_target_properties(${IResearchTests_TARGET_NAME}-static-scrt
-  PROPERTIES
-  OUTPUT_NAME iresearch-tests-scrt
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
-)
-endif()
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
@@ -292,35 +247,10 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
 # setup CRT
 if(MSVC)
   target_compile_options(${IResearchTests_TARGET_NAME}-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 
   target_compile_options(${IResearchTests_TARGET_NAME}-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-  )
-  
-  target_link_libraries(${IResearchTests_TARGET_NAME}-static-scrt
-    ${GCOV_LIBRARY}
-    ${IResearch_TARGET_NAME}-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    ${IResearch_TARGET_NAME}-format-1_0-static-scrt
-    ${GTEST_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
-    ${PTHREAD_LIBRARY}
-  )
-  target_link_libraries(${IResearchTests_TARGET_NAME}-static-scrt
-    "psapi.lib"
-  )
-  
-  target_compile_options(${IResearchTests_TARGET_NAME}-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 endif()
@@ -350,21 +280,6 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
-if(MSVC)
-include_directories(${IResearchTests_TARGET_NAME}-static-scrt
-  ${IResearchTests_INCLUDE_DIR}
-  ${IReSearch_generated_INCLUDE_DIR}
-  ${IResearch_INCLUDE_DIR}
-  ${ICU_INCLUDE_DIR}
-  $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>
-  ${Boost_INCLUDE_DIRS}
-  ${FROZEN_INCLUDE_DIR}
-  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
-)
-endif()
 ################################################################################
 ### @brief copy Boost shared dependencies
 ################################################################################

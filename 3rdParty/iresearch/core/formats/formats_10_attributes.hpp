@@ -27,9 +27,8 @@
 #include "utils/attributes.hpp"
 #include "utils/bitset.hpp"
 
-NS_ROOT
-
-NS_BEGIN(version10)
+namespace iresearch {
+namespace version10 {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class documents
@@ -64,12 +63,12 @@ struct term_meta final : irs::term_meta {
   };
 }; // term_meta
 
-NS_END // version10
+} // version10
 
 // use base irs::term_meta type for ancestors
 template<>
 struct type<version10::term_meta> : type<irs::term_meta> { };
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_FORMAT_10_ATTRIBUTES

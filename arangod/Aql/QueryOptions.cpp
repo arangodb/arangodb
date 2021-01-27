@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/StaticStrings.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
@@ -35,54 +36,69 @@
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
+size_t QueryOptions::defaultMemoryLimit = 0;
+size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+double QueryOptions::defaultMaxRuntime = 0.0;
+double QueryOptions::defaultTtl;
+bool QueryOptions::defaultFailOnWarning;
+
+QueryOptions::QueryOptions()
     : memoryLimit(0),
-      maxNumberOfPlans(0),
+      maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
-      maxRuntime(0),
+      maxRuntime(0.0),
       satelliteSyncWait(60.0),
-      ttl(0),
-      profile(PROFILE_LEVEL_NONE),
+      ttl(QueryOptions::defaultTtl),  // get global default ttl
+      profile(ProfileLevel::None),
+      traversalProfile(TraversalProfileLevel::None),
       allPlans(false),
       verbosePlans(false),
       stream(false),
       silent(false),
-      failOnWarning(false),
+      failOnWarning(QueryOptions::defaultFailOnWarning),  // use global "failOnWarning" value
       cache(false),
       fullCount(false),
       count(false),
       verboseErrors(false),
       inspectSimplePlans(true),
-      explainRegisters(ExplainRegisterPlan::No)
-{
+      skipAudit(false),
+      explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
-  // use global memory limit value
-  uint64_t globalLimit = feature.queryMemoryLimit();
-  if (globalLimit > 0) {
-    memoryLimit = globalLimit;
+  {
+    // use global memory limit value
+    uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
+    if (globalLimit > 0) {
+      memoryLimit = globalLimit;
+    }
   }
 
-  // get global default ttl
-  ttl = feature.registry()->defaultTTL();
-
-  // use global "failOnWarning" value
-  failOnWarning = feature.failOnWarning();
+  {
+    // use global max runtime value
+    double globalLimit = QueryOptions::defaultMaxRuntime;
+    if (globalLimit > 0.0) {
+      maxRuntime = globalLimit;
+    }
+  }
 
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 
-  maxNumberOfPlans = feature.maxQueryPlans();
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
+QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice)
+    : QueryOptions() {
+  this->fromVelocyPack(slice);
+}
+
+void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (!slice.isObject()) {
     return;
   }
 
   VPackSlice value;
-  
+
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
@@ -109,7 +125,6 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     maxRuntime = value.getNumber<double>();
   }
 
-
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
     satelliteSyncWait = value.getNumber<double>();
@@ -123,9 +138,17 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   // boolean options
   value = slice.get("profile");
   if (value.isBool()) {
-    profile = value.getBool() ? PROFILE_LEVEL_BASIC : PROFILE_LEVEL_NONE;
+    profile = value.getBool() ? ProfileLevel::Basic : ProfileLevel::None;
   } else if (value.isNumber()) {
-    profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
+    profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
+  }
+
+  value = slice.get(StaticStrings::GraphTraversalProfileLevel);
+  if (value.isBool()) {
+    traversalProfile = value.getBool() ? TraversalProfileLevel::Basic
+                                       : TraversalProfileLevel::None;
+  } else if (value.isNumber()) {
+    traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
   value = slice.get("stream");
@@ -175,6 +198,9 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
         value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
 
+  // note: skipAudit is intentionally not read here.
+  // the end user cannot override this setting
+
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
     value = optimizer.get("inspectSimplePlans");
@@ -194,7 +220,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         restrictToShards.emplace(value.copyString());
       }
@@ -207,7 +233,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         inaccessibleCollections.emplace(value.copyString());
       }
@@ -215,7 +241,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     }
   }
 #endif
-  
+
   value = slice.get("exportCollection");
   if (value.isString()) {
     exportCollection = value.copyString();
@@ -235,6 +261,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
+  builder.add(StaticStrings::GraphTraversalProfileLevel, VPackValue(static_cast<uint32_t>(traversalProfile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
   builder.add("stream", VPackValue(stream));
@@ -244,6 +271,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   builder.add("verboseErrors", VPackValue(verboseErrors));
+  
+  // note: skipAudit is intentionally not serialized here.
+  // the end user cannot override this setting anyway.
 
   builder.add("optimizer", VPackValue(VPackValueType::Object));
   builder.add("inspectSimplePlans", VPackValue(inspectSimplePlans));
@@ -278,7 +308,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
-  
+
   // "exportCollection" is only used internally and not exposed via toVelocyPack
 
   // also handle transaction options

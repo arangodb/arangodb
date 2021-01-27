@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,7 @@ RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
-RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, TRI_voc_rid_t rev) {
+RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, RevisionId rev) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId, rev);
 }
 
@@ -55,7 +55,7 @@ RocksDBValue RocksDBValue::VPackIndexValue() {
 }
 
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
-  return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, 0);
+  return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, RevisionId::none());
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice const& data) {
@@ -88,16 +88,16 @@ LocalDocumentId RocksDBValue::documentId(std::string const& s) {
   return documentId(s.data(), s.size());
 }
 
-bool RocksDBValue::revisionId(rocksdb::Slice const& slice, TRI_voc_rid_t& id) {
-  if (slice.size() == sizeof(LocalDocumentId::BaseType) + sizeof(TRI_voc_rid_t)) {
-    id = rocksutils::uint64FromPersistent(slice.data() + sizeof(LocalDocumentId::BaseType));
+bool RocksDBValue::revisionId(rocksdb::Slice const& slice, RevisionId& id) {
+  if (slice.size() == sizeof(LocalDocumentId::BaseType) + sizeof(RevisionId)) {
+    id = RevisionId::fromPersistent(slice.data() + sizeof(LocalDocumentId::BaseType));
     return true;
   }
   return false;
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(RocksDBValue const& value) {
-  TRI_voc_rid_t id;
+RevisionId RocksDBValue::revisionId(RocksDBValue const& value) {
+  RevisionId id;
   if (revisionId(rocksdb::Slice(value.string()), id)) {
     return id;
   }
@@ -105,8 +105,8 @@ TRI_voc_rid_t RocksDBValue::revisionId(RocksDBValue const& value) {
       TRI_ERROR_INTERNAL, "Could not extract revisionId from rocksdb::Slice");
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice) {
-  TRI_voc_rid_t id;
+RevisionId RocksDBValue::revisionId(rocksdb::Slice const& slice) {
+  RevisionId id;
   if (revisionId(slice, id)) {
     return id;
   }
@@ -143,8 +143,7 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
-                           TRI_voc_rid_t revision)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
@@ -155,7 +154,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
       } else {
         _buffer.reserve(sizeof(uint64_t) * 2);
         uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
-        uint64ToPersistent(_buffer, revision);    // revision
+        revision.toPersistent(_buffer);           // revision
       }
       break;
     }

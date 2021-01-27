@@ -38,21 +38,21 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery1');
   c = db._create('UnitTestsRecovery1');
-  c.properties({ waitForSync: true, journalSize: 8 * 1024 * 1024, doCompact: false });
+  c.properties({ waitForSync: true });
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
-  c.properties({ waitForSync: false, journalSize: 16 * 1024 * 1024, doCompact: true });
+  c.properties({ waitForSync: false });
 
   db._drop('UnitTestsRecovery3');
   c = db._create('UnitTestsRecovery3');
-  c.properties({ waitForSync: false, journalSize: 16 * 1024 * 1024, doCompact: true });
-  c.properties({ waitForSync: true, journalSize: 4 * 1024 * 1024, doCompact: false });
+  c.properties({ waitForSync: false });
+  c.properties({ waitForSync: true });
 
   db._drop('UnitTestsRecovery4');
   c = db._create('UnitTestsRecovery4');
-  c.properties({ waitForSync: false, indexBuckets: 16 });
-  c.properties({ waitForSync: true, indexBuckets: 32 });
+  c.properties({ waitForSync: false });
+  c.properties({ waitForSync: true });
 
   c.save({ _key: 'foo' }, true);
 

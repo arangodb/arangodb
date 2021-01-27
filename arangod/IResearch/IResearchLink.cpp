@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -28,13 +29,16 @@
 #include <utils/singleton.hpp>
 
 #include "IResearchLink.h"
+#include "IResearchDocument.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#ifdef USE_ENTERPRISE
+#include "Cluster/ClusterMethods.h"
+#endif
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
@@ -57,23 +61,21 @@ using namespace std::literals;
 
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the storage format used with IResearch writers
-////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_STORE_FORMAT("1_3simd");
+using namespace arangodb;
+using namespace arangodb::iresearch;
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+using irs::async_utils::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
-struct LinkTrxState final : public arangodb::TransactionState::Cookie {
+struct LinkTrxState final : public TransactionState::Cookie {
   irs::index_writer::documents_context _ctx;
-  std::unique_lock<ReadMutex> _linkLock;  // prevent data-store deallocation (lock @ AsyncSelf)
-  arangodb::iresearch::PrimaryKeyFilterContainer _removals;  // list of document removals
+  std::unique_lock<ReadMutex> _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
+  PrimaryKeyFilterContainer _removals;  // list of document removals
 
-  LinkTrxState(std::unique_lock<ReadMutex>&& linkLock, irs::index_writer& writer) noexcept
+  LinkTrxState(std::unique_lock<ReadMutex>&& linkLock,
+               irs::index_writer& writer) noexcept
       : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
     TRI_ASSERT(_linkLock.owns_lock());
   }
@@ -85,23 +87,21 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 
     try {
       // hold references even after transaction
-      auto filter = std::make_unique<arangodb::iresearch::PrimaryKeyFilterContainer>(std::move(_removals));
+      auto filter = std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
       _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
     } catch (std::exception const& e) {
       LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
           << "caught exception while applying accumulated removals: " << e.what();
-      IR_LOG_EXCEPTION();
     } catch (...) {
       LOG_TOPIC("14917", WARN, arangodb::iresearch::TOPIC)
           << "caught exception while applying accumulated removals";
-      IR_LOG_EXCEPTION();
     }
   }
 
   operator irs::index_writer::documents_context&() noexcept { return _ctx; }
 
-  void remove(arangodb::LocalDocumentId const& value) {
-    _ctx.remove(_removals.emplace(value));
+  void remove(StorageEngine& engine, LocalDocumentId const& value) {
+    _ctx.remove(_removals.emplace(engine, value));
   }
 
   void reset() noexcept {
@@ -113,13 +113,13 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
-inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
-                                       arangodb::transaction::Methods const& trx,
-                                       arangodb::iresearch::FieldIterator& body,
-                                       arangodb::velocypack::Slice const& document,
-                                       arangodb::LocalDocumentId const& documentId,
-                                       arangodb::iresearch::IResearchLinkMeta const& meta,
-                                       arangodb::IndexId id) {
+inline Result insertDocument(irs::index_writer::documents_context& ctx,
+                             transaction::Methods const& trx,
+                             FieldIterator& body,
+                             velocypack::Slice const& document,
+                             LocalDocumentId const& documentId,
+                             IResearchLinkMeta const& meta,
+                             IndexId id) {
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
@@ -131,7 +131,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   // User fields
   while (body.valid()) {
-    if (arangodb::iresearch::ValueStorage::NONE == field._storeValues) {
+    if (ValueStorage::NONE == field._storeValues) {
       doc.insert<irs::Action::INDEX>(field);
     } else {
       doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
@@ -152,52 +152,14 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     } field; // SortedField
 
     for (auto& sortField : meta._sort.fields()) {
-      field.slice = arangodb::iresearch::get(document, sortField, VPackSlice::nullSlice());
+      field.slice = get(document, sortField, VPackSlice::nullSlice());
       doc.insert<irs::Action::STORE_SORTED>(field);
     }
   }
 
   // Stored value field
   {
-    struct StoredValue {
-      StoredValue(arangodb::transaction::Methods const& trx, arangodb::velocypack::Slice const& document) : trx(trx), document(document) {}
-
-      bool write(irs::data_output& out) const {
-        auto size = fields->size();
-        for (auto const& storedValue : *fields) {
-          auto slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
-          // null value optimization
-          if (1 == size && slice.isNull()) {
-            return true;
-          }
-
-          // _id field
-          if (slice.isCustom()) {
-            TRI_ASSERT(1 == storedValue.second.size() &&
-                       storedValue.second[0].name == arangodb::StaticStrings::IdString);
-            buffer.reset();
-            VPackBuilder builder(buffer);
-            builder.add(VPackValue(arangodb::transaction::helpers::extractIdString(
-              trx.resolver(), slice, document)));
-            slice = builder.slice();
-            // a builder is destroyed but a buffer is alive
-          }
-          out.write_bytes(slice.start(), slice.byteSize());
-        }
-        return true;
-      }
-
-      irs::string_ref const& name() const noexcept {
-        return fieldName;
-      }
-
-      mutable VPackBuffer<uint8_t> buffer;
-      arangodb::transaction::Methods const& trx;
-      arangodb::velocypack::Slice const& document;
-      irs::string_ref fieldName;
-      std::vector<std::pair<std::string, std::vector<arangodb::basics::AttributeName>>> const* fields;
-    } field(trx, document); // StoredValue
-
+    StoredValue field(trx, meta._collectionName, document, id);
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
@@ -208,10 +170,10 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   // System fields
 
   // Indexed and Stored: LocalDocumentId
-  auto docPk = arangodb::iresearch::DocumentPrimaryKey::encode(documentId);
+  auto docPk = DocumentPrimaryKey::encode(documentId);
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
-  arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
+  Field::setPkValue(const_cast<Field&>(field), docPk);
   doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (!doc) {
@@ -224,7 +186,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   return {};
 }
 
-class IResearchFlushSubscription final : public arangodb::FlushSubscription {
+class IResearchFlushSubscription final : public FlushSubscription {
  public:
   explicit IResearchFlushSubscription(TRI_voc_tick_t tick = 0) noexcept
     : _tick(tick) {
@@ -258,42 +220,374 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
 
   return true;
 }
+
+struct ThreadGroupStats : std::tuple<size_t, size_t, size_t> {
+  explicit ThreadGroupStats(
+      std::tuple<size_t, size_t, size_t> const& stats)
+    : std::tuple<size_t, size_t, size_t>(stats) {
+  }
+};
+
+std::ostream& operator<<(std::ostream& out, ThreadGroupStats const& stats) {
+  out << "Active=" << std::get<0>(stats)
+      << ", Pending=" << std::get<1>(stats)
+      << ", Threads=" << std::get<2>(stats);
+  return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct Task
+/// @brief base class for asynchronous maintenance tasks
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+struct Task {
+  void schedule(std::chrono::milliseconds delay) const {
+    LOG_TOPIC("eb0da", TRACE, arangodb::iresearch::TOPIC)
+        << "scheduled a " << T::typeName()
+        << " task for arangosearch link '" << id
+        << "', delay '" << delay.count() << "'";
+
+    LOG_TOPIC("eb0d2", TRACE, arangodb::iresearch::TOPIC)
+        << T::typeName() << " pool: "
+        << ThreadGroupStats(async->stats(T::threadGroup()));
+
+    if (!link->terminationRequested()) {
+      async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
+    }
+  }
+
+  std::shared_ptr<MaintenanceState> state;
+  IResearchFeature* async;
+  IResearchLink::AsyncLinkPtr link;
+  IndexId id;
+}; // Task
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of loaded links
+////////////////////////////////////////////////////////////////////////////////
+std::atomic<size_t> LinksCount{0};
+
 }  // namespace
 
 namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compute the data path to user for iresearch data store
-///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
-///        the path is hardcoded to reside under:
-///        <DatabasePath>/<IResearchLink::type()>-<link id>
-///        similar to the data path calculation for collections
+/// @struct MaintenanceState
 ////////////////////////////////////////////////////////////////////////////////
-irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
-                                arangodb::iresearch::IResearchLink const& link) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
-  static const std::string subPath("databases");
-  static const std::string dbPath("database-");
+struct MaintenanceState {
+  std::atomic<size_t> pendingCommits{0};
+  std::atomic<size_t> nonEmptyCommits{0};
+  std::atomic<size_t> pendingConsolidations{0};
+  std::atomic<size_t> noopConsolidationCount{0};
+  std::atomic<size_t> noopCommitCount{0};
+};
 
-  dataPath /= subPath;
-  dataPath /= dbPath;
-  dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  dataPath += "-";
-  dataPath += std::to_string(link.collection().id());  // has to be 'id' since this can be a per-shard collection
-  dataPath += "_";
-  dataPath += std::to_string(link.id().id());
+////////////////////////////////////////////////////////////////////////////////
+/// @struct CommitTask
+/// @brief represents a commit task
+/// @note thread group 0 is dedicated to commit
+////////////////////////////////////////////////////////////////////////////////
+struct CommitTask : Task<CommitTask> {
+  static constexpr ThreadGroup threadGroup() noexcept {
+    return ThreadGroup::_0;
+  }
 
-  return dataPath;
+  static constexpr const char* typeName() noexcept {
+    return "commit";
+  }
+
+  void operator()();
+  void finalize(IResearchLink* link, IResearchLink::CommitResult code);
+
+  size_t cleanupIntervalCount{};
+  std::chrono::milliseconds commitIntervalMsec{};
+  std::chrono::milliseconds consolidationIntervalMsec{};
+  size_t cleanupIntervalStep{};
+}; // CommitTask
+
+void CommitTask::finalize(
+    IResearchLink* link,
+    IResearchLink::CommitResult code) {
+  constexpr size_t MAX_NON_EMPTY_COMMITS = 10;
+  constexpr size_t MAX_PENDING_CONSOLIDATIONS = 3;
+
+  if (code != IResearchLink::CommitResult::NO_CHANGES) {
+    ++state->pendingCommits;
+    schedule(commitIntervalMsec);
+
+    if (code == IResearchLink::CommitResult::DONE) {
+      state->noopCommitCount = 0;
+      state->noopConsolidationCount = 0;
+
+      if (state->pendingConsolidations < MAX_PENDING_CONSOLIDATIONS &&
+          ++state->nonEmptyCommits > MAX_NON_EMPTY_COMMITS) {
+        link->scheduleConsolidation(consolidationIntervalMsec);
+        state->nonEmptyCommits = 0;
+      }
+    }
+  } else {
+    state->nonEmptyCommits = 0;
+    ++state->noopCommitCount;
+
+    for (auto count = state->pendingCommits.load(); count < 1; ) {
+      if (state->pendingCommits.compare_exchange_weak(count, 1)) {
+        schedule(commitIntervalMsec);
+        break;
+      }
+    }
+  }
 }
 
-IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collection)
+void CommitTask::operator()() {
+  const char runId = 0;
+  --state->pendingCommits;
+
+  if (link->terminationRequested()) {
+    LOG_TOPIC("eba1a", DEBUG, iresearch::TOPIC)
+        << "termination requested while committing the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
+    return;
+  }
+
+  auto linkLock = link->try_lock();
+
+  if (!linkLock.owns_lock()) {
+    LOG_TOPIC("eb0de", DEBUG, iresearch::TOPIC)
+        << "failed to acquire the lock while committing the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
+
+    // blindly reschedule commit task
+    ++state->pendingCommits;
+    schedule(commitIntervalMsec);
+    return;
+  }
+
+  auto* link = this->link->get();
+
+  if (!link) {
+    LOG_TOPIC("ebada", DEBUG, iresearch::TOPIC)
+        << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
+    return;
+  }
+
+  IResearchLink::CommitResult code = IResearchLink::CommitResult::UNDEFINED;
+
+  auto reschedule = scopeGuard([&code, link, this](){
+    finalize(link, code);
+  });
+
+  // reload RuntimeState
+  {
+    TRI_IF_FAILURE("IResearchCommitTask::lockDataStore") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
+    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto& meta = link->_dataStore._meta;
+
+    commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
+    consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
+    cleanupIntervalStep = meta._cleanupIntervalStep;
+  }
+
+  if (std::chrono::milliseconds::zero() == commitIntervalMsec) {
+    reschedule.cancel();
+
+    LOG_TOPIC("eba4a", DEBUG, iresearch::TOPIC)
+        << "sync is disabled for the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
+    return;
+  }
+
+  TRI_IF_FAILURE("IResearchCommitTask::commitUnsafe") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
+
+  if (res.ok()) {
+    LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
+        << "successful sync of arangosearch link '" << id
+        << "', run id '" << size_t(&runId) << "'";
+
+    if (code == IResearchLink::CommitResult::DONE) {
+      if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
+        cleanupIntervalCount = 0;
+
+        TRI_IF_FAILURE("IResearchCommitTask::cleanupUnsafe") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
+
+        if (res.ok()) {
+          LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
+              << "successful cleanup of arangosearch link '" << id
+              << "', run id '" << size_t(&runId) << "'";
+        } else {
+          LOG_TOPIC("130de", WARN, iresearch::TOPIC)
+              << "error while cleaning up arangosearch link '" << id
+              << "', run id '" << size_t(&runId)
+              << "': " << res.errorNumber() << " " << res.errorMessage();
+        }
+      }
+    }
+  } else {
+    LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
+        << "error while committing arangosearch link '" << link->id()
+        << "', run id '" << size_t(&runId)
+        << "': " << res.errorNumber() << " " << res.errorMessage();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct ConsolidationTask
+/// @brief represents a consolidation task
+/// @note thread group 1 is dedicated to commit
+////////////////////////////////////////////////////////////////////////////////
+struct ConsolidationTask : Task<ConsolidationTask> {
+  static constexpr ThreadGroup threadGroup() noexcept {
+    return ThreadGroup::_1;
+  }
+
+  static constexpr const char* typeName() noexcept {
+    return "consolidation";
+  }
+
+  void operator()();
+
+  irs::merge_writer::flush_progress_t progress;
+  IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
+  std::chrono::milliseconds consolidationIntervalMsec{};
+}; // ConsolidationTask
+
+void ConsolidationTask::operator()() {
+  const char runId = 0;
+  --state->pendingConsolidations;
+
+  if (link->terminationRequested()) {
+    LOG_TOPIC("eba2a", DEBUG, iresearch::TOPIC)
+        << "termination requested while consolidating the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
+    return;
+  }
+
+  auto linkLock = link->try_lock();
+
+  if (!linkLock.owns_lock()) {
+    LOG_TOPIC("eb0dc", DEBUG, iresearch::TOPIC)
+        << "failed to acquire the lock while consolidating the link '" << id
+        << "', run id '" << size_t(&runId) << "'";
+
+    // blindly reschedule consolidation task
+    ++state->pendingConsolidations;
+    schedule(consolidationIntervalMsec);
+    return;
+  }
+
+  auto* link = this->link->get();
+
+  if (!link) {
+    LOG_TOPIC("eb0d1", DEBUG, iresearch::TOPIC)
+        << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
+    return;
+  }
+
+  auto reschedule = scopeGuard([this](){
+    for (auto count = state->pendingConsolidations.load(); count < 1; ) {
+      if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
+        schedule(consolidationIntervalMsec);
+        break;
+      }
+    }
+  });
+
+  // reload RuntimeState
+  {
+    TRI_IF_FAILURE("IResearchConsolidationTask::lockDataStore") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
+    READ_LOCKER(lock, link->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto& meta = link->_dataStore._meta;
+
+    consolidationPolicy = meta._consolidationPolicy;
+    consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
+  }
+
+  if (std::chrono::milliseconds::zero() == consolidationIntervalMsec // disabled via interval
+      || !consolidationPolicy.policy()) { // disabled via policy
+    reschedule.cancel();
+
+    LOG_TOPIC("eba3a", DEBUG, iresearch::TOPIC)
+        << "consolidation is disabled for the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
+    return;
+  }
+
+  constexpr size_t MAX_NOOP_COMMITS = 10;
+  constexpr size_t MAX_NOOP_CONSOLIDATIONS = 10;
+
+  if (state->noopCommitCount < MAX_NOOP_COMMITS &&
+      state->noopConsolidationCount < MAX_NOOP_CONSOLIDATIONS) {
+    ++state->pendingConsolidations;
+    schedule(consolidationIntervalMsec);
+  }
+
+  TRI_IF_FAILURE("IResearchConsolidationTask::consolidateUnsafe") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // run consolidation ('_asyncSelf' locked by async task)
+  bool emptyConsolidation = false;
+  auto const res = link->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
+
+  if (res.ok()) {
+    if (emptyConsolidation) {
+      ++state->noopConsolidationCount;
+    } else {
+       state->noopConsolidationCount = 0;
+    }
+
+    LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
+        << "successful consolidation of arangosearch link '" << link->id()
+        << "', run id '" << size_t(&runId) << "'";
+  } else {
+    LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
+        << "error while consolidating arangosearch link '" << link->id()
+        << "', run id '" << size_t(&runId)
+        << "': " << res.errorNumber() << " " << res.errorMessage();
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     IResearchLink
+// -----------------------------------------------------------------------------
+
+
+AsyncLinkHandle::AsyncLinkHandle(IResearchLink* link)
+  : _link(link) {
+  ++LinksCount;
+}
+
+AsyncLinkHandle::~AsyncLinkHandle() {
+  --LinksCount;
+}
+
+void AsyncLinkHandle::reset() {
+  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
+  _link.reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
+}
+
+IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
     : _engine(nullptr),
-      _asyncFeature(nullptr),
-      _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)),  // mark as data store not initialized
-      _asyncTerminate(false),
+      _asyncFeature(&collection.vocbase().server().getFeature<IResearchFeature>()),
+      _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),  // mark as data store not initialized
       _collection(collection),
+      _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
       _createdInRecovery(false) {
@@ -328,20 +622,13 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
 
     prev.reset();
   };
-
-  // initialize commit callback
-  _before_commit = [this](uint64_t tick, irs::bstring& out) {
-    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
-    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
-
-    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
-
-    return true;
-  };
 }
 
 IResearchLink::~IResearchLink() {
-  auto res = unload();  // disassociate from view if it has not been done yet
+  Result res;
+  try {
+    res = unload();  // disassociate from view if it has not been done yet
+  } catch (...) { }
 
   if (!res.ok()) {
     LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
@@ -358,10 +645,15 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
 }
 
-void IResearchLink::afterTruncate() {
-  SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
+                                  transaction::Methods* trx) {
+  auto lock = _asyncSelf->lock();  // '_dataStore' can be asynchronously modified
 
-  if (!*_asyncSelf) {
+  TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (!_asyncSelf.get()) {
     // the current link is no longer valid (checked after ReadLock acquisition)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
                                    "failed to lock arangosearch link while "
@@ -371,158 +663,72 @@ void IResearchLink::afterTruncate() {
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
+  if (trx != nullptr) {
+    auto* key = this;
+
+    auto& state = *(trx->state());
+
+    // TODO FIXME find a better way to look up a ViewState
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
+#else
+    auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
+#endif
+
+    if (ctx) {
+      ctx->reset(); // throw away all pending operations as clear will overwrite them all
+      state.cookie(key, nullptr); // force active segment release to allow commit go and avoid deadlock in clear
+    }
+  }
+
+  auto const lastCommittedTick = _lastCommittedTick;
+  bool recoverCommittedTick = true;
+
+  auto lastCommittedTickGuard = irs::make_finally([lastCommittedTick, this, &recoverCommittedTick]()->void {
+      if (recoverCommittedTick) {
+        _lastCommittedTick = lastCommittedTick;
+      }
+    });
+
   try {
-    _dataStore._writer->clear();
-    _dataStore._reader = _dataStore._reader.reopen();
+    _dataStore._writer->clear(tick);
+    recoverCommittedTick = false; //_lastCommittedTick now updated and data is written to storage
+
+    // get new reader
+    auto reader = _dataStore._reader.reopen();
+
+    if (!reader) {
+      // nothing more to do
+      LOG_TOPIC("1c2c1", WARN, iresearch::TOPIC)
+        << "failed to update snapshot after truncate "
+        << ", reuse the existing snapshot for arangosearch link '" << id() << "'";
+      return;
+    }
+
+    // update reader
+    _dataStore._reader = reader;
+
+    auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+
+    if (subscription) {
+      subscription->tick(_lastCommittedTick);
+    }
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
         << "': " << e.what();
-    IR_LOG_EXCEPTION();
     throw;
   } catch (...) {
     LOG_TOPIC("79a7d", WARN, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id() << "'";
-    IR_LOG_EXCEPTION();
     throw;
   }
-}
-
-void IResearchLink::batchInsert(
-    transaction::Methods& trx,
-    std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& batch,
-    std::shared_ptr<basics::LocalTaskQueue> queue) {
-  if (batch.empty()) {
-    return; // nothing to do
-  }
-
-  TRI_ASSERT(_engine);
-  TRI_ASSERT(queue);
-  TRI_ASSERT(trx.state());
-
-  auto& state = *(trx.state());
-
-  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
-    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-      queue->setStatus(TRI_ERROR_DEBUG);
-      return;
-    }
-  }
-
-  if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
-    LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
-      << "skipping 'batchInsert', operation tick '" << _engine->recoveryTick()
-      << "', recovery tick '" << _dataStore._recoveryTick << "'";
-
-    return;
-  }
-
-  auto batchInsertImpl = [this, &batch, &trx, &queue](irs::index_writer::documents_context& ctx) {
-    auto begin = batch.begin();
-    auto const end = batch.end();
-    try {
-      for (FieldIterator body(trx); begin != end; ++begin) {
-        auto const res = insertDocument(ctx, trx, body, begin->second, begin->first, _meta, id());
-
-        if (!res.ok()) {
-          LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
-          queue->setStatus(res.errorNumber());
-
-          return;
-        }
-      }
-    }
-    catch (basics::Exception const& e) {
-      LOG_TOPIC("72aa5", WARN, iresearch::TOPIC)
-          << "caught exception while inserting batch into arangosearch link '"
-          << id() << "': " << e.code() << " " << e.what();
-      IR_LOG_EXCEPTION();
-      queue->setStatus(e.code());
-    }
-    catch (std::exception const& e) {
-      LOG_TOPIC("3cbae", WARN, iresearch::TOPIC)
-          << "caught exception while inserting batch into arangosearch link '"
-          << id() << "': " << e.what();
-      IR_LOG_EXCEPTION();
-      queue->setStatus(TRI_ERROR_INTERNAL);
-    }
-    catch (...) {
-      LOG_TOPIC("3da8d", WARN, iresearch::TOPIC)
-          << "caught exception while inserting batch into arangosearch link '"
-          << id() << "'";
-      IR_LOG_EXCEPTION();
-      queue->setStatus(TRI_ERROR_INTERNAL);
-    }
-  };
-
-  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
-    auto ctx = _dataStore._writer->documents();
-    batchInsertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
-    TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
-      if (queue->status() == TRI_ERROR_NO_ERROR) {
-        queue->setStatus(TRI_ERROR_DEBUG);
-      }
-    }
-    return;
-  }
-
-  auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
-#endif
-
-  if (!ctx) {
-    // '_dataStore' can be asynchronously modified
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
-
-    if (!*_asyncSelf) {
-      LOG_TOPIC("7d258", WARN, iresearch::TOPIC)
-          << "failed to lock arangosearch link while inserting a batch into "
-             "arangosearch link '"
-          << id() << "', tid '" << state.id() << "'";
-
-      // the current link is no longer valid (checked after ReadLock acquisition)
-      queue->setStatus(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-
-      return;
-    }
-
-    TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
-
-    auto ptr = irs::memory::make_unique<LinkTrxState>(std::move(lock),
-                                                      *(_dataStore._writer));
-
-    ctx = ptr.get();
-    state.cookie(key, std::move(ptr));
-
-    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
-      LOG_TOPIC("61780", WARN, iresearch::TOPIC)
-          << "failed to store state into a TransactionState for batch insert "
-             "into arangosearch link '"
-          << id() << "', tid '" << state.id() << "'";
-      queue->setStatus(TRI_ERROR_INTERNAL);
-
-      return;
-    }
-  }
-
-  // ...........................................................................
-  // below only during recovery after the 'checkpoint' marker, or post recovery
-  // ...........................................................................
-  batchInsertImpl(ctx->_ctx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchLink::cleanupUnsafe() {
-  char runId = 0; // value not used
-
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
@@ -531,26 +737,20 @@ Result IResearchLink::cleanupUnsafe() {
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while cleaning up arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "': " + e.what()};
+                std::to_string(id().id()) + "': " + e.what()};
   } catch (...) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while cleaning up arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "'"};
+                std::to_string(id().id()) + "'"};
   }
-
-  LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
-      << "successful cleanup of arangosearch link '" << id() << "', run id '"
-      << size_t(&runId) << "'";
 
   return {};
 }
 
 Result IResearchLink::commit(bool wait /*= true*/) {
-  SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
+  auto lock = _asyncSelf->lock(); // '_dataStore' can be asynchronously modified
 
-  if (!*_asyncSelf) {
+  if (!_asyncSelf.get()) {
     // the current link is no longer valid (checked after ReadLock acquisition)
 
     return {
@@ -559,44 +759,43 @@ Result IResearchLink::commit(bool wait /*= true*/) {
             std::to_string(id().id()) + "'"};
   }
 
-  return commitUnsafe(wait);
+  [[maybe_unused]] CommitResult code;
+  return commitUnsafe(wait, &code);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
-Result IResearchLink::commitUnsafe(bool wait) {
-  char runId = 0; // value not used
-
+Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
-
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while committing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
 
   auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
 
   if (!subscription) {
     // already released
+    *code = CommitResult::NO_CHANGES;
     return {};
   }
 
   try {
-    auto const lastTickBeforeCommit = engine->currentTick();
+    auto const lastTickBeforeCommit = _engine->currentTick();
 
-    TRY_SCOPED_LOCK_NAMED(_commitMutex, commitLock);
+    auto commitLock = irs::make_unique_lock(_commitMutex, std::try_to_lock);
 
     if (!commitLock.owns_lock()) {
-      // commit is already in progress
       if (!wait) {
+        LOG_TOPIC("37bcc", TRACE, iresearch::TOPIC)
+            << "commit for arangosearch link '" << id()
+            << "' is already in progress, skipping";
+
+        *code = CommitResult::IN_PROGRESS;
         return {};
       }
+
+      LOG_TOPIC("37bca", TRACE, iresearch::TOPIC)
+          << "commit for arangosearch link '" << id()
+          << "' is already in progress, waiting";
 
       commitLock.lock();
     }
@@ -605,11 +804,24 @@ Result IResearchLink::commitUnsafe(bool wait) {
 
     try {
       // _lastCommittedTick is being updated in '_before_commit'
-      _dataStore._writer->commit(_before_commit);
+      *code = _dataStore._writer->commit()
+        ? CommitResult::DONE
+        : CommitResult::NO_CHANGES;
     } catch (...) {
       // restore last committed tick in case of any error
       _lastCommittedTick = lastCommittedTick;
       throw;
+    }
+
+    if (CommitResult::NO_CHANGES == *code) {
+      LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
+          << "no changes registered for arangosearch link '" << id()
+          << "' got last operation tick '" << _lastCommittedTick << "'";
+
+      // no changes, can release the latest tick before commit
+      subscription->tick(lastTickBeforeCommit);
+
+      return {};
     }
 
     // get new reader
@@ -618,24 +830,14 @@ Result IResearchLink::commitUnsafe(bool wait) {
     if (!reader) {
       // nothing more to do
       LOG_TOPIC("37bcf", WARN, iresearch::TOPIC)
-          << "failed to update snapshot after commit, run id '" << size_t(&runId)
-          << "', reuse the existing snapshot for arangosearch link '" << id() << "'";
-
-      return {};
-    }
-
-    if (_dataStore._reader == reader) {
-      LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
-          << "no changes registered for arangosearch link '" << id() << "' got last operation tick '"
-          << _lastCommittedTick << "', run id '" << size_t(&runId) << "'";
-
-      // no changes, can release the latest tick before commit
-      subscription->tick(lastTickBeforeCommit);
+          << "failed to update snapshot after commit, reuse "
+             "the existing snapshot for arangosearch link '" << id() << "'";
 
       return {};
     }
 
     // update reader
+    TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
 
     // update last committed tick
@@ -644,25 +846,24 @@ Result IResearchLink::commitUnsafe(bool wait) {
     // invalidate query cache
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
 
-    LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
-        << "successful sync of arangosearch link '" << id() << "', docs count '"
-        << reader->docs_count() << "', live docs count '"
-        << reader->live_docs_count() << "', last operation tick '"
-        << _lastCommittedTick << "', run id '" << size_t(&runId) << "'";
+    LOG_TOPIC("7e328", DEBUG, iresearch::TOPIC)
+        << "successful sync of arangosearch link '" << id()
+        << "', segments '" << reader->size()
+        << "', docs count '" << reader->docs_count()
+        << "', live docs count '" << reader->docs_count()
+        << "', live docs count '" << reader->live_docs_count()
+        << "', last operation tick '" << _lastCommittedTick << "'";
   } catch (basics::Exception const& e) {
     return {e.code(), "caught exception while committing arangosearch link '" +
-                          std::to_string(id().id()) + "' run id '" +
-                          std::to_string(size_t(&runId)) + "': " + e.what()};
+                       std::to_string(id().id()) + "': " + e.what()};
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while committing arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "': " + e.what()};
+                std::to_string(id().id()) + "': " + e.what()};
   } catch (...) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while committing arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "'"};
+                std::to_string(id().id()) };
   }
 
   return {};
@@ -673,46 +874,42 @@ Result IResearchLink::commitUnsafe(bool wait) {
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchLink::consolidateUnsafe(
     IResearchViewMeta::ConsolidationPolicy const& policy,
-    irs::merge_writer::flush_progress_t const& progress) {
-  char runId = 0; // value not used
+    irs::merge_writer::flush_progress_t const& progress,
+    bool& emptyConsolidation) {
+  emptyConsolidation = false;
 
   if (!policy.policy()) {
     return {
         TRI_ERROR_BAD_PARAMETER,
         "unset consolidation policy while executing consolidation policy '" +
             policy.properties().toString() + "' on arangosearch link '" +
-            std::to_string(id().id()) + "' run id '" +
-            std::to_string(size_t(&runId)) + "'"};
+            std::to_string(id().id()) + "'"};
   }
 
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
-    if (!_dataStore._writer->consolidate(policy.policy(), nullptr, progress)) {
+    auto const res = _dataStore._writer->consolidate(policy.policy(), nullptr, progress);
+    if (!res) {
       return {TRI_ERROR_INTERNAL,
               "failure while executing consolidation policy '" +
                   policy.properties().toString() + "' on arangosearch link '" +
-                  std::to_string(id().id()) + "' run id '" +
-                  std::to_string(size_t(&runId)) + "'"};
+                  std::to_string(id().id()) + "'"};
     }
+
+    emptyConsolidation = (res.size == 0);
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
                 policy.properties().toString() + "' on arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "': " + e.what()};
+                std::to_string(id().id()) + "': " + e.what()};
   } catch (...) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
                 policy.properties().toString() + "' on arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "'"};
+                std::to_string(id().id()) + "'"};
   }
-
-  LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
-      << "successful consolidation of arangosearch link '" << id()
-      << "', run id '" << size_t(&runId) << "'";
 
   return {};
 }
@@ -744,12 +941,6 @@ Result IResearchLink::drop() {
     } else {
       view->unlink(_collection.id()); // unlink before reset() to release lock in view (if any)
     }
-  }
-
-  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
   _flushSubscription.reset(); // reset together with '_asyncSelf'
@@ -801,7 +992,7 @@ Result IResearchLink::init(
 
   // definition should already be normalized and analyzers created if required
   if (!meta.init(_collection.vocbase().server(), definition, true, error,
-                 &(_collection.vocbase()))) {
+                 _collection.vocbase().name())) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "error parsing view link parameters from json: " + error
@@ -823,13 +1014,13 @@ Result IResearchLink::init(
       ? meta._sortCompression
       : getDefaultCompression();
   if (ServerState::instance()->isCoordinator()) { // coordinator link
-    if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
+    if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return {
           TRI_ERROR_INTERNAL,
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    auto& ci = vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
     auto logicalView = ci.getView(vocbase.name(), viewId);
 
@@ -862,16 +1053,43 @@ Result IResearchLink::init(
       }
     }
   } else if (ServerState::instance()->isDBServer()) { // db-server link
-    if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
+    if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return {
           TRI_ERROR_INTERNAL,
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    auto& ci = vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
     // cluster-wide link
     auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
+
+    // upgrade step for old link definition without collection name
+    // this could be received from  agency while shard of the collection was moved (or added)
+    // to the server.
+    // New links already has collection name set, but here we must get this name on our own
+    if (meta._collectionName.empty()) {
+      if (clusterWideLink) {// could set directly
+        LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC) << "Setting collection name '" << _collection.name() << "' for new link '"
+          << this->id().id() << "'";
+        meta._collectionName = _collection.name();
+      } else {
+        meta._collectionName = ci.getCollectionNameForShard(_collection.name());
+        LOG_TOPIC("86ece", TRACE, iresearch::TOPIC) << "Setting collection name '" << meta._collectionName << "' for new link '"
+          << this->id().id() << "'";
+      }
+      if (ADB_UNLIKELY(meta._collectionName.empty())) {
+        LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
+          << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
+      }
+
+#ifdef USE_ENTERPRISE
+      // enterprise name is not used in _id so should not be here!
+      if (ADB_LIKELY(!meta._collectionName.empty())) {
+        arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
+      }
+#endif
+    }
 
     if (!clusterWideLink) {
       // prepare data-store which can then update options
@@ -995,12 +1213,6 @@ Result IResearchLink::initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
-  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
-  }
-
   _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
@@ -1019,22 +1231,15 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
+  auto format = irs::formats::get(LATEST_FORMAT);
 
   if (!format) {
     return {TRI_ERROR_INTERNAL,
-            "failed to get data store codec '"s + IRESEARCH_STORE_FORMAT.c_str() +
+            "failed to get data store codec '"s + LATEST_FORMAT.data() +
                 "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
-  _engine = EngineSelectorFeature::ENGINE;
-
-  if (!_engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while initializing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
+  _engine = &server.getFeature<EngineSelectorFeature>().engine();
 
   bool pathExists;
 
@@ -1110,6 +1315,15 @@ Result IResearchLink::initDataStore(
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+  // initialize commit callback
+  options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
+    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
+
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
+
+    return true;
+  };
 
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
@@ -1155,7 +1369,7 @@ Result IResearchLink::initDataStore(
   }
 
   if (!_dataStore._reader) {
-    _dataStore._writer->commit(_before_commit); // initialize 'store'
+    _dataStore._writer->commit(); // initialize 'store'
     _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
   }
 
@@ -1188,8 +1402,7 @@ Result IResearchLink::initDataStore(
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
 
   // create a new 'self' (previous was reset during unload() above)
-  _asyncSelf = irs::memory::make_unique<AsyncLinkPtr::element_type>(this);
-  _asyncTerminate.store(false); // allow new asynchronous job invocation
+  _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
   // ...........................................................................
   // set up in-recovery insertion hooks
@@ -1200,11 +1413,9 @@ Result IResearchLink::initDataStore(
   }
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
-  auto asyncSelf = _asyncSelf; // create copy for lambda
-
   return dbFeature.registerPostRecoveryCallback(  // register callback
-      [asyncSelf, &flushFeature]() -> Result {
-        SCOPED_LOCK(asyncSelf->mutex());  // ensure link does not get deallocated before callback finishes
+      [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
+        auto lock = asyncSelf->lock();  // ensure link does not get deallocated before callback finishes
         auto* link = asyncSelf->get();
 
         if (!link) {
@@ -1235,7 +1446,8 @@ Result IResearchLink::initDataStore(
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
             << "starting sync for arangosearch link '" << link->id() << "'";
 
-        auto res = link->commitUnsafe(true);
+        [[maybe_unused]] CommitResult code;
+        auto res = link->commitUnsafe(true, &code);
 
         LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
             << "finished sync for arangosearch link '" << link->id() << "'";
@@ -1243,163 +1455,49 @@ Result IResearchLink::initDataStore(
         // register flush subscription
         flushFeature.registerFlushSubscription(link->_flushSubscription);
 
-        // setup asynchronous tasks for commit, consolidation, cleanup
-        link->setupMaintenance();
+        // setup asynchronous tasks for commit, cleanup if enabled
+        if (dataStore._meta._commitIntervalMsec) {
+          link->scheduleCommit(0ms);
+        }
+
+        // setup asynchronous tasks for consolidation if enabled
+        if (dataStore._meta._consolidationIntervalMsec) {
+          link->scheduleConsolidation(0ms);
+        }
 
         return res;
       });
 }
 
-void IResearchLink::setupMaintenance() {
-  auto& server = _collection.vocbase().server();
-  if (!server.hasFeature<iresearch::IResearchFeature>()) {
-    return;
-  }
-  _asyncFeature = &(server.getFeature<iresearch::IResearchFeature>());
+void IResearchLink::scheduleCommit(std::chrono::milliseconds delay) {
+  CommitTask task;
+  task.link = _asyncSelf;
+  task.async = _asyncFeature;
+  task.id = id();
+  task.state = _maintenanceState;
 
-  struct CommitState: public IResearchViewMeta {
-    size_t _cleanupIntervalCount{ 0 };
-    std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
-  } commitState;
+  ++_maintenanceState->pendingCommits;
+  task.schedule(delay);
+}
 
-  _asyncFeature->async( // register asynchronous commit task
-    _asyncSelf, // mutex
-    [this, commitState](size_t& timeoutMsec, bool) mutable ->bool {
-      auto& state = commitState;
+void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
+  ConsolidationTask task;
+  task.link = _asyncSelf;
+  task.async = _asyncFeature;
+  task.id = id();
+  task.state = _maintenanceState;
+  task.progress = [link = _asyncSelf.get()](){
+    return !link->terminationRequested();
+  };
 
-      if (_asyncTerminate.load()) {
-        return false; // termination requested
-      }
-
-      // reload RuntimeState
-      {
-        TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
-        ReadMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously modified
-        SCOPED_LOCK(mutex);
-        auto& stateMeta = static_cast<IResearchViewMeta&>(state);
-
-        if (stateMeta != _dataStore._meta) {
-          stateMeta = _dataStore._meta;
-        }
-      }
-
-      if (!state._commitIntervalMsec) {
-        timeoutMsec = 0; // task not enabled
-
-        return true; // reschedule
-      }
-
-      size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now() - state._last // consumed msec from interval
-      ).count();
-
-      if (usedMsec < state._commitIntervalMsec) {
-        timeoutMsec = state._commitIntervalMsec - usedMsec; // still need to sleep
-
-        return true; // reschedule (with possibly updated '_commitIntervalMsec')
-      }
-
-      state._last = std::chrono::system_clock::now(); // remember last task start time
-      timeoutMsec = state._commitIntervalMsec;
-
-      auto res = commitUnsafe(false); // run commit ('_asyncSelf' locked by async task)
-
-      if (!res.ok()) {
-        LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
-            << "error while committing arangosearch link '" << id()
-            << "': " << res.errorNumber() << " " << res.errorMessage();
-      } else if (state._cleanupIntervalStep // if enabled
-                 && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
-        state._cleanupIntervalCount = 0; // reset counter
-        res = cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
-
-        if (!res.ok()) {
-          LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id()
-              << "': " << res.errorNumber() << " " << res.errorMessage();
-        }
-      }
-
-      return true; // reschedule
-    }
-  );
-
-  struct ConsolidateState: public CommitState {
-    irs::merge_writer::flush_progress_t _progress;
-  } consolidateState;
-
-  consolidateState._progress = // consolidation termination condition
-    [this]()->bool { return !_asyncTerminate.load(); };
-  _asyncFeature->async( // register asynchronous consolidation task
-    _asyncSelf, // mutex
-    [this, consolidateState](size_t& timeoutMsec, bool) mutable ->bool {
-      auto& state = consolidateState;
-
-      if (_asyncTerminate.load()) {
-        return false; // termination requested
-      }
-
-      // reload RuntimeState
-      {
-        TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
-        ReadMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously modified
-        SCOPED_LOCK(mutex);
-        auto& stateMeta = static_cast<IResearchViewMeta&>(state);
-
-        if (stateMeta != _dataStore._meta) {
-          stateMeta = _dataStore._meta;
-        }
-      }
-
-      if (!state._consolidationIntervalMsec // disabled via interval
-          || !state._consolidationPolicy.policy()) { // disabled via policy
-        timeoutMsec = 0; // task not enabled
-
-        return true; // reschedule
-      }
-
-      size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now() - state._last
-      ).count();
-
-      if (usedMsec < state._consolidationIntervalMsec) {
-        timeoutMsec = state._consolidationIntervalMsec - usedMsec; // still need to sleep
-
-        return true; // reschedule (with possibly updated '_consolidationIntervalMsec')
-      }
-
-      state._last = std::chrono::system_clock::now(); // remember last task start time
-      timeoutMsec = state._consolidationIntervalMsec;
-
-      // run consolidation ('_asyncSelf' locked by async task)
-      auto res = consolidateUnsafe(state._consolidationPolicy, state._progress);
-
-      if (!res.ok()) {
-        LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
-            << "error while consolidating arangosearch link '" << id()
-            << "': " << res.errorNumber() << " " << res.errorMessage();
-      } else if (state._cleanupIntervalStep // if enabled
-                 && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
-        state._cleanupIntervalCount = 0; // reset counter
-        res = cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
-
-        if (!res.ok()) {
-          LOG_TOPIC("31941", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id()
-              << "': " << res.errorNumber() << " " << res.errorMessage();
-        }
-      }
-
-      return true; // reschedule
-    }
-  );
+  ++_maintenanceState->pendingConsolidations;
+  task.schedule(delay);
 }
 
 Result IResearchLink::insert(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
-    velocypack::Slice const& doc,
-    Index::OperationMode /*mode*/) {
+    velocypack::Slice const doc) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1416,7 +1514,7 @@ Result IResearchLink::insert(
   auto insertImpl = [this, &trx, &doc, &documentId](
                         irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIterator body(trx);
+      FieldIterator body(trx, _meta._collectionName, _id);
 
       return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
     } catch (basics::Exception const& e) {
@@ -1447,7 +1545,7 @@ Result IResearchLink::insert(
   }
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = _asyncSelf->lock();
     auto ctx = _dataStore._writer->documents();
 
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
@@ -1470,9 +1568,9 @@ Result IResearchLink::insert(
 
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = _asyncSelf->lock();
 
-    if (!*_asyncSelf) {
+    if (!_asyncSelf.get()) {
       // the current link is no longer valid (checked after ReadLock acquisition)
       return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
               "failed to lock arangosearch link while inserting a "
@@ -1500,8 +1598,9 @@ Result IResearchLink::insert(
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for insert into "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
   }
 
@@ -1537,7 +1636,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   std::string errorField;
 
   return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    &(_collection.vocbase()))  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
+                    _collection.vocbase().name())  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
          && _meta == other;
 }
 
@@ -1561,9 +1660,10 @@ Result IResearchLink::properties(
 }
 
 Result IResearchLink::properties(IResearchViewMeta const& meta) {
-  SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+  // '_dataStore' can be asynchronously modified
+  auto lock = _asyncSelf->lock();
 
-  if (!*_asyncSelf) {
+  if (!_asyncSelf.get()) {
     // the current link is no longer valid (checked after ReadLock acquisition)
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
             "failed to lock arangosearch link while modifying properties "
@@ -1574,34 +1674,26 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   {
-    WriteMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously read
-    SCOPED_LOCK(mutex);
+    WRITE_LOCKER(lock, _dataStore._mutex); // '_meta' can be asynchronously modified
     _dataStore._meta = meta;
   }
 
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
+  if (_engine->recoveryState() == RecoveryState::DONE) {
+    if (meta._commitIntervalMsec) {
+      scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
+    }
+
+    if (meta._consolidationIntervalMsec && meta._consolidationPolicy.policy()) {
+      scheduleConsolidation(std::chrono::milliseconds(meta._consolidationIntervalMsec));
+    }
   }
 
   irs::index_writer::segment_options properties;
   properties.segment_count_max = meta._writebufferActive;
   properties.segment_memory_max = meta._writebufferSizeMax;
 
-  try {
-    _dataStore._writer->options(properties);
-  } catch (std::exception const& e) {
-    LOG_TOPIC("c50c8", ERR, iresearch::TOPIC)
-        << "caught exception while modifying properties of arangosearch link '"
-        << id() << "': " << e.what();
-    IR_LOG_EXCEPTION();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("ad1eb", WARN, iresearch::TOPIC)
-        << "caught exception while modifying properties of arangosearch link '"
-        << id() << "'";
-    IR_LOG_EXCEPTION();
-    throw;
-  }
+  static_assert(noexcept(_dataStore._writer->options(properties)));
+  _dataStore._writer->options(properties);
 
   return {};
 }
@@ -1609,8 +1701,7 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
 Result IResearchLink::remove(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
-    velocypack::Slice const& /*doc*/,
-    Index::OperationMode /*mode*/) {
+    velocypack::Slice const /*doc*/) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1637,23 +1728,23 @@ Result IResearchLink::remove(
 
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = _asyncSelf->lock();
 
-    if (!*_asyncSelf) {
+    if (!_asyncSelf.get()) {
       // the current link is no longer valid (checked after ReadLock acquisition)
 
       return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
               "failed to lock arangosearch link while removing a document from "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
 
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
     auto ptr = irs::memory::make_unique<LinkTrxState>(
-      std::move(lock), *(_dataStore._writer)
-    );
+      std::move(lock), *(_dataStore._writer));
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
@@ -1662,8 +1753,9 @@ Result IResearchLink::remove(
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for remove from "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
   }
 
@@ -1672,7 +1764,7 @@ Result IResearchLink::remove(
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(documentId);
+    ctx->remove(*_engine, documentId);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {
@@ -1700,9 +1792,9 @@ Result IResearchLink::remove(
 
 IResearchLink::Snapshot IResearchLink::snapshot() const {
   // '_dataStore' can be asynchronously modified
-  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+  auto lock = _asyncSelf->lock();
 
-  if (!*_asyncSelf) {
+  if (!_asyncSelf.get()) {
     LOG_TOPIC("f42dc", WARN, iresearch::TOPIC)
         << "failed to lock arangosearch link while retrieving snapshot from "
            "arangosearch link '"
@@ -1726,6 +1818,20 @@ char const* IResearchLink::typeName() const {
   return IResearchLinkHelper::type().c_str();
 }
 
+bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
+  TRI_ASSERT(!name.empty());
+  if (_meta._collectionName.empty()) {
+    auto nonConstMeta = const_cast<IResearchLinkMeta*>(&_meta);
+    nonConstMeta->_collectionName = name;
+    return true;
+  }
+  LOG_TOPIC_IF("5573c", ERR, iresearch::TOPIC, name != _meta._collectionName)
+        << "Collection name mismatch for arangosearch link '" << id() << "'."
+        << " Meta name '" << _meta._collectionName << "' setting name '" << name << "'";
+  TRI_ASSERT(name == _meta._collectionName);
+  return false;
+}
+
 Result IResearchLink::unload() {
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
@@ -1733,12 +1839,6 @@ Result IResearchLink::unload() {
   if (_collection.deleted() // collection deleted
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
     return drop();
-  }
-
-  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
   _flushSubscription.reset(); // reset together with '_asyncSelf'
@@ -1787,7 +1887,7 @@ IResearchLink::Stats IResearchLink::stats() const {
   Stats stats;
 
   // '_dataStore' can be asynchronously modified
-  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+  auto lock = _asyncSelf->lock();
 
   if (_dataStore) {
     stats.numBufferedDocs = _dataStore._writer->buffered_docs();
@@ -1831,13 +1931,34 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("indexSize", VPackValue(stats.indexSize));
 }
 
-IResearchViewStoredValues const& IResearchLink::storedValues() const {
+IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
   return _meta._storedValues;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute the data path to user for iresearch data store
+///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
+///        the path is hardcoded to reside under:
+///        <DatabasePath>/<IResearchLink::type()>-<link id>
+///        similar to the data path calculation for collections
+////////////////////////////////////////////////////////////////////////////////
+irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                IResearchLink const& link) {
+  irs::utf8_path dataPath(dbPathFeature.directory());
+  static const std::string subPath("databases");
+  static const std::string dbPath("database-");
+
+  dataPath /= subPath;
+  dataPath /= dbPath;
+  dataPath += std::to_string(link.collection().vocbase().id());
+  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  dataPath += "-";
+  dataPath += std::to_string(link.collection().id().id());  // has to be 'id' since this can be a per-shard collection
+  dataPath += "_";
+  dataPath += std::to_string(link.id().id());
+
+  return dataPath;
 }
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

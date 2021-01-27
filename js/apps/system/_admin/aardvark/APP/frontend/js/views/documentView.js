@@ -21,6 +21,8 @@
 
     customView: false,
     defaultMode: 'tree',
+    editFromActive: false,
+    editToActive: false,
 
     template: templateEngine.createTemplate('documentView.ejs'),
 
@@ -30,6 +32,12 @@
       'click #confirmDeleteDocument': 'deleteDocument',
       'click #document-from': 'navigateToDocument',
       'click #document-to': 'navigateToDocument',
+      'click #edit-from .fa-edit': 'editFrom',
+      'click #edit-from .fa-check': 'applyFrom',
+      'click #edit-from .fa-times': 'abortFrom',
+      'click #edit-to .fa-edit': 'editTo',
+      'click #edit-to .fa-check': 'applyTo',
+      'click #edit-to .fa-times': 'abortTo',
       'keydown #documentEditor .ace_editor': 'keyPress',
       'keyup .jsoneditor .search input': 'checkSearchBox',
       'click #addDocument': 'addDocument'
@@ -171,6 +179,15 @@
     },
 
     navigateToDocument: function (e) {
+      if ($(e.target).hasClass('unsaved')) {
+        // abort navigation - unsaved value found
+        if (this.editFromActive) {
+          arangoHelper.arangoWarning('Document', 'Unsaved _from value found. Save changes first.');
+        } else {
+          arangoHelper.arangoWarning('Document', 'Unsaved _to value found. Save changes first.');
+        }
+        return;
+      }
       var navigateTo = $(e.target).attr('documentLink');
       var test = (navigateTo.split('%').length - 1) % 3;
 
@@ -181,6 +198,117 @@
       if (navigateTo) {
         window.App.navigate(navigateTo, {trigger: true});
       }
+    },
+
+    editFrom: function () {
+      this.editEdge('from');
+    },
+
+    applyFrom: function () {
+      this.applyEdge('from');
+    },
+
+    abortFrom: function () {
+      this.abortEdge('from');
+    },
+
+    editTo: function () {
+      this.editEdge('to');
+    },
+
+    applyTo: function () {
+      this.applyEdge('to');
+    },
+
+    abortTo: function () {
+      this.abortEdge('to');
+    },
+
+    setEditMode(type, active) {
+      if (type === 'from') {
+        this.editFromActive = active;
+      } else {
+        this.editToActive = active;
+      }
+    },
+
+    toggleEditIcons: function (type, showEdit) {
+      let id = '#edit-' + type;
+      if (showEdit) {
+        $(id + ' .fa-edit').show();
+        $(id + ' .fa-check').hide();
+        $(id + ' .fa-times').hide();
+      } else {
+        $(id + ' .fa-edit').hide();
+        $(id + ' .fa-check').show();
+        $(id + ' .fa-times').show();
+      }
+    },
+
+    editEdge: function (type) {
+      // type must be either "from" or "to" as string
+      this.setEditMode(type, true);
+
+      // hide edit icon and show action items
+      this.toggleEditIcons(type);
+      this.addEdgeEditInputBox(type);
+    },
+
+    addEdgeEditInputBox: function (type) {
+      var model = this.collection.first();
+      let edgeId;
+
+      if (type === 'from') {
+        edgeId = model.get('_from');
+      } else {
+        edgeId = model.get('_to');
+      }
+
+      // hide text & insert input
+      $('#document-' + type).hide();
+      $('#document-' + type).after(
+        `<input type="text" id="input-edit-${type}" value=${arangoHelper.escapeHtml(edgeId)} placeholder="${arangoHelper.escapeHtml(edgeId)}">`
+      );
+    },
+
+    applyEdge: function(type) {
+      var model = this.collection.first();
+      this.setEditMode(type, false);
+
+
+      let newValue = $(`#input-edit-${type}`).val();
+      let changed = false;
+      if (type === 'from') {
+        // if value got changed
+        if (newValue !== model.get('_from')) {
+          changed = true;
+        }
+      } else {
+        if (newValue !== model.get('_to')) {
+          changed = true;
+        }
+      }
+      if (changed) {
+        $('#document-' + type).html(arangoHelper.escapeHtml(newValue));
+        $('#document-' + type).addClass('unsaved');
+        this.enableSaveButton();
+      }
+
+      // toggle icons
+      this.toggleEditIcons(type, true);
+
+      // remove input
+      $(`#input-edit-${type}`).remove();
+      $('#document-' + type).show();
+    },
+
+    abortEdge: function(type) {
+      this.setEditMode(type, false);
+      this.toggleEditIcons(type, true);
+
+      // hide input and ignore prev. value
+      $(`#input-edit-${type}`).remove();
+      $('#document-' + type).show();
     },
 
     fillInfo: function () {
@@ -207,6 +335,7 @@
         $('#document-to').attr('documentLink', hrefTo);
       } else {
         $('.edge-info-container').hide();
+        $('.edge-edit-container').hide();
       }
     },
 
@@ -326,11 +455,29 @@
       model = JSON.stringify(model);
 
       if (this.type === 'edge' || this.type._from) {
-        var callbackE = function (error, data) {
+        var callbackE = function (error, data, navigate) {
           if (error) {
             arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
           } else {
+            // here we need to do an additional error check as PUT API is returning 202 (PUT) with error inside - lol
+            if (data[0].error) {
+              arangoHelper.arangoError('Error', data[0].errorMessage);
+              return;
+            }
+
             this.successConfirmation();
+            var model = this.collection.first();
+            // update local model
+            var newFrom = data[0].new._from;
+            var newTo = data[0].new._to;
+            model.set('_from', newFrom);
+            model.set('_to', newTo);
+            // remove unsaved classes
+            $('#document-from').removeClass('unsaved');
+            $('#document-to').removeClass('unsaved');
+            // also update DOM attr
+            $('#document-from').attr('documentlink', 'collection/' + arangoHelper.escapeHtml(newFrom));
+            $('#document-to').attr('documentlink', 'collection/' + arangoHelper.escapeHtml(newTo));
             this.disableSaveButton();
 
             if (self.customView) {
@@ -341,7 +488,9 @@
           }
         }.bind(this);
 
-        this.collection.saveEdge(this.colid, this.docid, $('#document-from').html(), $('#document-to').html(), model, callbackE);
+        let from = $('#document-from').html();
+        let to = $('#document-to').html();
+        this.collection.saveEdge(this.colid, this.docid, from, to, model, callbackE);
       } else {
         var callback = function (error, data) {
           if (error || (data[0] && data[0].error)) {

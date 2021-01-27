@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,12 +72,6 @@ class RequestStatistics {
       }
     }
 
-    void SET_IGNORE() const {
-      if (_stat != nullptr) {
-        _stat->_ignore = true;
-      }
-    }
-
     void SET_REQUEST_TYPE(rest::RequestType t) const {
       if (_stat != nullptr) {
         _stat->_requestType = t;
@@ -135,12 +129,6 @@ class RequestStatistics {
       }
     }
 
-    void SET_EXECUTE_ERROR() const {
-      if (_stat != nullptr) {
-        _stat->_executeError = true;
-      }
-    }
-
     void SET_REQUEST_START() const {
       if (_stat != nullptr) {
         _stat->_requestStart = StatisticsFeature::time();
@@ -168,13 +156,21 @@ class RequestStatistics {
       }
     }
 
+    double ELAPSED_WHILE_QUEUED() const {
+      if (_stat != nullptr) {
+        return  _stat->_queueEnd - _stat->_queueStart;
+      } else {
+        return 0.0;
+      }
+    }
+
     void SET_SUPERUSER() const {
       if (_stat != nullptr) {
         _stat->_superuser = true;
       }
     }
 
-    std::string timingsCsv();
+    std::string timingsCsv() const;
 
    private:
      RequestStatistics* _stat;
@@ -213,9 +209,6 @@ class RequestStatistics {
     _sentBytes = 0.0;
     _requestType = rest::RequestType::ILLEGAL;
     _async = false;
-    _tooLarge = false;
-    _executeError = false;
-    _ignore = false;
     _released = true;
     _inQueue = false;
     _superuser = false;
@@ -238,9 +231,6 @@ class RequestStatistics {
   rest::RequestType _requestType;
 
   bool _async;
-  bool _tooLarge;
-  bool _executeError;
-  bool _ignore;
   bool _released;
   bool _inQueue;
   bool _superuser;

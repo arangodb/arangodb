@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,12 +112,12 @@ ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
-    uint64_t tid = basics::StringUtils::uint64(value);
-    if (!transaction::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
+    TransactionId tid{basics::StringUtils::uint64(value)};
+    if (!tid.isCoordinatorTransactionId()) {
+      TRI_ASSERT(tid.isLegacyTransactionId());
       return {std::make_pair(StaticStrings::Empty, false)};
     }
-    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+    uint32_t sourceServer = tid.serverId();
     if (sourceServer == ServerState::instance()->getShortId()) {
       return {std::make_pair(StaticStrings::Empty, false)};
     }
@@ -165,7 +165,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
 
 
-  arangodb::OperationOptions opOptions;
+  arangodb::OperationOptions opOptions(_context);
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
@@ -197,7 +197,7 @@ RestStatus RestDocumentHandler::insertDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   bool const isMultiple = body.isArray();
 
   if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
@@ -206,7 +206,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   Result res = _activeTrx->begin();
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -216,21 +216,23 @@ RestStatus RestDocumentHandler::insertDocument() {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
-            Result res = _activeTrx->finish(opres.result);
-            if (opres.fail()) {
-              generateTransactionError(opres);
-              return;
-            }
+            return _activeTrx->finishAsync(opres.result).thenValue([=, opres(std::move(opres))](Result&& res) {
+              if (opres.fail()) {
+                generateTransactionError(cname, opres);
+                return;
+              }
 
-            if (res.fail()) {
-              generateTransactionError(cname, res, "");
-              return;
-            }
+              if (res.fail()) {
+                generateTransactionError(cname, OperationResult(res, opOptions),
+                                         "");
+                return;
+              }
 
-            generateSaved(opres, cname,
-                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                          _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
-                          isMultiple);
+              generateSaved(opres, cname,
+                            TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                            _activeTrx->transactionContextPtr()->getVPackOptions(),
+                            isMultiple);
+            });
           }));
 }
 
@@ -272,17 +274,17 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
+  RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
   }
 
-  OperationOptions options;
+  OperationOptions options(_context);
   options.ignoreRevs = true;
 
-  TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
+  RevisionId ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    ifRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
   }
 
   auto buffer = std::make_shared<VPackBuffer<uint8_t>>();
@@ -290,16 +292,16 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::KeyString, VPackValue(key));
-    if (ifRid != 0) {
+    if (ifRid.isSet()) {
       options.ignoreRevs = false;
-      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(ifRid)));
+      builder.add(StaticStrings::RevString, VPackValue(ifRid.toString()));
     }
   }
 
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(collection, AccessMode::Type::READ);
+  _activeTrx = createTransaction(collection, AccessMode::Type::READ, options);
 
   _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -310,42 +312,39 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collection, OperationResult(res, options), "");
     return RestStatus::DONE;
   }
 
   return waitForFuture(
-      _activeTrx->documentAsync(collection, search, options).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-        auto res = _activeTrx->finish(opRes.result);
+      _activeTrx->documentAsync(collection, search, options)
+          .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+            return _activeTrx->finishAsync(opRes.result)
+                .thenValue([=, opRes(std::move(opRes))](Result&& res) {
+                  if (!opRes.ok()) {
+                    generateTransactionError(collection, opRes, key, ifRid);
+                    return;
+                  }
 
-        if (!opRes.ok()) {
-          if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-            generateDocumentNotFound(collection, key);
-          } else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
-            generatePreconditionFailed(opRes.slice());
-          } else {
-            generateTransactionError(collection, res, key);
-          }
-          return;
-        }
+                  if (!res.ok()) {
+                    generateTransactionError(collection, OperationResult(res, options),
+                                             key, ifRid);
+                    return;
+                  }
 
-        if (!res.ok()) {
-          generateTransactionError(collection, res, key);
-          return;
-        }
+                  if (ifNoneRid.isSet()) {
+                    RevisionId const rid = RevisionId::fromSlice(opRes.slice());
+                    if (ifNoneRid == rid) {
+                      generateNotModified(rid);
+                      return;
+                    }
+                  }
 
-        if (ifNoneRid != 0) {
-          TRI_voc_rid_t const rid = TRI_ExtractRevisionId(opRes.slice());
-          if (ifNoneRid == rid) {
-            generateNotModified(rid);
-            return;
-          }
-        }
-
-        // use default options
-        generateDocument(opRes.slice(), generateBody,
-                         _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
-      }));
+                  // use default options
+                  generateDocument(opRes.slice(), generateBody,
+                                   _activeTrx->transactionContextPtr()->getVPackOptions());
+                });
+          }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,14 +432,13 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
+  OperationOptions opOptions(_context);
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
-    generateTransactionError(cname,
-                             OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID),
+    generateTransactionError(cname, OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, opOptions),
                              "");
     return RestStatus::DONE;
   }
 
-  OperationOptions opOptions;
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -453,19 +451,20 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
+  RevisionId headerRev = RevisionId::none();
   if (!isArrayCase) {
     bool isValidRevision;
-    TRI_voc_rid_t headerRev = extractRevision("if-match", isValidRevision);
+    headerRev = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      headerRev = UINT64_MAX;  // an impossible revision, so precondition failed
+      headerRev = RevisionId::max();  // an impossible revision, so precondition failed
     }
-    if (headerRev != 0) {
+    if (headerRev.isSet()) {
       opOptions.ignoreRevs = false;
     }
 
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
-    TRI_voc_rid_t revInBody = TRI_ExtractRevisionId(body);
-    if ((headerRev != 0 && revInBody != headerRev) || keyInBody.isNone() ||
+    RevisionId revInBody = RevisionId::fromSlice(body);
+    if ((headerRev.isSet() && revInBody != headerRev) || keyInBody.isNone() ||
         keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
       buffer = std::make_shared<VPackBuffer<uint8_t>>();
@@ -474,19 +473,23 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         VPackObjectBuilder guard(&builder);
         TRI_SanitizeObject(body, builder);
         builder.add(StaticStrings::KeyString, VPackValue(key));
-        if (headerRev != 0) {
-          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
-        } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+        if (headerRev.isSet()) {
+          builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
+        } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
+          builder.add(StaticStrings::RevString, VPackValue(revInBody.toString()));
+          headerRev = revInBody;   // make sure that we report 412 and not 409
         }
       }
 
       body = builder.slice();
+    } else if (!headerRev.isSet() && revInBody.isSet() &&
+               opOptions.ignoreRevs == false) {
+      headerRev = revInBody;   // make sure that we report 412 and not 409
     }
   }
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
 
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -498,7 +501,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   Result res = _activeTrx->begin();
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -514,24 +517,24 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+    return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+      // ...........................................................................
+      // outside write transaction
+      // ...........................................................................
 
-    // ...........................................................................
-    // outside write transaction
-    // ...........................................................................
+      if (opRes.fail()) {
+        generateTransactionError(cname, opRes, key, headerRev);
+        return;
+      }
 
-    if (opRes.fail()) {
-      generateTransactionError(opRes);
-      return;
-    }
+      if (!res.ok()) {
+        generateTransactionError(cname, OperationResult(res, opOptions), key, headerRev);
+        return;
+      }
 
-    if (!res.ok()) {
-      generateTransactionError(cname, res, key, 0);
-      return;
-    }
-
-    generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                  _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isArrayCase);
+      generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                    _activeTrx->transactionContextPtr()->getVPackOptions(), isArrayCase);
+    });
   }));
 }
 
@@ -557,16 +560,16 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
 
   // extract the revision if single document case
-  TRI_voc_rid_t revision = 0;
+  RevisionId revision = RevisionId::none();
   if (suffixes.size() == 2) {
     bool isValidRevision = false;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      revision = UINT64_MAX;  // an impossible revision, so precondition failed
+      revision = RevisionId::max();  // an impossible revision, so precondition failed
     }
   }
 
-  OperationOptions opOptions;
+  OperationOptions opOptions(_context);
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -585,9 +588,9 @@ RestStatus RestDocumentHandler::removeDocument() {
 
       builder.add(StaticStrings::KeyString, VPackValue(key));
 
-      if (revision != 0) {
+      if (revision.isSet()) {
         opOptions.ignoreRevs = false;
-        builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
+        builder.add(StaticStrings::RevString, VPackValue(revision.toString()));
       }
     }
 
@@ -606,7 +609,7 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -614,34 +617,34 @@ RestStatus RestDocumentHandler::removeDocument() {
   Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
   bool const isMultiple = search.isArray();
 
-  return waitForFuture(_activeTrx->removeAsync(cname, search, opOptions)
-                       .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+  return waitForFuture(
+      _activeTrx->removeAsync(cname, search, opOptions).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+        return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+          // ...........................................................................
+          // outside write transaction
+          // ...........................................................................
 
-    // ...........................................................................
-    // outside write transaction
-    // ...........................................................................
+          if (opRes.fail()) {
+            generateTransactionError(cname, opRes, key, revision);
+            return;
+          }
 
-    if (opRes.fail()) {
-      generateTransactionError(opRes);
-      return;
-    }
+          if (!res.ok()) {
+            generateTransactionError(cname, OperationResult(res, opOptions), key);
+            return;
+          }
 
-    if (!res.ok()) {
-      generateTransactionError(cname, res, key);
-      return;
-    }
-
-    generateDeleted(opRes, cname,
-                    TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                    _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
-  }));
+          generateDeleted(opRes, cname,
+                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                          _activeTrx->transactionContextPtr()->getVPackOptions(), isMultiple);
+        });
+      }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -660,10 +663,10 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   // split the document reference
   std::string const& cname = suffixes[0];
 
-  OperationOptions opOptions;
+  OperationOptions opOptions(_context);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::READ);
+  _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
 
   // ...........................................................................
   // inside read transaction
@@ -672,7 +675,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -682,21 +685,20 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions)
-                       .thenValue([=](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+  return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions).thenValue([=](OperationResult opRes) {
+    return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+      if (opRes.fail()) {
+        generateTransactionError(cname, opRes);
+        return;
+      }
 
-    if (opRes.fail()) {
-      generateTransactionError(opRes);
-      return;
-    }
+      if (!res.ok()) {
+        generateTransactionError(cname, OperationResult(res, opOptions), "");
+        return;
+      }
 
-    if (!res.ok()) {
-      generateTransactionError(cname, res, "");
-      return;
-    }
-
-    generateDocument(opRes.slice(), true,
-                     _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
+      generateDocument(opRes.slice(), true,
+                       _activeTrx->transactionContextPtr()->getVPackOptions());
+    });
   }));
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,12 +56,12 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
-                            std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
+                            std::string const& aql, std::shared_ptr<VPackBuilder> const& bindVars) {
   TRI_ASSERT(col != nullptr);
 
   arangodb::aql::Query query(transaction::V8Context::Create(col->vocbase(), true),
                              arangodb::aql::QueryString(aql),
-                             bindVars, nullptr);
+                             bindVars);
 
   arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
   if (queryResult.result.fail()) {
@@ -277,7 +277,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult cursor = trx.any(collectionName);
+  OperationOptions options(ExecContext::current());
+  OperationResult cursor = trx.any(collectionName, options);
 
   res = trx.finish(cursor.result);
 
@@ -319,8 +320,6 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
-
   bool withRevisions = false;
   bool withData = false;
 
@@ -332,8 +331,8 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
   
   uint64_t checksum;
-  TRI_voc_rid_t revId;
-  
+  RevisionId revId;
+
   Result r = methods::Collections::checksum(*col, withRevisions,
                                             withData, checksum, revId);
 
@@ -345,7 +344,8 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   obj->Set(context, TRI_V8_ASCII_STRING(isolate, "checksum"),
            TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum))).FromMaybe(false);
   obj->Set(context, TRI_V8_ASCII_STRING(isolate, "revision"),
-           TRI_V8_ASCII_STD_STRING(isolate, TRI_RidToString(revId))).FromMaybe(false);
+           TRI_V8_ASCII_STD_STRING(isolate, revId.toString()))
+      .FromMaybe(false);
 
   TRI_V8_RETURN(obj);
   TRI_V8_TRY_CATCH_END
@@ -408,11 +408,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bindVars->add("@collection", VPackValue(collection->name()));
 
   VPackBuilder keys;
-  int res = TRI_V8ToVPack(isolate, keys, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, keys, args[0], false);
 
   bindVars->add(VPackValue("keys"));
   arangodb::aql::BindParameters::stripCollectionNames(keys.slice(), collection->name(),
@@ -457,10 +453,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bindVars->add("@collection", VPackValue(collection->name()));
   bindVars->add(VPackValue("keys"));
 
-  int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
   bindVars->close();
 
   std::string const queryString(

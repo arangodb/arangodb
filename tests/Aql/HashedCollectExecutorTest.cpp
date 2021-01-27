@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -114,18 +115,11 @@ class HashedCollectExecutorTest
                           std::vector<std::string> aggregateTypes = {},
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
-    // It seems that count <=> collectRegister exists
-    bool count = false;
-    if (collectRegister != RegisterPlan::MaxRegisterId) {
-      count = true;
-    }
-
-    return HashedCollectExecutorInfos{std::move(groupRegisters),
-                                      collectRegister,
+    return HashedCollectExecutorInfos{std::move(groupRegisters), RegisterPlan::MaxRegisterId,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
                                       &VPackOptions::Defaults,
-                                      count};
+                                      monitor};
   };
 };
 
@@ -426,25 +420,6 @@ TEST_P(HashedCollectExecutorTest, collect_only_multiple_values) {
       .run();
 }
 
-// Collect with one group value and count
-TEST_P(HashedCollectExecutorTest, count) {
-  auto registerInfos = buildRegisterInfos(1, 3, {{1, 0}}, 2);
-  auto executorInfos = buildExecutorInfos(1, 3, {{1, 0}}, 2);
-  AqlCall call{};          // unlimited produce
-  ExecutionStats stats{};  // No stats here
-  makeExecutorTestHelper<1, 2>()
-      .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
-      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
-      .setInputSplitType(getSplit())
-      .setCall(call)
-      .expectOutput({1, 2}, {{1, 3}, {2, 2}, {6, 1}, {R"("1")", 1}})
-      .allowAnyOutputOrder(true)
-      .expectSkipped(0)
-      .expectedState(ExecutionState::DONE)
-      // .expectedStats(stats)
-      .run();
-}
-
 // Collect with multiple aggregators
 TEST_P(HashedCollectExecutorTest, many_aggregators) {
   auto registerInfos = buildRegisterInfos(2, 5, {{2, 0}}, RegisterPlan::MaxRegisterId,
@@ -600,7 +575,6 @@ class HashedCollectExecutorTestAggregate
 
   auto buildExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>> groupRegisters)
       -> HashedCollectExecutorInfos {
-    bool count = false;
     RegisterId collectRegister = RegisterPlan::MaxRegisterId;
 
     auto agg = getAggregator();
@@ -610,7 +584,7 @@ class HashedCollectExecutorTestAggregate
     auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                             std::move(aggregateTypes),
                                             std::move(aggregateRegisters),
-                                            &VPackOptions::Defaults, count);
+                                            &VPackOptions::Defaults, monitor);
     return infos;
   };
 };

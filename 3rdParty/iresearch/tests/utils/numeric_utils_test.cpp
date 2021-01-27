@@ -28,7 +28,7 @@
 #include <vector>
 #include <algorithm>
 
-NS_LOCAL
+namespace {
 
 template<typename T>
 iresearch::bstring encode(T value, size_t offset = 0) {
@@ -39,7 +39,7 @@ iresearch::bstring encode(T value, size_t offset = 0) {
   return data;
 }
 
-NS_END
+}
 
 TEST(numeric_utils_test, encode32) {
   const irs::byte_type TYPE_MAGIC = 0;

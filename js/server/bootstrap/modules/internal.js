@@ -182,7 +182,6 @@
   // / @brief expose configuration
   // //////////////////////////////////////////////////////////////////////////////
 
-
   if (global.SYS_IS_FOXX_API_DISABLED) {
     exports.isFoxxApiDisabled = global.SYS_IS_FOXX_API_DISABLED;
     delete global.SYS_IS_FOXX_API_DISABLED;
@@ -193,28 +192,22 @@
     delete global.SYS_IS_FOXX_STORE_DISABLED;
   }
 
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief throw-collection-not-loaded
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.THROW_COLLECTION_NOT_LOADED) {
-    exports.throwOnCollectionNotLoaded = global.THROW_COLLECTION_NOT_LOADED;
-    delete global.THROW_COLLECTION_NOT_LOADED;
-  }
-
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief autoload modules from database
   // //////////////////////////////////////////////////////////////////////////////
 
   // autoload specific modules
   exports.autoloadModules = function () {
+    if (!global.USE_OLD_SYSTEM_COLLECTIONS) {
+      return;
+    }
+
     console.debug('autoloading actions');
 
     try {
       let modules = exports.db._collection('_modules');
 
-      if (modules === null) {
+      if (modules === null || modules.count() === 0) {
         // _modules is an optional collection. if it does not exist,
         // we can simply go on and ignore it
         console.debug('autoloading actions finished, no _modules collection found');
@@ -320,19 +313,10 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief reloads the AQL user functions
+  // / @brief reloads the AQL user functions - does nothing anymore
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
-    exports.reloadAqlFunctions = function () {
-      global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadAql');
-      require('@arangodb/aql').reload();
-    };
-  } else {
-    exports.reloadAqlFunctions = function () {
-      require('@arangodb/aql').reload();
-    };
-  }
+  exports.reloadAqlFunctions = function () {};
 
   // replication
   if (global.REPLICATION_LOGGER_STATE) {
@@ -595,6 +579,11 @@
   exports.isCluster = function () {
     let role = global.ArangoServerState.role();
     return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
+  };
+
+  if (global.SYS_CREATE_HOTBACKUP) {
+    exports.createHotbackup = global.SYS_CREATE_HOTBACKUP;
+    delete global.SYS_CREATE_HOTBACKUP;
   };
 
 }());

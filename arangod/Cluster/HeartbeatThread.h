@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +29,8 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
-#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "RestServer/MetricsFeature.h"
 
@@ -50,13 +50,13 @@ struct AgencyVersions {
       : plan(_plan), current(_plan) {}
 
   explicit AgencyVersions(const DBServerAgencySyncResult& result)
-      : plan(result.planVersion), current(result.currentVersion) {}
+      : plan(result.planIndex), current(result.currentIndex) {}
 };
 
 class AgencyCallbackRegistry;
 class HeartbeatBackgroundJobThread;
 
-class HeartbeatThread : public CriticalThread,
+class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
@@ -99,22 +99,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief break runDBserver out of wait on condition after setting state in
   /// base class
   //////////////////////////////////////////////////////////////////////////////
-  virtual void beginShutdown() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add thread name to ongoing list of threads that have crashed
-  ///        unexpectedly
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void recordThreadDeath(const std::string& threadName);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief post list of deadThreads to current log.  Called regularly, but
-  /// only
-  ///        posts to log roughly every 60 minutes
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void logThreadDeaths(bool force = false);
+  void beginShutdown() override;
 
   /// @brief Reference to agency sync job
   DBServerAgencySync& agencySync();
@@ -146,11 +131,10 @@ class HeartbeatThread : public CriticalThread,
   void runSingleServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop for agent and single db ... provides thread
-  /// crash reporting
+  /// @brief heartbeat main loop for agents
   //////////////////////////////////////////////////////////////////////////////
 
-  void runSimpleServer();
+  void runAgent();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
@@ -324,7 +308,11 @@ class HeartbeatThread : public CriticalThread,
   // last value of current which we have noticed:
   std::atomic<uint64_t> _lastCurrentVersionNoticed;
   // For periodic update of the current DBServer list:
-  std::atomic<int> _DBServerUpdateCounter;
+  std::atomic<int> _updateCounter;
+      
+  /// @brief point in time the server last reported itself as unhealthy (used
+  /// to prevent log spamming on every occurrence of unhealthiness)
+  std::chrono::steady_clock::time_point _lastUnhealthyTimestamp;
 
   /// @brief Sync job
   DBServerAgencySync _agencySync;

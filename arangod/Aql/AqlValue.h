@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
 
+#include <velocypack/velocypack-common.h>
 #include <vector>
 
 namespace v8 {
@@ -67,14 +68,14 @@ class AqlItemBlock;
 // no-op struct used only internally to indicate that we want
 // to copy the data behind the passed pointer
 struct AqlValueHintCopy {
-  explicit AqlValueHintCopy(uint8_t const* ptr);
+  explicit AqlValueHintCopy(uint8_t const* ptr) noexcept;
   uint8_t const* ptr;
 };
 
 // no-op struct used only internally to indicate that we want
 // to NOT copy the database document data behind the passed pointer
 struct AqlValueHintDocumentNoCopy {
-  explicit AqlValueHintDocumentNoCopy(uint8_t const* v);
+  explicit AqlValueHintDocumentNoCopy(uint8_t const* v) noexcept;
   uint8_t const* ptr;
 };
 
@@ -130,9 +131,7 @@ struct AqlValue final {
     VPACK_SLICE_POINTER,   // contains a pointer to a vpack document, memory is
                            // not managed!
     VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
-                           // slice
-    VPACK_MANAGED_BUFFER,  // contains vpack, via pointer to a managed buffer
-    DOCVEC,  // a vector of blocks of results coming from a subquery, managed
+                           // slice, allocated by new[] or malloc()
     RANGE    // a pointer to a range remembering lower and upper bound, managed
   };
 
@@ -148,12 +147,10 @@ struct AqlValue final {
   /// so there is no need for memory management.
   /// VPACK_MANAGED_SLICE: all values of a larger size will be stored in
   /// _data.slice via a managed uint8_t* object. The uint8_t* points to a VPack
-  /// data and is managed by the AqlValue.
-  /// VPACK_MANAGED_BUFFER: all values of a larger size will be stored in
-  /// _data.external via a managed VPackBuffer object. The Buffer is managed
-  /// by the AqlValue.
-  /// DOCVEC: a managed vector of AqlItemBlocks, for storing subquery results.
-  /// The vector and ItemBlocks are managed by the AqlValue
+  /// data and is managed by the AqlValue. The second-last byte contains info
+  /// about how the memory was allocated:
+  /// - MemoryOriginType::New: memory was allocated by new[] and must be deleted
+  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd
   /// RANGE: a managed range object. The memory is managed by the AqlValue
  private:
   union {
@@ -161,10 +158,16 @@ struct AqlValue final {
     uint8_t internal[16];
     uint8_t const* pointer;
     uint8_t* slice;
-    arangodb::velocypack::Buffer<uint8_t>* buffer;
-    std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec;
+    void* data;
     Range const* range;
   } _data;
+
+  /// @brief type of memory that we are dealing with for values of type
+  /// VPACK_MANAGED_SLICE
+  enum class MemoryOriginType : uint8_t {
+    New = 0, // memory allocated by new[]
+    Malloc = 1, // memory allocated by malloc
+  };
 
  public:
   // construct an empty AqlValue
@@ -173,10 +176,10 @@ struct AqlValue final {
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer);
-
-  // construct from docvec, taking over its ownership
-  explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
   
+  // construct from another AqlValue and a new data pointer, not copying!
+  explicit AqlValue(AqlValue const& other, void* data) noexcept;
+
   explicit AqlValue(AqlValueHintNone const&) noexcept;
 
   explicit AqlValue(AqlValueHintNull const&) noexcept;
@@ -205,8 +208,7 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintEmptyObject const&) noexcept;
 
   // construct from Buffer, potentially taking over its ownership
-  // (by adjusting the boolean passed)
-  AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete);
+  explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer);
 
   // construct from pointer, not copying!
   explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept;
@@ -214,11 +216,11 @@ struct AqlValue final {
   // construct from pointer, copying the data behind the pointer
   explicit AqlValue(AqlValueHintCopy const& v);
 
-  // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const& builder);
-
   // construct from Slice, copying contents
-  explicit AqlValue(arangodb::velocypack::Slice const& slice);
+  explicit AqlValue(arangodb::velocypack::Slice slice);
+  
+  // construct from Slice and length, copying contents
+  AqlValue(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
 
   // construct range type
   AqlValue(int64_t low, int64_t high);
@@ -226,12 +228,12 @@ struct AqlValue final {
   /// @brief AqlValues can be copied and moved as required
   /// memory management is not performed via AqlValue destructor but via
   /// explicit calls to destroy()
-  AqlValue(AqlValue const&) = default;
-  AqlValue& operator=(AqlValue const&) = default;
-  AqlValue(AqlValue&&) = default;
-  AqlValue& operator=(AqlValue&&) = default;
+  AqlValue(AqlValue const&) noexcept = default;
+  AqlValue& operator=(AqlValue const&) noexcept = default;
+  AqlValue(AqlValue&&) noexcept = default;
+  AqlValue& operator=(AqlValue&&) noexcept = default;
 
-  ~AqlValue() = default;
+  ~AqlValue() noexcept = default;
 
   /// @brief whether or not the value must be destroyed
   bool requiresDestruction() const noexcept;
@@ -248,14 +250,8 @@ struct AqlValue final {
   /// @brief whether or not the value is a range
   bool isRange() const noexcept;
 
-  /// @brief whether or not the value is a docvec
-  bool isDocvec() const noexcept;
-
   /// @brief hashes the value
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
-
-  /// @brief whether or not the value is a shadow row depth entry
-  bool isShadowRowDepthValue() const noexcept;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
@@ -318,30 +314,26 @@ struct AqlValue final {
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
 
+  /// @brief return the pointer to the underlying AqlValue. 
+  /// only supported for AqlValue types with dynamic memory management
+  void* data() const noexcept;
+
   /// @brief return the range value
   Range const* range() const;
-
-  /// @brief return the total size of the docvecs
-  size_t docvecSize() const;
-
-  /// @brief return the size of the docvec array
-  size_t sizeofDocvec() const;
-
-  AqlItemBlock* docvecAt(size_t position) const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::velocypack::Options const*) const;
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&, bool resolveExternals) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&,
+                    bool resolveExternals, bool allowUnindexed) const;
 
-  /// @brief materialize a value into a new one. this expands docvecs and
-  /// ranges
+  /// @brief materialize a value into a new one. this expands ranges
   AqlValue materialize(velocypack::Options const*, bool& hasCopied, bool resolveExternals) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
-  /// VPACK_INLINE, VPACK_MANAGED_SLICE or VPACK_MANAGED_BUFFER
+  /// VPACK_INLINE, VPACK_MANAGED_SLICE
   arangodb::velocypack::Slice slice() const;
   
   arangodb::velocypack::Slice slice(AqlValueType type) const;
@@ -361,23 +353,29 @@ struct AqlValue final {
   /// @brief compare function for two values
   static int Compare(velocypack::Options const*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
-  [[deprecated("Pass VPackOptions instead of the transaction")]]
-  static int Compare(transaction::Methods*, AqlValue const& left,
-                     AqlValue const& right, bool useUtf8);
 
- private:
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
   AqlValueType type() const noexcept;
 
+ private:
   /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice const& slice);
+  void initFromSlice(arangodb::velocypack::Slice slice);
+  
+  /// @brief initializes value from a slice, when the length is already known
+  void initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
 
   /// @brief sets the value type
   void setType(AqlValueType type) noexcept;
 
   template <bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
+  
+  /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
+  MemoryOriginType memoryOriginType() const noexcept;
+  
+  /// @brief store meta information for values of type VPACK_MANAGED_SLICE
+  void setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::ValueLength length);
 };
 
 // Check that the defaulted constructors, destructor and assignment
@@ -402,7 +400,7 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy) noexcept;
-  ~AqlValueGuard();
+  ~AqlValueGuard() noexcept;
 
   void steal() noexcept;
   AqlValue& value() noexcept;

@@ -569,32 +569,32 @@ constexpr int TRI_ERROR_ARANGO_IO_ERROR                                         
 /// 1400: ERROR_REPLICATION_NO_RESPONSE
 /// "no response"
 /// Will be raised when the replication applier does not receive any or an
-/// incomplete response from the master.
+/// incomplete response from the leader.
 constexpr int TRI_ERROR_REPLICATION_NO_RESPONSE                                 = 1400;
 
 /// 1401: ERROR_REPLICATION_INVALID_RESPONSE
 /// "invalid response"
 /// Will be raised when the replication applier receives an invalid response
-/// from the master.
+/// from the leader.
 constexpr int TRI_ERROR_REPLICATION_INVALID_RESPONSE                            = 1401;
 
-/// 1402: ERROR_REPLICATION_MASTER_ERROR
-/// "master error"
+/// 1402: ERROR_REPLICATION_LEADER_ERROR
+/// "leader error"
 /// Will be raised when the replication applier receives a server error from
-/// the master.
-constexpr int TRI_ERROR_REPLICATION_MASTER_ERROR                                = 1402;
+/// the leader.
+constexpr int TRI_ERROR_REPLICATION_LEADER_ERROR                                = 1402;
 
-/// 1403: ERROR_REPLICATION_MASTER_INCOMPATIBLE
-/// "master incompatible"
-/// Will be raised when the replication applier connects to a master that has
+/// 1403: ERROR_REPLICATION_LEADER_INCOMPATIBLE
+/// "leader incompatible"
+/// Will be raised when the replication applier connects to a leader that has
 /// an incompatible version.
-constexpr int TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         = 1403;
+constexpr int TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE                         = 1403;
 
-/// 1404: ERROR_REPLICATION_MASTER_CHANGE
-/// "master change"
-/// Will be raised when the replication applier connects to a different master
+/// 1404: ERROR_REPLICATION_LEADER_CHANGE
+/// "leader change"
+/// Will be raised when the replication applier connects to a different leader
 /// than before.
-constexpr int TRI_ERROR_REPLICATION_MASTER_CHANGE                               = 1404;
+constexpr int TRI_ERROR_REPLICATION_LEADER_CHANGE                               = 1404;
 
 /// 1405: ERROR_REPLICATION_LOOP
 /// "loop detected"
@@ -658,9 +658,15 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
+/// 1447: ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED
+/// "follower transaction intermediate commit already performed"
+/// Will be raised when a follower transaction has already performed an
+/// intermediate commit and must be rolled back.
+constexpr int TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED           = 1447;
+
 /// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
 /// "creating collection failed due to precondition"
-/// Will be raised when updating the plan on collection creatio failed.
+/// Will be raised when updating the plan on collection creation failed.
 constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 1448;
 
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
@@ -774,7 +780,7 @@ constexpr int TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             = 1469;
 
 /// 1470: ERROR_CLUSTER_UNSUPPORTED
-/// "unsupported operation or parameter"
+/// "unsupported operation or parameter for clusters"
 /// Will be raised when there is an attempt to carry out an operation that is
 /// not supported in the context of a sharded collection.
 constexpr int TRI_ERROR_CLUSTER_UNSUPPORTED                                     = 1470;
@@ -1152,6 +1158,12 @@ constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       
 /// Will be raised if and user provided expression fails to evaluate to true
 constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
 
+/// 1595: ERROR_QUERY_WINDOW_AFTER_MODIFICATION
+/// "window operation after data-modification"
+/// Will be raised when a window node is created after a data-modification
+/// operation.
+constexpr int TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION                         = 1595;
+
 /// 1600: ERROR_CURSOR_NOT_FOUND
 /// "cursor not found"
 /// Will be raised when a cursor is requested via its id but a cursor with that
@@ -1281,6 +1293,11 @@ constexpr int TRI_ERROR_LDAP_NOT_ONE_USER_FOUND                                 
 /// "LDAP found a user, but its not the desired one"
 /// LDAP found a user, but its not the desired one
 constexpr int TRI_ERROR_LDAP_USER_NOT_IDENTIFIED                                = 1808;
+
+/// 1809: ERROR_LDAP_OPERATIONS_ERROR
+/// "LDAP returned an operations error"
+/// LDAP returned an operations error
+constexpr int TRI_ERROR_LDAP_OPERATIONS_ERROR                                   = 1809;
 
 /// 1820: ERROR_LDAP_INVALID_MODE
 /// "invalid ldap mode"
@@ -1659,8 +1676,8 @@ constexpr int TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                
 constexpr int TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            = 4002;
 
 /// 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
-/// "in smart vertex collections _key must be prefixed with the value of the
-/// "smart graph attribute"
+/// "in smart vertex collections _key must be a string and prefixed with the
+/// "value of the smart graph attribute"
 /// In a smart vertex collection _key must be prefixed with the value of the
 /// SmartGraph attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         = 4003;
@@ -1910,6 +1927,11 @@ constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               
 /// "analyzers in plan could not be modified"
 /// Plan could not be modified while creating or deleting Analyzers revision
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN              = 7021;
+
+/// 8001: ERROR_AIR_EXECUTION_ERROR
+/// "error during AIR execution"
+/// During the execution of an AIR program an error occurred
+constexpr int TRI_ERROR_AIR_EXECUTION_ERROR                                     = 8001;
 
 
 /// register all errors for ArangoDB

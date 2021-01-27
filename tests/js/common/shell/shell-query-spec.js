@@ -174,6 +174,8 @@ describe('AQL query analyzer', function () {
       }
       expect(q.length).to.equal(1);
       expect(q[0]).to.have.property('id');
+      expect(q[0]).to.have.property('database', '_system');
+      expect(q[0]).to.have.property('user', 'root');
       expect(q[0]).to.have.property('query', query);
       expect(q[0]).to.have.property('bindVars');
       expect(q[0].bindVars).to.eql({ value: 1 });
@@ -203,6 +205,8 @@ describe('AQL query analyzer', function () {
       }
       expect(q.length).to.equal(1);
       expect(q[0]).to.have.property('id');
+      expect(q[0]).to.have.property('database', '_system');
+      expect(q[0]).to.have.property('user', 'root');
       expect(q[0]).to.have.property('query', query);
       expect(q[0]).to.have.property('bindVars');
       expect(q[0].bindVars).to.eql({ });
@@ -258,6 +262,8 @@ describe('AQL query analyzer', function () {
       let queries = testee.slow().filter(filterQueries);
       expect(queries.length).to.equal(1);
       expect(queries[0]).to.have.property('id');
+      expect(queries[0]).to.have.property('database', '_system');
+      expect(queries[0]).to.have.property('user', 'root');
       expect(queries[0]).to.have.property('query', query);
       expect(queries[0]).to.have.property('bindVars');
       expect(queries[0].bindVars).to.eql({ value: 1 });

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,16 +29,19 @@
 using namespace arangodb;
 using namespace arangodb::transaction;
 
-CountCache::CountCache() : count(CountCache::NotPopulated), timestamp(0.0) {}
+CountCache::CountCache(double ttl) 
+    : count(CountCache::NotPopulated), 
+      expireStamp(0.0),
+      ttl(ttl) {}
 
 uint64_t CountCache::get() const {
   return count.load(std::memory_order_relaxed);
 }
 
-uint64_t CountCache::get(double ttl) const {
+uint64_t CountCache::getWithTtl() const {
   // (1) - this acquire-load synchronizes with the release-store (2)
-  double ts = timestamp.load(std::memory_order_acquire);
-  if (ts + Ttl > TRI_microtime()) {
+  double ts = expireStamp.load(std::memory_order_acquire);
+  if (ts < TRI_microtime()) {
     // not yet expired
     return get();
   }
@@ -49,5 +52,5 @@ void CountCache::store(uint64_t value) {
   TRI_ASSERT(value != CountCache::NotPopulated);
   count.store(value, std::memory_order_relaxed);
   // (2) - this release-store synchronizes with the acquire-load (1)
-  timestamp.store(TRI_microtime(), std::memory_order_release);
+  expireStamp.store(TRI_microtime() + ttl, std::memory_order_release);
 }

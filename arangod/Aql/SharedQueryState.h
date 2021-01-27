@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,9 @@
 #include <function2.hpp>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace aql {
 
 class SharedQueryState final : public std::enable_shared_from_this<SharedQueryState> {
@@ -35,13 +39,11 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState();
+  explicit SharedQueryState(application_features::ApplicationServer& server);
+  SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
   void invalidate();
-  bool isValid() const {
-    return _valid.load(std::memory_order_relaxed);
-  }
 
   /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
@@ -72,8 +74,10 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   
   template <typename F>
   void executeLocked(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+      guard.unlock();
+      _cv.notify_all();
       return;
     }
     std::forward<F>(cb)();
@@ -100,7 +104,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
       return false;
     }
     bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
-      if (self->_valid.load()) {
+      if (self->_valid) {
         try {
           cb(true);
         } catch(...) {}
@@ -130,6 +134,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
+  application_features::ApplicationServer& _server;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
@@ -141,8 +146,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   unsigned _numWakeups; // number of times
   unsigned _cbVersion; // increased once callstack is done
   
-  // TODO: make configurable
-  const unsigned _maxTasks = 4;
+  const unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

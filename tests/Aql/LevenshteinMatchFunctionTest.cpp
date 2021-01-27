@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -50,16 +53,17 @@ AqlValue evaluate(AqlValue const& lhs,
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](int, char const*){ });
 
+  VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
-  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([](){
-    static VPackOptions options;
-    return &options;
-  });
+  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
   transaction::Context& trxCtx = trxCtxMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysDo([&trxCtx](){ return &trxCtx; });
-  transaction::Methods& trx = trxMock.get();
+  fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
+  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
+    return trxMock.get();
+  });
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
@@ -72,7 +76,11 @@ AqlValue evaluate(AqlValue const& lhs,
     params.emplace_back(VPackSlice::nullSlice()); // redundant argument
   }
 
-  AqlValue result = Functions::LevenshteinMatch(&expressionContext, &trx, params);
+  arangodb::aql::Function f("LEVENSHTEIN_MATCH", &Functions::LevenshteinMatch);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&f));
+
+  AqlValue result = Functions::LevenshteinMatch(&expressionContext, node, params);
 
   // explicitly call cleanup on the mocked transaction context because
   // for whatever reason the context's dtor does not fire and thus we
@@ -136,7 +144,11 @@ TEST(LevenshteinMatchFunctionTest, test) {
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}), &Damerau);
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Levenshtein);
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Levenshtein);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Damerau);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}));
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Damerau);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}));
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}), &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintNull{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
   assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
@@ -162,6 +174,6 @@ TEST(LevenshteinMatchFunctionTest, test) {
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}));
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Damerau);
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Damerau);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Damerau);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}), &Levenshtein);
 }

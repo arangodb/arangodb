@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,13 +28,13 @@
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::aql;
 
-// @brief constructor
 Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
 
@@ -72,12 +72,18 @@ void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
 
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class NoSubqueryChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+  bool before(ExecutionNode* node) override {
+    TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY);
+    return false;
+  }
+};
 
 // Check the plan for inconsistencies, like more than one parent or dependency,
 // or mismatching parents and dependencies in adjacent nodes.
-class PlanChecker : public WalkerWorker<ExecutionNode> {
+class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
+  explicit PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
 
   bool before(ExecutionNode* node) override {
     bool ok = true;
@@ -243,7 +249,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
     initialPlan->findVarUsage();
-    if (estimateAllPlans || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+    if (estimateAllPlans || queryOptions.profile >= ProfileLevel::Blocks) {
       // if profiling is turned on, we must do the cost estimation here
       // because the cost estimation must be done while the transaction
       // is still running
@@ -314,17 +320,30 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         }
 
         p->findVarUsage();
-
-        // all optimizer rule functions must obey the following guidelines:
-        // - the original plan passed to the rule function must be deleted if
-        //   and only if it has not been added (back) to the optimizer (using
-        //   addPlan).
-        // - if the rule throws, then the original plan will be deleted by the
-        // optimizer.
-        //   thus the rule must not have deleted the plan itself or add it
-        //   back to the optimizer
         p->setValidity(false);
-        rule.func(this, std::move(p), rule);
+
+        if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
+          // run rule with tracing optimizer rule execution time
+          if (_stats.executionTimes == nullptr) {
+            // allocate the map lazily, so we can save the initial memory allocation
+            // in case tracing is disabled.
+            _stats.executionTimes = std::make_unique<std::unordered_map<int, double>>();
+          }
+          TRI_ASSERT(_stats.executionTimes != nullptr);
+
+          double time = TRI_microtime();
+          rule.func(this, std::move(p), rule);
+          time = TRI_microtime() - time;
+          auto [it, inserted] = _stats.executionTimes->try_emplace(rule.level, time);
+          if (!inserted) {
+            // a rule may have been executed before already. in this case, just add to the
+            // already tracked time
+            (*it).second += time;
+          }
+        } else {
+          // run rule without tracing optimizer rules
+          rule.func(this, std::move(p), rule);
+        }
 
         if (!rule.isHidden()) {
           ++_stats.rulesExecuted;
@@ -357,10 +376,19 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   // finalize plans
   for (auto& plan : _plans.list) {
     plan.first->findVarUsage();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
+      // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
+      continue;
+    }
+
+    NoSubqueryChecker checker;
+    plan.first->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
   }
 
   // do cost estimation
-  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= ProfileLevel::Blocks) {
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
     // is still running
@@ -435,5 +463,20 @@ void Optimizer::enableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef 
     }
   } else {
     enableRule(plan, OptimizerRulesFeature::translateRule(name));
+  }
+}
+    
+void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
+  velocypack::ObjectBuilder guard(&b, true);
+  b.add("rulesExecuted", velocypack::Value(rulesExecuted));
+  b.add("rulesSkipped", velocypack::Value(rulesSkipped));
+  b.add("plansCreated", velocypack::Value(plansCreated));
+
+  if (executionTimes != nullptr) {
+    b.add("rules", velocypack::Value(velocypack::ValueType::Object));
+    for (auto const& it : *executionTimes) {
+      b.add(OptimizerRulesFeature::translateRule(it.first), velocypack::Value(it.second));
+    }
+    b.close();
   }
 }

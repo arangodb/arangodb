@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,6 +44,10 @@ ExecContext const ExecContext::Superuser(ExecContext::Type::Internal, /*name*/""
   return ExecContext::Superuser;
 }
 
+/// @brief an internal superuser context, is
+///        a singleton instance, deleting is an error
+/*static*/ ExecContext const& ExecContext::superuser() { return ExecContext::Superuser; }
+
 ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
             std::string const& database, auth::Level systemLevel, auth::Level dbLevel,
             bool isAdminUser)
@@ -50,22 +55,17 @@ ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
         _database(database),
         _type(type),
         _isAdminUser(isAdminUser),
-        _canceled(false),
         _systemDbAuthLevel(systemLevel),
         _databaseAuthLevel(dbLevel) {
   TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
   TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
 }
 
-bool ExecContext::isAuthEnabled() {
+/*static*/ bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   return af->isActive();
 }
-
-/// @brief an internal superuser context, is
-///        a singleton instance, deleting is an error
-ExecContext const& ExecContext::superuser() { return ExecContext::Superuser; }
 
 std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::string const& dbname) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -135,11 +135,11 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     // handle fixed permissions here outside auth module.
     // TODO: move this block above, such that it takes effect
     //       when authentication is disabled
-    if (dbname == StaticStrings::SystemDatabase && coll == TRI_COL_NAME_USERS) {
+    if (dbname == StaticStrings::SystemDatabase && coll == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
-    } else if (coll == "_queues") {
+    } else if (coll == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
-    } else if (coll == "_frontend") {
+    } else if (coll == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }  // intentional fall through
   }

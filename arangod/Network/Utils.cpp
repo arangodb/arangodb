@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 #include "Basics/NumberUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -202,10 +204,10 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::CloseRequested:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
 
-    case fuerte::Error::Timeout:  // No reply, we give up:
+    case fuerte::Error::RequestTimeout:  // No reply, we give up:
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
-    case fuerte::Error::Canceled:
+    case fuerte::Error::ConnectionCanceled:
     case fuerte::Error::QueueCapacityExceeded:  // there is no result
     case fuerte::Error::ReadError:
     case fuerte::Error::WriteError:
@@ -280,9 +282,9 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
 }
 
 std::string fuerteToArangoErrorMessage(network::Response const& res) {
-  if (res.response) {
+  if (res.payloadSize() > 0) {
     // check "errorMessage" attribute first
-    velocypack::Slice s = res.response->slice();
+    velocypack::Slice s = res.slice();
     if (s.isObject()) {
       s = s.get(StaticStrings::ErrorMessage);
       if (s.isString() && s.getStringLength() > 0) {
@@ -309,6 +311,16 @@ int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
 
 std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
   return fuerte::status_code_to_string(res.statusCode());
+}
+
+void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
+  // note: agent can be a nullptr here
+  auto state = ServerState::instance();
+  if (state->isCoordinator() || state->isDBServer()) {
+    req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
+  } else if (state->isAgent() && agent != nullptr) {
+    req.header.addMeta(StaticStrings::ClusterCommSource, agent->id());
+  }
 }
 
 }  // namespace network

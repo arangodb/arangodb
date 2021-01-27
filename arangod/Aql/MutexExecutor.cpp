@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,6 +32,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 #include "Logger/LogMacros.h"
 
@@ -51,18 +54,23 @@ MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
 auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
                                     std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
-  std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
-  choosenMap.reserve(blockMap.size());
+
+  TRI_IF_FAILURE("MutexExecutor::distributeBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   if (block != nullptr) {
-    for (size_t i = 0; i < block->size(); ++i) {
+    std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
+    choosenMap.reserve(blockMap.size());
+
+    for (size_t i = 0; i < block->numRows(); ++i) {
       if (block->isShadowRow(i)) {
         // ShadowRows need to be added to all Clients
         for (auto const& [key, value] : blockMap) {
           choosenMap[key].emplace_back(i);
         }
       } else {
-        auto client = getClient(block, i);
+        auto const& client = getClient(block, i);
         // We can only have clients we are prepared for
         TRI_ASSERT(blockMap.find(client) != blockMap.end());
         choosenMap[client].emplace_back(i);

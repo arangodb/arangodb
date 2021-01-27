@@ -251,21 +251,12 @@
         }
       }.bind(this);
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        processData: false,
-        async: true,
-        success: function (data) {
-          callbackFunction(data.Health);
-        },
-        error: function () {
-          self.renderValue('#clusterCoordinators', 'N/A', true);
-          self.renderValue('#clusterDBServers', 'N/A', true);
-        }
-      });
+      if (window.App && window.App.lastHealthCheckResult) {
+        callbackFunction(window.App.lastHealthCheckResult.Health);
+      } else {
+        self.renderValue('#clusterCoordinators', 'N/A', true);
+        self.renderValue('#clusterDBServers', 'N/A', true);
+      }
     },
 
     initValues: function () {
@@ -315,7 +306,7 @@
           self.chartsOptions[1].options[0].values.push({x: time, y: self.calcTotalHttp(data.http, key)});
 
           // AVERAGE
-          self.chartsOptions[2].options[0].values.push({x: time, y: data.avgRequestTime[key] / self.coordinators.length});
+          self.chartsOptions[2].options[0].values.push({x: time, y: data.avgRequestTime[key]});
         });
         self.historyInit = true;
       } else {
@@ -338,7 +329,7 @@
         // AVERAGE
         self.chartsOptions[2].options[0].values.push({
           x: data.times[data.times.length - 1],
-          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1] / self.coordinators.length
+          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1]
         });
       }
     },

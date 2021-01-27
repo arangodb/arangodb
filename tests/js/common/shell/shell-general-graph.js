@@ -32,9 +32,8 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var graph = require("@arangodb/general-graph");
-var cluster;
-var isOnServer = (typeof ArangoClusterComm === "object");
-if (isOnServer) {
+let cluster;
+if (require("internal").isArangod()) {
   cluster = require("@arangodb/cluster");
 } else {
   cluster = {};

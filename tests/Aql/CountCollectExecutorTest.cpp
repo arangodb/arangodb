@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -105,7 +106,7 @@ class CountCollectExecutorTest
   auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
     auto const outputRegister = RegisterId{inputRegister + 1};
 
-    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister);
+    return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
   }
 
   auto MakeRemoveAllLinesRegisterInfos() -> RegisterInfos {

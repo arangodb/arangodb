@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,7 +84,7 @@ void MigrateTask::run() {
       SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
       metadata.toggleMigrating();
     }
-    _manager.reclaimTable(_table);
+    _manager.reclaimTable(_table, false);
   }
 
   _manager.unprepareTask(_environment);

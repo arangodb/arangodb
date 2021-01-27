@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,10 +116,6 @@ int TRI_CopyStringBuffer(TRI_string_buffer_t*, TRI_string_buffer_t const*);
 /// @brief removes the first characters
 void TRI_EraseFrontStringBuffer(TRI_string_buffer_t*, size_t);
 
-/// @brief removes the first characters but does not clear the remaining
-/// buffer space
-void TRI_MoveFrontStringBuffer(TRI_string_buffer_t*, size_t);
-
 /// @brief replaces characters
 int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t*, char const*, size_t);
 
@@ -172,15 +168,6 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
 int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
                                             char const* str, size_t, bool);
 
-/// @brief appends integer with two digits
-int TRI_AppendInteger2StringBuffer(TRI_string_buffer_t* self, uint32_t attr);
-
-/// @brief appends integer with three digits
-int TRI_AppendInteger3StringBuffer(TRI_string_buffer_t* self, uint32_t attr);
-
-/// @brief appends integer with four digits
-int TRI_AppendInteger4StringBuffer(TRI_string_buffer_t* self, uint32_t attr);
-
 /// @brief appends integer with 8 bits
 int TRI_AppendInt8StringBuffer(TRI_string_buffer_t* self, int8_t attr);
 
@@ -213,9 +200,6 @@ int TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr);
 
 /// @brief appends floating point number with 8 bits
 int TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr);
-
-/// @brief appends time in standard format
-int TRI_AppendTimeStringBuffer(TRI_string_buffer_t* self, int32_t attr);
 
 /// @brief appends csv 32-bit integer
 int TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i);
@@ -368,13 +352,6 @@ class StringBuffer {
     return *this;
   }
 
-  /// @brief removes the first characters but does not clear the remaining
-  /// buffer space
-  StringBuffer& move_front(size_t len) {
-    TRI_MoveFrontStringBuffer(&_buffer, len);
-    return *this;
-  }
-
   /// @brief replaces characters
   StringBuffer& replaceText(char const* str, size_t len) {
     TRI_ReplaceStringStringBuffer(&_buffer, str, len);
@@ -449,24 +426,6 @@ class StringBuffer {
   /// @brief appends a string buffer
   StringBuffer& appendText(StringBuffer const& text) {
     TRI_AppendString2StringBuffer(&_buffer, text.c_str(), text.length());
-    return *this;
-  }
-
-  /// @brief appends integer with two digits
-  StringBuffer& appendInteger2(uint32_t attr) {
-    TRI_AppendInteger2StringBuffer(&_buffer, attr);
-    return *this;
-  }
-
-  /// @brief appends integer with three digits
-  StringBuffer& appendInteger3(uint32_t attr) {
-    TRI_AppendInteger3StringBuffer(&_buffer, attr);
-    return *this;
-  }
-
-  /// @brief appends integer with four digits
-  StringBuffer& appendInteger4(uint32_t attr) {
-    TRI_AppendInteger4StringBuffer(&_buffer, attr);
     return *this;
   }
 
@@ -567,14 +526,6 @@ class StringBuffer {
   /// @brief appends floating point number with 8 bits
   StringBuffer& appendDecimal(double attr) {
     TRI_AppendDoubleStringBuffer(&_buffer, attr);
-    return *this;
-  }
-
-  /// @brief appends time in standard format
-  ///
-  /// This method is implemented here in order to allow inlining.
-  StringBuffer& appendTime(int32_t attr) {
-    TRI_AppendTimeStringBuffer(&_buffer, attr);
     return *this;
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,9 +53,9 @@ bool TransactionalBucket::isMigrated() const {
   return _state.isSet(BucketState::Flag::migrated);
 }
 
-bool TransactionalBucket::isFullyBlacklisted() const {
+bool TransactionalBucket::isFullyBanished() const {
   TRI_ASSERT(isLocked());
-  return (haveOpenTransaction() && _state.isSet(BucketState::Flag::blacklisted));
+  return (haveOpenTransaction() && _state.isSet(BucketState::Flag::banished));
 }
 
 bool TransactionalBucket::isFull() const {
@@ -95,7 +95,7 @@ CachedValue* TransactionalBucket::find(std::uint32_t hash, void const* key,
 
 void TransactionalBucket::insert(std::uint32_t hash, CachedValue* value) {
   TRI_ASSERT(isLocked());
-  TRI_ASSERT(!isBlacklisted(hash));  // checks needs to be done outside
+  TRI_ASSERT(!isBanished(hash));  // checks needs to be done outside
 
   for (std::size_t i = 0; i < slotsData; i++) {
     if (_cachedData[i] == nullptr) {
@@ -121,7 +121,7 @@ CachedValue* TransactionalBucket::remove(std::uint32_t hash, void const* key,
   return value;
 }
 
-CachedValue* TransactionalBucket::blacklist(std::uint32_t hash, void const* key,
+CachedValue* TransactionalBucket::banish(std::uint32_t hash, void const* key,
                                             std::size_t keySize) {
   TRI_ASSERT(isLocked());
   if (!haveOpenTransaction()) {
@@ -131,42 +131,42 @@ CachedValue* TransactionalBucket::blacklist(std::uint32_t hash, void const* key,
   // remove key if it's here
   CachedValue* value = (keySize == 0) ? nullptr : remove(hash, key, keySize);
 
-  if (isBlacklisted(hash)) {
+  if (isBanished(hash)) {
     return value;
   }
 
-  for (std::size_t i = 0; i < slotsBlacklist; i++) {
-    if (_blacklistHashes[i] == 0) {
+  for (std::size_t i = 0; i < slotsBanish; i++) {
+    if (_banishHashes[i] == 0) {
       // found an empty slot
-      _blacklistHashes[i] = hash;
+      _banishHashes[i] = hash;
       return value;
     }
   }
 
-  // no empty slot found, fully blacklist
-  _state.toggleFlag(BucketState::Flag::blacklisted);
+  // no empty slot found, fully banish
+  _state.toggleFlag(BucketState::Flag::banished);
   return value;
 }
 
-bool TransactionalBucket::isBlacklisted(std::uint32_t hash) const {
+bool TransactionalBucket::isBanished(std::uint32_t hash) const {
   TRI_ASSERT(isLocked());
   if (!haveOpenTransaction()) {
     return false;
   }
 
-  if (isFullyBlacklisted()) {
+  if (isFullyBanished()) {
     return true;
   }
 
-  bool blacklisted = false;
-  for (std::size_t i = 0; i < slotsBlacklist; i++) {
-    if (_blacklistHashes[i] == hash) {
-      blacklisted = true;
+  bool banished = false;
+  for (std::size_t i = 0; i < slotsBanish; i++) {
+    if (_banishHashes[i] == hash) {
+      banished = true;
       break;
     }
   }
 
-  return blacklisted;
+  return banished;
 }
 
 CachedValue* TransactionalBucket::evictionCandidate(bool ignoreRefCount) const {
@@ -201,10 +201,10 @@ void TransactionalBucket::evict(CachedValue* value, bool optimizeForInsertion) {
 void TransactionalBucket::clear() {
   TRI_ASSERT(isLocked());
   _state.clear();  // "clear" will keep the lock!
-  for (std::size_t i = 0; i < slotsBlacklist; ++i) {
-    _blacklistHashes[i] = 0;
+  for (std::size_t i = 0; i < slotsBanish; ++i) {
+    _banishHashes[i] = 0;
   }
-  _blacklistTerm = 0;
+  _banishTerm = 0;
   for (std::size_t i = 0; i < slotsData; ++i) {
     _cachedHashes[i] = 0;
     _cachedData[i] = nullptr;
@@ -212,15 +212,15 @@ void TransactionalBucket::clear() {
   _state.unlock();
 }
 
-void TransactionalBucket::updateBlacklistTerm(std::uint64_t term) {
-  if (term > _blacklistTerm) {
-    _blacklistTerm = term;
+void TransactionalBucket::updateBanishTerm(std::uint64_t term) {
+  if (term > _banishTerm) {
+    _banishTerm = term;
 
-    if (isFullyBlacklisted()) {
-      _state.toggleFlag(BucketState::Flag::blacklisted);
+    if (isFullyBanished()) {
+      _state.toggleFlag(BucketState::Flag::banished);
     }
 
-    memset(_blacklistHashes, 0, (slotsBlacklist * sizeof(std::uint32_t)));
+    memset(_banishHashes, 0, (slotsBanish * sizeof(std::uint32_t)));
   }
 }
 
@@ -249,6 +249,6 @@ void TransactionalBucket::moveSlot(std::size_t slot, bool moveToFront) {
 bool TransactionalBucket::haveOpenTransaction() const {
   TRI_ASSERT(isLocked());
   // only have open transactions if term is odd
-  return ((_blacklistTerm & static_cast<uint64_t>(1)) > 0);
+  return ((_banishTerm & static_cast<uint64_t>(1)) > 0);
 }
 }

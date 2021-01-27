@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,9 +89,9 @@ void RocksDBRevisionReplicationIterator::reset() {
   _iter->Seek(_bounds.start());
 }
 
-TRI_voc_rid_t RocksDBRevisionReplicationIterator::revision() const {
+RevisionId RocksDBRevisionReplicationIterator::revision() const {
   TRI_ASSERT(hasMore());
-  return RocksDBKey::documentId(_iter->key()).id();
+  return RevisionId{RocksDBKey::documentId(_iter->key())};
 }
 
 VPackSlice RocksDBRevisionReplicationIterator::document() const {
@@ -104,7 +104,7 @@ void RocksDBRevisionReplicationIterator::next() {
   _iter->Next();
 }
 
-void RocksDBRevisionReplicationIterator::seek(TRI_voc_rid_t rid) {
+void RocksDBRevisionReplicationIterator::seek(RevisionId rid) {
   uint64_t objectId =
       static_cast<RocksDBCollection*>(_collection.getPhysical())->objectId();
   RocksDBKey key;

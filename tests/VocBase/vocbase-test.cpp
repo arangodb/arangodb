@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,8 +40,8 @@
 
 namespace {
 struct TestView : public arangodb::LogicalView {
-  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
-      : arangodb::LogicalView(vocbase, definition, planVersion) {}
+  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+      : arangodb::LogicalView(vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder&, Serialization) const override {
     return arangodb::Result();
@@ -70,9 +71,8 @@ struct ViewFactory : public arangodb::ViewFactory {
 
   virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
                                        TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice const& definition,
-                                       uint64_t planVersion) const override {
-    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+                                       arangodb::velocypack::Slice const& definition) const override {
+    view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
   }
@@ -257,11 +257,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // not present collection (no datasource)
   {
-    EXPECT_FALSE(vocbase.lookupDataSource(100));
+    EXPECT_FALSE(vocbase.lookupDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(vocbase.lookupDataSource("100"));
     EXPECT_FALSE(vocbase.lookupDataSource("testCollection"));
     EXPECT_FALSE(vocbase.lookupDataSource("testCollectionGUID"));
-    EXPECT_FALSE(vocbase.lookupCollection(100));
+    EXPECT_FALSE(vocbase.lookupCollection(arangodb::DataSourceId{100}));
     EXPECT_FALSE(vocbase.lookupCollection("100"));
     EXPECT_FALSE(vocbase.lookupCollection("testCollection"));
     EXPECT_FALSE(vocbase.lookupCollection("testCollectionGUID"));
@@ -269,11 +269,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // not present view (no datasource)
   {
-    EXPECT_FALSE(vocbase.lookupDataSource(200));
+    EXPECT_FALSE(vocbase.lookupDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(vocbase.lookupDataSource("200"));
     EXPECT_FALSE(vocbase.lookupDataSource("testView"));
     EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
-    EXPECT_FALSE(vocbase.lookupView(200));
+    EXPECT_FALSE(vocbase.lookupView(arangodb::DataSourceId{200}));
     EXPECT_FALSE(vocbase.lookupView("200"));
     EXPECT_FALSE(vocbase.lookupView("testView"));
     EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
@@ -287,11 +287,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // not present collection (is view)
   {
-    EXPECT_FALSE(!vocbase.lookupDataSource(200));
+    EXPECT_FALSE(!vocbase.lookupDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!vocbase.lookupDataSource("200"));
     EXPECT_FALSE(!vocbase.lookupDataSource("testView"));
     EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
-    EXPECT_FALSE(vocbase.lookupCollection(200));
+    EXPECT_FALSE(vocbase.lookupCollection(arangodb::DataSourceId{200}));
     EXPECT_FALSE(vocbase.lookupCollection("200"));
     EXPECT_FALSE(vocbase.lookupCollection("testView"));
     EXPECT_FALSE(vocbase.lookupCollection("testViewGUID"));
@@ -301,11 +301,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // not preset view (is collection)
   {
-    EXPECT_FALSE(!vocbase.lookupDataSource(100));
+    EXPECT_FALSE(!vocbase.lookupDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!vocbase.lookupDataSource("100"));
     EXPECT_FALSE(!vocbase.lookupDataSource("testCollection"));
     EXPECT_FALSE(!vocbase.lookupDataSource("testCollectionGUID"));
-    EXPECT_FALSE(vocbase.lookupView(100));
+    EXPECT_FALSE(vocbase.lookupView(arangodb::DataSourceId{100}));
     EXPECT_FALSE(vocbase.lookupView("100"));
     EXPECT_FALSE(vocbase.lookupView("testCollection"));
     EXPECT_FALSE(vocbase.lookupView("testCollectionGUID"));
@@ -313,11 +313,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // present collection
   {
-    EXPECT_FALSE(!vocbase.lookupDataSource(100));
+    EXPECT_FALSE(!vocbase.lookupDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!vocbase.lookupDataSource("100"));
     EXPECT_FALSE(!vocbase.lookupDataSource("testCollection"));
     EXPECT_FALSE(!vocbase.lookupDataSource("testCollectionGUID"));
-    EXPECT_FALSE(!vocbase.lookupCollection(100));
+    EXPECT_FALSE(!vocbase.lookupCollection(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!vocbase.lookupCollection("100"));
     EXPECT_FALSE(!vocbase.lookupCollection("testCollection"));
     EXPECT_FALSE(!vocbase.lookupCollection("testCollectionGUID"));
@@ -328,11 +328,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // present view
   {
-    EXPECT_FALSE(!vocbase.lookupDataSource(200));
+    EXPECT_FALSE(!vocbase.lookupDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!vocbase.lookupDataSource("200"));
     EXPECT_FALSE(!vocbase.lookupDataSource("testView"));
     EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
-    EXPECT_FALSE(!vocbase.lookupView(200));
+    EXPECT_FALSE(!vocbase.lookupView(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!vocbase.lookupView("200"));
     EXPECT_FALSE(!vocbase.lookupView("testView"));
     EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
@@ -345,11 +345,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // not present collection (deleted)
   {
-    EXPECT_FALSE(vocbase.lookupDataSource(100));
+    EXPECT_FALSE(vocbase.lookupDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(vocbase.lookupDataSource("100"));
     EXPECT_FALSE(vocbase.lookupDataSource("testCollection"));
     EXPECT_FALSE(vocbase.lookupDataSource("testCollectionGUID"));
-    EXPECT_FALSE(vocbase.lookupCollection(100));
+    EXPECT_FALSE(vocbase.lookupCollection(arangodb::DataSourceId{100}));
     EXPECT_FALSE(vocbase.lookupCollection("100"));
     EXPECT_FALSE(vocbase.lookupCollection("testCollection"));
     EXPECT_FALSE(vocbase.lookupCollection("testCollectionGUID"));
@@ -360,11 +360,11 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 
   // not present view (deleted)
   {
-    EXPECT_FALSE(vocbase.lookupDataSource(200));
+    EXPECT_FALSE(vocbase.lookupDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(vocbase.lookupDataSource("200"));
     EXPECT_FALSE(vocbase.lookupDataSource("testView"));
     EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
-    EXPECT_FALSE(vocbase.lookupView(200));
+    EXPECT_FALSE(vocbase.lookupView(arangodb::DataSourceId{200}));
     EXPECT_FALSE(vocbase.lookupView("200"));
     EXPECT_FALSE(vocbase.lookupView("testView"));
     EXPECT_FALSE(vocbase.lookupView("testViewGUID"));

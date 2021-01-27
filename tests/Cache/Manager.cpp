@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::Manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,23 +30,29 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CacheManagerTest, test_basic_constructor_function) {
   std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, requestLimit);
+  Manager manager(sharedPRNG, postFn, requestLimit);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -57,7 +60,7 @@ TEST(CacheManagerTest, test_basic_constructor_function) {
   ASSERT_TRUE(requestLimit > manager.globalAllocation());
 
   std::uint64_t bigRequestLimit = 4ULL * 1024ULL * 1024ULL * 1024ULL;
-  Manager bigManager(nullptr, bigRequestLimit);
+  Manager bigManager(sharedPRNG, nullptr, bigRequestLimit);
 
   ASSERT_EQ(bigRequestLimit, bigManager.globalLimit());
 
@@ -72,7 +75,10 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
+  
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
@@ -180,7 +186,10 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
+  
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
   std::size_t threadCount = 4;
   std::uint64_t operationCount = 4ULL * 1024ULL;
 

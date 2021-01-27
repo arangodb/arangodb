@@ -28,42 +28,29 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var db = require("@arangodb").db;
-var ruleName = "reduce-extraction-to-projection";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+let jsunity = require("jsunity");
+let db = require("@arangodb").db;
+const ruleName = "reduce-extraction-to-projection";
 
 function optimizerRuleTestSuite () {
-  var c = null;
-  var cn = "UnitTestsOptimizer";
+  let c = null;
+  const cn = "UnitTestsOptimizer";
 
   return {
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn);
       c = db._create(cn, { numberOfShards: 4 });
 
+      let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        c.insert({ value1: i, value2: "test" + i, foo: { bar: i } });
+        docs.push({ value1: i, value2: "test" + i, foo: { bar: i } });
       }
+      c.insert(docs);
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn);
-      c = null;
     },
 
     testNotActive : function () {
@@ -80,7 +67,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -100,14 +87,14 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn }).plan;
+        let result = AQL_EXPLAIN(query, { "@cn" : cn }).plan;
         let nodeTypes = result.nodes.map(function(node) { return node.type; });
         assertEqual(-1, nodeTypes.indexOf("IndexNode"));
       });
     },
 
     testActive : function () {
-      var queries = [
+      let queries = [
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN 1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc._key",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",
@@ -138,19 +125,19 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
     
     testActiveScanOnly : function () {
-      var queries = [
+      let queries = [
         "FOR doc IN @@cn RETURN 1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN 1",
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -158,7 +145,7 @@ function optimizerRuleTestSuite () {
     testActiveWithIndex : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"] });
 
-      var queries = [
+      let queries = [
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",
         "FOR doc IN @@cn SORT doc.value1 RETURN doc.value1",
         "FOR doc IN @@cn COLLECT v = doc.value1 INTO g RETURN v", // g will be optimized away
@@ -169,7 +156,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -177,7 +164,7 @@ function optimizerRuleTestSuite () {
     testActiveWithIndexMultiple : function () {
       c.ensureIndex({ type: "skiplist", fields: ["foo.bar"] });
 
-      var queries = [
+      let queries = [
         "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar",
         "FOR doc IN @@cn SORT doc.foo.bar RETURN doc.foo.bar",
         "FOR doc IN @@cn COLLECT v = doc.foo.bar INTO g RETURN v", // g will be optimized away
@@ -188,7 +175,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -202,7 +189,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -211,7 +198,7 @@ function optimizerRuleTestSuite () {
     },
     
     testResultsMultiple : function () {
-      var queries = [
+      let queries = [
         [ "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN 42", [ 42 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar", [ 1 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar <= 1 SORT doc.foo.bar RETURN doc.foo.bar", [ 0, 1 ] ],
@@ -219,7 +206,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -238,7 +225,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -249,7 +236,7 @@ function optimizerRuleTestSuite () {
     testResultsWithIndexMultiple : function () {
       c.ensureIndex({ type: "skiplist", fields: ["foo.bar"] });
 
-      var queries = [
+      let queries = [
         [ "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar", [ 1 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar <= 1 SORT doc.foo.bar RETURN doc.foo.bar", [ 0, 1 ] ],
         [ "FOR doc IN @@cn FILTER doc.foo.bar >= 132 && doc.foo.bar <= 134 SORT doc.foo.bar RETURN doc.foo.bar", [ 132, 133, 134 ] ],
@@ -257,7 +244,7 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
+        let result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
@@ -292,7 +279,6 @@ function optimizerRuleTestSuite () {
   };
 }
 
-/// @brief executes the test suite
 jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();

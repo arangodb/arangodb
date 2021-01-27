@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlCallStack.h"
-#include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -29,21 +29,20 @@
 #include <velocypack/velocypack-aliases.h>
 
 // TODO: This class is not yet memory efficient or optimized in any way.
-// it might be reimplement soon to have the above features, Focus now is on
+// it might be reimplemented soon to have the above features, Focus now is on
 // the API we want to use.
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlCallStack::AqlCallStack(AqlCallList call, bool compatibilityMode3_6)
-    : _operations{{std::move(call)}}, _compatibilityMode3_6(compatibilityMode3_6) {}
+AqlCallStack::AqlCallStack(AqlCallList call)
+    : _operations{{std::move(call)}} {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
-    : _operations{other._operations}, _compatibilityMode3_6{other._compatibilityMode3_6} {
+    : _operations{other._operations} {
   // We can only use this constructor on relevant levels
   // All others need to use passThrough constructor
   _operations.emplace_back(std::move(call));
-  _compatibilityMode3_6 = other._compatibilityMode3_6;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   validateNoCallHasSkippedRows();
 #endif
@@ -65,36 +64,13 @@ auto AqlCallStack::validateNoCallHasSkippedRows() -> void {
 #endif
 
 auto AqlCallStack::popCall() -> AqlCallList {
-  TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
-  if (_compatibilityMode3_6 && _operations.empty()) {
-    // This is only for compatibility with 3.6
-    // there we do not have the stack being passed-through
-    // in AQL, we only have a single call.
-    // We can only get into this state in the abscence of
-    // LIMIT => we always do an unlimted softLimit call
-    // to the upwards subquery.
-    // => Simply put another fetchAll Call on the stack.
-    // This code is to be removed in the next version after 3.7
-    _operations.emplace_back(AqlCall{});
-  }
-  auto call = _operations.back();
+  TRI_ASSERT(!_operations.empty());
+  auto call = std::move(_operations.back());
   _operations.pop_back();
   return call;
 }
 
 auto AqlCallStack::peek() const -> AqlCall const& {
-  TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
-  if (is36Compatible() && _operations.empty()) {
-    // This is only for compatibility with 3.6
-    // there we do not have the stack being passed-through
-    // in AQL, we only have a single call.
-    // We can only get into this state in the abscence of
-    // LIMIT => we always do an unlimted softLimit call
-    // to the upwards subquery.
-    // => Simply put another fetchAll Call on the stack.
-    // This code is to be removed in the next version after 3.7
-    _operations.emplace_back(AqlCallList{AqlCall{}});
-  }
   TRI_ASSERT(!_operations.empty());
   return _operations.back().peekNextCall();
 }
@@ -179,23 +155,26 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
 
 auto AqlCallStack::needToCountSubquery() const noexcept -> bool {
   return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    return call.peekNextCall().needSkipMore() || call.peekNextCall().hasLimit();
+    auto const& nextCall = call.peekNextCall();
+    return nextCall.needSkipMore() || nextCall.hasLimit();
   });
 }
 
 auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
   return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    return call.peekNextCall().needSkipMore() || call.peekNextCall().hardLimit == 0;
+    auto const& nextCall = call.peekNextCall();
+    return nextCall.needSkipMore() || nextCall.hardLimit == 0;
   });
 }
 
 auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   TRI_ASSERT(needToCountSubquery());
-  for (size_t i = 0; i < _operations.size(); ++i) {
-    auto& call = _operations.at(i);
+  size_t const n = _operations.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto& call = _operations[i];
     auto const& nextCall = call.peekNextCall();
      if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
-      return _operations.size() - i - 1;
+      return n - i - 1;
     }
   }
   return 0;
@@ -223,18 +202,6 @@ auto AqlCallStack::getCallAtDepth(size_t depth) const -> AqlCall const& {
 }
 
 auto AqlCallStack::modifyTopCall() -> AqlCall& {
-  TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
-  if (is36Compatible() && _operations.empty()) {
-    // This is only for compatibility with 3.6
-    // there we do not have the stack passed-through
-    // in AQL, we only have a single call.
-    // We can only get into this state in the abscence of
-    // LIMIT => we always do an unlimted softLimit call
-    // to the upwards subquery.
-    // => Simply put another fetchAll Call on the stack.
-    // This code is to be removed in the next version after 3.7
-    _operations.emplace_back(AqlCallList{AqlCall{}});
-  }
   TRI_ASSERT(!_operations.empty());
   return modifyCallAtDepth(0);
 }
@@ -244,9 +211,9 @@ auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
     if (!list.hasMoreCalls()) {
       return false;
     }
-    auto const& call = list.peekNextCall();
+    auto const& nextCall = list.peekNextCall();
     // We cannot continue if any of our calls has a softLimit reached.
-    return !(call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0);
+    return !(nextCall.hasSoftLimit() && nextCall.getLimit() == 0 && nextCall.getOffset() == 0);
   });
 }
 

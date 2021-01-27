@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -62,10 +63,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) override;
-
-  /// @brief sets the current index selectivity estimates
-  void setClusterIndexEstimates(IndexEstMap&& estimates) override;
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TransactionId tid) override;
 
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
@@ -80,14 +78,14 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  futures::Future<OperationResult> figures() override;
+  futures::Future<OperationResult> figures(bool details, OperationOptions const& options) override;
 
   /// @brief closes an open collection
   int close() override;
   void load() override;
   void unload() override;
 
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
+  RevisionId revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
   /// @brief report extra memory used by indexes etc.
@@ -120,18 +118,18 @@ class ClusterCollection final : public PhysicalCollection {
   Result compact() override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
-  
+
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
+                   std::pair<LocalDocumentId, RevisionId>& result) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result) override;
+              IndexIterator::DocumentCallback const& cb) const override;
+  
+  bool read(transaction::Methods* trx, LocalDocumentId const& token,
+            IndexIterator::DocumentCallback const& cb) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
-
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options) override;
@@ -149,7 +147,7 @@ class ClusterCollection final : public PhysicalCollection {
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
-  void figuresSpecific(arangodb::velocypack::Builder&) override;
+  void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
 
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);

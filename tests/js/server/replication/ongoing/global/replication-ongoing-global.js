@@ -40,7 +40,7 @@ const console = require('console');
 const internal = require('internal');
 
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
@@ -443,15 +443,17 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 1000; i++) {
-            c.insert({
+            docs.push({
               value: i
             });
           }
+          c.insert(docs);
         },
 
         function (state) {
-          db._collection(cn).truncate();
+          db._collection(cn).truncate({ compact: false });
           assertEqual(db._collection(cn).count(), 0);
           assertEqual(db._collection(cn).toArray().length, 0);
         },

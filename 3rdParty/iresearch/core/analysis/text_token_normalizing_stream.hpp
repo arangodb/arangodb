@@ -28,8 +28,8 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an analyser capable of normalizing the text, treated as a single
@@ -65,7 +65,7 @@ class text_token_normalizing_stream
   bool term_eof_;
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

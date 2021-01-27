@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,11 +29,11 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
+#include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -109,7 +110,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   if (!_file.empty()) {
     if (!FileUtils::exists(_file)) {
       LOG_TOPIC("f21f9", FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
     }
 
     auto local = _file + ".local";

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -90,7 +91,7 @@ AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall
 
 [[nodiscard]] auto AqlCallList::hasDefaultCalls() const noexcept -> bool {
   return _defaultCall.has_value();
-};
+}
 
 [[nodiscard]] auto AqlCallList::modifyNextCall() -> AqlCall& {
   TRI_ASSERT(hasMoreCalls());
@@ -135,13 +136,13 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     }
     std::vector<AqlCall> res;
     res.reserve(slice.length());
-    for (auto const& c : VPackArrayIterator(slice)) {
+    for (VPackSlice const c : VPackArrayIterator(slice)) {
       auto maybeAqlCall = AqlCall::fromVelocyPack(c);
       if (ADB_UNLIKELY(maybeAqlCall.fail())) {
         auto message = std::string{"When deserializing AqlCallList: entry "};
         message += std::to_string(res.size());
         message += ": ";
-        message += std::move(maybeAqlCall).errorMessage();
+        message += maybeAqlCall.errorMessage();
         return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
       }
       res.emplace_back(maybeAqlCall.get());
@@ -165,7 +166,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     auto maybeAqlCall = AqlCall::fromVelocyPack(slice);
     if (ADB_UNLIKELY(maybeAqlCall.fail())) {
       auto message = std::string{"When deserializing AqlCallList: default "};
-      message += std::move(maybeAqlCall).errorMessage();
+      message += maybeAqlCall.errorMessage();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
     return {std::move(maybeAqlCall.get())};

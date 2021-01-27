@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,7 +55,7 @@ AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
   // noskip && no data => state != HASMORE
   // <=> skipped || data || state != HASMORE
   TRI_ASSERT(!_skipped.nothingSkipped() ||
-             (_block != nullptr && _block->numEntries() > 0) ||
+             (_block != nullptr && _block->numRows() > 0) ||
              _state != ExecutionState::HASMORE);
 }
 

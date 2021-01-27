@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -510,7 +510,6 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
 
 static bool PrintVelocyPack(int fd, VPackSlice const& slice, bool appendNewline) {
   if (slice.isNone()) {
-    // sanity check
     return false;
   }
 
@@ -779,78 +778,6 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       TRI_ASSERT(false);
       return 0;
   }
-}
-
-VPackBuilder VelocyPackHelper::merge(VPackSlice const& lhs, VPackSlice const& rhs,
-                                     bool nullMeansRemove, bool mergeObjects) {
-  return VPackCollection::merge(lhs, rhs, mergeObjects, nullMeansRemove);
-}
-
-double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
-  TRI_ASSERT(!slice.isNone());
-
-  failed = false;
-  switch (slice.type()) {
-    case VPackValueType::None:
-    case VPackValueType::Null:
-      return 0.0;
-    case VPackValueType::Bool:
-      return (slice.getBoolean() ? 1.0 : 0.0);
-    case VPackValueType::Double:
-    case VPackValueType::Int:
-    case VPackValueType::UInt:
-    case VPackValueType::SmallInt:
-      return slice.getNumericValue<double>();
-    case VPackValueType::String: {
-      std::string tmp(slice.copyString());
-      try {
-        // try converting string to number
-        return std::stod(tmp);
-      } catch (...) {
-        if (tmp.empty()) {
-          return 0.0;
-        }
-        // conversion failed
-      }
-      break;
-    }
-    case VPackValueType::Array: {
-      VPackValueLength const n = slice.length();
-
-      if (n == 0) {
-        return 0.0;
-      } else if (n == 1) {
-        return VelocyPackHelper::toDouble(slice.at(0).resolveExternal(), failed);
-      }
-      break;
-    }
-    case VPackValueType::External: {
-      return VelocyPackHelper::toDouble(slice.resolveExternal(), failed);
-    }
-    case VPackValueType::Illegal:
-    case VPackValueType::Object:
-    case VPackValueType::UTCDate:
-    case VPackValueType::MinKey:
-    case VPackValueType::MaxKey:
-    case VPackValueType::Binary:
-    case VPackValueType::BCD:
-    case VPackValueType::Custom:
-    case VPackValueType::Tagged:
-      break;
-  }
-
-  failed = true;
-  return 0.0;
-}
-
-// modify a VPack double value in place
-void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
-  TRI_ASSERT(slice.isDouble());
-  // get pointer to the start of the value
-  uint8_t* p = const_cast<uint8_t*>(slice.begin());
-  // skip one byte for the header and overwrite
-  // some architectures do not support unaligned writes, so copy bytewise
-  memcpy(p + 1, &value, sizeof(double));
 }
 
 bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {

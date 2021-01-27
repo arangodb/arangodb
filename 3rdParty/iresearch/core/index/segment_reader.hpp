@@ -27,7 +27,7 @@
 #include "index_reader.hpp"
 #include "utils/object_pool.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for a segment reader
@@ -151,6 +151,6 @@ template<>
     const segment_meta& meta
 ) noexcept;
 
-NS_END
+}
 
 #endif

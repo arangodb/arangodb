@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::TransactionalCache
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,22 +29,27 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024);
   auto cache1 = manager.createCache(CacheType::Transactional, false, 256 * 1024);
   auto cache2 = manager.createCache(CacheType::Transactional, false, 512 * 1024);
 
@@ -63,7 +65,9 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
 TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -114,7 +118,9 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
 TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -169,10 +175,12 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   manager.destroyCache(cache);
 }
 
-TEST(CacheTransactionalCacheTest, verify_blacklisting_works_as_expected) {
+TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   Transaction* tx = manager.beginTransaction(false);
@@ -193,7 +201,7 @@ TEST(CacheTransactionalCacheTest, verify_blacklisting_works_as_expected) {
   }
 
   for (std::uint64_t i = 512; i < 1024; i++) {
-    auto status = cache->blacklist(&i, sizeof(std::uint64_t));
+    auto status = cache->banish(&i, sizeof(std::uint64_t));
     ASSERT_TRUE(status.ok());
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
@@ -239,7 +247,9 @@ TEST(CacheTransactionalCacheTest, verify_cache_can_grow_correctly_when_it_runs_o
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   auto cache = manager.createCache(CacheType::Transactional);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -266,7 +276,9 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache = manager.createCache(CacheType::Transactional);
 
@@ -293,7 +305,7 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
     // initialize valid range for keys that *might* be in cache
     std::uint64_t validLower = lower;
     std::uint64_t validUpper = lower + initialInserts - 1;
-    std::uint64_t blacklistUpper = validUpper;
+    std::uint64_t banishUpper = validUpper;
 
     // commence mixed workload
     for (std::uint64_t i = 0; i < operationCount; i++) {
@@ -313,8 +325,8 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
         }
 
         std::uint64_t item = ++validUpper;
-        if (validUpper > blacklistUpper) {
-          blacklistUpper = validUpper;
+        if (validUpper > banishUpper) {
+          banishUpper = validUpper;
         }
         CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
                                                     &item, sizeof(std::uint64_t));
@@ -323,13 +335,13 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
         if (status.fail()) {
           delete value;
         }
-      } else if (r >= 80) {  // blacklist something
-        if (blacklistUpper == upper) {
+      } else if (r >= 80) {  // banish something
+        if (banishUpper == upper) {
           continue;  // already maxed out range
         }
 
-        std::uint64_t item = ++blacklistUpper;
-        cache->blacklist(&item, sizeof(std::uint64_t));
+        std::uint64_t item = ++banishUpper;
+        cache->banish(&item, sizeof(std::uint64_t));
       } else {  // lookup something
         std::uint64_t item =
             RandomGenerator::interval(static_cast<int64_t>(validLower),

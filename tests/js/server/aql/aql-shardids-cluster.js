@@ -152,9 +152,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     assertFalse(hasDistributeNode(plan.nodes));
     const allRestricted = allNodesOfTypeAreRestrictedToShard(plan.nodes,
                                                              nodeType, c);
-    if (!allRestricted) {
-      db._explain(query, {}, disableSingleDocOp);
-    }
     assertTrue(allRestricted);
   };
 

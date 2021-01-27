@@ -38,7 +38,7 @@
 #include "utils/utf8_utils.hpp"
 #include "utils/std.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -90,16 +90,22 @@ struct aggregated_stats_visitor : util::noncopyable {
                   const irs::term_reader& field,
                   uint32_t docs_count) const {
     it = field.iterator();
+    this->segment = &segment;
+    this->field = &field;
     state = &states.insert(segment);
     state->reader = &field;
     state->scored_states_estimation += docs_count;
   }
 
   void operator()(seek_term_iterator::cookie_ptr& cookie) const {
+    assert(it);
+
     if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
       return;
     }
 
+    assert(segment);
+    assert(field);
     term_stats.collect(*segment, *field, 0, *it);
     state->scored_states.emplace_back(std::move(cookie), 0, boost);
   }
@@ -108,8 +114,8 @@ struct aggregated_stats_visitor : util::noncopyable {
   StatesType& states;
   mutable seek_term_iterator::ptr it;
   mutable typename StatesType::state_type* state{};
-  const sub_reader* segment{};
-  const term_reader* field{};
+  mutable const sub_reader* segment{};
+  mutable const term_reader* field{};
   boost_t boost{ irs::no_boost() };
 };
 
@@ -249,9 +255,9 @@ filter::prepared::ptr prepare_levenshtein_filter(
     boost, sort::MergeType::MAX);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   by_edit_distance implementation
@@ -331,4 +337,4 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
   );
 }
 
-NS_END
+}

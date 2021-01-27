@@ -317,7 +317,7 @@ describe ArangoDB do
         doc.parsed_response['cached'].should eq(false)
       end
 
-      it "creates a cursor" do
+      it "creates a usable cursor" do
         cmd = api
         body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-create-for-limit-return", cmd, :body => body)

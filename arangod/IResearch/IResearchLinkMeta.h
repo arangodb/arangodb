@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -29,8 +30,9 @@
 #include <vector>
 
 #include "analysis/analyzer.hpp"
-#include "utils/object_pool.hpp"
 #include "utils/compression.hpp"
+#include "utils/object_pool.hpp"
+#include "utils/range.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
@@ -142,7 +144,7 @@ struct FieldMeta {
   bool init(arangodb::application_features::ApplicationServer& server,
             velocypack::Slice const& slice,
             std::string& errorField,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
+            irs::string_ref const defaultVocbase,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
             std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers = nullptr);
@@ -173,6 +175,7 @@ struct FieldMeta {
   size_t memory() const noexcept;
 
   std::vector<Analyzer> _analyzers; // analyzers to apply to every field
+  size_t _primitiveOffset;
   Fields _fields;  // explicit list of fields to be indexed with optional overrides
   ValueStorage _storeValues{ ValueStorage::NONE };  // how values should be stored inside the view
   bool _includeAllFields{ false }; // include all fields or only fields listed in '_fields'
@@ -189,19 +192,29 @@ struct IResearchLinkMeta : public FieldMeta {
         _analyzerDefinitions(mask),
         _sort(mask),
         _storedValues(mask),
-        _sortCompression(mask) {
+        _sortCompression(mask),
+        _collectionName(mask) {
     }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
     bool _sortCompression;
+    bool _collectionName;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+
+  /// @brief Linked collection name. Stored here for cluster deployment only.
+  /// For sigle server collection could be renamed so can`t store it here or 
+  /// syncronisation will be needed. For cluster rename is not possible so 
+  /// there is no problem but solved recovery issue - we will be able to index
+  /// _id attribute without doing agency request for collection name
+  std::string _collectionName;
+
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
@@ -244,7 +257,7 @@ struct IResearchLinkMeta : public FieldMeta {
       arangodb::velocypack::Slice const& slice,
       bool readAnalyzerDefinition,
       std::string& errorField,
-      TRI_vocbase_t const* defaultVocbase = nullptr,
+      irs::string_ref const defaultVocbase = irs::string_ref::NIL,
       IResearchLinkMeta const& defaults = DEFAULT(),
       Mask* mask = nullptr);
 

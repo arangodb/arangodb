@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,6 @@ class V8Wrapper {
   V8Wrapper(v8::Isolate* isolate, STRUCT* object, void (*free)(STRUCT* object),
             v8::Handle<v8::Object> result)
       : _refs(0), _object(object), _free(free), _isolate(isolate) {
-    // sanity checks
     TRI_ASSERT(_handle.IsEmpty());
     TRI_ASSERT(result->InternalFieldCount() > 0);
 

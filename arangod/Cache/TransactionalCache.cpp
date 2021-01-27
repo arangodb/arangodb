@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,7 +87,7 @@ Result TransactionalCache::insert(CachedValue* value) {
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    bool allowed = !bucket.isBlacklisted(hash);
+    bool allowed = !bucket.isBanished(hash);
     if (allowed) {
       std::int64_t change = static_cast<std::int64_t>(value->size());
       CachedValue* candidate = bucket.find(hash, value->key(), value->keySize());
@@ -179,7 +179,7 @@ Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
   return status;
 }
 
-Result TransactionalCache::blacklist(void const* key, std::uint32_t keySize) {
+Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
   std::uint32_t hash = hashKey(key, keySize);
@@ -195,7 +195,7 @@ Result TransactionalCache::blacklist(void const* key, std::uint32_t keySize) {
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.blacklist(hash, key, keySize);
+    CachedValue* candidate = bucket.banish(hash, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -293,46 +293,46 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   // lock current bucket
   Table::BucketLocker sourceGuard(sourcePtr, _table.load(), Cache::triesGuarantee);
   TransactionalBucket& source = sourceGuard.bucket<TransactionalBucket>();
-  term = std::max(term, source._blacklistTerm);
+  term = std::max(term, source._banishTerm);
 
   {
     // lock target bucket(s)
     std::vector<Table::BucketLocker> targetGuards = targets->lockAllBuckets();
 
     targets->applyToAllBuckets<TransactionalBucket>([&term](TransactionalBucket& bucket) -> bool {
-      term = std::max(term, bucket._blacklistTerm);
+      term = std::max(term, bucket._banishTerm);
       return true;
     });
 
     // update all buckets to maximum term found (guaranteed at most the current)
-    source.updateBlacklistTerm(term);
+    source.updateBanishTerm(term);
     targets->applyToAllBuckets<TransactionalBucket>([&term](TransactionalBucket& bucket) -> bool {
-      bucket.updateBlacklistTerm(term);
+      bucket.updateBanishTerm(term);
       return true;
     });
 
-    // now actually migrate any relevant blacklist terms
-    if (source.isFullyBlacklisted()) {
+    // now actually migrate any relevant banish terms
+    if (source.isFullyBanished()) {
       targets->applyToAllBuckets<TransactionalBucket>([](TransactionalBucket& bucket) -> bool {
-        if (!bucket.isFullyBlacklisted()) {
-          bucket._state.toggleFlag(BucketState::Flag::blacklisted);
+        if (!bucket.isFullyBanished()) {
+          bucket._state.toggleFlag(BucketState::Flag::banished);
         }
         return true;
       });
     } else {
-      for (std::size_t j = 0; j < TransactionalBucket::slotsBlacklist; j++) {
-        std::uint32_t hash = source._blacklistHashes[j];
+      for (std::size_t j = 0; j < TransactionalBucket::slotsBanish; j++) {
+        std::uint32_t hash = source._banishHashes[j];
         if (hash != 0) {
           auto targetBucket =
               reinterpret_cast<TransactionalBucket*>(targets->fetchBucket(hash));
-          CachedValue* candidate = targetBucket->blacklist(hash, nullptr, 0);
+          CachedValue* candidate = targetBucket->banish(hash, nullptr, 0);
           if (candidate != nullptr) {
             std::uint64_t size = candidate->size();
             freeValue(candidate);
             reclaimMemory(size);
             newTable->slotEmptied();
           }
-          source._blacklistHashes[j] = 0;
+          source._banishHashes[j] = 0;
         }
       }
     }
@@ -346,7 +346,7 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
 
         auto targetBucket =
             reinterpret_cast<TransactionalBucket*>(targets->fetchBucket(hash));
-        if (targetBucket->isBlacklisted(hash)) {
+        if (targetBucket->isBanished(hash)) {
           std::uint64_t size = value->size();
           freeValue(value);
           reclaimMemory(size);
@@ -402,7 +402,7 @@ std::tuple<Result, Table::BucketLocker> TransactionalCache::getBucket(
   std::uint64_t term = _manager->_transactions.term();
   guard = table->fetchAndLockBucket(hash, maxTries);
   if (guard.isLocked()) {
-    guard.bucket<TransactionalBucket>().updateBlacklistTerm(term);
+    guard.bucket<TransactionalBucket>().updateBanishTerm(term);
   } else {
     status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }

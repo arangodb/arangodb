@@ -143,7 +143,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "creating a new document" do
+      it "creating a new document, waitForSync=true" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body, :headers => {})
@@ -175,7 +175,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new document, setting compatibility header" do
+      it "creating a new document, setting compatibility header, waitForSync=true" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
@@ -207,7 +207,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new document complex body" do
+      it "creating a new document complex body, waitForSync=true" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body, :headers => {})
@@ -246,7 +246,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new document complex body, setting compatibility header " do
+      it "creating a new document complex body, setting compatibility header, waitForSync=true " do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
@@ -285,7 +285,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new umlaut document" do
+      it "creating a new umlaut document, waitForSync=true" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
         doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body, :headers => {})
@@ -329,7 +329,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new umlaut document, setting compatibility header" do
+      it "creating a new umlaut document, setting compatibility header, waitForSync=true" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
         doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
@@ -374,7 +374,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new not normalized umlaut document" do
+      it "creating a new not normalized umlaut document, waitForSync=true" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Grüß Gott.\" }"
         doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body, :headers => {})
@@ -419,7 +419,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new not normalized umlaut document, setting compatibility header" do
+      it "creating a new not normalized umlaut document, setting compatibility header, waitForSync=true" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Grüß Gott.\" }"
         doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
@@ -464,7 +464,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a document with an existing id" do
+      it "creating a document with an existing id, waitForSync=true" do
         @key = "a_new_key"
 
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
@@ -498,7 +498,7 @@ describe ArangoDB do
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
       end
 
-      it "creating a document with an existing id, setting compatibility header" do
+      it "creating a document with an existing id, setting compatibility header, waitForSync=true" do
         @key = "a_new_key"
 
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
@@ -532,7 +532,7 @@ describe ArangoDB do
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
       end
 
-      it "creating a document with a duplicate existing id" do
+      it "creating a document with a duplicate existing id, waitForSync=true" do
         @key = "a_new_key"
 
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
@@ -568,7 +568,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "creating a new document" do
+      it "creating a new document, waitForsync = False" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
         doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
@@ -600,7 +600,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(0)
       end
 
-      it "creating a new document, setting compatibility header" do
+      it "creating a new document, setting compatibility header, waitForsync = False" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
         doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body)

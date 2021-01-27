@@ -28,7 +28,7 @@
 #include "utils/json_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 const irs::string_ref MIN_PARAM_NAME               = "min";
 const irs::string_ref MAX_PARAM_NAME               = "max";
@@ -258,10 +258,10 @@ bool normalize_json_config(const irs::string_ref& args, std::string& config) {
 
 REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream_base, make_json, normalize_json_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 /*static*/ analyzer::ptr ngram_token_stream<StreamType>::make(
@@ -465,8 +465,8 @@ bool ngram_token_stream<StreamType>::next() noexcept {
 }
 
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 // Making library export see template instantinations
 template class irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>;

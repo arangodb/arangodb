@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -199,9 +199,6 @@ struct config_t {
 
   /// @brief remove endpoint from gossip peers
   bool addGossipPeer(std::string const& endpoint);
-
-  /// @brief add active agents
-  bool activePushBack(std::string const& id);
 
   /// @brief my endpoint
   std::string endpoint() const;

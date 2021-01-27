@@ -28,7 +28,7 @@
 #include "utils/index_utils.hpp"
 #include "iql/query_builder.hpp"
 
-NS_LOCAL
+namespace {
 
 class failing_directory : public tests::directory_mock {
  public:
@@ -236,7 +236,7 @@ class failing_directory : public tests::directory_mock {
   mutable std::set<fail_t, fail_less> failures_;
 }; // failing_directory
 
-NS_END
+}
 
 TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
   tests::json_doc_generator gen(
@@ -274,7 +274,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -317,7 +317,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -402,7 +402,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -433,7 +433,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -466,7 +466,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -536,7 +536,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -578,7 +578,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -641,7 +641,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -680,7 +680,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -738,7 +738,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
@@ -804,7 +804,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
@@ -818,7 +818,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // nothing to flush
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -906,7 +906,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // segment meta
     while (!dir.no_failures()) {
@@ -979,7 +979,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1061,7 +1061,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -1119,7 +1119,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1198,7 +1198,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -1249,7 +1249,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1322,14 +1322,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE, "_3.0.sm"); // fail at segment meta creation on consolidation
@@ -1443,14 +1443,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE, "_4.0.sm"); // fail at segment meta creation on consolidation
@@ -1465,7 +1465,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     ));
     ASSERT_TRUE(writer->begin()); // start transaction
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
-    writer->commit(); // commit started transaction
+    ASSERT_FALSE(writer->commit()); // commit started transaction
     ASSERT_THROW(writer->begin(), irs::io_error); // start transaction to commit pending consolidation
 
     // segment meta synchronization failure
@@ -1475,7 +1475,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     ));
     ASSERT_TRUE(writer->begin()); // start transaction
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
-    writer->commit(); // commit started transaction
+    ASSERT_FALSE(writer->commit()); // commit started transaction
     ASSERT_THROW(writer->begin(), irs::io_error); // start transaction to commit pending consolidation
 
     // check data
@@ -1620,14 +1620,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     failing_dir.register_failure(failing_directory::Failure::CREATE, "_3.0.sm"); // fail at segment meta creation on consolidation
@@ -1646,7 +1646,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     dir.intermediate_commits_lock.unlock(); // finish consolidation
     consolidation_thread.join(); // wait for the consolidation to complete
@@ -1752,14 +1752,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     failing_dir.register_failure(failing_directory::Failure::SYNC, "_3.0.sm"); // fail at segment meta synchronization on consolidation
@@ -1778,7 +1778,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     dir.intermediate_commits_lock.unlock(); // finish consolidation
     consolidation_thread.join(); // wait for the consolidation to complete
@@ -1897,14 +1897,14 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE, "_3.doc"); // postings list (documents)
@@ -2010,14 +2010,14 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::SYNC, "_3.doc"); // postings list (documents)
@@ -2123,7 +2123,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   auto src_index = irs::directory_reader::open(src_dir);
@@ -2151,7 +2151,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_THROW(writer->import(*src_index), irs::io_error);
@@ -2188,7 +2188,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_THROW(writer->import(*src_index), irs::io_error);
@@ -2198,7 +2198,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // successful commit
     ASSERT_TRUE(writer->import(*src_index));
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2256,7 +2256,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(writer->import(*src_index));
@@ -2293,7 +2293,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(writer->import(*src_index));
@@ -2303,7 +2303,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // successful commit
     ASSERT_TRUE(writer->import(*src_index));
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2384,7 +2384,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer,
@@ -2432,7 +2432,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer,
@@ -2454,7 +2454,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ));
 
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2522,7 +2522,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -2537,7 +2537,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     ), irs::io_error);
 
     ASSERT_TRUE(writer->begin()); // nothing to commit
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2605,7 +2605,7 @@ TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segmen
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -2672,7 +2672,7 @@ TEST(index_death_test_formats_10, open_reader) {
 
     writer->documents().remove(*query_doc2.filter);
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // register failures
@@ -2776,7 +2776,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 
     writer->documents().remove(*query_doc2.filter);
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check data
@@ -2889,7 +2889,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
     writer->documents().remove(*query_doc2.filter);
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check data

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::Rebalancer
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +30,7 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/voc-errors.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -42,9 +40,12 @@
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 struct ThreadGuard {
   ThreadGuard(ThreadGuard&&) = default;
@@ -75,7 +76,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 128 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -197,7 +200,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 128 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -245,7 +250,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
     // initialize valid range for keys that *might* be in cache
     std::uint64_t validLower = lower;
     std::uint64_t validUpper = lower + initialInserts - 1;
-    std::uint64_t blacklistUpper = validUpper;
+    std::uint64_t banishUpper = validUpper;
 
     // commence mixed workload
     for (std::uint64_t i = 0; i < operationCount; i++) {
@@ -266,8 +271,8 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
         }
 
         std::uint64_t item = ++validUpper;
-        if (validUpper > blacklistUpper) {
-          blacklistUpper = validUpper;
+        if (validUpper > banishUpper) {
+          banishUpper = validUpper;
         }
         std::size_t cacheIndex = item % cacheCount;
         CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
@@ -277,14 +282,14 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
         if (status.fail()) {
           delete value;
         }
-      } else if (r >= 80) {  // blacklist something
-        if (blacklistUpper == upper) {
+      } else if (r >= 80) {  // banish something
+        if (banishUpper == upper) {
           continue;  // already maxed out range
         }
 
-        std::uint64_t item = ++blacklistUpper;
+        std::uint64_t item = ++banishUpper;
         std::size_t cacheIndex = item % cacheCount;
-        caches[cacheIndex]->blacklist(&item, sizeof(std::uint64_t));
+        caches[cacheIndex]->banish(&item, sizeof(std::uint64_t));
       } else {  // lookup something
         std::uint64_t item =
             RandomGenerator::interval(static_cast<int64_t>(validLower),

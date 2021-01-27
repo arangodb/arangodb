@@ -34,7 +34,7 @@
 #include "index/field_meta.hpp"
 #include "search/filter_visitor.hpp"
 
-NS_LOCAL
+namespace {
 
 //////////////////////////////////////////////////////////////////////////////
 // example term structure, in order of term iteration/comparison, N = 4:
@@ -525,9 +525,9 @@ struct granular_states {
   std::unordered_multimap<const irs::sub_reader*, irs::multiterm_state> states;
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
-NS_ROOT
+namespace iresearch {
 
 // sequential 'granularity_level' value, cannot use 'iresearch::increment' since it can be 0
 void set_granular_term(by_granular_range_options::terms& boundary,
@@ -656,4 +656,4 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
   ::visit(segment, reader, rng, visitor);
 }
 
-NS_END // ROOT
+} // ROOT

@@ -26,7 +26,7 @@
 #include "formats.hpp"
 #include "index/field_meta.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a term_reader implementation with docs_count but without terms
@@ -49,27 +49,27 @@ class empty_term_reader final : public irs::term_reader {
     return irs::field_meta::EMPTY;
   }
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
   // total number of terms
-  virtual size_t size() const noexcept {
+  virtual size_t size() const noexcept override {
     return 0; // no terms in reader
   }
 
   // total number of documents
-  virtual uint64_t docs_count() const noexcept {
+  virtual uint64_t docs_count() const noexcept override {
     return docs_count_;
   }
 
   // least significant term
-  virtual const irs::bytes_ref& (min)() const noexcept {
+  virtual const irs::bytes_ref& (min)() const noexcept override {
     return irs::bytes_ref::NIL;
   }
 
   // most significant term
-  virtual const irs::bytes_ref& (max)() const noexcept {
+  virtual const irs::bytes_ref& (max)() const noexcept override {
     return irs::bytes_ref::NIL;
   }
 
@@ -77,6 +77,6 @@ class empty_term_reader final : public irs::term_reader {
   uint64_t docs_count_;
 };
 
-NS_END // ROOT
+} // ROOT
 
 #endif

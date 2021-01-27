@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,6 +36,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -78,18 +80,18 @@ std::shared_ptr<transaction::Context> GraphManager::ctx() const {
   return transaction::V8Context::CreateWhenRequired(_vocbase, true);
 }
 
-OperationResult GraphManager::createEdgeCollection(std::string const& name,
-                                                   bool waitForSync, VPackSlice options) {
+Result GraphManager::createEdgeCollection(std::string const& name,
+                                          bool waitForSync, VPackSlice options) {
   return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync, options);
 }
 
-OperationResult GraphManager::createVertexCollection(std::string const& name, bool waitForSync,
-                                                     VPackSlice options) {
+Result GraphManager::createVertexCollection(std::string const& name,
+                                            bool waitForSync, VPackSlice options) {
   return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSync, options);
 }
 
-OperationResult GraphManager::createCollection(std::string const& name, TRI_col_type_e colType,
-                                               bool waitForSync, VPackSlice options) {
+Result GraphManager::createCollection(std::string const& name, TRI_col_type_e colType,
+                                      bool waitForSync, VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
   auto& vocbase = ctx()->vocbase();
@@ -101,7 +103,7 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
     Result res =
         ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server(), true);
     if (res.fail()) {
-      return OperationResult(res);
+      return res;
     }
 
     bool const forceOneShard =
@@ -122,19 +124,20 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
       VPackCollection::merge(options, helper.slice(), false, true);
 
   std::shared_ptr<LogicalCollection> coll;
+  OperationOptions opOptions(ExecContext::current());
   auto res = arangodb::methods::Collections::create(  // create collection
       vocbase,                                        // collection vocbase
-      name,                                           // collection name
-      colType,                                        // collection type
-      mergedBuilder.slice(),                          // collection properties
+      opOptions,
+      name,                   // collection name
+      colType,                // collection type
+      mergedBuilder.slice(),  // collection properties
       waitForSync, true, false, coll);
 
-  return OperationResult(res);
+  return res;
 }
 
-OperationResult GraphManager::findOrCreateVertexCollectionByName(const std::string& name,
-                                                                 bool waitForSync,
-                                                                 VPackSlice options) {
+Result GraphManager::findOrCreateVertexCollectionByName(const std::string& name, bool waitForSync,
+                                                        VPackSlice options) {
   std::shared_ptr<LogicalCollection> def;
 
   def = getCollectionByName(ctx()->vocbase(), name);
@@ -142,7 +145,7 @@ OperationResult GraphManager::findOrCreateVertexCollectionByName(const std::stri
     return createVertexCollection(name, waitForSync, options);
   }
 
-  return OperationResult(TRI_ERROR_NO_ERROR);
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 bool GraphManager::renameGraphCollection(std::string const& oldName,
@@ -170,8 +173,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
   if (!res.ok()) {
     return false;
   }
-  OperationOptions options;
-  OperationResult checkDoc;
+  OperationOptions options(ExecContext::current());
 
   for (auto const& graph : renamedGraphs) {
     VPackBuilder builder;
@@ -190,9 +192,9 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
       }
     } catch (...) {
     }
-  };
+  }
 
-  res = trx.finish(checkDoc.result);
+  res = trx.finish(Result());  // if we get here, it was a success
   if (res.fail()) {
     return false;
   }
@@ -225,30 +227,32 @@ Result GraphManager::checkForEdgeDefinitionConflicts(std::map<std::string, EdgeD
   return applyOnAllGraphs(callback);
 }
 
-OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
+    Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
     bool waitForSync, VPackSlice options) {
   for (auto const& it : edgeDefinitions) {
     EdgeDefinition const& edgeDefinition = it.second;
-    OperationResult res =
-        findOrCreateCollectionsByEdgeDefinition(edgeDefinition, waitForSync, options);
+    Result res = findOrCreateCollectionsByEdgeDefinition(graph, edgeDefinition,
+                                                         waitForSync, options);
 
     if (res.fail()) {
       return res;
     }
   }
 
-  return OperationResult{TRI_ERROR_NO_ERROR};
+  return Result{TRI_ERROR_NO_ERROR};
 }
 
-OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
-    EdgeDefinition const& edgeDefinition, bool waitForSync, VPackSlice const options) {
+Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
+                                                             EdgeDefinition const& edgeDefinition,
+                                                             bool waitForSync,
+                                                             VPackSlice const options) {
   std::string const& edgeCollection = edgeDefinition.getName();
   std::shared_ptr<LogicalCollection> def =
       getCollectionByName(ctx()->vocbase(), edgeCollection);
 
   if (def == nullptr) {
-    OperationResult res = createEdgeCollection(edgeCollection, waitForSync, options);
+    Result res = createEdgeCollection(edgeCollection, waitForSync, options);
     if (res.fail()) {
       return res;
     }
@@ -266,14 +270,19 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
   for (auto const& colName : vertexCollections) {
     def = getCollectionByName(ctx()->vocbase(), colName);
     if (def == nullptr) {
-      OperationResult res = createVertexCollection(colName, waitForSync, options);
+      Result res = createVertexCollection(colName, waitForSync, options);
+      if (res.fail()) {
+        return res;
+      }
+    } else {
+      auto res = graph.validateCollection(*def.get());
       if (res.fail()) {
         return res;
       }
     }
   }
 
-  return OperationResult{TRI_ERROR_NO_ERROR};
+  return Result{TRI_ERROR_NO_ERROR};
 }
 
 /// @brief extract the collection by either id or name, may return nullptr!
@@ -371,19 +380,20 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(std::string cons
 }
 
 OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync) const {
+  OperationOptions options(ExecContext::current());
   VPackSlice graphNameSlice = document.get("name");
   if (!graphNameSlice.isString()) {
-    return OperationResult{TRI_ERROR_GRAPH_CREATE_MISSING_NAME};
+    return OperationResult{TRI_ERROR_GRAPH_CREATE_MISSING_NAME, options};
   }
   std::string const graphName = graphNameSlice.copyString();
 
   if (graphExists(graphName)) {
-    return OperationResult{TRI_ERROR_GRAPH_DUPLICATE};
+    return OperationResult{TRI_ERROR_GRAPH_DUPLICATE, options};
   }
 
   auto graphRes = buildGraphFromInput(graphName, document);
   if (graphRes.fail()) {
-    return OperationResult{std::move(graphRes).result()};
+    return OperationResult{std::move(graphRes).result(), options};
   }
   // Guaranteed to not be nullptr
   std::unique_ptr<Graph> graph = std::move(graphRes.get());
@@ -392,19 +402,19 @@ OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync)
   // check permissions
   Result res = checkCreateGraphPermissions(graph.get());
   if (res.fail()) {
-    return OperationResult{res};
+    return OperationResult{res, options};
   }
 
   // check edgeDefinitionConflicts
   res = checkForEdgeDefinitionConflicts(graph->edgeDefinitions(), graph->name());
   if (res.fail()) {
-    return OperationResult{res};
+    return OperationResult{res, options};
   }
 
   // Make sure all collections exist and are created
   res = ensureCollections(graph.get(), waitForSync);
   if (res.fail()) {
-    return OperationResult{res};
+    return OperationResult{res, options};
   }
 
   // finally save the graph
@@ -425,25 +435,23 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  OperationOptions options;
+  OperationOptions options(ExecContext::current());
   options.waitForSync = waitForSync;
   Result res = trx.begin();
   if (res.fail()) {
-    return OperationResult{std::move(res)};
+    return OperationResult{std::move(res), options};
   }
-  OperationResult result;
-  if (isUpdate) {
-    result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
-  } else {
-    result = trx.insert(StaticStrings::GraphCollection, builder.slice(), options);
-  }
+  OperationResult result =
+      isUpdate ? trx.update(StaticStrings::GraphCollection, builder.slice(), options)
+               : trx.insert(StaticStrings::GraphCollection, builder.slice(), options);
+
   if (!result.ok()) {
     trx.finish(result.result);
     return result;
   }
   res = trx.finish(result.result);
   if (res.fail()) {
-    return OperationResult{std::move(res)};
+    return OperationResult{std::move(res), options};
   }
   return result;
 }
@@ -451,8 +459,9 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"},
-                             nullptr, nullptr);
+                             arangodb::aql::QueryString{queryStr},
+                             nullptr);
+  query.queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
@@ -607,8 +616,9 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   }
 
   std::vector<std::shared_ptr<LogicalCollection>> created;
-  return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
+  OperationOptions opOptions(ExecContext::current());
+  return methods::Collections::create(vocbase, opOptions, collectionsToCreate,
+                                      waitForSync, true, false, nullptr, created);
 }
 
 bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
@@ -627,21 +637,22 @@ bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
   return true;
 }
 
-OperationResult GraphManager::readGraphs(velocypack::Builder& builder) const {
+Result GraphManager::readGraphs(velocypack::Builder& builder) const {
   std::string const queryStr{
       "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
   return readGraphByQuery(builder, queryStr);
 }
 
-OperationResult GraphManager::readGraphKeys(velocypack::Builder& builder) const {
+Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g._key"};
   return readGraphByQuery(builder, queryStr);
 }
 
-OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
-                                               std::string const& queryStr) const {
+Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
+                                      std::string const& queryStr) const {
   arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr),
-                             nullptr, nullptr);
+                             nullptr);
+  query.queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
@@ -650,15 +661,15 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
-      return OperationResult(TRI_ERROR_REQUEST_CANCELED);
+      return Result(TRI_ERROR_REQUEST_CANCELED);
     }
-    return OperationResult(std::move(queryResult.result));
+    return std::move(queryResult.result);
   }
 
   VPackSlice graphsSlice = queryResult.data->slice();
 
   if (graphsSlice.isNone()) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+    return Result(TRI_ERROR_OUT_OF_MEMORY);
   } 
   if (!graphsSlice.isArray()) {
     LOG_TOPIC("338b7", ERR, arangodb::Logger::GRAPHS)
@@ -669,7 +680,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   builder.add("graphs", graphsSlice);
   builder.close();
 
-  return OperationResult(TRI_ERROR_NO_ERROR);
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 Result GraphManager::checkForEdgeDefinitionConflicts(arangodb::graph::EdgeDefinition const& edgeDefinition,
@@ -780,6 +791,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
                                           bool dropCollections) {
   std::unordered_set<std::string> leadersToBeRemoved;
   std::unordered_set<std::string> followersToBeRemoved;
+  OperationOptions options(ExecContext::current());
 
   if (dropCollections) {
     auto addToRemoveCollections = [this, &graph, &leadersToBeRemoved,
@@ -811,7 +823,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   Result permRes =
       checkDropGraphPermissions(graph, followersToBeRemoved, leadersToBeRemoved);
   if (permRes.fail()) {
-    return OperationResult{std::move(permRes)};
+    return OperationResult{std::move(permRes), options};
   }
 
   VPackBuilder builder;
@@ -821,27 +833,26 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   }
 
   {  // Remove from _graphs
-    OperationOptions options;
+    OperationOptions options(ExecContext::current());
     options.waitForSync = waitForSync;
 
     Result res;
-    OperationResult result;
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
                                     AccessMode::Type::WRITE};
 
     res = trx.begin();
     if (res.fail()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
     }
     VPackSlice search = builder.slice();
-    result = trx.remove(StaticStrings::GraphCollection, search, options);
+    OperationResult result = trx.remove(StaticStrings::GraphCollection, search, options);
 
     res = trx.finish(result.result);
     if (result.fail()) {
       return result;
     }
     if (res.fail()) {
-      return OperationResult{res};
+      return OperationResult{res, options};
     }
     TRI_ASSERT(res.ok() && result.ok());
   }
@@ -879,18 +890,18 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     }
 
     if (firstDropError.fail()) {
-      return OperationResult{firstDropError};
+      return OperationResult{firstDropError, options};
     }
   }
 
-  return OperationResult{TRI_ERROR_NO_ERROR};
+  return OperationResult{TRI_ERROR_NO_ERROR, options};
 }
 
-OperationResult GraphManager::pushCollectionIfMayBeDropped(
-    std::string const& colName, std::string const& graphName,
-    std::unordered_set<std::string>& toBeRemoved) {
+Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
+                                                  std::string const& graphName,
+                                                  std::unordered_set<std::string>& toBeRemoved) {
   VPackBuilder graphsBuilder;
-  OperationResult result = readGraphs(graphsBuilder);
+  Result result = readGraphs(graphsBuilder);
   if (result.fail()) {
     return result;
   }
@@ -901,7 +912,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
   TRI_ASSERT(graphs.get("graphs").isArray());
 
   if (!graphs.get("graphs").isArray()) {
-    return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+    return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
   }
 
   for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
@@ -935,7 +946,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
         }
       }
     } else {
-      return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+      return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
     }
 
     // check orphan collections
@@ -952,7 +963,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     toBeRemoved.emplace(colName);
   }
 
-  return OperationResult(TRI_ERROR_NO_ERROR);
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 Result GraphManager::checkDropGraphPermissions(
@@ -1019,6 +1030,18 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   try {
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
+      VPackSlice s = input.get(StaticStrings::IsSmart);
+      if (s.isBoolean() && s.getBoolean()) {
+        s = input.get("options");
+        if (s.isObject()) {
+          s = s.get(StaticStrings::ReplicationFactor);
+          if ((s.isNumber() && s.getNumber<int>() == 0) ||
+              (s.isString() && s.stringRef() == "satellite")) {
+            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+          }
+        }
+      }
+
       // validate numberOfShards and replicationFactor
       Result res =
           ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),

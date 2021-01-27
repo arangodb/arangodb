@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,6 @@
 #include "v8-views.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -41,6 +40,8 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Collection.h>
 
 namespace {
 
@@ -60,7 +61,7 @@ std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(v8::Isolate* isolate,
   arangodb::CollectionNameResolver resolver(vocbase);
 
   return (val->IsNumber() || val->IsNumberObject())
-             ? resolver.getView(TRI_ObjectToUInt64(isolate, val, true))
+             ? resolver.getView(arangodb::DataSourceId{TRI_ObjectToUInt64(isolate, val, true)})
              : resolver.getView(TRI_ObjectToString(isolate, val));
 }
 
@@ -109,12 +110,15 @@ v8::Handle<v8::Object> WrapView( // wrap view
 
   TRI_GET_GLOBAL_STRING(_IdKey);
   TRI_GET_GLOBAL_STRING(_DbNameKey);
-  result->DefineOwnProperty( // define own property
-    TRI_IGETC, // context
-    _IdKey, // key
-    TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()), // value
-    v8::ReadOnly // attributes
-  ).FromMaybe(false); // Ignore result...
+  result
+      ->DefineOwnProperty(  // define own property
+          TRI_IGETC,        // context
+          _IdKey,           // key
+          TRI_V8UInt64String<arangodb::DataSourceId::BaseType>(isolate,
+                                                               view->id().id()),  // value
+          v8::ReadOnly  // attributes
+          )
+      .FromMaybe(false);  // Ignore result...
   result->Set(context, _DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name())).FromMaybe(false);
 
   return scope.Escape<v8::Object>(result);
@@ -157,11 +161,11 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   v8::Handle<v8::Object> obj =
       args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   VPackBuilder properties;
-  int res = TRI_V8ToVPack(isolate, properties, obj, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    events::CreateView(vocbase.name(), name, res);
-    TRI_V8_THROW_EXCEPTION(res);
+  try {
+    TRI_V8ToVPack(isolate, properties, obj, false);
+  } catch (arangodb::basics::Exception const& ex) {
+    events::CreateView(vocbase.name(), name, ex.code());
+    throw;
   }
 
   // ...........................................................................
@@ -181,10 +185,9 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   header.add(arangodb::StaticStrings::DataSourceType, VPackValue(type));
   header.close();
 
-  // in basics::VelocyPackHelper::merge(...) values from rhs take precedence
-  // use same merge args as in methods::Collections::create(...)
-  auto builder = arangodb::basics::VelocyPackHelper::merge(properties.slice(),
-                                                           header.slice(), false, true);
+  // in velocypack::Collections::merge(...) values from rhs take precedence
+  auto builder = arangodb::velocypack::Collection::merge(properties.slice(), header.slice(), 
+                                                         /*mergeObjects*/ true, /*nullMeansRemove*/ false); 
 
   try {
 
@@ -543,15 +546,8 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
   // check if we want to change some parameters
   if (args.Length() > 0 && args[0]->IsObject()) {
     arangodb::velocypack::Builder builder;
-
-    {
-      auto res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-      if (TRI_ERROR_NO_ERROR != res) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-    }
-
+    TRI_V8ToVPack(isolate, builder, args[0], false);
+    
     bool partialUpdate = true;  // partial update by default
 
     if (args.Length() > 1) {

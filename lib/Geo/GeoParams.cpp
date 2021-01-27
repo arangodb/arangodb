@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -77,9 +78,9 @@ S2RegionCoverer::Options RegionCoverParams::regionCovererOpts() const {
 }
 
 double geo::QueryParams::minDistanceRad() const noexcept {
-  return std::max(0.0, std::min(minDistance / kEarthRadiusInMeters, M_PI));
+  return metersToRadians(minDistance);
 }
 
 double geo::QueryParams::maxDistanceRad() const noexcept {
-  return std::max(0.0, std::min(maxDistance / kEarthRadiusInMeters, M_PI));
+  return metersToRadians(maxDistance);
 }

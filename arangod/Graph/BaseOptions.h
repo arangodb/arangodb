@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace aql {
 struct AstNode;
@@ -111,7 +112,8 @@ struct BaseOptions {
   void setVariable(aql::Variable const*);
 
   void addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                     std::string const& attributeName, aql::AstNode* condition);
+                     std::string const& attributeName, aql::AstNode* condition,
+                     bool onlyEdgeIndexes = false);
 
   void clearVariableValues();
 
@@ -148,6 +150,8 @@ struct BaseOptions {
   virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
     return false;
   }
+  
+  arangodb::ResourceMonitor& resourceMonitor() const;
 
   TraverserCache* cache();
   TraverserCache* cache() const;
@@ -167,6 +171,18 @@ struct BaseOptions {
   }
 
   size_t parallelism() const { return _parallelism; }
+  
+  void isQueryKilledCallback() const;
+
+  void setRefactor(bool r) noexcept {
+    _refactor = r;
+  }
+
+  bool refactor() const {
+    return _refactor;
+  }
+
+  aql::Variable const* tmpVar(); // TODO check public
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -181,14 +197,15 @@ struct BaseOptions {
   bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue);
 
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
-                              std::string const& collectionName,
-                              std::string const& attributeName, aql::AstNode* condition);
+                              std::string const& collectionName, std::string const& attributeName,
+                              aql::AstNode* condition, bool onlyEdgeIndexes = false);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
   
   mutable arangodb::transaction::Methods _trx;
+
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
@@ -216,6 +233,10 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  /// @brief whether or not we are running the refactored version
+  /// TODO: This must be removed prior release - (is currently needed for the refactoring)
+  bool _refactor;
 };
 
 }  // namespace graph

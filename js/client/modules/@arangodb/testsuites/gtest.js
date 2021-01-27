@@ -34,8 +34,8 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'gtest': [],
@@ -127,9 +127,7 @@ function gtestRunner (options) {
   if (!options.skipGTest) {
     if (run !== '') {
       let argv = [
-        '--log.line-number',
-        options.extremeVerbosity ? "true" : "false",
-        '--gtest_output=json:' + testResultJsonFile
+        '--gtest_output=json:' + testResultJsonFile,
       ];
       if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
         argv.push('--gtest_filter='+options.testCase);
@@ -140,6 +138,9 @@ function gtestRunner (options) {
           argv.push('--gtest_filter=-'+greyItem);
         });
       }
+      // all non gtest args have to come last
+      argv.push('--log.line-number');
+      argv.push(options.extremeVerbosity ? "true" : "false");
       results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {

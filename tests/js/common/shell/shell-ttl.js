@@ -106,8 +106,6 @@ function TtlSuite () {
       assertEqual("number", typeof properties.maxCollectionRemoves);
       assertTrue(properties.hasOwnProperty("maxTotalRemoves"));
       assertEqual("number", typeof properties.maxTotalRemoves);
-      assertTrue(properties.hasOwnProperty("onlyLoadedCollections"));
-      assertEqual("boolean", typeof properties.onlyLoadedCollections);
     },
     
     testSetProperties : function () {
@@ -130,12 +128,6 @@ function TtlSuite () {
         [ { maxTotalRemoves: 100 }, true ],
         [ { maxTotalRemoves: 5000 }, true ],
         [ { maxTotalRemoves: 500000 }, true ],
-        [ { onlyLoadedCollections: null }, false ],
-        [ { onlyLoadedCollections: false }, true ],
-        [ { onlyLoadedCollections: true }, true ],
-        [ { onlyLoadedCollections: 1234 }, false ],
-        [ { onlyLoadedCollections: "foo" }, false ],
-        [ { onlyLoadedCollections: "foo" }, false ],
       ];
 
       values.forEach(function(value) {
@@ -439,6 +431,7 @@ function TtlSuite () {
 
       let c = db._create(cn, { numberOfShards: 2 });
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+      c.ensureIndex({ type: "persistent", fields: ["dateCreated"], unique: false, sparse: false});
 
       // dt is one minute in the past
       const dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();

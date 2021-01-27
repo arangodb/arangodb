@@ -69,8 +69,8 @@
 
 #include "text_token_stream.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -119,10 +119,10 @@ struct text_token_stream::state_t {
   }
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -193,9 +193,15 @@ bool get_stopwords(
 
     if (!stopword_path.exists_directory(result) || !result
         || !(stopword_path /= language).exists_directory(result) || !result) {
-      IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
-
-      return !custom_stopword_path;
+      if (custom_stopword_path) {
+        IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
+        return false;
+      } else {
+        IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
+                      "Analyzer will continue without stopwords",
+                      stopword_path.utf8().c_str());
+        return true;
+      }
     }
 
     irs::analysis::text_token_stream::stopwords_t stopwords;
@@ -248,7 +254,6 @@ bool get_stopwords(
     return true;
   } catch (...) {
     IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.utf8().c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -307,7 +312,7 @@ irs::analysis::analyzer::ptr construct(
   cached_options_t* options_ptr;
 
   {
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
 
     options_ptr = &(irs::map_utils::try_emplace_update_key(
       cached_state_by_key,
@@ -328,11 +333,10 @@ irs::analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr construct(
-  const std::locale& locale
-) {
+    const std::locale& locale) {
   const auto& cache_key = irs::locale_utils::name(locale);
   {
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     auto itr = cached_state_by_key.find(
       irs::make_hashed_ref(irs::string_ref(cache_key))
     );
@@ -361,7 +365,6 @@ irs::analysis::analyzer::ptr construct(
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s", 
                   cache_key.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -461,7 +464,6 @@ bool make_locale_from_name(const irs::string_ref& name,
         "Caught error while constructing locale from "
         "name: %s",
         name.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -671,7 +673,6 @@ bool parse_json_options(const irs::string_ref& args,
         "Caught error while constructing text_token_stream from jSON "
         "arguments: %s",
         args.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -830,7 +831,7 @@ bool make_json_config(
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     {
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_lock_guard(mutex);
       auto itr = cached_state_by_key.find(irs::make_hashed_ref(args));
 
       if (itr != cached_state_by_key.end()) {
@@ -855,7 +856,6 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", 
                   args.c_str());
-    IR_LOG_EXCEPTION();
   }
   return nullptr;
 }
@@ -898,10 +898,10 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json,
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
                        normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  static variables
@@ -934,7 +934,7 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
 }
 
 /*static*/ void text_token_stream::clear_cache() {
-  SCOPED_LOCK(::mutex);
+  auto lock = make_lock_guard(::mutex);
   cached_state_by_key.clear();
 }
 
@@ -1026,19 +1026,23 @@ bool text_token_stream::reset(const string_ref& data) {
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
   std::string data_utf8;
-
-  // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
-    return false; // UTF8 conversion failure
+  irs::string_ref data_utf8_ref;
+  if (irs::locale_utils::is_utf8(state_->options.locale)) {
+    data_utf8_ref = data;
+  } else {
+    // valid conversion since 'locale_' was created with internal unicode encoding
+    if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
+      return false; // UTF8 conversion failure
+    }
+    data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8.size() > irs::integer_traits<int32_t>::const_max) {
+  if (data_utf8_ref.size() > irs::integer_traits<int32_t>::const_max) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size()))
-  );
+    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
 
   // ...........................................................................
   // tokenise the unicode data
@@ -1166,5 +1170,5 @@ bool text_token_stream::next_ngram() {
   return false;
 }
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,7 +84,7 @@ class UserManager {
   }
 
   /// @brief used for caching
-  uint64_t globalVersion() {
+  uint64_t globalVersion() const {
     return _globalVersion.load(std::memory_order_acquire);
   }
 
@@ -134,10 +134,12 @@ class UserManager {
                                 std::string const& dbname, bool configured = false);
   auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
                                   std::string const& coll, bool configured = false);
-
+  
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
+#endif
 
 #ifdef USE_ENTERPRISE
 

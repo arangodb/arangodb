@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -104,39 +105,6 @@ class ExecutionBlockImpl<MutexExecutor>
 
   ~ExecutionBlockImpl() override = default;
 };
-
-//
-//
-//// MutexExecutor is actually implemented by specializing ExecutionBlockImpl,
-//// so this class only exists to identify the specialization.
-//class MutexExecutor final {};
-//
-///**
-// * @brief See ExecutionBlockImpl.h for documentation.
-// */
-//template <>
-//class ExecutionBlockImpl<MutexExecutor> : public ExecutionBlock {
-// public:
-//  ExecutionBlockImpl(ExecutionEngine* engine, MutexNode const* node);
-//
-//  ~ExecutionBlockImpl() override = default;
-//
-//  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
-//
-//  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
-//
-//  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
-//
-// private:
-//  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
-//
-//  std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
-//
-// private:
-//  std::mutex _mutex;
-//  bool _isShutdown;
-//};
-
 
 }  // namespace aql
 }  // namespace arangodb

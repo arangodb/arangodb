@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -217,19 +217,12 @@ void InternalRestTraverserHandler::queryEngine() {
     }
 
     VPackSlice depthSlice = body.get("depth");
-    if (depthSlice.isNone() || engine->getType() != BaseEngine::EngineType::TRAVERSER) {
-      engine->getVertexData(keysSlice, result);
-    } else {
-      if (!depthSlice.isInteger()) {
-        generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "expecting 'depth' to be an integer value");
-        return;
-      }
-      // Safe cast BaseTraverserEngines are all of type TRAVERSER
-      auto eng = static_cast<BaseTraverserEngine*>(engine);
-      TRI_ASSERT(eng != nullptr);
-      eng->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+    if (!depthSlice.isNone() && !depthSlice.isInteger()) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting 'depth' to be an integer value");
+      return;
     }
+    engine->getVertexData(keysSlice, result, !depthSlice.isNone());
   } else if (option == "smartSearch") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -250,6 +243,16 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearchBFS(body, result);
+  } else if (option == "smartSearchWeighted") {
+    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "this engine does not support the requested operation.");
+      return;
+    }
+    // Safe cast BaseTraverserEngines are all of type TRAVERSER
+    auto eng = static_cast<BaseTraverserEngine*>(engine);
+    TRI_ASSERT(eng != nullptr);
+    eng->smartSearchWeighted(body, result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");

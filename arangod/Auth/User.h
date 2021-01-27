@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@
 #include <set>
 
 #include "Auth/Common.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/RevisionId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -54,7 +54,7 @@ class User {
 
  public:
   std::string const& key() const { return _key; }
-  TRI_voc_rid_t rev() const { return _rev; }
+  RevisionId rev() const { return _rev; }
   // updates the user's _loaded attribute
   void touch();
 
@@ -123,7 +123,7 @@ class User {
 #endif
 
  private:
-  User(std::string&& key, TRI_voc_rid_t rid);
+  User(std::string&& key, RevisionId rid);
   typedef std::unordered_map<std::string, auth::Level> CollLevelMap;
 
   struct DBAuthContext {
@@ -140,7 +140,7 @@ class User {
 
  private:
   std::string _key;
-  TRI_voc_rid_t _rev;
+  RevisionId _rev;
   bool _active = true;
   auth::Source _source = auth::Source::Local;
 

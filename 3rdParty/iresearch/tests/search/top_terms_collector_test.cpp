@@ -32,7 +32,7 @@
 #include "formats/empty_term_reader.hpp"
 #include "utils/memory.hpp"
 
-NS_LOCAL
+namespace {
 
 struct term_meta : irs::term_meta {
   term_meta(uint32_t docs_count = 0, uint32_t freq = 0) noexcept {
@@ -41,23 +41,19 @@ struct term_meta : irs::term_meta {
   }
 };
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // use base irs::term_meta type for ancestors
 template<>
 struct type<::term_meta> : type<irs::term_meta> { };
 
-NS_END
+}
 
-NS_LOCAL
+namespace {
 
 struct sort : irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static irs::sort::ptr make() {
     return std::make_unique<sort>();
   }
@@ -304,7 +300,7 @@ struct state_visitor {
   const struct state& expected_state;
 };
 
-NS_END
+}
 
 TEST(top_terms_collector_test, test_top_k) {
   using collector_type = irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;

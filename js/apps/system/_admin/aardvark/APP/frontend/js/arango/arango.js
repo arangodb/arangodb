@@ -664,6 +664,8 @@
 
       // remove header
       $('.arangoFrame .headerBar').remove();
+      // remove edge edit feature
+      $('.edge-edit-container').remove();
       // append close button
       $('.arangoFrame .outerDiv').prepend('<i class="fa fa-times"></i>');
       // add close events
@@ -741,7 +743,11 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          if (data && data.error) {
+          // deleting a job that is not there anymore is intentionally not considered 
+          // an error here. this is because in some other places we collect job data,
+          // which automatically leads to server-side deletion of the job. so just
+          // swallow 404 errors here, silently...
+          if (data && data.error && data.errorNum !== 404) {
             if (data.errorNum && data.errorMessage) {
               arangoHelper.arangoError(`Error ${data.errorNum}`, data.errorMessage);
             } else {
@@ -957,6 +963,10 @@
     },
 
     escapeHtml: function (val) {
+      if (typeof val !== 'string') {
+        val = JSON.stringify(val, null, 2);
+      }
+
       // HTML-escape a string
       return String(val).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')

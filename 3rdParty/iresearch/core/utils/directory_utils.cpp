@@ -27,8 +27,8 @@
 #include "utils/attributes.hpp"
 #include "utils/log.hpp"
 
-NS_ROOT
-NS_BEGIN(directory_utils)
+namespace iresearch {
+namespace directory_utils {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           memory_allocator utils
@@ -248,7 +248,7 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
   return std::bind(acceptor, std::placeholders::_1, std::move(retain));
 }
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                tracking_directory
@@ -268,7 +268,6 @@ index_output::ptr tracking_directory::create(
   try {
     files_.emplace(name);
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   auto result = impl_.create(name);
@@ -280,7 +279,6 @@ index_output::ptr tracking_directory::create(
   try {
     files_.erase(name); // revert change
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -294,7 +292,6 @@ index_input::ptr tracking_directory::open(
     try {
       files_.emplace(name);
     } catch (...) {
-      IR_LOG_EXCEPTION();
 
       return nullptr;
     }
@@ -312,7 +309,6 @@ bool tracking_directory::remove(const std::string& name) noexcept {
     files_.erase(name);
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
@@ -332,7 +328,6 @@ bool tracking_directory::rename(
 
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
     impl_.rename(dst, src); // revert
   }
 
@@ -369,7 +364,7 @@ ref_tracking_directory::ref_tracking_directory(
 }
 
 void ref_tracking_directory::clear_refs() const noexcept {
-  SCOPED_LOCK(mutex_);
+  auto lock = make_lock_guard(mutex_);
   refs_.clear();
 }
 
@@ -383,13 +378,12 @@ index_output::ptr ref_tracking_directory::create(
     if (result) {
       auto ref = attribute_->add(name);
 
-      SCOPED_LOCK(mutex_);
+      auto lock = make_lock_guard(mutex_);
       refs_.emplace(ref);
     }
 
     return result;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -409,11 +403,10 @@ index_input::ptr ref_tracking_directory::open(
   if (result) {
     try {
       auto ref = attribute_->add(name);
-      SCOPED_LOCK(mutex_);
+      auto lock = make_lock_guard(mutex_);
 
       refs_.emplace(ref);
     } catch (...) {
-      IR_LOG_EXCEPTION();
 
       return nullptr;
     }
@@ -433,15 +426,13 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
     // aliasing ctor
     const index_file_refs::ref_t ref(
       index_file_refs::ref_t(),
-      &name
-    );
+      &name);
 
-    SCOPED_LOCK(mutex_);
+    auto lock = make_lock_guard(mutex_);
 
     refs_.erase(ref);
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
@@ -449,8 +440,7 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
 }
 
 bool ref_tracking_directory::rename(
-  const std::string& src, const std::string& dst
-) noexcept {
+    const std::string& src, const std::string& dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
@@ -465,7 +455,7 @@ bool ref_tracking_directory::rename(
         &src
       );
 
-      SCOPED_LOCK(mutex_);
+      auto lock = make_lock_guard(mutex_);
 
       refs_.emplace(ref);
       refs_.erase(src_ref);
@@ -474,16 +464,14 @@ bool ref_tracking_directory::rename(
     attribute_->remove(src);
     return true;
   } catch (...) {
-    IR_LOG_EXCEPTION();
   }
 
   return false;
 }
 
 bool ref_tracking_directory::visit_refs(
-  const std::function<bool(const index_file_refs::ref_t& ref)>& visitor
-) const {
-  SCOPED_LOCK(mutex_);
+    const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const {
+  auto lock = make_lock_guard(mutex_);
 
   for (const auto& ref: refs_) {
     if (!visitor(ref)) {
@@ -494,4 +482,4 @@ bool ref_tracking_directory::visit_refs(
   return true;
 }
 
-NS_END
+}

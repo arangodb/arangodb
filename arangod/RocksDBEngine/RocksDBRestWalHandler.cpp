@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,13 +89,9 @@ void RocksDBRestWalHandler::properties() {
 }
 
 void RocksDBRestWalHandler::flush() {
-  std::shared_ptr<VPackBuilder> parsedRequest;
-  VPackSlice slice;
-  try {
-    slice = _request->payload();
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid body value. expecting object");
+  bool parseSuccess = true;
+  VPackSlice slice = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) { // error already created
     return;
   }
   if (!slice.isObject() && !slice.isNone()) {
@@ -106,7 +102,6 @@ void RocksDBRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = 300.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -123,25 +118,19 @@ void RocksDBRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
-
-    value = slice.get("maxWaitTime");
-    if (value.isNumber()) {
-      maxWaitTime = value.getNumericValue<double>();
-    }
   } else {
     // no request body
     waitForSync = _request->parsedValue("waitForSync", waitForSync);
     waitForCollector = _request->parsedValue("waitForCollector", waitForCollector);
-    maxWaitTime = _request->parsedValue("maxWaitTime", maxWaitTime);
   }
 
   int res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
     auto& feature = server().getFeature<ClusterFeature>();
-    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
+    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   } else {
     if (waitForSync) {
-      EngineSelectorFeature::ENGINE->flushWal();
+      server().getFeature<EngineSelectorFeature>().engine().flushWal();
     }
   }
 
@@ -156,27 +145,6 @@ void RocksDBRestWalHandler::transactions() {
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
-
-  // lastCollectedId
-  /*{
-    auto value = std::get<1>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastCollected", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastCollected", VPackValue(value));
-    }
-  }
-
-  // lastSealedId
-  {
-    auto value = std::get<2>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastSealed", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastSealed", VPackValue(value));
-    }
-  }*/
-
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

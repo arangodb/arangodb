@@ -26,8 +26,8 @@
 
 #include <cassert>
 
-NS_ROOT
-NS_BEGIN(mmap_utils)
+namespace iresearch {
+namespace mmap_utils {
 
 int flush(int fd, void* addr, size_t size, int flags) noexcept {  
   if (fd < 0) { // an invalid file descriptor of course means an invalid handle
@@ -119,5 +119,5 @@ bool mmap_handle::open(const file_path_t path) noexcept {
   return true;
 }
 
-NS_END // mmap_utils
-NS_END // ROOT
+} // mmap_utils
+} // ROOT

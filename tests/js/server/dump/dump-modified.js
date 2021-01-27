@@ -48,7 +48,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertTrue(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(2, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -66,7 +65,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(2, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -101,7 +99,6 @@ function dumpTestSuite () {
 
       assertEqual(3, c.type()); // edges
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(3, c.getIndexes().length); // primary index + edges index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -129,7 +126,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -146,7 +142,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(2, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -178,7 +173,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(10, c.getIndexes().length);
       assertEqual("primary", c.getIndexes()[0].type);
@@ -258,7 +252,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
       assertEqual("autoincrement", p.keyOptions.type);
       assertFalse(p.keyOptions.allowUserKeys);
       assertEqual(7, p.keyOptions.offset);
@@ -294,7 +287,6 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
-      assertFalse(p.isVolatile);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
