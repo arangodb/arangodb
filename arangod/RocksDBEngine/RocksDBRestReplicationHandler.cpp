@@ -772,12 +772,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "replication dump - " + res.errorMessage());
+                      StringUtils::concatT("replication dump - ", res.errorMessage()));
         return;
       }
 
       generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
-                    "replication dump - " + res.errorMessage());
+                    StringUtils::concatT("replication dump - ", res.errorMessage()));
       return;
     }
 

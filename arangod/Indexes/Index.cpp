@@ -1040,6 +1040,7 @@ Result& Index::addErrorMsg(Result& r, std::string const& key) {
     r.appendErrorMessage("; conflicting key: ");
     r.appendErrorMessage(key);
   }
+
   return r;
 }
 

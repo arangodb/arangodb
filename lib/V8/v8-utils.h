@@ -152,7 +152,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message, bool autoPrepend);
+                           std::string_view message, bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a v8 object
