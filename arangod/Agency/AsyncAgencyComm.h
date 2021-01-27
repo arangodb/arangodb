@@ -42,6 +42,12 @@
 
 namespace arangodb {
 
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
+
 struct AsyncAgencyCommResult {
   arangodb::fuerte::Error error;
   std::unique_ptr<arangodb::fuerte::Response> response;
@@ -84,10 +90,6 @@ struct AsyncAgencyCommResult {
 // switched off. And since warnings are considered to be errors, we must
 // switch the warning off:
 
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
   AgencyReadResult(AsyncAgencyCommResult&& result,

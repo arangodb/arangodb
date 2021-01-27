@@ -21,6 +21,15 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+#include <mellon/expected.h>
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
+
 #include "Agency/AsyncAgencyComm.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
