@@ -81,7 +81,7 @@ struct CalculationExecutorInfos {
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 };
 
-enum class CalculationType { Condition, V8Condition, Reference, Constant };
+enum class CalculationType { Condition, V8Condition, Reference };
 
 template <CalculationType calculationType>
 class CalculationExecutor {

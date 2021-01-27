@@ -1978,16 +1978,19 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
       createRegisterInfos(std::move(inputRegisters),
                           outputRegister.isRegularRegister() ? RegIdSet{outputRegister} : RegIdSet{});
 
+  if (_outVariable->type() == Variable::Type::Const) {
+    // we have a const variable, so we can simply use an IdExector to forward the rows.
+    auto executorInfos = IdExecutorInfos(false, outputRegister);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
+
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(), std::move(expInVars) /* required by expression.execute */,
       std::move(expInRegs)); /* required by expression.execute */
 
-  if (outputRegister.isConstRegister()) {
-    // TODO - can we simply use the IdExecutor instead?
-    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Constant>>>(
-        &engine, this,std::move(registerInfos), std::move(executorInfos));
-  } else if (isReference) {
+  if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
         &engine, this,std::move(registerInfos), std::move(executorInfos));
   } else if (!willUseV8) {

@@ -148,17 +148,6 @@ bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() cons
 }
 
 template <>
-void CalculationExecutor<CalculationType::Constant>::doEvaluation(InputAqlItemRow& input,
-                                                                   OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  // TODO - really nothing to do here?
-  // we at least have to set _inputRowCopied, otherwise subsequent assertions fail
-}
-
-template <>
 void CalculationExecutor<CalculationType::Reference>::doEvaluation(InputAqlItemRow& input,
                                                                    OutputAqlItemRow& output) {
   auto const& inRegs = _infos.getExpInRegs();
@@ -239,4 +228,3 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
 template class ::arangodb::aql::CalculationExecutor<CalculationType::V8Condition>;
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Reference>;
-template class ::arangodb::aql::CalculationExecutor<CalculationType::Constant>;
