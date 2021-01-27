@@ -39,7 +39,8 @@ class Error final {
 
   Error(int errorNumber, std::string_view const& errorMessage);
   [[nodiscard]] auto errorNumber() const noexcept -> int;
-  [[nodiscard]] auto errorMessage() const -> std::string_view;
+  [[nodiscard]] auto errorMessage() const& -> std::string_view;
+  [[nodiscard]] auto errorMessage() && -> std::string;
 
   template <typename S>
   void resetErrorMessage(S&& msg) {

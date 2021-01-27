@@ -43,11 +43,18 @@ Error::Error(int errorNumber, std::string_view const& errorMessage)
 
 auto Error::errorNumber() const noexcept -> int { return _errorNumber; }
 
-auto Error::errorMessage() const -> std::string_view {
+auto Error::errorMessage() const& -> std::string_view {
   if (!_errorMessage.empty()) {
     return _errorMessage;
   }
   return TRI_errno_string(_errorNumber);
+}
+
+auto Error::errorMessage() && -> std::string {
+  if (!_errorMessage.empty()) {
+    return std::move(_errorMessage);
+  }
+  return std::string{TRI_errno_string(_errorNumber)};
 }
 
 auto operator<<(std::ostream& out, arangodb::result::Error const& error) -> std::ostream& {

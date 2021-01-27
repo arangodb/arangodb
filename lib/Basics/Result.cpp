@@ -142,11 +142,19 @@ auto Result::reset(Result&& other) noexcept -> Result& {
   return *this = std::move(other);
 }
 
-auto Result::errorMessage() const -> std::string_view {
+auto Result::errorMessage() const& -> std::string_view {
   if (_error == nullptr) {
     return {};
   } else {
     return _error->errorMessage();
+  }
+}
+
+auto Result::errorMessage() && -> std::string {
+  if (_error == nullptr) {
+    return {};
+  } else {
+    return std::move(*_error).errorMessage();
   }
 }
 
