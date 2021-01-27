@@ -419,7 +419,7 @@ template<typename Scale> class Histogram : public Metric {
       _n(_scale.n() - 1) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
-            char const* docs = nullptr,
+            std::string_view const& docs,
             std::string const& labels = std::string())
     : Metric(name, help, docs, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
       _lowr(std::numeric_limits<value_type>::max()),
