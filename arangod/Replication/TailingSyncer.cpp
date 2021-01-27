@@ -519,8 +519,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // fix error handling here when function returns result
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    std::string("unable to create replication transaction: ") +
-                        res.errorMessage());
+                    StringUtils::concatT(
+                        "unable to create replication transaction: ", res.errorMessage()));
     }
 
     res = applyCollectionDumpMarker(trx, coll, type, applySlice);
@@ -1168,7 +1168,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 
       if (res.fail()) {
         // apply error
-        std::string errorMsg = res.errorMessage();
+        auto errorMsg = std::string{res.errorMessage()};
 
         if (ignoreCount == 0) {
           if (lineLength > 1024) {

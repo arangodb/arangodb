@@ -274,8 +274,9 @@ arangodb::Result dumpJsonObjects(arangodb::DumpFeature::DumpJob& job,
   }
 
   if (file.status().fail()) {
-    return {TRI_ERROR_CANNOT_WRITE_FILE, std::string("cannot write file '") + file.path() +
-                                             "': " + file.status().errorMessage()};
+    return {TRI_ERROR_CANNOT_WRITE_FILE,
+            arangodb::basics::StringUtils::concatT("cannot write file '", file.path(),
+                                                   "': ", file.status().errorMessage())};
   }
 
   job.stats.totalWritten += static_cast<uint64_t>(length);
@@ -1169,7 +1170,7 @@ void DumpFeature::start() {
   }
 
   if (res.fail()) {
-    LOG_TOPIC("f7ff5", ERR, Logger::DUMP) << "An error occurred: " + res.errorMessage();
+    LOG_TOPIC("f7ff5", ERR, Logger::DUMP) << "An error occurred: " << res.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
 

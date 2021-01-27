@@ -86,7 +86,8 @@ struct ReplicationApplierState {
 
   bool isShuttingDown() const { return (_phase == ActivityPhase::SHUTDOWN); }
 
-  void setError(int code, std::string const& msg) { _lastError.set(code, msg); }
+  void setError(int code, std::string msg) { _lastError.set(code, std::move(msg)); }
+  void setError(int code, std::string_view msg) { _lastError.set(code, std::string(msg)); }
 
   void setStartTime();
 
@@ -101,9 +102,9 @@ struct ReplicationApplierState {
       TRI_GetTimeStampReplication(time, sizeof(time) - 1);
     }
 
-    void set(int errorCode, std::string const& msg) {
+    void set(int errorCode, std::string msg) {
       code = errorCode;
-      message = msg;
+      message = std::move(msg);
       time[0] = '\0';
       TRI_GetTimeStampReplication(time, sizeof(time) - 1);
     }

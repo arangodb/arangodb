@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 // use non-throwing, non-allocating std::from_chars etc. from standard library
 
@@ -354,10 +355,10 @@ float floatDecimal(std::string const& str);
 float floatDecimal(char const* value, size_t size);
 
 /// @brief convert char const* or std::string to number with error handling
-template<typename T>
+template <typename T>
 static bool toNumber(std::string const& key, T& val) noexcept {
   size_t n = key.size();
-  if (n==0) {
+  if (n == 0) {
     return false;
   }
   try {
@@ -417,6 +418,108 @@ std::string decodeHex(std::string const& value);
 
 void escapeRegexParams(std::string& out, const char* ptr, size_t length);
 std::string escapeRegexParams(std::string const& in);
+
+namespace detail {
+template <typename T>
+auto constexpr isStringOrView = std::is_same_v<std::string, std::decay_t<T>> ||
+                                std::is_same_v<std::string_view, std::decay_t<T>>;
+
+template <typename T>
+auto toStringOrView(T&& arg) {
+  using Arg = std::decay_t<T>;
+  if constexpr (std::is_same_v<std::string, Arg> || std::is_same_v<std::string_view, Arg>) {
+    return arg;
+  } else if constexpr (std::is_convertible_v<Arg, std::string_view>) {
+    return std::string_view(arg);
+  } else if constexpr (std::is_convertible_v<Arg, std::string>) {
+    return std::string(arg);
+  } else {
+    // Use using, so ADL could also find to_string in other namespaces than std.
+    using std::to_string;
+    return to_string(arg);
+  }
+}
+
+template <typename... Iters>
+auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
+  auto result = std::string{};
+
+  auto const newcap =
+      static_cast<std::size_t>((std::distance(iters.first, iters.second) + ... + 0));
+  result.reserve(newcap);
+
+  ([&] { result.append(iters.first, iters.second); }(), ...);
+
+  TRI_ASSERT(newcap == result.length());
+
+  return result;
+}
+
+/// @brief Converts all arguments to a pair of iterators (begin, end), passing
+/// them to concatImplIter.
+/// All arguments must either be `std::string` or `std::string_view`.
+template <typename... Args>
+auto concatImplStr(Args&&... args) -> std::string {
+  static_assert(((isStringOrView<Args>)&&...));
+  return concatImplIter(std::make_pair(args.begin(), args.end())...);
+}
+
+template <typename Iter, typename... Iters>
+auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
+                  std::pair<Iters, Iters>&&... tail) -> std::string {
+  auto result = std::string{};
+
+  auto const valueSizes = std::distance(head.first, head.second) +
+                          (std::distance(tail.first, tail.second) + ... + 0);
+  auto const delimSizes = sizeof...(Iters) * delim.size();
+  auto const newcap = valueSizes + delimSizes;
+  result.reserve(newcap);
+
+  result.append(head.first, head.second);
+
+  (
+      [&] {
+        result.append(delim);
+        result.append(tail.first, tail.second);
+      }(),
+      ...);
+
+  TRI_ASSERT(newcap == result.length());
+
+  return result;
+}
+
+/// @brief Converts all arguments to a pair of iterators (begin, end), passing
+/// them to joinImplIter.
+/// All arguments must either be `std::string` or `std::string_view`.
+template <typename... Args>
+auto joinImplStr(std::string_view delim, Args&&... args) -> std::string {
+  static_assert(((isStringOrView<Args>)&&...));
+  if constexpr (sizeof...(Args) == 0) {
+    return std::string{};
+  } else {
+    return joinImplIter(delim, std::make_pair(args.begin(), args.end())...);
+  }
+}
+}  // namespace detail
+
+/// @brief Creates a string concatenation of all its arguments.
+/// Arguments that aren't either a std::string, std::string_view,
+/// are converted to a string first, either directly if they're convertible,
+/// or via `to_string`.
+template <typename... Args>
+auto concatT(Args&&... args) -> std::string {
+  return detail::concatImplStr(detail::toStringOrView(args)...);
+}
+
+/// @brief Creates a string, joining all of its arguments delimited by delim.
+/// Arguments that aren't either a std::string, std::string_view,
+/// are converted to a string first, either directly if they're convertible,
+/// or via `to_string`.
+template <typename... Args>
+auto joinT(std::string_view delim, Args&&... args) -> std::string {
+  return detail::joinImplStr(delim, detail::toStringOrView(args)...);
+}
 
 }  // namespace StringUtils
 }  // namespace basics
