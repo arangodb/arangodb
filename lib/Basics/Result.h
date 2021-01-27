@@ -132,8 +132,8 @@ class Result final {
    * @return            Reference to ourselves
    */
   auto reset(int errorNumber, std::string const& errorMessage) -> Result&;
-  Result& reset(int errorNumber, std::string_view errorMessage);
-  Result& reset(int errorNumber, const char* errorMessage);
+  auto reset(int errorNumber, std::string_view errorMessage) -> Result&;
+  auto reset(int errorNumber, const char* errorMessage) -> Result&;
 
   /**
    * @brief  Reset to specific error number with message.
