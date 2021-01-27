@@ -157,7 +157,7 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
 
 static Result restoreDataParser(char const* ptr, char const* pos,
                                 std::string const& collectionName, int line,
-                                std::string& key, VPackBuilder& builder,
+                                VPackBuilder& builder,
                                 VPackSlice& doc, TRI_replication_operation_e& type) {
   builder.clear();
 
@@ -173,7 +173,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     return Result{TRI_ERROR_INTERNAL};
   }
 
-  VPackSlice const slice = builder.slice();
+  VPackSlice slice = builder.slice();
 
   if (!slice.isObject()) {
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
@@ -184,54 +184,63 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   type = REPLICATION_INVALID;
 
-  for (auto pair : VPackObjectIterator(slice, true)) {
-    if (!pair.key.isString()) {
-      return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    "received invalid JSON data for collection '" +
-                        collectionName + "' on line " + std::to_string(line) +
-                        ": got a non-string key"};
-    }
-
-    if (pair.key.isEqualString(::typeString)) {
-      if (pair.value.isNumber()) {
-        int v = pair.value.getNumericValue<int>();
-        if (v == 2301) {
-          // pre-3.0 type for edges
-          type = REPLICATION_MARKER_DOCUMENT;
+  VPackSlice value = slice.get(StaticStrings::KeyString);
+  if (value.isString()) {
+    // compact format
+    type = REPLICATION_MARKER_DOCUMENT;
+    // for a valid document marker without envelope, doc points to the actual docuemnt
+    doc = slice;
+  } else {
+    // enveloped (old) format. each document is wrapped into a
+    // {"type":2300,"data":{...}} envelope
+    value = slice.get(::typeString);
+    if (value.isNumber()) {
+      int v = value.getNumericValue<int>();
+      if (v == 2301) {
+        // pre-3.0 type for edges
+        type = REPLICATION_MARKER_DOCUMENT;
+      } else {
+        type = static_cast<TRI_replication_operation_e>(v);
+      }
+    
+      if (type == REPLICATION_MARKER_DOCUMENT) {
+        // for dumps taken with RocksDB and/or MMFiles
+        value = slice.get(::dataString);
+        if (!value.isObject()) {
+          type = REPLICATION_INVALID;
         } else {
-          type = static_cast<TRI_replication_operation_e>(v);
+          // for a valid document marker, doc points to the actual docuemnt
+          doc = value;
         }
-      }
-    } else if (pair.key.isEqualString(::dataString)) {
-      if (pair.value.isObject()) {
-        doc = pair.value;
-
-        VPackSlice k = doc.get(StaticStrings::KeyString);
-        if (k.isString()) {
-          key = k.copyString();
+      } else if (type == REPLICATION_MARKER_REMOVE) {
+        // edge case: only needed for old dumps taken with MMFiles
+        value = slice.get(::dataString);
+        if (value.isObject()) {
+          value = value.get(StaticStrings::KeyString);
+        } else {
+          value = slice.get("key");
         }
-      }
-    } else if (pair.key.isEqualString(::keyString)) {
-      if (key.empty()) {
-        key = pair.value.copyString();
+        if (!value.isString()) {
+          type = REPLICATION_INVALID;
+        } else {
+          // for a valid remove marker, doc points to the key string
+          doc = value;
+        }
       }
     }
   }
 
-  if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
-    return Result{
-        TRI_ERROR_HTTP_BAD_PARAMETER,
-        "got document marker without object contents for collection '" + collectionName +
-            "' on line " + std::to_string(line) + ": " + doc.toJson()};
+  TRI_ASSERT(type != REPLICATION_MARKER_DOCUMENT || doc.isObject());
+
+  if (type != REPLICATION_MARKER_DOCUMENT && type != REPLICATION_MARKER_REMOVE) {
+    // we can only handle REPLICATION_MARKER_DOCUMENT and REPLICATION_MARKER_REMOVE here
+    return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "received invalid JSON data for collection '" +
+                      collectionName + "' on line " + std::to_string(line) +
+                      ": got an invalid input document"};
   }
 
-  if (key.empty()) {
-    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "received invalid JSON data for collection '" + collectionName +
-                      "' on line " + std::to_string(line) + ": empty key"};
-  }
-
-  return Result{TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 RestReplicationHandler::RestReplicationHandler(application_features::ApplicationServer& server,
@@ -989,9 +998,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
     if (res.errorMessage().empty()) {
       generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber());
     } else {
-      generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(),
-                    std::string(TRI_errno_string(res.errorNumber())) + ": " +
-                        res.errorMessage());
+      generateError(res);
     }
   } else {
     VPackBuilder result;
@@ -1098,8 +1105,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
           }
 
           return Result(dropResult.errorNumber(),
-                        std::string("unable to drop collection '") + name +
-                            "': " + dropResult.errorMessage());
+                        arangodb::basics::StringUtils::concatT(
+                            "unable to drop collection '", name,
+                            "': ", dropResult.errorMessage()));
         }
       } catch (basics::Exception const& ex) {
         LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
@@ -1372,7 +1380,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  bool generateNewRevisionIds =
+  bool const generateNewRevisionIds =
       !_request->parsedValue(StaticStrings::PreserveRevisionIds, false);
 
   ExecContextSuperuserScope escope(
@@ -1381,12 +1389,14 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
-    return processRestoreUsersBatch(colName);
-  } else if (colName == StaticStrings::AnalyzersCollection &&
-             ServerState::instance()->isCoordinator() &&
-             _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()){
+    return processRestoreUsersBatch(generateNewRevisionIds);
+  } 
+
+  if (colName == StaticStrings::AnalyzersCollection &&
+      ServerState::instance()->isCoordinator() &&
+      _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()){
     // _analyzers should be inserted via analyzers API
-    return processRestoreCoordinatorAnalyzersBatch();
+    return processRestoreCoordinatorAnalyzersBatch(generateNewRevisionIds);
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -1395,7 +1405,8 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   Result res = trx.begin();
 
   if (!res.ok()) {
-    res.reset(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
+    res.reset(res.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                     "unable to start transaction: ", res.errorMessage()));
     return res;
   }
 
@@ -1413,106 +1424,160 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   return res;
 }
 
-Result RestReplicationHandler::parseBatch(std::string const& collectionName,
-                                          std::unordered_map<std::string, VPackValueLength>& latest,
-                                          VPackBuilder& allMarkers) {
-  VPackBuilder builder(&basics::VelocyPackHelper::strictRequestValidationOptions);
-
-  allMarkers.clear();
-
+Result RestReplicationHandler::parseBatch(transaction::Methods& trx, 
+                                          std::string const& collectionName,
+                                          VPackBuilder& documentsToInsert,
+                                          std::unordered_set<std::string>& documentsToRemove,
+                                          bool generateNewRevisionIds) {
   // simon: originally VST was not allowed here, but in 3.7 the content-type
   // is properly set, so we can use it
   if (_request->transportType() != Endpoint::TransportType::HTTP &&
       _request->contentType() != ContentType::DUMP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
+ 
+  LogicalCollection* collection = trx.documentCollection(collectionName);
+  if (!collection) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+  PhysicalCollection* physical = collection->getPhysical();
+  if (!physical) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  bool const isUsersCollection = collectionName == StaticStrings::UsersCollection;
 
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-
-  VPackValueLength currentPos = 0;
+  
+  VPackBuilder builder(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
   // First parse and collect all markers, we assemble everything in one
-  // large builder holding an array. We keep for each key the latest
-  // entry.
+  // large builder holding an array
+  documentsToRemove.clear();
+  documentsToInsert.clear();
+  documentsToInsert.openArray();
 
-  {
-    int line = 0;
-    VPackArrayBuilder guard(&allMarkers);
-    std::string key;
-    while (ptr < end) {
-      char const* pos = strchr(ptr, '\n');
+  int line = 0;
+  while (ptr < end) {
+    char const* pos = strchr(ptr, '\n');
 
-      if (pos == nullptr) {
-        pos = end;
-      } else {
-        *(const_cast<char*>(pos)) = '\0';
-        ++line;
+    if (pos == nullptr) {
+      pos = end;
+    } else {
+      *(const_cast<char*>(pos)) = '\0';
+      ++line;
+    }
+
+    if (pos - ptr > 1) {
+      // found something
+      VPackSlice doc;
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+
+      Result res = restoreDataParser(ptr, pos, collectionName, line, builder, doc, type);
+      if (res.fail()) {
+        if (res.is(TRI_ERROR_HTTP_CORRUPTED_JSON)) {
+          using namespace std::literals::string_literals;
+          auto data = std::string(ptr, pos);
+          res.appendErrorMessage(" in message '"s + data + "'");
+        }
+        return res;
       }
 
-      if (pos - ptr > 1) {
-        // found something
-        key.clear();
-        VPackSlice doc;
-        TRI_replication_operation_e type = REPLICATION_INVALID;
+      TRI_ASSERT(type != REPLICATION_INVALID);
 
-        Result res =
-            restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
-        if (res.fail()) {
-          if (res.errorNumber() == TRI_ERROR_HTTP_CORRUPTED_JSON) {
-            using namespace std::literals::string_literals;
-            auto data = std::string(ptr, pos);
-            res.appendErrorMessage(" in message '"s + data + "'");
+      // Put into array of all parsed markers:
+      if (type == REPLICATION_MARKER_DOCUMENT) {
+        documentsToInsert.openObject();
+
+        TRI_ASSERT(doc.isObject());
+        bool checkKey = true;
+        for (auto it : VPackObjectIterator(doc, true)) {
+          // only check for "_key" attribute here if we still have to.
+          // once we have seen it, it will not show up again in the same document
+          bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString);
+  
+          if (isKey) {
+            // prevent checking for _key twice in the same document
+            checkKey = false;
+
+            if (isUsersCollection) {
+              // ignore _key for _users
+              continue;
+            }
+            if (!documentsToRemove.empty()) {
+              // for any document key that we have tracked in documentsToRemove,
+              // we now got a new version to insert, so we need to remove the key
+              // from documentsToRemove.
+              // this is expensive, but we only have to pay for it if there are
+              // REPLICATION_MARKER_REMOVE markers present, which can only happen
+              // with MMFiles dumps from <= 3.6
+              documentsToRemove.erase(it.value.copyString());
+            }
           }
-          return res;
+
+          documentsToInsert.add(it.key);
+
+          if (generateNewRevisionIds && 
+              !isKey && 
+              arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
+            char ridBuffer[11];
+            RevisionId newRid = physical->newRevisionId();
+            documentsToInsert.add(newRid.toValuePair(ridBuffer));
+          } else {
+            documentsToInsert.add(it.value);
+          }
         }
 
-        // Put into array of all parsed markers:
-        allMarkers.add(builder.slice());
-        latest[key] = currentPos;
-        ++currentPos;
+        documentsToInsert.close();
+      } else if (type == REPLICATION_MARKER_REMOVE) {
+        // keep track of which documents to remove.
+        // in case we add a document to remove here that is already in documentsToInsert,
+        // this case will be detected later.
+        TRI_ASSERT(doc.isString());
+        documentsToRemove.emplace(doc.copyString());
       }
-
-      ptr = pos + 1;
     }
+
+    ptr = pos + 1;
   }
 
-  return Result{TRI_ERROR_NO_ERROR};
+  // close array
+  documentsToInsert.close();
+
+  return {};
 }
 
-Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch() {
-  auto& analyzersFeature = _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
-  std::unordered_map<std::string, VPackValueLength> latest;
-  VPackBuilder allMarkers;
+Result RestReplicationHandler::parseBatchForSystemCollection(std::string const& collectionName,
+                                                             VPackBuilder& documentsToInsert,
+                                                             std::unordered_set<std::string>& documentsToRemove,
+                                                             bool generateNewRevisionIds) {
+  TRI_ASSERT(documentsToInsert.isEmpty());
 
-  Result res = parseBatch(StaticStrings::AnalyzersCollection, latest, allMarkers);
-  if (res.fail()) {
-    return res;
-  }
-  VPackSlice allMarkersSlice = allMarkers.slice();
+  // this "fake" transaction here is only needed to get access to the underlying
+  // system collection. we will not write anything into the collection here
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
-  auto importedArray = std::make_shared<VPackBuilder>();
-  importedArray->openArray();
-  for (auto const& p : latest) {
-    VPackSlice const marker = allMarkersSlice.at(p.second);
-    VPackSlice const typeSlice = marker.get(::typeString);
-    TRI_replication_operation_e type = REPLICATION_INVALID;
-    if (typeSlice.isNumber()) {
-      type = static_cast<TRI_replication_operation_e>(typeSlice.getNumber<int>());
-    }
-    if (type == REPLICATION_MARKER_DOCUMENT) {
-      VPackSlice const doc = marker.get(::dataString);
-      TRI_ASSERT(doc.isObject());
-      importedArray->add(doc);
-    }
+  Result res = trx.begin();
+  if (res.ok()) {
+    res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   }
-  importedArray->close();
-  if (!importedArray->slice().isEmptyArray()) {
-    return analyzersFeature.bulkEmplace(_vocbase, importedArray->slice());
-  } else {
-    return {};
+  // transaction will end here, without anything written
+  return res;
+}
+
+Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds) {
+  VPackBuilder documentsToInsert;
+  std::unordered_set<std::string> documentsToRemove;
+  Result res = parseBatchForSystemCollection(StaticStrings::AnalyzersCollection, documentsToInsert, documentsToRemove, generateNewRevisionIds);
+
+  if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
+    auto& analyzersFeature = _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
+    return analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice());
   }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1522,16 +1587,13 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch() {
 /// by key
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreUsersBatch(std::string const& collectionName) {
-  std::unordered_map<std::string, VPackValueLength> latest;
-  VPackBuilder allMarkers;
-
-  Result res = parseBatch(collectionName, latest, allMarkers);
+Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevisionIds) {
+  VPackBuilder documentsToInsert;
+  std::unordered_set<std::string> documentsToRemove;
+  Result res = parseBatchForSystemCollection(StaticStrings::UsersCollection, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   if (res.fail()) {
     return res;
   }
-
-  VPackSlice allMarkersSlice = allMarkers.slice();
 
   std::string aql(
       "FOR u IN @restored UPSERT {user: u.user} INSERT u REPLACE u "
@@ -1540,40 +1602,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue(collectionName));
+  bindVars->add("@collection", VPackValue(StaticStrings::UsersCollection));
   bindVars->add(VPackValue("restored"));
-  bindVars->openArray();
-
-  // Now loop over the markers and insert the docs, ignoring _key and _id
-  for (auto const& p : latest) {
-    VPackSlice const marker = allMarkersSlice.at(p.second);
-    VPackSlice const typeSlice = marker.get(::typeString);
-    TRI_replication_operation_e type = REPLICATION_INVALID;
-    if (typeSlice.isNumber()) {
-      int typeInt = typeSlice.getNumericValue<int>();
-      if (typeInt == 2301) {  // pre-3.0 type for edges
-        type = REPLICATION_MARKER_DOCUMENT;
-      } else {
-        type = static_cast<TRI_replication_operation_e>(typeInt);
-      }
-    }
-    if (type == REPLICATION_MARKER_DOCUMENT) {
-      VPackSlice const doc = marker.get(::dataString);
-      TRI_ASSERT(doc.isObject());
-      // In the _users case we silently remove the _key value.
-      bindVars->openObject();
-      for (auto it : VPackObjectIterator(doc)) {
-        if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
-            arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
-          bindVars->add(it.key);
-          bindVars->add(it.value);
-        }
-      }
-      bindVars->close();
-    }
-  }
-
-  bindVars->close();  // restored
+  bindVars->add(documentsToInsert.slice());
   bindVars->close();  // bindVars
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -1597,137 +1628,14 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
 Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx,
                                                        std::string const& collectionName,
                                                        bool generateNewRevisionIds) {
-  std::unordered_map<std::string, VPackValueLength> latest;
-  VPackBuilder allMarkers;
-
-  Result res = parseBatch(collectionName, latest, allMarkers);
+  // we'll build all documents to insert in this builder
+  VPackBuilder documentsToInsert;
+  std::unordered_set<std::string> documentsToRemove;
+  Result res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   if (res.fail()) {
     return res;
   }
 
-  // First remove all keys of which the last marker we saw was a deletion
-  // marker:
-  VPackSlice allMarkersSlice = allMarkers.slice();
-
-  VPackBuilder oldBuilder;
-  {
-    VPackArrayBuilder guard(&oldBuilder);
-
-    for (auto const& p : latest) {
-      VPackSlice const marker = allMarkersSlice.at(p.second);
-      VPackSlice const typeSlice = marker.get(::typeString);
-      TRI_replication_operation_e type = REPLICATION_INVALID;
-      if (typeSlice.isNumber()) {
-        int typeInt = typeSlice.getNumericValue<int>();
-        if (typeInt == 2301) {  // pre-3.0 type for edges
-          type = REPLICATION_MARKER_DOCUMENT;
-        } else {
-          type = static_cast<TRI_replication_operation_e>(typeInt);
-        }
-      }
-      if (type == REPLICATION_MARKER_REMOVE) {
-        oldBuilder.add(VPackValue(p.first));  // Add _key
-      } else if (type != REPLICATION_MARKER_DOCUMENT) {
-        return Result{TRI_ERROR_REPLICATION_UNEXPECTED_MARKER,
-                      "unexpected marker type " + StringUtils::itoa(type)};
-      }
-    }
-  }
-
-  // Note that we ignore individual errors here, as long as the main
-  // operation did not fail. In particular, we intentionally ignore
-  // individual "DOCUMENT NOT FOUND" errors, because they can happen!
-  try {
-    OperationOptions options;
-    options.silent = true;
-    options.ignoreRevs = true;
-    options.isRestore = true;
-    options.waitForSync = false;
-    double startTime = TRI_microtime();
-    OperationResult opRes = trx.remove(collectionName, oldBuilder.slice(), options);
-    double duration = TRI_microtime() - startTime;
-    if (opRes.fail()) {
-      LOG_TOPIC("e86e3", WARN, Logger::CLUSTER)
-          << "Could not delete " << oldBuilder.slice().length()
-          << " documents for restore: " << opRes.result.errorMessage();
-      return opRes.result;
-    }
-    if (duration > 30) {
-      LOG_TOPIC("f4aed", INFO, Logger::PERFORMANCE)
-          << "Restored/deleted " << oldBuilder.slice().length()
-          << " documents in time: " << duration << " seconds.";
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("a046b", WARN, Logger::CLUSTER)
-        << "Could not delete documents for restore exception: " << ex.what();
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("677b7", WARN, Logger::CLUSTER)
-        << "Could not delete documents for restore exception: " << ex.what();
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    LOG_TOPIC("734da", WARN, Logger::CLUSTER)
-        << "Could not delete documents for restore exception.";
-    return Result(TRI_ERROR_INTERNAL);
-  }
-  bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() &&
-                                     collectionName == StaticStrings::UsersCollection);
-
-  LogicalCollection* collection = trx.documentCollection(collectionName);
-  if (!collection) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-  PhysicalCollection* physical = collection->getPhysical();
-  if (!physical) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-  char ridBuffer[11];
-
-  // Now try to insert all keys for which the last marker was a document
-  // marker, note that these could still be replace markers!
-  VPackBuilder builder;
-  {
-    VPackArrayBuilder guard(&builder);
-
-    for (auto const& p : latest) {
-      VPackSlice const marker = allMarkersSlice.at(p.second);
-      VPackSlice const typeSlice = marker.get(::typeString);
-      TRI_replication_operation_e type = REPLICATION_INVALID;
-      if (typeSlice.isNumber()) {
-        int typeInt = typeSlice.getNumericValue<int>();
-        if (typeInt == 2301) {  // pre-3.0 type for edges
-          type = REPLICATION_MARKER_DOCUMENT;
-        } else {
-          type = static_cast<TRI_replication_operation_e>(typeInt);
-        }
-      }
-      if (type == REPLICATION_MARKER_DOCUMENT) {
-        VPackSlice const doc = marker.get(::dataString);
-        TRI_ASSERT(doc.isObject());
-        // In the _users case we silently remove the _key value.
-        VPackObjectBuilder guard(&builder);
-        for (auto it : VPackObjectIterator(doc)) {
-          if (isUsersOnCoordinator &&
-              (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString ||
-               arangodb::velocypack::StringRef(it.key) == StaticStrings::IdString)) {
-            continue;
-          }
-
-          builder.add(it.key);
-
-          if (generateNewRevisionIds && arangodb::velocypack::StringRef(it.key) ==
-                                            StaticStrings::RevString) {
-            RevisionId newRid = physical->newRevisionId();
-            builder.add(newRid.toValuePair(ridBuffer));
-          } else {
-            builder.add(it.value);
-          }
-        }
-      }
-    }
-  }
-
-  VPackSlice requestSlice = builder.slice();
   OperationOptions options(_context);
   options.silent = false;
   options.ignoreRevs = true;
@@ -1735,103 +1643,76 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   options.waitForSync = false;
   options.overwriteMode = OperationOptions::OverwriteMode::Replace;
   OperationResult opRes(Result(), options);
+
+  // only go into the remove documents case when we really have to.
+  if (!documentsToRemove.empty()) {
+    VPackBuilder toRemove;
+    toRemove.openArray();
+    for (auto const& it : documentsToRemove) {
+      toRemove.openObject();
+      toRemove.add(StaticStrings::KeyString, VPackValue(it));
+      toRemove.close();
+    }
+    toRemove.close();
+    // we let failing removes succeed here. in case a document is not found upon remove,
+    // the end result will be the same (document does not exist). in addition, the removal
+    // case  is an edge case for old dumps from MMFiles from <= 3.6
+    trx.remove(collectionName, toRemove.slice(), options);
+
+    // if we have pending removes we need to rewrite the entire documentsToInsert array.
+    // this is expensive, but an absolute edge case as mentioned before
+    documentsToInsert = VPackCollection::filter(documentsToInsert.slice(), [&documentsToRemove](VPackSlice const& current, VPackValueLength) {
+      TRI_ASSERT(current.isObject());
+      VPackSlice key = current.get(StaticStrings::KeyString);
+      return key.isString() && documentsToRemove.find(key.copyString()) == documentsToRemove.end();
+    });
+  }
+
+  // Now try to insert all keys for which the last marker was a document marker
+  VPackSlice requestSlice = documentsToInsert.slice();
+
   try {
-    double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
-    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
       LOG_TOPIC("e6280", WARN, Logger::CLUSTER)
-          << "Could not insert " << requestSlice.length()
+          << "could not insert " << requestSlice.length()
           << " documents for restore: " << opRes.result.errorMessage();
       return opRes.result;
-    }
-    if (duration > 30) {
-      LOG_TOPIC("38f0d", INFO, Logger::PERFORMANCE)
-          << "Restored/inserted " << requestSlice.length()
-          << " documents in time: " << duration << " seconds.";
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("8e8e1", WARN, Logger::CLUSTER)
-        << "Could not insert documents for restore exception: " << ex.what();
+        << "could not insert documents for restore exception: " << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC("f1e7f", WARN, Logger::CLUSTER)
-        << "Could not insert documents for restore exception: " << ex.what();
+        << "could not insert documents for restore exception: " << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     LOG_TOPIC("368bb", WARN, Logger::CLUSTER)
-        << "Could not insert documents for restore exception.";
+        << "could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  // Now go through the individual results and check each error, if it was
-  // TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, then we have to call
-  // replace on the document:
-  builder.clear();  // documents for replace operation
-  VPackSlice resultSlice = opRes.slice();
-  {
-    VPackArrayBuilder guard(&oldBuilder);
-    VPackArrayBuilder guard2(&builder);
-    VPackArrayIterator itRequest(requestSlice);
-    VPackArrayIterator itResult(resultSlice);
+  // Now go through the individual results and check each errors
+  VPackArrayIterator itRequest(requestSlice);
+  VPackArrayIterator itResult(opRes.slice());
 
-    while (itRequest.valid()) {
-      VPackSlice result = *itResult;
-      VPackSlice error = result.get(StaticStrings::Error);
-      if (error.isTrue()) {
-        error = result.get(StaticStrings::ErrorNum);
-        if (error.isNumber()) {
-          int code = error.getNumericValue<int>();
-          if (code != TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-            return code;
-          }
-          builder.add(*itRequest);
-        } else {
-          return Result(TRI_ERROR_INTERNAL);
+  while (itRequest.valid()) {
+    VPackSlice result = *itResult;
+    VPackSlice error = result.get(StaticStrings::Error);
+    if (error.isTrue()) {
+      error = result.get(StaticStrings::ErrorNum);
+      if (error.isNumber()) {
+        int code = error.getNumericValue<int>();
+        error = result.get(StaticStrings::ErrorMessage);
+        if (error.isString()) {
+          return { code, error.copyString() };
         }
+        return { code };
       }
-      itRequest.next();
-      itResult.next();
     }
-  }
-
-  if (builder.slice().length() == 0) {
-    // no replace operations to perform
-    return Result();
-  }
-
-  try {
-    OperationOptions options(_context);
-    options.silent = true;
-    options.ignoreRevs = true;
-    options.isRestore = true;
-    options.waitForSync = false;
-    double startTime = TRI_microtime();
-    opRes = trx.replace(collectionName, builder.slice(), options);
-    double duration = TRI_microtime() - startTime;
-    if (opRes.fail()) {
-      LOG_TOPIC("c708e", WARN, Logger::CLUSTER)
-          << "Could not replace " << builder.slice().length()
-          << " documents for restore: " << opRes.result.errorMessage();
-      return opRes.result;
-    }
-    if (duration > 30) {
-      LOG_TOPIC("12b62", INFO, Logger::PERFORMANCE)
-          << "Restored/replaced " << builder.slice().length()
-          << " documents in time: " << duration << " seconds.";
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("37b43", WARN, Logger::CLUSTER)
-        << "Could not replace documents for restore exception: " << ex.what();
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("33217", WARN, Logger::CLUSTER)
-        << "Could not replace documents for restore exception: " << ex.what();
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    LOG_TOPIC("5f400", WARN, Logger::CLUSTER)
-        << "Could not replace documents for restore exception.";
-    return Result(TRI_ERROR_INTERNAL);
+    itRequest.next();
+    itResult.next();
   }
 
   return Result();
@@ -2078,7 +1959,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
     res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
-      return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
+      return res.reset(res.errorNumber(),
+                       StringUtils::concatT("could not create index: ", res.errorMessage()));
     }
   }
 
@@ -2218,9 +2100,9 @@ void RestReplicationHandler::handleCommandSync() {
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(config));
+    syncer = GlobalInitialSyncer::create(config);
   } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, config));
+    syncer = DatabaseInitialSyncer::create(_vocbase, config);
   }
 
   Result r = syncer->run(config._incremental);

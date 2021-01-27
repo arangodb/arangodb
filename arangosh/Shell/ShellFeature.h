@@ -60,6 +60,8 @@ class ShellFeature final : public application_features::ApplicationFeature {
   RunMode _runMode;
   std::vector<std::string> _positionals;
   std::string _unitTestFilter;
+  std::vector<std::string> _scriptParameters;
+  bool _runMain{false};
 };
 
 }  // namespace arangodb
