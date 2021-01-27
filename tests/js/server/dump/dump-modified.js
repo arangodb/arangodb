@@ -266,7 +266,7 @@ function dumpTestSuite () {
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual(2000, c.count());
+      assertEqual(2001, c.count());
 
       for (var i = 0; i < 1000; ++i) {
         let doc = c.document(String(7 + (i * 42)));
@@ -282,6 +282,74 @@ function dumpTestSuite () {
         assertEqual(j, doc.value);
         assertEqual({ value: [ j, j ] }, doc.more);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test padded keygen
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenPadded : function () {
+      var c = db._collection("UnitTestsDumpKeygenPadded");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertFalse(p.waitForSync);
+      assertEqual("padded", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+      assertEqual(process.env['paddedLastValue'], p.keyOptions.lastValue);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1002, c.count());
+
+      let allDocs = {};
+      c.toArray().forEach(doc => {
+        allDocs[doc.value] = doc;
+      });
+      let lastKey = "";
+      for (var i = 0; i < 1000; ++i) {
+        var doc = allDocs[i];
+
+        assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
+        assertEqual(i, doc.value);
+        assertEqual({ value: [ i, i ] }, doc.more);
+        lastKey = doc._key;
+      }
+      doc = c.save({});
+      assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
+
+      // reset the value to before the one expected to be restored:
+      process.env['paddedLastValue'] = process.env['lastPaddedLastValue'];
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uuid keygen
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenUuid : function () {
+      var c = db._collection("UnitTestsDumpKeygenUuid");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertFalse(p.waitForSync);
+      assertEqual("uuid", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(2001, c.count());
+
+      let allDocs = {};
+      c.toArray().forEach(doc => {
+        allDocs[doc.value] = doc;
+      });
+      let docs = [];
+      for (var i = 0; i < 1000; ++i) docs.push({"a": i});
+
+      let savedDocs = c.save(docs);
+      savedDocs.forEach(doc => {
+        assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
