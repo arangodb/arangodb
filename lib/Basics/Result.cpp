@@ -108,14 +108,6 @@ auto Result::reset(int errorNumber) -> Result& {
   return *this;
 }
 
-Result& Result::reset(int errorNumber, std::string_view errorMessage) {
-  return reset(errorNumber, std::string{errorMessage});
-}
-
-Result& Result::reset(int errorNumber, const char* errorMessage) {
-  return reset(errorNumber, std::string{errorMessage});
-}
-
 auto Result::reset(int errorNumber, std::string_view errorMessage) -> Result& {
   return reset(errorNumber, std::string{errorMessage});
 }

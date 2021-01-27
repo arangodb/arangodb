@@ -131,17 +131,8 @@ class Result final {
    * @param errorMessage Said specific error message
    * @return            Reference to ourselves
    */
-  auto reset(int errorNumber, std::string const& errorMessage) -> Result&;
   auto reset(int errorNumber, std::string_view errorMessage) -> Result&;
   auto reset(int errorNumber, const char* errorMessage) -> Result&;
-
-  /**
-   * @brief  Reset to specific error number with message.
-   *         If ok, error message is cleared.
-   * @param errorNumber Said specific error number
-   * @param errorMessage Said specific error message
-   * @return            Reference to ourselves
-   */
   auto reset(int errorNumber, std::string&& errorMessage) noexcept -> Result&;
 
   /**
@@ -150,12 +141,6 @@ class Result final {
    * @return        Reference to ourselves
    */
   auto reset(Result const& other) -> Result&;
-
-  /**
-   * @brief  Reset to other error.
-   * @param  other  Said specific error
-   * @return        Reference to ourselves
-   */
   auto reset(Result&& other) noexcept -> Result&;
 
   /**
