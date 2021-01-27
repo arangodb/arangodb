@@ -69,7 +69,7 @@ class Result final {
   /**
    * @brief Assignment operator
    * @param  other  To assign from
-   * @return        Refernece to ourselves
+   * @return        Reference to ourselves
    */
   auto operator=(Result const& other) -> Result&;
 
