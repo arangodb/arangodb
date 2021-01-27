@@ -63,15 +63,8 @@ Result::Result(int errorNumber, const char* errorMessage)
 Result::Result(Result const& other)
     : _error(other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error)) {}
 
-Result::Result(Result&& other) noexcept : _error(std::move(other._error)) {}
-
 auto Result::operator=(Result const& other) -> Result& {
   _error = other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error);
-  return *this;
-}
-
-auto Result::operator=(Result&& other) noexcept -> Result& {
-  _error = std::move(other._error);
   return *this;
 }
 
@@ -116,7 +109,7 @@ auto Result::reset(int errorNumber, const char* errorMessage) -> Result& {
   return reset(errorNumber, std::string{errorMessage});
 }
 
-auto Result::reset(int errorNumber, std::string&& errorMessage) noexcept -> Result& {
+auto Result::reset(int errorNumber, std::string&& errorMessage) -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
     _error = nullptr;
   } else {

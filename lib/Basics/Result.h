@@ -64,7 +64,7 @@ class Result final {
    * @brief Construct as clone
    * @param  other  The prototype
    */
-  Result(Result&& other) noexcept;
+  Result(Result&& other) noexcept = default;
 
   /**
    * @brief Assignment operator
@@ -78,7 +78,7 @@ class Result final {
    * @param  other  To assign from
    * @return        Reference to ourselves
    */
-  auto operator=(Result&& other) noexcept -> Result&;
+  auto operator=(Result&& other) noexcept -> Result& = default;
 
  public:
   /**
@@ -133,7 +133,7 @@ class Result final {
    */
   auto reset(int errorNumber, std::string_view errorMessage) -> Result&;
   auto reset(int errorNumber, const char* errorMessage) -> Result&;
-  auto reset(int errorNumber, std::string&& errorMessage) noexcept -> Result&;
+  auto reset(int errorNumber, std::string&& errorMessage) -> Result&;
 
   /**
    * @brief  Reset to other error.
