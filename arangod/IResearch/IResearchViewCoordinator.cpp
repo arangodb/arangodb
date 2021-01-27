@@ -538,11 +538,9 @@ Result IResearchViewCoordinator::dropImpl() {
       currentCids);
 
     if (!res.ok()) {
-      return Result(
-          res.errorNumber(),
-          std::string(
-              "failed to remove links while removing arangosearch view '") +
-              name() + "': " + res.errorMessage());
+      return Result(res.errorNumber(), arangodb::basics::StringUtils::concatT("failed to remove links while removing arangosearch view '",
+                                                                              name(),
+                                                                              "': ", res.errorMessage()));
     }
   }
 

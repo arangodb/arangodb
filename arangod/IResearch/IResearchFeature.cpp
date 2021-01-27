@@ -39,6 +39,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #ifdef USE_ENTERPRISE
@@ -544,9 +545,10 @@ void registerSingleFactory(
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
-          std::string("failure registering IResearch link factory with index "
-                      "factory from feature '") +
-              engine.name() + "': " + res.errorMessage());
+          arangodb::basics::StringUtils::concatT(
+              "failure registering IResearch link factory with index "
+              "factory from feature '",
+              engine.name(), "': ", res.errorMessage()));
     }
   }
 }
@@ -667,7 +669,8 @@ void registerViewFactory(arangodb::application_features::ApplicationServer& serv
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res.errorNumber(),
-        std::string("failure registering arangosearch view factory: ") + res.errorMessage());
+        arangodb::basics::StringUtils::concatT(
+            "failure registering arangosearch view factory: ", res.errorMessage()));
   }
 }
 
