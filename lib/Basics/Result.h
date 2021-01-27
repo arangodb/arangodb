@@ -108,13 +108,13 @@ class Result final {
   /**
    * @see is(int errorNumber)
    */
-  [[nodiscard]] auto isNot(int errorNumber) const -> bool;
+  [[nodiscard]] auto isNot(int errorNumber) const noexcept -> bool;
 
   /**
    * @brief  Reset to ok, error message is cleared.
    * @return            Reference to ourselves
    */
-  auto reset() -> Result&;
+  auto reset() noexcept -> Result&;
 
   /**
    * @brief  Reset to specific error number.

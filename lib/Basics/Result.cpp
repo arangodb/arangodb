@@ -91,9 +91,9 @@ auto Result::is(int errorNumber) const noexcept -> bool {
   return this->errorNumber() == errorNumber;
 }
 
-auto Result::isNot(int errorNumber) const -> bool { return !is(errorNumber); }
+auto Result::isNot(int errorNumber) const noexcept -> bool { return !is(errorNumber); }
 
-auto Result::reset() -> Result& {
+auto Result::reset() noexcept -> Result& {
   _error.reset();
   return *this;
 }
