@@ -180,7 +180,7 @@ template<typename T> class Gauge : public Metric {
   
   void toPrometheus(std::string& result, bool withDocs = false) const override {
     result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + (withDocs ? docs() : help()) + "\n";
+    result += "#HELP " + name() + " " + (withDocs ? cleanedDocs() : help()) + "\n";
     if (!labels().empty()) {
       result += "{" + labels() + "}";
     }
@@ -480,7 +480,7 @@ template<typename Scale> class Histogram : public Metric {
 
   virtual void toPrometheus(std::string& result, bool withDocs = false) const override {
     result += "\n#TYPE " + name() + " histogram\n";
-    result += "#HELP " + name() + " " + (withDocs ? docs() : help()) + "\n";
+    result += "#HELP " + name() + " " + (withDocs ? cleanedDocs() : help()) + "\n";
     std::string lbs = labels();
     auto const haveLabels = !lbs.empty();
     auto const separator = haveLabels && lbs.back() != ',';
