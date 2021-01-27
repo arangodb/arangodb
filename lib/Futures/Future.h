@@ -69,7 +69,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
     T operator()() const noexcept {
 #ifdef MELLON_RECORD_BACKTRACE
       if (mellon::detail::current_backtrace_ptr != nullptr) {
-        LOG_TOPIC("bbce8", INFO, arangodb::Logger::CRASH) << "the promise was abandoned here:";
+        LOG_TOPIC("bace8", INFO, arangodb::Logger::CRASH) << "the promise was abandoned here:";
         for (size_t i = 0; i < mellon::detail::current_backtrace_ptr->size(); i++) {
           LOG_TOPIC("bbce7", INFO, arangodb::Logger::CRASH) << '#' << (i+1) << ' ' << mellon::detail::current_backtrace_ptr->at(i);
         }
