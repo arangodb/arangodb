@@ -436,6 +436,8 @@ devel
 
 * Clean up agency change log, cluster info caches.
 
+* Added SNI support for arangosh.
+
 * Added new `rocksdb_write_stalls` and `rocksdb_write_stops` counter metrics,
   which should be more accurate than existing metrics related to the underlying
   conditions.
