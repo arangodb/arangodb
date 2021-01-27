@@ -300,7 +300,8 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
   size_t writeConcern = _writeConcern;
   size_t replicationFactor = _replicationFactor;
 
-  // honor replicationFactor of other collection that uses distributeShardsLike
+  // when "distributeShardsLike" is used, honor replicationFactor of the
+  // prototype collection specified via "distributeShardsLike"
   if (!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) {
     if (translateCids) {
       CollectionNameResolver resolver(_collection->vocbase());

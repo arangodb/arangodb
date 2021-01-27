@@ -958,7 +958,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
           writeConcern != _sharding->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "cannot change writeConcern for a collection using 'distributeShardsLike'");
+                        "cannot change writeConcern for a collection that uses 'distributeShardsLike'");
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "changing writeConcern "
@@ -978,7 +978,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   if (ServerState::instance()->isCoordinator()) {
     VPackSlice shardingStrategySlice = slice.get(StaticStrings::ShardingStrategy);
     if (shardingStrategySlice.isString()) {
-      if (shardingStrategySlice.copyString() != _sharding->shardingStrategyName()) {
+      if (shardingStrategySlice.stringRef() != _sharding->shardingStrategyName()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "cannot change shardingStrategy of an existing collection");
       }

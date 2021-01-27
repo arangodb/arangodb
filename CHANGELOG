@@ -1,5 +1,21 @@
 devel
 -----
+
+* Slighty improved the behavior of properties retrieval and update in 
+  clustered collections:
+
+  - when retrieving the properties of a collection that uses 
+    "distributeShardsLike", now the "replicationFactor" and "writeConcern" 
+    values of the prototype collection are returned, because these are the
+    effective values used for the collection. The previous behavior was 
+    to return the values that were used when initially creating the 
+    collection, but this did not take into account any changes of those
+    properties in the prototype collection.
+  - trying to change the "writeConcern" value of a collection that uses 
+    "distributeShardsLike" is now handled with a proper error message.
+  - trying to change the "shardingStrategy" attribute of an existing 
+    collection will now result in a "bad parameter" error. The previous 
+    behavior was to silently ignore the change attempt.
           
 * Added metric `arangodb_transactions_expired` to track the total number 
   of expired and then garbage-collected transactions.
@@ -134,20 +150,6 @@ devel
   arangoexport, arangodump and arangorestore before splitting them into path
   components, in the sense that now both forward and backward slashes can be
   used on Windows, even interchangingly.
-
-* Slighty improved the behavior of properties retrieval and update of clustered
-  collections:
-
-  - when retrieving the properties of a collection that uses "distributeShardsLike",
-    now the "replicationFactor" and "writeConcern" values of the prototype collection 
-    are returned as expected. The previous behavior was to return the values that
-    were used when initially creating the collection, but this did not take into
-    account any changes of the properties of the prototype collection.
-  - trying to change the "writeConcern" value of a collection that uses 
-    "distributeShardsLike" is now handled with a proper error message.
-  - trying to change the "shardingStrategy" attribute of an existing collection
-    will now result in a "bad parameter" error. The previous behavior was to 
-    silently ignore the change attempt.
 
 * Added the following bit handling functions to AQL:
 
