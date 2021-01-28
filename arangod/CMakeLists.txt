@@ -188,6 +188,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Cursors/RefactoredClusterEdgeCursor.cpp
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
+  Graph/Cache/RefactoredClusterTraverserCache.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
