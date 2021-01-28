@@ -31,6 +31,11 @@
 #include "Basics/ResultT.h"
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+class StringRef;
+}
+
 namespace aql {
 
 class AqlItemBlockManager;
@@ -120,6 +125,8 @@ class DistributeExecutor {
   auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
 
   auto getClientByIdSlice(arangodb::velocypack::Slice input) -> std::string;
+
+  auto buildKeyObject(arangodb::velocypack::StringRef key) -> arangodb::velocypack::Slice;
 
  private:
   DistributeExecutorInfos const& _infos;

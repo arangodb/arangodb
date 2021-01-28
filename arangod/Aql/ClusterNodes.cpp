@@ -260,30 +260,54 @@ CostEstimate ScatterNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
   return estimate;
 }
+  
+DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
+                               ScatterNode::ScatterType type, Collection const* collection,
+                               Variable const* variable, Variable const* alternativeVariable,
+                               bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput,
+                               bool allowSpecifiedKeys)
+    : ScatterNode(plan, id, type),
+      CollectionAccessingNode(collection),
+      _variable(variable),
+      _alternativeVariable(alternativeVariable),
+      _createKeys(createKeys),
+      _allowKeyConversionToObject(allowKeyConversionToObject),
+      _allowSpecifiedKeys(allowSpecifiedKeys),
+      _fixupGraphInput(fixupGraphInput) {
+  // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
+  TRI_ASSERT(!_fixupGraphInput || !_createKeys);
+}
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _variable(nullptr),
-      _alternativeVariable(nullptr),
+      _variable(Variable::varFromVPack(plan->getAst(), base, "variable")),
+      _alternativeVariable(Variable::varFromVPack(plan->getAst(), base, "alternativeVariable", true)),
       _createKeys(base.get("createKeys").getBoolean()),
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
       _allowSpecifiedKeys(false),
-      _fixupGraphInput(false) {
-  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
-    _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
-    _alternativeVariable =
-        Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
-  } else {
-    _variable = plan->getAst()->variables()->getVariable(
-        base.get("varId").getNumericValue<VariableId>());
-    _alternativeVariable = plan->getAst()->variables()->getVariable(
-        base.get("alternativeVarId").getNumericValue<VariableId>());
-  }
-  _fixupGraphInput = VelocyPackHelper::getBooleanValue(base, "fixupGraphInput", false);
+      _fixupGraphInput(VelocyPackHelper::getBooleanValue(base, "fixupGraphInput", false)) {
   // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
   TRI_ASSERT(!_fixupGraphInput || !_createKeys);
+  // no key creation on DB servers
+  TRI_ASSERT(!ServerState::instance()->isDBServer() || !_createKeys);
+}
+  
+/// @brief clone ExecutionNode recursively
+ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                     bool withProperties) const {
+  auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
+                                            collection(), _variable,
+                                            _alternativeVariable, 
+                                            _createKeys,
+                                            _allowKeyConversionToObject,
+                                            _fixupGraphInput,
+                                            _allowSpecifiedKeys);
+  c->copyClients(clients());
+  CollectionAccessingNode::cloneInto(*c);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -318,12 +342,14 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
+
   auto inAndOutRegs = RegIdSet{regId};
   if (alternativeRegId != RegisterPlan::MaxRegisterId) {
     inAndOutRegs.emplace(alternativeRegId);
   }
   auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
-  auto infos = DistributeExecutorInfos(clients(), collection(), regId, alternativeRegId,
+  auto infos = DistributeExecutorInfos(clients(), collection(), 
+                                       regId, alternativeRegId, 
                                        _allowSpecifiedKeys, _allowKeyConversionToObject,
                                        _createKeys, _fixupGraphInput, getScatterType());
 
@@ -358,10 +384,11 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
+  // note: these may be the same variables
   vars.emplace(_variable);
   vars.emplace(_alternativeVariable);
 }
-
+  
 /// @brief estimateCost
 CostEstimate DistributeNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();

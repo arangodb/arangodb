@@ -201,18 +201,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
                  Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput)
-      : ScatterNode(plan, id, type),
-        CollectionAccessingNode(collection),
-        _variable(variable),
-        _alternativeVariable(alternativeVariable),
-        _createKeys(createKeys),
-        _allowKeyConversionToObject(allowKeyConversionToObject),
-        _allowSpecifiedKeys(false),
-        _fixupGraphInput(fixupGraphInput) {
-    // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
-    TRI_ASSERT(!_fixupGraphInput || !_createKeys);
-  }
+                 bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput,
+                 bool allowSpecifiedKeys);
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -230,40 +220,16 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
-                                              collection(), _variable,
-                                              _alternativeVariable, _createKeys,
-                                              _allowKeyConversionToObject,
-                                              _fixupGraphInput);
-    c->copyClients(clients());
-    CollectionAccessingNode::cloneInto(*c);
-
-    return cloneHelper(std::move(c), withDependencies, withProperties);
-  }
+                       bool withProperties) const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const final;
-
+  
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  void variable(Variable const* variable) { _variable = variable; }
-
-  void alternativeVariable(Variable const* variable) {
-    _alternativeVariable = variable;
-  }
-
-  /// @brief set createKeys
-  void setCreateKeys(bool b) { _createKeys = b; }
-
-  /// @brief set allowKeyConversionToObject
-  void setAllowKeyConversionToObject(bool b) {
-    _allowKeyConversionToObject = b;
-  }
-
-  /// @brief set _allowSpecifiedKeys
-  void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
+  /// @brief set createKeys to false
+  void disableCreateKeys() { _createKeys = false; }
 
  private:
   /// @brief the variable we must inspect to know where to distribute
@@ -272,18 +238,19 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief an optional second variable we must inspect to know where to
   /// distribute
   Variable const* _alternativeVariable;
-
-  /// @brief the node is responsible for creating document keys
+  
+  /// @brief the node is responsible for creating document keys. note:
+  /// this can be changed from true to false, but never from false to true
   bool _createKeys;
 
   /// @brief allow conversion of key to object
-  bool _allowKeyConversionToObject;
+  bool const _allowKeyConversionToObject;
 
   /// @brief allow specified keys in input even in the non-default sharding case
-  bool _allowSpecifiedKeys;
+  bool const _allowSpecifiedKeys;
 
   /// @brief required to fixup graph input
-  bool _fixupGraphInput;
+  bool const _fixupGraphInput;
 };
 
 /// @brief class GatherNode
@@ -435,7 +402,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief getVariablesSetHere
-  virtual std::vector<Variable const*> getVariablesSetHere() const override final;
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;

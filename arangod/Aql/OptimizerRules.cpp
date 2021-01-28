@@ -4040,11 +4040,17 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
     } break;
   }
   TRI_ASSERT(collection != nullptr);
+  // allowSpecifiedKeys can only be true for UPSERT
+  TRI_ASSERT(node->getType() == ExecutionNode::UPSERT || !allowSpecifiedKeys);
+  // createKeys can only be true for INSERT/UPSERT
+  TRI_ASSERT((node->getType() == ExecutionNode::INSERT || node->getType() == ExecutionNode::UPSERT) || !createKeys);
+
   auto distNode =
-      plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
-                                      collection, inputVariable, alternativeVariable,
-                                      createKeys, allowKeyConversionToObject, fixupGraphInput);
-  distNode->setAllowSpecifiedKeys(allowSpecifiedKeys);
+      plan.createNode<DistributeNode>(&plan, plan.nextId(), 
+                                      ScatterNode::ScatterType::SHARD, collection, 
+                                      inputVariable, alternativeVariable,
+                                      createKeys, allowKeyConversionToObject, fixupGraphInput,
+                                      allowSpecifiedKeys);
   TRI_ASSERT(distNode != nullptr);
   return distNode;
 }
@@ -4080,10 +4086,51 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan, DistributeNode* nod
 // Note that parents[0] might be `nullptr` if `node` is the root of the plan,
 // and we handle this case in here as well by resetting the root to the
 // inserted GATHER node.
-//
 auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
                                                   ExecutionNode* at, SubqueryNode* snode)
     -> DistributeNode* {
+#if 0
+  // before we insert a DistributeNode in front of a modification node or any other
+  // node that requires a Distribute, clone the input variable of the DistributeNode's
+  // target into a new variable, so that the original input variable can remain
+  // unmodified, and the DistributeNode can tamper with the clone (a DistributeNode
+  // can modify its input data in place).
+  // this is currently a proof-of-concept here, and only supports INSERT. the clone
+  // is also inserted unconditionally, even when it is not necessary.
+
+  if (at->getType() == ExecutionNode::INSERT) {
+    // find the variable that the INSERT uses as its input
+    auto* insertNode = ExecutionNode::castTo<InsertNode*>(at);
+  
+    // create a new CalculationNode that is just a copy of INSERT's input variable.
+    Variable* variable = plan.getAst()->variables()->createTemporaryVariable();
+    AstNode* ref = plan.getAst()->createNodeReference(insertNode->inVariable());
+    auto expr = std::make_unique<Expression>(plan.getAst(), ref);
+    CalculationNode* cn = new CalculationNode(&plan, plan.nextId(), std::move(expr), variable);
+
+    // link the new CalculationNode directly in front of the INSERT
+    plan.insertBefore(at, cn);
+
+    // patch the INSERT so that it uses the new variable as its input
+    insertNode->setInVariable(variable);
+
+    // directly afterwards, the DistributeNode will be inserted in front of the 
+    // INSERT, but behind our new CalculationNode.
+    // An example query such as
+    //     INSERT doc IN ...
+    //     RETURN doc
+    // will look like this without the change:
+    //     DISTRIBUTE doc /* doc may be modified here */
+    //     INSERT doc IN ...
+    //     RETURN doc /* will return the modified doc, which is wrong */
+    // with the changes here, the query will look as follows:
+    //     LET tmp = doc
+    //     DISTRIBUTE tmp /* tmp may be modified here */
+    //     INSERT tmp IN ...
+    //     RETURN doc /* will return doc unmodified, which is correct */
+  }
+#endif
+
   auto const parents = at->getParents();
   auto const deps = at->getDependencies();
 
@@ -4093,7 +4140,7 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
   // create, and register a distribute node
   DistributeNode* distNode = createDistributeNodeFor(plan, at);
   TRI_ASSERT(distNode != nullptr);
-TRI_ASSERT(deps.size() == 1);
+  TRI_ASSERT(deps.size() == 1);
   distNode->addDependency(deps[0]);
 
   // TODO: This dance is only needed to extract vocbase for

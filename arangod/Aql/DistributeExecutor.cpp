@@ -28,8 +28,6 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
@@ -37,7 +35,10 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -165,13 +166,8 @@ auto DistributeExecutor::getClientByIdSlice(VPackSlice input) -> std::string {
   // Need to fix this document.
   // We need id and key as input.
   auto keyPart = transaction::helpers::extractKeyPart(input);
-  _keyBuilder.clear();
-  _keyBuilder.openObject(true);
-  _keyBuilder.add(StaticStrings::KeyString,
-                  VPackValuePair(keyPart.data(), keyPart.size(), VPackValueType::String));
-  _keyBuilder.close();
+  auto res = _infos.getResponsibleClient(buildKeyObject(VPackStringRef(keyPart)));
   // If _key is invalid, we will throw here.
-  auto res = _infos.getResponsibleClient(_keyBuilder.slice());
   THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
   return res.get();
 }
@@ -179,113 +175,129 @@ auto DistributeExecutor::getClientByIdSlice(VPackSlice input) -> std::string {
 auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
     -> std::string {
   InputAqlItemRow row{block, rowIndex};
+   
+  // check first input register
   AqlValue val = row.getValue(_infos.registerId());
-
-  VPackSlice input = val.slice();  // will throw when wrong type
-
   bool usedAlternativeRegId = false;
 
-  if (input.isNull() && _infos.hasAlternativeRegister()) {
+  // if empty, check alternative input register
+  if (_infos.hasAlternativeRegister() && val.isNull(true)) {
     // value is set, but null
     // check if there is a second input register available (UPSERT makes use of
     // two input registers,
     // one for the search document, the other for the insert document)
     val = row.getValue(_infos.alternativeRegisterId());
-
-    input = val.slice();  // will throw when wrong type
     usedAlternativeRegId = true;
   }
 
-  VPackSlice value = input;
+  VPackSlice input = val.slice();  // will throw when wrong type
+
   if (_infos.needsToFixGraphInput()) {
     if (input.isString()) {
       return getClientByIdSlice(input);
-    } else if (input.isObject() && input.hasKey(StaticStrings::IdString) && !input.hasKey(StaticStrings::KeyString)) {
-      // The input is an object, but only contains an _id, not a _key value that could be extracted.
-      // We can work with _id value only however so let us do this.
-      return getClientByIdSlice(input.get(StaticStrings::IdString));
     }
-    if (!input.isObject() || !input.hasKey(StaticStrings::IdString)) {
-      // non objects cannot be sharded.
-      // Need to throw here.
+
+    // check input value
+    VPackSlice idSlice;
+    bool valid = input.isObject();
+    if (valid) {
+      idSlice = input.get(StaticStrings::IdString);
+      // no _id, no cookies
+      valid = !idSlice.isNone();
+    }
+
+    if (!valid) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                      "invalid start vertex. Must either be "
-                                     "an _id string or an object with _id."
+                                     "an _id string value or an object with _id. "
                                      "Instead got: " + input.toJson());
     }
-    // If the value is valid (like a document) it will simply work.
-    auto res = _infos.getResponsibleClient(value);
-    THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
-    return res.get();
-  } else {
-    bool hasCreatedKeyAttribute = false;
 
-    if (input.isString() && _infos.allowKeyConversionToObject()) {
-      _keyBuilder.clear();
-      _keyBuilder.openObject(true);
-      _keyBuilder.add(StaticStrings::KeyString, input);
-      _keyBuilder.close();
-
-      // clear the previous value
-      block->destroyValue(rowIndex, _infos.registerId());
-
-      // overwrite with new value
-      block->emplaceValue(rowIndex, _infos.registerId(), _keyBuilder.slice());
-
-      value = _keyBuilder.slice();
-      hasCreatedKeyAttribute = true;
-    } else if (!input.isObject()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    if (!input.hasKey(StaticStrings::KeyString)) {
+      // The input is an object, but only contains an _id, not a _key value that could be extracted.
+      // We can work with _id value only however so let us do this.
+      return getClientByIdSlice(idSlice);
     }
 
-    TRI_ASSERT(value.isObject());
+    // If the value is valid (like a document) it will simply work.
+    auto res = _infos.getResponsibleClient(input);
+    THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
+    return res.get();
+  }
+  
+  TRI_ASSERT(!_infos.needsToFixGraphInput());
+  
+  auto canUseCustomKey = [this](bool usedAlternativeRegId) {
+    if (_infos.usesDefaultSharding()) {
+      return true;
+    }
+    // the collection is not sharded by _key
+    return (!usedAlternativeRegId && _infos.allowSpecifiedKeys());
+  };
 
-    if (_infos.createKeys()) {
-      bool buildNewObject = false;
-      // we are responsible for creating keys if none present
+  bool buildNewObject = false;
+    
+  if (!input.isObject()) {
+    // input is not an object.
+    // if this happens, it must be a string key
+    if (!input.isString() || !_infos.allowKeyConversionToObject()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
+       
+    // check if custom keys are allowed in this context
+    if (!canUseCustomKey(usedAlternativeRegId)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+    }
+    
+    // convert string key into object with { _key: "string" }
+    TRI_ASSERT(_infos.allowKeyConversionToObject());
+    input = buildKeyObject(input.stringRef());
+    buildNewObject = true;
+  } 
 
-      if (_infos.usesDefaultSharding()) {
-        // the collection is sharded by _key...
-        if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
-          // there is no _key attribute present, so we are responsible for
-          // creating one
-          buildNewObject = true;
-        }
-      } else {
-        // the collection is not sharded by _key
-        if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
-          // a _key was given, but user is not allowed to specify _key
-          if (usedAlternativeRegId || !_infos.allowSpecifiedKeys()) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-          }
-        } else {
-          buildNewObject = true;
-        }
-      }
+  if (_infos.createKeys()) {
+    TRI_ASSERT(input.isObject());
 
-      if (buildNewObject) {
-        _keyBuilder.clear();
-        _keyBuilder.openObject(true);
-        _keyBuilder.add(StaticStrings::KeyString, VPackValue(_infos.createKey(value)));
-        _keyBuilder.close();
+    buildNewObject = !input.hasKey(StaticStrings::KeyString);
+    // we are responsible for creating keys if none present
 
-        _objectBuilder.clear();
-        VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
+    if (!buildNewObject && !canUseCustomKey(usedAlternativeRegId)) {
+      // the collection is not sharded by _key, but there is a _key present in the data.
+      // a _key was given, but user is not allowed to specify _key
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+    }
 
-        // clear the previous value and overwrite with new value:
-        auto reg = usedAlternativeRegId ? _infos.alternativeRegisterId()
-                                        : _infos.registerId();
+    if (buildNewObject) {
+      VPackSlice newKeyObject = buildKeyObject(VPackStringRef(_infos.createKey(input)));
 
-        block->destroyValue(rowIndex, reg);
-        block->emplaceValue(rowIndex, reg, _objectBuilder.slice());
-        value = _objectBuilder.slice();
-      }
+      _objectBuilder.clear();
+      VPackCollection::merge(_objectBuilder, input, newKeyObject, true);
+      input = _objectBuilder.slice();
     }
   }
 
-  auto res = _infos.getResponsibleClient(value);
+  if (buildNewObject) {
+    TRI_ASSERT(_infos.createKeys() || _infos.allowKeyConversionToObject());
+    // clear the previous value and overwrite with new value, in place!
+    auto reg = usedAlternativeRegId ? _infos.alternativeRegisterId()
+                                    : _infos.registerId();
+    block->destroyValue(rowIndex, reg);
+    block->emplaceValue(rowIndex, reg, input);
+  }
+
+  auto res = _infos.getResponsibleClient(input);
   THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
   return res.get();
+}
+  
+// build a temporary object with just a "_key" attribute. the object can
+// be pointed to afterwards until _keyBuilder gets modified again
+auto DistributeExecutor::buildKeyObject(VPackStringRef key) -> VPackSlice {
+  _keyBuilder.clear();
+  _keyBuilder.openObject(true);
+  _keyBuilder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
+  _keyBuilder.close();
+  return _keyBuilder.slice();
 }
 
 ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
