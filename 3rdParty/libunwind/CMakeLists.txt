@@ -41,8 +41,8 @@ if (LINUX)
                   CXXFLAGS=${CMAKE_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions
-          BUILD_COMMAND
-      $(MAKE)
+    BUILD_COMMAND
+      $(MAKE) 
     BUILD_IN_SOURCE
       1
     INSTALL_COMMAND
