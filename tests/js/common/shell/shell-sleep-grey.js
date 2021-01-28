@@ -49,7 +49,7 @@ function SleepSuite () {
       }
       internal.sleep(sleepFor);
     }
-  }
+  };
 }
 
 
