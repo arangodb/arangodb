@@ -70,12 +70,12 @@ const testPaths = {
 };
 
 class DumpRestoreHelper {
-  constructor(options, secondOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
+  constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
     this.serverOptions = serverOptions;
     this.instanceInfo = {};
-    this.options = options;
-    this.secondOptions = secondOptions;
-    this.restartServer = options.cluster !== secondOptions.cluster;
+    this.firstRunOptions = firstRunOptions;
+    this.secondRunOptions = secondRunOptions;
+    this.restartServer = firstRunOptions.cluster !== secondRunOptions.cluster;
     this.clientAuth = clientAuth;
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
@@ -152,7 +152,7 @@ class DumpRestoreHelper {
   }
 
   startFirstInstance() {
-    this.instanceInfo = pu.startInstance('tcp', this.options, this.serverOptions, this.which);
+    this.instanceInfo = pu.startInstance('tcp', this.firstRunOptions, this.serverOptions, this.which);
 
     if (this.instanceInfo === false) {
       let rc =  {
@@ -166,17 +166,17 @@ class DumpRestoreHelper {
         }};
       return false;
     }
-    this.bindInstanceInfo(this.options);
+    this.bindInstanceInfo(this.firstRunOptions);
     return true;
   }
 
   restartInstance() {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
-      this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+      this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.firstRunOptions);
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
-      this.instanceInfo = pu.startInstance('tcp', this.secondOptions, this.serverOptions, this.which);
+      this.instanceInfo = pu.startInstance('tcp', this.secondRunOptions, this.serverOptions, this.which);
 
       if (this.instanceInfo === false) {
         let rc =  {
@@ -190,7 +190,7 @@ class DumpRestoreHelper {
           }};
         return false;
       }
-      this.bindInstanceInfo(this.secondOptions);
+      this.bindInstanceInfo(this.secondRunOptions);
       return true;
 
     }
@@ -200,16 +200,16 @@ class DumpRestoreHelper {
   adjustRestoreToDump() {
     this.restoreOptions = this.dumpOptions;
     this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
   }
 
   isAlive() {
-    return pu.arangod.check.instanceAlive(this.instanceInfo, this.options);
+    return pu.arangod.check.instanceAlive(this.instanceInfo, this.firstRunOptions);
   }
 
   getUptime() {
     try {
-      return pu.arangod.check.uptime(this.instanceInfo, this.options);
+      return pu.arangod.check.uptime(this.instanceInfo, this.firstRunOptions);
     } catch (x) {
       print(x); // TODO
       print("uptime continuing anyways");
@@ -231,7 +231,7 @@ class DumpRestoreHelper {
       return this.results;
     }
     print(CYAN + 'Shutting down...' + RESET);
-    this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+    this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.firstRunOptions);
     print(CYAN + 'done.' + RESET);
 
     print();
@@ -397,7 +397,7 @@ class DumpRestoreHelper {
     let cmds = {
       "label": "testHotBackup"
     };
-    this.results.createHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "create", cmds, this.instanceInfo.rootDir, true);
+    this.results.createHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceInfo, "create", cmds, this.instanceInfo.rootDir, true);
     this.print("done creating backup");
     return this.results.createHotBackup.status;
   }
@@ -429,7 +429,7 @@ class DumpRestoreHelper {
       "identifier": backupName,
       "max-wait-for-restart": 100.0
     };
-    this.results.restoreHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
+    this.results.restoreHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
     this.print("done restoring backup");
     return true;
   }
@@ -459,10 +459,10 @@ function getClusterStrings(options) {
   }
 }
 
-function dump_backend_two_instances (firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
+function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
   print(CYAN + which + ' tests...' + RESET);
 
-  const helper = new DumpRestoreHelper(firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
+  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
   if (! helper.startFirstInstance()) {
     return helper.extractResults();
   }
@@ -473,7 +473,7 @@ function dump_backend_two_instances (firstOptions, secondOptions, serverAuthInfo
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
 
-  if (firstOptions.hasOwnProperty("multipleDumps") && firstOptions.multipleDumps) {
+  if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('_system', true) ||
         !helper.dumpFrom('UnitTestsDumpSrc', true) ||
@@ -501,7 +501,7 @@ function dump_backend_two_instances (firstOptions, secondOptions, serverAuthInfo
   }
 
   if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
-    const notCluster = getClusterStrings(secondOptions).notCluster;
+    const notCluster = getClusterStrings(secondRunOptions).notCluster;
     const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
     const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
     if (!helper.restoreOld(restoreDir) ||
@@ -512,7 +512,7 @@ function dump_backend_two_instances (firstOptions, secondOptions, serverAuthInfo
 
   if (tstFiles.hasOwnProperty("foxxTest")) {
     const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-    if (secondOptions.hasOwnProperty("multipleDumps") && secondOptions.multipleDumps) {
+    if (secondRunOptions.hasOwnProperty("multipleDumps") && secondRunOptions.multipleDumps) {
       helper.adjustRestoreToDump();
       helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
     }
@@ -530,7 +530,7 @@ function dump_backend_two_instances (firstOptions, secondOptions, serverAuthInfo
 }
 
 function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
-  return dump_backend_two_instances(firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart);
+  return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart);
 }
 
 function dump (options) {
