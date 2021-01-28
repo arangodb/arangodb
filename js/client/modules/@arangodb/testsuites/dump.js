@@ -459,7 +459,7 @@ function getClusterStrings(options) {
   }
 }
 
-function dump_backend (firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
+function dump_backend_two_instances (firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
   print(CYAN + which + ' tests...' + RESET);
 
   const helper = new DumpRestoreHelper(firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
@@ -529,6 +529,10 @@ function dump_backend (firstOptions, secondOptions, serverAuthInfo, clientAuth, 
   return helper.extractResults();
 }
 
+function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
+  return dump_backend_two_instances(firstOptions, secondOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart);
+}
+
 function dump (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
@@ -561,7 +565,7 @@ function dumpMixedClusterSingle (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(clusterOptions, singleOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend_two_instances(clusterOptions, singleOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpMixedSingleCluster (options) {
@@ -581,7 +585,7 @@ function dumpMixedSingleCluster (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(singleOptions, clusterOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend_two_instances(singleOptions, clusterOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpMultiple (options) {
@@ -600,7 +604,7 @@ function dumpMultiple (options) {
     deactivateCompression: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
 }
 
 function dumpAuthentication (options) {
@@ -638,7 +642,7 @@ function dumpAuthentication (options) {
   options.multipleDumps = true;
   options['server.jwt-secret'] = 'haxxmann';
 
-  return dump_backend(options, options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
 }
 
 function dumpEncrypted (options) {
@@ -682,7 +686,7 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
+  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
 }
 
 function dumpMaskings (options) {
@@ -719,7 +723,7 @@ function dumpMaskings (options) {
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(options, options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+  return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
 }
 
 function hotBackup (options) {
@@ -743,7 +747,7 @@ function hotBackup (options) {
   };
 
   let which = "dump";
-  // /return dump_backend(options, options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+  // /return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
   print(CYAN + which + ' tests...' + RESET);
 
   let addArgs = {};
