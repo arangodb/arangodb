@@ -186,7 +186,7 @@ class MockClusterServer : public MockServer,
 
   // You can only create specialized types
  protected:
-  MockClusterServer();
+  MockClusterServer(bool useAgencyMockConnection);
   ~MockClusterServer();
 
  protected:
@@ -201,16 +201,17 @@ class MockClusterServer : public MockServer,
   void agencyCreateCollections(std::string const& name);
 
   void agencyDropDatabase(std::string const& name);
-
+protected:
+  std::unique_ptr<arangodb::network::ConnectionPool> _pool;
  private:
+  bool _useAgencyMockPool;
   arangodb::ServerState::RoleEnum _oldRole;
-  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
   int _dummy;
 };
 
 class MockDBServer : public MockClusterServer {
  public:
-  MockDBServer(bool startFeatures = true);
+  MockDBServer(bool useAgencyMockConnection = true, bool startFeatures = true);
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
@@ -219,11 +220,16 @@ class MockDBServer : public MockClusterServer {
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true);
+  MockCoordinator(bool useAgencyMockConnection = true, bool startFeatures = true);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  std::pair<std::string,std::string> registerFakedDBServer(std::string const& serverName);
+
+  arangodb::network::ConnectionPool* getPool();
+
 };
 
 }  // namespace mocks
