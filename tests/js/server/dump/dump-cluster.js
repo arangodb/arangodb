@@ -304,7 +304,7 @@ function dumpTestSuite () {
       });
       let lastKey = "";
       for (let i = 0; i < 1000; ++i) {
-        var doc = allDocs[i];
+        let doc = allDocs[i];
 
         assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
         assertEqual(i, doc.value);
