@@ -337,7 +337,9 @@ function dumpTestSuite () {
         allDocs[doc.value] = doc;
       });
       let docs = [];
-      for (var i = 0; i < 1000; ++i) docs.push({"a": i});
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({"a": i});
+      }
       
       let savedDocs = c.save(docs);
       savedDocs.forEach(doc => {
