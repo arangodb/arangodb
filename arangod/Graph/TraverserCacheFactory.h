@@ -41,7 +41,11 @@ TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDoc
                             std::unordered_map<ServerID, aql::EngineId> const* engines,
                             BaseOptions* opts);
 
-}  // namespace cacheFactory
+TraverserCache* CreateRefactoredCache(arangodb::aql::QueryContext& query,
+                                      std::unordered_map<ServerID, aql::EngineId> const* engines,
+                                      BaseOptions* opts);
+
+}  // namespace CacheFactory
 }  // namespace graph
 }  // namespace arangodb
 #endif
