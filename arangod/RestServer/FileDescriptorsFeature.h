@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
@@ -44,5 +45,6 @@ class FileDescriptorsFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+#endif
 
 #endif

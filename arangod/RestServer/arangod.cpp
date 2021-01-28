@@ -199,7 +199,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<EndpointFeature, HttpEndpointProvider>();
     server.addFeature<EngineSelectorFeature>();
     server.addFeature<EnvironmentFeature>();
+#ifdef TRI_HAVE_GETRLIMIT
     server.addFeature<FileDescriptorsFeature>();
+#endif
     server.addFeature<FlushFeature>();
     server.addFeature<FortuneFeature>();
     server.addFeature<FoxxFeature>();

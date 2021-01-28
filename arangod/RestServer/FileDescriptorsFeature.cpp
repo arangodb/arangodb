@@ -42,16 +42,16 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+#ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
-#ifdef TRI_HAVE_GETRLIMIT
 struct FileDescriptors {
-  rlim_t hard;
-  rlim_t soft;
-  
   static constexpr rlim_t requiredMinimum = 1024;
   static constexpr rlim_t recommendedMinimum = 65536;
 
+  rlim_t hard;
+  rlim_t soft;
+  
   static FileDescriptors load() {
     struct rlimit rlim;
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
@@ -84,9 +84,7 @@ struct FileDescriptors {
     }
     return std::to_string(value);
   }
-
 };
-#endif
 
 FileDescriptorsFeature::FileDescriptorsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "FileDescriptors"), 
@@ -96,17 +94,14 @@ FileDescriptorsFeature::FileDescriptorsFeature(application_features::Application
 }
 
 void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-#ifdef TRI_HAVE_GETRLIMIT
   options->addSection("server", "Server features");
 
   options->addOption("--server.descriptors-minimum",
                      "minimum number of file descriptors needed to start (0 = no minimum)",
                      new UInt64Parameter(&_descriptorsMinimum));
-#endif
 }
 
 void FileDescriptorsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-#ifdef TRI_HAVE_GETRLIMIT
   if (_descriptorsMinimum > 0 && 
       (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
        _descriptorsMinimum > std::numeric_limits<rlim_t>::max())) {
@@ -116,13 +111,11 @@ void FileDescriptorsFeature::validateOptions(std::shared_ptr<ProgramOptions> opt
       << std::numeric_limits<rlim_t>::max(); 
     FATAL_ERROR_EXIT();
   }
-#endif
 }
 
 void FileDescriptorsFeature::prepare() { adjustFileDescriptors(); }
 
 void FileDescriptorsFeature::start() {
-#ifdef TRI_HAVE_GETRLIMIT
   FileDescriptors current = FileDescriptors::load();
 
   LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)
@@ -150,11 +143,9 @@ void FileDescriptorsFeature::start() {
       FATAL_ERROR_EXIT();
     }
   }
-#endif
 }
 
 void FileDescriptorsFeature::adjustFileDescriptors() {
-#ifdef TRI_HAVE_GETRLIMIT
   FileDescriptors current = FileDescriptors::load();
 
   LOG_TOPIC("6762c", DEBUG, arangodb::Logger::SYSCALL)
@@ -198,7 +189,9 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
       }
     }
   }
-#endif
 }
 
+
 }  // namespace arangodb
+
+#endif
