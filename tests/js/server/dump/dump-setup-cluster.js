@@ -391,7 +391,7 @@ function setupSmartGraphRegressionTest() {
     numberOfShards : 2
   });
   docs = [];
-  for (i = 0; i < 1000; ++i) {
+  for (let i = 0; i < 1000; ++i) {
     docs.push({ value: i });
   }
   c.save(docs);
