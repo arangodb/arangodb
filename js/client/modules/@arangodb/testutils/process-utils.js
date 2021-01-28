@@ -671,16 +671,14 @@ function getMemProfSnapshot(instanceInfo, options, counter) {
       let heapdumpReply = download(arangod.url + '/_admin/status?memory=true', opts);
       if (heapdumpReply.code === 200) {
         fs.write(fn, heapdumpReply.body);
-        print(CYAN + Date() + `Saved ${fn}` + RESET);
+        print(CYAN + Date() + ` Saved ${fn}` + RESET);
       } else {
-        print(RED + Date() + `Acquiring Heapdump for ${fn} failed!` + RESET);
+        print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
         print(heapdumpReply);
       }
     });
   }
 }
-
-
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief if we forgot about processes, this safe guard will clean up and mark failed
