@@ -616,13 +616,21 @@ function summarizeStats(deltaStats) {
 
 function getMemProfSnapshot(instanceInfo, options, counter) {
   if (options.memprof) {
-    let opts = {
-      method: 'get'
-    };
-    if (instanceInfo.hasOwnProperty('authOpts')) {
-      opts['jwt'] = crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-    }
+    print(instanceInfo)
+    //let opts = {
+    //  method: 'get'
+    //};
+    //if (instanceInfo.hasOwnProperty('authOpts')) {
+    //  opts['jwt'] = crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    //}
+    let opts = Object.assign(makeAuthorizationHeaders(options),
+                             { method: 'GET' });
+
     instanceInfo.arangods.forEach((arangod) => {
+      //let lopts = _.clone(opts);
+      //if (arangod.role === "coordinator") {
+      //  delete lopts.jwt;
+      //}
       print(arangod)
       // arangod.endpoint
       // arangod.rootDir
@@ -635,7 +643,9 @@ function getMemProfSnapshot(instanceInfo, options, counter) {
   //                     false
   //                    );
       //    let heapdump = arango.GET('/_admin/status/memory');
-      let heapdumpReply = download(arangod.url + '/_admin/status/memory', opts);
+      print(opts)
+      print(arangod.url + '/_admin/status/memory')
+      let heapdumpReply = download(arangod.url + '/_admin/status/memory?memory=true', opts);
       if (heapdumpReply.code === 200) {
         fs.write(fn, heapdumpReply.body);
       } else {
@@ -1946,10 +1956,6 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   fs.makeDirectoryRecursive(appDir);
   fs.makeDirectoryRecursive(tmpDir);
 
-  if (options.memprof) {
-    process.env['MALLOC_CONF'] = `prof:true,prof_prefix:${fs.join(rootDir,'jeprof.out')}`;
-  }
-
   let args = makeArgsArangod(options, appDir, role, tmpDir);
   let endpoint;
   let port;
@@ -1960,6 +1966,12 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   } else {
     endpoint = addArgs['server.endpoint'];
     port = endpoint.split(':').pop();
+  }
+
+  if (options.memprof) {
+    let fn = fs.join(rootDir, port + '_jeprof.out');
+    process.env['MALLOC_CONF'] = `prof:true,prof_prefix:${fn}`;
+    print(process.env['MALLOC_CONF'])
   }
 
   let instanceInfo = {
