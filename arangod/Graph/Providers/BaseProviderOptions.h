@@ -27,7 +27,8 @@
 #include "Transaction/Methods.h"
 
 #include <Aql/FixedVarExpressionContext.h>
-#include <Graph/ClusterTraverserCache.h>
+#include <Graph/Cache/RefactoredClusterTraverserCache.h>
+
 #include <optional>
 #include <vector>
 
@@ -71,15 +72,15 @@ struct BaseProviderOptions {
 struct ClusterBaseProviderOptions {
  public:
   ClusterBaseProviderOptions(arangodb::aql::FixedVarExpressionContext const& expressionContext,
-                             ClusterTraverserCache* cache, bool backward);
+                             RefactoredClusterTraverserCache* cache, bool backward);
 
   arangodb::aql::FixedVarExpressionContext const& getExpressionContext();
-  ClusterTraverserCache* getCache();
+  RefactoredClusterTraverserCache* getCache();
   bool isBackward();
 
  private:
   arangodb::aql::FixedVarExpressionContext const& _expressionCtx;  // not allowed to be a copy!
-  ClusterTraverserCache* _cache;
+  RefactoredClusterTraverserCache* _cache;
   bool _backward;
 };
 
