@@ -335,7 +335,6 @@ class DumpRestoreHelper {
 
   restoreFoxxComplete(database) {
     this.print('Foxx Apps with full restore');
-    // db._useDatabase(database);
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.setIncludeSystem(true);
     this.results.restoreFoxxComplete = this.arangorestore();
@@ -546,43 +545,43 @@ function dump (options) {
 }
 
 function dumpMixedClusterSingle (options) {
-  let clOptions = _.clone(options);
-  clOptions.cluster = true;
-  let sgOptions = _.clone(options);
-  sgOptions.cluster = false;
-  let cl = getClusterStrings(clOptions);
-  let sg = getClusterStrings(sgOptions);
+  let clusterOptions = _.clone(options);
+  clusterOptions.cluster = true;
+  let singleOptions = _.clone(options);
+  singleOptions.cluster = false;
+  let clusterStrings = getClusterStrings(clusterOptions);
+  let singleStrings = getClusterStrings(singleOptions);
   let tstFiles = {
-    dumpSetup: 'dump-setup' + cl.cluster + '.js',
+    dumpSetup: 'dump-setup' + clusterStrings.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
     dumpCleanup: 'cleanup-nothing.js',
-    dumpAgain: 'dump-mixed' + sg.cluster + '.js',
-    dumpTearDown: 'dump-teardown-mixed' + sg.cluster + '.js',
+    dumpAgain: 'dump-mixed' + singleStrings.cluster + '.js',
+    dumpTearDown: 'dump-teardown-mixed' + singleStrings.cluster + '.js',
     dumpCheckGraph: 'check-graph.js',
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(clOptions, sgOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend(clusterOptions, singleOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpMixedSingleCluster (options) {
-  let clOptions = _.clone(options);
-  clOptions.cluster = true;
-  let sgOptions = _.clone(options);
-  sgOptions.cluster = false;
-  let cl = getClusterStrings(clOptions);
-  let sg = getClusterStrings(sgOptions);
+  let clusterOptions = _.clone(options);
+  clusterOptions.cluster = true;
+  let singleOptions = _.clone(options);
+  singleOptions.cluster = false;
+  let clusterStrings = getClusterStrings(clusterOptions);
+  let singleStrings = getClusterStrings(singleOptions);
   let tstFiles = {
-    dumpSetup: 'dump-setup-mixed' + sg.cluster + '.js',
+    dumpSetup: 'dump-setup-mixed' + singleStrings.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
     dumpCleanup: 'cleanup-nothing.js',
-    dumpAgain: 'dump-mixed' + cl.cluster + '.js',
-    dumpTearDown: 'dump-teardown-mixed' + sg.cluster + '.js',
+    dumpAgain: 'dump-mixed' + clusterStrings.cluster + '.js',
+    dumpTearDown: 'dump-teardown-mixed' + singleStrings.cluster + '.js',
     dumpCheckGraph: 'check-graph.js',
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(sgOptions, clOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend(singleOptions, clusterOptions, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpMultiple (options) {
