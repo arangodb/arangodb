@@ -1317,8 +1317,8 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
   return futures::collectAll(std::move(futures))
          .thenValue([](std::vector<futures::Try<Result>>&& results) -> Result{
            for (futures::Try<Result>& tryRes : results) {
-             if (tryRes.unwrap().fail()) {
-               return std::move(tryRes).unwrap();
+             if (auto&& res = std::move(tryRes).unwrap(); res.fail()) {
+               return std::move(res);
              }
            }
            return Result();
@@ -1355,7 +1355,8 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
     // simon: no need to wait here, a commit may never issue a commit
     // request to DBServers (done by AQL layer or RestTransactionHandler)
     futures::Future<Result> commitResult = _trx->commitAsync();
-    // TRI_ASSERT(commitResult.isReady()); -- todo
+    static_assert(futures::Future<Result>::is_value_inlined);
+    TRI_ASSERT(commitResult.holds_inline_value());
     if (auto res = std::move(commitResult).await_unwrap(); res.fail()) {
       THROW_ARANGO_EXCEPTION(std::move(res));
     }

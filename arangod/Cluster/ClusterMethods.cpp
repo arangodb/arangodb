@@ -81,8 +81,8 @@
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-#include "velocypack/StringRef.h"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -890,10 +890,10 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
                   VPackValue(addFigures<size_t>(value, builder.slice(),
                                                 {"engine", "documents"})));
     }
-    // merge indexes_map together
+    // merge indexes together
     std::map<uint64_t, std::pair<VPackSlice, VPackSlice>> indexes_map;
 
-    updated.add("indexes_map", VPackValue(VPackValueType::Array));
+    updated.add("indexes", VPackValue(VPackValueType::Array));
     VPackSlice rocksDBValues = value.get("engine");
 
     if (!isSmartEdgeCollectionPart) {
@@ -938,7 +938,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
       updated.close();
     }
 
-    updated.close();  // "indexes_map" array
+    updated.close();  // "indexes" array
     updated.close();  // "engine" object
   }
 
@@ -1414,23 +1414,6 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   return {};
 }
 
-template <typename F, typename Fut>
-auto handle_indirect_future(Fut&& in_f, F&& f) {
-  auto&& [out_f, p] = makePromise<OperationResult>();
-  static_assert(std::is_nothrow_move_constructible_v<F>);
-  std::forward<Fut>(in_f).finally([f = std::forward<F>(f), p = std::move(p)](Try<Result>&& r) mutable noexcept {
-    if (r.has_error()) {
-      std::move(p).fulfill(r.error());
-    } else {
-      std::invoke(f, std::move(r).unwrap()).finally([p = std::move(p)](Try<OperationResult>&& e) mutable noexcept {
-        std::move(p).fulfill(std::move(e));
-      });
-    }
-  });
-
-  return std::move(out_f);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates one or many documents in a coordinator
 ///
@@ -1477,8 +1460,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     return makeFuture(Result());
   });
 
-  return handle_indirect_future(
-      std::move(f),
+  return std::move(f).then_bind(
       [=, &trx, &coll, opCtx(std::move(opCtx)),
        options = options](Result&& r) mutable -> Future<OperationResult> {
         if (r.fail()) {
@@ -1632,8 +1614,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
       return makeFuture(Result());
     });
 
-    return handle_indirect_future(
-        std::move(f),
+    return std::move(f).then_bind(
         [=, &trx, opCtx(std::move(opCtx)),
          options = options](Result&& r) mutable -> Future<OperationResult> {
           if (r.fail()) {
@@ -1701,7 +1682,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     return makeFuture(Result());
   });
 
-  return handle_indirect_future(std::move(f), [=, &trx, options = options](Result&& r) mutable -> Future<OperationResult> {
+  return std::move(f).then_bind([=, &trx, options = options](Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
       return makeFuture(OperationResult(r, options));
     }
@@ -1879,8 +1860,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       }
     });
 
-    return handle_indirect_future(
-        std::move(f),
+    return std::move(f).then_bind(
         [=, &trx, opCtx(std::move(opCtx)),
          options = options](Result&& r) mutable -> Future<OperationResult> {
           if (r.fail()) {
@@ -2409,8 +2389,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       }
     });
 
-    return handle_indirect_future(
-        std::move(f),
+    return std::move(f).then_bind(
         [=, &trx, opCtx(std::move(opCtx)),
          options = options](Result&& r) mutable -> Future<OperationResult> {
           if (r.fail()) {  // bail out
@@ -2489,7 +2468,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     }
   });
 
-  return handle_indirect_future(std::move(f), [=, &trx, options = options](Result&&) mutable -> Future<OperationResult> {
+  return std::move(f).then_bind([=, &trx, options = options](Result&&) mutable -> Future<OperationResult> {
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
     futures.reserve(shardIds->size());

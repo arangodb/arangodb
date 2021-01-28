@@ -60,14 +60,14 @@ struct Response {
   Response& operator=(Response&& other) noexcept = default;
   Response(Response const& other) = delete;
   Response& operator=(Response const& other) = delete;
- 
+
   bool hasRequest() const noexcept { return _request != nullptr; }
   bool hasResponse() const noexcept { return _response != nullptr; }
-  
+
   /// @brief return a reference to the request object. will throw an exception if
   /// there is no valid request!
   arangodb::fuerte::Request& request() const;
-  
+
   /// @brief return a reference to the response object. will throw an exception if
   /// there is no valid response!
   arangodb::fuerte::Response& response() const;
@@ -89,7 +89,7 @@ struct Response {
 
   // returns a slice of the payload if there was no error
   [[nodiscard]] velocypack::Slice slice() const;
-  
+
   [[nodiscard]] std::size_t payloadSize() const noexcept;
 
   fuerte::StatusCode statusCode() const;
@@ -103,7 +103,7 @@ struct Response {
 
   [[nodiscard]] std::string destinationShard() const;  /// @brief shardId or empty
   [[nodiscard]] std::string serverId() const;          /// @brief server ID
-  
+
  public:
   DestinationId destination;
   fuerte::Error error;
@@ -113,7 +113,7 @@ struct Response {
   std::unique_ptr<arangodb::fuerte::Response> _response;
 };
 
-static_assert(std::is_nothrow_move_constructible<Response>::value, "");
+static_assert(std::is_nothrow_move_constructible<Response>::value);
 using FutureRes = arangodb::futures::Future<Response>;
 
 static constexpr Timeout TimeoutDefault = Timeout(120.0);

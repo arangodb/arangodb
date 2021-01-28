@@ -39,7 +39,6 @@
 #include "Futures/Future.h"
 #include "RestServer/MetricsFeature.h"
 
-
 struct TRI_vocbase_t;
 
 namespace arangodb {

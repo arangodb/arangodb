@@ -5722,7 +5722,7 @@ VPackSlice PlanCollectionReader::indexes() {
     return res;
   }
 }
-  
+
 CollectionWatcher::CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
 
@@ -5936,10 +5936,14 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout
         if (result.ok()) {
           auto planVersion = result.get();
 
-          auto& clusterInfo =
-              applicationServer.getFeature<ClusterFeature>().clusterInfo();
-
-          clusterInfo.waitForPlanVersion(planVersion).fulfill(std::move(p));
+          try {
+            auto& clusterInfo =
+                applicationServer.getFeature<ClusterFeature>().clusterInfo();
+            auto f = clusterInfo.waitForPlanVersion(planVersion);
+            std::move(f).fulfill(std::move(p));
+          } catch(...) {
+            std::move(p).capture_current_exception();
+          }
         } else {
           std::move(p).fulfill(result.result());
         }
