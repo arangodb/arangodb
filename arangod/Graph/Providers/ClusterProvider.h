@@ -79,13 +79,9 @@ struct ClusterProvider {
         return !operator<(other);
       }
 
-      void setVertex(VertexType thisIsATest) {
-        _vertex = thisIsATest;
-      }
+      void setVertex(VertexType thisIsATest) { _vertex = thisIsATest; }
 
-      void setData(VPackSlice slice) {
-        _data = slice;
-      }
+      void setData(VPackSlice slice) { _data = slice; }
 
      private:
       VertexType _vertex;
@@ -122,10 +118,6 @@ struct ClusterProvider {
     bool isProcessable() const { return !isLooseEnd(); }
     bool isLooseEnd() const { return _fetched ? false : true; }
     void setFetched() { _fetched = true; }
-    void setData(VPackSlice slice) {
-      _vertex.setData(slice);
-      setFetched();
-    }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
@@ -147,15 +139,24 @@ struct ClusterProvider {
   ClusterProvider& operator=(ClusterProvider const&) = delete;
 
   auto startVertex(VertexType vertex) -> Step;
-  auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;  // rocks
+  auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,
-              std::function<void(Step)> const& callback) -> void;  // index
+              std::function<void(Step)> const& callback) -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
-
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
+
+  // fetch vertices and store in cache
+  auto fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
+                                std::vector<Step*>& result) -> void;
+
+  // fetch edges and store in cache
+  auto fetchEdgesFromEnginesWithVariables(VertexType const& vertexId, size_t& depth) -> Result;
+  auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
+
+  auto fetchEdgesAndRearm(Step* const& vertex) -> void;
+  auto fetchEdges(std::vector<Step*> const& vertices) -> void;
 
   void destroyEngines(){};
 
