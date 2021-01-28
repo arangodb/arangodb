@@ -663,49 +663,20 @@ function summarizeStats(deltaStats) {
 
 function getMemProfSnapshot(instanceInfo, options, counter) {
   if (options.memprof) {
-    print(instanceInfo)
-    //let opts = {
-    //  method: 'get'
-    //};
-    //if (instanceInfo.hasOwnProperty('authOpts')) {
-    //  opts['jwt'] = crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-    //}
     let opts = Object.assign(makeAuthorizationHeaders(options),
                              { method: 'GET' });
 
     instanceInfo.arangods.forEach((arangod) => {
-      //let lopts = _.clone(opts);
-      //if (arangod.role === "coordinator") {
-      //  delete lopts.jwt;
-      //}
-      print(arangod)
-      // arangod.endpoint
-      // arangod.rootDir
       let fn = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
-      print(fn)
-  //    arango.reconnect(arango.endpoint,
-  //                     '_system',
-  //                     options.username,
-  //                     options.password,
-  //                     false
-  //                    );
-      //    let heapdump = arango.GET('/_admin/status/memory');
-      print(opts)
-      print(arangod.url + '/_admin/status/memory')
-      let heapdumpReply = download(arangod.url + '/_admin/status/memory?memory=true', opts);
+      let heapdumpReply = download(arangod.url + '/_admin/status?memory=true', opts);
       if (heapdumpReply.code === 200) {
         fs.write(fn, heapdumpReply.body);
+        print(CYAN + Date() + `Saved ${fn}` + RESET);
       } else {
-        print(`Acquiring Heapdump for ${fn} failed!`);
+        print(RED + Date() + `Acquiring Heapdump for ${fn} failed!` + RESET);
         print(heapdumpReply);
       }
     });
-//    arango.reconnect(instanceInfo.endpoint,
-//                     '_system',
-//                     options.username,
-//                     options.password,
-//                     false
-//                    );
   }
 }
 
@@ -2029,9 +2000,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
 
   if (options.memprof) {
-    let fn = fs.join(rootDir, port + '_jeprof.out');
-    process.env['MALLOC_CONF'] = `prof:true,prof_prefix:${fn}`;
-    print(process.env['MALLOC_CONF'])
+    process.env['MALLOC_CONF'] = 'prof:true';
   }
 
   let instanceInfo = {
