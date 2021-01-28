@@ -36,32 +36,32 @@
 using namespace arangodb;
 using namespace arangodb::result;
 
-Result::Result(int errorNumber)
+Result::Result(ErrorCode errorNumber)
     : _error(errorNumber == TRI_ERROR_NO_ERROR ? nullptr : std::make_unique<Error>(errorNumber)) {
 }
 
-Result::Result(int errorNumber, std::string const& errorMessage)
+Result::Result(ErrorCode errorNumber, std::string const& errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
                  : std::make_unique<Error>(errorNumber, errorMessage)) {
   TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
 }
 
-Result::Result(int errorNumber, std::string&& errorMessage)
+Result::Result(ErrorCode errorNumber, std::string&& errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
                  : std::make_unique<Error>(errorNumber, std::move(errorMessage))) {
   TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
 }
 
-Result::Result(int errorNumber, std::string_view errorMessage)
+Result::Result(ErrorCode errorNumber, std::string_view errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
                  : std::make_unique<Error>(errorNumber, errorMessage)) {
   TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
 }
 
-Result::Result(int errorNumber, const char* errorMessage)
+Result::Result(ErrorCode errorNumber, const char* errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
                  : std::make_unique<Error>(errorNumber, errorMessage)) {
@@ -80,7 +80,7 @@ auto Result::ok() const noexcept -> bool { return errorNumber() == TRI_ERROR_NO_
 
 auto Result::fail() const noexcept -> bool { return !ok(); }
 
-auto Result::errorNumber() const noexcept -> int {
+auto Result::errorNumber() const noexcept -> ErrorCode {
   if (_error == nullptr) {
     return TRI_ERROR_NO_ERROR;
   } else {
@@ -88,30 +88,30 @@ auto Result::errorNumber() const noexcept -> int {
   }
 }
 
-auto Result::is(int errorNumber) const noexcept -> bool {
+auto Result::is(ErrorCode errorNumber) const noexcept -> bool {
   return this->errorNumber() == errorNumber;
 }
 
-auto Result::isNot(int errorNumber) const noexcept -> bool { return !is(errorNumber); }
+auto Result::isNot(ErrorCode errorNumber) const noexcept -> bool { return !is(errorNumber); }
 
 auto Result::reset() noexcept -> Result& {
   _error.reset();
   return *this;
 }
 
-auto Result::reset(int errorNumber) -> Result& {
+auto Result::reset(ErrorCode errorNumber) -> Result& {
   return reset(errorNumber, std::string{});
 }
 
-auto Result::reset(int errorNumber, std::string_view errorMessage) -> Result& {
+auto Result::reset(ErrorCode errorNumber, std::string_view errorMessage) -> Result& {
   return reset(errorNumber, std::string{errorMessage});
 }
 
-auto Result::reset(int errorNumber, const char* errorMessage) -> Result& {
+auto Result::reset(ErrorCode errorNumber, const char* errorMessage) -> Result& {
   return reset(errorNumber, std::string{errorMessage});
 }
 
-auto Result::reset(int errorNumber, std::string&& errorMessage) -> Result& {
+auto Result::reset(ErrorCode errorNumber, std::string&& errorMessage) -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
     // The error message will be ignored
     TRI_ASSERT(errorMessage.empty());

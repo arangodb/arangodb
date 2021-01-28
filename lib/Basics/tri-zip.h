@@ -33,8 +33,9 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "ErrorCode.h"
 
-int TRI_Adler32(char const* filename, uint32_t& checksum);
+ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file

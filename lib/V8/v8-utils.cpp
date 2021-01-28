@@ -5316,10 +5316,10 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber) {
-  v8::HandleScope scope(isolate);
-  CreateErrorObject(isolate, errorNumber, TRI_errno_string(errorNumber));
-}
+// void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber) {
+//   v8::HandleScope scope(isolate);
+//   CreateErrorObject(isolate, errorNumber, TRI_errno_string(errorNumber));
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::result
@@ -5332,7 +5332,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res) {
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
+void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
                            std::string_view message, bool autoPrepend) {
   v8::HandleScope scope(isolate);
 

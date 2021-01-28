@@ -44,7 +44,7 @@ static bool WithBackTrace = false;
 void Exception::SetVerbose(bool verbose) { WithBackTrace = verbose; }
 
 /// @brief constructor, without format string
-Exception::Exception(int code, char const* file, int line)
+Exception::Exception(ErrorCode code, char const* file, int line)
     : _errorMessage(TRI_errno_string(code)), _file(file), _line(line), _code(code) {
   appendLocation();
 }
@@ -68,21 +68,21 @@ Exception::Exception(arangodb::Result&& result, char const* file, int line)
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, std::string_view errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, std::string_view errorMessage, char const* file, int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
   appendLocation();
 }
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, std::string&& errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, std::string&& errorMessage, char const* file, int line)
     : _errorMessage(std::move(errorMessage)), _file(file), _line(line), _code(code) {
   appendLocation();
 }
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, char const* errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, char const* errorMessage, char const* file, int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
   appendLocation();
 }
@@ -91,7 +91,7 @@ Exception::Exception(int code, char const* errorMessage, char const* file, int l
 std::string const& Exception::message() const noexcept { return _errorMessage; }
 
 /// @brief returns the error code
-int Exception::code() const noexcept { return _code; }
+ErrorCode Exception::code() const noexcept { return _code; }
 
 /// @brief adds to the message
 void Exception::addToMessage(std::string const& more) { _errorMessage += more; }
@@ -125,7 +125,7 @@ void Exception::appendLocation() noexcept try {
 }
 
 /// @brief construct an error message from a template string
-std::string Exception::FillExceptionString(int code, ...) {
+std::string Exception::FillExceptionString(ErrorCode code, ...) {
   char const* format = TRI_errno_string(code);
   TRI_ASSERT(format != nullptr);
 

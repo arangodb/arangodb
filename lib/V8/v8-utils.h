@@ -30,6 +30,8 @@
 
 #include <v8.h>
 
+#include "Basics/ErrorCode.h"
+
 namespace arangodb {
 class Result;
 }
@@ -140,7 +142,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber);
+// void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result
@@ -151,7 +153,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
+void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
                            std::string_view message, bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////

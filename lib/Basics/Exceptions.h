@@ -73,27 +73,27 @@ namespace basics {
 /// @brief arango exception type
 class Exception final : public virtual std::exception {
  public:
-  static std::string FillExceptionString(int, ...);
+  static std::string FillExceptionString(ErrorCode, ...);
   static std::string FillFormatExceptionString(char const* format, ...);
   static void SetVerbose(bool);
 
  public:
-  Exception(int code, char const* file, int line);
+  Exception(ErrorCode code, char const* file, int line);
   Exception(Result const&, char const* file, int line);
   Exception(Result&&, char const* file, int line);
 
-  Exception(int code, std::string_view errorMessage, char const* file, int line);
+  Exception(ErrorCode code, std::string_view errorMessage, char const* file, int line);
 
-  Exception(int code, std::string&& errorMessage, char const* file, int line);
+  Exception(ErrorCode code, std::string&& errorMessage, char const* file, int line);
 
-  Exception(int code, char const* errorMessage, char const* file, int line);
+  Exception(ErrorCode code, char const* errorMessage, char const* file, int line);
 
   ~Exception() = default;
 
  public:
   char const* what() const noexcept override;
   std::string const& message() const noexcept;
-  int code() const noexcept;
+  ErrorCode code() const noexcept;
   void addToMessage(std::string const&);
 
  private:
@@ -103,11 +103,11 @@ class Exception final : public virtual std::exception {
   std::string _errorMessage;
   char const* _file;
   int const _line;
-  int const _code;
+  ErrorCode const _code;
 };
 
 template <typename F>
-Result catchToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
+Result catchToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) {
   // TODO check whether there are other specific exceptions we should catch
   Result result{TRI_ERROR_NO_ERROR};
   try {
@@ -125,7 +125,7 @@ Result catchToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
 }
 
 template <typename F>
-Result catchVoidToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
+Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) {
   auto wrapped = [&fn]() -> Result {
     std::forward<F>(fn)();
     return Result{TRI_ERROR_NO_ERROR};
