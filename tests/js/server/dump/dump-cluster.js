@@ -303,7 +303,7 @@ function dumpTestSuite () {
         allDocs[doc.value] = doc;
       });
       let lastKey = "";
-      for (var i = 0; i < 1000; ++i) {
+      for (let i = 0; i < 1000; ++i) {
         var doc = allDocs[i];
 
         assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
