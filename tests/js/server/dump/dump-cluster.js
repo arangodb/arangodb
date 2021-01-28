@@ -311,7 +311,7 @@ function dumpTestSuite () {
         assertEqual({ value: [ i, i ] }, doc.more);
         lastKey = doc._key;
       }
-      doc = c.save({});
+      let doc = c.save({});
       assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
     },
 
