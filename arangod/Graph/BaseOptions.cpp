@@ -41,6 +41,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
+#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -230,7 +231,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VP
   if (read.isInteger()) {
     _parallelism = read.getNumber<size_t>();
   }
-  _refactor = basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag, false);
+  _refactor = basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag,
+                                                        false);
 
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
@@ -383,7 +385,7 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("tmpVar"));
   TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
-  
+
   result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
 }
 
@@ -448,11 +450,32 @@ void BaseOptions::ensureCache() {
   TRI_ASSERT(_cache != nullptr);
 }
 
+arangodb::graph::RefactoredClusterTraverserCache* BaseOptions::ensureRefactoredCache() {
+  // Will replace the old (above) one after refactor is done.
+
+  if (_cache == nullptr) {
+    // If the Coordinator does NOT activate the Cache
+    // the datalake is not created and cluster data cannot
+    // be persisted anywhere.
+    TRI_ASSERT(!arangodb::ServerState::instance()->isCoordinator());
+    // In production just gracefully initialize
+    // the cache without document cache, s.t. system does not crash
+    activateRefactoredCache(nullptr);
+  }
+  TRI_ASSERT(_cache != nullptr);
+}
+
 void BaseOptions::activateCache(bool enableDocumentCache,
                                 std::unordered_map<ServerID, aql::EngineId> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
+}
+
+void BaseOptions::activateRefactoredCache(std::unordered_map<ServerID, aql::EngineId> const* engines) {
+  // Do not call this twice.
+  TRI_ASSERT(_cache == nullptr);
+  _cache.reset(CacheFactory::CreateRefactoredCache(_query, engines, this));
 }
 
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
@@ -464,9 +487,7 @@ arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx() 
   return _expressionCtx;
 }
 
-aql::Variable const* BaseOptions::tmpVar() {
-  return _tmpVar;
-}
+aql::Variable const* BaseOptions::tmpVar() { return _tmpVar; }
 
 void BaseOptions::isQueryKilledCallback() const {
   if (query().killed()) {

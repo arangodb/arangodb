@@ -24,13 +24,14 @@
 #ifndef ARANGOD_GRAPH_BASE_OPTIONS_H
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 
+#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <memory>
 
 namespace arangodb {
@@ -74,8 +75,7 @@ struct BaseOptions {
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::QueryContext&,
-               arangodb::velocypack::Slice const&,
+    LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
     /// @brief Build a velocypack containing all relevant information
@@ -87,8 +87,7 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::QueryContext& query,
-      arangodb::velocypack::Slice const& definition);
+      arangodb::aql::QueryContext& query, arangodb::velocypack::Slice const& definition);
 
   explicit BaseOptions(arangodb::aql::QueryContext& query);
 
@@ -100,8 +99,7 @@ struct BaseOptions {
   BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(aql::QueryContext&,
-              arangodb::velocypack::Slice, arangodb::velocypack::Slice);
+  BaseOptions(aql::QueryContext&, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -156,33 +154,34 @@ struct BaseOptions {
   TraverserCache* cache();
   TraverserCache* cache() const;
   void ensureCache();
+  arangodb::graph::RefactoredClusterTraverserCache* ensureRefactoredCache();
 
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
+  void activateRefactoredCache(std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
+  std::map<std::string, std::string> const& collectionToShard() const {
+    return _collectionToShard;
+  }
+
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() {
+    return _aqlFunctionsInternalCache;
+  }
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
 
-  void setParallelism(size_t p) noexcept {
-    _parallelism = p;
-  }
+  void setParallelism(size_t p) noexcept { _parallelism = p; }
 
   size_t parallelism() const { return _parallelism; }
 
   void isQueryKilledCallback() const;
 
-  void setRefactor(bool r) noexcept {
-    _refactor = r;
-  }
+  void setRefactor(bool r) noexcept { _refactor = r; }
 
-  bool refactor() const {
-    return _refactor;
-  }
+  bool refactor() const { return _refactor; }
 
-  aql::Variable const* tmpVar(); // TODO check public
+  aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
  protected:
@@ -204,10 +203,9 @@ struct BaseOptions {
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
-
   mutable arangodb::transaction::Methods _trx;
 
-  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
