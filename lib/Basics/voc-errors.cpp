@@ -1,6 +1,6 @@
 /// auto-generated file generated from errors.dat
 
-#include "Basics/Common.h"
+
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
