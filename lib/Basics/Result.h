@@ -50,7 +50,7 @@ class Result final {
    */
   Result(int errorNumber, std::string&& errorMessage);
 
-  Result(int errorNumber, std::string_view const& errorMessage);
+  Result(int errorNumber, std::string_view errorMessage);
 
   Result(int errorNumber, const char* errorMessage);
 
