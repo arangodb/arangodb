@@ -917,9 +917,8 @@ struct future
 
   static_assert(!std::is_void_v<T>,
                 "void is not supported, use std::monostate instead");
-  static_assert(
-      !is_future_v<T>,
-      "init_future<init_future<T>> is a bad idea and thus not supported");
+  static_assert(!is_future_v<T>,
+                "future<future<T>> is a bad idea and thus not supported");
   static_assert(std::is_nothrow_move_constructible_v<T>);
   static_assert(std::is_nothrow_destructible_v<T>);
 

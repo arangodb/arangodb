@@ -37,6 +37,8 @@
 /// @brief throws an arango exception with an error code
 #define THROW_ARANGO_EXCEPTION(code) \
   throw arangodb::basics::Exception(code, __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_INTO_PROMISE(p, code) \
+  std::move(p).throw_exception<arangodb::basics::Exception>(code, __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
@@ -57,6 +59,9 @@
 /// error message
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
+
+#define THROW_ARANGO_EXCEPTION_MESSAGE_INTO_PROMISE(p, code, message) \
+  (std::move(p).throw_exception<arangodb::basics::Exception>(code, message, __FILE__, __LINE__))
 
 /// @brief throws an arango result if the result fails
 #define THROW_ARANGO_EXCEPTION_IF_FAIL(expression)                                        \

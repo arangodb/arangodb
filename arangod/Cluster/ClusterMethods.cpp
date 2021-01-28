@@ -2255,8 +2255,9 @@ void fetchVerticesFromEngines(
                                   leased->bufferRef(), reqOpts));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response r = std::move(f).await_unwrap();
+  for (expect::expected<network::Response>& f :
+       futures::collectAll(std::move(futures)).await_unwrap()) {
+    network::Response r = std::move(f).unwrap();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));

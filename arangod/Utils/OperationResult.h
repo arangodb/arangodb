@@ -50,16 +50,8 @@ struct OperationResult final {
   OperationResult& operator=(OperationResult const& other) = delete;
 
   // move
-  OperationResult(OperationResult&& other) = default;
-  OperationResult& operator=(OperationResult&& other) noexcept {
-    if (this != &other) {
-      result = std::move(other.result);
-      buffer = std::move(other.buffer);
-      options = std::move(other.options);
-      countErrorCodes = std::move(other.countErrorCodes);
-    }
-    return *this;
-  }
+  OperationResult(OperationResult&& other) noexcept = default;
+  OperationResult& operator=(OperationResult&& other) noexcept = default;
 
   // create result with details
   OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,

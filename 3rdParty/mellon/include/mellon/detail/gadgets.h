@@ -58,7 +58,7 @@ struct memory_buffer {
 
   memory_buffer() : store() {}
 
-  std::byte store[Size];
+  std::byte store[Size]{};
 };
 
 template <>

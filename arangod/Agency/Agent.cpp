@@ -150,6 +150,14 @@ Agent::~Agent() {
   // created but never really started. Here, we exit with a fatal error
   // if the threads do not stop in time.
   shutdown();  // wait for the main Agent thread to terminate
+
+  {
+    // clean up all promises that are still waiting for completion
+    std::unique_lock guard(_promLock);
+    for (auto&& [tp, p] : _promises) {
+      THROW_ARANGO_EXCEPTION_INTO_PROMISE(p, TRI_ERROR_SHUTTING_DOWN);
+    }
+  }
 }
 
 /// Wait until threads are terminated:
