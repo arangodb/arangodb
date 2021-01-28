@@ -41,6 +41,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -125,7 +126,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
   builder.close();  // </openObject>
 }
 
-/// @brief lazy begin a transaction on subordinate servers
+/// @brief lazily begin a transaction on subordinate servers
 Future<network::Response> beginTransactionRequest(TransactionState& state,
                                                   ServerID const& server) {
   TransactionId tid = state.id().child();
@@ -150,46 +151,50 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
 /// check the transaction cluster response with desited TID and status
 Result checkTransactionResult(TransactionId desiredTid, transaction::Status desStatus,
                               network::Response const& resp) {
-  int commError = network::fuerteToArangoErrorCode(resp);
-  if (commError != TRI_ERROR_NO_ERROR) {
-    // oh-oh cluster is in a bad state
-    return Result(commError);
+  Result r = resp.combinedResult();
+
+  if (resp.fail()) {
+    // communication error
+    return r;
   }
 
-  VPackSlice answer = resp.slice();
-  if ((resp.statusCode() == fuerte::StatusOK || resp.statusCode() == fuerte::StatusCreated) &&
+  // whatever we got can contain a success (HTTP 2xx) or an error (HTTP >= 400) 
+  if (VPackSlice answer = resp.slice(); (resp.statusCode() == fuerte::StatusOK || resp.statusCode() == fuerte::StatusCreated) &&
       answer.isObject()) {
-    VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
-    VPackSlice statusSlice =
-        answer.get(std::vector<std::string>{"result", "status"});
+    VPackSlice idSlice = answer.get({"result", "id"});
+    VPackSlice statusSlice = answer.get({"result", "status"});
+
 
     if (!idSlice.isString() || !statusSlice.isString()) {
-      return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                    "transaction has wrong format");
+      return r.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
     }
-    TransactionId tid{StringUtils::uint64(idSlice.copyString())};
-    VPackValueLength len = 0;
-    const char* str = statusSlice.getStringUnchecked(len);
-    if (tid == desiredTid && transaction::statusFromString(str, len) == desStatus) {
-      return Result();  // success
-    }
-  } else if (answer.isObject()) {
-    std::string msg = std::string(" (error while ");
-    if (desStatus == transaction::Status::RUNNING) {
-      msg.append("beginning transaction)");
-    } else if (desStatus == transaction::Status::COMMITTED) {
-      msg.append("committing transaction)");
-    } else if (desStatus == transaction::Status::ABORTED) {
-      msg.append("aborting transaction)");
-    }
-    Result res = network::resultFromBody(answer, TRI_ERROR_TRANSACTION_INTERNAL);
-    res.appendErrorMessage(msg);
-    return res;
-  }
-  LOG_TOPIC("fb343", DEBUG, Logger::TRANSACTIONS)
-      << "failed to begin transaction on " << resp.destination;
 
-  return Result(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
+    VPackStringRef idRef = idSlice.stringRef();
+    TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
+    VPackStringRef statusRef = statusSlice.stringRef();
+    if (tid == desiredTid && transaction::statusFromString(statusRef.data(), statusRef.size()) == desStatus) {
+      // all good
+      return r.reset();
+    }
+  }
+  
+  if (!r.fail()) {
+    r.reset(TRI_ERROR_TRANSACTION_INTERNAL);
+  }
+    
+  TRI_ASSERT(r.fail());
+  std::string msg(" (error while ");
+  if (desStatus == transaction::Status::RUNNING) {
+    msg.append("beginning transaction on ");
+  } else if (desStatus == transaction::Status::COMMITTED) {
+    msg.append("committing transaction on ");
+  } else if (desStatus == transaction::Status::ABORTED) {
+    msg.append("aborting transaction on ");
+  }
+  msg.append(resp.destination);
+  msg.append(")");
+  r.appendErrorMessage(msg);
+  return r;
 }
 
 Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
@@ -211,7 +216,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   reqOpts.database = state->vocbase().name();
 
   TransactionId tidPlus = state->id().child();
-  const std::string path = "/_api/transaction/" + std::to_string(tidPlus.id());
+  std::string const path = "/_api/transaction/" + std::to_string(tidPlus.id());
   if (state->isDBServer()) {
     // This is a leader replicating the transaction commit or abort and
     // we should tell the follower that this is a replication operation.
@@ -242,15 +247,16 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
         if (state->isCoordinator()) {
           TRI_ASSERT(state->id().isCoordinatorTransactionId());
 
+          Result res;
           for (Try<arangodb::network::Response> const& tryRes : responses) {
             network::Response const& resp = tryRes.get();  // throws exceptions upwards
             Result res = ::checkTransactionResult(tidPlus, status, resp);
             if (res.fail()) {
-              return res;
+              break;
             }
           }
 
-          return Result();
+          return res;
         }
 
         TRI_ASSERT(state->isDBServer());
@@ -261,11 +267,11 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
           network::Response const& resp = tryRes.get();  // throws exceptions upwards
 
           Result res = ::checkTransactionResult(tidPlus, status, resp);
-          if (res.fail()) {  // remove follower from all collections
+          if (res.fail()) {  // remove followers for all participating collections
             ServerID follower = resp.serverId();
             LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
-                << "synchronous replication: dropping follower " << follower
-                << " for all participating shards in"
+                << "synchronous replication of transaction commit/abort operation: "
+                << "dropping follower " << follower << " for all participating shards in"
                 << " transaction " << state->id().id() << " (status "
                 << arangodb::transaction::statusString(status)
                 << "), status code: " << static_cast<int>(resp.statusCode())
@@ -274,16 +280,16 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
               auto cc = tc.collection();
               if (cc) {
                 LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                    << "synchronous replication: dropping follower " << follower
-                    << " for shard " << tc.collectionName() << " in database "
-                    << cc->vocbase().name() << ": "
+                    << "synchronous replication of transaction commit/abort operation: "
+                    << "dropping follower " << follower << " for shard " 
+                    << cc->vocbase().name() << "/" << tc.collectionName() << ": "
                     << resp.combinedResult().errorMessage();
 
                 Result r = cc->followers()->remove(follower);
                 if (r.fail()) {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
-                      << "synchronous replication: could not drop follower "
-                      << follower << " for shard " << tc.collectionName()
+                      << "synchronous replication: could not drop follower " << follower
+                      << " for shard " << cc->vocbase().name() << "/" << tc.collectionName()
                       << ": " << r.errorMessage();
                   res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
                 }
@@ -457,7 +463,7 @@ void addTransactionHeader(transaction::Methods const& trx,
   TRI_ASSERT(!tidPlus.isLegacyTransactionId());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
-  const bool addBegin = !state.knowsServer(server);
+  bool const addBegin = !state.knowsServer(server);
   if (addBegin) {
     if (state.isCoordinator() && state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       return;  // do not add header to servers without a snippet
@@ -492,7 +498,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
   }
 
   std::string value = std::to_string(state.id().child().id());
-  const bool addBegin = !state.knowsServer(server);
+  bool const addBegin = !state.knowsServer(server);
   if (addBegin) {
     if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       value.append(" aql");  // This is a single AQL query
