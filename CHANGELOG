@@ -1,7 +1,7 @@
 devel
 -----
 
-* On Linux, require at least 8192 usable file descriptors at startup. 
+* On Linux and MacOS, require at least 8192 usable file descriptors at startup. 
   If less file descriptors are available to the arangod process, then the
   startup is automatically aborted.
 
