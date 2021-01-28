@@ -142,7 +142,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
         auto message = std::string{"When deserializing AqlCallList: entry "};
         message += std::to_string(res.size());
         message += ": ";
-        message += std::move(maybeAqlCall).errorMessage();
+        message += maybeAqlCall.errorMessage();
         return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
       }
       res.emplace_back(maybeAqlCall.get());
@@ -166,7 +166,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     auto maybeAqlCall = AqlCall::fromVelocyPack(slice);
     if (ADB_UNLIKELY(maybeAqlCall.fail())) {
       auto message = std::string{"When deserializing AqlCallList: default "};
-      message += std::move(maybeAqlCall).errorMessage();
+      message += maybeAqlCall.errorMessage();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
     return {std::move(maybeAqlCall.get())};

@@ -1452,7 +1452,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
         res.errorNumber(),
         res.errorMessage().empty()
           ? std::string("failed to instantiate view from definition: ") + parameters.toString()
-          : res.errorMessage());
+          : std::string{res.errorMessage()});
   }
 
   READ_LOCKER(readLocker, _inventoryLock);

@@ -12,6 +12,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 #generate inside the source tree
 
 if (USE_MAINTAINER_MODE AND NOT MSVC)
+  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

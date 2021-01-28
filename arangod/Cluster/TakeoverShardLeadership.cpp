@@ -198,11 +198,11 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
       std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
       std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
-      if (currentServers.size() > 0) {
-        std::string& oldLeader = currentServers.at(0);
+      if (!currentServers.empty()) {
+        std::string& oldLeader = currentServers[0];
         // Check if the old leader has resigned and stopped all write
         // (if so, we can assume that all servers are still in sync)
-        if (oldLeader.at(0) == '_') {
+        if (!oldLeader.empty() && oldLeader[0] == '_') {
           // remove the underscore from the list as it is useless anyway
           oldLeader = oldLeader.substr(1);
 

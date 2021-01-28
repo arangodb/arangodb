@@ -67,6 +67,7 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb::transaction;
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::consensus;
 
 std::string const ENDPOINT("endpoint");
@@ -329,7 +330,7 @@ static arangodb::Result addShardFollower(
         }
       }
       return arangodb::Result(result.errorNumber(),
-                              errorMessage + ", " + result.errorMessage());
+                              StringUtils::concatT(errorMessage, ", ", result.errorMessage()));
     }
 
     LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE) << "addShardFollower: success";
@@ -993,8 +994,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     Result res = startReadLockOnLeader(ep, database, collection.name(),
                                        clientId, lockJobId, true, timeout);
     if (!res.ok()) {
-      std::string errorMessage =
-        "SynchronizeShard: error in startReadLockOnLeader (soft):" + res.errorMessage();
+      auto errorMessage = StringUtils::concatT(
+          "SynchronizeShard: error in startReadLockOnLeader (soft):", res.errorMessage());
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
     }
 
@@ -1050,8 +1051,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // We removed the readlock
     readLockGuard.cancel();
     if (!res.ok()) {
-      std::string errorMessage =
-          "synchronizeOneShard: error when cancelling soft read lock: " + res.errorMessage();
+      auto errorMessage = StringUtils::concatT(
+          "synchronizeOneShard: error when cancelling soft read lock: ", res.errorMessage());
       LOG_TOPIC("c37d1", INFO, Logger::MAINTENANCE) << errorMessage;
       _result.reset(TRI_ERROR_INTERNAL, errorMessage);
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
@@ -1081,9 +1082,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   Result res = startReadLockOnLeader(ep, database, collection.name(), clientId,
                                      lockJobId, false);
   if (!res.ok()) {
-    std::string errorMessage =
-      "SynchronizeShard: error in startReadLockOnLeader (hard):" + res.errorMessage();
-    return {TRI_ERROR_INTERNAL, errorMessage};
+    auto errorMessage = StringUtils::concatT(
+        "SynchronizeShard: error in startReadLockOnLeader (hard):", res.errorMessage());
+    return {TRI_ERROR_INTERNAL, std::move(errorMessage)};
   }
   auto readLockGuard = arangodb::scopeGuard([&, this]() {
     // Always cancel the read lock.
@@ -1186,13 +1187,18 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       auto result = response.combinedResult();
 
       if (result.fail()) {
-        std::string const errorMessage =
-            "addShardFollower: could not add us to the leader's follower "
-            "list for " + database + "/" + shard +
-            ", error while recalculating count on leader: " +
-            result.errorMessage();
+        auto const errorMessage = StringUtils::concatT(
+            "addShardFollower: could not add us to the leader's follower list "
+            "for ",
+            database, "/", shard,
+            ", error while recalculating count on leader: ", result.errorMessage());
         LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
-        return arangodb::Result(result.errorNumber(), errorMessage);
+        return arangodb::Result(result.errorNumber(), std::move(errorMessage));
+      } else {
+        auto const resultSlice = response.slice();
+        if (VPackSlice c = resultSlice.get("count"); c.isNumber()) {
+          LOG_TOPIC("bc26d", DEBUG, Logger::MAINTENANCE) << "leader's shard count response is " << c.getNumber<uint64_t>();
+        }
       }
     }
 

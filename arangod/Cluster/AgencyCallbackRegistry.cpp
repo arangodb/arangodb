@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
@@ -42,6 +43,7 @@
 #include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
                                                std::string const& callbackBasePath)
@@ -88,7 +90,9 @@ Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> 
   }
   
   TRI_ASSERT(res.fail());
-  res.reset(res.errorNumber(), std::string("registering ") + (local ? "local " : "") + "callback failed: " + res.errorMessage());
+  res.reset(res.errorNumber(),
+            StringUtils::concatT("registering ", (local ? "local " : ""),
+                                 "callback failed: ", res.errorMessage()));
   LOG_TOPIC("b88f4", WARN, Logger::CLUSTER) << res.errorMessage();
   
   {

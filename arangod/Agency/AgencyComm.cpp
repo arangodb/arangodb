@@ -430,7 +430,7 @@ int AgencyCommResult::errorCode() const {
 }
 
 std::string AgencyCommResult::errorMessage() const {
-  return asResult().errorMessage();
+  return std::string{asResult().errorMessage()};
 }
 
 std::pair<std::optional<int>, std::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
