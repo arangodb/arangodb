@@ -128,7 +128,7 @@
   });
 
   docs = [];
-  for (i = 0; i < 1000; ++i) {
+  for (let i = 0; i < 1000; ++i) {
     docs.push({ value: i, more: { value: [ i, i ] } });
   }
   c.save(docs);
@@ -306,4 +306,3 @@
 return {
   status: true
 };
-
