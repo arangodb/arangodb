@@ -74,10 +74,6 @@ devel
   but the _key was given in the URL path, then the rev was wrongly taken
   as 0, rather than using the one from the document body.
 
-* Make `padded` and `autoincrement` key generators export their `lastValue`
-  values, so that they are available in dumps and can be restored elsewhere
-  from a dump.
-
 * Improved logging for error 1489 ("a shard leader refuses to perform a
   replication operation"). The log message will now provide the database and
   shard name plus the differing information about the shard leader.
