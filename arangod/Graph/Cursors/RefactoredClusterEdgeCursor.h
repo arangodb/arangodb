@@ -31,8 +31,8 @@
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
-#include "Graph/ClusterTraverserCache.h"
 #include "Graph/Providers/TypeAliases.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 
 #include <vector>
 
@@ -62,7 +62,7 @@ class RefactoredClusterEdgeCursor {
  public:
   RefactoredClusterEdgeCursor(arangodb::transaction::Methods* trx,
                               arangodb::aql::FixedVarExpressionContext const& expressionContext,
-                              ClusterTraverserCache* cache, bool backward);
+                              RefactoredClusterTraverserCache* cache, bool backward);
   ~RefactoredClusterEdgeCursor();
 
   using Callback =
@@ -71,13 +71,12 @@ class RefactoredClusterEdgeCursor {
  private:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext const& _expressionContext;
-  arangodb::graph::ClusterTraverserCache* _cache;
+  arangodb::graph::RefactoredClusterTraverserCache* _cache;
   bool _backward;
 
  public:
   void readAll(aql::TraversalStats& stats, Callback const& callback);
-
-  void rearm(arangodb::velocypack::StringRef vertexId, uint64_t depth);
+  void rearm();
 
  private:
   [[nodiscard]] transaction::Methods* trx() const;

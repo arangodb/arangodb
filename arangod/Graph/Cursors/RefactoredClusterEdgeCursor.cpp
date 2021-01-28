@@ -31,10 +31,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "VocBase/LogicalCollection.h"
-
-// TODO: Needed for the IndexAccessor, should be modified
-#include "Graph/Providers/ClusterProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -42,7 +38,7 @@ using namespace arangodb::graph;
 RefactoredClusterEdgeCursor::RefactoredClusterEdgeCursor(
     arangodb::transaction::Methods* trx,
     arangodb::aql::FixedVarExpressionContext const& expressionContext,
-    ClusterTraverserCache* cache, bool backward)
+    RefactoredClusterTraverserCache* cache, bool backward)
     : _trx(trx), _expressionContext(expressionContext), _cache(cache), _backward(backward) {}
 
 RefactoredClusterEdgeCursor::~RefactoredClusterEdgeCursor() {}
@@ -59,22 +55,9 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 }
 #endif
 
-void RefactoredClusterEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
-                                        uint64_t depth) {
+void RefactoredClusterEdgeCursor::rearm() {
   _edgeList.clear();
   _cursorPosition = 0;
-
-  TRI_ASSERT(trx() != nullptr);
-  TRI_ASSERT(_cache != nullptr);
-
-  transaction::BuilderLeaser b(trx());
-  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  Result res = fetchEdgesFromEngines(*trx(), *_cache, b->slice(), _backward, _edgeList, _cache->insertedDocuments());
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  // _httpRequests += _cache->engines()->size(); TODO: increase http requests in stats
 }
 
 void RefactoredClusterEdgeCursor::readAll(aql::TraversalStats& stats, Callback const& callback) {
