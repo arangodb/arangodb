@@ -393,10 +393,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       } else {
         ClusterBaseProviderOptions forwardProviderOptions(
             opts->getExpressionCtx(),
-            static_cast<ClusterTraverserCache*>(opts->cache()), false);
+            static_cast<RefactoredClusterTraverserCache*>(opts->ensureRefactoredCache()), false);
         ClusterBaseProviderOptions backwardProviderOptions(
             opts->getExpressionCtx(),
-            static_cast<ClusterTraverserCache*>(opts->cache()), true);
+            static_cast<RefactoredClusterTraverserCache*>(opts->ensureRefactoredCache()), true);
 
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
