@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-
 #include "Basics/directories.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 
 #include "Actions/ActionFeature.h"

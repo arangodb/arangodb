@@ -25,6 +25,7 @@
 #define ARANGOD_REST_SERVER_FILE_DESCRIPTORS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
