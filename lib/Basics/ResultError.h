@@ -35,9 +35,9 @@ namespace arangodb::result {
 
 class Error final {
  public:
-  explicit Error(int errorNumber) noexcept(noexcept(std::allocator<char>()));
+  explicit Error(int errorNumber) noexcept(noexcept(decltype(_errorMessage)::allocator_type()));
 
-  Error(int errorNumber, std::string_view const& errorMessage);
+  Error(int errorNumber, std::string_view errorMessage);
   [[nodiscard]] auto errorNumber() const noexcept -> int;
   [[nodiscard]] auto errorMessage() const& -> std::string_view;
   [[nodiscard]] auto errorMessage() && -> std::string;

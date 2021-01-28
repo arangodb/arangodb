@@ -578,7 +578,8 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  return applyCollectionDumpMarker(trx, coll, type, doc);
+  std::string conflictingDocumentKey;
+  return applyCollectionDumpMarker(trx, coll, type, doc, conflictingDocumentKey);
 }
 
 /// @brief apply the data from a collection dump
@@ -1557,17 +1558,19 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   std::to_string(numberDocumentsDueToCounter));
 
       if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
-        LOG_TOPIC("118bf", WARN, Logger::REPLICATION)
-            << "number of remaining documents in collection '" + coll->name() +
-                   "' is " + std::to_string(numberDocumentsAfterSync) +
-                   " and differs from number of documents returned by "
-                   "collection count " +
-                   std::to_string(numberDocumentsDueToCounter);
-
-        // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
 
+        LOG_TOPIC("118bf", WARN, Logger::REPLICATION)
+            << "number of remaining documents in collection '" << coll->name() 
+            << "' is " << numberDocumentsAfterSync << " and differs from "
+            << "number of documents returned by collection count " << numberDocumentsDueToCounter
+            << ", documents found: " << documentsFound 
+            << ", num docs inserted: " << stats.numDocsInserted
+            << ", num docs removed: " << stats.numDocsRemoved 
+            << ", a diff of " << diff << " will be applied";
+
+        // patch the document counter of the collection and the transaction
         trx->documentCollection()->getPhysical()->adjustNumberDocuments(*trx, diff);
       }
     }

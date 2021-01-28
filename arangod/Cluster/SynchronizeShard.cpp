@@ -1193,7 +1193,12 @@ Result SynchronizeShard::catchupWithExclusiveLock(
             database, "/", shard,
             ", error while recalculating count on leader: ", result.errorMessage());
         LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
-        return arangodb::Result(result.errorNumber(), errorMessage);
+        return arangodb::Result(result.errorNumber(), std::move(errorMessage));
+      } else {
+        auto const resultSlice = response.slice();
+        if (VPackSlice c = resultSlice.get("count"); c.isNumber()) {
+          LOG_TOPIC("bc26d", DEBUG, Logger::MAINTENANCE) << "leader's shard count response is " << c.getNumber<uint64_t>();
+        }
       }
     }
 

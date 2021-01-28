@@ -354,6 +354,7 @@ void ImportFeature::start() {
       std::cout << "separator:              " << _separator << std::endl;
     }
     std::cout << "threads:                " << _threadCount << std::endl;
+    std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
 
     std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
     std::cout << "request timeout:        " << client.requestTimeout() << std::endl;

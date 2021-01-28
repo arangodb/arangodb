@@ -118,15 +118,15 @@ std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
 
 /// @brief apply the data from a collection dump or the continuous log
 arangodb::Result applyCollectionDumpMarkerInternal(
-    arangodb::Syncer::SyncerState const& state,
-    arangodb::transaction::Methods& trx, arangodb::LogicalCollection* coll,
-    arangodb::TRI_replication_operation_e type, VPackSlice const& slice) {
+    arangodb::Syncer::SyncerState const& state, arangodb::transaction::Methods& trx,
+    arangodb::LogicalCollection* coll, arangodb::TRI_replication_operation_e type,
+    VPackSlice const& slice, std::string& conflictingDocumentKey) {
   using arangodb::OperationOptions;
   using arangodb::OperationResult;
   using arangodb::Result;
   
   // key must not be empty
-  VPackSlice keySlice = slice.get(arangodb::StaticStrings::KeyString);
+  auto const keySlice = slice.get(arangodb::StaticStrings::KeyString);
   if (!keySlice.isString() || keySlice.getStringLength() == 0) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -165,7 +165,6 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
         // need to replace the one we have
         useReplace = true;
-        opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
       }
 
       if (!useReplace) {
@@ -177,15 +176,12 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       }
 
       if (useReplace) {
-        // conflicting key is contained in opRes.errorMessage() now.
-        // let's check if the key we have got is the same as the one
-        // that we would like to insert
-        if (keySlice.stringView() != opRes.errorMessage()) {
+        if (keySlice.stringView() != keySlice.stringView()) {
           // different key
           if (trx.isSingleOperationTransaction()) {
-            // return a special error code from here, with the key of
-            // the conflicting document as the error message :-|
-            return Result(TRI_ERROR_ARANGO_TRY_AGAIN, opRes.errorMessage());
+            // return the conflicting document's key to retry
+            conflictingDocumentKey = keySlice.stringView();
+            return Result(TRI_ERROR_ARANGO_TRY_AGAIN);
           }
 
           VPackBuilder tmp;
@@ -224,7 +220,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         }
       }
 
-      return Result(opRes.result);
+      return std::move(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(),
                     std::string("document insert/replace operation failed: ") + ex.what());
@@ -584,12 +580,13 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
 
 Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalCollection* coll,
                                          TRI_replication_operation_e type,
-                                         VPackSlice const& slice) {
+                                         VPackSlice const& slice,
+                                         std::string& conflictingDocumentKey) {
   if (_state.applier._lockTimeoutRetries > 0) {
     decltype(_state.applier._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res = ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice);
+      Result res = ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice, conflictingDocumentKey);
 
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
@@ -608,7 +605,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
       // retry
     }
   } else {
-    return ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice);
+    return ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice, conflictingDocumentKey);
   }
 }
 

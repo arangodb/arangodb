@@ -26,8 +26,8 @@
 #include "Result.h"
 
 #include "Basics/StaticStrings.h"
-#include "Basics/error.h"
 #include "Basics/voc-errors.h"
+#include "debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -43,39 +43,40 @@ Result::Result(int errorNumber)
 Result::Result(int errorNumber, std::string const& errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
-                 : std::make_unique<Error>(errorNumber, errorMessage)) {}
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
+}
 
 Result::Result(int errorNumber, std::string&& errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
-                 : std::make_unique<Error>(errorNumber, std::move(errorMessage))) {}
+                 : std::make_unique<Error>(errorNumber, std::move(errorMessage))) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
+}
 
-Result::Result(int errorNumber, std::string_view const& errorMessage)
+Result::Result(int errorNumber, std::string_view errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
-                 : std::make_unique<Error>(errorNumber, errorMessage)) {}
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
+}
 
 Result::Result(int errorNumber, const char* errorMessage)
     : _error(errorNumber == TRI_ERROR_NO_ERROR
                  ? nullptr
-                 : std::make_unique<Error>(errorNumber, errorMessage)) {}
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || 0 == strcmp("", errorMessage));
+}
 
 Result::Result(Result const& other)
     : _error(other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error)) {}
-
-Result::Result(Result&& other) noexcept : _error(std::move(other._error)) {}
 
 auto Result::operator=(Result const& other) -> Result& {
   _error = other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error);
   return *this;
 }
 
-auto Result::operator=(Result&& other) noexcept -> Result& {
-  _error = std::move(other._error);
-  return *this;
-}
-
-auto Result::ok() const noexcept -> bool { return _error == nullptr; }
+auto Result::ok() const noexcept -> bool { return errorNumber() == TRI_ERROR_NO_ERROR; }
 
 auto Result::fail() const noexcept -> bool { return !ok(); }
 
@@ -99,13 +100,7 @@ auto Result::reset() noexcept -> Result& {
 }
 
 auto Result::reset(int errorNumber) -> Result& {
-  if (errorNumber == TRI_ERROR_NO_ERROR) {
-    _error = nullptr;
-  } else {
-    _error = std::make_unique<Error>(errorNumber);
-  }
-
-  return *this;
+  return reset(errorNumber, std::string{});
 }
 
 auto Result::reset(int errorNumber, std::string_view errorMessage) -> Result& {
@@ -116,8 +111,10 @@ auto Result::reset(int errorNumber, const char* errorMessage) -> Result& {
   return reset(errorNumber, std::string{errorMessage});
 }
 
-auto Result::reset(int errorNumber, std::string&& errorMessage) noexcept -> Result& {
+auto Result::reset(int errorNumber, std::string&& errorMessage) -> Result& {
   if (errorNumber == TRI_ERROR_NO_ERROR) {
+    // The error message will be ignored
+    TRI_ASSERT(errorMessage.empty());
     _error = nullptr;
   } else {
     _error = std::make_unique<Error>(errorNumber, std::move(errorMessage));
@@ -134,7 +131,8 @@ auto Result::reset(Result&& other) noexcept -> Result& {
 
 auto Result::errorMessage() const& -> std::string_view {
   if (_error == nullptr) {
-    return {};
+    // Return a view of the empty string, not a nullptr!
+    return {""};
   } else {
     return _error->errorMessage();
   }
