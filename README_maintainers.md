@@ -271,7 +271,7 @@ Use this `cmake` option in addition to the normal options:
 ```
 
 when building. Make sure you are using the builtin `jemalloc`. You need
-debugging symbols to analyse the heap dumps later on, so compile with
+debugging symbols to analyze the heap dumps later on, so compile with
 `-DCMAKE_BUILD_TYPE=Debug` or `RelWithDebInfo`. `Debug` is probably
 less confusing in the end. 
 
@@ -288,7 +288,7 @@ then use this endpoint to get a heap dump:
 curl "http://localhost:8529/_admin/status?memory=true" > heap.dump
 ```
 
-You can analyse such a heap dump with the `jeprof` tool, either by
+You can analyze such a heap dump with the `jeprof` tool, either by
 inspecting a single dump like this:
 
 ```
