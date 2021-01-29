@@ -39,6 +39,7 @@
 #include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
+#include "Network/Utils.h"
 
 namespace arangodb {
 
@@ -69,13 +70,14 @@ struct AsyncAgencyCommResult {
     return response->statusCode();
   }
 
-  Result asResult() {
+  [[nodiscard]] Result asResult() const {
+    using namespace arangodb::network;
     if (!ok()) {
-      return Result{int(error), to_string(error)};
-    } else if (200 <= statusCode() && statusCode() <= 299) {
-      return Result{};
+      return Result{fuerteToArangoErrorCode(error), to_string(error)};
     } else {
-      return Result{int(statusCode())};
+      auto code = statusCode();
+      return Result{fuerteStatusToArangoErrorCode(code),
+                    fuerteStatusToArangoErrorMessage(code)};
     }
   }
 };

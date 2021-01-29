@@ -1799,6 +1799,16 @@ constexpr auto TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                        
 /// executing it.
 constexpr auto TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        = ErrorCode{5010};
 
+/// 20001: ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE
+/// "malformed gossip message"
+/// Malformed gossip message.
+constexpr auto TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE                         = ErrorCode{20001};
+
+/// 20002: ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST
+/// "malformed inquire request"
+/// Malformed inquire request.
+constexpr auto TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST                        = ErrorCode{20002};
+
 /// 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT
 /// "Inform message must be an object."
 /// The inform message in the Agency must be an object.
@@ -1844,6 +1854,11 @@ constexpr auto TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT                
 /// Will be raised if the readDB or the spearHead cannot be rebuilt from the
 /// replicated log.
 constexpr auto TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS                               = ErrorCode{20021};
+
+/// 20030: ERROR_AGENCY_MALFORMED_TRANSACTION
+/// "malformed agency transaction"
+/// Malformed agency transaction.
+constexpr auto TRI_ERROR_AGENCY_MALFORMED_TRANSACTION                            = ErrorCode{20030};
 
 /// 20501: ERROR_SUPERVISION_GENERAL_FAILURE
 /// "general supervision failure"

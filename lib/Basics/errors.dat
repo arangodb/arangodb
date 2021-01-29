@@ -476,6 +476,8 @@ ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,5010,"agency transaction failed during cl
 ## Agency errors
 ################################################################################
 
+ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,20001,"malformed gossip message","Malformed gossip message."
+ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,20002,"malformed inquire request","Malformed inquire request."
 ERROR_AGENCY_INFORM_MUST_BE_OBJECT,20011,"Inform message must be an object.","The inform message in the Agency must be an object."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint parameter 'term'","The inform message in the Agency must contain a uint parameter 'term'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the Agency must contain a string parameter 'id'."
@@ -485,6 +487,7 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING,20016,"Inform message must contain obj
 ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING,20017,"Inform message must contain object 'max ping'","The inform message in the Agency must contain an object 'max ping'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT,20018,"Inform message must contain object 'timeoutMult'","The inform message in the Agency must contain an object 'timeoutMult'."
 ERROR_AGENCY_CANNOT_REBUILD_DBS,20021,"Cannot rebuild readDB and spearHead","Will be raised if the readDB or the spearHead cannot be rebuilt from the replicated log."
+ERROR_AGENCY_MALFORMED_TRANSACTION,20030,"malformed agency transaction","Malformed agency transaction."
 
 ################################################################################
 ## Supervision errors

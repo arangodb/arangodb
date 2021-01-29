@@ -301,17 +301,25 @@ std::string fuerteToArangoErrorMessage(fuerte::Error err) {
 }
 
 ErrorCode fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
-  if (fuerte::statusIsSuccess(res.statusCode())) {
+  return fuerteStatusToArangoErrorCode(res.statusCode());
+}
+
+ErrorCode fuerteStatusToArangoErrorCode(fuerte::StatusCode const& statusCode) {
+  if (fuerte::statusIsSuccess(statusCode)) {
     return TRI_ERROR_NO_ERROR;
-  } else if (res.statusCode() > 0) {
-    return ErrorCode{static_cast<int>(res.statusCode())};
+  } else if (statusCode > 0) {
+    return ErrorCode{static_cast<int>(statusCode)};
   } else {
     return TRI_ERROR_INTERNAL;
   }
 }
 
 std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
-  return fuerte::status_code_to_string(res.statusCode());
+  return fuerteStatusToArangoErrorMessage(res.statusCode());
+}
+
+std::string fuerteStatusToArangoErrorMessage(fuerte::StatusCode const& statusCode) {
+  return fuerte::status_code_to_string(statusCode);
 }
 
 void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {

@@ -339,6 +339,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_FAILED, "move shard job failed during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED, "move shard job disappeared during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, "agency transaction failed during cluster repairs");
+  REG_ERROR(ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE, "malformed gossip message");
+  REG_ERROR(ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST, "malformed inquire request");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_BE_OBJECT, "Inform message must be an object.");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM, "Inform message must contain uint parameter 'term'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_ID, "Inform message must contain string parameter 'id'");
@@ -348,6 +350,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING, "Inform message must contain object 'max ping'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT, "Inform message must contain object 'timeoutMult'");
   REG_ERROR(ERROR_AGENCY_CANNOT_REBUILD_DBS, "Cannot rebuild readDB and spearHead");
+  REG_ERROR(ERROR_AGENCY_MALFORMED_TRANSACTION, "malformed agency transaction");
   REG_ERROR(ERROR_SUPERVISION_GENERAL_FAILURE, "general supervision failure");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
   REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");

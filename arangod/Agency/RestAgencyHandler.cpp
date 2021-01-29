@@ -224,7 +224,7 @@ RestStatus RestAgencyHandler::pollIndex(
         }
       })
       .thenError<VPackException>([this](VPackException const& e) {
-        generateError(Result{e.errorCode(), e.what()});
+        generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
       })
       .thenError<std::exception>([this](std::exception const& e) {
         generateError(
