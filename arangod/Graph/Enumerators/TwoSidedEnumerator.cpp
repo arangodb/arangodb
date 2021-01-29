@@ -138,9 +138,12 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   }
   if (!looseEnds.empty()) {
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+
+    // TODO: Discuss how to handle this properly. Currently we'll mark looseEnds in fetch as fetched
+
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
-    LOG_DEVEL << "needs to be implemented: " << preparedEnds;
+    //auto&& preparedEnds = futureEnds.get();
+    // LOG_DEVEL << "needs to be implemented: " << preparedEnds;
     // TODO: we need to ensure that we now have all vertices fetched - (future - not yet implemented and not relevant yet)
     // or that we need to refetch at some later point.
     // TODO: maybe we can combine this with prefetching of paths
@@ -157,21 +160,22 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
+    // TODO: Discuss how to handle this properly. Currently we'll mark looseEnds in fetch as fetched
     // Will throw all network errors here
+    /*
     auto&& preparedEnds = futureEnds.get();
     for (auto const& end : preparedEnds) {
-      LOG_DEVEL << "Prepare this loose end now: " << end->getVertex().getID().toString();
-    }
-    LOG_DEVEL << "needs to be implemented: " << preparedEnds;
+      LOG_DEVEL << "(currently does nothing) Prepare this loose end now: " << end->getVertex().getID().toString();
+      // TODO we somehow need to handover those looseends to - (future - not yet implemented and not relevant yet)
+      // the queue again, in order to remove them from the loosend list.
+    }*/
 
-    // TODO we somehow need to handover those looseends to - (future - not yet implemented and not relevant yet)
-    // the queue again, in order to remove them from the loosend list.
+    TRI_ASSERT(_queue.hasProcessableElement());
   }
+
   auto step = _queue.pop();
-  LOG_DEVEL << "Got step from queue: " << step.getVertex().getID().toString();
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
-    LOG_DEVEL << "Expanding in TSE: " << n.getVertex().getID().toString();
     ValidationResult res = _validator.validatePath(n);
 
     // Check if other Ball knows this Vertex.
@@ -204,7 +208,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Step const& match, ResultList& results, PathValidator const& otherSideValidator)
     -> void {
   auto [first, last] = _shell.equal_range(match);
-  LOG_DEVEL << "match results in shell";
   if (_direction == FORWARD) {
     while (first != last) {
       auto res = _validator.validatePath(*first, otherSideValidator);
@@ -364,8 +367,6 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     }
   }
 
-  LOG_DEVEL << "result size is: " << _results.size();
-  LOG_DEVEL << "Now we need to fetch results aka. looseEnds";
   fetchResults();
 }
 
@@ -412,11 +413,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::fetchResults()
     -> void {
-  LOG_DEVEL << "fetchResults in TwoSidedEnumerator";
   if (!_resultsFetched && !_results.empty()) {
-    LOG_DEVEL << "Fetch left";
     _left.fetchResults(_results);
-    LOG_DEVEL << "Fetch right";
     _right.fetchResults(_results);
   }
   _resultsFetched = true;
