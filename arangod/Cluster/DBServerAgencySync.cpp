@@ -47,6 +47,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::basics;
 using namespace arangodb::methods;
 using namespace arangodb::rest;
 
@@ -215,8 +216,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
-    result.errorMessage = "Could not do getLocalCollections for phase 1: '";
-    result.errorMessage.append(glc.errorMessage()).append("'");
+    result.errorMessage =
+        StringUtils::concatT("Could not do getLocalCollections for phase 1: '",
+                             glc.errorMessage(), "'");
     return result;
   }
   LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local;
@@ -272,8 +274,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("d15b5", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - local state: " << local;
     if (!glc.ok()) {
-      result.errorMessage = "Could not do getLocalCollections for phase 2: '";
-      result.errorMessage.append(glc.errorMessage()).append("'");
+      result.errorMessage = StringUtils::concatT(
+          "Could not do getLocalCollections for phase 2: '", glc.errorMessage(),
+          "'");
       return result;
     }
 
@@ -345,7 +348,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       } else {
         // Report an error:
         result = DBServerAgencySyncResult(
-          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0);
+            false, StringUtils::concatT("Error in phase 2: ", tmp.errorMessage()), 0, 0);
       }
     } else {
       // This code should never run, it is only there to debug problems if

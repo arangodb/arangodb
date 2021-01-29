@@ -262,22 +262,24 @@ bool isIgnoredHiddenEnterpriseCollection(arangodb::DumpFeature::Options const& o
 arangodb::Result dumpJsonObjects(arangodb::DumpFeature::DumpJob& job,
                                  arangodb::ManagedDirectory::File& file,
                                  arangodb::basics::StringBuffer const& body) {
-  arangodb::basics::StringBuffer masked(1, false);
-  arangodb::basics::StringBuffer const* result = &body;
-
+  size_t length;
   if (job.maskings != nullptr) {
+    arangodb::basics::StringBuffer masked(256, false);
     job.maskings->mask(job.collectionName, body, masked);
-    result = &masked;
+    file.write(masked.data(), masked.length());
+    length = masked.length();
+  } else {
+    file.write(body.data(), body.length());
+    length = body.length();
   }
-
-  file.write(result->data(), result->length());
 
   if (file.status().fail()) {
-    return {TRI_ERROR_CANNOT_WRITE_FILE, std::string("cannot write file '") + file.path() +
-                                             "': " + file.status().errorMessage()};
+    return {TRI_ERROR_CANNOT_WRITE_FILE,
+            arangodb::basics::StringUtils::concatT("cannot write file '", file.path(),
+                                                   "': ", file.status().errorMessage())};
   }
 
-  job.stats.totalWritten += static_cast<uint64_t>(result->length());
+  job.stats.totalWritten += static_cast<uint64_t>(length);
 
   return {};
 }
@@ -1168,7 +1170,7 @@ void DumpFeature::start() {
   }
 
   if (res.fail()) {
-    LOG_TOPIC("f7ff5", ERR, Logger::DUMP) << "An error occurred: " + res.errorMessage();
+    LOG_TOPIC("f7ff5", ERR, Logger::DUMP) << "An error occurred: " << res.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
 

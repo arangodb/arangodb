@@ -38,6 +38,7 @@
 
 namespace arangodb {
 class NetworkFeature;
+class SharedPRNGFeature;
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
@@ -157,6 +158,7 @@ class SupervisedScheduler final : public Scheduler {
 
  private:
   NetworkFeature& _nf;
+  SharedPRNGFeature& _sharedPRNG;
 
   std::atomic<uint64_t> _numWorkers;
   std::atomic<bool> _stopping;

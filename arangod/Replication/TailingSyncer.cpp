@@ -519,8 +519,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // fix error handling here when function returns result
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    std::string("unable to create replication transaction: ") +
-                        res.errorMessage());
+                    StringUtils::concatT(
+                        "unable to create replication transaction: ", res.errorMessage()));
     }
 
     res = applyCollectionDumpMarker(trx, coll, type, applySlice);
@@ -1072,7 +1072,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
 /// @brief apply the data from the continuous log
 Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstRegularTick,
-                               ApplyStats& applyStats, uint64_t& ignoreCount) {
+                               ApplyStats& applyStats, arangodb::velocypack::Builder& builder, 
+                               uint64_t& ignoreCount) {
   // reload users if they were modified
   _usersModified = false;
   _analyzersModified.clear();
@@ -1109,9 +1110,6 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
 
-  // TODO: re-use a builder!
-  auto builder = std::make_shared<VPackBuilder>();
-
   while (p < end) {
     char const* q = static_cast<char const*>(memchr(p, '\n', (end - p)));
 
@@ -1131,7 +1129,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 
     applyStats.processedMarkers++;
 
-    builder->clear();
+    builder.clear();
     try {
       VPackParser parser(builder);
       parser.parse(p, static_cast<size_t>(q - p));
@@ -1143,7 +1141,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 
     p = q + 1;
 
-    VPackSlice const slice = builder->slice();
+    VPackSlice const slice = builder.slice();
 
     if (!slice.isObject()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1170,7 +1168,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 
       if (res.fail()) {
         // apply error
-        std::string errorMsg = res.errorMessage();
+        auto errorMsg = std::string{res.errorMessage()};
 
         if (ignoreCount == 0) {
           if (lineLength > 1024) {
@@ -1425,6 +1423,7 @@ retry:
         Result r = syncer->run(_state.applier._incremental);
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
+          TRI_ASSERT(lastLogTick > 0);
           LOG_TOPIC("ee130", INFO, Logger::REPLICATION)
               << "automatic resynchronization for " << _applier->databaseName()
               << " finished. restarting continuous replication applier from "
@@ -1580,9 +1579,14 @@ Result TailingSyncer::runContinuousSync() {
   bool worked = false;
   bool mustFetchBatch = true;
 
+  // will be recycled for every batch
+  VPackBuilder builder;
+
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
   while (true) {
+    builder.clear();
+
     // fetchTick, worked and mustFetchBatch are passed by reference and are
     // updated by processLeaderLog!
 
@@ -1590,7 +1594,7 @@ Result TailingSyncer::runContinuousSync() {
     // initially fetch the next batch from the leader passing "mustFetchBatch =
     // false" to processLeaderLog requires that processLeaderLog has already
     // requested the next batch in the background on the previous invocation
-    Result res = processLeaderLog(sharedStatus, fetchTick, lastScannedTick, fromTick,
+    Result res = processLeaderLog(sharedStatus, builder, fetchTick, lastScannedTick, fromTick,
                                   _state.applier._ignoreErrors, worked, mustFetchBatch);
 
     uint64_t sleepTime;
@@ -1854,6 +1858,7 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
 
 /// @brief apply continuous synchronization data from a batch
 Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                                       arangodb::velocypack::Builder& builder,
                                        TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
                                        TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
                                        bool& worked, bool& mustFetchBatch) {
@@ -1996,9 +2001,11 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     });
   }
 
+  TRI_ASSERT(builder.isEmpty());
+
   ApplyStats applyStats;
   double time = TRI_microtime();
-  Result r = applyLog(response.get(), firstRegularTick, applyStats, ignoreCount);
+  Result r = applyLog(response.get(), firstRegularTick, applyStats, builder, ignoreCount);
   time = TRI_microtime() - time;
       
   _stats.numProcessedMarkers += applyStats.processedMarkers;
