@@ -69,7 +69,6 @@ struct ClusterProvider {
       explicit Vertex(VertexType v) : _vertex(v){};
 
       VertexType const& getID() const;
-      VPackSlice const& getData() const;
 
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
@@ -81,28 +80,26 @@ struct ClusterProvider {
 
       void setVertex(VertexType thisIsATest) { _vertex = thisIsATest; }
 
-      void setData(VPackSlice slice) { _data = slice; }
-
      private:
       VertexType _vertex;
-      VPackSlice _data;
     };
 
     class Edge {
      public:
-      explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
-      explicit Edge() : _token() { _token = EdgeDocumentToken(); }
+      explicit Edge(EdgeType tkn) : _edge(std::move(tkn)) {}
+      explicit Edge() : _edge() { _edge = EdgeType(); }
 
       void addToBuilder(ClusterProvider& provider, arangodb::velocypack::Builder& builder) const;
-      EdgeDocumentToken const& getID() const;
+      EdgeType const& getID() const; // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken
       bool isValid() const;
 
      private:
-      EdgeDocumentToken _token;
+      EdgeType _edge;
     };
 
     Step(VertexType v);
-    Step(VertexType v, EdgeDocumentToken edge, size_t prev);
+    Step(VertexType v, EdgeType edge, size_t prev);
+    Step(VertexType v, EdgeType edge, size_t prev, bool fetched);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -120,6 +117,7 @@ struct ClusterProvider {
     void setFetched() { _fetched = true; }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
+    EdgeType getEdgeIdentifier() const { return _edge.getID(); } // TODO: maybe remove this and above vertex method as well
 
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
@@ -143,7 +141,11 @@ struct ClusterProvider {
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
 
-  void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
+  void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder) {
+    // TODO fix or rm. (do not need that method)
+  }
+
+
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
@@ -152,7 +154,7 @@ struct ClusterProvider {
                                 std::vector<Step*>& result) -> void;
 
   // fetch edges and store in cache
-  auto fetchEdgesFromEnginesWithVariables(VertexType const& vertexId, size_t& depth) -> Result;
+  auto fetchEdgesFromEnginesWithVariables(VertexType const& vertexId, size_t& depth) -> Result; // unused right now
   auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
 
   auto fetchEdgesAndRearm(Step* const& vertex) -> void;
@@ -161,7 +163,7 @@ struct ClusterProvider {
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
-  arangodb::ResourceMonitor* resourceMonitor();
+  arangodb::ResourceMonitor& resourceMonitor();
 
   aql::TraversalStats stealStats();
 
