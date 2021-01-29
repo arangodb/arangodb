@@ -315,7 +315,6 @@ void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  LOG_DEVEL << "KPaths start";
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegIdSet inputRegisters;
