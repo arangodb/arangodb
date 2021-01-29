@@ -165,6 +165,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
         // need to replace the one we have
         useReplace = true;
+        conflictingDocumentKey = keySlice.stringView();
       }
 
       if (!useReplace) {
@@ -172,11 +173,12 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         opRes = trx.insert(coll->name(), slice, options);
         if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           useReplace = true;
+          conflictingDocumentKey = opRes.errorMessage();
         }
       }
 
       if (useReplace) {
-        if (keySlice.stringView() != keySlice.stringView()) {
+        if (keySlice.stringView() != conflictingDocumentKey) {
           // different key
           if (trx.isSingleOperationTransaction()) {
             // return the conflicting document's key to retry
