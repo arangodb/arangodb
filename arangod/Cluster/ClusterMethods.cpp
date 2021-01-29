@@ -217,7 +217,7 @@ OperationResult handleResponsesFromAllShards(
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& res = tryRes.get();  // throws exceptions upwards
       ShardID sId = res.destinationShard();
-      int commError = network::fuerteToArangoErrorCode(res);
+      auto commError = network::fuerteToArangoErrorCode(res);
       if (commError != TRI_ERROR_NO_ERROR) {
         result.reset(commError);
       } else {
@@ -502,9 +502,8 @@ struct CreateOperationCtx {
 ///        Also generates a key if necessary.
 ////////////////////////////////////////////////////////////////////////////////
 
-int distributeBabyOnShards(CreateOperationCtx& opCtx,
-                           LogicalCollection& collinfo,
-                           VPackSlice const value, bool isRestore) {
+::ErrorCode distributeBabyOnShards(CreateOperationCtx& opCtx, LogicalCollection& collinfo,
+                                   VPackSlice const value, bool isRestore) {
   ShardID shardID;
   std::string _key;
 
@@ -515,7 +514,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
     // We just assign it to any shard and pretend the user has given a key
     shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
   } else {
-    int r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
+    auto r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return r;
@@ -540,7 +539,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        int res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        auto res = collinfo.keyGenerator()->validate(p, l, isRestore);
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
@@ -1426,13 +1425,13 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   // create shard map
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
+      auto res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return makeFuture(OperationResult(res, options));
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
+    auto res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
@@ -2293,7 +2292,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         if (!isPatch) { // shard keys cannot be changed, error out early
           return makeFuture(OperationResult(res, options));
@@ -2303,7 +2302,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       if (!isPatch) { // shard keys cannot be changed, error out early
         return makeFuture(OperationResult(res, options));
@@ -2463,8 +2462,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
-                           bool waitForCollector) {
+::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync, bool waitForCollector) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2494,7 +2492,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
       return network::fuerteToArangoErrorCode(r);
     }
     if (r.statusCode() != fuerte::StatusOK) {
-      int code = network::errorCodeFromBody(r.slice());
+      auto code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
       }
