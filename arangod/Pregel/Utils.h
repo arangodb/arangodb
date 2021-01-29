@@ -135,7 +135,7 @@ class Utils {
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
-  static int resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+  static ErrorCode resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                           std::string const& collectionName, std::string const& shardKey,
                           arangodb::velocypack::StringRef vertexKey,
                           std::string& responsibleShard);

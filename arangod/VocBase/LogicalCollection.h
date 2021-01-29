@@ -180,8 +180,9 @@ class LogicalCollection : public LogicalDataSource {
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
-  int getResponsibleShard(std::string_view key, std::string& shardID);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
+                                bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
   ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
                                 std::string& shardID, bool& usesDefaultShardKeys,
