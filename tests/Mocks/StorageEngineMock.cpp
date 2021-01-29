@@ -1595,7 +1595,7 @@ void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::Data
   // nothing more required, assume info used for PhysicalCollectionMock
 }
 
-int StorageEngineMock::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+ErrorCode StorageEngineMock::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
                                                 arangodb::velocypack::Builder& result,
                                                 bool wasCleanShutdown, bool isUpgrade) {
   TRI_ASSERT(false);
@@ -1635,7 +1635,7 @@ arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfigurat
   return arangodb::velocypack::Builder();
 }
 
-int StorageEngineMock::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
+ErrorCode StorageEngineMock::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
   result.openArray();
 
   for (auto& entry : views) {
