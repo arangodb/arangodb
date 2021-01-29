@@ -444,7 +444,7 @@ bool TRI_ExistsFile(char const* path) {
 
 #endif
 
-int TRI_ChMod(char const* path, long mode, std::string& err) {
+ErrorCode TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
   res = _wchmod(toWString(path).data(), static_cast<int>(mode));
@@ -455,7 +455,7 @@ int TRI_ChMod(char const* path, long mode, std::string& err) {
   if (res != 0) {
     err = "error setting desired mode " + std::to_string(mode) + " for file " +
           path + ": " + strerror(errno);
-    return errno;
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -465,7 +465,7 @@ int TRI_ChMod(char const* path, long mode, std::string& err) {
 /// @brief returns the last modification date of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MTimeFile(char const* path, int64_t* mtime) {
+ErrorCode TRI_MTimeFile(char const* path, int64_t* mtime) {
   TRI_stat_t stbuf;
   int res = TRI_STAT(path, &stbuf);
 

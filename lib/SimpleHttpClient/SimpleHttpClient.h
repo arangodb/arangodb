@@ -315,13 +315,14 @@ class SimpleHttpClient {
   /// @brief fetch the version from the server
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getServerVersion(int* errorCode = nullptr);
+  std::string getServerVersion(ErrorCode* errorCode = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult const*, int* errorCode = nullptr);
+  std::string getHttpErrorMessage(SimpleHttpResult const* result,
+                                  ErrorCode* errorCode = nullptr);
 
   SimpleHttpClientParams& params() { return _params; };
 

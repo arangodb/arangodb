@@ -72,19 +72,19 @@ class ResultT {
     return ResultT(std::move(val), TRI_ERROR_NO_ERROR);
   }
 
-  ResultT static error(int errorNumber) {
+  ResultT static error(ErrorCode errorNumber) {
     return ResultT(std::nullopt, errorNumber);
   }
 
-  ResultT static error(int errorNumber, std::string_view const& errorMessage) {
+  ResultT static error(ErrorCode errorNumber, std::string_view const& errorMessage) {
     return ResultT(std::nullopt, errorNumber, errorMessage);
   }
 
-  ResultT static error(int errorNumber, std::string&& errorMessage) {
+  ResultT static error(ErrorCode errorNumber, std::string&& errorMessage) {
     return ResultT(std::nullopt, errorNumber, std::move(errorMessage));
   }
 
-  ResultT static error(int errorNumber, const char* errorMessage) {
+  ResultT static error(ErrorCode errorNumber, const char* errorMessage) {
     return ResultT(std::nullopt, errorNumber, errorMessage);
   }
 
@@ -221,7 +221,7 @@ class ResultT {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  bool is(int code) { return _result.is(code); }
+  bool is(ErrorCode code) { return _result.is(code); }
   int errorNumber() const { return _result.errorNumber(); }
   [[nodiscard]] std::string_view errorMessage() const& { return _result.errorMessage(); }
   [[nodiscard]] std::string errorMessage() && { return std::move(_result).errorMessage(); }
@@ -234,25 +234,25 @@ class ResultT {
   Result _result;
   std::optional<T> _val;
 
-  ResultT(std::optional<T>&& val_, int errorNumber)
+  ResultT(std::optional<T>&& val_, ErrorCode errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T>&& val_, int errorNumber, std::string_view const& errorMessage)
+  ResultT(std::optional<T>&& val_, ErrorCode errorNumber, std::string_view const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(std::optional<T>&& val_, int errorNumber, std::string&& errorMessage)
+  ResultT(std::optional<T>&& val_, ErrorCode errorNumber, std::string&& errorMessage)
       : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
 
-  ResultT(std::optional<T>&& val_, int errorNumber, const char* errorMessage)
+  ResultT(std::optional<T>&& val_, ErrorCode errorNumber, const char* errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(std::optional<T> const& val_, int errorNumber)
+  ResultT(std::optional<T> const& val_, ErrorCode errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T> const& val_, int errorNumber, std::string_view const& errorMessage)
+  ResultT(std::optional<T> const& val_, ErrorCode errorNumber, std::string_view const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(std::optional<T> const& val_, int errorNumber, std::string&& errorMessage)
+  ResultT(std::optional<T> const& val_, ErrorCode errorNumber, std::string&& errorMessage)
       : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
 
   ResultT(std::optional<T>&& val_, Result const& result)

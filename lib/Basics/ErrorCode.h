@@ -23,6 +23,9 @@
 #ifndef LIB_BASICS_ERRORCODE_H
 #define LIB_BASICS_ERRORCODE_H
 
+// TODO We probably want to put this into a namespace, but this is easy to
+//      refactor automatically later.
+
 class ErrorCode {
  public:
   ErrorCode() = delete;

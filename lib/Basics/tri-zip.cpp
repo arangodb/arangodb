@@ -289,8 +289,8 @@ static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile(char const* filename, char const* dir,
-                std::vector<std::string> const& files, char const* password) {
+ErrorCode TRI_ZipFile(char const* filename, char const* dir,
+                      std::vector<std::string> const& files, char const* password) {
   void* buffer;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -317,7 +317,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
   if (zf == nullptr) {
     TRI_Free(buffer);
 
-    return ZIP_ERRNO;
+    return TRI_ERROR_CANNOT_WRITE_FILE;
   }
 
   auto res = TRI_ERROR_NO_ERROR;
@@ -458,8 +458,8 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
-                  bool overwrite, char const* password, std::string& errorMessage) {
+ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
+                        bool overwrite, char const* password, std::string& errorMessage) {
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
