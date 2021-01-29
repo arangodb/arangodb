@@ -21,3 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ErrorCode.h"
+
+#include <ostream>
+
+auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream& {
+  return out << res.asInt();
+}
