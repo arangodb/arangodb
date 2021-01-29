@@ -625,22 +625,16 @@ TEST(MetricsTest, test_int_histogram) {
 }
 
 TEST(MetricsTest, test_double_log_10_histogram) {
-  histogram_test(log_scale_t(10., 0.,  2000.,  5));
+  histogram_test(log_scale_t(8., 0.,  2000.,  5));
 }
 TEST(MetricsTest, test_float_log_10_histogram) {
-  histogram_test(log_scale_t(10.f, 0.f,  2000.f,  5));
+  histogram_test(log_scale_t(8.f, 0.f,  2000.f,  5));
 }
 TEST(MetricsTest, test_double_log_2_histogram) {
   histogram_test(log_scale_t(2., 0.,  2000.,  10));
 }
 TEST(MetricsTest, test_float_log_2_histogram) {
   histogram_test(log_scale_t(2.f, 0.f,  2000.f,  10));
-}
-TEST(MetricsTest, test_double_log_e_histogram) {
-  histogram_test(log_scale_t(std::exp(1.), 0.,  2000.,  10));
-}
-TEST(MetricsTest, test_float_log_e_histogram) {
-  histogram_test(log_scale_t(std::exp(1.f), 0.f,  2000.f,  10));
 }
 TEST(MetricsTest, test_double_log_bin_histogram) {
   histogram_test(log_scale_t(2., 0.,  128.,  8));
