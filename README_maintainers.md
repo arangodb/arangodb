@@ -318,7 +318,11 @@ The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
 specified amount of time:
 
     export SLEEP_FOR=$((5*60))
-    ./scripts/unittest shell_client --memprof true --test shell-sleep-grey.js
+    ./scripts/unittest shell_client \
+       --memprof true \
+       --test shell-sleep-grey.js \
+       --oneTestTimeout ((6*60)) \
+       --cleanup false
     ...
     ... Saved /tmp/arangosh_qFu12G/shell_client/single_2207100_0_.heap
     ...
