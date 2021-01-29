@@ -231,7 +231,7 @@ void V8ShellFeature::unprepare() {
 
 void V8ShellFeature::stop() {
   if (_removeCopyInstallation && !_copyDirectory.empty()) {
-    int res = TRI_RemoveDirectory(_copyDirectory.c_str());
+    auto res = TRI_RemoveDirectory(_copyDirectory.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("cac43", DEBUG, Logger::V8)
@@ -254,11 +254,11 @@ void V8ShellFeature::copyInstallationFiles() {
 
   LOG_TOPIC("65ed7", DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory
                                << "' to '" << _copyDirectory << "'";
-  int res = TRI_ERROR_NO_ERROR;
 
   _nodeModulesDirectory = _startupDirectory;
 
   if (FileUtils::exists(_copyDirectory)) {
+    auto res = TRI_ERROR_NO_ERROR;
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("379f5", FATAL, Logger::V8) << "Error cleaning JS installation path '" << _copyDirectory
@@ -266,9 +266,11 @@ void V8ShellFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
   }
-  if (!FileUtils::createDirectory(_copyDirectory, &res)) {
+
+  if (int res; !FileUtils::createDirectory(_copyDirectory, &res)) {
+    auto err = TRI_last_error();
     LOG_TOPIC("6d915", FATAL, Logger::V8) << "Error creating JS installation path '"
-                                 << _copyDirectory << "': " << TRI_errno_string(res);
+                                 << _copyDirectory << "': " << err;
     FATAL_ERROR_EXIT();
   }
 
