@@ -432,6 +432,11 @@ arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
 }
 
+TraverserCache* BaseOptions::refactoredCache() {
+  ensureRefactoredCache();
+  return _cache.get();
+}
+
 TraverserCache* BaseOptions::cache() {
   ensureCache();
   return _cache.get();

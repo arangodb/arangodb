@@ -152,6 +152,7 @@ struct BaseOptions {
   arangodb::ResourceMonitor& resourceMonitor() const;
 
   TraverserCache* cache();
+  TraverserCache* refactoredCache();
   TraverserCache* cache() const;
   void ensureCache();
   arangodb::graph::RefactoredClusterTraverserCache* ensureRefactoredCache();

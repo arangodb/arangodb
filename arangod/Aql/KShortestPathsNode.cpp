@@ -393,10 +393,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       } else {
         ClusterBaseProviderOptions forwardProviderOptions(
             opts->getExpressionCtx(),
-            static_cast<RefactoredClusterTraverserCache*>(opts->ensureRefactoredCache()), false);
+            static_cast<RefactoredClusterTraverserCache*>(opts->refactoredCache()), false);
         ClusterBaseProviderOptions backwardProviderOptions(
             opts->getExpressionCtx(),
-            static_cast<RefactoredClusterTraverserCache*>(opts->ensureRefactoredCache()), true);
+            static_cast<RefactoredClusterTraverserCache*>(opts->refactoredCache()), true);
 
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
@@ -633,7 +633,11 @@ void KShortestPathsNode::prepareOptions() {
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
   if (ServerState::instance()->isCoordinator()) {
-    _options->activateCache(false, engines());
+    if (opts->refactor()) {
+      _options->activateRefactoredCache(engines());
+    } else {
+      _options->activateCache(false, engines());
+    }
   } else {
     _options->activateCache(false, nullptr);
   }
