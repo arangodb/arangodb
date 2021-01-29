@@ -52,8 +52,8 @@ int resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
   return resolveDestination(ci, dest, spec);
 }
 
-int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
-                       network::EndpointSpec& spec) {
+ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
+                             network::EndpointSpec& spec) {
   using namespace arangodb;
 
   if (dest.compare(0, 6, "tcp://", 6) == 0 || dest.compare(0, 6, "ssl://", 6) == 0) {
@@ -110,19 +110,19 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode) {
+ErrorCode errorCodeFromBody(arangodb::velocypack::Slice body, ErrorCode defaultErrorCode) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
       // we found an error number, so let's use it!
-      return num.getNumericValue<int>();
+      return ErrorCode{num.getNumericValue<int>()};
     }
   }
   return defaultErrorCode;
 }
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& body,
-                      int defaultError) {
+                      ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (body && !body->empty()) {
     return resultFromBody(VPackSlice(body->data()), defaultError);
@@ -131,7 +131,7 @@ Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> con
 }
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
-                      int defaultError) {
+                      ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (body) {
     return resultFromBody(body->slice(), defaultError);
@@ -140,18 +140,19 @@ Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body
   return Result(defaultError);
 }
 
-Result resultFromBody(arangodb::velocypack::Slice slice, int defaultError) {
+Result resultFromBody(arangodb::velocypack::Slice slice, ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (slice.isObject()) {
     VPackSlice num = slice.get(StaticStrings::ErrorNum);
     VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
     if (num.isNumber()) {
+      auto errorCode = ErrorCode{num.getNumericValue<int>()};
       if (msg.isString()) {
         // found an error number and an error message, so let's use it!
-        return Result(num.getNumericValue<int>(), msg.copyString());
+        return Result(errorCode, msg.copyString());
       }
       // we found an error number, so let's use it!
-      return Result(num.getNumericValue<int>());
+      return Result(errorCode);
     }
   }
   return Result(defaultError);
@@ -185,7 +186,7 @@ void errorCodesFromHeaders(network::Headers headers,
 
 namespace {
 
-int toArangoErrorCodeInternal(fuerte::Error err) {
+ErrorCode toArangoErrorCodeInternal(fuerte::Error err) {
   // This function creates an error code from a fuerte::Error,
   // but only if it is a communication error. If the communication
   // was successful and there was an HTTP error code, this function
@@ -268,14 +269,14 @@ rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb verb) {
   return rest::RequestType::ILLEGAL;
 }
 
-int fuerteToArangoErrorCode(network::Response const& res) {
+ErrorCode fuerteToArangoErrorCode(network::Response const& res) {
   LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION, res.error != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(res.error)
       << "' from destination '" << res.destination << "'";
   return toArangoErrorCodeInternal(res.error);
 }
 
-int fuerteToArangoErrorCode(fuerte::Error err) {
+ErrorCode fuerteToArangoErrorCode(fuerte::Error err) {
   LOG_TOPIC_IF("abcdf", ERR, Logger::COMMUNICATION, err != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(err) << "'";
   return toArangoErrorCodeInternal(err);
@@ -299,11 +300,11 @@ std::string fuerteToArangoErrorMessage(fuerte::Error err) {
   return TRI_errno_string(fuerteToArangoErrorCode(err));
 }
 
-int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
+ErrorCode fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
   if (fuerte::statusIsSuccess(res.statusCode())) {
     return TRI_ERROR_NO_ERROR;
   } else if (res.statusCode() > 0) {
-    return static_cast<int>(res.statusCode());
+    return ErrorCode{static_cast<int>(res.statusCode())};
   } else {
     return TRI_ERROR_INTERNAL;
   }
