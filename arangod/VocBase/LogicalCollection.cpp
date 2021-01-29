@@ -392,7 +392,7 @@ int LogicalCollection::getResponsibleShard(std::string_view key, std::string& sh
                              VPackStringRef(key.data(), key.size()));
 }
 
-int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
+ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID,
                                            bool& usesDefaultShardKeys,
                                            VPackStringRef const& key) {

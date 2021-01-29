@@ -219,10 +219,9 @@ ShardingStrategyNone::ShardingStrategyNone() : ShardingStrategy() {
 }
 
 /// calling getResponsibleShard on this class will always throw an exception
-int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                              bool docComplete, ShardID& shardID,
-                                              bool& usesDefaultShardKeys,
-                                              VPackStringRef const& key) {
+ErrorCode ShardingStrategyNone::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "unexpected invocation of ShardingStrategyNone");
 }
@@ -236,10 +235,9 @@ ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(std::string c
 
 /// @brief will always throw an exception telling the user the selected sharding
 /// is only available in the Enterprise Edition
-int ShardingStrategyOnlyInEnterprise::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                                          bool docComplete, ShardID& shardID,
-                                                          bool& usesDefaultShardKeys,
-                                                          VPackStringRef const& key) {
+ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
       std::string("sharding strategy '") + _name +
@@ -268,10 +266,9 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
   }
 }
 
-int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                                  bool docComplete, ShardID& shardID,
-                                                  bool& usesDefaultShardKeys,
-                                                  VPackStringRef const& key) {
+ErrorCode ShardingStrategyHashBase::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   static constexpr char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static constexpr size_t magicLength = 52;

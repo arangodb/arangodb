@@ -183,10 +183,10 @@ class LogicalCollection : public LogicalDataSource {
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
   int getResponsibleShard(std::string_view key, std::string& shardID);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          std::string& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const& key =
-                          arangodb::velocypack::StringRef());
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                std::string& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key =
+                                    arangodb::velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes

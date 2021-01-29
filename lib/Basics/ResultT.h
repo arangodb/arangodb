@@ -222,7 +222,7 @@ class ResultT {
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
   bool is(ErrorCode code) { return _result.is(code); }
-  int errorNumber() const { return _result.errorNumber(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
   [[nodiscard]] std::string_view errorMessage() const& { return _result.errorMessage(); }
   [[nodiscard]] std::string errorMessage() && { return std::move(_result).errorMessage(); }
 

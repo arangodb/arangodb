@@ -36,6 +36,7 @@ ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if icu operations fail
 ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot be read."
 ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when a server is running an incompatible version of ArangoDB."
 ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
+ERROR_MALFORMED_JSON,37,"malformed json","Will be raised when a JSON string could not be parsed."
 
 ################################################################################
 ## HTTP error status codes

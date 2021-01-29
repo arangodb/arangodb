@@ -390,7 +390,7 @@ class Methods {
   bool isInaccessibleCollection(std::string const& /*cname*/) const;
 #endif
 
-  static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
+  static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                         arangodb::velocypack::Slice value);
 
  private:

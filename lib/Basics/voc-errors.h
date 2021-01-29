@@ -181,6 +181,11 @@ constexpr auto TRI_ERROR_INCOMPATIBLE_VERSION                                   
 /// Will be raised when a requested resource is not enabled.
 constexpr auto TRI_ERROR_DISABLED                                                = ErrorCode{36};
 
+/// 37: ERROR_MALFORMED_JSON
+/// "malformed json"
+/// Will be raised when a JSON string could not be parsed.
+constexpr auto TRI_ERROR_MALFORMED_JSON                                          = ErrorCode{37};
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.

@@ -237,7 +237,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  int validate(char const* p, size_t length, bool isRestore) override {
+  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
     int res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -397,7 +397,7 @@ class PaddedKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  int validate(char const* p, size_t length, bool isRestore) override {
+  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
     int res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -513,7 +513,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   }
 
   /// @brief validate a key
-  int validate(char const* p, size_t length, bool isRestore) override {
+  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
     int res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -795,12 +795,12 @@ KeyGenerator* KeyGenerator::factory(application_features::ApplicationServer& ser
 }
 
 /// @brief validate a key
-int KeyGenerator::validate(char const* p, size_t length, bool isRestore) {
+ErrorCode KeyGenerator::validate(char const* p, size_t length, bool isRestore) {
   return globalCheck(p, length, isRestore);
 }
 
 /// @brief check global key attributes
-int KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
+ErrorCode KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
   // user has specified a key
   if (length > 0 && !_allowUserKeys && !isRestore && !_isDBServer) {
     // we do not allow user-generated keys
