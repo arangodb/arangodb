@@ -35,7 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::result;
 
-Error::Error(ErrorCode errorNumber) noexcept(noexcept(decltype(_errorMessage)::allocator_type()))
+Error::Error(ErrorCode errorNumber) noexcept(noexcept(decltype(Error::_errorMessage)::allocator_type()))
     : _errorNumber(errorNumber) {}
 
 Error::Error(ErrorCode errorNumber, std::string_view errorMessage)

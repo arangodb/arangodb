@@ -37,7 +37,7 @@ namespace arangodb::result {
 
 class Error final {
  public:
-  explicit Error(ErrorCode errorNumber) noexcept(noexcept(decltype(_errorMessage)::allocator_type()));
+  explicit Error(ErrorCode errorNumber) noexcept(noexcept(std::string::allocator_type()));
 
   Error(ErrorCode errorNumber, std::string_view errorMessage);
   [[nodiscard]] auto errorNumber() const noexcept -> ErrorCode;
