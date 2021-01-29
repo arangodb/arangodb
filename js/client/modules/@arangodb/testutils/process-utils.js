@@ -674,6 +674,18 @@ function getMemProfSnapshot(instanceInfo, options, counter) {
         print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
         print(heapdumpReply);
       }
+
+      let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
+      let metricsReply = download(arangod.url + '/_admin/metrics', opts);
+      if (metricsReply.code === 200) {
+        fs.write(fnMetrics, metricsReply.body);
+        print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
+      } else if (metricsReply.code === 503) {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
+        print(metricsReply);
+      }
     });
   }
 }
