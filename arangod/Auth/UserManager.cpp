@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
@@ -107,8 +108,8 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
-    if (s.hasKey("source") && s.get("source").isString() &&
-        s.get("source").copyString() == "LDAP") {
+    if (s.get("source").isString() &&
+        s.get("source").stringRef() == "LDAP") {
       LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
           << "LDAP: skip user in collection _users: " << s.get("user").copyString();
       continue;
@@ -118,7 +119,9 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
     auth::User user = auth::User::fromDocument(s);
-    result.try_emplace(user.username(), std::move(user));
+    // intentional copy, as we are about to move-away from user
+    std::string username = user.username();
+    result.try_emplace(std::move(username), std::move(user));
   }
   return result;
 }
@@ -136,12 +139,13 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                             arangodb::aql::QueryString(queryStr),
-                             emptyBuilder, emptyBuilder);
+                             arangodb::aql::QueryString(queryStr), nullptr);
 
   query.queryOptions().cache = false;
+  query.queryOptions().ttl = 30;
+  query.queryOptions().maxRuntime = 30;
+  query.queryOptions().skipAudit = true;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
@@ -153,8 +157,10 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
         (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                   "Error executing user query: " + queryResult.result.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.result.errorNumber(),
+        StringUtils::concatT("Error executing user query: ",
+                             queryResult.result.errorMessage()));
   }
 
   VPackSlice usersSlice = queryResult.data->slice();
@@ -781,7 +787,8 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   TRI_ASSERT(!coll.empty());
   auth::Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
-    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    std::string tmpColl =
+        _server.getFeature<DatabaseFeature>().translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);

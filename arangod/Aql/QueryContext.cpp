@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -56,7 +57,10 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
       _numRequests(0) {
-  if (!AqlFeature::lease()) {
+  // aql analyzers should be able to run even during recovery when AqlFeature
+  // is not started. And as optimization  - this queries do not need queryRegistry
+  if (&_vocbase != &_vocbase.server().getFeature<DatabaseFeature>().getCalculationVocbase() && 
+      !AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 }
@@ -64,7 +68,9 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
 /// @brief destroys a query
 QueryContext::~QueryContext() {
   _graphs.clear();
-  AqlFeature::unlease();
+  if (&_vocbase != &_vocbase.server().getFeature<DatabaseFeature>().getCalculationVocbase()) {
+    AqlFeature::unlease();
+  }
 }
 
 Collections& QueryContext::collections() {
@@ -80,7 +86,6 @@ Collections const& QueryContext::collections() const {
 
 /// @brief return the names of collections used in the query
 std::vector<std::string> QueryContext::collectionNames() const {
-  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   return _collections.collectionNames();
 }
   
@@ -131,4 +136,3 @@ aql::Ast* QueryContext::ast() {
 void QueryContext::enterV8Context() {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "V8 support not implemented");
 }
-

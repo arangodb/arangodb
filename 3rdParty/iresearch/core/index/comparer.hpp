@@ -26,7 +26,7 @@
 #include "shared.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class comparer {
  public:
@@ -48,7 +48,7 @@ inline bool use_dense_sort(size_t size, size_t total) noexcept {
   );
 }
 
-NS_END
+}
 
 #endif // IRESEARCH_COMPARER_H
 

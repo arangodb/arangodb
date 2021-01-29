@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -121,7 +121,11 @@ struct OperationOptions {
   // for replication; only set true if you an guarantee that any conflicts have
   // already been removed, and are simply not reflected in the transaction read
   bool ignoreUniqueConstraints;
-  
+
+  // when truncating - should we also run the compaction?
+  // defaults to true.
+  bool truncateCompact;
+
   // get associated execution context
   ExecContext const& context() const;
 

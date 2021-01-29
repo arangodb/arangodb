@@ -33,6 +33,14 @@ Each query is a JSON object with the following attributes:
 
 - *stream*: whether or not the query uses a streaming cursor
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{all,boolean,optional}
+If set to *true*, will return the slow queries from all databases, not just
+the selected one.
+Using the parameter is only allowed in the system database and with superuser
+privileges.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -40,5 +48,9 @@ Is returned when the list of queries can be retrieved successfully.
 
 @RESTRETURNCODE{400}
 The server will respond with *HTTP 400* in case of a malformed request,
+
+@RESTRETURNCODE{403}
+*HTTP 403* is returned in case the *all* parameter was used, but the request
+was made in a different database than _system, or by an non-privileged user.
 
 @endDocuBlock

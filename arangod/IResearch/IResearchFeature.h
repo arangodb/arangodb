@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,57 +40,79 @@ struct Function;
 
 namespace iresearch {
 
-class IResearchLink; // forward declaration
-class ResourceMutex;  // forward declaration
+class IResearchAsync;
+class IResearchLink;
+class ResourceMutex;
 
-bool isFilter(arangodb::aql::Function const& func) noexcept;
-bool isScorer(arangodb::aql::Function const& func) noexcept;
+////////////////////////////////////////////////////////////////////////////////
+/// @enum ThreadGroup
+/// @brief there are 2 thread groups for execution of asynchronous maintenance
+///        jobs.
+////////////////////////////////////////////////////////////////////////////////
+enum class ThreadGroup : size_t { _0 = 0, _1 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @returns true if the specified 'func' is an ArangoSearch filter function,
+///          false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool isFilter(aql::Function const& func) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @returns true if the specified 'func' is an ArangoSearch scorer function,
+///          false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool isScorer(aql::Function const& func) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class IResearchFeature
+////////////////////////////////////////////////////////////////////////////////
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
-  explicit IResearchFeature(arangodb::application_features::ApplicationServer& server);
+  static std::string const& name();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief execute an asynchronous task
-  /// @note each task will be invoked by its first of timeout or 'asyncNotify()'
-  /// @param mutex a mutex to check/prevent resource deallocation (nullptr ==
-  /// not required)
-  /// @param fn the function to execute
-  ///           @param timeoutMsec how log to sleep in msec before the next
-  ///           iteration (0 == sleep until previously set timeout or until
-  ///           notification if first run)
-  ///           @param timeout the timeout has been reached (false == triggered
-  ///           by notification)
-  ///           @return continue/reschedule
-  //////////////////////////////////////////////////////////////////////////////
-  void async(std::shared_ptr<ResourceMutex> const& mutex,
-             std::function<bool(size_t& timeoutMsec, bool timeout)>&& fn);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief notify all currently running async tasks
-  //////////////////////////////////////////////////////////////////////////////
-  void asyncNotify() const;
+  explicit IResearchFeature(application_features::ApplicationServer& server);
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  static std::string const& name();
   void prepare() override;
   void start() override;
   void stop() override;
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
-  template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type = 0>
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief schedule an asynchronous task for execution
+  /// @param id thread group to handle the execution
+  /// @param fn the function to execute
+  /// @param delay how log to sleep before the execution
+  //////////////////////////////////////////////////////////////////////////////
+  bool queue(ThreadGroup id,
+             std::chrono::steady_clock::duration delay,
+             std::function<void()>&& fn);
+
+  std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
+  std::pair<size_t, size_t> limits(ThreadGroup id) const;
+
+  template <typename Engine, typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>, int> = 0>
   IndexTypeFactory& factory();
 
  private:
-  class Async;  // forward declaration
+  struct State {
+    std::mutex mtx;
+    std::condition_variable cv;
+    size_t counter{0};
+  };
 
-  std::shared_ptr<Async> _async;  // object managing async jobs (never null!!!)
+  std::shared_ptr<State> _startState;
+  std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
-  uint64_t _threads;
-  uint64_t _threadsLimit;
-  std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> _factories;
+  uint32_t _consolidationThreads;
+  uint32_t _consolidationThreadsIdle;
+  uint32_t _commitThreads;
+  uint32_t _commitThreadsIdle;
+  uint32_t _threads;
+  uint32_t _threadsLimit;
+  std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
 };
 
 }  // namespace iresearch

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+#include <set>
 
 namespace arangodb {
 
@@ -39,9 +40,15 @@ class TransactionState;
 namespace ClusterTrxMethods {
 using arangodb::futures::Future;
 
+struct IsServerIdLessThan {
+  bool operator()(ServerID const& lhs, ServerID const& rhs) const noexcept;
+};
+
+using SortedServersSet = std::set<ServerID, IsServerIdLessThan>;
+
 /// @brief begin a transaction on all followers
 Future<arangodb::Result> beginTransactionOnLeaders(TransactionState&,
-                                                   std::vector<ServerID> const& leaders);
+                                                   SortedServersSet const& leaders);
 
 /// @brief commit a transaction on a subordinate
 Future<arangodb::Result> commitTransaction(transaction::Methods& trx);

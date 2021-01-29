@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,8 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
@@ -74,11 +76,14 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _async(false),
       _concurrency(1),
       _operations(1000),
+      _realOperations(0),
       _batchSize(0),
+      _duration(0),
       _keepAlive(true),
       _collection("ArangoBenchmark"),
       _testCase("version"),
       _complexity(1),
+      _createDatabase(false),
       _delay(false),
       _progress(true),
       _verbose(false),
@@ -147,6 +152,14 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "use waitForSync for created collections",
                      new BooleanParameter(&_waitForSync));
 
+  options->addOption("--create-database",
+                     "whether we should create the database specified via the server connection",
+                     new BooleanParameter(&_createDatabase));
+
+  options->addOption("--duration",
+                     "test for duration seconds instead of a fixed test count",
+                     new UInt64Parameter(&_duration));
+
   std::unordered_set<std::string> cases = {
       "version",         "stream-cursor",
       "document",        "collection",
@@ -209,7 +222,7 @@ void BenchFeature::start() {
   double minTime = -1.0;
   double maxTime = 0.0;
   double avgTime = 0.0;
-  size_t counter = 0;
+  uint64_t counter = 0;
 
   sort(_percentiles.begin(), _percentiles.end());
   
@@ -218,11 +231,36 @@ void BenchFeature::start() {
         << "file already exists: '" << _jsonReportFile << "' - won't overwrite it.";
     FATAL_ERROR_EXIT();
   }
-    
   ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   client.setRetries(3);
   client.setWarn(true);
 
+  if (_createDatabase) {
+    auto connectDB = client.databaseName();
+    client.setDatabaseName("_system");
+    auto createDbClient = client.createHttpClient();
+    createDbClient->params().setUserNamePassword("/", client.username(), client.password());
+    auto createStr = std::string("{\"name\":\"") + connectDB + "\"}";
+    auto result = createDbClient->request(rest::RequestType::POST,
+                                          "/_api/database",
+                                          createStr.c_str(),
+                                          createStr.length());
+
+    if (!result || result->wasHttpError()) {
+      std::string msg;
+      if (result) {
+        msg = result->getHttpReturnMessage();
+        delete result;
+      }
+
+      LOG_TOPIC("5cda8", FATAL, arangodb::Logger::FIXME)
+        << "failed to create the specified database: " << msg;
+      FATAL_ERROR_EXIT();
+    }
+
+    delete result;
+    client.setDatabaseName(connectDB);
+  }
   int ret = EXIT_SUCCESS;
 
   *_result = ret;
@@ -237,6 +275,11 @@ void BenchFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  if (_duration != 0) {
+    _operations = std::numeric_limits<uint64_t>::max();
+  } else {
+    _realOperations = _operations;
+  }
   double const stepSize = (double)_operations / (double)_concurrency;
   int64_t realStep = (int64_t)stepSize;
 
@@ -267,17 +310,26 @@ void BenchFeature::start() {
 
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
-    BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations);
+    double runUntil = 0.0;
+
+    if (_duration != 0) {
+      runUntil = TRI_microtime() + _duration;
+    }
+
+    BenchmarkCounter<uint64_t> operationsCounter(0, _operations, runUntil);
     ConditionVariable startCondition;
+
     // start client threads
     _started = 0;
+
     for (uint64_t i = 0; i < _concurrency; ++i) {
       BenchmarkThread* thread =
           new BenchmarkThread(server(), benchmark.get(), &startCondition,
                               &BenchFeature::updateStartCounter, static_cast<int>(i),
-                              (unsigned long)_batchSize, &operationsCounter,
-                              client, _keepAlive, _async, _verbose, _histogramIntervalSize, _histogramNumIntervals);
-      thread->setOffset((size_t)(i * realStep));
+                              _batchSize, &operationsCounter,
+                              client, _keepAlive, _async, _verbose,
+                              _histogramIntervalSize, _histogramNumIntervals);
+      thread->setOffset(i * realStep);
       thread->start();
       threads.push_back(thread);
     }
@@ -301,17 +353,17 @@ void BenchFeature::start() {
       guard.broadcast();
     }
 
-    size_t const stepValue = static_cast<size_t>(_operations / 20);
-    size_t nextReportValue = stepValue;
+    uint64_t const stepValue = _operations / 20;
+    uint64_t nextReportValue = stepValue;
 
     if (nextReportValue < 100) {
       nextReportValue = 100;
     }
 
     while (true) {
-      size_t const numOperations = operationsCounter.getDone();
+      uint64_t const numOperations = operationsCounter.getDone();
 
-      if (numOperations >= (size_t)_operations) {
+      if (numOperations >= _operations) {
         break;
       }
 
@@ -340,32 +392,49 @@ void BenchFeature::start() {
         operationsCounter.incompleteFailures(),
         requestTime,
     });
+
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
+      if (_duration != 0) {
+        _realOperations += threads[i]->_counter;
+      }
+
       threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
+
       double scope;
       auto res = threads[i]->getPercentiles(_percentiles, scope);
+
       builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
-      pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(10) << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000) << std::setw(0) <<"ms       ";
+
+      pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(10)
+	 << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000)
+	 << std::setw(0) << "ms       ";
+
       builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
+
       for (auto time : res) {
         builder->add(std::to_string(_percentiles[j]), VPackValue(time));
-        pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(10) << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
+        pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(10)
+	   << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
         j++;
       }
+
       builder->close();
       pp << std::endl;
       delete threads[i];
     }
     threads.clear();
   }
+
   std::cout << std::endl;
   builder->close();
 
   report(client, results, minTime, maxTime, avgTime, pp.str(), *builder);
+
   if (!ok) {
     std::cout << "At least one of the runs produced failures!" << std::endl;
   }
+
   benchmark->tearDown();
 
   if (!ok) {
@@ -378,7 +447,7 @@ void BenchFeature::start() {
 bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder) {
   std::cout << std::endl;
 
-  std::cout << "Total number of operations: " << _operations << ", runs: " << _runs
+  std::cout << "Total number of operations: " << _realOperations << ", runs: " << _runs
             << ", keep alive: " << (_keepAlive ? "yes" : "no")
             << ", async: " << (_async ? "yes" : "no") << ", batch size: " << _batchSize
             << ", replication factor: " << _replicationFactor
@@ -390,7 +459,7 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
             << ", database: '" << client.databaseName() << "', collection: '"
             << _collection << "'" << std::endl;
 
-  builder.add("totalNumberOfOperations", VPackValue(_operations));
+  builder.add("totalNumberOfOperations", VPackValue(_realOperations));
   builder.add("runs", VPackValue(_runs));
   builder.add("keepAlive", VPackValue(_keepAlive));
   builder.add("async", VPackValue(_async));
@@ -406,11 +475,12 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
 
   
   std::sort(results.begin(), results.end(),
-            [](BenchRunResult a, BenchRunResult b) { return a.time < b.time; });
+            [](BenchRunResult a, BenchRunResult b) { return a._time < b._time; });
 
   BenchRunResult output{0, 0, 0, 0};
   if (_runs > 1) {
     size_t size = results.size();
+
     std::cout << std::endl;
     std::cout << "Printing fastest result" << std::endl;
     std::cout << "=======================" << std::endl;
@@ -421,24 +491,28 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
     
     std::cout << "Printing slowest result" << std::endl;
     std::cout << "=======================" << std::endl;
+
     builder.add("slowestResults", VPackValue(VPackValueType::Object));
     printResult(results[size - 1], builder);
     builder.close();
 
     std::cout << "Printing median result" << std::endl;
     std::cout << "=======================" << std::endl;
+
     size_t mid = (size_t)size / 2;
+
     if (size % 2 == 0) {
-      output.update((results[mid - 1].time + results[mid].time) / 2,
-                    (results[mid - 1].failures + results[mid].failures) / 2,
-                    (results[mid - 1].incomplete + results[mid].incomplete) / 2,
-                    (results[mid - 1].requestTime + results[mid].requestTime) / 2);
+      output.update((results[mid - 1]._time + results[mid]._time) / 2,
+                    (results[mid - 1]._failures + results[mid]._failures) / 2,
+                    (results[mid - 1]._incomplete + results[mid]._incomplete) / 2,
+                    (results[mid - 1]._requestTime + results[mid]._requestTime) / 2);
     } else {
       output = results[mid];
     }
   } else if (_runs > 0) {
     output = results[0];
   }
+
   builder.add("results", VPackValue(VPackValueType::Object));
   printResult(output, builder);
   builder.close();
@@ -447,7 +521,9 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
     "Min Request time: " << (minTime * 1000) << "ms" << std::endl <<
     "Avg Request time: " << (avgTime * 1000) << "ms" << std::endl <<
     "Max Request time: " << (maxTime * 1000) << "ms" << std::endl << std::endl;
+
   std::cout << histogram;
+
   builder.add("min", VPackValue(minTime));
   builder.add("avg", VPackValue(avgTime));
   builder.add("max", VPackValue(maxTime)); 
@@ -489,10 +565,10 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
             << "<testsuite name=\"arangobench\" tests=\"1\" skipped=\"0\" "
                "failures=\"0\" errors=\"0\" timestamp=\""
             << date << "\" hostname=\"" << hostname << "\" time=\""
-            << std::fixed << result.time << "\">\n"
+            << std::fixed << result._time << "\">\n"
             << "<properties/>\n"
             << "<testcase name=\"" << testCase() << "\" classname=\"BenchTest\""
-            << " time=\"" << std::fixed << result.time << "\"/>\n"
+            << " time=\"" << std::fixed << result._time << "\"/>\n"
             << "</testsuite>\n";
     ok = true;
   } catch (...) {
@@ -505,41 +581,41 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
 
 void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& builder) {
   std::cout << "Total request/response duration (sum of all threads): " << std::fixed
-            << result.requestTime << " s" << std::endl;
-  builder.add("requestTime", VPackValue(result.requestTime));
+            << result._requestTime << " s" << std::endl;
+  builder.add("requestTime", VPackValue(result._requestTime));
   std::cout << "Request/response duration (per thread): " << std::fixed
-            << (result.requestTime / (double)_concurrency) << " s" << std::endl;
-  builder.add("requestResponseDurationPerThread", VPackValue(result.requestTime / (double)_concurrency));
+            << (result._requestTime / (double)_concurrency) << " s" << std::endl;
+  builder.add("requestResponseDurationPerThread", VPackValue(result._requestTime / (double)_concurrency));
 
   std::cout << "Time needed per operation: " << std::fixed
-            << (result.time / _operations) << " s" << std::endl;
-  builder.add("timeNeededPerOperation", VPackValue(result.time / _operations));
+            << (result._time / _realOperations) << " s" << std::endl;
+  builder.add("timeNeededPerOperation", VPackValue(result._time / _realOperations));
   
   std::cout << "Time needed per operation per thread: " << std::fixed
-            << (result.time / (double)_operations * (double)_concurrency)
+            << (result._time / (double)_realOperations * (double)_concurrency)
             << " s" << std::endl;
   builder.add("timeNeededPerOperationPerThread", VPackValue(
-                result.time / (double)_operations * (double)_concurrency));
+                result._time / (double)_realOperations * (double)_concurrency));
   
   std::cout << "Operations per second rate: " << std::fixed
-            << ((double)_operations / result.time) << std::endl;
+            << ((double)_realOperations / result._time) << std::endl;
   builder.add("operationsPerSecondRate", 
-              VPackValue((double)_operations / result.time));
+              VPackValue((double)_realOperations / result._time));
   
-  std::cout << "Elapsed time since start: " << std::fixed << result.time << " s"
+  std::cout << "Elapsed time since start: " << std::fixed << result._time << " s"
             << std::endl
             << std::endl;
-  builder.add("timeSinceStart", VPackValue(result.time));
+  builder.add("timeSinceStart", VPackValue(result._time));
 
-  builder.add("failures", VPackValue(result.failures));
-  if (result.failures > 0) {
+  builder.add("failures", VPackValue(result._failures));
+  if (result._failures > 0) {
     LOG_TOPIC("a826b", WARN, arangodb::Logger::FIXME)
-        << result.failures << " arangobench request(s) failed!";
+        << result._failures << " arangobench request(s) failed!";
   }
-  builder.add("incompleteResults", VPackValue(result.incomplete));
-  if (result.incomplete > 0) {
+  builder.add("incompleteResults", VPackValue(result._incomplete));
+  if (result._incomplete > 0) {
     LOG_TOPIC("41006", WARN, arangodb::Logger::FIXME)
-        << result.incomplete << " arangobench requests with incomplete results!";
+        << result._incomplete << " arangobench requests with incomplete results!";
   }
 }
 

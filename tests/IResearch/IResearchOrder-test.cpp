@@ -46,6 +46,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -82,8 +83,7 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                             arangodb::aql::QueryString(queryString), bindVars,
-                             std::make_shared<arangodb::velocypack::Builder>());
+                             arangodb::aql::QueryString(queryString), bindVars);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -198,7 +198,7 @@ void assertOrderParseFail(arangodb::application_features::ApplicationServer& ser
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                             nullptr, nullptr);
+                             nullptr);
 
   auto const parseResult = query.parse();
   ASSERT_EQ(parseCode, parseResult.result.errorNumber());
@@ -215,22 +215,30 @@ class IResearchOrderTest
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC, arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
  protected:
-  StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  StorageEngineMock engine;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
-  IResearchOrderTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
+  IResearchOrderTest()
+    : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""), nullptr),
+      engine(server) {
     arangodb::tests::init();
 
     // setup required application features
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    selector.setEngineTesting(&engine);
+    features.emplace_back(selector, false);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature
     features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
-    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
+    {
+      auto& feature = features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true).first;
+      feature.validateOptions(server.options());
+      feature.collectOptions(server.options());
+    }
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false); // required for calculationVocbase
 
     for (auto& f : features) {
       f.first.prepare();
@@ -248,15 +256,16 @@ class IResearchOrderTest
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
     arangodb::aql::Function invalid("INVALID", "|.",
                                     arangodb::aql::Function::makeFlags(
-                                        arangodb::aql::Function::Flags::CanRunOnDBServer));
-
+                                        arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                        arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+                                    nullptr);
     functions.add(invalid);
   }
 
   ~IResearchOrderTest() {
     arangodb::aql::AqlFunctionFeature(server).unprepare();  // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

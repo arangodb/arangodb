@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,8 @@ Options::Options()
 #ifdef USE_ENTERPRISE
       skipInaccessibleCollections(false),
 #endif
-      waitForSync(false) {}
+      waitForSync(false),
+      isFollowerTransaction(false) {}
   
 Options Options::replicationDefaults() {
   Options options;
@@ -97,6 +98,10 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     waitForSync = value.getBool();
   }
+  value = slice.get("isFollowerTransaction");
+  if (value.isBool()) {
+    isFollowerTransaction = value.getBool();
+  }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
 }
@@ -116,4 +121,5 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("waitForSync", VPackValue(waitForSync));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
 }

@@ -232,7 +232,8 @@
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
-        query += ' SORT x.' + this.getSort();
+        query += ' SORT x.@sortAttribute';
+        bindVars.sortAttribute = this.getSort();
       }
 
       if (bindVars.count !== 'all') {
@@ -267,16 +268,14 @@
               if (data.extra && data.extra.stats && data.extra.stats.fullCount !== undefined) {
                 self.setTotal(data.extra.stats.fullCount);
               }
-              if (self.getTotal() !== 0) {
-                _.each(data.result, function (v) {
-                  self.add({
-                    'id': v._id,
-                    'rev': v._rev,
-                    'key': v._key,
-                    'content': v
-                  });
+              _.each(data.result, function (v) {
+                self.add({
+                  'id': v._id,
+                  'rev': v._rev,
+                  'key': v._key,
+                  'content': v
                 });
-              }
+              });
               self.lastQuery = queryObj;
 
               callback(false, data);
@@ -345,8 +344,9 @@
       query = 'FOR x in @@collection';
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < this.MAX_SORT && this.getSort().length > 0) {
-        query += ' SORT x.' + this.getSort();
+      if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
+        query += ' SORT x.@sortAttribute';
+        bindVars.sortAttribute = this.getSort();
       }
 
       query += ' RETURN x';

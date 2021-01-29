@@ -49,7 +49,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   for (auto const& b : blocks) {
     if (b != nullptr) {
       // Find the first non-nullptr block
-      regs = b->numRegisters();
+      regs = static_cast<RegisterId>(b->numRegisters());
 
       break;
     }

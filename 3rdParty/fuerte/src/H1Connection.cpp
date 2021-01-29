@@ -61,11 +61,11 @@ template <SocketType ST>
 int H1Connection<ST>::on_status(http_parser* parser, const char* at,
                                 size_t len) {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
-  // required for some arango shenanigans
+  
   self->_response->header.addMeta(std::string("http/") +
                                       std::to_string(parser->http_major) + '.' +
                                       std::to_string(parser->http_minor),
-                                  std::string(at, len));
+                                  std::to_string(parser->status_code) + ' ' + std::string(at, len));
   return 0;
 }
 

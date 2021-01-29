@@ -142,6 +142,7 @@ class Logger {
  public:
   static LogTopic AGENCY;
   static LogTopic AGENCYCOMM;
+  static LogTopic AGENCYSTORE;
   static LogTopic AQL;
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
@@ -151,10 +152,8 @@ class Logger {
   static LogTopic CLUSTERCOMM;
   static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
-  static LogTopic COMPACTOR;
   static LogTopic CONFIG;
   static LogTopic CRASH;
-  static LogTopic DATAFILES;
   static LogTopic DEVEL;
   static LogTopic DUMP;
   static LogTopic ENGINES;
@@ -270,6 +269,7 @@ class Logger {
   static void setLogRequestParameters(bool);
   static bool logRequestParameters() { return _logRequestParameters; }
   static void setUseJson(bool);
+  static LogTimeFormats::TimeFormat timeFormat() { return _timeFormat; }
 
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
@@ -280,18 +280,30 @@ class Logger {
                   LogLevel level, size_t topicId, std::string const& message);
 
   static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
+                     bool forceDirect,
                      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
                          [](std::unique_ptr<LogMessage>&) -> void {});
 
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+  static bool isEnabled(LogLevel level) {
+    return true;
+  }
+  static bool isEnabled(LogLevel level, LogTopic const& topic) {
+    return true;
+  }
+  static bool _isEnabled(LogLevel level, LogLevel topicLevel) {
+    return (int)level <= (int)topicLevel;
+  }
+#else
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);
   }
-
   static bool isEnabled(LogLevel level, LogTopic const& topic) {
     return (int)level <= (int)((topic.level() == LogLevel::DEFAULT)
                                    ? _level.load(std::memory_order_relaxed)
                                    : topic.level());
   }
+#endif
 
  public:
   static void initialize(application_features::ApplicationServer&, bool);

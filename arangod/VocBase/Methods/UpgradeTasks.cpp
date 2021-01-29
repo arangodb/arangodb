@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,7 +100,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 }
 
 Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
-  if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
+  if (!vocbase.server().getFeature<EngineSelectorFeature>().isRocksDB()) {
     LOG_TOPIC("2cb46", DEBUG, Logger::STARTUP)
         << "No need to upgrade geo indexes!";
     return {};
@@ -194,7 +194,11 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
+
   if (vocbase.server().getFeature<arangodb::DatabaseFeature>().useOldSystemCollections()) {
+    // the following collections are only created on demand...
+    // in v3.6, they will be created by default, but this will
+    // change in later versions.
     systemCollections.push_back(StaticStrings::ModulesCollection);
     systemCollections.push_back(StaticStrings::FishbowlCollection);
   }
@@ -555,10 +559,10 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                       arangodb::velocypack::Slice const& slice) {
-  TRI_ASSERT(EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
-  
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string const path = engine->databasePath(&vocbase);
+  TRI_ASSERT(vocbase.server().getFeature<EngineSelectorFeature>().isRocksDB());
+
+  StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  std::string const path = engine.databasePath(&vocbase);
 
   std::string const source =
       arangodb::basics::FileUtils::buildFilename(path,

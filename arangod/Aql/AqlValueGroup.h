@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,14 +34,24 @@ struct Options;
 
 namespace aql {
 
+using AqlValueGroup = std::vector<AqlValue>;
+
+struct HashedAqlValueGroup {
+  size_t hash{0};
+  AqlValueGroup values;
+};
+
 /// @brief hasher for a vector of AQL values
 struct AqlValueGroupHash {
   explicit AqlValueGroupHash(size_t num);
 
   size_t operator()(std::vector<AqlValue> const& value) const;
   size_t operator()(AqlValue const& value) const;
+  size_t operator()(HashedAqlValueGroup const& value) const noexcept;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t const _num;
+#endif
 };
 
 /// @brief comparator for a vector of AQL values
@@ -50,6 +60,7 @@ struct AqlValueGroupEqual {
 
   bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
   bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
+  bool operator()(HashedAqlValueGroup const& lhs, HashedAqlValueGroup const& rhs) const;
 
   velocypack::Options const* _vpackOptions;
 };

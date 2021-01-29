@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ RestStatus RestAdminExecuteHandler::execute() {
     return RestStatus::DONE;
   }
 
-  TRI_ASSERT(V8DealerFeature::DEALER->allowAdminExecute());
+  TRI_ASSERT(server().getFeature<V8DealerFeature>().allowAdminExecute());
 
   arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
@@ -79,7 +79,7 @@ RestStatus RestAdminExecuteHandler::execute() {
     LOG_TOPIC("c838e", DEBUG, Logger::SECURITY) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
 
     // get a V8 context
-    bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+    bool const allowUseDatabase = server().getFeature<ActionFeature>().allowUseDatabase();
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestAdminScriptActionContext(allowUseDatabase);
     V8ContextGuard guard(&_vocbase, securityContext);
 

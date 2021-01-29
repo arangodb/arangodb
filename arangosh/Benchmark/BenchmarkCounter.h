@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,13 +38,14 @@ class BenchmarkCounter {
   /// @brief create the counter
   //////////////////////////////////////////////////////////////////////////////
 
-  BenchmarkCounter(T initialValue, T const maxValue)
+  BenchmarkCounter(T initialValue, T const maxValue, double const runUntil)
       : _mutex(),
         _value(initialValue),
         _maxValue(maxValue),
         _incompleteFailures(0),
         _failures(0),
-        _done(0) {}
+        _done(0),
+        _runUntil(runUntil) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the counter
@@ -94,7 +95,15 @@ class BenchmarkCounter {
     MUTEX_LOCKER(mutexLocker, this->_mutex);
 
     T oldValue = _value;
-    if (oldValue + realValue > _maxValue) {
+    if (_runUntil != 0.0) {
+      if (_runUntil - TRI_microtime() <= 0.0) {
+        _value = _maxValue;
+        _done = _maxValue;
+        return 0;
+      }
+      _value += realValue;
+      return realValue;
+    } else if (oldValue + realValue > _maxValue) {
       _value = _maxValue;
       return _maxValue - oldValue;
     }
@@ -177,7 +186,8 @@ private:
   //////////////////////////////////////////////////////////////////////////////
 
   T _done;
-  
+
+  double _runUntil;
 };
 }  // namespace arangobench
 }  // namespace arangodb

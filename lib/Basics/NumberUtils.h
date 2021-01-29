@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,9 +65,8 @@ template <typename T>
 inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
-    result = (result * 10) + *(p++) - '0';
+    result = (result * 10) + (*(p++) - '0');
   }
-
   return result;
 }
 

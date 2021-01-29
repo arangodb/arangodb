@@ -39,7 +39,7 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchLinkMock::IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection)
-    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
+    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -80,9 +80,10 @@ void IResearchLinkMock::toVelocyPack(
 }
 
 bool IResearchLinkMock::isPersistent() const {
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+  auto& engine =
+      Index::collection().vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  if (engine && engine->inRecovery()) {
+  if (engine.inRecovery()) {
     return !IResearchLink::createdInRecovery();
   }
 

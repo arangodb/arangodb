@@ -27,7 +27,7 @@
 
 #include <cassert>
 
-NS_LOCAL
+namespace {
 
 class attribute_register
     : public irs::tagged_generic_register<irs::string_ref, irs::type_info,
@@ -37,9 +37,9 @@ class attribute_register
 
 static const irs::flags EMPTY_INSTANCE;
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        attributes
@@ -58,7 +58,6 @@ NS_ROOT
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an attribute instance");
-    IR_LOG_EXCEPTION();
   }
 
   return {}; // invalid type id
@@ -140,4 +139,4 @@ attribute_registrar::operator bool() const noexcept {
   return registered_;
 }
 
-NS_END
+}

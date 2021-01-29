@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,7 +80,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // @brief #databases last time we checked allDatabases
-  size_t lastNumberOfDatabases();
+  size_t lastNumberOfDatabases() const;
 
   // Is maintenance paused?
   bool isPaused() const;

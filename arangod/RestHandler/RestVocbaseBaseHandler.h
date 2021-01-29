@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -220,7 +220,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * locking or a leased transaction.
    */
   std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
-                                                          AccessMode::Type mode) const;
+                                                          AccessMode::Type mode,
+                                                          OperationOptions const& opOptions) const;
   
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;

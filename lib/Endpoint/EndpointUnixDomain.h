@@ -62,12 +62,6 @@ class EndpointUnixDomain final : public Endpoint {
   // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief init an incoming connection
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool initIncoming(TRI_socket_t) override;
-
   int domain() const override { return AF_UNIX; }
   int port() const override { return 0; }
   std::string host() const override { return "localhost"; }

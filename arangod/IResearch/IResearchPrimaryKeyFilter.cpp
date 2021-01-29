@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,11 +129,9 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
   return filter::equals(rhs) && _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
 }
 
-/*static*/ irs::type_info PrimaryKeyFilter::type() {
-  return arangodb::EngineSelectorFeature::ENGINE &&
-                 arangodb::EngineSelectorFeature::ENGINE->inRecovery()
-             ? irs::type<typeRecovery>::get()
-             : irs::type<typeDefault>::get();
+/*static*/ irs::type_info PrimaryKeyFilter::type(StorageEngine& engine) {
+  return engine.inRecovery() ? irs::type<typeRecovery>::get()
+                             : irs::type<typeDefault>::get();
 }
 
 // ----------------------------------------------------------------------------

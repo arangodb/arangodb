@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,9 @@
 
 namespace arangodb {
 class HttpRequest;
+
+/// @brief maximum number of concurrent streams
+static constexpr uint32_t H2MaxConcurrentStreams = 32;
 
 namespace rest {
 
@@ -111,10 +114,13 @@ class H2CommTask final : public GeneralCommTask<T> {
   Stream* findStream(int32_t sid);
 
  private:
+
+  /// @brief used to generate the full url for debugging
+  std::string const& url(HttpRequest* req);
+
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  // no more than 64 streams allowed
-  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<32>> _responses;
+  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<H2MaxConcurrentStreams>> _responses;
 
   std::map<int32_t, Stream> _streams;
 
@@ -123,6 +129,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   std::atomic<unsigned> _numProcessing{0};
 
   std::atomic<bool> _signaledWrite{false};
+
 };
 }  // namespace rest
 }  // namespace arangodb

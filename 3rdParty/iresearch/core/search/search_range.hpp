@@ -25,7 +25,7 @@
 
 #include "utils/hash_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 enum class BoundType {
   UNBOUNDED,
@@ -62,9 +62,9 @@ struct search_range {
   }
 }; // search_range
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<typename T>
 struct hash<::iresearch::search_range<T>> {
@@ -73,6 +73,6 @@ struct hash<::iresearch::search_range<T>> {
   }
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_SEARCH_RANGE_H

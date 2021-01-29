@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +23,8 @@
 
 #include "RestGraphHandler.h"
 
-#include <velocypack/Collection.h>
-#include <utility>
-
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
@@ -36,9 +32,11 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 
+#include <velocypack/Collection.h>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::graph;
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 RestGraphHandler::RestGraphHandler(application_features::ApplicationServer& server,
                                    GeneralRequest* request, GeneralResponse* response)
@@ -436,7 +434,7 @@ void RestGraphHandler::generateModified(TRI_col_type_e colType,
   }
 
   VPackBuilder objectBuilder =
-      VPackCollection::remove(resultSlice,
+      velocypack::Collection::remove(resultSlice,
                               std::unordered_set<std::string>{"old", "new"});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
@@ -478,7 +476,7 @@ void RestGraphHandler::generateCreated(TRI_col_type_e colType,
   }
 
   VPackBuilder objectBuilder =
-      VPackCollection::remove(resultSlice,
+      velocypack::Collection::remove(resultSlice,
                               std::unordered_set<std::string>{StaticStrings::Old, StaticStrings::New});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
@@ -516,7 +514,7 @@ void RestGraphHandler::generateResultMergedWithObject(VPackSlice obj,
     result.add(StaticStrings::Code,
                VPackValue(static_cast<int>(_response->responseCode())));
     result.close();
-    VPackBuilder merged = VelocyPackHelper::merge(result.slice(), obj, false, false);
+    VPackBuilder merged = velocypack::Collection::merge(result.slice(), obj, false, false);
 
     writeResult(merged.slice(), options);
   } catch (...) {

@@ -8,6 +8,8 @@ const internal = require('internal');
 const crypto = require('@arangodb/crypto');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('SyntheticResponse', function () {
   describe('headers', function () {
     it('exposes the headers of the native response', function () {

@@ -78,9 +78,9 @@ S2RegionCoverer::Options RegionCoverParams::regionCovererOpts() const {
 }
 
 double geo::QueryParams::minDistanceRad() const noexcept {
-  return std::max(0.0, std::min(minDistance / kEarthRadiusInMeters, M_PI));
+  return metersToRadians(minDistance);
 }
 
 double geo::QueryParams::maxDistanceRad() const noexcept {
-  return std::max(0.0, std::min(maxDistance / kEarthRadiusInMeters, M_PI));
+  return metersToRadians(maxDistance);
 }

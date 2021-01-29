@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,10 @@
 #define ARANGOD_AQL_COST_ESTIMATE_H 1
 
 #include <cstddef>
+#include <stack>
+#include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 /// @brief a simple object containing a cost estimate for ExecutionNodes
 struct CostEstimate {
@@ -37,10 +38,10 @@ struct CostEstimate {
   /// @brief initialize a still-invalid cost estimate
   CostEstimate();
 
-  bool operator==(CostEstimate const& other) const;
+  [[nodiscard]] bool operator==(CostEstimate const& other) const;
 
   /// @brief return an empty but valid cost estimate
-  static CostEstimate empty();
+  [[nodiscard]] static CostEstimate empty();
 
   /// @brief invalidate the cost estimate
   void invalidate();
@@ -49,17 +50,30 @@ struct CostEstimate {
   void initialize();
 
   /// @brief whether or not the estimate is valid
-  bool isValid() const;
+  [[nodiscard]] bool isValid() const;
 
-  /// @brief estimated cost produced by the node
+  /// @brief estimated cost produced by the node, including cost of upstream nodes.
   double estimatedCost;
 
-  /// @brief cost
   /// @brief estimated number of items returned by the node
   std::size_t estimatedNrItems;
+
+  /// @brief Push the current estimatedNrItems on top of an internal stack.
+  ///        estimatedNrItems itself is unchanged.
+  ///        This is used on SubqueryStartNodes to save the number of items for
+  ///        the corresponding SubqueryEndNode to continue with later.
+  void saveEstimatedNrItems();
+
+  /// @brief Set estimatedNrItems to the top of the internal stack, and pop
+  ///        the top of stack.
+  ///        Used on SubqueryEndNodes to restore the number of items available
+  ///        at the corresponding SubqueryStartNode.
+  void restoreEstimatedNrItems();
+
+ private:
+  std::stack<std::size_t, std::vector<std::size_t>> _outerSubqueryEstimatedNrItems;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif

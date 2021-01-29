@@ -31,7 +31,7 @@
 #include "search/score.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class all_iterator final
     : public frozen_attributes<3, doc_iterator> {
@@ -44,7 +44,13 @@ class all_iterator final
     boost_t boost);
 
   virtual bool next() noexcept override {
-    return !doc_limits::eof(seek(doc_.value + 1));
+    if (doc_.value >= max_doc_) {
+      doc_.value = doc_limits::eof();
+      return false;
+    } else {
+      doc_.value++;
+      return true;
+    }
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
@@ -66,6 +72,6 @@ class all_iterator final
   cost cost_;
 }; // all_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_ALL_ITERATOR_H

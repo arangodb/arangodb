@@ -104,7 +104,8 @@ class HttpResponse : public GeneralResponse {
     return _body->deflate(size);
   }
 
-  void addPayloadInternal(velocypack::Slice, size_t, velocypack::Options const*, bool);
+  void addPayloadInternal(uint8_t const* data, size_t length, 
+                          velocypack::Options const* options, bool resolveExternals);
   
  private:
   std::vector<std::string> _cookies;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,8 @@
 #include <unordered_map>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 
 struct AqlCall;
@@ -63,12 +65,12 @@ class HashedCollectExecutorInfos {
    * @param aggregateTypes Aggregation methods used
    * @param aggregateRegisters Input and output Register for Aggregation
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
-   * @param count Flag to enable count, will be written to collectRegister
    */
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             velocypack::Options const*, bool count);
+                             velocypack::Options const* vpackOptions, 
+                             arangodb::ResourceMonitor& resourceMonitor);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -76,12 +78,12 @@ class HashedCollectExecutorInfos {
   ~HashedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
-  std::vector<std::string> getAggregateTypes() const;
-  bool getCount() const noexcept;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
+  std::vector<std::string> const& getAggregateTypes() const;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
+  arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief aggregate types
@@ -102,8 +104,8 @@ class HashedCollectExecutorInfos {
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
 
-  /// @brief COUNTing node?
-  bool _count;
+  /// @brief resource manager
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 /**
@@ -153,9 +155,17 @@ class HashedCollectExecutor {
                                              AqlCall const& call) const noexcept -> size_t;
 
  private:
-  using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
-  using GroupKeyType = std::vector<AqlValue>;
-  using GroupValueType = std::unique_ptr<AggregateValuesType>;
+  struct ValueAggregators {
+    ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts);
+    ~ValueAggregators();
+    std::size_t size() const;
+    Aggregator& operator[](std::size_t index);
+    static void operator delete(void* ptr);
+   private:
+    std::size_t _size;
+  };
+  using GroupKeyType = HashedAqlValueGroup;
+  using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
@@ -180,13 +190,17 @@ class HashedCollectExecutor {
 
   void destroyAllGroupsAqlValues();
 
-  static std::vector<Aggregator::Factory> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
+  static std::vector<Aggregator::Factory const*> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
   void consumeInputRow(InputAqlItemRow& input);
 
   void writeCurrentGroupToOutput(OutputAqlItemRow& output);
+
+  std::unique_ptr<ValueAggregators> makeAggregateValues() const;
+
+  size_t memoryUsageForGroup(GroupKeyType const& group, bool withBase) const;
 
  private:
   Infos const& _infos;
@@ -202,9 +216,9 @@ class HashedCollectExecutor {
 
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
-  std::vector<Aggregator::Factory> _aggregatorFactories;
+  std::vector<Aggregator::Factory const*> _aggregatorFactories;
 
-  GroupKeyType _nextGroupValues;
+  GroupKeyType _nextGroup;
 
   size_t _returnedGroups = 0;
 };

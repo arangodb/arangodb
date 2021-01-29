@@ -27,20 +27,13 @@
 // @author Copyright 2014-2020, ArangoDB GmbH, Cologne, Germany
 ///////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief initialize a new database
-// //////////////////////////////////////////////////////////////////////////////
-
+/// initializes a coordinator. will be called once per V8 context, on all coordinators
 (function () {
   const internal = require('internal');
-  const errors = require('@arangodb').errors;
 
-  // autoload all modules and reload routing information in all threads
-  let options = internal.options();
   // autoload all modules
   // this functionality is deprecated and will be removed in 3.9
-  if (options.hasOwnProperty("database.old-system-collections") &&
-      options["database.old-system-collections"]) {
+  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
     // check and load all modules in all databases from _modules
     // this can be expensive, so it is guarded by a flag.
     internal.loadStartup('server/bootstrap/autoload.js').startup();
@@ -54,23 +47,6 @@
   if (internal.threadNumber === 0) {
     try {
       require('@arangodb/foxx/manager')._startup();
-      try {
-        require('@arangodb/tasks').register({
-          id: 'self-heal',
-          isSystem: true,
-          period: 5 * 60, // secs
-          command: function () {
-            const FoxxManager = require('@arangodb/foxx/manager');
-            FoxxManager.healAll();
-          }
-        });
-      } catch (ee) {
-        if (ee.errorNum !== errors.ERROR_TASK_DUPLICATE_ID.code) {
-          // a "duplicate task id" error is actually allowed here, because
-          // the bootstrap function may be called repeatedly by the BootstrapFeature
-          throw ee;
-        }
-      }
       // start the queue manager once
       require('@arangodb/foxx/queues/manager').run();
       const systemCollectionsCreated = global.ArangoAgency.get('SystemCollectionsCreated');

@@ -210,6 +210,7 @@ class GeneralRequest {
   ContentType contentType() const { return _contentType; }
   /// @brief should generally reflect the Accept header
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
+  std::string const& contentTypeResponsePlain() const { return _contentTypeResponsePlain; }
   /// @brief should generally reflect the Accept-Encoding header
   EncodingType acceptEncoding() const { return _acceptEncoding; }
 
@@ -233,6 +234,7 @@ class GeneralRequest {
   std::string _fullUrl;
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route
+  std::string  _contentTypeResponsePlain;
   std::vector<std::string> _suffixes; // path suffixes
 
   std::unordered_map<std::string, std::string> _headers;

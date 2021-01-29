@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,7 +159,7 @@ static constexpr bool IsDirSeparatorChar(char c) {
 /// @note path will be modified in-place
 ////////////////////////////////////////////////////////////////////////////////
 
-static void NormalizePath(std::string& path) {
+void TRI_NormalizePath(std::string& path) {
   for (auto& it : path) {
     if (IsDirSeparatorChar(it)) {
       it = TRI_DIR_SEPARATOR_CHAR;
@@ -213,7 +213,7 @@ static std::string LocateConfigDirectoryEnv() {
   if (!TRI_GETENV("ARANGODB_CONFIG_PATH", r)) {
     return std::string();
   }
-  NormalizePath(r);
+  TRI_NormalizePath(r);
   while (!r.empty() && IsDirSeparatorChar(r[r.size() - 1])) {
     r.pop_back();
   }
@@ -329,14 +329,14 @@ bool TRI_CreateSymbolicLink(std::string const& target,
       ::CreateSymbolicLinkW(toWString(linkpath).data(), toWString(target).data(), 0x0);
   if (!created) {
     auto rv = translateWindowsError(::GetLastError());
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + rv.errorMessage();
+    error = StringUtils::concatT("failed to create a symlink ", target, " -> ", linkpath, " - ", rv.errorMessage());
   }
   return created;
 #else
   int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + strerror(errno);
+    error = StringUtils::concatT("failed to create a symlink ", target, " -> ", linkpath, " - ", strerror(errno));
   }
   return res == 0;
 #endif
@@ -544,8 +544,6 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr) {
-  TRI_ERRORBUF;
-
   // reset error flag
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
@@ -556,10 +554,9 @@ int TRI_CreateDirectory(char const* path, long& systemError, std::string& system
   }
 
   // check errno
-  TRI_SYSTEM_ERROR();
   res = errno;
   if (res != TRI_ERROR_NO_ERROR) {
-    systemErrorStr = std::string("failed to create directory '") + path + "': " + TRI_GET_ERRORBUF;
+    systemErrorStr = std::string("failed to create directory '") + path + "': " + TRI_LAST_ERROR_STR;
     systemError = res;
 
     if (res == ENOENT) {

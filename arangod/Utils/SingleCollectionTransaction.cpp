@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +37,9 @@ namespace arangodb {
 /// @brief create the transaction, using a data-source
 SingleCollectionTransaction::SingleCollectionTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    LogicalDataSource const& dataSource, AccessMode::Type accessType)
-    : transaction::Methods(transactionContext),
+    LogicalDataSource const& dataSource, AccessMode::Type accessType,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, options),
       _cid(dataSource.id()),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -54,8 +55,8 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 /// @brief create the transaction, using a collection name
 SingleCollectionTransaction::SingleCollectionTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    std::string const& name, AccessMode::Type accessType)
-    : transaction::Methods(transactionContext),
+    std::string const& name, AccessMode::Type accessType, transaction::Options const& options)
+    : transaction::Methods(transactionContext, options),
       _cid(0),
       _trxCollection(nullptr),
       _documentCollection(nullptr),

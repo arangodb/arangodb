@@ -1,5 +1,5 @@
 /* jshint strict: false, maxlen: 300 */
-/* global arango, ArangoClusterComm */
+/* global arango */
 
 var db = require('@arangodb').db,
   internal = require('internal'),
@@ -17,7 +17,7 @@ let uniqueValue = 0;
 
 const isCoordinator = function () {
   let isCoordinator = false;
-  if (typeof ArangoClusterComm === 'object') {
+  if (internal.isArangod()) {
     isCoordinator = require('@arangodb/cluster').isCoordinator();
   } else {
     try {
@@ -1191,6 +1191,10 @@ function processQuery(query, explain, planIndex) {
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
         }
+        if (node.hasOwnProperty('options')) {
+          if (node.options.hasOwnProperty('countApproximate'))
+          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+        }
         viewAnnotation += ' */';
         let viewVariables = '';
         if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
@@ -1526,7 +1530,17 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
         let defaultDirection = node.defaultDirection;
-        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
+        let shortestPathType = node.shortestPathType || 'K_SHORTEST_PATHS';
+        let depth = '';
+        if (shortestPathType === 'K_PATHS') {
+          if (node.hasOwnProperty("options")) {
+            depth = value(node.options.minDepth + '..' + node.options.maxDepth);
+          } else {
+            depth = value('1..1');
+          }
+          depth += '  ' + annotation('/* min..maxPathDepth */') + ' ';
+        }
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${depth}${keyword(translate[defaultDirection])} ${keyword(shortestPathType)} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
         } else {
@@ -1653,7 +1667,7 @@ function processQuery(query, explain, planIndex) {
           }
           collect += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + (node.inVariable ? variableName(node.inVariable) : '') + ')';
             }).join(', ');
         }
         collect +=
@@ -1880,6 +1894,20 @@ function processQuery(query, explain, planIndex) {
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
         return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
+      case 'WindowNode': {
+        var window = keyword('WINDOW') + ' ';
+        if (node.rangeVariable) {
+          window += variableName(node.rangeVariable) + ' ' + keyword("WITH") + ' ';
+        }
+        window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)}} `;
+        if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
+          window += keyword('AGGREGATE') + ' ' +
+            node.aggregates.map(function (node) {
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+            }).join(', ');
+        }
+        return window;
+      }
     }
 
     return 'unhandled node type (' + node.type + ')';
@@ -2320,10 +2348,17 @@ function inspectDump(filename, outfile) {
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
-  if (db._engine().name !== data.engine.name) {
-    print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
+
+  try {
+    if (db._engine().name !== data.engine.name) {
+      print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
+    }
+    print();
+  } catch (err) {
+    // ignore errors here. db._engine() will fail if we are not connected
+    // to a server instance. swallowing the error here allows us to continue
+    // and analyze the dump offline
   }
-  print();
 
   print("/* graphs */");
   let graphs = data.graphs || {};

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, AQL_EXECUTE */
+/*global assertTrue, assertFalse, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for index usage
@@ -106,7 +106,51 @@ function sortTestSuite () {
         assertTrue(result[i] > last, `failure at index ${i}: ${slice}`);
         last = result[i];
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test SORT in a spliced subquery. Regression test for
+/// https://github.com/arangodb/arangodb/issues/12693,
+/// respectively https://github.com/arangodb/arangodb/pull/12752.
+/// SORT only sorted part of its input when the input rows crossed a block
+/// boundary in the subquery. E.g. an AqlItemBlock containing
+/// 1) 500 data rows
+/// 2) a shadow row
+/// 3) 499 data rows
+/// , where the next block usually should contain one data row, followed by the
+/// second shadow row.
+/// Now in this case SORT would sort the 499 rows, and ending the subquery
+/// iteration, thus accidentally dropping the last data row of the second
+/// iteration.
+////////////////////////////////////////////////////////////////////////////////
+    testSortInSubqueryIssue12693: function () {
+      const query = `
+        FOR iter IN 1..2
+          LET sq = (
+            FOR i IN 1..500
+            SORT i
+            RETURN i
+          )
+          RETURN COUNT(sq)
+      `;
+      const result = AQL_EXECUTE(query);
+      assertEqual([
+          'SingletonNode',
+          'CalculationNode',
+          'EnumerateListNode',
+          'SubqueryStartNode',
+          'CalculationNode',
+          'CalculationNode',
+          'EnumerateListNode',
+          'SortNode',
+          'SubqueryEndNode',
+          'CalculationNode',
+          'ReturnNode',
+        ],
+        AQL_EXPLAIN(query).plan.nodes.map(node => node.type)
+      );
+      assertEqual([500, 500], result.json);
+    },
 
   };
 }

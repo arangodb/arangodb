@@ -410,29 +410,3 @@ void EndpointIp::disconnect() {
     TRI_invalidatesocket(&_socket);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief init an incoming connection
-////////////////////////////////////////////////////////////////////////////////
-
-bool EndpointIp::initIncoming(TRI_socket_t incoming) {
-  // disable nagle's algorithm
-  int n = 1;
-  int res = TRI_setsockopt(incoming, IPPROTO_TCP, TCP_NODELAY, (char*)&n, sizeof(n));
-
-  if (res != 0) {
-    char const* pErr;
-    char errBuf[256];
-#ifdef _WIN32
-    char windowsErrorBuf[256];
-#endif
-
-    pErr = STR_ERROR();
-    snprintf(errBuf, sizeof(errBuf), "setsockopt failed with #%d - %s", errno, pErr);
-
-    _errorMessage = errBuf;
-    return false;
-  }
-
-  return setSocketFlags(incoming);
-}

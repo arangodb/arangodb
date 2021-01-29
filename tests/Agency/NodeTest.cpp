@@ -91,13 +91,13 @@ TEST_F(NodeTest, node_assign_double_slice) {
 TEST_F(NodeTest, node_assign_int_slice) {
 
   std::string path("/a/b/c"), name("node");
-  int val(8);
+  int64_t val(8);
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
   
   b->add(VPackValue(val));
   n(path) = b->slice();
-  EXPECT_DOUBLE_EQ(n(path).getInt(), val);
+  EXPECT_EQ(n(path).getInt(), val);
    
 }
 
@@ -140,7 +140,7 @@ TEST_F(NodeTest, node_applyOp_set) {
 
   ret = n(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), true);
-  EXPECT_DOUBLE_EQ(n(path).getInt(), eleven);
+  EXPECT_EQ(n(path).getInt(), eleven);
 
   b = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder a(b.get());

@@ -150,12 +150,10 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --database.directory cluster/data$PORT \
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --server.statistics false \
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
-          --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -178,12 +176,10 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --database.directory cluster/data$PORT \
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --server.statistics false \
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
-        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

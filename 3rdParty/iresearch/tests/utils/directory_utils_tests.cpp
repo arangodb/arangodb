@@ -28,7 +28,7 @@
 
 #include "index/index_tests.hpp"
 
-NS_LOCAL
+namespace {
 
 class directory_utils_tests: public ::testing::Test {
   virtual void SetUp() { }
@@ -106,7 +106,7 @@ class directory_utils_tests: public ::testing::Test {
   }; // directory_mock
 };
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

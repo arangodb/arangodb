@@ -148,8 +148,4 @@ void EndpointUnixDomain::disconnect() {
   }
 }
 
-bool EndpointUnixDomain::initIncoming(TRI_socket_t incoming) {
-  return setSocketFlags(incoming);
-}
-
 #endif

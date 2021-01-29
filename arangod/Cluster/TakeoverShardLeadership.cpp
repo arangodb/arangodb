@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -160,7 +162,7 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   for (auto const& res : responses) {
     if (res.hasValue() && res.get().ok()) {
       auto& result = res.get();
-      if (result.response && result.response->statusCode() == fuerte::StatusOK) {
+      if (result.statusCode() == fuerte::StatusOK) {
         realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
       }
     }
@@ -196,11 +198,11 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
       std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
       std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
-      if (currentServers.size() > 0) {
-        std::string& oldLeader = currentServers.at(0);
+      if (!currentServers.empty()) {
+        std::string& oldLeader = currentServers[0];
         // Check if the old leader has resigned and stopped all write
         // (if so, we can assume that all servers are still in sync)
-        if (oldLeader.at(0) == '_') {
+        if (!oldLeader.empty() && oldLeader[0] == '_') {
           // remove the underscore from the list as it is useless anyway
           oldLeader = oldLeader.substr(1);
 
@@ -253,7 +255,8 @@ bool TakeoverShardLeadership::first() {
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
 
     std::shared_ptr<LogicalCollection> coll;

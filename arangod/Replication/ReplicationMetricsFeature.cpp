@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,94 +33,94 @@ namespace arangodb {
 
 ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationMetrics"),
-      _numDumpRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_dump_requests", 0, "Number of replication dump requests")),
-      _numDumpBytesReceived(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_dump_bytes_received", 0, "Number of bytes received in replication dump requests")),
-      _numDumpDocuments(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_dump_documents", 0, "Number of documents received in replication dump requests")),
-      _waitedForDump(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _numDumpRequests(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_dump_requests", 0,
+          "Number of replication dump requests")),
+      _numDumpBytesReceived(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_dump_bytes_received", 0,
+          "Number of bytes received in replication dump requests")),
+      _numDumpDocuments(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_dump_documents", 0,
+          "Number of documents received in replication dump requests")),
+      _waitedForDump(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_dump_request_time", 0,
           "Wait time for replication requests [ms]")),
-      _waitedForDumpApply(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _waitedForDumpApply(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_dump_apply_time", 0,
           "time needed to apply replication dump data [ms]")),
-      _numSyncKeysRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_initial_sync_keys_requests", 0, "Number of replication initial sync keys requests")),
-      _numSyncDocsRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_initial_sync_docs_requests", 0, "Number of replication initial sync docs requests")),
-      _numSyncDocsRequested(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_initial_sync_docs_requested", 0, "Number of documents requested by replication initial sync")),
-      _numSyncDocsInserted(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_initial_sync_docs_inserted", 0, "Number of documents inserted by replication initial sync")),
-      _numSyncDocsRemoved(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_initial_sync_docs_removed", 0, "Number of documents removed by replication initial sync")),
-      _numSyncBytesReceived(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_initial_sync_bytes_received", 0, "Number of bytes received during replication initial sync")),
-      _waitedForSyncInitial(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _numSyncKeysRequests(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_initial_sync_keys_requests", 0,
+          "Number of replication initial sync keys requests")),
+      _numSyncDocsRequests(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_initial_sync_docs_requests", 0,
+          "Number of replication initial sync docs requests")),
+      _numSyncDocsRequested(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_initial_sync_docs_requested", 0,
+          "Number of documents requested by replication initial sync")),
+      _numSyncDocsInserted(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_initial_sync_docs_inserted", 0,
+          "Number of documents inserted by replication initial sync")),
+      _numSyncDocsRemoved(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_initial_sync_docs_removed", 0,
+          "Number of documents removed by replication initial sync")),
+      _numSyncBytesReceived(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_initial_sync_bytes_received", 0,
+          "Number of bytes received during replication initial sync")),
+      _waitedForSyncInitial(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_chunks_requests_time", 0,
           "Wait time for replication key chunks determination requests [ms]")),
-      _waitedForSyncKeys(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _waitedForSyncKeys(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_keys_requests_time", 0,
           "Wait time for replication keys requests [ms]")),
-      _waitedForSyncDocs(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _waitedForSyncDocs(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_docs_requests_time", 0,
           "Time needed to apply replication docs data [ms]")),
-      _waitedForSyncInsertions(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _waitedForSyncInsertions(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_insert_apply_time", 0,
           "Time needed to apply replication initial sync insertions [ms]")),
-      _waitedForSyncRemovals(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _waitedForSyncRemovals(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_remove_apply_time", 0,
           "Time needed to apply replication initial sync removals [ms]")),
-      _waitedForSyncKeyLookups(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _waitedForSyncKeyLookups(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_lookup_time", 0,
           "Time needed for replication initial sync key lookups [ms]")),
-      _numTailingRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_tailing_requests", 0, "Number of replication tailing requests")),
+      _numTailingRequests(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_tailing_requests", 0,
+          "Number of replication tailing requests")),
       _numTailingFollowTickNotPresent(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_tailing_follow_tick_failures", 0, "Number of replication tailing failures due to missing tick on leader")),
-      _numTailingProcessedMarkers(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_tailing_markers", 0, "Number of replication tailing markers processed")),
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              "arangodb_replication_tailing_follow_tick_failures", 0,
+              "Number of replication tailing failures due to missing tick on "
+              "leader")),
+      _numTailingProcessedMarkers(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_tailing_markers", 0,
+          "Number of replication tailing markers processed")),
       _numTailingProcessedDocuments(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_tailing_documents", 0, "Number of replication tailing document inserts/replaces processed")),
-      _numTailingProcessedRemovals(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_tailing_removals", 0, "Number of replication tailing document removals processed")),
-      _numTailingBytesReceived(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_tailing_bytes_received", 0, "Number of bytes received for replication tailing requests")),
-      _numFailedConnects(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_failed_connects", 0, "Number of failed connection attempts and response errors during replication")),
-      _waitedForTailing(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+          server.getFeature<arangodb::MetricsFeature>().counter(
+              "arangodb_replication_tailing_documents", 0,
+              "Number of replication tailing document inserts/replaces "
+              "processed")),
+      _numTailingProcessedRemovals(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_tailing_removals", 0,
+          "Number of replication tailing document removals processed")),
+      _numTailingBytesReceived(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_tailing_bytes_received", 0,
+          "Number of bytes received for replication tailing requests")),
+      _numFailedConnects(server.getFeature<arangodb::MetricsFeature>().counter("arangodb_replication_failed_connects",
+                                                                               0,
+                                                                               "Number of failed connection attempts and response errors during replication")),
+      _waitedForTailing(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_tailing_request_time", 0,
           "Wait time for replication tailing requests [ms]")),
-      _waitedForTailingApply(
-        server.getFeature<arangodb::MetricsFeature>().counter(
+      _waitedForTailingApply(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_tailing_apply_time", 0,
-          "Time needed to apply replication tailing data [ms]")) {
+          "Time needed to apply replication tailing data [ms]")),
+      _syncTimeTotal(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_synchronous_requests_total_time", 0,
+          "Total time needed for all synchronous replication requests [ns]")),
+      _syncOpsTotal(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_synchronous_requests_total_number", 0,
+          "Total number of synchronous replication requests")) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
@@ -247,6 +247,14 @@ ReplicationMetricsFeature::TailingSyncStats& ReplicationMetricsFeature::TailingS
   waitedForTailingApply += other.waitedForTailingApply;
   
   return *this;
+}
+
+Counter& ReplicationMetricsFeature::synchronousTimeTotal() {
+  return _syncTimeTotal;
+}
+
+Counter& ReplicationMetricsFeature::synchronousOpsTotal() {
+  return _syncOpsTotal;
 }
 
 } // namespace arangodb

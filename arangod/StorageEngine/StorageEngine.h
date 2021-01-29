@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,8 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngineFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -46,7 +47,6 @@
 #include <chrono>
 
 namespace arangodb {
-
 enum class RecoveryState : uint32_t {
   /// @brief recovery is not yet started
   BEFORE = 0,
@@ -106,6 +106,8 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter<transaction::ManagerFeature>();
     startsAfter<ViewTypesFeature>();
   }
+  
+  virtual HealthData healthCheck() = 0;
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(
@@ -168,8 +170,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   /// @brief return a list of the currently open WAL files
   virtual std::vector<std::string> currentWalFiles() const = 0;
 
-  virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
-                          bool writeShutdownFile = false) = 0;
+  virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false) = 0;
 
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
 

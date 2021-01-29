@@ -26,7 +26,7 @@
 #include "search/limited_sample_collector.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -59,9 +59,9 @@ const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
 // 0 is reserved for Epsilon transition
 constexpr automaton::Arc::Label MIN = 1;
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 void utf8_emplace_arc(
     automaton& a,
@@ -524,4 +524,4 @@ filter::prepared::ptr prepare_automaton_filter(
     boost, sort::MergeType::AGGREGATE);
 }
 
-NS_END
+}

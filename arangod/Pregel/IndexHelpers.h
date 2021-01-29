@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Aql/Graphs.h"
 
 namespace arangodb {
+class Index;
 class IndexIterator;
 
 namespace transaction{
@@ -57,10 +58,12 @@ class EdgeCollectionInfo {
 
   std::string _collectionName;
 
+  /// @brief index used for iteration
+  std::shared_ptr<arangodb::Index> _index;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values
-  ///        NOTE: Single search builder is NOT thread-save
+  ///        NOTE: Single search builder is NOT thread-safe
   //////////////////////////////////////////////////////////////////////////////
 
   aql::EdgeConditionBuilderContainer _searchBuilder;

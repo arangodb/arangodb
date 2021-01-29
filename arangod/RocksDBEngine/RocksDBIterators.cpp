@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,14 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIterators.h"
+#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -60,7 +62,10 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
   // options.readahead_size = 4 * 1024 * 1024;
 
   _iterator = mthds->NewIterator(ro, _bounds.columnFamily());
-  TRI_ASSERT(_iterator);
+  TRI_ASSERT(_iterator != nullptr);
+  if (_iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAllIndexIterator");
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
@@ -169,9 +174,10 @@ void RocksDBAllIndexIterator::resetImpl() {
 
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx) 
+                                                 transaction::Methods* trx)
     : IndexIterator(col, trx),
-      _cmp(RocksDBColumnFamily::documents()->GetComparator()),
+      _cmp(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+               ->GetComparator()),
       _objectId(static_cast<RocksDBMetaCollection*>(col->getPhysical())->objectId()),
       _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _total(0),
@@ -183,7 +189,10 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
   options.fill_cache = AnyIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   _iterator = mthds->NewIterator(options, _bounds.columnFamily());
-  TRI_ASSERT(_iterator);
+  TRI_ASSERT(_iterator != nullptr);
+  if (_iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");
+  }
 
   _total = col->numberDocuments(trx, transaction::CountType::Normal);
   _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
@@ -310,12 +319,12 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
-RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options,
+RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db,
+                                               rocksdb::ReadOptions& options,
                                                RocksDBKeyBounds const& bounds)
     : _bounds(bounds),
       _options(options),
-      _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options,
-                                                                   _bounds.columnFamily())),
+      _iterator(db->NewIterator(_options, _bounds.columnFamily())),
       _cmp(_bounds.columnFamily()->GetComparator()) {
   reset();
 }
@@ -401,9 +410,12 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
   auto bounds(RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId()));
-  auto iterator = RocksDBGenericIterator(options, bounds);
+  auto& selector = col->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  auto iterator = RocksDBGenericIterator(engine.db(), options, bounds);
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());
-  TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(iterator.bounds().columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
   return iterator;
 }

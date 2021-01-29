@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 
 #include <rocksdb/db.h>
@@ -143,7 +144,10 @@ std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool i
 
 RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
     : RocksDBMethods(state) {
-  _db = rocksutils::globalRocksDB();
+  auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  _db = engine.db();
+  TRI_ASSERT(_db != nullptr);
 }
 
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -189,14 +193,25 @@ void RocksDBReadOnlyMethods::PutLogData(rocksdb::Slice const& blob) {
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
     rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
-  return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts, cf));
+  
+  std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBReadOnlyMethods");
+  }
+  return iterator;
 }
 
 // =================== RocksDBTrxMethods ====================
 
+RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
+    : RocksDBMethods(state), _indexingDisabled(false) {
+  TRI_ASSERT(_state != nullptr);
+}
+
 bool RocksDBTrxMethods::DisableIndexing() {
   if (!_indexingDisabled) {
     TRI_ASSERT(_state != nullptr);
+    TRI_ASSERT(_state->_rocksTransaction);
     _state->_rocksTransaction->DisableIndexing();
     _indexingDisabled = true;
     return true;
@@ -206,16 +221,12 @@ bool RocksDBTrxMethods::DisableIndexing() {
 
 bool RocksDBTrxMethods::EnableIndexing() {
   if (_indexingDisabled) {
+    TRI_ASSERT(_state->_rocksTransaction);
     _state->_rocksTransaction->EnableIndexing();
     _indexingDisabled = false;
     return true;
   }
   return false;
-}
-
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state), _indexingDisabled(false) {
-  TRI_ASSERT(_state != nullptr);
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -285,7 +296,12 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->_rocksTransaction);
-  return std::unique_ptr<rocksdb::Iterator>(_state->_rocksTransaction->GetIterator(opts, cf));
+
+  std::unique_ptr<rocksdb::Iterator> iterator(_state->_rocksTransaction->GetIterator(opts, cf));
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
+  }
+  return iterator;
 }
 
 void RocksDBTrxMethods::SetSavePoint() {
@@ -372,7 +388,11 @@ std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
 RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(RocksDBTransactionState* state,
                                                                rocksdb::WriteBatchWithIndex* wb)
     : RocksDBMethods(state), _wb(wb) {
-  _db = rocksutils::globalRocksDB();
+  auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  _db = engine.db();
+  TRI_ASSERT(_db != nullptr);
+  TRI_ASSERT(_wb != nullptr);
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -422,6 +442,10 @@ void RocksDBBatchedWithIndexMethods::PutLogData(rocksdb::Slice const& blob) {
 std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
     rocksdb::ReadOptions const& ro, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
-  return std::unique_ptr<rocksdb::Iterator>(
-      _wb->NewIteratorWithBase(_db->NewIterator(ro, cf)));
+  std::unique_ptr<rocksdb::Iterator> iterator(_wb->NewIteratorWithBase(_db->NewIterator(ro, cf)));
+
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBBatchedWithIndexMethods");
+  }
+  return iterator;
 }

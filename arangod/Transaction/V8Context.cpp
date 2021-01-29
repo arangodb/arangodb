@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,7 +88,6 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   
   if (!_currentTransaction) {
     _currentTransaction = transaction::Context::createState(options);
-    enterV8Context();
     responsibleForCommit = true;
   } else {
     if (!isEmbeddable()) {
@@ -113,8 +112,6 @@ void transaction::V8Context::enterV8Context() {
 
 void transaction::V8Context::exitV8Context() {
   TRI_ASSERT(_v8g != nullptr);
-  TRI_ASSERT(_v8g->_transactionContext == nullptr ||
-             _v8g->_transactionContext == this);
   _v8g->_transactionContext = nullptr;
 }
 
@@ -162,7 +159,9 @@ std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(TRI_vocba
 std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
     TRI_vocbase_t& vocbase, bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?
-  if (V8DealerFeature::DEALER != nullptr && v8::Isolate::GetCurrent() != nullptr) {
+  if (vocbase.server().hasFeature<V8DealerFeature>() && 
+      vocbase.server().isEnabled<V8DealerFeature>() && 
+      v8::Isolate::GetCurrent() != nullptr) {
     return transaction::V8Context::Create(vocbase, embeddable);
   }
 

@@ -29,8 +29,8 @@
 #include "shared.hpp"
 #include "string.hpp"
 
-NS_ROOT
-NS_BEGIN( locale_utils )
+namespace iresearch {
+namespace locale_utils {
 
 /**
  * @brief provide a common way to access the codecvt facet of a locale
@@ -189,7 +189,7 @@ IRESEARCH_API const std::string& name(std::locale const& locale);
 **/
 IRESEARCH_API bool is_utf8(std::locale const& locale);
 
-NS_END
-NS_END
+}
+}
 
 #endif

@@ -16,7 +16,9 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
 var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
+const isVst = arango.getEndpoint().match('^vst://') !== null;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
@@ -64,7 +66,7 @@ function installFoxx(mountpoint, which, mode) {
   return crudResp;
 }
 
-function deleteFox(mountpoint) {
+function deleteFoxx(mountpoint) {
   const deleteResp = arango.DELETE('/_api/foxx/service?force=true&mount=' + mountpoint);
   expect(deleteResp).to.have.property('code');
   expect(deleteResp.code).to.equal(204);
@@ -88,29 +90,103 @@ describe('FoxxApi commit', function () {
   });
 
   it('should fix missing service definition', function () {
-    db._query(aql`
+    expect(db._query(aql`
       FOR service IN _apps
         FILTER service.mount == ${mount}
         REMOVE service IN _apps
-    `);
+    `).getExtra().stats.writesExecuted).to.equal(1);
+
+    let body;
     let result = arango.GET('/test/header-echo');
     expect(result.code).to.equal(404);
 
     result = arango.POST('/_api/foxx/commit', '');
     expect(result.code).to.equal(204);
-
-    result = arango.GET_RAW('/test/header-echo', { origin: origin});
-    expect(result.code).to.equal(200);
-    if (arango.getEndpoint().match(/^vst:/)) {
-      // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
-      let body = VPACK_TO_V8(result.body);
-      expect(body['origin']).to.equal(origin);
+    [
+      // explicitly say we want utf8-json, since the server will add it:
+      { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
+      { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "second"},
+      // work around clever arangosh client, specify random content-type first:
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'identity'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'deflate'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'gzip'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third"},
+      { accept: 'application/json; charset=utf-8', test: "fourth", "content-type": "image/jpg"}
+    ].forEach(headers => {
+      result = arango.GET_RAW('/test/header-echo', headers);
+      expect(result.code).to.equal(200);
+      if (result.headers['content-type'] === 'application/x-velocypack') {
+        body = result.parsedBody;
+      } else {
+        body = JSON.parse(result.body);
+      }
       
+      Object.keys(headers).forEach(function(key) {
+        let value = headers[key];
+        if (key === 'origin') {
+          if (arango.getEndpoint().match(/^vst:/)) {
+            // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
+            expect(body['origin']).to.equal(origin);
+          } else {
+            expect(result.headers['access-control-allow-origin']).to.equal(origin);
+          }
+        }
+        expect(body[key]).to.equal(headers[key]);
+        
+      });
+      if (!headers.hasOwnProperty('accept-encoding')) {
+        expect(body['accept-encoding']).to.equal(undefined);
+      }
+    });
+
+    // sending content-type json actually requires to post something:
+    let headers = { accept: 'application/json; charset=utf-8', test: "first", "content-type": "application/json; charset=utf-8"};
+    result = arango.POST_RAW('/test/header-echo', '{}', headers);
+    expect(result.code).to.equal(200);
+    if (result.headers['content-type'] === 'application/x-velocypack') {
+      body = result.parsedBody;
     } else {
-      expect(result.headers['access-control-allow-origin']).to.equal(origin);
+      body = JSON.parse(result.body);
     }
+    
+    Object.keys(headers).forEach(function(key) {
+      let value = headers[key];
+      
+      expect(body[key]).to.equal(headers[key]);
+    });
   });
 
+  it('should deliver compressed files according to accept-encoding', function() {
+    // TODO: decompress body (if) and check for its content, so double-compression can be eradicted.
+    let result;
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'identity'});
+    expect(result.body).to.contain('doctype');
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'deflate'});
+    expect(result.body).to.contain('doctype');
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'gzip'});
+    expect(result.body).to.be.instanceof(Buffer);
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {});
+    expect(result.body).to.contain('doctype');
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'identity'});
+    expect(result).to.have.property('parsedBody');
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }      
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
+    expect(result).to.have.property('parsedBody');
+
+  });
   it('should fix missing checksum', function () {
     db._query(aql`
       FOR service IN _apps
@@ -233,13 +309,13 @@ describe('Foxx service', () => {
 
   afterEach(() => {
     try {
-      deleteFox(serviceServiceMount);
+      deleteFoxx(serviceServiceMount);
     } catch (e) {}
   });
 
   afterEach(() => {
     try {
-      deleteFox(mount);
+      deleteFoxx(mount);
     } catch (e) {}
   });
 

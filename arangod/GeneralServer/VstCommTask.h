@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,8 +103,21 @@ class VstCommTask final : public GeneralCommTask<T> {
   static constexpr size_t maxChunkSize = 30 * 1024;
 
  private:
+
+  std::string const& url(VstRequest* req);
+
   std::map<uint64_t, Message> _messages;
-  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<32>> _writeQueue;
+
+  // the queue is dynamically sized because we can't guarantee that
+  // only a fixed number of responses are active at the same time.
+  // the reason is that producing responses may happen faster than
+  // fetching responses from the queue. this is done by different threads
+  // and depends on thread scheduling, so it is somewhat random how
+  // fast producing and consuming happen.
+  // effectively the length of the queue is bounded by the fact that the
+  // scheduler queue length is also bounded, so that we will not see
+  // an endless growth of the queue in a single connection.
+  boost::lockfree::queue<ResponseItem*> _writeQueue;
 
   std::atomic<bool> _writeLoopActive;  /// is writing
   std::atomic<unsigned> _numProcessing;

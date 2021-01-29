@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,13 +46,18 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
-  // tracks a query, using execution time
-  void trackQuery(double time);
+  // tracks a query start
+  void trackQueryStart() noexcept;
+  // tracks a query completion, using execution time
+  void trackQueryEnd(double time);
   // tracks a slow query, using execution time
   void trackSlowQuery(double time);
 
+  bool trackingEnabled() const { return _trackingEnabled; }
   bool trackSlowQueries() const { return _trackSlowQueries; }
+  bool trackQueryString() const { return _trackQueryString; }
   bool trackBindVars() const { return _trackBindVars; }
+  bool trackDataSources() const { return _trackDataSources; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
   double slowStreamingQueryThreshold() const {
     return _slowStreamingQueryThreshold;
@@ -69,8 +74,11 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t maxParallelism() const { return _maxParallelism; }
 
  private:
+  bool _trackingEnabled;
   bool _trackSlowQueries;
+  bool _trackQueryString;
   bool _trackBindVars;
+  bool _trackDataSources;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
 #ifdef USE_ENTERPRISE
@@ -99,6 +107,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Counter& _totalQueryExecutionTime;
   Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
+  Gauge<uint64_t>& _runningQueries;
 };
 
 }  // namespace arangodb

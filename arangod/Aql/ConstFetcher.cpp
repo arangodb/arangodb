@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -125,7 +125,6 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     if (call.needsFullCount()) {
       call.didSkip(rowsLeft);
     }
-    rowsLeft = 0;
 
     // In this case we consumed all rows until the end of
     // a) the shadowRow range

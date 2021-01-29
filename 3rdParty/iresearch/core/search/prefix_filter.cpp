@@ -28,7 +28,7 @@
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -64,9 +64,9 @@ void visit(
   }
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
@@ -109,4 +109,4 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
   ::visit(segment, reader, prefix, visitor);
 }
 
-NS_END // ROOT
+} // ROOT

@@ -34,6 +34,7 @@ set(IReSearch_tests_sources
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
+  ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
   ./formats/formats_test_case_base.cpp
@@ -109,6 +110,7 @@ set(IReSearch_tests_sources
   ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
+  ./utils/thread_pool_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_utils_test.cpp
   ./utils/utf8_path_tests.cpp

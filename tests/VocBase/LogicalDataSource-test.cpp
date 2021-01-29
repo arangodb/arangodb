@@ -71,9 +71,10 @@ class LogicalDataSourceTest : public ::testing::Test {
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   LogicalDataSourceTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
     // setup required application features
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
@@ -90,7 +91,7 @@ class LogicalDataSourceTest : public ::testing::Test {
   }
 
   ~LogicalDataSourceTest() {
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

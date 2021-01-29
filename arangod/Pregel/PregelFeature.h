@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,9 @@ class PregelFeature final : public application_features::ApplicationFeature {
   static std::pair<Result, uint64_t> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections, VPackSlice const& params);
+      std::vector<std::string> const& edgeCollections, 
+      std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+      VPackSlice const& params);
 
   void start() override final;
   void beginShutdown() override final;

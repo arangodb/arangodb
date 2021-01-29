@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -208,9 +208,9 @@ CollectionNameResolver const* transaction::Context::createResolver() {
 
 std::shared_ptr<TransactionState> transaction::Context::createState(transaction::Options const& options) {
   // now start our own transaction
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  return engine->createTransactionState(_vocbase, generateId(), options);
+  TRI_ASSERT(vocbase().server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  return engine.createTransactionState(_vocbase, generateId(), options);
 }
 
 /// @brief unregister the transaction

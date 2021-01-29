@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,10 @@
 #include <type_traits>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 
 struct Function {
@@ -50,31 +54,62 @@ struct Function {
     /// cache
     Cacheable = 2,
 
-    /// @brief whether or not the function may be executed on DB servers
-    CanRunOnDBServer = 4,
+    // the following two flags control separately if a function can be pushed
+    // down to DB servers for execution. In almost cases we want to have the
+    // "Cluster" flag set for functions that have the "OneShard" flag set,
+    // but this is currently only enforced via assertions - and we may want
+    // to change this in the future so we can have functions that are _not_
+    // pushed down to DB servers in OneShard mode but are in normal Cluster
+    // mode.
+
+    /// @brief whether or not the function may be executed on DB servers, 
+    /// general cluster case (non-OneShard)
+    /// note: in almost all circumstances it is also useful to set the flag
+    /// CanRunOnDBServerOneShard in addition!
+    CanRunOnDBServerCluster = 4,
+    
+    /// @brief whether or not the function may be executed on DB servers,
+    /// OneShard databases. 
+    /// note: this flag must be set in addition to CanRunOnDBServerCluster
+    /// to make a function run on DB servers in OneShard mode! 
+    CanRunOnDBServerOneShard = 8,
+    
+    /// @brief whether or not the function may read documents from the database
+    CanReadDocuments = 16,
 
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
-    NoEval = 8
+    NoEval = 32,
   };
 
   /// @brief helper for building flags
   template <typename... Args>
-  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
-    return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) noexcept {
+    return static_cast<std::underlying_type<Flags>::type>(flag) | makeFlags(args...);
   }
 
-  static std::underlying_type<Flags>::type makeFlags();
+  static std::underlying_type<Flags>::type makeFlags() noexcept;
 
   Function() = delete;
 
   /// @brief create the function
   Function(std::string const& name, char const* arguments,
            std::underlying_type<Flags>::type flags,
-           FunctionImplementation implementation = nullptr);
+           FunctionImplementation implementation);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  Function(std::string const& name,
+           FunctionImplementation implementation);
+#endif
+
+  /// @brief whether or not the function is based on V8
+  bool hasV8Implementation() const noexcept;
+  
+  /// @brief whether or not the function is based on cxx
+  bool hasCxxImplementation() const noexcept;
 
   /// @brief return whether a specific flag is set for the function
-  bool hasFlag(Flags flag) const;
+  bool hasFlag(Flags flag) const noexcept;
 
   /// @brief return the number of required arguments
   std::pair<size_t, size_t> numArguments() const;
@@ -86,6 +121,8 @@ struct Function {
   /// @brief parse the argument list and set the minimum and maximum number of
   /// arguments
   void initializeArguments();
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   /// @brief function name (name visible to the end user, may be an alias)
   std::string name;

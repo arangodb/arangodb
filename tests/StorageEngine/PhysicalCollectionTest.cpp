@@ -62,11 +62,12 @@ class PhysicalCollectionTest
   std::vector<std::reference_wrapper<arangodb::application_features::ApplicationFeature>> features;
 
   PhysicalCollectionTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>());  // required for VocbaseContext
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector);
+    selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
@@ -80,7 +81,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();

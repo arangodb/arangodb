@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "H2CommTask.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
@@ -250,7 +251,7 @@ constexpr uint32_t window_size = (1 << 30) - 1;  // 1 GiB
 void submitConnectionPreface(nghttp2_session* session) {
   std::array<nghttp2_settings_entry, 4> iv;
   // 32 streams matches the queue capacity
-  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 32};
+  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, arangodb::H2MaxConcurrentStreams};
   // typically client is just a *sink* and just process data as
   // much as possible.  Use large window size by default.
   iv[1] = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size};
@@ -411,7 +412,7 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void H2CommTask<T>::setIOTimeout() {
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }
@@ -461,6 +462,15 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 #endif
 
 template <SocketType T>
+std::string const& H2CommTask<T>::url(HttpRequest* req) {
+  if (this->_url.empty() && req != nullptr) {
+    this->_url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+  }
+  return this->_url;
+}
+
+template <SocketType T>
 void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
@@ -476,15 +486,11 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
 
   // from here on we will send a response, the connection is not IDLE
   _numProcessing.fetch_add(1, std::memory_order_relaxed);
-
   {
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
         << "\"h2-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(req->requestType()) << "\",\""
-        << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
-        << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
-        << "\"";
+        << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     VPackStringRef body = req->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -565,37 +571,39 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
     return;
   }
 
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
-
   // and give some request information
   LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
       << "\"h2-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress
       << "\",\""
       //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(res->responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6);
+      << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode()) << "\","
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
   unsigned retries = 512;
-  while (ADB_UNLIKELY(!_responses.push(tmp))) {
-    std::this_thread::yield();
-    if (--retries == 0) {
-      LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
-          << "was not able to queue response" << (void*)this;
-      // we are overloaded close stream
-      asio_ns::post(this->_protocol->context.io_context,
-                    [self(this->shared_from_this()), mid(res->messageId())] {
-                      auto& me = static_cast<H2CommTask<T>&>(*self);
-                      nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
-                                                static_cast<int32_t>(mid),
-                                                NGHTTP2_ENHANCE_YOUR_CALM);
-                    });
-      return;
+  try {
+    while (ADB_UNLIKELY(!_responses.push(tmp) && --retries > 0)) {
+      std::this_thread::yield();
     }
+  } catch (...) {
+    retries = 0;
+  }
+  if (--retries == 0) {
+    LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
+        << "was not able to queue response this=" << (void*)this;
+    // we are overloaded close stream
+    asio_ns::post(this->_protocol->context.io_context,
+                  [self(this->shared_from_this()), mid(res->messageId())] {
+                    auto& me = static_cast<H2CommTask<T>&>(*self);
+                    nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
+                                              static_cast<int32_t>(mid),
+                                              NGHTTP2_ENHANCE_YOUR_CALM);
+                  });
+    return;
   }
   res.release();
 

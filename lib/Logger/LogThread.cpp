@@ -23,13 +23,14 @@
 
 #include "LogThread.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 
 LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
-    : Thread(server, name), _messages(16) {}
+    : Thread(server, name), _messages(64) {}
 
 LogThread::~LogThread() {
   Logger::_threaded = false;
@@ -40,6 +41,11 @@ LogThread::~LogThread() {
 
 bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   TRI_ASSERT(message != nullptr);
+
+  TRI_IF_FAILURE("LogThread::log") {
+    // simulate a successful logging, but actually don't log anything
+    return true;
+  }
 
   bool const isDirectLogLevel =
              (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR || message->_level == LogLevel::WARN);

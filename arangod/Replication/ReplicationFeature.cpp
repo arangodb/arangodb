@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +38,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -76,8 +77,6 @@ void writeError(int code, arangodb::GeneralResponse* response) {
 
 namespace arangodb {
 
-ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
-
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
       _connectTimeout(10.0),
@@ -88,7 +87,10 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _enableActiveFailover(false),
       _syncByRevision(true),
       _parallelTailingInvocations(0),
-      _maxParallelTailingInvocations(0) {
+      _maxParallelTailingInvocations(0),
+      _inventoryRequests(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_cluster_inventory_requests", 0, "Number of cluster replication inventory requests received")) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -172,13 +174,11 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-
-  INSTANCE = this;
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(
-      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+  _globalReplicationApplier.reset(new GlobalReplicationApplier(
+      GlobalReplicationApplier::loadConfiguration(server())));
 
   try {
     _globalReplicationApplier->loadState();
@@ -318,9 +318,8 @@ double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
                                            arangodb::ServerState::Mode mode) {
   std::string endpoint;
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
-    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  if (isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = globalReplicationApplier();
     if (applier != nullptr) {
       endpoint = applier->endpoint();
       // replace tcp:// with http://, and ssl:// with https://

@@ -37,6 +37,8 @@ var internal = require('internal');
 var AssertionError = require('assert').AssertionError;
 var mountPath = '##TEST##';
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 var foxxlogCol = '_foxxlog';
 function clear () {
   'use strict';

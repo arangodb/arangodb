@@ -25,7 +25,7 @@
 #include "filter_test_case_base.hpp"
 #include "search/granular_range_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 class granular_float_field: public tests::float_field {
  public:
@@ -2230,4 +2230,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

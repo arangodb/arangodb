@@ -13,6 +13,8 @@ const expect = require('chai').expect;
 const download = require('internal').download;
 const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx Manager', function () {
   describe('(CRUD operation) ', function () {
     const setupTeardownApp = fs.join(basePath, 'minimal-working-setup-teardown');

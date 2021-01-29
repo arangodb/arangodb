@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -141,6 +141,7 @@ class LimitExecutor {
   InputAqlItemRow _lastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
+  bool _didProduceRows = false;
 };
 
 }  // namespace aql

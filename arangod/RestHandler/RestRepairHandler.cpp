@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,8 +132,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       return RestStatus::DONE;
     }
 
-    auto [b,i] = agencyCache.get("arango/Plan");
-    VPackSlice plan = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(),"Plan"});
+    auto [b, i] = agencyCache.get("arango/Plan");
+    VPackSlice plan = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
     VPackSlice planCollections = plan.get("Collections");
 
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");

@@ -549,6 +549,72 @@ describe ArangoDB do
     end
 
 ################################################################################
+## batches and logger state requests
+################################################################################
+
+    context "dealing with batches and logger state" do
+      after do
+        ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
+      end
+
+      it "creates a batch, without state request" do
+        doc = ArangoDB.post(api + "/batch", :body => "{}")
+        doc.code.should eq(200)
+        @batchId = doc.parsed_response['id']
+        @batchId.should  match(/^\d+$/)
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('id')
+        all['id'].should match(/^\d+$/)
+        all.should have_key('lastTick')
+        all['lastTick'].should match(/^\d+$/)
+        
+        all.should_not have_key('state')
+      end
+      
+      it "creates a batch, with state request" do
+        doc = ArangoDB.post(api + "/batch?state=true", :body => "{}")
+        doc.code.should eq(200)
+        @batchId = doc.parsed_response['id']
+        @batchId.should  match(/^\d+$/)
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('id')
+        all.should have_key('lastTick')
+        all['id'].should match(/^\d+$/)
+        all['lastTick'].should match(/^\d+$/)
+        
+        all.should have_key('state')
+        state = all['state']
+        state.should have_key('state')
+        state['state'].should have_key('running')
+        state['state']['running'].should eq(true)
+        state['state'].should have_key('lastLogTick')
+        state['state']['lastLogTick'].should match(/^\d+$/)
+        state['state'].should have_key('lastUncommittedLogTick')
+        state['state']['lastUncommittedLogTick'].should match(/^\d+$/)
+        state['state']['lastLogTick'].should eq(state['state']['lastUncommittedLogTick'])
+        state['state'].should have_key('totalEvents')
+        state['state'].should have_key('time')
+
+        # make sure that all tick values in the response are equal
+        all['lastTick'].should eq(state['state']['lastLogTick'])
+
+        state.should have_key('server')
+        state['server'].should have_key('version')
+        state['server'].should have_key('engine')
+        state['server']['engine'].should eq('rocksdb')
+        state['server'].should have_key('serverId')
+
+        state.should have_key('clients')
+        state['clients'].length.should eq(0)
+      end
+
+    end
+
+################################################################################
 ## inventory / dump
 ################################################################################
 
@@ -846,10 +912,61 @@ describe ArangoDB do
           part = body.slice(0, position)
 
           doc = JSON.parse(part)
+          doc.should have_key("type")
+          doc.should have_key("data")
+          doc.should_not have_key("_key")
           doc['type'].should eq(2300)
           doc['data']['_key'].should match(/^test[0-9]+$/)
           doc["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
           doc['data'].should have_key("test")
+
+          body = body.slice(position + 1, body.length)
+          i = i + 1
+        end
+
+        i.should eq(100)
+      end
+      
+      it "checks the dump for a non-empty collection, no envelopes" do
+        cid = ArangoDB.create_collection("UnitTestsReplication", false)
+
+        (0...100).each{|i|
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test\" : " + i.to_s + " }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
+          doc.code.should eq(202)
+        }
+
+        ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
+        doc0 = ArangoDB.post(api + "/batch", :body => "{}")
+        @batchId = doc0.parsed_response["id"]
+        @batchId.should  match(/^\d+$/)
+
+        cmd = api + "/dump?collection=UnitTestsReplication&batchId=#{@batchId}&useEnvelope=false"
+        doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(200)
+
+        doc.headers["x-arango-replication-checkmore"].should eq("false")
+        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+        body = doc.response.body
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+
+          doc = JSON.parse(part)
+          doc.should_not have_key("type")
+          doc.should_not have_key("data")
+          doc.should have_key("_key")
+          doc['_key'].should match(/^test[0-9]+$/)
+          doc["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
+          doc.should have_key("test")
 
           body = body.slice(position + 1, body.length)
           i = i + 1

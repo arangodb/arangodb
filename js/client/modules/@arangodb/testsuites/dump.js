@@ -5,24 +5,24 @@
 
 // /////////////////////////////////////////////////////////////////////////////
 // DISCLAIMER
-// 
+//
 // Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 // Copyright 2014 triagens GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //      http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
+//
 // @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -32,6 +32,8 @@ const functionsDocumentation = {
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
   'dump_multiple': 'restore multiple DBs at once',
+  'dump_no_envelope': 'dump without data envelopes',
+  'dump_with_crashes': 'restore and crash the client multiple times',
   'hot_backup': 'hotbackup tests'
 };
 
@@ -39,8 +41,8 @@ const optionsDocumentation = [
   '   - `skipEncrypted` : if set to true the encryption tests are skipped'
 ];
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const _ = require('lodash');
 const hb = require("@arangodb/hotbackup");
@@ -62,6 +64,8 @@ const testPaths = {
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
+  'dump_no_envelope': [tu.pathForTesting('server/dump')],
+  'dump_with_crashes': [tu.pathForTesting('server/dump')],
   'hot_backup': [tu.pathForTesting('server/dump')]
 };
 
@@ -109,11 +113,22 @@ class DumpRestoreHelper {
     if (options.deactivateCompression) {
       this.dumpConfig.deactivateCompression();
     }
+    if (options.deactivateEnvelopes) {
+      this.dumpConfig.deactivateEnvelopes();
+    }
     if (restoreOptions.allDatabases) {
       this.restoreConfig.setAllDatabases();
       this.restoreOldConfig.setAllDatabases();
     } else {
       this.restoreOldConfig.setDatabase('_system');
+    }
+    if (restoreOptions.activateFailurePoint) {
+      print("Activating failure point");
+      this.restoreConfig.activateFailurePoint();
+      this.restoreOldConfig.deactivateFailurePoint();
+    } else {
+      this.restoreConfig.deactivateFailurePoint();
+      this.restoreOldConfig.deactivateFailurePoint();
     }
 
     this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
@@ -125,8 +140,7 @@ class DumpRestoreHelper {
     print(CYAN + Date() + ': ' + this.which + ' and Restore - ' + s + RESET);
   }
 
-  adjustRestoreToDump()
-  {
+  adjustRestoreToDump() {
     this.restoreOptions = this.dumpOptions;
     this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
     this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
@@ -139,8 +153,7 @@ class DumpRestoreHelper {
   getUptime() {
     try {
       return pu.arangod.check.uptime(this.instanceInfo, this.options);
-    }
-    catch (x) {
+    } catch (x) {
       print(x); // TODO
       print("uptime continuing anyways");
       return {};
@@ -150,8 +163,8 @@ class DumpRestoreHelper {
   validate(phaseInfo) {
     phaseInfo.failed = (phaseInfo.status !== true || !this.isAlive() ? 1 : 0);
     return phaseInfo.failed === 0;
-  };
- 
+  }
+
   extractResults() {
     if (this.fn !== undefined) {
       fs.remove(this.fn);
@@ -215,7 +228,15 @@ class DumpRestoreHelper {
     if (!this.restoreConfig.haveSetAllDatabases()) {
       this.restoreConfig.setDatabase(database);
     }
-    this.results.restore = this.arangorestore();
+    this.restoreConfig.disableContinue();
+    do {
+      this.results.restore = this.arangorestore();
+      if (this.results.restore.exitCode === 38) {
+        print("Failure point has terminated the application, restarting");
+        this.restoreConfig.enableContinue();
+      }
+    } while(this.results.restore.exitCode === 38);
+    this.restoreConfig.disableContinue();
     return this.validate(this.results.restore);
   }
 
@@ -307,7 +328,7 @@ class DumpRestoreHelper {
     this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
   }
-  
+
   createHotBackup() {
     this.print("creating backup");
     let cmds = {
@@ -390,7 +411,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
     return rc;
   }
   const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
- 
+
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
   const checkDumpFiles = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles));
@@ -476,13 +497,53 @@ function dumpMultiple (options) {
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph-multiple.js'
   };
-  
+
   let dumpOptions = {
     allDatabases: true,
     deactivateCompression: true
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
+}
+
+function dumpNoEnvelope (options) {
+  let c = getClusterStrings(options);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed-no-envelopes.js',
+    dumpCleanup: 'cleanup-multiple.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+
+  let dumpOptions = {
+    allDatabases: true,
+    deactivateCompression: true,
+    deactivateEnvelopes: true
+  };
+  _.defaults(dumpOptions, options);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){});
+}
+
+function dumpWithCrashes (options) {
+  let c = getClusterStrings(options);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
+    dumpCleanup: 'cleanup-multiple.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+
+  let dumpOptions = {
+    allDatabases: true,
+    deactivateCompression: true,
+    activateFailurePoint: true
+  };
+  _.defaults(dumpOptions, options);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
 }
 
 function dumpAuthentication (options) {
@@ -554,7 +615,7 @@ function dumpEncrypted (options) {
   let dumpOptions = _.clone(options);
   dumpOptions.encrypted = true;
   dumpOptions.compressed = true; // Should be overruled by 'encrypted'
-  
+
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-encrypted.js',
@@ -636,7 +697,7 @@ function hotBackup (options) {
       fs.makeDirectory(keyDir);
     }
     pu.cleanupDBDirectoriesAppend(keyDir);
-  
+
     let keyfile = fs.join(keyDir, 'secret');
     fs.write(keyfile, encryptionKey);
 
@@ -707,7 +768,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump'] = dump;
   defaultFns.push('dump');
-
+  
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');
 
@@ -719,6 +780,12 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_multiple'] = dumpMultiple;
   defaultFns.push('dump_multiple');
+  
+  testFns['dump_no_envelope'] = dumpNoEnvelope;
+  defaultFns.push('dump_no_envelope');
+
+  testFns['dump_with_crashes'] = dumpWithCrashes;
+  defaultFns.push('dump_with_crashes');
 
   testFns['hot_backup'] = hotBackup;
   defaultFns.push('hot_backup');

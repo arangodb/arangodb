@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,7 +60,9 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
-      _manager(globalRocksEngine()->replicationManager()) {}
+      _manager(
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()) {
+}
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
   // extract the request type
@@ -88,7 +90,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto* ctx = _manager->createContext(ttl, syncerId, clientId);
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    auto* ctx = _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -100,11 +103,40 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
             << " collection count patching: " << res.errorMessage();
       }
     }
+    
+    std::string const snapTick = std::to_string(ctx->snapshotTick());
+    bool withState = _request->parsedValue("state", false);
 
     VPackBuilder b;
-    b.add(VPackValue(VPackValueType::Object));
+    b.openObject();
     b.add("id", VPackValue(std::to_string(ctx->id())));  // id always string
-    b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
+    b.add("lastTick", VPackValue(snapTick));
+    if (withState) {
+      // we have been asked to also return the "state" attribute. 
+      // this is used from 3.8 onwards during shard synchronization, in order
+      // to combine the two requests for starting a batch and fetching the
+      // leader state into a single one.
+      
+      // get original logger state data
+      VPackBuilder tmp;
+      engine.createLoggerState(nullptr, tmp);
+      TRI_ASSERT(tmp.slice().isObject());
+      
+      // and now merge it into our response, while rewriting the "lastLogTick"
+      // and "lastUncommittedLogTick"
+      b.add("state", VPackValue(VPackValueType::Object));
+      for (auto it : VPackObjectIterator(tmp.slice())) {
+        if (it.key.stringRef() == "lastLogTick" ||
+            it.key.stringRef() == "lastUncommittedLogTick") {
+          // put into the tick from our own snapshot
+          b.add(it.key.stringRef(), VPackValue(snapTick));
+        } else {
+          // write our other attributes as they are
+          b.add(it.key.stringRef(), it.value);
+        }
+      }
+      b.close(); // state
+    }
     b.close();
 
     _vocbase.replicationClients().track(syncerId, clientId, clientInfo,
@@ -250,7 +282,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   auto data = builder.slice();
 
-  uint64_t const latest = latestSequenceNumber();
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  uint64_t const latest = engine.db()->GetLatestSequenceNumber();
 
   if (result.fail()) {
     generateError(GeneralResponse::responseCode(result.errorNumber()),
@@ -366,6 +399,13 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
+  
+  // "collection" is optional, and may in the DB server case contain the name of
+  // a single shard for shard synchronization
+  std::string collection;
+  if (!isGlobal) {
+    collection = _request->value("collection");
+  }
 
   VPackBuilder builder;
   builder.openObject();
@@ -377,8 +417,15 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
     ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
-    TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    if (collection.empty()) {
+      // all collections in database
+      res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
+      TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    } else {
+      // single collection/shard in database
+      res = ctx->getInventory(_vocbase, collection, builder);
+      TRI_ASSERT(builder.hasKey("collections"));
+    }
   }
 
   if (res.fail()) {
@@ -387,7 +434,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  const std::string snapTick = std::to_string(ctx->snapshotTick());
+  std::string const snapTick = std::to_string(ctx->snapshotTick());
   // <state>
   builder.add("state", VPackValue(VPackValueType::Object));
   builder.add("running", VPackValue(true));
@@ -411,6 +458,8 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
   // to is ignored because the snapshot time is the latest point in time
+  
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   RocksDBReplicationContext* ctx = nullptr;
   // get batchId from url parameters
@@ -641,9 +690,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   bool found = false;
   uint64_t contextId = 0;
 
-  // contains dump options that might need to be inspected
-  // VPackSlice options = _request->payload();
-
   // get collection Name
   std::string const& cname = _request->value("collection");
   if (cname.empty()) {
@@ -684,6 +730,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
+  
+  bool const useEnvelope = _request->parsedValue("useEnvelope", true);
 
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
@@ -694,9 +742,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     buffer.reserve(reserve);  // avoid reallocs
     
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
-    
 
-    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
+    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope);
     // generate the result
     if (res.fail()) {
       generateError(res.result());
@@ -720,17 +767,17 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     StringBuffer dump(reserve, false);
 
     // do the work!
-    res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize());
+    res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize(), useEnvelope);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "replication dump - " + res.errorMessage());
+                      StringUtils::concatT("replication dump - ", res.errorMessage()));
         return;
       }
 
       generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
-                    "replication dump - " + res.errorMessage());
+                    StringUtils::concatT("replication dump - ", res.errorMessage()));
       return;
     }
 

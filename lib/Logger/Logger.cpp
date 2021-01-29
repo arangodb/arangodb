@@ -73,7 +73,7 @@ static std::string const UNKNOWN = "UNKNOWN";
 std::string const LogThreadName("Logging");
 
 class DefaultLogGroup : public LogGroup {
-  std::size_t id() const { return 0; }
+  std::size_t id() const override { return 0; }
 };
 DefaultLogGroup defaultLogGroupInstance;
 
@@ -367,7 +367,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         out.push_back('"');
       }
       // value of date/time is always safe to print
-      LogTimeFormats::writeTime(out, _timeFormat);
+      LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
       if (LogTimeFormats::isStringFormat(_timeFormat)) {
         out.push_back('"');
       }
@@ -466,7 +466,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     out.push_back('}');
   } else {
     // human readable format
-    LogTimeFormats::writeTime(out, _timeFormat);
+    LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
     out.push_back(' ');
 
     // output prefix
@@ -559,7 +559,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
 
-  append(defaultLogGroup(), msg, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
+  append(defaultLogGroup(), msg, false, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
     LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
                                           level, topicId, msg->_message.data(),
                                           msg->_message.size(), true);
@@ -569,9 +569,10 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
 }
 
 void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
+                    bool forceDirect,
                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
-  // some Windows-specifc appenders for the debug output windows and the Windows event log.
+  // some Windows-specifc appenders for the debug output window and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
   LogAppender::logGlobal(group, *msg);
 
@@ -581,12 +582,18 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
   } else {
     // now either queue or output the message
     bool handled = false;
-    if (_threaded) {
+    if (_threaded && !forceDirect) {
       handled = _loggingThread->log(group, msg);
     }
 
     if (!handled) {
       TRI_ASSERT(msg != nullptr);
+
+      TRI_IF_FAILURE("Logger::append") {
+        // cut off all logging
+        return;
+      }
+
       LogAppender::log(group, *msg);
     }
   }

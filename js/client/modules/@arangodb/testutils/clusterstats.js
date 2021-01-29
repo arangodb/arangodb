@@ -32,7 +32,7 @@ const download = internal.download;
 const time = internal.time;
 const sleep = internal.sleep;
 
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 
 const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
 const options = JSON.parse(internal.env.OPTIONS);

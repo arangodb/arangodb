@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,6 +79,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
+  // FIXME change this format to take the raw one?
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections

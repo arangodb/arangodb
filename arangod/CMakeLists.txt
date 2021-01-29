@@ -12,6 +12,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 #generate inside the source tree
 
 if (USE_MAINTAINER_MODE AND NOT MSVC)
+  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -57,6 +59,7 @@ add_library(arango_iresearch
   IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
   IResearch/GeoFilter.cpp IResearch/GeoFilter.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
@@ -162,17 +165,20 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
+  Graph/ClusterGraphDatalake.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KPathFinder.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
+  Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
@@ -180,8 +186,39 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
+  Graph/WeightedEnumerator.cpp
+  Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
+  Graph/Cache/RefactoredTraverserCache.cpp
+  Graph/Enumerators/TwoSidedEnumerator.cpp
+  Graph/Helpers/TraceEntry.cpp
+  Graph/Queues/QueueTracer.cpp
+  Graph/PathManagement/PathResult.cpp
+  Graph/PathManagement/PathStore.cpp
+  Graph/PathManagement/PathStoreTracer.cpp
+  Graph/PathManagement/PathValidator.cpp
+  Graph/Options/TwoSidedEnumeratorOptions.cpp
+  Graph/Providers/SingleServerProvider.cpp
+  Graph/Providers/BaseProviderOptions.cpp
+  Graph/Providers/ProviderTracer.cpp
+  Graph/Types/UniquenessLevel.cpp
+  Graph/Types/ValidationResult.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
+)
+
+set(LIB_ARANGO_PREGEL_AIR_SOURCES
+  Pregel/Algos/AIR/AIR.cpp
+  Pregel/Algos/AIR/AbstractAccumulator.cpp
+  Pregel/Algos/AIR/AccumulatorOptions.cpp
+  Pregel/Algos/AIR/Accumulators.cpp
+  Pregel/Algos/AIR/EdgeData.cpp
+  Pregel/Algos/AIR/GraphFormat.cpp
+  Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/MessageData.cpp
+  Pregel/Algos/AIR/MessageFormat.cpp
+  Pregel/Algos/AIR/VertexComputation.cpp
+  Pregel/Algos/AIR/VertexData.cpp
+  Pregel/Algos/AIR/WorkerContext.cpp
 )
 
 set(LIB_ARANGO_PREGEL_SOURCES
@@ -209,6 +246,8 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
   Pregel/Recovery.cpp
+  Pregel/Reports.cpp
+  Pregel/Reports.h
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
@@ -387,6 +426,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WindowNode.cpp
+  Aql/WindowExecutor.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
 )
@@ -435,11 +476,14 @@ set(LIB_ARANGO_UTILS_SOURCES
   ${ENTERPRISE_FILES}
 )
 
+set(LIB_ARANGO_HEALTH_SOURCES
+  StorageEngine/HealthData.cpp
+)
+
 set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
   StorageEngine/PhysicalCollection.cpp
-  StorageEngine/RocksDBOptionFeature.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
 )
@@ -540,7 +584,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
 set(LIB_ARANGO_V8SERVER_SOURCES
   Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
-  V8Server/FoxxQueuesFeature.cpp
+  V8Server/FoxxFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp
@@ -596,7 +640,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterUpgradeFeature.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
-  Cluster/CriticalThread.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp
@@ -608,7 +651,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
-  Cluster/NonAction.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
@@ -770,11 +812,16 @@ add_library(arango_graph STATIC
 
 add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_SOURCES}
+  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
 )
 
 add_library(arango_aql STATIC
   ${LIB_ARANGO_AQL_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
+)
+
+add_library(arango_health STATIC
+  ${LIB_ARANGO_HEALTH_SOURCES}
 )
 
 add_library(arango_vocbase STATIC
@@ -834,6 +881,10 @@ add_library(arango_rocksdb STATIC
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 
+if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+  target_compile_options(arango_rocksdb PUBLIC "-maes")
+endif ()
+
 add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
 )
@@ -867,6 +918,7 @@ target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/
 # .
 
 target_link_libraries(arango_agency arango)
+target_link_libraries(arango_agency arango_health)
 target_link_libraries(arango_agency arango_iresearch)
 target_link_libraries(arango_agency arango_metrics)
 
@@ -881,6 +933,7 @@ target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)
 target_link_libraries(arango_cache arango::validation)
 
+target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
 
@@ -895,6 +948,7 @@ target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
 target_link_libraries(arango_common_rest_handler arango_iresearch)
 
+target_link_libraries(arango_graph arango)
 target_link_libraries(arango_graph arango_aql)
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
@@ -918,6 +972,7 @@ target_link_libraries(arango_network arango::validation)
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
+target_link_libraries(arango_pregel arango_greenspun)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
@@ -927,6 +982,7 @@ target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 target_link_libraries(arango_rocksdb arango_cache)
 target_link_libraries(arango_rocksdb arango_common_rest_handler)
 target_link_libraries(arango_rocksdb arango_geo)
+target_link_libraries(arango_rocksdb arango_health)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
@@ -1052,6 +1108,7 @@ foreach(TARGET
   arango_cluster_methods
   arango_common_rest_handler
   arango_graph
+  arango_health
   arango_indexes
   arango_metrics
   arango_pregel

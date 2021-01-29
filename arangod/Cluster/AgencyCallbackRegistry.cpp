@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,74 +23,90 @@
 
 #include "AgencyCallbackRegistry.h"
 
-#include <ctime>
-
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
                                                std::string const& callbackBasePath)
-  : _agency(server), _callbackBasePath(callbackBasePath) {}
+  : _agency(server), 
+    _callbackBasePath(callbackBasePath),
+    _totalCallbacksRegistered(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_agency_callback_registered", 0, "Total number of agency callbacks registered")),
+    _callbacksCount(
+        server.getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_agency_callback_count", uint64_t(0), "Current number of agency callbacks registered")) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
-bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
-  uint64_t rand;
-  {
+Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
+  uint64_t id;
+  while (true) {
+    id = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
+
     WRITE_LOCKER(locker, _lock);
-    while (true) {
-      rand = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
-      if (_endpoints.try_emplace(rand, cb).second) {
-        break;
-      }
+    if (_callbacks.try_emplace(id, cb).second) {
+      break;
     }
   }
 
-  
-  bool ok = false;
+  Result res;
   try {
     if (local) {
       auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-      ok = cache.registerCallback(cb->key, rand);
+      res = cache.registerCallback(cb->key, id);
     } else {
-      ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
+      res = _agency.registerCallback(cb->key, getEndpointUrl(id)).asResult();
       cb->local(false);
     }
-    if (!ok) {
-      LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
+    if (res.ok()) {
+      _callbacksCount += 1;
+      ++_totalCallbacksRegistered;
+      return res;
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC("f5330", ERR, Logger::CLUSTER) << "Couldn't register callback " << e.what();
+    res.reset(TRI_ERROR_FAILED, e.what());
   } catch (...) {
-    LOG_TOPIC("1d24f", ERR, Logger::CLUSTER)
-        << "Couldn't register callback. Unknown exception";
+    res.reset(TRI_ERROR_FAILED, "unknown exception");
   }
-  if (!ok) {
+  
+  TRI_ASSERT(res.fail());
+  res.reset(res.errorNumber(),
+            StringUtils::concatT("registering ", (local ? "local " : ""),
+                                 "callback failed: ", res.errorMessage()));
+  LOG_TOPIC("b88f4", WARN, Logger::CLUSTER) << res.errorMessage();
+  
+  {
     WRITE_LOCKER(locker, _lock);
-    _endpoints.erase(rand);
+    _callbacks.erase(id);
   }
-  return ok;
+  return res;
 }
 
 std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id) {
   READ_LOCKER(locker, _lock);
-  auto it = _endpoints.find(id);
+  auto it = _callbacks.find(id);
 
-  if (it == _endpoints.end()) {
+  if (it == _callbacks.end()) {
     return nullptr;
   }
   return (*it).second;
@@ -98,14 +114,14 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id)
 
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
   bool found = false;
-  uint64_t endpointToDelete = 0;
+  uint64_t id = 0;
   {
     // find the key of the callback while only holding a read lock
     READ_LOCKER(locker, _lock);
 
-    for (auto const& it : _endpoints) {
+    for (auto const& it : _callbacks) {
       if (it.second.get() == cb.get()) {
-        endpointToDelete = it.first;
+        id = it.first;
         found = true;
         break;
       }
@@ -117,7 +133,7 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
   if (found) {
     {
       WRITE_LOCKER(locker, _lock);
-      if (_endpoints.erase(endpointToDelete) == 0) {
+      if (_callbacks.erase(id) == 0) {
         // callback not in map anymore. this can only happen if this method
         // is called concurrently for the same callback and one thread has
         // already deleted it from the map. in this case we act like as if
@@ -133,19 +149,20 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
     if (found) {
       if (cb->local()) {
         auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-        cache.unregisterCallback(cb->key, endpointToDelete);
+        cache.unregisterCallback(cb->key, id);
       } else {
-        _agency.unregisterCallback(cb->key, getEndpointUrl(endpointToDelete));
+        _agency.unregisterCallback(cb->key, getEndpointUrl(id));
       }
+      _callbacksCount -= 1;
     }
   }
   return found;
 }
 
-std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t endpoint) const {
+std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t id) const {
   std::stringstream url;
   url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
-      << _callbackBasePath << "/" << endpoint;
+      << _callbackBasePath << "/" << id;
 
   return url.str();
 }
