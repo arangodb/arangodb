@@ -190,7 +190,7 @@ class RocksDBEngine final : public StorageEngine {
   int removeReplicationApplierConfiguration() override;
   int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                           velocypack::Slice slice, bool doSync) override;
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override;
+  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override;
   // TODO worker-safety
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override;
@@ -369,8 +369,9 @@ class RocksDBEngine final : public StorageEngine {
   void shutdownRocksDBInstance() noexcept;
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
   int removeReplicationApplierConfiguration(RocksDBKey const& key);
-  int saveReplicationApplierConfiguration(RocksDBKey const& key,
-                                          arangodb::velocypack::Slice slice, bool doSync);
+  ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                                arangodb::velocypack::Slice slice,
+                                                bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();

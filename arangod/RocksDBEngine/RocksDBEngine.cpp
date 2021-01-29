@@ -1216,16 +1216,16 @@ int RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
   return saveReplicationApplierConfiguration(key, slice, doSync);
 }
 
-int RocksDBEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
-                                                       bool doSync) {
+ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                                             bool doSync) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
   return saveReplicationApplierConfiguration(key, slice, doSync);
 }
 
-int RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key,
-                                                       arangodb::velocypack::Slice slice,
-                                                       bool doSync) {
+ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                                             arangodb::velocypack::Slice slice,
+                                                             bool doSync) {
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
   auto status = rocksutils::convertStatus(

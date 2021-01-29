@@ -1716,7 +1716,7 @@ int StorageEngineMock::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbas
   return TRI_ERROR_NO_ERROR;
 }
 
-int StorageEngineMock::saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) {
+ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) {
   TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }

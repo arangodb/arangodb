@@ -281,7 +281,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
           }
           // fall-through
         } else {
-          int errorNumber = res.errorNumber();
+          auto errorNumber = res.errorNumber();
           res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
                                          res.errorMessage()));
           return res;
@@ -625,7 +625,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     } catch (velocypack::Exception const& e) {
       LOG_TOPIC("b9f4f", ERR, Logger::REPLICATION)
           << "Error parsing VPack response: " << e.what();
-      return Result(e.errorCode(), e.what());
+      return Result(TRI_ERROR_INTERNAL, e.what());
     }
 
   } else {
@@ -655,7 +655,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       } catch (velocypack::Exception const& e) {
         LOG_TOPIC("746ea", ERR, Logger::REPLICATION)
             << "while parsing collection dump: " << e.what();
-        return Result(e.errorCode(), e.what());
+        return Result(TRI_ERROR_INTERNAL, e.what());
       }
 
       p = q + 1;

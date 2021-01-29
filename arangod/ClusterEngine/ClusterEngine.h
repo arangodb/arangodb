@@ -120,7 +120,7 @@ class ClusterEngine final : public StorageEngine {
                                           velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,

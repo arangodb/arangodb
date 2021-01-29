@@ -259,7 +259,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                   arangodb::velocypack::Slice slice,
                                                   bool doSync) override;
-  virtual int saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
+  virtual ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
   virtual arangodb::WalAccess const* walAccess() const override;
