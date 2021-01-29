@@ -26,8 +26,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Transaction/Methods.h"
@@ -61,7 +59,8 @@ aql::AqlValue RefactoredClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentTo
 
 void RefactoredClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
                                                            VPackBuilder& result) {
-  result.add(VPackSlice(token.vpack()));
+  // TODO: to be removed / changed
+  // result.add(getCachedEdge(token.localDocumentId().));
 }
 
 bool RefactoredClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
@@ -105,27 +104,117 @@ bool RefactoredClusterTraverserCache::appendVertex(arangodb::velocypack::StringR
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
-                                                  velocypack::Slice vertexSlice) -> void {
-  _vertexData.try_emplace(vertexId, vertexSlice);
-  std::vector<std::pair<EdgeType, VertexType>> initVector{};
-  _vertexConnectedEdges.try_emplace(vertexId, std::move(initVector));
+                                                  velocypack::Slice vertexSlice,
+                                                  bool backward) -> void {
+  if (backward) {
+    _vertexData.try_emplace(vertexId, vertexSlice);
+  } else {
+    _vertexData.try_emplace(vertexId, vertexSlice);
+  }
 }
+
+namespace {
+VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType origin) {
+  if (edge.isString()) {
+    return VertexType{edge};
+  }
+
+  TRI_ASSERT(edge.isObject());
+  auto from = edge.get(arangodb::StaticStrings::FromString);
+  TRI_ASSERT(from.isString());
+  if (from.stringRef() == origin.stringRef()) {
+    auto to = edge.get(arangodb::StaticStrings::ToString);
+    TRI_ASSERT(to.isString());
+    return VertexType{to};
+  }
+  return VertexType{from};
+}
+}  // namespace
 
 auto RefactoredClusterTraverserCache::cacheEdge(VertexType origin, EdgeType edgeId,
-                                                velocypack::Slice edgeSlice) -> void {
-  TRI_ASSERT(isVertexCached(origin));
+                                                velocypack::Slice edgeSlice,
+                                                bool backward) -> void {
+  TRI_ASSERT(isVertexCached(origin, backward));
 
-  _edgeData.try_emplace(edgeId, edgeSlice);
-  auto& edgeVector = _vertexConnectedEdges.at(origin);
+  auto edgeToEmplace =
+      std::pair{edgeId, VertexType{getEdgeDestination(edgeSlice, origin)}};
+  std::vector<std::pair<EdgeType, VertexType>> initVector{};
 
-  auto edgeToEmplace = std::pair{edgeId, VertexType{edgeSlice.get(StaticStrings::ToString)}};
-  edgeVector.emplace_back(std::move(edgeToEmplace));
+  // TODO: in the future handle ANY as well
+  if (backward) {
+    _edgeDataBackward.try_emplace(edgeId, edgeSlice);
+    _vertexConnectedEdgesBackward.try_emplace(origin, initVector); // TODO inert only if needed (better init)
+    auto& edgeVectorBackward = _vertexConnectedEdgesBackward.at(origin);
+    edgeVectorBackward.emplace_back(std::move(edgeToEmplace));
+  } else {
+    _edgeDataForward.try_emplace(edgeId, edgeSlice);
+    _vertexConnectedEdgesForward.try_emplace(origin, initVector); // TODO insert only if needed (better init)
+    auto& edgeVectorForward = _vertexConnectedEdgesForward.at(origin);
+    edgeVectorForward.emplace_back(std::move(edgeToEmplace));
+  }
 }
 
-auto RefactoredClusterTraverserCache::isVertexCached(VertexType vertexKey) -> bool {
+auto RefactoredClusterTraverserCache::getVertexRelations(const VertexType& vertex, bool backward)
+    -> std::vector<std::pair<EdgeType, VertexType>> {
+  TRI_ASSERT(isVertexCached(vertex, backward));
+
+  if (!isVertexRelationCached(vertex, backward)) {
+    return {};
+  }
+
+  if (backward) {
+    return _vertexConnectedEdgesBackward.at(vertex);
+  }
+
+  return _vertexConnectedEdgesForward.at(vertex);
+}
+
+auto RefactoredClusterTraverserCache::isVertexCached(VertexType vertexKey, bool backward)
+    -> bool {
+  if (backward) {
+    return (_vertexData.find(vertexKey) == _vertexData.end()) ? false : true;
+  }
   return (_vertexData.find(vertexKey) == _vertexData.end()) ? false : true;
 }
 
-auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType edgeKey) -> bool {
-  return (_edgeData.find(edgeKey) == _edgeData.end()) ? false : true;
+auto RefactoredClusterTraverserCache::isVertexRelationCached(VertexType vertexKey,
+                                                             bool backward) -> bool {
+  if (backward) {
+    return (_vertexConnectedEdgesBackward.find(vertexKey) ==
+            _vertexConnectedEdgesBackward.end())
+               ? false
+               : true;
+  }
+  return (_vertexConnectedEdgesForward.find(vertexKey) ==
+          _vertexConnectedEdgesForward.end())
+             ? false
+             : true;
+}
+
+auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType edgeKey, bool backward) -> bool {
+  if (backward) {
+    return (_edgeDataBackward.find(edgeKey) == _edgeDataBackward.end()) ? false : true;
+  }
+  return (_edgeDataForward.find(edgeKey) == _edgeDataForward.end()) ? false : true;
+}
+
+auto RefactoredClusterTraverserCache::getCachedVertex(VertexType vertex, bool backward)
+    -> VPackSlice {
+  if (!isVertexCached(vertex, backward)) {
+    return VPackSlice::noneSlice();
+  }
+  if (backward) {
+    return _vertexData.at(vertex);
+  }
+  return _vertexData.at(vertex);
+}
+
+auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType edge, bool backward) -> VPackSlice {
+  if (!isEdgeCached(edge, backward)) {
+    return VPackSlice::noneSlice();
+  }
+  if (backward) {
+    return _edgeDataBackward.at(edge);
+  }
+  return _edgeDataForward.at(edge);
 }
