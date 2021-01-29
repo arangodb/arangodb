@@ -161,17 +161,17 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
           arangodb_agency_write_hist)),
       _commit_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_commit_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
+          "arangodb_agency_commit_hist", log_scale_t(2.f, 0.f, 200.f, 10),
           "Agency RAFT commit histogram [ms]",
           arangodb_agency_commit_hist)),
       _append_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_append_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
+          "arangodb_agency_append_hist", log_scale_t(2.f, 0.f, 200.f, 10),
           "Agency RAFT follower append histogram [ms]",
           arangodb_agency_append_hist)),
       _compaction_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_compaction_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
+          "arangodb_agency_compaction_hist", log_scale_t(2.f, 0.f, 200.f, 10),
           "Agency compaction histogram [ms]",
           arangodb_agency_compaction_hist)),
       _local_index(

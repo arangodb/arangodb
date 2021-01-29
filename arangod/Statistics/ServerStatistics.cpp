@@ -192,7 +192,7 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
                          arangodb_collection_lock_acquisition_micros)),
       _lockTimes(
         _metrics.histogram("arangodb_collection_lock_acquisition_time",
-                           log_scale_t(10., 0.0, 1000.0, 11),
+                           log_scale_t(8., 0.0, 1000.0, 11),
                            "Collection lock acquisition time histogram [s]",
                            arangodb_collection_lock_acquisition_time)),
       _sequentialLocks(
@@ -224,32 +224,32 @@ void TransactionStatistics::setupDocumentMetrics() {
                      arangodb_collection_truncates_replication);
   _rocksdb_read_sec = 
     _metrics.histogram("arangodb_document_read_time",
-                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       log_scale_t<float>(8., 0.0, 1000.0, 11),
                        "Total time spent in document read operations [s]",
                        arangodb_document_read_time);
   _rocksdb_insert_sec = 
     _metrics.histogram("arangodb_document_insert_time",
-                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       log_scale_t<float>(8., 0.0, 1000.0, 11),
                        "Total time spent in document insert operations [s]",
                        arangodb_document_insert_time);
   _rocksdb_replace_sec =
     _metrics.histogram("arangodb_document_replace_time",
-                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       log_scale_t<float>(8., 0.0, 1000.0, 11),
                        "Total time spent in document replace operations [s]",
                        arangodb_document_replace_time);
   _rocksdb_remove_sec =
     _metrics.histogram("arangodb_document_remove_time",
-                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       log_scale_t<float>(8., 0.0, 1000.0, 11),
                        "Total time spent in document remove operations [s]",
                        arangodb_document_remove_time);
   _rocksdb_update_sec =
     _metrics.histogram("arangodb_document_update_time",
-                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       log_scale_t<float>(8., 0.0, 1000.0, 11),
                        "Total time spent in document update operations [s]",
                        arangodb_document_update_time);
   _rocksdb_truncate_sec =
     _metrics.histogram("arangodb_collection_truncate_time",
-                       log_scale_t<float>(10., 0.0, 1000.0, 11),
+                       log_scale_t<float>(8., 0.0, 1000.0, 11),
                        "Total time spent in collcection truncate operations [s]",
                        arangodb_collection_truncate_time);
 }
