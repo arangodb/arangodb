@@ -180,7 +180,7 @@ template<typename T> class Gauge : public Metric {
   
   void toPrometheus(std::string& result, bool withDocs = false) const override {
     result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + (withDocs ? cleanedDocs() : help()) + "\n";
+    result += "#HELP " + name() + " " + (withDocs ? cleanedDocs() : help()) + "\n" + name();
     if (!labels().empty()) {
       result += "{" + labels() + "}";
     }
