@@ -146,7 +146,7 @@ struct SingleServerProvider {
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
-  arangodb::ResourceMonitor* resourceMonitor();
+  arangodb::ResourceMonitor& resourceMonitor();
 
   aql::TraversalStats stealStats();
 

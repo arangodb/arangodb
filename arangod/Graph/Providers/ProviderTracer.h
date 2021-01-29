@@ -79,7 +79,7 @@ class ProviderTracer {
 
   [[nodiscard]] transaction::Methods* trx();
 
-  arangodb::ResourceMonitor* resourceMonitor();
+  arangodb::ResourceMonitor& resourceMonitor();
 
  private:
   ProviderImpl _impl;

@@ -178,8 +178,9 @@ arangodb::transaction::Methods* SingleServerProvider::trx() {
   return _trx.get();
 }
 
-arangodb::ResourceMonitor* SingleServerProvider::resourceMonitor() {
-  return _resourceMonitor;
+arangodb::ResourceMonitor& SingleServerProvider::resourceMonitor() {
+  TRI_ASSERT(_resourceMonitor != nullptr);
+  return *_resourceMonitor;
 }
 
 arangodb::aql::QueryContext* SingleServerProvider::query() const {
