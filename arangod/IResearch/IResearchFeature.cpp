@@ -639,8 +639,7 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
     task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL |
                         arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;  // db-server
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
-                         arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
     task.action = &upgradeArangoSearchLinkCollectionName;
     upgrade.addTask(std::move(task));
   }
