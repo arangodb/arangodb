@@ -155,7 +155,7 @@ struct BaseOptions {
   TraverserCache* refactoredCache();
   TraverserCache* cache() const;
   void ensureCache();
-  arangodb::graph::RefactoredClusterTraverserCache* ensureRefactoredCache();
+  void ensureRefactoredCache();
 
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, aql::EngineId> const* engines);

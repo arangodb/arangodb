@@ -39,10 +39,13 @@ RefactoredClusterEdgeCursor::RefactoredClusterEdgeCursor(
     arangodb::transaction::Methods* trx,
     arangodb::aql::FixedVarExpressionContext const& expressionContext,
     RefactoredClusterTraverserCache* cache, bool backward)
-    : _trx(trx), _expressionContext(expressionContext), _cache(cache), _backward(backward) {}
+    : _trx(trx), _expressionContext(expressionContext) {}
 
 RefactoredClusterEdgeCursor::~RefactoredClusterEdgeCursor() {}
 
+/*
+ * TODO: Think we can get rid of the complete class.
+ * TODO: Check if needed (moved)
 #ifdef USE_ENTERPRISE
 static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
   // for skipInaccessibleCollections we need to check the edge
@@ -53,7 +56,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
   TRI_ASSERT(pos != std::string::npos);
   return trx->isInaccessibleCollection(str.substr(0, pos).toString());
 }
-#endif
+#endif*/
 
 void RefactoredClusterEdgeCursor::rearm() {
   _edgeList.clear();
