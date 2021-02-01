@@ -287,12 +287,12 @@ RestStatus RestStatusHandler::executeOverview() {
 RestStatus RestStatusHandler::executeMemoryProfile() {
 #if defined(USE_MEMORY_PROFILE)
   long err;
-  std::string filename;
+  std::string fileName;
   std::string msg;
-  int res = TRI_GetTempName(nullptr, filename, true, err, msg);
+  int res = TRI_GetTempName(nullptr, fileName, true, err, msg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::INTERNAL_ERROR, res, msg);
+    generateError(rest::ResponseCode::SERVER_ERROR, res, msg);
   } else {
     char const* f = fileName.c_str();
     try {
