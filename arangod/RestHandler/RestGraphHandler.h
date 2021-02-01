@@ -58,9 +58,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
  private:
 
-  Result returnError(int errorNumber);
+  Result returnError(ErrorCode errorNumber);
 
-  Result returnError(int errorNumber, char const* message);
+  Result returnError(ErrorCode errorNumber, std::string_view message);
   
   arangodb::Result executeGharial();
 
