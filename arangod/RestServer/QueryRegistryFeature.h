@@ -67,6 +67,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
 #endif
+  uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   double queryMaxRuntime() const { return _queryMaxRuntime; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
@@ -81,10 +82,12 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _trackDataSources;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
+  bool _queryMemoryLimitOverride;
 #ifdef USE_ENTERPRISE
   bool _smartJoins;
   bool _parallelizeTraversals;
 #endif
+  uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
   uint64_t _maxQueryPlans;

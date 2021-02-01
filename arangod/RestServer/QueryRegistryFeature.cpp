@@ -100,10 +100,12 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackDataSources(false),
       _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
+      _queryMemoryLimitOverride(true),
 #ifdef USE_ENTERPRISE
       _smartJoins(true),
       _parallelizeTraversals(true),
 #endif
+      _queryGlobalMemoryLimit(0),
       _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue())),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
@@ -152,11 +154,22 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.query-cache-max-results",
                         "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
+  
+  options->addOption("--query.global-memory-limit",
+                     "memory threshold for all AQL queries combined (in bytes, 0 = no limit)",
+                     new UInt64Parameter(&_queryGlobalMemoryLimit, PhysicalMemory::getValue()),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
+                     .setIntroducedIn(30800);
 
   options->addOption("--query.memory-limit",
-                     "memory threshold for AQL queries (in bytes, 0 = no limit)",
+                     "memory threshold per AQL query (in bytes, 0 = no limit)",
                      new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  
+  options->addOption("--query.memory-limit-override",
+                     "allow increasing per-query memory limits for individual queries",
+                     new BooleanParameter(&_queryMemoryLimitOverride))
+                     .setIntroducedIn(30800);
   
   options->addOption("--query.max-runtime",
                      "runtime threshold for AQL queries (in seconds, 0 = no limit)",
@@ -259,6 +272,13 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_queryGlobalMemoryLimit > 0 &&
+      _queryMemoryLimit > _queryGlobalMemoryLimit) {
+    LOG_TOPIC("2af5f", FATAL, Logger::AQL)
+        << "invalid value for `--query.global-memory-limit`. expecting 0 or a value >= `--query.memory-limit`";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_queryMaxRuntime < 0.0) {
     LOG_TOPIC("46572", FATAL, Logger::AQL)
         << "invalid value for `--query.max-runtime`. expecting 0 or a positive value";
@@ -283,15 +303,21 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
     // set to default value based on instance type
     _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
   }
+
+  TRI_ASSERT(_queryGlobalMemoryLimit == 0 || _queryMemoryLimit <= _queryGlobalMemoryLimit);
   
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
   aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
   aql::QueryOptions::defaultTtl = _queryRegistryTTL;
   aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
+  aql::QueryOptions::allowMemoryLimitOverride = _queryMemoryLimitOverride;
 }
 
 void QueryRegistryFeature::prepare() {
+  // adjust global memory limit
+  ResourceMonitor::setGlobalMemoryLimit(_queryGlobalMemoryLimit);
+
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
     // for the cluster

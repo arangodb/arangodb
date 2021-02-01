@@ -58,8 +58,11 @@ struct ResourceMonitor final {
   ~ResourceMonitor();
 
   void setMemoryLimit(std::size_t value) { maxMemoryUsage = value; }
-
+  
   std::size_t memoryLimit() const { return maxMemoryUsage; }
+  
+  static void setGlobalMemoryLimit(std::size_t value) { maxGlobalMemoryUsage = value; }
+  static std::size_t globalMemoryLimit() { return maxGlobalMemoryUsage; }
 
   /// @brief increase memory usage by <value> bytes. may throw!
   void increaseMemoryUsage(std::size_t value);
@@ -76,11 +79,12 @@ struct ResourceMonitor final {
     return currentResources.memoryUsage.load(std::memory_order_relaxed);
   }
 
-  
  private:
-
   ResourceUsage currentResources;
   std::size_t maxMemoryUsage;
+
+  static std::size_t maxGlobalMemoryUsage;
+  static std::atomic<std::size_t> globalMemoryUsage;
 };
 
 /// @brief RAII object for temporary resource tracking

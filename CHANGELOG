@@ -1,6 +1,27 @@
 devel
 -----
 
+* Added startup option `--query.global-memory-limit` to set a limit on the
+  combined estimated memory usage of all AQL queries (in bytes). 
+  If this option has a value of `0`, then no memory limit is in place. 
+  This is also the default value and the same behavior as in previous versions
+  of ArangoDB. 
+  Setting the option to a value greater zero will mean that the total memory
+  usage of all AQL queries will be limited to the configured value. The limit
+  is enforced by each server, i.e. it can be set independently for coordinators,
+  DB servers etc. The limit is approximate, in the same fashion as the per-query
+  limit provided by the option `--query.memory-limit` is.
+  If both `--query.global-memory-limit` and `--query.memory-limit` are set,
+  the former must be at least as high as the latter.
+
+* Added startup option `--query.memory-limit-override` to control whether
+  individual AQL queries can increase their memory limit via the `memoryLimit`
+  query option. This is the default, so a query that increases its memory limit
+  is allowed to use more memory.
+  The new option `--query.memory-limit-override` allows turning this behavior 
+  off, so that individual queries can only lower their maximum allowed memory
+  usage. 
+
 * Fixed issue #12363: Foxx HTTP API upgrade/replace always enables
   development mode.
 

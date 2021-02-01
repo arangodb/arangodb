@@ -24,6 +24,9 @@
 #include "Basics/ResourceUsage.h"
 
 using namespace arangodb;
+  
+/*static*/ std::size_t ResourceMonitor::maxGlobalMemoryUsage = 0;
+/*static*/ std::atomic<std::size_t> ResourceMonitor::globalMemoryUsage;
 
 ResourceMonitor::~ResourceMonitor() {
   // this assertion is here to ensure that our memory usage tracking works
@@ -39,6 +42,18 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
     currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
   }
+
+  // track global memory usage
+  if (maxGlobalMemoryUsage > 0) {
+    std::size_t currentGlobal = value + globalMemoryUsage.fetch_add(value, std::memory_order_relaxed);
+    if (ADB_UNLIKELY(currentGlobal > maxGlobalMemoryUsage)) {
+      if (maxMemoryUsage > 0) {
+        currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+      }
+      globalMemoryUsage.fetch_sub(value, std::memory_order_relaxed);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "global memory limit exceeded");
+    }
+  }
   
   std::size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
   while (peak < current) {
@@ -53,6 +68,11 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
 void ResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
   [[maybe_unused]] std::size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(previous >= value);
+  
+  if (maxGlobalMemoryUsage > 0) {
+    [[maybe_unused]] std::size_t previous = globalMemoryUsage.fetch_sub(value, std::memory_order_relaxed);
+    TRI_ASSERT(previous >= value);
+  }
 }
   
 ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::size_t value)
