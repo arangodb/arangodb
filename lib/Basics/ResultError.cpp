@@ -43,14 +43,14 @@ Error::Error(int errorNumber, std::string_view errorMessage)
 
 auto Error::errorNumber() const noexcept -> int { return _errorNumber; }
 
-auto Error::errorMessage() const& -> std::string_view {
+auto Error::errorMessage() const& noexcept -> std::string_view {
   if (!_errorMessage.empty()) {
     return _errorMessage;
   }
   return TRI_errno_string(_errorNumber);
 }
 
-auto Error::errorMessage() && -> std::string {
+auto Error::errorMessage() && noexcept -> std::string {
   if (!_errorMessage.empty()) {
     return std::move(_errorMessage);
   }

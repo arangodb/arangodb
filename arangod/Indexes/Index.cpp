@@ -1016,9 +1016,7 @@ void Index::warmup(arangodb::transaction::Methods*, std::shared_ptr<basics::Loca
 /// @brief generate error message
 /// @param key the conflicting key
 Result& Index::addErrorMsg(Result& r, std::string const& key) {
-  return r.withError([this,&key](result::Error& err) {
-    addErrorMsg(err, key);
-  });
+  return r.withError([this, &key](result::Error& err) { addErrorMsg(err, key); });
 }
 
 void Index::addErrorMsg(result::Error& r, std::string const& key) {

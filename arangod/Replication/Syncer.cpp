@@ -124,7 +124,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
   using arangodb::OperationOptions;
   using arangodb::OperationResult;
   using arangodb::Result;
-  
+
   // key must not be empty
   auto const keySlice = slice.get(arangodb::StaticStrings::KeyString);
   if (!keySlice.isString() || keySlice.getStringLength() == 0) {
@@ -147,11 +147,12 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
     try {
       OperationResult opRes(Result(), options);
+      auto potentiallyConflictingKey = std::string{};
       bool useReplace = false;
 
-      // if we are about to process a single document marker we first check if the target 
-      // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
-      // on with a replace.
+      // if we are about to process a single document marker we first check if
+      // the target document exists. if yes, we don't try an insert (which would
+      // fail anyway) but carry on with a replace.
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
       if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
         // determine if we already have this revision or need to replace the
@@ -165,7 +166,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
         // need to replace the one we have
         useReplace = true;
-        conflictingDocumentKey = keySlice.stringView();
+        potentiallyConflictingKey = keySlice.copyString();
       }
 
       if (!useReplace) {
@@ -173,16 +174,20 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         opRes = trx.insert(coll->name(), slice, options);
         if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           useReplace = true;
-          conflictingDocumentKey = opRes.errorMessage();
+          // In this case (and this case only), the errorMessage contains the
+          // conflicting document's key.
+          potentiallyConflictingKey = opRes.errorMessage();
+        } else {
+          potentiallyConflictingKey.clear();
         }
       }
 
       if (useReplace) {
-        if (keySlice.stringView() != conflictingDocumentKey) {
+        if (keySlice.stringView() != potentiallyConflictingKey) {
           // different key
           if (trx.isSingleOperationTransaction()) {
             // return the conflicting document's key to retry
-            conflictingDocumentKey = keySlice.stringView();
+            conflictingDocumentKey = potentiallyConflictingKey;
             return Result(TRI_ERROR_ARANGO_TRY_AGAIN);
           }
 
@@ -588,7 +593,8 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
     decltype(_state.applier._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res = ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice, conflictingDocumentKey);
+      Result res = ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice,
+                                                       conflictingDocumentKey);
 
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
@@ -607,7 +613,8 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
       // retry
     }
   } else {
-    return ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice, conflictingDocumentKey);
+    return ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice,
+                                               conflictingDocumentKey);
   }
 }
 
