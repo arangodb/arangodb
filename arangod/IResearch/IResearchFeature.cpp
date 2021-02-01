@@ -618,7 +618,8 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
     task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
                         | arangodb::methods::Upgrade::Flags::CLUSTER_NONE           // local server
                         | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
+                         arangodb::methods::Upgrade::Flags::DATABASE_ONLY_ONCE;
     task.action = &upgradeSingleServerArangoSearchView0_1;
     upgrade.addTask(std::move(task));
   }
@@ -632,7 +633,7 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
     task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL |
                         arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;  // db-server
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_ONLY_ONCE |
                          arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
     task.action = &upgradeArangoSearchLinkCollectionName;
     upgrade.addTask(std::move(task));

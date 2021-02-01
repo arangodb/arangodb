@@ -306,7 +306,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
     if (!(t.databaseFlags & dbFlag)) {
       // special optimization: for local server and new database,
       // an upgrade-only task can be viewed as executed.
-      if (isLocal && dbFlag == DATABASE_INIT && t.databaseFlags == DATABASE_UPGRADE) {
+      if (isLocal && dbFlag == DATABASE_INIT && (t.databaseFlags & DATABASE_ONLY_ONCE)) {
         vinfo.tasks.try_emplace(t.name, true);
       }
       LOG_TOPIC("346ba", DEBUG, Logger::STARTUP)
