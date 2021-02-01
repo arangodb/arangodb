@@ -454,6 +454,7 @@ class Index {
   /// @brief generate error result
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
+  void addErrorMsg(result::Error& err, std::string const& key);
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified
