@@ -409,7 +409,7 @@ if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
   # this may fail on shallow clones that only knows about a limited number of commits.
   # if there is an older merged revision the head, it may not be available to git.
   if (NOT GIT_OUTPUT)
-      set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
+      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
       set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
     else()
       string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
