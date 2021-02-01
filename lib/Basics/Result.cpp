@@ -76,7 +76,9 @@ auto Result::operator=(Result const& other) -> Result& {
   return *this;
 }
 
-auto Result::ok() const noexcept -> bool { return errorNumber() == TRI_ERROR_NO_ERROR; }
+auto Result::ok() const noexcept -> bool {
+  return errorNumber() == TRI_ERROR_NO_ERROR;
+}
 
 auto Result::fail() const noexcept -> bool { return !ok(); }
 
@@ -92,7 +94,9 @@ auto Result::is(int errorNumber) const noexcept -> bool {
   return this->errorNumber() == errorNumber;
 }
 
-auto Result::isNot(int errorNumber) const noexcept -> bool { return !is(errorNumber); }
+auto Result::isNot(int errorNumber) const noexcept -> bool {
+  return !is(errorNumber);
+}
 
 auto Result::reset() noexcept -> Result& {
   _error.reset();
