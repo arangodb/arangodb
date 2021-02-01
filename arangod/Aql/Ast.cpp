@@ -61,8 +61,9 @@ using namespace arangodb::aql;
 namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
-   
-[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query, int code, char const* details) {
+
+[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
+                                      ErrorCode code, char const* details) {
   std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
   query.warnings().registerError(code, msg.c_str());
 }

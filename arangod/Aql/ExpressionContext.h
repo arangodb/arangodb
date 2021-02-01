@@ -55,8 +55,8 @@ class ExpressionContext {
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const = 0;
 
-  virtual void registerWarning(int errorCode, char const* msg) = 0;
-  virtual void registerError(int errorCode, char const* msg) = 0;
+  virtual void registerWarning(ErrorCode errorCode, char const* msg) = 0;
+  virtual void registerError(ErrorCode errorCode, char const* msg) = 0;
 
   virtual icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                                bool caseInsensitive) = 0;

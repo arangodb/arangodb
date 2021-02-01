@@ -1370,7 +1370,7 @@ void registerWarning(ExpressionContext* expressionContext,
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, int code) {
+                     char const* functionName, ErrorCode code) {
   if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
       code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
@@ -1381,7 +1381,8 @@ void registerWarning(ExpressionContext* expressionContext,
   expressionContext->registerWarning(code, msg.c_str());
 }
 
-void registerError(ExpressionContext* expressionContext, char const* functionName, int code) {
+void registerError(ExpressionContext* expressionContext,
+                   char const* functionName, ErrorCode code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {

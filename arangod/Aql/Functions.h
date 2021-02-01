@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_FUNCTIONS_H
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
+#include <Basics/ErrorCode.h>
 #include "Aql/AqlValue.h"
 #include "Containers/SmallVector.h"
 
@@ -48,8 +49,8 @@ typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            AstNode const&,
                                            VPackFunctionParameters const&);
 
-void registerError(ExpressionContext* expressionContext, char const* functionName, int code);
-void registerWarning(ExpressionContext* expressionContext, char const* functionName, int code);
+void registerError(ExpressionContext* expressionContext, char const* functionName, ErrorCode code);
+void registerWarning(ExpressionContext* expressionContext, char const* functionName, ErrorCode code);
 void registerWarning(ExpressionContext* expressionContext, char const* functionName, Result const& rr);
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext, char const* functionName);
 

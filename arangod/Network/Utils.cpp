@@ -42,8 +42,8 @@
 namespace arangodb {
 namespace network {
 
-int resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
-                       network::EndpointSpec& spec) {
+ErrorCode resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
+                             network::EndpointSpec& spec) {
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
