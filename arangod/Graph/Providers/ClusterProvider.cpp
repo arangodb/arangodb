@@ -178,9 +178,9 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
         isPayloadCached = true;
       }
 
-      if (!_opts.getCache()->isVertexCached(vertexKey, _opts.isBackward())) {
+      if (!_opts.getCache()->isVertexCached(vertexKey)) {
         // Protected by datalake (Cache)
-        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value, _opts.isBackward());
+        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value);
       }
     }
 
@@ -198,7 +198,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
 
   // TODO: think about better way -> we need to do that after edges are fetched as well!
   for (auto& lE : looseEnds) {
-    if (_opts.getCache()->isVertexCached(lE->getVertexIdentifier(), _opts.isBackward())) {
+    if (_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
 
       lE->setFetched();
       result.emplace_back(std::move(lE));
@@ -208,8 +208,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
 
 Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& vertexId,
                                                            size_t& depth) {
+  // TODO: Currently unused, merge with below fetchEdgesFromEnginesWithVariables method later
   auto const* engines = _opts.getCache()->engines();
-  auto& cache = _opts.getCache()->cache();
   size_t& filtered = _opts.getCache()->filteredDocuments();
   size_t& read = _opts.getCache()->insertedDocuments();
 
@@ -266,8 +266,8 @@ Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& ver
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
-    VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
+    VPackSlice edges = resSlice.get("edges");
     VPackArrayIterator allEdges(edges);
 
     for (VPackSlice e : allEdges) {
@@ -279,11 +279,11 @@ Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& ver
         continue;
       }
 
-      arangodb::velocypack::HashedStringRef idRef(id);
-      auto resE = cache.try_emplace(idRef, e);
-      if (resE.second) {
-        // This edge is not yet cached.
+      arangodb::velocypack::HashedStringRef edgeIdRef(id);
+
+      if (!_opts.getCache()->isEdgeCached(edgeIdRef, _opts.isBackward())) {
         allCached = false;
+        _opts.getCache()->cacheEdge(vertexId, edgeIdRef, e, _opts.isBackward());
       }
     }
     if (!allCached) {
@@ -295,10 +295,6 @@ Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& ver
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   auto const* engines = _opts.getCache()->engines();
-  //auto& cache = _opts.getCache()->cache();  // TODO: remove me or use me below
-
-  // TODO map id => ServerID if possible
-  // And go fast-path
 
   // TODO: adjust comment or implement
   // This function works for one specific vertex
@@ -360,7 +356,6 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
       }
 
       arangodb::velocypack::HashedStringRef edgeIdRef(id);
-      // auto resE = cache.try_emplace(edgeIdRef, e);  // TODO: add new cache entry method REMOVE ME
 
       if (!_opts.getCache()->isEdgeCached(edgeIdRef, _opts.isBackward())) {
         allCached = false;
@@ -450,7 +445,7 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
-  TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID(), _opts.isBackward()));
+  TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   for (auto const& relation :
        _opts.getCache()->getVertexRelations(vertex.getID(), _opts.isBackward())) {
     callback(Step{relation.second, relation.first, previous});
@@ -459,7 +454,7 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
 
 void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
                                          arangodb::velocypack::Builder& builder) {
-  builder.add(_opts.getCache()->getCachedVertex(vertex.getID(), _opts.isBackward()));
+  builder.add(_opts.getCache()->getCachedVertex(vertex.getID()));
   // TRI_ASSERT(!vertex.getData().isNull()); TODO check
 };
 

@@ -65,12 +65,6 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
 
   ~RefactoredClusterTraverserCache() = default;
 
-  using Cache =
-      std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>;
-
-  /// @brief will convert the EdgeDocumentToken to a slice
-  arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
   ///        into the given builder. No need for actual lookup
@@ -89,14 +83,11 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
   ///        The document will either be fetched from storage or looked up in
   ///        the datalake (on the coordinator)
   //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const& idToken) override;
 
-  std::unordered_map<ServerID, aql::EngineId> const* engines() const {
+
+  [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines() const {
     return _engines;
   }
-
-  /// Map of already fetched vertices and edges (raw _id attribute)
-  Cache& cache() noexcept { return _cache; }
 
   arangodb::graph::ClusterGraphDatalake& datalake() noexcept {
     return _datalake;
@@ -108,23 +99,22 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
 
   auto insertEdgeIntoResult(EdgeType const& token, VPackBuilder& result) -> void;
 
-  auto cacheVertex(VertexType const& vertex, velocypack::Slice vertexSlice, bool backward) -> void;
+  auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
   auto cacheEdge(VertexType origin, EdgeType edgeId, velocypack::Slice edgeSlice, bool backward) -> void;
 
-  auto isVertexCached(VertexType vertex, bool backward) -> bool;
-  auto isVertexRelationCached(VertexType vertex, bool backward) -> bool;
-  auto isEdgeCached(EdgeType edge, bool backward) -> bool;
+  auto isVertexCached(VertexType const& vertexKey) -> bool;
+  auto isVertexRelationCached(VertexType const& vertex, bool backward) -> bool;
+  auto isEdgeCached(EdgeType const& edge, bool backward) -> bool;
 
   auto getVertexRelations(VertexType const& vertex, bool backward)
       -> std::vector<std::pair<EdgeType, VertexType>>;
 
-  auto getCachedVertex(VertexType vertex, bool backward) -> VPackSlice;
-
-  auto getCachedEdge(EdgeType edge, bool backward) -> VPackSlice;
+  auto getCachedVertex(VertexType const& vertex) -> VPackSlice;
+  auto getCachedEdge(EdgeType const& edge, bool backward) -> VPackSlice;
 
  private:
-  /// @brief link by _id into our data dump
-  Cache _cache; // TODO can be removed - new data structure end of file
+  /// @brief only used
+
 
   /// @brief dump for our edge and vertex documents
   arangodb::graph::ClusterGraphDatalake _datalake;
