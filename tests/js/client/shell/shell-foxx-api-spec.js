@@ -30,7 +30,7 @@ function loadFoxxIntoZip(path) {
   };
 }
 
-function installFoxx(mountpoint, which) {
+function installFoxx(mountpoint, which, mode) {
   let headers = {};
   let content;
   if (which.type === 'js') {
@@ -51,11 +51,19 @@ function installFoxx(mountpoint, which) {
     content = fs.readFileSync(which.buffer);
   }
   let devmode = '';
-  if (which.hasOwnProperty('devmode') && which.devmode === true) {
-    devmode = '&development=true';
+  if (typeof which.devmode === "boolean") {
+    devmode = `&development=${which.devmode}`;
   }
-  const crudResp = arango.POST('/_api/foxx?mount=' + mountpoint + devmode, content, headers);
+  let crudResp;
+  if (mode === "upgrade") {
+    crudResp = arango.PATCH('/_api/foxx/service?mount=' + mountpoint + devmode, content, headers);
+  } else if (mode === "replace") {
+    crudResp = arango.PUT('/_api/foxx/service?mount=' + mountpoint + devmode, content, headers);
+  } else {
+    crudResp = arango.POST('/_api/foxx?mount=' + mountpoint + devmode, content, headers);
+  }
   expect(crudResp).to.have.property('manifest');
+  return crudResp;
 }
 
 function deleteFoxx(mountpoint) {
@@ -1080,6 +1088,54 @@ describe('Foxx service', () => {
     expect(devResp.development).to.equal(false);
     const respAfter = arango.GET('/_api/foxx/service?mount=' + mount);
     expect(respAfter.development).to.equal(false);
+  });
+
+  it('upgrade should retain production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('upgrade should retain development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('upgrade should affect production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "upgrade");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('upgrade should affect development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "upgrade");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should retain production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should revert development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should affect production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "replace");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('replace should affect development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "replace");
+    expect(resp.development).to.eql(false);
   });
 
   const routes = [
