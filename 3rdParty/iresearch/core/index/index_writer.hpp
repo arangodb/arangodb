@@ -43,7 +43,7 @@
 
 #include <atomic>
 
-NS_ROOT
+namespace iresearch {
 
 class comparer;
 class bitvector;
@@ -289,7 +289,7 @@ class IRESEARCH_API index_writer
 
       auto clear_busy = make_finally([ctx, segment]()->void {
         if (!--segment->active_count_) {
-          SCOPED_LOCK(ctx->mutex_); // lock due to context modification and notification
+          auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification and notification
           ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
         }
       });
@@ -432,6 +432,12 @@ class IRESEARCH_API index_writer
     size_t segment_memory_max{0};
   };
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief functor for creating payload. Operation tick is provided for 
+  /// payload generation.
+  ////////////////////////////////////////////////////////////////////////////
+  using payload_provider_t = std::function<bool(uint64_t, bstring&)>;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief options the the writer should use after creation
   //////////////////////////////////////////////////////////////////////////////
@@ -440,6 +446,11 @@ class IRESEARCH_API index_writer
     /// @brief returns column info the writer should use for columnstore
     ////////////////////////////////////////////////////////////////////////////
     column_info_provider_t column_info;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief Provides payload for index_meta created by writer
+    ////////////////////////////////////////////////////////////////////////////
+    payload_provider_t meta_payload_provider;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief comparator defines physical order of documents in each segment
@@ -489,9 +500,49 @@ class IRESEARCH_API index_writer
     segment_equal
   > consolidating_segments_t; // segments that are under consolidation
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @enum ConsolidationError
+  //////////////////////////////////////////////////////////////////////////////
+  enum class ConsolidationError : uint32_t {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief consolidation failed
+    ////////////////////////////////////////////////////////////////////////////
+    FAIL = 0,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief consolidation succesfully finished
+    ////////////////////////////////////////////////////////////////////////////
+    OK,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief consolidation was scheduled for the upcoming commit
+    ////////////////////////////////////////////////////////////////////////////
+    PENDING
+  }; // ConsolidationError
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief represents result of a consolidation
+  //////////////////////////////////////////////////////////////////////////////
+  struct consolidation_result {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of candidates
+    ////////////////////////////////////////////////////////////////////////////
+    size_t size;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief error code
+    ////////////////////////////////////////////////////////////////////////////
+    ConsolidationError error;
+
+    // intentionally implicit
+    operator bool() const noexcept {
+      return error != ConsolidationError::FAIL;
+    }
+  }; // consolidation_result
+
   using ptr = std::shared_ptr<index_writer>;
 
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
   /// @param candidates the segments that should be consolidated
   ///        in: segment candidates that may be considered by this policy
@@ -501,7 +552,7 @@ class IRESEARCH_API index_writer
   /// @param consolidating_segments segments that are currently in progress
   ///        of consolidation
   /// @note final candidates are all segments selected by at least some policy
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   typedef std::function<void(
     std::set<const segment_meta*>& candidates,
     const index_meta& meta,
@@ -526,9 +577,10 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Clears the existing index repository by staring an empty index.
   ///        Previously opened readers still remain valid.
+  /// @param truncate transaction tick
   /// @note call will rollback any opened transaction
   ////////////////////////////////////////////////////////////////////////////
-  void clear();
+  void clear(uint64_t tick = 0);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief merges segments accepted by the specified defragment policty into
@@ -544,11 +596,10 @@ class IRESEARCH_API index_writer
   ///       commit, however, the resulting acceptor will only be segments not
   ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
-  bool consolidate(
+  consolidation_result consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec = nullptr,
-    const merge_writer::flush_progress_t& progress = {}
-  );
+    const merge_writer::flush_progress_t& progress = {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return returns a context allowing index modification operations
@@ -604,24 +655,22 @@ class IRESEARCH_API index_writer
     return comparator_;
   }
 
-  typedef std::function<bool(uint64_t, bstring&)> before_commit_f;
-
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
   /// @param payload arbitrary user supplied data to store in the index
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin(const before_commit_f& before_commit = {}) {
-    SCOPED_LOCK(commit_lock_);
+  bool begin() {
+    auto lock = make_lock_guard(commit_lock_);
 
-    return start(before_commit);
+    return start();
   }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
   void rollback() {
-    SCOPED_LOCK(commit_lock_);
+    auto lock = make_lock_guard(commit_lock_);
 
     abort();
   }
@@ -629,15 +678,17 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   /// @brief make all buffered changes visible for readers
   /// @param payload arbitrary user supplied data to store in the index
+  /// @return whether any changes were committed
   ///
   /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit(const before_commit_f& before_commit = {}) {
-    SCOPED_LOCK(commit_lock_);
+  bool commit() {
+    auto lock = make_lock_guard(commit_lock_);
 
-    start(before_commit);
+    const bool modified = start();
     finish();
+    return modified;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -1021,21 +1072,23 @@ class IRESEARCH_API index_writer
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const payload_provider_t& meta_payload_provider,
     index_meta&& meta,
     committed_state_t&& committed_state
   );
 
-  pending_context_t flush_all(const before_commit_f& before_commit);
+  pending_context_t flush_all();
 
   flush_context_ptr get_flush_context(bool shared = true);
   active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
-  bool start(const before_commit_f& before_commit); // starts transaction
+  bool start(); // starts transaction
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   column_info_provider_t column_info_;
+  payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;
@@ -1057,6 +1110,6 @@ class IRESEARCH_API index_writer
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 
-NS_END
+}
 
 #endif // IRESEARCH_INDEX_WRITER_H

@@ -29,7 +29,7 @@
 #include "utils/crc.hpp"
 #include "utils/encryption.hpp"
 
-NS_LOCAL
+namespace {
 
 using irs::bstring;
 
@@ -175,8 +175,9 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
 // -----------------------------------------------------------------------------
 
 TEST(ctr_encryption_test, static_consts) {
-  ASSERT_EQ(4096, size_t(irs::ctr_encryption::DEFAULT_HEADER_LENGTH));
-  ASSERT_EQ(sizeof(uint64_t), size_t(irs::ctr_encryption::MIN_HEADER_LENGTH));
+  static_assert("encryption" == irs::type<irs::encryption>::name());
+  static_assert(4096 == irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  static_assert(sizeof(uint64_t) == irs::ctr_encryption::MIN_HEADER_LENGTH);
 }
 
 TEST(ctr_encryption_test, create_header_stream) {
@@ -404,8 +405,9 @@ TEST_P(encryption_test_case, encrypted_io) {
 TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   class buffered_output : public irs::buffered_index_output {
    public:
-    buffered_output(index_output& out)
+    buffered_output(index_output& out) noexcept
       : out_(&out) {
+      buffered_index_output::reset(buf_, sizeof buf_);
     }
 
     virtual int64_t checksum() const override {
@@ -428,14 +430,16 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
       out_->write_bytes(b, size);
     }
 
+    irs::byte_type buf_[irs::DEFAULT_ENCRYPTION_BUFFER_SIZE];
     index_output* out_;
     size_t last_written_size_{};
   };
 
   class buffered_input final : public irs::buffered_index_input {
    public:
-    buffered_input(index_input& in)
+    buffered_input(index_input& in) noexcept
       : in_(&in) {
+      irs::buffered_index_input::reset(buf_, sizeof buf_, 0);
     }
 
     const index_input& stream() {
@@ -475,6 +479,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     }
 
    private:
+    irs::byte_type buf_[irs::DEFAULT_ENCRYPTION_BUFFER_SIZE];
     index_input* in_;
     size_t last_read_size_{};
   };
@@ -494,20 +499,20 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
   {
     buffered_output buf_out(out.stream);
-    irs::encrypted_output enc_out(buf_out, *cipher, buffered_output::DEFAULT_BUFFER_SIZE/cipher->block_size());
+    irs::encrypted_output enc_out(buf_out, *cipher, irs::DEFAULT_ENCRYPTION_BUFFER_SIZE/cipher->block_size());
     ASSERT_EQ(nullptr, enc_out.release()); // unmanaged instance
 
-    for (auto i = 0; i < 2*buffered_output::DEFAULT_BUFFER_SIZE+1; ++i) {
+    for (size_t i = 0; i < 2*irs::DEFAULT_ENCRYPTION_BUFFER_SIZE+1; ++i) {
       enc_out.write_vint(i);
-      ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), buf_out.remain()); // ensure no buffering
-      if (buf_out.file_pointer() >= buffered_output::DEFAULT_BUFFER_SIZE) {
-        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), buf_out.last_written_size());
+      ASSERT_EQ(size_t(irs::DEFAULT_ENCRYPTION_BUFFER_SIZE), buf_out.remain()); // ensure no buffering
+      if (buf_out.file_pointer() >= irs::DEFAULT_ENCRYPTION_BUFFER_SIZE) {
+        ASSERT_EQ(size_t(irs::DEFAULT_ENCRYPTION_BUFFER_SIZE), buf_out.last_written_size());
       }
     }
 
     enc_out.flush();
     buf_out.flush();
-    ASSERT_EQ(enc_out.file_pointer() - 3*buffered_output::DEFAULT_BUFFER_SIZE, buf_out.last_written_size());
+    ASSERT_EQ(enc_out.file_pointer() - 3*irs::DEFAULT_ENCRYPTION_BUFFER_SIZE, buf_out.last_written_size());
   }
 
   out.stream.flush();
@@ -515,15 +520,15 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   {
     irs::memory_index_input in(out.file);
     buffered_input buf_in(in);
-    irs::encrypted_input enc_in(buf_in, *cipher, buffered_input::DEFAULT_BUFFER_SIZE/cipher->block_size());
+    irs::encrypted_input enc_in(buf_in, *cipher, irs::DEFAULT_ENCRYPTION_BUFFER_SIZE/cipher->block_size());
 
-    for (auto i = 0; i < 2*buffered_output::DEFAULT_BUFFER_SIZE+1; ++i) {
+    for (size_t i = 0; i < 2*irs::DEFAULT_ENCRYPTION_BUFFER_SIZE+1; ++i) {
       ASSERT_EQ(i, enc_in.read_vint());
       ASSERT_EQ(0, buf_in.remain()); // ensure no buffering
-      if (buf_in.file_pointer() <= 3*buffered_output::DEFAULT_BUFFER_SIZE) {
-        ASSERT_EQ(size_t(buffered_output::DEFAULT_BUFFER_SIZE), buf_in.last_read_size());
+      if (buf_in.file_pointer() <= 3*irs::DEFAULT_ENCRYPTION_BUFFER_SIZE) {
+        ASSERT_EQ(size_t(irs::DEFAULT_ENCRYPTION_BUFFER_SIZE), buf_in.last_read_size());
       } else {
-        ASSERT_EQ(buf_in.length() - 3*buffered_output::DEFAULT_BUFFER_SIZE, buf_in.last_read_size());
+        ASSERT_EQ(buf_in.length() - 3*irs::DEFAULT_ENCRYPTION_BUFFER_SIZE, buf_in.last_read_size());
       }
     }
   }
@@ -540,4 +545,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::directory_test_case_base::to_string
 );
 
-NS_END
+}

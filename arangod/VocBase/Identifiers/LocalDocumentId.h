@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,12 +29,15 @@
 #include "VocBase/ticks.h"
 
 namespace arangodb {
+class RevisionId;
+
 /// @brief a LocalDocumentId is an identifier for storing and retrieving
 /// documents using a uint64_t value.
 class LocalDocumentId : public basics::Identifier {
  public:
   constexpr LocalDocumentId() noexcept : Identifier() {}
   constexpr explicit LocalDocumentId(BaseType id) noexcept : Identifier(id) {}
+  explicit LocalDocumentId(RevisionId const& id) noexcept;
 
   /// @brief whether or not the id is set (not 0)
   bool isSet() const noexcept;
@@ -47,19 +50,18 @@ class LocalDocumentId : public basics::Identifier {
   static constexpr LocalDocumentId none() { return LocalDocumentId(0); }
 
   /// @brief create a new document id
-  static LocalDocumentId create() {
-    return LocalDocumentId(TRI_HybridLogicalClock());
-  }
+  static LocalDocumentId create();
 
   /// @brief create a document id from an existing id
   static constexpr LocalDocumentId create(BaseType id) {
     return LocalDocumentId(id);
   }
 
+  /// @brief create a document id from an existing revision id
+  static LocalDocumentId create(RevisionId const& rid);
+
   /// @brief use to track an existing value in recovery to ensure no duplicates
-  static void track(LocalDocumentId const& id) {
-    TRI_HybridLogicalClock(id.id());
-  }
+  static void track(LocalDocumentId const& id);
 };
 
 // LocalDocumentId should not be bigger than the BaseType

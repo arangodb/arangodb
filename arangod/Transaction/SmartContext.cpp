@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,10 +37,10 @@ namespace arangodb {
 namespace transaction {
   
 SmartContext::SmartContext(TRI_vocbase_t& vocbase,
-                           TRI_voc_tid_t globalId,
+                           TransactionId globalId,
                            std::shared_ptr<TransactionState> state)
   : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
-  TRI_ASSERT(_globalId != 0);
+  TRI_ASSERT(_globalId.isSet());
 }
   
 SmartContext::~SmartContext() {
@@ -58,7 +59,6 @@ arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomT
     _customTypeHandler =
         transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     _options.customTypeHandler = _customTypeHandler.get();
-    _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
@@ -74,13 +74,13 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
   return *_resolver;
 }
 
-TRI_voc_tid_t transaction::SmartContext::generateId() const {
+TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
 }
   
 //  ============= ManagedContext =============
   
-ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
+ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
                                bool responsibleForCommit, bool cloned)
   : SmartContext(state->vocbase(), globalId, state),

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,15 +31,15 @@
 #include "VocBase/LogicalDataSource.h"
 
 #include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb {
 
 /// @brief create the transaction, using a data-source
 SingleCollectionTransaction::SingleCollectionTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    LogicalDataSource const& dataSource, AccessMode::Type accessType)
-    : transaction::Methods(transactionContext),
+    LogicalDataSource const& dataSource, AccessMode::Type accessType,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, options),
       _cid(dataSource.id()),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -55,8 +55,8 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 /// @brief create the transaction, using a collection name
 SingleCollectionTransaction::SingleCollectionTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    std::string const& name, AccessMode::Type accessType)
-    : transaction::Methods(transactionContext),
+    std::string const& name, AccessMode::Type accessType, transaction::Options const& options)
+    : transaction::Methods(transactionContext, options),
       _cid(0),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -72,7 +72,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 
 /// @brief get the underlying transaction collection
 TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
-  TRI_ASSERT(_cid > 0);
+  TRI_ASSERT(_cid.isSet());
 
   if (_trxCollection == nullptr) {
     _trxCollection = _state->collection(_cid, _accessType);
@@ -96,9 +96,9 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
 }
-  
-TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name,
-                                                                  AccessMode::Type type) {
+
+DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name,
+                                                                 AccessMode::Type type) {
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') && 
       name != resolveTrxCollection()->collectionName()) {

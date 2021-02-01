@@ -32,7 +32,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct directory;
 struct tracking_directory;
@@ -125,6 +125,6 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
 
 static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
 
-NS_END
+}
 
 #endif

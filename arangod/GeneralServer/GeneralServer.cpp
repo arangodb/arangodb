@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,6 @@
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/CommTask.h"
-#include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -191,7 +190,7 @@ extern int clientHelloCallback(SSL* ssl, int* al, void* arg);
 SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContexts) {
-    _sslContexts = SslServerFeature::SSL->createSslContexts();
+    _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
       // Set a client hello callback such that we have a chance to change the SSL context:
@@ -211,7 +210,7 @@ Result GeneralServer::reloadTLS() {
   try {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
-      _sslContexts = SslServerFeature::SSL->createSslContexts();
+      _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
       if (_sslContexts->size() > 0) {
         // Set a client hello callback such that we have a chance to change the SSL context:

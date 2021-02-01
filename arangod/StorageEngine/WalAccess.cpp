@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,25 +35,25 @@ bool WalAccessContext::shouldHandleDB(TRI_voc_tick_t dbid) const {
 }
 
 /// @brief check if view should be handled, might already be deleted
-bool WalAccessContext::shouldHandleView(TRI_voc_tick_t dbid, TRI_voc_cid_t vid) const {
-  if (dbid == 0 || vid == 0 || !shouldHandleDB(dbid)) {
+bool WalAccessContext::shouldHandleView(TRI_voc_tick_t dbid, DataSourceId vid) const {
+  if (dbid == 0 || vid.empty() || !shouldHandleDB(dbid)) {
     return false;
   }
 
   if (_filter.vocbase == 0 ||
-      (_filter.vocbase == dbid && (_filter.collection == 0 || _filter.collection == vid))) {
+      (_filter.vocbase == dbid && (_filter.collection.empty() || _filter.collection == vid))) {
     return true;
   }
   return false;
 }
 
 /// @brief Check if collection is in filter, will load collection
-bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
-  if (dbid == 0 || cid == 0 || !shouldHandleDB(dbid)) {
+bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid, DataSourceId cid) {
+  if (dbid == 0 || cid.empty() || !shouldHandleDB(dbid)) {
     return false;
   }
   if (_filter.vocbase == 0 ||
-      (_filter.vocbase == dbid && (_filter.collection == 0 || _filter.collection == cid))) {
+      (_filter.vocbase == dbid && (_filter.collection.empty() || _filter.collection == cid))) {
     LogicalCollection* collection = loadCollection(dbid, cid);
     if (collection == nullptr) {
       return false;
@@ -71,7 +71,7 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   auto const& it = _vocbases.find(dbid);
 
   if (it == _vocbases.end()) {
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
+    TRI_vocbase_t* vocbase = _server.getFeature<DatabaseFeature>().useDatabase(dbid);
     if (vocbase != nullptr) {
       TRI_DEFER(vocbase->release());
       _vocbases.try_emplace(dbid, *vocbase);
@@ -83,9 +83,9 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   }
 }
 
-LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
+LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid, DataSourceId cid) {
   TRI_ASSERT(dbid != 0);
-  TRI_ASSERT(cid != 0);
+  TRI_ASSERT(cid.isSet());
   TRI_vocbase_t* vocbase = loadVocbase(dbid);
   if (vocbase != nullptr) {
     try {

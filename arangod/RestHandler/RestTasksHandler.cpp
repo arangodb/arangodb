@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -48,6 +49,11 @@ RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& serv
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {
+  if (!server().isEnabled<V8DealerFeature>()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    return RestStatus::DONE;
+  }
+
   auto const type = _request->requestType();
 
   switch (type) {
@@ -133,6 +139,20 @@ void RestTasksHandler::registerTask(bool byId) {
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
+    return;
+  }
+
+  bool allowTasks;
+  if (!server().isEnabled<V8DealerFeature>()) {
+    allowTasks = false;
+  } else {
+    V8DealerFeature& v8Dealer = server().getFeature<V8DealerFeature>();
+    allowTasks = v8Dealer.allowJavaScriptTasks();
+  }
+
+  if (!allowTasks) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "JavaScript tasks are disabled");
     return;
   }
 
@@ -222,7 +242,7 @@ void RestTasksHandler::registerTask(bool byId) {
       command = cmdSlice.copyString();
     }
 
-    if (!Task::tryCompile(isolate, command)) {
+    if (!Task::tryCompile(server(), isolate, command)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "cannot compile command");
       return;

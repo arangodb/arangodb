@@ -354,7 +354,7 @@ function ReplicationLoggerSuite () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
-      c.properties({ waitForSync: true, journalSize: 2097152 });
+      c.properties({ waitForSync: true });
 
       var entry = getLogEntries(tick, 2003)[0];
 
@@ -2115,7 +2115,7 @@ function ReplicationApplierSuite () {
         assertTrue(state.state.totalFailedConnects > 0);
         assertTrue(state.state.progress.failedConnects > 0);
         assertTrue(state.state.lastError.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
-                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code ||
+                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_LEADER_ERROR.code ||
                    state.state.lastError.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
         break;
       }
@@ -2426,7 +2426,7 @@ function ReplicationSyncSuite () {
         fail();
       } catch (err) {
         assertTrue(err.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
-                   err.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code ||
+                   err.errorNum === errors.ERROR_REPLICATION_LEADER_ERROR.code ||
                    err.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
       }
     },

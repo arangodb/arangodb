@@ -35,15 +35,15 @@
 #include <atomic>
 #include <functional>
 
-NS_ROOT
+namespace iresearch {
 
 struct data_output;
 class flags;
 class token_stream;
 
-NS_END // NS_ROOT
+} // namespace iresearch {
 
-NS_BEGIN(tests)
+namespace tests {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class ifield
@@ -620,6 +620,6 @@ bool update(
          && doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
-NS_END // tests
+} // tests
 
 #endif

@@ -32,8 +32,8 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 class text_token_stream final
   : public frozen_attributes<3, analyzer>,
@@ -87,7 +87,7 @@ class text_token_stream final
   term_attribute term_;
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

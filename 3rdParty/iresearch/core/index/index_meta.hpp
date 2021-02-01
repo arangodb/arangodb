@@ -37,7 +37,7 @@
 #include <vector>
 #include <atomic>
 
-NS_ROOT
+namespace iresearch {
 
 /* -------------------------------------------------------------------
  * segment_meta
@@ -46,18 +46,19 @@ NS_ROOT
 class format;
 typedef std::shared_ptr<const format> format_ptr;
 
-NS_END
+}
 
 MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // format_ptr
 
-NS_ROOT
+namespace iresearch {
 
 struct IRESEARCH_API segment_meta {
   typedef std::unordered_set<std::string> file_set;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
-  segment_meta(segment_meta&& rhs) noexcept;
+  segment_meta(segment_meta&& rhs)
+    noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>));
   segment_meta(const string_ref& name, format_ptr codec);
   segment_meta(
     std::string&& name,
@@ -70,7 +71,8 @@ struct IRESEARCH_API segment_meta {
     field_id sort = field_limits::invalid()
   ) noexcept;
 
-  segment_meta& operator=(segment_meta&& rhs) noexcept;
+  segment_meta& operator=(segment_meta&& rhs)
+    noexcept(noexcept(std::is_nothrow_move_assignable_v<file_set>));
   segment_meta& operator=(const segment_meta&) = default;
 
   bool operator==(const segment_meta& other) const noexcept;
@@ -87,8 +89,8 @@ struct IRESEARCH_API segment_meta {
   bool column_store{};
 };
 
-static_assert(std::is_move_constructible<segment_meta>::value,
-              "default move constructor expected");
+static_assert(std::is_nothrow_move_constructible_v<segment_meta>);
+static_assert(std::is_nothrow_move_assignable_v<segment_meta>);
 
 /* -------------------------------------------------------------------
  * index_meta
@@ -172,17 +174,17 @@ class IRESEARCH_API index_meta {
     return true;
   }
 
-  uint64_t increment() { return ++seg_counter_; }
-  uint64_t counter() const { return seg_counter_; }
-  uint64_t generation() const { return gen_; }
+  uint64_t increment() noexcept { return ++seg_counter_; }
+  uint64_t counter() const noexcept { return seg_counter_; }
+  uint64_t generation() const noexcept { return gen_; }
 
-  index_segments_t::iterator begin() { return segments_.begin(); }
-  index_segments_t::iterator end() { return segments_.end(); }
+  index_segments_t::iterator begin() noexcept { return segments_.begin(); }
+  index_segments_t::iterator end() noexcept { return segments_.end(); }
 
-  index_segments_t::const_iterator begin() const { return segments_.begin(); }
-  index_segments_t::const_iterator end() const { return segments_.end(); }
+  index_segments_t::const_iterator begin() const noexcept { return segments_.begin(); }
+  index_segments_t::const_iterator end() const noexcept { return segments_.end(); }
 
-  void update_generation(const index_meta& rhs) noexcept{
+  void update_generation(const index_meta& rhs) noexcept {
     gen_ = rhs.gen_;
     last_gen_ = rhs.last_gen_;
   }
@@ -250,6 +252,6 @@ class IRESEARCH_API index_meta {
   }
 }; // index_meta
 
-NS_END
+}
 
 #endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Basics/StaticStrings.h"
 
 #include <algorithm>
 #include <vector>
@@ -190,7 +191,7 @@ bool FailedLeader::start(bool& aborts) {
 
   // Get healthy in Sync follower common to all prototype + clones
   auto commonHealthyInSync =
-      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database, _collection, _shard);
+      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database, _collection, _shard, _from);
   if (commonHealthyInSync.empty()) {
     return false;
   } else {
@@ -203,10 +204,9 @@ bool FailedLeader::start(bool& aborts) {
   using namespace std::chrono;
 
   // Current servers vector
-  auto const& current = _snapshot
-                            .hasAsSlice(curColPrefix + _database + "/" +
-                                        _collection + "/" + _shard + "/servers")
-                            .first;
+  std::string curPath = curColPrefix + _database + "/" + _collection + "/" + _shard;
+  auto const& current = _snapshot.hasAsSlice(curPath + "/servers").first;
+
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -234,13 +234,35 @@ bool FailedLeader::start(bool& aborts) {
   std::vector<std::string> planv;
   for (auto const& i : VPackArrayIterator(planned)) {
     auto s = i.copyString();
-    if (s != _from && s != _to) {
+    // _from and _to are added as first and last entries
+    // we can keep all others
+    // for security we will not use empty strings (empty servers should never happen)
+    // also we will not use any resigend servers in the list (this should never happen as well, but if it happens,
+    // this situation will repair itself by diverging replicationFactor.
+    if (s != _from && s != _to && !s.empty() && s[0] != '_') {
       planv.push_back(s);
     }
   }
 
+  // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
+  auto failoverCands = Job::findAllFailoverCandidates(
+      _snapshot, _database, shardsLikeMe);
+  std::vector<std::string> excludes;
+  for (const auto& s : VPackArrayIterator(planned)) {
+    if (s.isString()) {
+      std::string id = s.copyString();
+      if (failoverCands.find(id) == failoverCands.end()) {
+        excludes.push_back(s.copyString());
+      }
+    }
+  }
+  for (auto const& id : failoverCands) {
+    excludes.push_back(id);
+  }
+
   // Additional follower, if applicable
-  auto additionalFollower = randomIdleAvailableServer(_snapshot, planned);
+  auto additionalFollower = randomIdleAvailableServer(_snapshot, excludes);
   if (!additionalFollower.empty()) {
     planv.push_back(additionalFollower);
   }
@@ -273,9 +295,23 @@ bool FailedLeader::start(bool& aborts) {
         {
           VPackArrayBuilder servers(&ns);
           ns.add(VPackValue(_to));
+          // We prefer servers in sync and want to put them early in the new Plan
+          // (behind the leader). This helps so that RemoveFollower prefers others
+          // to remove.
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
-            if (s != _from && s != _to) {
+            if (s.size() > 0 && s[0] == '_') {
+              s = s.substr(1);
+            }
+            // We need to make sure to only pick servers from the plan as followers.
+            // There is a chance, that a server is removed from the plan, but it is not yet taken out
+            // from the in-sync followers in current.
+            // e.g. User Reduces the ReplicationFactor => Follower F1 will be taken from the Plan
+            // Now F1 drops the shard.
+            // For some Reason Leader cannot report out-of-sync, and dies.
+            // => F1 will be readded in shard, as an early follower, and is considered to be in sync, until
+            // New Leader has updated sync information.
+            if (s != _from && s != _to && std::find(planv.begin(), planv.end(), s) != planv.end()) {
               ns.add(i);
               planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
             }
@@ -285,7 +321,7 @@ bool FailedLeader::start(bool& aborts) {
             ns.add(VPackValue(i));
           }
         }
-        for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
+        for (auto const& clone : shardsLikeMe) {
           pending.add(planColPrefix + _database + "/" + clone.collection +
                           "/shards/" + clone.shard,
                       ns.slice());
@@ -302,6 +338,22 @@ bool FailedLeader::start(bool& aborts) {
         addPreconditionServerHealth(pending, _to, "GOOD");
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
+        // Check that Current/servers and failoverCandidates are still as
+        // we inspected them:
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+            [this, &pending](Slice plan, Slice current,
+                             std::string& planPath,
+                             std::string& curPath) {
+              addPreconditionUnchanged(pending, curPath, current);
+              // take off "servers" from curPath and add
+              // "failoverCandidates":
+              std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+              foCandsPath += StaticStrings::FailoverCandidates;
+              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              if (foCands.second) {
+                addPreconditionUnchanged(pending, foCandsPath, foCands.first);
+              }
+            });
         // Destination server should not be blocked by another job
         addPreconditionServerNotBlocked(pending, _to);
         // Shard to be handled is block by another job

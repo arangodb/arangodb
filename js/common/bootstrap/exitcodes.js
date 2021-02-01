@@ -22,7 +22,9 @@
     "EXIT_COULD_NOT_LOCK"          : { "code" : 22, "message" : "could not lock - another process could be running" },
     "EXIT_RECOVERY"                : { "code" : 23, "message" : "recovery failed" },
     "EXIT_DB_NOT_EMPTY"            : { "code" : 24, "message" : "database not empty" },
-    "EXIT_UNSUPPORTED_STORAGE_ENGINE" : { "code" : 25, "message" : "unsupported storage engine" }
+    "EXIT_UNSUPPORTED_STORAGE_ENGINE" : { "code" : 25, "message" : "unsupported storage engine" },
+    "EXIT_ICU_INITIALIZATION_FAILED" : { "code" : 26, "message" : "failed to initialize ICU library" },
+    "EXIT_TZDATA_INITIALIZATION_FAILED" : { "code" : 27, "message" : "failed to locate tzdata" }
   };
 }());
 

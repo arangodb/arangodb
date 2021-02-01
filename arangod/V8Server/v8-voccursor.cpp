@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,11 +68,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract objects
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
   auto builder = std::make_shared<VPackBuilder>();
-  int res = TRI_V8ToVPack(isolate, *builder, array, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_TYPE_ERROR("cannot convert <array> to JSON");
-  }
+  TRI_V8ToVPack(isolate, *builder, array, false);
 
   // maximum number of results to return at once
   uint32_t batchSize = 1000;
@@ -310,31 +306,22 @@ struct V8Cursor final {
       }
       if (args[1]->IsObject()) {
         bindVars.reset(new VPackBuilder);
-        int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          TRI_V8_THROW_EXCEPTION(res);
-        }
+        TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
       }
     }
 
     // options
-    auto options = std::make_shared<VPackBuilder>();
+    VPackBuilder options;
     if (args.Length() > 2) {
       // we have options! yikes!
       if (!args[2]->IsObject()) {
         TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
       }
 
-      int res = TRI_V8ToVPack(isolate, *options, args[2], false);
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-    } else {
-      VPackObjectBuilder guard(options.get());
+      TRI_V8ToVPack(isolate, options, args[2], false);
     }
     size_t batchSize =
-        VelocyPackHelper::getNumericValue<size_t>(options->slice(), "batchSize", 1000);
+        VelocyPackHelper::getNumericValue<size_t>(options.slice(), "batchSize", 1000);
 
     TRI_vocbase_t* vocbase = v8g->_vocbase;
     TRI_ASSERT(vocbase != nullptr);
@@ -344,7 +331,7 @@ struct V8Cursor final {
     auto ctx = transaction::V8Context::CreateWhenRequired(*vocbase, true);
     auto q = std::make_unique<aql::Query>(ctx,
                                           aql::QueryString(queryString), std::move(bindVars),
-                                          std::move(options));
+                                          options.slice());
     
     // specify ID 0 so it uses the external V8 context
     auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for metrics
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,7 +47,7 @@ TEST_F(MetricsFeatureTest, test_counter) {
   auto& counter = feature.counter("counter", 0, "one counter");
   auto& labeledCounter = feature.counter({"counter", "label=\"label\""}, 0, "another counter");
 
-  ASSERT_DOUBLE_EQ(counter.load(), 0);
+  ASSERT_EQ(counter.load(), 0);
   std::string s;
   counter.toPrometheus(s);
   std::cout << s << std::endl;

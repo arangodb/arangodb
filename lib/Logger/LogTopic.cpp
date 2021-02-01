@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -110,8 +110,9 @@ class Topics {
 
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
+LogTopic Logger::AGENCYSTORE("agencystore", LogLevel::WARN);
 LogTopic Logger::AQL("aql", LogLevel::INFO);
-LogTopic Logger::AUTHENTICATION("authentication");
+LogTopic Logger::AUTHENTICATION("authentication", LogLevel::WARN);
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::BACKUP("backup");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
@@ -119,10 +120,8 @@ LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
 LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
-LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::CRASH("crash");
-LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
 LogTopic Logger::DUMP("dump", LogLevel::INFO);
 LogTopic Logger::ENGINES("engines", LogLevel::INFO);
@@ -155,7 +154,7 @@ LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
-LogTopic LdapFeature::LDAP("ldap", LogLevel::INFO);
+LogTopic LdapFeature::LDAP_TOPIC("ldap", LogLevel::INFO);
 
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);
@@ -222,4 +221,5 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
   }
 
   Topics::instance().emplace(name, this);
+  TRI_ASSERT(_id < MAX_LOG_TOPICS);
 }

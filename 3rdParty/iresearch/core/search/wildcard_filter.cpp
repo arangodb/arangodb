@@ -32,7 +32,7 @@
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -91,9 +91,9 @@ inline auto executeWildcard(
   }
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        by_wildcard implementation
@@ -180,4 +180,4 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
   );
 }
 
-NS_END
+}

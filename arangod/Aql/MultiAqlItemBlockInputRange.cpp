@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,7 +37,7 @@ using namespace arangodb::aql;
 namespace {
   static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
     if (row.isInitialized()) {
-      RegisterId const numRegisters = static_cast<RegisterId>(row.getNrRegisters());
+      RegisterId const numRegisters = static_cast<RegisterId>(row.getNumRegisters());
       for (RegisterId registerId = 0; registerId < numRegisters; ++registerId) {
         if (!row.getValue(registerId).isEmpty()) {
           return true;
@@ -252,6 +253,17 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
     }
   }
   return 0;
+}
+
+auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
+    -> std::vector<size_t> {
+  size_t const n = _inputs.size();
+  std::vector<size_t> skipped{};
+  skipped.reserve(n);
+  for (auto& input : _inputs) {
+    skipped.emplace_back(input.skipAllShadowRowsOfDepth(depth));
+  }
+  return skipped;
 }
 
 // Subtract up to count rows from the local _skipped state

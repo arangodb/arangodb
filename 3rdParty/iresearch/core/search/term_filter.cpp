@@ -27,7 +27,7 @@
 #include "search/collectors.hpp"
 #include "search/term_query.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -95,9 +95,9 @@ void visit(
   visitor.visit(no_boost());
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            by_term implementation
@@ -148,4 +148,4 @@ DEFINE_FACTORY_DEFAULT(by_term)
     std::move(states), std::move(stats), boost);
 }
 
-NS_END // ROOT
+} // ROOT

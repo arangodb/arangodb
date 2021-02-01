@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -65,7 +66,7 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     bool const returnsWaiting, ::arangodb::aql::SharedAqlItemBlockPtr input)
     : SingleRowFetcher<passBlocksThrough>(),
       _returnsWaiting(returnsWaiting),
-      _nrItems(input == nullptr ? 0 : input->size()),
+      _nrItems(input == nullptr ? 0 : input->numRows()),
       _blockSize(blockSize),
       _itemBlockManager(manager),
       _itemBlock(std::move(input)),
@@ -76,18 +77,6 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
 template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
 
-template <::arangodb::aql::BlockPassthrough passBlocksThrough>
-std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
-SingleRowFetcherHelper<passBlocksThrough>::fetchBlock(size_t const atMost) {
-  size_t const remainingRows = _blockSize - _curIndexInBlock;
-  size_t const to = _curRowIndex + (std::min)(atMost, remainingRows);
-
-  bool const done = to >= _nrItems;
-
-  ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
-  SingleRowFetcherHelper<passBlocksThrough>::_upstreamState = state;
-  return {state, _itemBlock->slice(_curRowIndex, to)};
-}
 
 // -----------------------------------------
 // - SECTION ALLROWSFETCHER                -
@@ -100,7 +89,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
       _nrItems(0),
       _nrRegs(0),
       _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _matrix(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());

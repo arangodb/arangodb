@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,9 @@
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutionStats.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 
@@ -46,6 +46,7 @@ class AqlItemBlockManager;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
+struct ExecutionStats;
 class Query;
 class QueryContext;
 class QueryRegistry;
@@ -55,7 +56,8 @@ class SharedQueryState;
 class ExecutionEngine {
  public:
   /// @brief create the engine
-  ExecutionEngine(QueryContext& query,
+  ExecutionEngine(EngineId eId,
+                  QueryContext& query,
                   AqlItemBlockManager& itemBlockManager,
                   SerializationFormat format,
                   std::shared_ptr<SharedQueryState> sharedState = nullptr);
@@ -69,11 +71,20 @@ class ExecutionEngine {
   static void instantiateFromPlan(Query& query,
                                   ExecutionPlan& plan,
                                   bool planRegisters,
-                                  SerializationFormat format,
-                                  SnippetList& list);
+                                  SerializationFormat format);
+
+  /// @brief Prepares execution blocks for executing provided plan
+  /// @param plan plan to execute, should be without cluster nodes. Only local execution
+  /// without db-objects access!
+  void initFromPlanForCalculation(ExecutionPlan& plan);
   
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    MapRemoteToSnippet const& queryIds);
+  
+  EngineId engineId() const {
+    return _engineId;
+  }
+
 
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const;
@@ -88,26 +99,8 @@ class ExecutionEngine {
     return _sharedState;
   }
 
-  /// @brief server to snippet mapping
-  void snippetMapping(MapRemoteToSnippet&& dbServerMapping,
-                      std::map<std::string, QueryId>&& serverToQueryId) {
-    _dbServerMapping = std::move(dbServerMapping);
-    _serverToQueryId = std::move(serverToQueryId);
-  }
-  
-  /// @brief kill the query
-  void kill();
-
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
-
-  /// @brief shutdown, will be called exactly once for the whole query, blocking
-  /// variant
-  Result shutdownSync(int errorCode) noexcept;
-
-  /// @brief shutdown, will be called exactly once for the whole query, may
-  /// return waiting
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   auto execute(AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
@@ -128,6 +121,9 @@ class ExecutionEngine {
   /// @returns added block
   ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>);
 
+  /// @brief clears all blocks and root in Engine
+  void reset();
+
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister);
 
@@ -139,20 +135,6 @@ class ExecutionEngine {
 
   ///  @brief collected execution stats
   void collectExecutionStats(ExecutionStats& other);
-  /// should only be used by the RemoteExecutor and intenally
-  ExecutionStats& globalStats() { return _execStats; }
-  
-  enum class ShutdownState : uint8_t {
-    Legacy = 0, NotShutdown = 2, ShutdownSent = 4,
-    Done = 8
-  };
-  
-  void setShutdown(ShutdownState s) {
-    _shutdownState.store(s, std::memory_order_relaxed);
-  }
-  ShutdownState shutdownState() const {
-    return _shutdownState.load(std::memory_order_relaxed);
-  }
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
   
@@ -162,16 +144,20 @@ class ExecutionEngine {
 #endif
   
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::vector<ExecutionBlock*> const& blocksForTesting() const {
+  std::vector<std::unique_ptr<ExecutionBlock>> const& blocksForTesting() const {
     return _blocks;
   }
 #endif
   
  private:
-  
-  std::pair<ExecutionState, Result> shutdownDBServerQueries(int errorCode);
 
- private:
+  /// @brief  optimizes root node: in case of single RETURN statement 
+  /// makes it return value directly and not copy it to output register.
+  /// Also sets root execution block as engine root
+  void setupEngineRoot(ExecutionBlock& planRoot);
+  
+  const EngineId _engineId;
+  
   /// @brief a pointer to the query
   QueryContext& _query;
   
@@ -181,7 +167,7 @@ class ExecutionEngine {
   std::shared_ptr<SharedQueryState> _sharedState;
 
   /// @brief all blocks registered, used for memory management
-  std::vector<ExecutionBlock*> _blocks;
+  std::vector<std::unique_ptr<ExecutionBlock>> _blocks;
 
   /// @brief root block of the engine
   ExecutionBlock* _root;
@@ -189,20 +175,8 @@ class ExecutionEngine {
   /// @brief the register the final result of the query is stored in
   RegisterId _resultRegister;
   
-  /// @brief server to snippet mapping
-  MapRemoteToSnippet _dbServerMapping;
-
-  /// @brief map of server to server-global query id
-  std::map<std::string, QueryId> _serverToQueryId;
-  
-  ExecutionStats _execStats;
-  
-  Result _shutdownResult;
-  
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
-  
-  std::atomic<ShutdownState> _shutdownState;
 };
 }  // namespace aql
 }  // namespace arangodb

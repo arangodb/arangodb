@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -94,11 +95,11 @@ RestStatus MaintenanceRestHandler::postAction() {
 
   if (body.isObject()) {
     std::chrono::seconds dur(0);
-    if (body.hasKey("execute") && body.get("execute").isString()) {
+    if (body.get("execute").isString()) {
       // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
       auto const ex = body.get("execute").copyString();
       if (ex == "pause") {
-        if (body.hasKey("duration") && body.get("duration").isNumber()) {
+        if (body.get("duration").isNumber()) {
           dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
           if (dur.count() <= 0 || dur.count() > 300) {
             es << "invalid mainenance pause duration: " << dur.count()
@@ -195,6 +196,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
   std::map<std::string, std::string> desc;
   auto prop = std::make_shared<VPackBuilder>();
   int priority = 1;
+  bool forced = false;
 
   VPackObjectIterator it(parameters, true);
   for (; it.valid() && good; ++it) {
@@ -211,12 +213,14 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
       prop.reset(new VPackBuilder(value));
     } else if (key.isString() && (key.copyString() == "priority") && value.isInteger()) {
       priority = static_cast<int>(value.getInt());
+    } else if (key.isString() && (key.stringRef() == "forced") && value.isBool()) {
+      forced = value.isTrue();
     } else {
       good = false;
     }  // else
   }    // for
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, priority, prop);
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(std::move(desc), priority, forced, std::move(prop));
 
   return good;
 
@@ -225,25 +229,12 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
 void MaintenanceRestHandler::getAction() {
   // build the action
   auto& maintenance = server().getFeature<MaintenanceFeature>();
-
-  bool found;
-  std::string const& detailsStr = _request->value("details", found);
-
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
     builder.add("status", VPackValue(maintenance.isPaused() ? "paused" : "running"));
     builder.add(VPackValue("registry"));
     maintenance.toVelocyPack(builder);
-    if (found && StringUtils::boolean(detailsStr)) {
-      builder.add(VPackValue("state"));
-
-      auto& cluster = server().getFeature<ClusterFeature>();
-      auto thread = cluster.heartbeatThread();
-      if (thread) {
-        thread->agencySync().getLocalCollections(builder);
-      }
-    }
   }
 
   generateResult(rest::ResponseCode::OK, builder.slice());

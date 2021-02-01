@@ -31,7 +31,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct collector;
 struct data_output;
@@ -1183,6 +1183,6 @@ class IRESEARCH_API order final {
 static_assert(std::is_nothrow_move_constructible_v<order>);
 static_assert(std::is_nothrow_move_constructible_v<order>);
 
-NS_END
+}
 
 #endif

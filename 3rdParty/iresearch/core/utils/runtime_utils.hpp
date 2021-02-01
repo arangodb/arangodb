@@ -24,7 +24,7 @@
 #ifndef IRESEARCH_RUNTIME_UTILS_H
 #define IRESEARCH_RUNTIME_UTILS_H
 
-NS_ROOT
+namespace iresearch {
 
 inline const char* getenv(const char* name) noexcept {
   #ifdef _MSC_VER
@@ -64,6 +64,6 @@ inline int unsetenv(const char* name) noexcept {
   #endif
 }
 
-NS_END
+}
 
 #endif

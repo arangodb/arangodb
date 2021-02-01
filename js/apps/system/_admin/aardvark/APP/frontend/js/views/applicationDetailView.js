@@ -81,18 +81,17 @@
         this.resize();
         $('#swagger').show();
         $('#swaggerIframe').remove();
+        
         // load swagger iframe
         var path = window.location.pathname.split('/');
         var urlswag = window.location.protocol + '//' + window.location.hostname + ':' + window.location.port + '/' + path[1] + '/' + path[2] + '/_admin/aardvark/foxxes/docs/index.html?mount=' + this.model.get('mount');
 
-        var ifr = $('<iframe/>', {
+        $('<iframe/>', {
           id: 'swaggerIframe',
-          src: urlswag,
-          load: function () {
-            $('#swagger').height($('.centralRow').height() - 150);
-          }
+          src: urlswag
+        }).appendTo('#swagger').on('load', function () {
+          $('#swagger').height($('.centralRow').height() - 150);
         });
-        $('#swagger').append(ifr);
       } else if (e.currentTarget.id === 'service-info') {
         this.resize(true);
         this.render();
@@ -193,7 +192,7 @@
             } else if (result) {
               info = (
                 '<p>Script results:</p>' +
-                '<pre>' + JSON.stringify(result, null, 2) + '</pre>'
+                '<pre>' + arangoHelper.escapeHtml(result) + '</pre>'
               );
             } else {
               info = '<p>The script ran successfully.</p>';

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -146,6 +147,10 @@ void waitImpl(Future<T>& f) {
   Promise<T> p;
   Future<T> ret = p.getFuture();
   f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
+    // We need to hold this mutex, while sending the notify.
+    // Otherwise the future ret may be ready and thereby leaving this function
+    // which would free the condtion variable, before sending notify.
+    // This is one of the rare cases where notify without lock would cause undefined behaviour.
     std::lock_guard<std::mutex> guard(m);
     p.setTry(std::move(t));
     cv.notify_one();
@@ -168,6 +173,10 @@ void waitImpl(Future<T>& f, std::chrono::time_point<Clock, Duration> const& tp) 
   Promise<T> p;
   Future<T> ret = p.getFuture();
   f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
+    // We need to hold this mutex, while sending the notify.
+    // Otherwise the future ret may be ready and thereby leaving this function
+    // which would free the condtion variable, before sending notify.
+    // This is one of the rare cases where notify without lock would cause undefined behaviour.
     std::lock_guard<std::mutex> guard(m);
     p.setTry(std::move(t));
     cv.notify_one();

@@ -38,7 +38,9 @@ save some network traffic.
 @RESTQUERYPARAM{overwrite,boolean,optional}
 If set to *true*, the insert becomes a replace-insert. If a document with the
 same *_key* already exists the new document is not rejected with unique
-constraint violated but will replace the old document.
+constraint violated but will replace the old document. Note that operations
+with `overwrite` parameter require a `_key` attribute in the request payload,
+therefore they can only be performed on collections sharded by `_key`.
 
 @RESTQUERYPARAM{overwriteMode,string,optional}
 This option supersedes *overwrite* and offers the following modes:

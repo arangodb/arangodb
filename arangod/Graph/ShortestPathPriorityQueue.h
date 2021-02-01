@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,8 +69,15 @@ class ShortestPathPriorityQueue {
  public:
   ShortestPathPriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
 
-  ~ShortestPathPriorityQueue() {
+  ~ShortestPathPriorityQueue() = default;
+
+  /// @brief clear the priority queue, so it can be reused
+  void clear() {
+    _popped = 0;
+    _lookup.clear();
+    _isHeap = false;
     _heap.clear();
+    _maxWeight = 0;
     _history.clear();
   }
 
@@ -92,43 +99,34 @@ class ShortestPathPriorityQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool insert(Key const& k, std::unique_ptr<Value>&& v) {
-    auto it = _lookup.find(k);
-    if (it != _lookup.end()) {
+    auto it = _lookup.emplace(k, static_cast<ssize_t>(_heap.size() + _popped));
+    if (!it.second) {
+      // value already exists in the lookup table
       return false;
     }
 
     // Are we still in the simple case of a deque?
     if (!_isHeap) {
       Weight w = v->weight();
-      if (w < _maxWeight) {
+      if (w >= _maxWeight) {
+        _maxWeight = w;
+      } else {
         // Oh dear, we have to upgrade to heap:
         _isHeap = true;
-        // fall through intentionally
-      } else {
-        if (w > _maxWeight) {
-          _maxWeight = w;
-        }
-        _heap.push_back(std::move(v));
-        try {
-          _lookup.insert(std::make_pair(k, static_cast<ssize_t>(_heap.size() - 1 + _popped)));
-        } catch (...) {
-          _heap.pop_back();
-          throw;
-        }
-        return true;
       }
     }
-    // If we get here, we have to insert into a proper binary heap:
-    _heap.push_back(std::move(v));
+
     try {
-      size_t newpos = _heap.size() - 1;
-      _lookup.insert(std::make_pair(k, static_cast<ssize_t>(newpos + _popped)));
-      repairUp(newpos);
+      _heap.push_back(std::move(v));
+      if (_isHeap) {
+        // If we get here, we have to insert into a proper binary heap:
+        repairUp(_heap.size() - 1);
+      }
+      return true;
     } catch (...) {
-      _heap.pop_back();
+      _lookup.erase(it.first);
       throw;
     }
-    return true;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -157,9 +155,7 @@ class ShortestPathPriorityQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool lowerWeight(Key const& k, Weight newWeight) {
-    if (!_isHeap) {
-      _isHeap = true;
-    }
+    _isHeap = true;
     auto it = _lookup.find(k);
     if (it == _lookup.end()) {
       return false;
@@ -236,9 +232,8 @@ class ShortestPathPriorityQueue {
     }
     k = _heap[0]->getKey();
 
-    auto it = _lookup.find(k);
-    TRI_ASSERT(it != _lookup.end());
-    _lookup.erase(it);
+    size_t erased = _lookup.erase(k);
+    TRI_ASSERT(erased > 0);
 
     // Responsibility handed over to v
     // Note: _heap[0] is nullptr now.

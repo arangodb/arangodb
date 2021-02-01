@@ -24,7 +24,7 @@ describe ArangoDB do
 ## creates documents with invalid types
 ################################################################################
 
-    it "creates a document with an invalid type" do
+    it "creates a document with an invalid type 1" do
       cmd = api + "?collection=" + @cn
       body = "[ [] ]";
       doc = ArangoDB.log_post("#{prefix}-create-list1", cmd, :body => body)
@@ -35,7 +35,7 @@ describe ArangoDB do
       doc.parsed_response[0]["errorNum"].should eq(1227)
     end
     
-    it "creates a document with an invalid type" do
+    it "creates a document with an invalid type 2" do
       cmd = api + "?collection=" + @cn
       body = "\"test\"";
       doc = ArangoDB.log_post("#{prefix}-create-list2", cmd, :body => body)
@@ -52,7 +52,7 @@ describe ArangoDB do
 ## updates documents with invalid types
 ################################################################################
 
-    it "updates a document with an invalid type" do
+    it "updates a document with an invalid type 1" do
       cmd = api + "/#{@cn}/test"
       body = "[ ]";
       doc = ArangoDB.log_patch("#{prefix}-update-object1", cmd, :body => body)
@@ -65,7 +65,7 @@ describe ArangoDB do
       doc.parsed_response['errorNum'].should eq(1227)
     end
     
-    it "updates a document with an invalid type" do
+    it "updates a document with an invalid type 2" do
       cmd = api + "/#{@cn}/test"
       body = "\"test\"";
       doc = ArangoDB.log_patch("#{prefix}-update-object2", cmd, :body => body)
@@ -82,7 +82,7 @@ describe ArangoDB do
 ## replaces documents with invalid types
 ################################################################################
 
-    it "replaces a document with an invalid type" do
+    it "replaces a document with an invalid type 1" do
       cmd = api + "/#{@cn}/test"
       body = "[ ]";
       doc = ArangoDB.log_put("#{prefix}-replace-object1", cmd, :body => body)
@@ -95,7 +95,7 @@ describe ArangoDB do
       doc.parsed_response['errorNum'].should eq(1227)
     end
     
-    it "replaces a document with an invalid type" do
+    it "replaces a document with an invalid type 2" do
       cmd = api + "/#{@cn}/test"
       body = "\"test\"";
       doc = ArangoDB.log_put("#{prefix}-replace-object2", cmd, :body => body)
@@ -112,7 +112,7 @@ describe ArangoDB do
 ## updates documents by example with invalid type
 ################################################################################
 
-    it "updates documents by example with an invalid type" do
+    it "updates documents by example with an invalid type 1" do
       cmd = "/_api/simple/update-by-example"
       body = "{ \"collection\" : \"#{@cn}\", \"example\" : [ ], \"newValue\" : { } }";
       doc = ArangoDB.log_put("#{prefix}-update-by-example1", cmd, :body => body)
@@ -125,7 +125,7 @@ describe ArangoDB do
       doc.parsed_response['errorNum'].should eq(400)
     end
     
-    it "updates documents by example with an invalid type" do
+    it "updates documents by example with an invalid type 2" do
       cmd = "/_api/simple/update-by-example"
       body = "{ \"collection\" : \"#{@cn}\", \"example\" : { }, \"newValue\" : [ ] }";
       doc = ArangoDB.log_put("#{prefix}-update-by-example2", cmd, :body => body)
@@ -142,7 +142,7 @@ describe ArangoDB do
 ## replaces documents by example with invalid type
 ################################################################################
 
-    it "replaces documents by example with an invalid type" do
+    it "replaces documents by example with an invalid type 1" do
       cmd = "/_api/simple/replace-by-example"
       body = "{ \"collection\" : \"#{@cn}\", \"example\" : [ ], \"newValue\" : { } }";
       doc = ArangoDB.log_put("#{prefix}-replace-by-example1", cmd, :body => body)
@@ -155,7 +155,7 @@ describe ArangoDB do
       doc.parsed_response['errorNum'].should eq(400)
     end
     
-    it "replaces documents by example with an invalid type" do
+    it "replaces documents by example with an invalid type 2" do
       cmd = "/_api/simple/replace-by-example"
       body = "{ \"collection\" : \"#{@cn}\", \"example\" : { }, \"newValue\" : [ ] }";
       doc = ArangoDB.log_put("#{prefix}-replace-by-example2", cmd, :body => body)

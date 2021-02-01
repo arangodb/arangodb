@@ -267,7 +267,7 @@ describe ArangoDB do
 ## tickRanges
 ################################################################################
 
-      it "fetches the available tick range" do
+      it "fetches the available tick range 1" do
         # fetch state
         cmd = api + "/range"
         doc = ArangoDB.log_get("#{prefix}-range", cmd, :body => "")
@@ -290,7 +290,7 @@ describe ArangoDB do
 ## lastTick
 ################################################################################
 
-      it "fetches the available tick range" do
+      it "fetches the available tick range 2" do
         # fetch state
         cmd = api + "/lastTick"
         doc = ArangoDB.log_get("#{prefix}-lastTick", cmd, :body => "")

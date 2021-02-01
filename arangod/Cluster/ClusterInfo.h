@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -67,34 +68,17 @@ struct ClusterCollectionCreationInfo;
 class CollectionWatcher {
  public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
-    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
-    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
-
-    _agencyCallback = std::make_shared<AgencyCallback>(
-        collection.vocbase().server(), where,
-        [this](VPackSlice const& result) {
-          if (result.isNone()) {
-            _present.store(false);
-          }
-          return true;
-        },
-        true, false);
-    _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  }
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection);
   ~CollectionWatcher();
 
   bool isPresent() {
     // Make sure we did not miss a callback
     _agencyCallback->refetchAndUpdate(true, false);
     return _present.load();
-  };
+  }
 
-private:
-  AgencyCallbackRegistry *_agencyCallbackRegistry;
+ private:
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 
   // TODO: this does not really need to be atomic: We only write to it
@@ -348,8 +332,12 @@ class ClusterInfo final {
 #endif
 
  private:
-  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
-  typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
+  struct CollectionWithHash {
+    uint64_t hash;
+    std::shared_ptr<LogicalCollection> collection;
+  };
+  typedef std::unordered_map<CollectionID, CollectionWithHash> DatabaseCollections;
+  typedef std::unordered_map<DatabaseID, std::shared_ptr<DatabaseCollections>> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
 
@@ -363,9 +351,9 @@ class ClusterInfo final {
       std::function<void()> const&, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
-    void beginShutdown();
-    void run();
-    void start();
+    void beginShutdown() override;
+    void run() override;
+    bool start();
     bool notify(velocypack::Slice const&);
 
    private:
@@ -416,7 +404,8 @@ public:
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*,
+                       int syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -429,6 +418,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+  
+  /// @brief cancel all pending wait-for-syncer operations
+  void drainSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -447,6 +439,9 @@ public:
 
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
+
+  /// @brief get database cache
+  VPackBuilder toVelocyPack();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -481,7 +476,7 @@ public:
    * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version
@@ -522,13 +517,13 @@ public:
   /// @brief ask whether a cluster database exists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool doesDatabaseExist(DatabaseID const&, bool reload = false);
+  bool doesDatabaseExist(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> databases(bool reload = false);
+  std::vector<DatabaseID> databases();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -547,11 +542,11 @@ public:
 
   TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
                                                                   CollectionID const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection or a view
   /// If it is not found in the cache, the cache is reloaded once. The second
-  /// argument can be a collection ID or a collection name (both cluster-wide) 
+  /// argument can be a collection ID or a collection name (both cluster-wide)
   /// or a view ID or name.
   /// will not throw but return nullptr if the collection/view isn't found.
   //////////////////////////////////////////////////////////////////////////////
@@ -864,7 +859,7 @@ public:
   /// @brief lookup a full coordinator ID by short ID
   //////////////////////////////////////////////////////////////////////////////
 
-  ServerID getCoordinatorByShortID(ServerShortID);
+  ServerID getCoordinatorByShortID(ServerShortID const& shortId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
@@ -896,6 +891,8 @@ public:
 
   std::shared_ptr<VPackBuilder> getPlan();
   std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
@@ -903,6 +900,8 @@ public:
 
   std::shared_ptr<VPackBuilder> getCurrent();
   std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);
@@ -976,6 +975,18 @@ public:
   application_features::ApplicationServer& server() const;
 
  private:
+
+  /// @brief helper function to build a new LogicalCollection object from the velocypack
+  /// input
+  static std::shared_ptr<LogicalCollection> createCollectionObject(
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
+
+  /// @brief create a new collecion object from the data, using the cache if possible
+  CollectionWithHash buildCollection(
+    bool isBuilding, AllCollections::const_iterator existingCollections,
+    std::string const& collectionId, arangodb::velocypack::Slice data,
+    TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -996,7 +1007,8 @@ public:
   void buildFinalSlice(CreateDatabaseInfo const& database,
                          VPackBuilder& builder);
 
-  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
+  Result waitForDatabaseInCurrent(
+    CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx);
   void loadClusterId();
 
   void triggerWaiting(
@@ -1070,6 +1082,10 @@ public:
 
   cluster::RebootTracker _rebootTracker;
 
+  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
+  int const _syncerShutdownCode;
+
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
@@ -1092,8 +1108,8 @@ public:
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
-  std::shared_ptr<VPackBuilder> _plan;
-  std::shared_ptr<VPackBuilder> _current;
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _plan;
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _current;
 
   std::string _clusterId;
 
@@ -1162,28 +1178,10 @@ public:
   Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the sole instance
-  //////////////////////////////////////////////////////////////////////////////
-
-  static ClusterInfo* _theinstance;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids
   //////////////////////////////////////////////////////////////////////////////
 
-  static uint64_t const MinIdsPerBatch = 1000000;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief default wait timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const operationTimeout;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reload timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const reloadServerListTimeout;
+  static constexpr uint64_t MinIdsPerBatch = 1000000;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check analyzers precondition timeout in seconds
@@ -1211,16 +1209,16 @@ public:
 
   /// @brief histogram for loadPlan runtime
   Histogram<log_scale_t<float>>& _lpTimer;
-  
+
   /// @brief total time for loadPlan runtime
   Counter& _lpTotal;
-  
+
   /// @brief histogram for loadCurrent runtime
   Histogram<log_scale_t<float>>& _lcTimer;
-  
+
   /// @brief total time for loadCurrent runtime
   Counter& _lcTotal;
-    
+
 };
 
 namespace cluster {

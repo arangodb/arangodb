@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,9 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
@@ -562,7 +563,7 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   if (slice.isObject() && slice.length() != 0) {
     // note: the AST is responsible for freeing the AstNode later!
-    AstNode* node = new AstNode(plan->getAst(), slice);
+    AstNode* node = plan->getAst()->createNode(slice);
     condition->andCombine(node);
   }
 
@@ -624,7 +625,7 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
   
   size_t itemsInIndex;
   if (!collectionName.empty() && collectionName[0] == '_' &&
-      collectionName.compare(0, 11, "_statistics", 11) == 0) {
+      collectionName.compare(0, 11, StaticStrings::StatisticsCollection, 11) == 0) {
     // use hard-coded number of items in index, because we are dealing with
     // the statistics collection here. this saves a roundtrip to the DB servers
     // for statistics queries that do not need a fully accurate collection count
@@ -822,6 +823,9 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan, Variable co
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
 
+      lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
+      rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
+
       clearAttributeAccess(result);
 
       // only remove the condition if the index is exactly on the same attribute
@@ -846,6 +850,9 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan, Variable co
     if (allowOps) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
+      
+      lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
+      rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
@@ -1280,12 +1287,16 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
             lhs = _ast->resolveConstAttributeAccess(lhs);
+          } else {
+            lhs = plan->resolveVariableAlias(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
             rhs = _ast->resolveConstAttributeAccess(rhs);
+          } else {
+            rhs = plan->resolveVariableAlias(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }

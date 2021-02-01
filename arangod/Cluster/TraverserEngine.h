@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,9 @@ class BaseEngine {
   // The engine is NOT copyable.
   BaseEngine(BaseEngine const&) = delete;
 
-  void getVertexData(arangodb::velocypack::Slice, arangodb::velocypack::Builder&);
+  void getVertexData(arangodb::velocypack::Slice vertex, 
+                     arangodb::velocypack::Builder& builder,
+                     bool nestedOutput);
 
   std::shared_ptr<transaction::Context> context() const;
 
@@ -87,7 +89,10 @@ class BaseEngine {
 
   virtual bool produceVertices() const { return true; }
   
+  arangodb::aql::EngineId engineId() const { return _engineId; }
+
  protected:
+  arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
   transaction::Methods* _trx;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
@@ -109,8 +114,6 @@ class BaseTraverserEngine : public BaseEngine {
 
   void getEdges(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
 
-  void getVertexData(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
-
   graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
 
   virtual void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
@@ -118,10 +121,13 @@ class BaseTraverserEngine : public BaseEngine {
   virtual void smartSearchBFS(arangodb::velocypack::Slice,
                               arangodb::velocypack::Builder&) = 0;
 
+  virtual void smartSearchWeighted(arangodb::velocypack::Slice,
+                                   arangodb::velocypack::Builder&) = 0;
+
   EngineType getType() const override { return TRAVERSER; }
-  
+
   bool produceVertices() const override;
- 
+
   // Inject all variables from VPack information
   void injectVariables(arangodb::velocypack::Slice variables);
 
@@ -176,6 +182,8 @@ class TraverserEngine : public BaseTraverserEngine {
   void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
 
   void smartSearchBFS(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
+
+  void smartSearchWeighted(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser

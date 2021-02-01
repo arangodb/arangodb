@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 
 #include <velocypack/Builder.h>
@@ -39,9 +41,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* const options,
+SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* options,
+                                                   arangodb::ResourceMonitor& resourceMonitor,
                                                    RegisterId inReg, RegisterId outReg)
     : _vpackOptions(options),
+      _resourceMonitor(resourceMonitor),
       _outReg(outReg),
       _inReg(inReg) {}
 
@@ -63,10 +67,19 @@ RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept {
   return _inReg;
 }
 
+arangodb::ResourceMonitor& SubqueryEndExecutorInfos::getResourceMonitor() const noexcept {
+  return _resourceMonitor;
+}
+
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& infos)
-    : _infos(infos), _accumulator(_infos.vpackOptions()) {}
+    : _infos(infos), 
+      _accumulator(_infos.getResourceMonitor(), _infos.vpackOptions()) {}
 
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
+
+void SubqueryEndExecutor::initializeCursor() {
+  _accumulator.reset();
+}
 
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
@@ -120,54 +133,72 @@ auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
-  if (_buffer == nullptr) {
-    // no Buffer present
-    _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    // we need to recreate the builder even if the old one still exists.
-    // this is because the Builder points to the Buffer
-    _builder = std::make_unique<VPackBuilder>(*_buffer);
-  } else {
-    // Buffer still present. we can get away with reusing and clearing 
-    // the existing Builder, which points to the Buffer
-    TRI_ASSERT(_builder != nullptr);
-    _builder->clear();
+  if (_memoryUsage > 0) {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
+    _memoryUsage = 0;
   }
-  TRI_ASSERT(_builder != nullptr);
-  _builder->openArray();
+
+  // Buffer present. we can get away with reusing and clearing
+  // the existing Builder, which points to the Buffer
+  _builder.clear();
+  _builder.openArray();
   _numValues = 0;
 }
 
 void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
-  TRI_ASSERT(_builder->isOpenArray());
-  value.toVelocyPack(_options, *_builder, false);
+  size_t previousLength = _builder.bufferRef().byteSize();
+
+  TRI_ASSERT(_builder.isOpenArray());
+  value.toVelocyPack(_options, _builder,
+                     /*resolveExternals*/false,
+                     /*allowUnindexed*/false);
   ++_numValues;
+
+  size_t currentLength = _builder.bufferRef().byteSize();
+  TRI_ASSERT(currentLength >= previousLength);
+  
+  // per-item overhead (this is because we have to account for the index
+  // table entries as well, which are only added later in VelocyPack when
+  // the array is closed). this is approximately only, but that should be
+  // ok here.
+  size_t entryOverhead;
+  if (_memoryUsage > 65535) {
+    entryOverhead = 4;
+  } else if (_memoryUsage > 255) {
+    entryOverhead = 2;
+  } else {
+    entryOverhead = 1;
+  }
+  size_t diff = currentLength - previousLength + entryOverhead;
+  _resourceMonitor.increaseMemoryUsage(diff);
+  _memoryUsage += diff;
 }
 
-SubqueryEndExecutor::Accumulator::Accumulator(VPackOptions const* const options)
-    : _options(options) {
+SubqueryEndExecutor::Accumulator::Accumulator(arangodb::ResourceMonitor& resourceMonitor,
+                                              VPackOptions const* options) 
+    : _resourceMonitor(resourceMonitor), 
+      _options(options),
+      _builder(_buffer) {
   reset();
+}
+
+SubqueryEndExecutor::Accumulator::~Accumulator() {
+  _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
 }
 
 AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
   // Note that an AqlValueGuard holds an AqlValue&, so we cannot create it
   // from a local AqlValue and return the Guard!
 
-  TRI_ASSERT(_builder->isOpenArray());
-  _builder->close();
-  TRI_ASSERT(_builder->isClosed());
+  TRI_ASSERT(_builder.isOpenArray());
+  _builder.close();
+  TRI_ASSERT(_builder.isClosed());
 
   // Here we have all data *and* the relevant shadow row,
   // so we can now submit
-  bool shouldDelete = true;
-  result = AqlValue{_buffer.get(), shouldDelete};
-  if (shouldDelete) {
-    // resultDocVec told us to delete our data
-    _buffer->clear();
-  } else {
-    // relinquish ownership of _buffer, as it now belongs to
-    // resultDocVec
-    std::ignore = _buffer.release();
-  }
+  result = AqlValue{std::move(_buffer)};
+  TRI_ASSERT(_buffer.size() == 0);
+  _builder.clear();
 
   // Call reset *after* AqlValueGuard is constructed, so when an exception is
   // thrown, the ValueGuard can free the AqlValue.

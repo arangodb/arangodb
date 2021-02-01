@@ -26,8 +26,11 @@ An array of additional vertex collections.
 Documents within these collections do not have edges within this graph.
 
 @RESTBODYPARAM{isSmart,boolean,optional,}
-Define if the created graph should be smart.
-This only has effect in Enterprise Edition.
+Define if the created graph should be smart (Enterprise Edition only).
+
+@RESTBODYPARAM{isDisjoint,boolean,optional,}
+Whether to create a Disjoint SmartGraph instead of a regular SmartGraph
+(Enterprise Edition only).
 
 @RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
 a JSON object to define options for creating collections within this graph.
@@ -46,7 +49,8 @@ Cannot be modified later.
 @RESTSTRUCT{replicationFactor,post_api_gharial_create_opts,integer,required,}
 The replication factor used when initially creating collections for this graph.
 Can be set to `"satellite"` to create a SatelliteGraph, which will ignore
-*numberOfShards*, *minReplicationFactor* and *writeConcern*.
+*numberOfShards*, *minReplicationFactor* and *writeConcern*
+(Enterprise Edition only).
 
 @RESTSTRUCT{writeConcern,post_api_gharial_create_opts,integer,optional,}
 Write concern for new collections in the graph.

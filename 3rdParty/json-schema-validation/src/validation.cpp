@@ -84,7 +84,7 @@ template<template<typename...> class Traits>
 std::string const key_string = "_key";
 std::string const rev_string = "_rev";
 std::string const id_string = "_id";
-std::string const from_string = "_form";
+std::string const from_string = "_from";
 std::string const to_string = "_to";
 
 } // namespace

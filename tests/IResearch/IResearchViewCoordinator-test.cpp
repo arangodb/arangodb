@@ -1,8 +1,8 @@
-///////////////////////////////////////////////////////////////////////////////
-///
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -127,14 +127,13 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
-      (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
+      (arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(0 == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(1 == view->id());
+  EXPECT_TRUE(1 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(&vocbase == &view->vocbase());
@@ -192,7 +191,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   ASSERT_TRUE(nullptr != view);
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(1 == view->id());
+  EXPECT_TRUE(1 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
@@ -208,10 +207,13 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
                                          arangodb::IndexId{3}, false));
 
   // visit view
-  TRI_voc_cid_t expectedCollections[] = {1, 2, 3};
+  arangodb::DataSourceId expectedCollections[] = {arangodb::DataSourceId{1},
+                                                  arangodb::DataSourceId{2},
+                                                  arangodb::DataSourceId{3}};
   auto* begin = expectedCollections;
-  EXPECT_TRUE(true == view->visitCollections([&begin](TRI_voc_cid_t cid) {
-    return *begin++ = cid;
+  EXPECT_TRUE(true == view->visitCollections([&begin](arangodb::DataSourceId cid) {
+    *begin++ = cid;
+    return true;
   }));
   EXPECT_TRUE(3 == (begin - expectedCollections));
 }
@@ -229,21 +231,20 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
-        (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
+        (arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
     EXPECT_TRUE((nullptr != view));
     EXPECT_TRUE((nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                 view)));
-    EXPECT_TRUE((0 == view->planVersion()));
     EXPECT_TRUE(("testView" == view->name()));
     EXPECT_TRUE((false == view->deleted()));
-    EXPECT_TRUE((1 == view->id()));
+    EXPECT_TRUE((1 == view->id().id()));
     EXPECT_TRUE((arangodb::iresearch::DATA_SOURCE_TYPE == view->type()));
     EXPECT_TRUE((arangodb::LogicalView::category() == view->category()));
     EXPECT_TRUE((&vocbase == &view->vocbase()));
 
     // visit default view
-    EXPECT_TRUE(
-        (true == view->visitCollections([](TRI_voc_cid_t) { return false; })));
+    EXPECT_TRUE((true == view->visitCollections(
+                             [](arangodb::DataSourceId) { return false; })));
 
     // for persistence
     {
@@ -440,7 +441,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     // simulate heartbeat thread (create index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                        std::to_string(logicalCollection->id());
+                        std::to_string(logicalCollection->id().id());
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
           "} ] } }");
@@ -459,15 +460,13 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     logicalView = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((false == logicalView->visitCollections(
-                              [](TRI_voc_cid_t) -> bool { return false; })));
+    EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+      return false;
+    })));
   }
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -530,10 +529,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
-    EXPECT_TRUE(viewId == std::to_string(view->id()));
+    EXPECT_TRUE(viewId == std::to_string(view->id().id()));
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
@@ -573,10 +571,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
-    EXPECT_TRUE(42 == view->id());
+    EXPECT_TRUE(42 == view->id().id());
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
@@ -636,7 +633,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     // simulate heartbeat thread (create index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                        std::to_string(logicalCollection->id());
+                        std::to_string(logicalCollection->id().id());
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
           "} ] } }");
@@ -737,7 +734,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     // simulate heartbeat thread (create index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                        std::to_string(logicalCollection->id());
+                        std::to_string(logicalCollection->id().id());
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
           "} ] } }");
@@ -752,13 +749,14 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     logicalView = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-    EXPECT_TRUE((false == logicalView->visitCollections(
-                              [](TRI_voc_cid_t) -> bool { return false; })));
+    EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+      return false;
+    })));
 
     // simulate heartbeat thread (remove index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                        std::to_string(logicalCollection->id()) +
+                        std::to_string(logicalCollection->id().id()) +
                         "/shard-id-does-not-matter/indexes";
       EXPECT_TRUE(
           arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
@@ -839,10 +837,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
-    EXPECT_TRUE(viewId == std::to_string(view->id()));
+    EXPECT_TRUE(viewId == std::to_string(view->id().id()));
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
@@ -876,10 +873,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       ASSERT_TRUE(nullptr != fullyUpdatedView);
       ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  fullyUpdatedView));
-      EXPECT_TRUE(planVersion == fullyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == fullyUpdatedView->name());
       EXPECT_TRUE(false == fullyUpdatedView->deleted());
-      EXPECT_TRUE(viewId == std::to_string(fullyUpdatedView->id()));
+      EXPECT_TRUE(viewId == std::to_string(fullyUpdatedView->id().id()));
       EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == fullyUpdatedView->type());
       EXPECT_TRUE(arangodb::LogicalView::category() == fullyUpdatedView->category());
       EXPECT_TRUE(vocbase == &fullyUpdatedView->vocbase());
@@ -929,10 +925,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       ASSERT_TRUE(nullptr != partiallyUpdatedView);
       ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  partiallyUpdatedView));
-      EXPECT_TRUE(planVersion == partiallyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == partiallyUpdatedView->name());
       EXPECT_TRUE(false == partiallyUpdatedView->deleted());
-      EXPECT_TRUE(viewId == std::to_string(partiallyUpdatedView->id()));
+      EXPECT_TRUE(viewId == std::to_string(partiallyUpdatedView->id().id()));
       EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == partiallyUpdatedView->type());
       EXPECT_TRUE(arangodb::LogicalView::category() == partiallyUpdatedView->category());
       EXPECT_TRUE(vocbase == &partiallyUpdatedView->vocbase());
@@ -1011,7 +1006,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
   // simulate heartbeat thread (create index in current)
   {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                      std::to_string(logicalCollection->id());
+                      std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
@@ -1055,7 +1050,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -1123,7 +1118,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
@@ -1180,7 +1175,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -1220,7 +1215,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(9, tmpSlice2.length());
+      EXPECT_EQ(10, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1228,6 +1223,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
       EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
       EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -1240,6 +1236,229 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
       EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
     }
+  }
+}
+
+TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+
+  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+
+  createTestDatabase(vocbase);
+
+  // create view
+  auto json = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", "
+    "\"type\": \"arangosearch\", "
+    "\"writebufferActive\": 25, "
+    "\"writebufferIdle\": 64, "
+    "\"locale\": \"C\", "
+    "\"version\": 1, "
+    "\"primarySortCompression\":\"none\","
+    "\"primarySort\": [ "
+    "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
+    "{ \"field\": \"another.field\", \"asc\": false } "
+    "]"
+    "}");
+
+  auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+
+  EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok());
+
+  auto view = ci.getView(vocbase->name(), viewId);
+  EXPECT_NE(nullptr, view);
+  EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  // check serialization for properties
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    VPackBuilder builder;
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 25 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(2, tmpSlice.length());
+    {
+      auto first = tmpSlice.at(0);
+      ASSERT_TRUE(first.isObject());
+      tmpSlice2 = first.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("my.Nested.field", tmpSlice2.copyString());
+      tmpSlice2 = first.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_TRUE(tmpSlice2.getBoolean());
+    }
+    {
+      auto second = tmpSlice.at(1);
+      ASSERT_TRUE(second.isObject());
+      tmpSlice2 = second.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("another.field", tmpSlice2.copyString());
+      tmpSlice2 = second.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_FALSE(tmpSlice2.getBoolean());
+    }
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("none"), tmpSlice.copyString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+  }
+
+  // check serialization for persistence
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(18, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
+    EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
+
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 25 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(2, tmpSlice.length());
+    {
+      auto first = tmpSlice.at(0);
+      ASSERT_TRUE(first.isObject());
+      tmpSlice2 = first.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("my.Nested.field", tmpSlice2.copyString());
+      tmpSlice2 = first.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_TRUE(tmpSlice2.getBoolean());
+    }
+    {
+      auto second = tmpSlice.at(1);
+      ASSERT_TRUE(second.isObject());
+      tmpSlice2 = second.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("another.field", tmpSlice2.copyString());
+      tmpSlice2 = second.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_FALSE(tmpSlice2.getBoolean());
+    }
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("none"), tmpSlice.copyString());
+  }
+
+  // check serialization for inventory
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 25 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(2, tmpSlice.length());
+    {
+      auto first = tmpSlice.at(0);
+      ASSERT_TRUE(first.isObject());
+      tmpSlice2 = first.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("my.Nested.field", tmpSlice2.copyString());
+      tmpSlice2 = first.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_TRUE(tmpSlice2.getBoolean());
+    }
+    {
+      auto second = tmpSlice.at(1);
+      ASSERT_TRUE(second.isObject());
+      tmpSlice2 = second.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("another.field", tmpSlice2.copyString());
+      tmpSlice2 = second.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_FALSE(tmpSlice2.getBoolean());
+    }
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("none"), tmpSlice.copyString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
   }
 }
 
@@ -1277,10 +1496,9 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   EXPECT_NE(nullptr, view);
   EXPECT_NE(nullptr,
             std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_EQ(planVersion, view->planVersion());
   EXPECT_EQ("testView", view->name());
   EXPECT_FALSE(view->deleted());
-  EXPECT_EQ(viewId, std::to_string(view->id()));
+  EXPECT_EQ(viewId, std::to_string(view->id().id()));
   EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, view->type());
   EXPECT_EQ(arangodb::LogicalView::category(), view->category());
   EXPECT_EQ(vocbase, &view->vocbase());
@@ -1375,10 +1593,9 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     EXPECT_NE(nullptr, fullyUpdatedView);
     EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                            fullyUpdatedView));
-    EXPECT_EQ(planVersion, fullyUpdatedView->planVersion());
     EXPECT_EQ("testView", fullyUpdatedView->name());
     EXPECT_FALSE(fullyUpdatedView->deleted());
-    EXPECT_EQ(viewId, std::to_string(fullyUpdatedView->id()));
+    EXPECT_EQ(viewId, std::to_string(fullyUpdatedView->id().id()));
     EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, fullyUpdatedView->type());
     EXPECT_EQ(arangodb::LogicalView::category(), fullyUpdatedView->category());
     EXPECT_EQ(vocbase, &fullyUpdatedView->vocbase());
@@ -1481,12 +1698,15 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     ASSERT_TRUE(nullptr != logicalCollection3);
   }
 
-  auto const currentCollection1Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection1->id());
-  auto const currentCollection2Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection2->id());
-  auto const currentCollection3Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection3->id());
+  auto const currentCollection1Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection1->id().id());
+  auto const currentCollection2Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection2->id().id());
+  auto const currentCollection3Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection3->id().id());
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -1498,7 +1718,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE((arangodb::LogicalView::create(view, *vocbase, viewJson->slice()).ok()));
   ASSERT_TRUE(view);
-  auto const viewId = std::to_string(view->planId());
+  auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
 
   // simulate heartbeat thread (create index in current)
@@ -1544,20 +1764,19 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection1->id(),
-                                          logicalCollection2->id(),
-                                          logicalCollection3->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection1->id(),
+                                                   logicalCollection2->id(),
+                                                   logicalCollection3->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -1625,7 +1844,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -1688,7 +1908,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -1723,7 +1944,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -1751,7 +1972,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // test index in testCollection3
   {
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -1785,7 +2007,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -1836,19 +2058,18 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection1->id(),
-                                          logicalCollection3->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection1->id(),
+                                                   logicalCollection3->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -1902,7 +2123,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -1937,7 +2159,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -1966,7 +2188,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -2000,7 +2223,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -2052,7 +2275,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -2061,7 +2285,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -2070,7 +2295,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -2133,12 +2359,15 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     ASSERT_TRUE(nullptr != logicalCollection3);
   }
 
-  auto const currentCollection1Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection1->id());
-  auto const currentCollection2Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection2->id());
-  auto const currentCollection3Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection3->id());
+  auto const currentCollection1Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection1->id().id());
+  auto const currentCollection2Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection2->id().id());
+  auto const currentCollection3Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection3->id().id());
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -2150,7 +2379,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE((arangodb::LogicalView::create(view, *vocbase, viewJson->slice()).ok()));
   ASSERT_TRUE(view);
-  auto const viewId = std::to_string(view->planId());
+  auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
 
   // simulate heartbeat thread (create index in current)
@@ -2187,19 +2416,18 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection1->id(),
-                                          logicalCollection3->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection1->id(),
+                                                   logicalCollection3->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -2253,7 +2481,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -2288,7 +2517,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -2316,7 +2545,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // test index in testCollection3
   {
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -2350,7 +2580,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -2402,20 +2632,19 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection1->id(),
-                                          logicalCollection2->id(),
-                                          logicalCollection3->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection1->id(),
+                                                   logicalCollection2->id(),
+                                                   logicalCollection3->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -2483,7 +2712,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -2518,7 +2748,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -2547,7 +2777,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -2582,7 +2813,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -2611,7 +2842,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -2645,7 +2877,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -2711,7 +2943,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -2720,7 +2953,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -2729,7 +2963,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -2747,7 +2982,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -2773,7 +3008,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
   }
 }
 
@@ -2833,12 +3068,15 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     ASSERT_TRUE(nullptr != logicalCollection3);
   }
 
-  auto const currentCollection1Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection1->id());
-  auto const currentCollection2Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection2->id());
-  auto const currentCollection3Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection3->id());
+  auto const currentCollection1Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection1->id().id());
+  auto const currentCollection2Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection2->id().id());
+  auto const currentCollection3Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection3->id().id());
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -2850,7 +3088,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE((arangodb::LogicalView::create(view, *vocbase, viewJson->slice()).ok()));
   ASSERT_TRUE(view);
-  auto const viewId = std::to_string(view->planId());
+  auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
 
   // simulate heartbeat thread (create index in current)
@@ -2887,19 +3125,18 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection1->id(),
-                                          logicalCollection3->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection1->id(),
+                                                   logicalCollection3->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -2953,7 +3190,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -2988,7 +3226,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -3016,7 +3254,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // test index in testCollection3
   {
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -3050,7 +3289,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -3119,18 +3358,17 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection2->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection2->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -3171,7 +3409,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -3206,7 +3445,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -3264,18 +3503,17 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection1->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection1->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -3316,7 +3554,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -3351,7 +3590,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -3396,7 +3635,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -3405,7 +3645,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -3414,7 +3655,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -3477,12 +3719,15 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     ASSERT_TRUE(nullptr != logicalCollection3);
   }
 
-  auto const currentCollection1Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection1->id());
-  auto const currentCollection2Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection2->id());
-  auto const currentCollection3Path = "/Current/Collections/" + vocbase->name() +
-                                      "/" + std::to_string(logicalCollection3->id());
+  auto const currentCollection1Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection1->id().id());
+  auto const currentCollection2Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection2->id().id());
+  auto const currentCollection3Path =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection3->id().id());
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -3494,7 +3739,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE((arangodb::LogicalView::create(view, *vocbase, viewJson->slice()).ok()));
   ASSERT_TRUE(view);
-  auto const viewId = std::to_string(view->planId());
+  auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
 
   // simulate heartbeat thread (create index in current)
@@ -3540,20 +3785,19 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    std::set<TRI_voc_cid_t> expectedLinks{logicalCollection1->id(),
-                                          logicalCollection2->id(),
-                                          logicalCollection3->id()};
-    EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+    std::set<arangodb::DataSourceId> expectedLinks{logicalCollection1->id(),
+                                                   logicalCollection2->id(),
+                                                   logicalCollection3->id()};
+    EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
       return 1 == expectedLinks.erase(cid);
     }));
     EXPECT_TRUE(expectedLinks.empty());
@@ -3621,7 +3865,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -3656,7 +3901,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -3685,7 +3930,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -3720,7 +3966,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -3748,7 +3994,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // test index in testCollection3
   {
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(link);
@@ -3782,7 +4029,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     auto const slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
     EXPECT_TRUE(slice.get("view").isString());
-    EXPECT_TRUE(view->id() == 42);
+    EXPECT_TRUE(view->id().id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
     auto figuresSlice = slice.get("figures");
@@ -3848,18 +4095,17 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
-  EXPECT_TRUE(42 == view->id());
+  EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
   {
-    EXPECT_TRUE(
-        view->visitCollections([](TRI_voc_cid_t cid) mutable { return false; }));
+    EXPECT_TRUE(view->visitCollections(
+        [](arangodb::DataSourceId cid) mutable { return false; }));
   }
 
   // check properties
@@ -3880,7 +4126,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection1->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -3890,7 +4137,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection2->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -3900,7 +4148,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     // get new version from plan
     auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+        ci.getCollection(vocbase->name(),
+                         std::to_string(logicalCollection3->id().id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
     EXPECT_TRUE(!link);
@@ -3939,7 +4188,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
   }
 
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
-                                     "/" + std::to_string(logicalCollection->id());
+                                     "/" +
+                                     std::to_string(logicalCollection->id().id());
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -3955,7 +4205,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     auto view =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(logicalView);
     ASSERT_TRUE(view);
-    auto const viewId = std::to_string(view->planId());
+    auto const viewId = std::to_string(view->planId().id());
     EXPECT_TRUE("42" == viewId);
 
     // simulate heartbeat thread (create index in current)
@@ -3982,18 +4232,17 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
-    EXPECT_TRUE(42 == view->id());
+    EXPECT_TRUE(42 == view->id().id());
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // visit collections
     {
-      std::set<TRI_voc_cid_t> expectedLinks{logicalCollection->id()};
-      EXPECT_TRUE(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+      std::set<arangodb::DataSourceId> expectedLinks{logicalCollection->id()};
+      EXPECT_TRUE(view->visitCollections([&expectedLinks](arangodb::DataSourceId cid) mutable {
         return 1 == expectedLinks.erase(cid);
       }));
       EXPECT_TRUE(expectedLinks.empty());
@@ -4036,7 +4285,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       // get new version from plan
       auto updatedCollection =
-          ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+          ci.getCollection(vocbase->name(),
+                           std::to_string(logicalCollection->id().id()));
       ASSERT_TRUE(updatedCollection);
       auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
       ASSERT_TRUE((link));
@@ -4072,7 +4322,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       auto const slice = builder->slice();
       EXPECT_TRUE(slice.hasKey("view"));
       EXPECT_TRUE(slice.get("view").isString());
-      EXPECT_TRUE(view->id() == 42);
+      EXPECT_TRUE(view->id().id() == 42);
       EXPECT_TRUE(view->guid() == slice.get("view").copyString());
       EXPECT_TRUE(slice.hasKey("figures"));
       auto figuresSlice = slice.get("figures");
@@ -4124,16 +4374,16 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
-    EXPECT_TRUE(42 == view->id());
+    EXPECT_TRUE(42 == view->id().id());
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // visit collections
-    EXPECT_TRUE(view->visitCollections([](TRI_voc_cid_t) { return false; }));
+    EXPECT_TRUE(
+        view->visitCollections([](arangodb::DataSourceId) { return false; }));
 
     // check properties
     {
@@ -4153,7 +4403,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       // get new version from plan
       auto updatedCollection =
-          ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+          ci.getCollection(vocbase->name(),
+                           std::to_string(logicalCollection->id().id()));
       ASSERT_TRUE(updatedCollection);
       auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *view);
       EXPECT_TRUE(!link);
@@ -4183,11 +4434,11 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
         (arangodb::LogicalView::create(logicalView, *vocbase, viewCreateJson->slice())
              .ok()));
     ASSERT_TRUE((false == !logicalView));
-    auto const viewId = std::to_string(logicalView->planId());
+    auto const viewId = std::to_string(logicalView->planId().id());
 
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -4213,7 +4464,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
   }
 }
 
@@ -4243,7 +4494,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         });
 
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
@@ -4252,7 +4503,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     logicalView = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
@@ -4299,7 +4550,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
@@ -4308,7 +4559,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     logicalView = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
@@ -4356,14 +4607,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection->id());
+                          std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"1\" } ] } }");
@@ -4380,8 +4631,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext : public arangodb::ExecContext {
@@ -4489,7 +4741,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -4513,7 +4765,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
   }
 
   // drop link (collection not authorized)
@@ -4550,14 +4802,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection->id());
+                          std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"2\" } ] } }");
@@ -4574,13 +4826,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
 
       // simulate heartbeat thread (update index in current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection->id());
+                          std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"3\" } ] } }");
@@ -4621,8 +4874,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -4641,8 +4895,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalView->visitCollections(
-                               [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((true == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -4695,16 +4950,16 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path0 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection0->id());
+                           std::to_string(logicalCollection0->id().id());
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection1->id());
+                           std::to_string(logicalCollection1->id().id());
         auto const value0 = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"3\" } ] } }");
@@ -4730,8 +4985,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext : public arangodb::ExecContext {
@@ -4770,8 +5026,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -4794,8 +5051,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -4847,16 +5105,16 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path0 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection0->id());
+                           std::to_string(logicalCollection0->id().id());
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection1->id());
+                           std::to_string(logicalCollection1->id().id());
         auto const value0 = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"5\" } ] } }");
@@ -4883,13 +5141,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
 
       // simulate heartbeat thread (remove index from current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection1->id()) +
+                          std::to_string(logicalCollection1->id().id()) +
                           "/shard-id-does-not-matter/indexes";
         EXPECT_TRUE(
             arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
@@ -4932,8 +5191,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -4956,8 +5216,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
   }
 }
@@ -4989,7 +5250,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         });
 
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
@@ -4998,7 +5259,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     logicalView = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
@@ -5046,7 +5307,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
@@ -5055,7 +5316,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     logicalView = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
@@ -5102,14 +5363,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection->id());
+                          std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"1\" } ] } }");
@@ -5126,8 +5387,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     struct ExecContext : public arangodb::ExecContext {
@@ -5235,7 +5497,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -5259,7 +5521,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalView));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
   }
 
   // drop link (collection not authorized)
@@ -5296,14 +5558,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection->id());
+                          std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"2\" } ] } }");
@@ -5320,13 +5582,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
 
       // simulate heartbeat thread (remove index from current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection->id()) +
+                          std::to_string(logicalCollection->id().id()) +
                           "/shard-id-does-not-matter/indexes";
         EXPECT_TRUE(
             arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
@@ -5364,8 +5627,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5384,8 +5648,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalView->visitCollections(
-                               [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((true == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -5437,14 +5702,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection0->id());
+                          std::to_string(logicalCollection0->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"3\" } ] } }");
@@ -5464,15 +5729,16 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
 
       // simulate heartbeat thread (update index in current)
       {
         auto const path0 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection0->id());
+                           std::to_string(logicalCollection0->id().id());
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection1->id());
+                           std::to_string(logicalCollection1->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"4\" } ] } }");
@@ -5520,8 +5786,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5544,8 +5811,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
   }
 
@@ -5597,16 +5865,16 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
-                             [](TRI_voc_cid_t) -> bool { return false; })));
+                             [](arangodb::DataSourceId) -> bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
         auto const path0 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection0->id());
+                           std::to_string(logicalCollection0->id().id());
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
-                           std::to_string(logicalCollection1->id());
+                           std::to_string(logicalCollection1->id().id());
         auto const value0 = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"5\" } ] } }");
@@ -5633,13 +5901,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
 
       // simulate heartbeat thread (remove index from current)
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                          std::to_string(logicalCollection1->id()) +
+                          std::to_string(logicalCollection1->id().id()) +
                           "/shard-id-does-not-matter/indexes";
         EXPECT_TRUE(
             arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
@@ -5682,8 +5951,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
 
     // subsequent update (overwrite) authorised (RO collection)
@@ -5706,8 +5976,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ASSERT_TRUE((false == !logicalView));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalView->visitCollections(
-                                [](TRI_voc_cid_t) -> bool { return false; })));
+      EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
+        return false;
+      })));
     }
   }
 }
@@ -5735,18 +6006,16 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
-    EXPECT_TRUE(viewId == std::to_string(view->id()));
+    EXPECT_TRUE(viewId == std::to_string(view->id().id()));
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // dummy query
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                               arangodb::aql::QueryString("RETURN 1"),
-                               nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+                               arangodb::aql::QueryString("RETURN 1"), nullptr);
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
     arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,9 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
-#include "Basics/ResultT.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
@@ -59,7 +56,10 @@ class QueryRegistry {
   /// With keepLease == true the query will be kept open and it is guaranteed
   /// that the caller can continue to use it exclusively.
   /// This is identical to an atomic sequence of insert();open();
-  TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl);
+  /// The callback guard needs to be stored with the query to prevent it from
+  /// firing. This is used for the RebootTracker to destroy the query when
+  /// the coordinator which created it restarts or fails.
+  TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -127,16 +127,17 @@ class QueryRegistry {
   
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
-    QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl);
+    QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
     ~QueryInfo();
 
-    TRI_vocbase_t* _vocbase;  // the vocbase
     std::unique_ptr<ClusterQuery> _query;  // the actual query pointer
     
     const double _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration
     size_t _numEngines; // used for legacy shutdown
     size_t _numOpen;
+
+    cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
 
   struct EngineInfo final {

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,7 +43,7 @@ class MaintenanceRestHandler : public RestBaseHandler {
   char const* name() const override { return "MaintenanceRestHandler"; }
 
   RequestLane lane() const override final {
-    return RequestLane::CLUSTER_INTERNAL;
+    return RequestLane::CLIENT_FAST;
   }
 
   /// @brief Performs routing of request to appropriate subroutines

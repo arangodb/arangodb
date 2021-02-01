@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,11 +27,14 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "Endpoint/Endpoint.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>
+
+#include <fuerte/helper.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -52,6 +56,7 @@ struct RequestMeta {
   std::string url;
   std::vector<std::string> clientIds;
   network::Headers headers;
+  fuerte::StringMap params;
   clock::time_point startTime;
   uint64_t requestId;
   bool skipScheduler;
@@ -150,12 +155,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
     LOG_TOPIC("aac82", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because cancelled";
-    return futures::makeFuture(AsyncAgencyCommResult{Error::Canceled, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::ConnectionCanceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
     LOG_TOPIC("aac81", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because timeout";
-    return futures::makeFuture(AsyncAgencyCommResult{Error::Timeout, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::RequestTimeout, nullptr});
   }
 
   LOG_TOPIC("aac79", TRACE, Logger::AGENCYCOMM)
@@ -190,33 +195,32 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
     return std::move(future).thenValue(
         [meta = std::move(meta), endpoint = std::move(endpoint), &man,
          body = std::move(body)](network::Response&& result) mutable {
-          auto& resp = result.response;
-
-          switch (result.error) {
+          
+           switch (result.error) {
             case Error::NoError:
               // handle inquiry response
-              if (resp->statusCode() == fuerte::StatusNotFound) {
+              if (result.statusCode() == fuerte::StatusNotFound) {
                 return ::agencyAsyncSend(man, std::move(meta), std::move(body));
               }
 
-              if (resp->statusCode() == fuerte::StatusTemporaryRedirect) {
+              if (result.statusCode() == fuerte::StatusTemporaryRedirect) {
                 // get the Location header
                 std::string const& location =
-                    resp->header.metaByKey(arangodb::StaticStrings::Location);
+                    result.response().header.metaByKey(arangodb::StaticStrings::Location);
                 redirectOrError(man, endpoint, location);
                 return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
               }
-              return futures::makeFuture(AsyncAgencyCommResult{result.error,
-                                                               std::move(resp)});  // otherwise return error as is
-            case Error::Canceled:
+              // otherwise return error as is
+              return futures::makeFuture(AsyncAgencyCommResult{result.error, result.stealResponse()});
+            case Error::ConnectionCanceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
-                  AsyncAgencyCommResult{result.error, std::move(resp)});
+                  AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
               [[fallthrough]];
             case Error::CouldNotConnect:
             case Error::ConnectionClosed:
-            case Error::Timeout:
+            case Error::RequestTimeout:
             case Error::ReadError:
             case Error::WriteError:
             case Error::ProtocolError:
@@ -231,8 +235,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
               return agencyAsyncInquiry(man, std::move(meta), std::move(body));
 
             case Error::VstUnauthorized:
+              // unrecoverable error
               return futures::makeFuture(AsyncAgencyCommResult{result.error,
-                                                               std::move(resp)});  // unrecoverable error
+                                                               result.stealResponse()});
           }
 
           ADB_UNREACHABLE;
@@ -251,12 +256,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
     LOG_TOPIC("aac84", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because cancelled";
-    return futures::makeFuture(AsyncAgencyCommResult{Error::Canceled, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::ConnectionCanceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
     LOG_TOPIC("aac85", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because timeout";
-    return futures::makeFuture(AsyncAgencyCommResult{Error::Timeout, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::RequestTimeout, nullptr});
   }
 
   LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
@@ -264,16 +269,16 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
       << " " << meta.url << " body: " << VPackSlice(body.data()).toJson() << " delay: "
       << std::chrono::duration_cast<std::chrono::milliseconds>(waitTime).count() << "ms"
       << " timeout: " << meta.timeout.count() << "s";
-
+  
   // after a possible small delay (if required)
-  auto future = agencyAsyncWait(meta, waitTime);
-  return std::move(future).thenValue([meta = std::move(meta), &man,
-                                      body = std::move(body)](auto) mutable {
+  return agencyAsyncWait(meta, waitTime).thenValue([meta = std::move(meta), &man,
+                                                    body = std::move(body)](auto) mutable {
     // acquire the current endpoint
     std::string endpoint = man.getCurrentEndpoint();
     network::RequestOptions opts;
     opts.timeout = meta.timeout;
     opts.skipScheduler = meta.skipScheduler;
+    opts.parameters = meta.params;
 
     auto requestId = meta.requestId;
 
@@ -290,88 +295,97 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               << "agencyAsyncSend [" << meta.requestId
               << "] request done, result: " << to_string(result.error);
 
-          auto& req = result.request;
-          auto& resp = result.response;
-          auto& body = *req;
-
           switch (result.error) {
-            case Error::NoError:
+            case Error::NoError: { 
+              TRI_ASSERT(result.hasRequest());
 
               LOG_TOPIC("aac88", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend [" << meta.requestId
-                  << "] communication successful, statusCode: " << resp->statusCode();
+                  << "] communication successful, statusCode: " << result.statusCode();
 
               // success
-              if ((resp->statusCode() >= 200 && resp->statusCode() <= 299)) {
+              if ((result.statusCode() >= 200 && result.statusCode() <= 299)) {
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
               // user error
-              if ((400 <= resp->statusCode() && resp->statusCode() <= 499)) {
+              if ((400 <= result.statusCode() && result.statusCode() <= 499)) {
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
 
               // 503 redirect
-              if (resp->statusCode() == StatusTemporaryRedirect) {
+              if (result.statusCode() == StatusTemporaryRedirect) {
                 // get the Location header
                 std::string const& location =
-                    resp->header.metaByKey(arangodb::StaticStrings::Location);
+                    result.response().header.metaByKey(arangodb::StaticStrings::Location);
                 redirectOrError(man, endpoint, location);
 
                 // send again
-                return ::agencyAsyncSend(man, std::move(meta), std::move(body).moveBuffer());
+                return ::agencyAsyncSend(man, std::move(meta), std::move(result.request()).moveBuffer());
               }
 
               // if we only did reads return here
               if (meta.type == RequestType::READ) {
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
+              }
+            }
+            [[fallthrough]];
+            
+            case Error::ConnectionCanceled: {
+              if (man.server().isStopping() || !result.hasRequest()) {
+                return futures::makeFuture(
+                  AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
 
-              [[fallthrough]];
-              /* fallthrough */
-            case Error::Canceled:
-              if (man.server().isStopping()) {
-                return futures::makeFuture(
-                  AsyncAgencyCommResult{result.error, std::move(resp)});
-              }
-              [[fallthrough]];
-            case Error::Timeout:
+              TRI_ASSERT(result.hasRequest());
+            }
+            [[fallthrough]];
+            
+            case Error::RequestTimeout:
             case Error::ConnectionClosed:
             case Error::ProtocolError:
             case Error::WriteError:
             case Error::ReadError:
-            case Error::CloseRequested:
-              // inquiry the request
+            case Error::CloseRequested: {
+              TRI_ASSERT(result.hasRequest());
+
+              // inquire the request
               man.reportError(endpoint);
               // in case of a write transaction we have to do inquiry
               if (meta.isInquiryOnNoResponse()) {
                 return ::agencyAsyncInquiry(man, std::move(meta),
-                                            std::move(body).moveBuffer());
+                                            std::move(result.request()).moveBuffer());
               } else if (!meta.isRetryOnNoResponse()) {
                 // return error
                 return futures::makeFuture(
-                    AsyncAgencyCommResult{result.error, std::move(resp)});
+                    AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
-              // otherwise just send again
-              [[fallthrough]];
+            }
+            // otherwise just send again
+            [[fallthrough]];
 
-            case Error::CouldNotConnect:
+            case Error::CouldNotConnect: {
               LOG_TOPIC("aac90", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend [" << meta.requestId << "] retry request soon";
               // retry to send the request
               man.reportError(endpoint);
-              [[fallthrough]];
+            }
+            [[fallthrough]];
 
-            case Error::QueueCapacityExceeded:
-                return ::agencyAsyncSend(man, std::move(meta),
-                                         std::move(body).moveBuffer());  // retry always
+            case Error::QueueCapacityExceeded: {
+              TRI_ASSERT(result.hasRequest());
+              return ::agencyAsyncSend(man, std::move(meta),
+                                       std::move(result.request()).moveBuffer());  // retry always
+            }
 
-            case Error::VstUnauthorized:
+            case Error::VstUnauthorized: {
+              // unrecoverable error
               return futures::makeFuture(
                 AsyncAgencyCommResult{result.error,
-                                      std::move(resp)});  // unrecoverable error
+                                      result.stealResponse()});  
+            }
           }
 
           ADB_UNREACHABLE;
@@ -393,27 +407,29 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
     RequestType type, uint64_t index) const {
   std::vector<ClientId> clientIds;
-  VPackBuffer<uint8_t> body;
-  return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout, type, clientIds, std::move(body));
+  return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout,
+                          type, std::move(clientIds), VPackBuffer<uint8_t>{});
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
     RequestType type, velocypack::Buffer<uint8_t>&& body) const {
   std::vector<ClientId> clientIds;
-  return sendWithFailover(method, url, timeout, type, clientIds, std::move(body));
+  return sendWithFailover(method, url, timeout, type, std::move(clientIds), std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
+    arangodb::fuerte::RestVerb method, std::string const& urlIn,
     network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     velocypack::Buffer<uint8_t>&& body) const {
-  network::Headers headers;
   uint64_t requestId = _manager.nextRequestId();
+  
+  fuerte::StringMap params;
+  std::string url = fuerte::extractPathParameters(urlIn, params);
 
   return agencyAsyncSend(_manager,
                          RequestMeta({timeout, method, type, url, std::move(clientIds),
-                                      std::move(headers), clock::now(), requestId,
+                                      network::Headers{}, std::move(params), clock::now(), requestId,
                                       _skipScheduler || _manager.getSkipScheduler(), 0}),
                          std::move(body))
       .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for ConnectionPool
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,6 +28,8 @@
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 
+#include "Mocks/Servers.h"
+
 using namespace arangodb;
 using namespace arangodb::network;
 
@@ -42,10 +41,21 @@ void doNothing(fuerte::Error, std::unique_ptr<fuerte::Request> req,
 };
 }
 
-TEST(NetworkConnectionPoolTest, acquire_endpoint) {
-  ConnectionPool::Config config;
+namespace arangodb {
+namespace tests {
+
+struct NetworkConnectionPoolTest
+    : public ::testing::Test {
+  NetworkConnectionPoolTest() : server(false) {
+    server.startFeatures();
+  }
+ protected:
+  tests::mocks::MockMetricsServer server;
+};
+
+TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
@@ -62,10 +72,9 @@ TEST(NetworkConnectionPoolTest, acquire_endpoint) {
   ASSERT_TRUE(res->payloadSize() > 0);
 }
 
-TEST(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
@@ -90,18 +99,16 @@ TEST(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   ASSERT_EQ(pool.numOpenConnections(), 3);
 }
 
-TEST(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 3;
-  config.idleConnectionMilli = 10; // extra small for testing
+  config.idleConnectionMilli = 5; // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
   
   ConnectionPool pool(config);
 
-  
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 1);
@@ -114,16 +121,15 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
   
-  std::this_thread::sleep_for(std::chrono::milliseconds(11));
+  std::this_thread::sleep_for(std::chrono::milliseconds(15));
   pool.pruneConnections();
   
-  ASSERT_EQ(pool.numOpenConnections(), 2); // keep one endpoint each
+  ASSERT_EQ(pool.numOpenConnections(), 1); // keep one busy connection
 }
 
-TEST(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 0;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
@@ -189,10 +195,9 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   pool.drainConnections();
 }
 
-TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
@@ -264,10 +269,9 @@ TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   pool.drainConnections();
 }
 
-TEST(NetworkConnectionPoolTest, checking_expiration) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, checking_expiration) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 0;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
@@ -331,10 +335,9 @@ TEST(NetworkConnectionPoolTest, checking_expiration) {
   pool.drainConnections();
 }
 
-TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
   config.verifyHosts = false;
@@ -357,7 +360,7 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
 
   // expires the connection(s)
   pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 1);
+  ASSERT_EQ(pool.numOpenConnections(), 0);
 
   pool.drainConnections();
   
@@ -375,7 +378,7 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
 
   // expires the connection
   pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 2);
+  ASSERT_EQ(pool.numOpenConnections(), 0);
 
   pool.drainConnections();
   
@@ -396,7 +399,7 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
 
   // expires the connections
   pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 2);
+  ASSERT_EQ(pool.numOpenConnections(), 0);
   
   pool.drainConnections();
   
@@ -409,21 +412,22 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
     
     auto conn3 = pool.leaseConnection("tcp://example.org:80");
     ASSERT_EQ(pool.numOpenConnections(), 3);
+  }  
+  {
     
     auto conn4 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_EQ(pool.numOpenConnections(), 4);
     
     auto conn5 = pool.leaseConnection("tcp://example.com:80");
     ASSERT_EQ(pool.numOpenConnections(), 5);
-  }
-  ASSERT_EQ(pool.numOpenConnections(), 5);
-  
-  // 21ms > 2 * 10ms
-  std::this_thread::sleep_for(std::chrono::milliseconds(21));
+    
+    // 21ms > 2 * 10ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
-  // expires the connections
-  pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 2);
+    // expires the connections
+    pool.pruneConnections();
+    ASSERT_EQ(pool.numOpenConnections(), 2);
+  }
   
   pool.drainConnections();
   
@@ -444,7 +448,10 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
 
   // expires the connections
   pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 3);
+  ASSERT_EQ(pool.numOpenConnections(), 0);
   
   pool.drainConnections();
+}
+
+}
 }

@@ -17,7 +17,8 @@ are: "", "flexible", or "single". The first two are equivalent. _(cluster only)_
 @RESTSTRUCT{replicationFactor,get_api_database_new_OPTIONS,integer,optional,}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
-every DB-Server, and 1, which disables replication. _(cluster only)_
+every DB-Server (Enterprise Edition only), and 1, which disables replication.
+_(cluster only)_
 
 @RESTSTRUCT{writeConcern,get_api_database_new_OPTIONS,number,optional,}
 Default write concern for new collections created in this database.

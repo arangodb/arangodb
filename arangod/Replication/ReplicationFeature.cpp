@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationFeature.h"
-#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -37,6 +38,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -44,9 +46,36 @@
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-namespace arangodb {
+namespace {
+// replace tcp:// with http://, and ssl:// with https://
+std::string fixEndpointProto(std::string const& endpoint) {
+  if (endpoint.compare(0, 6, "tcp://") == 0) {  //  find("tcp://", 0, 6)
+    return "http://" + endpoint.substr(6);      // strlen("tcp://")
+  }
+  if (endpoint.compare(0, 6, "ssl://") == 0) {  // find("ssl://", 0, 6) == 0
+    return "https://" + endpoint.substr(6);     // strlen("ssl://")
+  }
+  return endpoint;
+}
 
-ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
+void writeError(int code, arangodb::GeneralResponse* response) {
+  response->setResponseCode(arangodb::GeneralResponse::responseCode(code));
+
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add(arangodb::StaticStrings::Error, VPackValue(true));
+  builder.add(arangodb::StaticStrings::ErrorNum, VPackValue(code));
+  builder.add(arangodb::StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
+  builder.add(arangodb::StaticStrings::Code, VPackValue(static_cast<int>(response->responseCode())));
+  builder.close();
+
+  response->setPayload(std::move(buffer), VPackOptions::Defaults);
+}
+} // namespace
+
+
+namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
@@ -58,7 +87,10 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _enableActiveFailover(false),
       _syncByRevision(true),
       _parallelTailingInvocations(0),
-      _maxParallelTailingInvocations(0) {
+      _maxParallelTailingInvocations(0),
+      _inventoryRequests(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_cluster_inventory_requests", 0, "Number of cluster replication inventory requests received")) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -66,6 +98,8 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
+
+ReplicationFeature::~ReplicationFeature() = default;
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("replication", "Configure the replication");
@@ -140,13 +174,11 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-
-  INSTANCE = this;
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(
-      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+  _globalReplicationApplier.reset(new GlobalReplicationApplier(
+      GlobalReplicationApplier::loadConfiguration(server())));
 
   try {
     _globalReplicationApplier->loadState();
@@ -161,7 +193,7 @@ void ReplicationFeature::start() {
 
   if (_globalReplicationApplier->autoStart() &&
       _globalReplicationApplier->hasState() && _replicationApplierAutoStart) {
-    _globalReplicationApplier->startTailing(0, false, 0);
+    _globalReplicationApplier->startTailing(/*initialTick*/0, /*useTick*/false);
   }
 }
 
@@ -235,14 +267,15 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
   TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
-  if (vocbase->replicationApplier()->autoStart()) {
+  if (!ServerState::instance()->isClusterRole() &&
+      vocbase->replicationApplier()->autoStart()) {
     if (!_replicationApplierAutoStart) {
       LOG_TOPIC("c5378", INFO, arangodb::Logger::REPLICATION)
           << "replication applier explicitly deactivated for database '"
           << vocbase->name() << "'";
     } else {
       try {
-        vocbase->replicationApplier()->startTailing(0, false, 0);
+        vocbase->replicationApplier()->startTailing(/*initialTick*/0, /*useTick*/false);
       } catch (std::exception const& ex) {
         LOG_TOPIC("2038f", WARN, arangodb::Logger::REPLICATION)
             << "unable to start replication applier for database '"
@@ -269,7 +302,8 @@ void ReplicationFeature::disableReplicationApplier() {
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-  if (vocbase->replicationApplier() != nullptr) {
+  if (!ServerState::instance()->isClusterRole() &&
+      vocbase->replicationApplier() != nullptr) {
     vocbase->replicationApplier()->stopAndJoin();
   }
 }
@@ -280,45 +314,16 @@ double ReplicationFeature::connectTimeout() const { return _connectTimeout; }
 /// @brief returns the request timeout for replication requests
 double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
 
-// replace tcp:// with http://, and ssl:// with https://
-static std::string FixEndpointProto(std::string const& endpoint) {
-  if (endpoint.compare(0, 6, "tcp://") == 0) {  //  find("tcp://", 0, 6)
-    return "http://" + endpoint.substr(6);      // strlen("tcp://")
-  }
-  if (endpoint.compare(0, 6, "ssl://") == 0) {  // find("ssl://", 0, 6) == 0
-    return "https://" + endpoint.substr(6);     // strlen("ssl://")
-  }
-  return endpoint;
-}
-
-static void writeError(int code, GeneralResponse* response) {
-  response->setResponseCode(GeneralResponse::responseCode(code));
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.add(VPackValue(VPackValueType::Object));
-  builder.add(StaticStrings::Error, VPackValue(true));
-  builder.add(StaticStrings::ErrorNum, VPackValue(code));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
-  builder.add(StaticStrings::Code, VPackValue((int)response->responseCode()));
-  builder.close();
-
-  VPackOptions options(VPackOptions::Defaults);
-  options.escapeUnicode = true;
-  response->setPayload(std::move(buffer), VPackOptions::Defaults);
-}
-
 /// @brief set the x-arango-endpoint header
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
                                            arangodb::ServerState::Mode mode) {
   std::string endpoint;
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
-    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  if (isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = globalReplicationApplier();
     if (applier != nullptr) {
       endpoint = applier->endpoint();
       // replace tcp:// with http://, and ssl:// with https://
-      endpoint = FixEndpointProto(endpoint);
+      endpoint = ::fixEndpointProto(endpoint);
     }
   }
   res->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
@@ -330,7 +335,7 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
   switch (mode) {
     case ServerState::Mode::REDIRECT: {
       setEndpointHeader(response, mode);
-      writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
+      ::writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
       // return the endpoint of the actual leader
     } break;
 
@@ -339,11 +344,11 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
       // that clients can inspect. if they find an empty endpoint, it means that
       // there is an ongoing leadership challenge
       response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
-      writeError(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, response);
+      ::writeError(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, response);
       break;
 
     case ServerState::Mode::INVALID:
-      writeError(TRI_ERROR_SHUTTING_DOWN, response);
+      ::writeError(TRI_ERROR_SHUTTING_DOWN, response);
       break;
     case ServerState::Mode::MAINTENANCE:
     default: {

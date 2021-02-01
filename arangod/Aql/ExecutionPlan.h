@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,14 +54,19 @@ class QueryContext;
 class ExecutionPlan {
  public:
   /// @brief create the plan
-  explicit ExecutionPlan(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  explicit ExecutionPlan(Ast* ast, bool trackMemoryUsage);
+  /// @brief whether or not memory usage should be tracked for this plan.
 
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
 
  public:
   /// @brief create an execution plan from an AST
-  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*, bool trackMemoryUsage);
 
   /// @brief process the list of collections in a VelocyPack
   static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
@@ -76,10 +81,6 @@ class ExecutionPlan {
 
   /// @brief clone the plan by recursively cloning starting from the root
   ExecutionPlan* clone();
-
-  /// @brief create an execution plan identical to this one
-  ///   keep the memory of the plan on the query object specified.
-//  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
@@ -185,11 +186,13 @@ class ExecutionPlan {
 
   /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
-  
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                             std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+                             std::initializer_list<ExecutionNode::NodeType> const&,
+                             bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
   void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
@@ -260,6 +263,11 @@ class ExecutionPlan {
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
+  /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
+  ///  LET tmp = a.b
+  ///  LET x = tmp
+  AstNode const* resolveVariableAlias(AstNode const* node) const;
+
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
 
@@ -270,7 +278,7 @@ class ExecutionPlan {
   ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief whether or not the plan contains at least one node of this type
-  bool contains(ExecutionNode::NodeType type) const;
+  bool contains(ExecutionNode::NodeType) const;
 
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
@@ -278,6 +286,12 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
  private:
+  template <WalkerUniqueness U>
+  /// @brief find nodes of certain types
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 
@@ -333,13 +347,6 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST COLLECT node
   ExecutionNode* fromNodeCollect(ExecutionNode*, AstNode const*);
 
-  /// @brief create an execution plan element from an AST COLLECT node, COUNT
-  ExecutionNode* fromNodeCollectCount(ExecutionNode*, AstNode const*);
-
-  /// @brief create an execution plan element from an AST COLLECT node,
-  /// AGGREGATE
-  ExecutionNode* fromNodeCollectAggregate(ExecutionNode*, AstNode const*);
-
   /// @brief create an execution plan element from an AST LIMIT node
   ExecutionNode* fromNodeLimit(ExecutionNode*, AstNode const*);
 
@@ -360,9 +367,14 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
+  
+  /// @brief create an execution plan element from an AST WINDOW node
+  ExecutionNode* fromNodeWindow(ExecutionNode*, AstNode const*);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
+  
+  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous, AstNode const* node);
 
  private:
   /// @brief map from node id to the actual node
@@ -379,6 +391,11 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were disabled for a plan
   ::arangodb::containers::HashSet<int> _disabledRules;
+
+  /// @brief whether or not memory usage should be tracked for this plan.
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  bool const _trackMemoryUsage;
 
   /// @brief if the plan is supposed to be in a valid state
   /// this will always be true, except while a plan is handed to

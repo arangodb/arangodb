@@ -25,7 +25,7 @@
 
 #include "disjunction.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class min_match_disjunction
@@ -447,6 +447,6 @@ class min_match_disjunction
   order::prepared::merger merger_;
 }; // min_match_disjunction
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_MIN_MATCH_DISJUNCTION_H

@@ -364,10 +364,6 @@ class field_writer : public irs::field_writer {
 
 class format : public irs::format {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "iresearch_format_tests";
-  }
-
   DECLARE_FACTORY();
   format();
   format(const index_segment& data);

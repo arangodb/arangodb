@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,7 +39,7 @@ namespace methods {
 struct UpgradeResult {
   UpgradeResult() : type(VersionResult::INVALID), _result() {}
   UpgradeResult(int err, VersionResult::StatusCode s) : type(s), _result(err) {}
-  UpgradeResult(int err, std::string const& msg, VersionResult::StatusCode s)
+  UpgradeResult(int err, std::string_view msg, VersionResult::StatusCode s)
       : type(s), _result(err, msg) {}
   VersionResult::StatusCode type;
 
@@ -46,7 +47,7 @@ struct UpgradeResult {
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
   int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
 
   // access methods
   Result const& result() const& { return _result; }

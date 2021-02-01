@@ -37,7 +37,7 @@
 #include "utf8_utils.hpp"
 #include "misc.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -101,7 +101,7 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
 ////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
-  return lhs.transpose | !rhs.transpose
+  return (lhs.transpose | !rhs.transpose)
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
@@ -445,9 +445,9 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   return (lhs | rhs) & mask;
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 parametric_description::parametric_description(
     std::vector<transition_t>&& transitions,
@@ -603,7 +603,6 @@ automaton make_levenshtein_automaton(
   const auto distance = description.distance(1, utf8_size);
 
   if (distance <= description.max_distance()) {
-    assert(distance < fst::fsa::BooleanWeight::MaxPayload);
     a.SetFinal(a.Start(), {true, distance});
   }
 
@@ -638,7 +637,6 @@ automaton make_levenshtein_automaton(
         const auto distance = description.distance(transition.first, utf8_size - offset);
 
         if (distance <= description.max_distance()) {
-          assert(distance < fst::fsa::BooleanWeight::MaxPayload);
           a.SetFinal(to, {true, distance});
         }
 
@@ -671,9 +669,9 @@ automaton make_levenshtein_automaton(
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_PROPERTIES =
-    fst::kIDeterministic | fst::kODeterministic |
+    fst::kIDeterministic |
     fst::kILabelSorted | fst::kOLabelSorted |
-    fst::kAcceptor;
+    fst::kAcceptor | fst::kUnweighted;
   assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
   UNUSED(EXPECTED_PROPERTIES);
 
@@ -756,4 +754,4 @@ bool edit_distance(
   return true;
 }
 
-NS_END
+}

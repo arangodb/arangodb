@@ -121,7 +121,7 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
         ARANGOD="rr ${BUILD}/bin/arangod"
-        CO_ARANGOD="$ARANGOD --console"
+        CO_ARANGOD="$ARANGOD"
         echo Running cluster in rr with --console.
     fi
 else
@@ -150,12 +150,10 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --database.directory cluster/data$PORT \
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --server.statistics false \
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
-          --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -178,12 +176,10 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --database.directory cluster/data$PORT \
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --server.statistics false \
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
-        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

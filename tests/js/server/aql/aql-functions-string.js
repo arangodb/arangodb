@@ -2388,6 +2388,178 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual(getQueryResults(buildQuery(i, '[1,2,3]')), getQueryResults(buildQuery(i, 'FOR i IN [1,2,3] RETURN i')));
       }
     },
+      
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test ip4_to_number function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testIp4ToNumber: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN IPV4_TO_NUMBER()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN IPV4_TO_NUMBER("foo", 2)');
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER(false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER(true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER(12)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER(12.345)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER([])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER(['127.0.0.1'])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER({})");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('foobar')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('0')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('000')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('000.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('000.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('000.000.000.000')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1.1.256')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1.256.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.256.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('256.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('123456789')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('-1.-1.-1.-1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('12.34.56.789')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('256.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('a1.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1.1.1a')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('a1.1.1.1a')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1a.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.a1.1.1')");
+      
+      assertEqual([ 0 ], getQueryResults(`RETURN IPV4_TO_NUMBER('0.0.0.0')`));
+      assertEqual([ 16843009 ], getQueryResults(`RETURN IPV4_TO_NUMBER('1.1.1.1')`));
+      assertEqual([ 167773449 ], getQueryResults(`RETURN IPV4_TO_NUMBER('10.0.5.9')`));
+      assertEqual([ 2130706433 ], getQueryResults(`RETURN IPV4_TO_NUMBER('127.0.0.1')`));
+      assertEqual([ 3232235520 ], getQueryResults(`RETURN IPV4_TO_NUMBER('192.168.0.0')`));
+      assertEqual([ 3232235521 ], getQueryResults(`RETURN IPV4_TO_NUMBER('192.168.0.1')`));
+      assertEqual([ 3232235777 ], getQueryResults(`RETURN IPV4_TO_NUMBER('192.168.1.1')`));
+      assertEqual([ 3232236033 ], getQueryResults(`RETURN IPV4_TO_NUMBER('192.168.2.1')`));
+      assertEqual([ 4278190079 ], getQueryResults(`RETURN IPV4_TO_NUMBER('254.255.255.255')`));
+      assertEqual([ 4294967295 ], getQueryResults(`RETURN IPV4_TO_NUMBER('255.255.255.255')`));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test ip4_from_number function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testIp4FromNumber: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN IPV4_FROM_NUMBER()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN IPV4_FROM_NUMBER("foo", 2)');
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(-1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(-1000)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(4294967296)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(' ')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('0')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('-1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('12345')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('abcd')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER([])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER(['127.0.0.1'])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER({})");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('foobar')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('0')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('123456789')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1.1.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('-1.-1.-1.-1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('12.34.56.789')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('256.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('a1.1.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1.1.1.1a')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('a1.1.1.1a')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1.1a.1.1')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1.a1.1.1')");
+      
+      assertEqual([ '0.0.0.0' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(0)`));
+      assertEqual([ '0.0.0.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(1)`));
+      assertEqual([ '0.0.1.0' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(256)`));
+      assertEqual([ '0.0.1.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(257)`));
+      assertEqual([ '0.1.0.0' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(65536)`));
+      assertEqual([ '0.1.0.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(65537)`));
+      assertEqual([ '1.1.1.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(16843009)`));
+      assertEqual([ '10.0.5.9' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(167773449)`));
+      assertEqual([ '127.0.0.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(2130706433)`));
+      assertEqual([ '192.168.0.0' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(3232235520)`));
+      assertEqual([ '192.168.0.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(3232235521)`));
+      assertEqual([ '192.168.1.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(3232235777)`));
+      assertEqual([ '192.168.2.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(3232236033)`));
+      assertEqual([ '254.255.255.255' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(4278190079)`));
+      assertEqual([ '255.255.255.255' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(4294967295)`));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test is_ip4 function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testIsIp4: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN IS_IPV4()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN IS_IPV4("foo", 2)');
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4(null)`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4(false)`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4(true)`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4(12)`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4([])`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4(["127.0.0.1"])`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4({})`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4(' ')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('foobar')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('0')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('-1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('123456789')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1.256')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.256.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.256.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('256.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('00.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.00.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.00.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1.00')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('000.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('-1.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1.-1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1.1.')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('.1.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('12.34.56.789')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('256.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('a1.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1.1a')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('a1.1.1.1a')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1a.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.a1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4(' 1.1.1.1')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('1.1.1.1 ')`));
+
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('0.0.0.0')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('1.1.1.1')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('8.8.8.8')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('127.0.0.1')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('192.168.0.1')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('255.255.255.255')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('0.0.0.255')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('255.0.0.0')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('0.255.0.0')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('0.0.255.0')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('0.0.0.255')`));
+      assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('17.17.17.17')`));
+      
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('01.01.01.01')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('000.000.000.000')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('001.001.001.001')`));
+    },
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test md5 function

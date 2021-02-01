@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,15 +35,12 @@
 #include <utility>
 #include <vector>
 
-#include <date/date.h>
 #include <date/iso_week.h>
 
 #include "Basics/NumberUtils.h"
 #include "Basics/datetime.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 #include <velocypack/StringRef.h>
 
@@ -194,7 +192,7 @@ std::
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(
-                                                                                ::weekDayNames[static_cast<unsigned>(wd)]);
+                                                                                ::weekDayNames[wd.c_encoding()]);
                                                                           }},
 
                                                                          {"%mmm",
@@ -207,8 +205,7 @@ std::
                                                                          {"%www",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
-                                                                            wrk.append(
-                                                                                weekDayNamesShort[static_cast<unsigned>(wd)]);
+                                                                            wrk.append(weekDayNamesShort[wd.c_encoding()]);
                                                                           }},
                                                                          {"%fff",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
@@ -376,7 +373,7 @@ std::
                                                                              arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(std::to_string(
-                                                                                static_cast<unsigned>(wd)));
+                                                                                wd.c_encoding()));
                                                                           }},
                                                                          {"%y",
                                                                           [](std::string& wrk,
@@ -612,7 +609,7 @@ int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
   return static_cast<int>(p - dateTime.data());
 }
 
-bool parseDateTime(arangodb::velocypack::StringRef dateTime, 
+bool parseDateTime(arangodb::velocypack::StringRef dateTime,
                    ParsedDateTime& result) {
   // trim input string
   while (!dateTime.empty()) {
@@ -773,7 +770,7 @@ bool parseDateTime(arangodb::velocypack::StringRef dateTime,
 
 }  // namespace
 
-bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime, 
+bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
                                      arangodb::tp_sys_clock_ms& date_tp) {
   ::ParsedDateTime result;
   if (!::parseDateTime(dateTime, result)) {
@@ -834,3 +831,56 @@ std::string arangodb::basics::formatDate(std::string const& formatString,
   return ::executeDateFormatRegex(formatString, dateValue);
 }
 
+bool arangodb::basics::parseIsoDuration(arangodb::velocypack::StringRef duration,
+                                        arangodb::basics::ParsedDuration& ret) {
+  using namespace arangodb;
+
+  std::match_results<char const*> durationParts;
+  if (!arangodb::basics::regexIsoDuration(duration, durationParts)) {
+    return false;
+  }
+
+  char const* begin;
+
+  begin = duration.data() + durationParts.position(2);
+  ret.years = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(2));
+
+  begin = duration.data() + durationParts.position(4);
+  ret.months = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(4));
+
+  begin = duration.data() + durationParts.position(6);
+  ret.weeks = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(6));
+
+  begin = duration.data() + durationParts.position(8);
+  ret.days = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(8));
+
+  begin = duration.data() + durationParts.position(11);
+  ret.hours = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(11));
+
+  begin = duration.data() + durationParts.position(13);
+  ret.minutes = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(13));
+
+  begin = duration.data() + durationParts.position(15);
+  ret.seconds = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(15));
+
+  // The Milli seconds can be shortened:
+  // .1 => 100ms
+  // so we append 00 but only take the first 3 digits
+  auto matchLength = durationParts.length(17);
+  int number = 0;
+  if (matchLength > 0) {
+    if (matchLength > 3) {
+      matchLength = 3;
+    }
+    begin = duration.data() + durationParts.position(17);
+    number = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
+    if (matchLength == 2) {
+      number *= 10;
+    } else if (matchLength == 1) {
+      number *= 100;
+    }
+  }
+  ret.milliseconds = number;
+
+  return true;
+}

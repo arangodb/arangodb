@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -16,6 +17,8 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
@@ -27,6 +30,7 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/MetricsFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 
@@ -41,6 +45,7 @@ using namespace arangodb;
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   application_features::ApplicationServer server{nullptr, nullptr};
+  server.addFeature<MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -48,9 +53,9 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
   EXPECT_TRUE(tm.holdTransactions(500) );
   tm.releaseTransactions();
 
-  tm.registerTransaction(static_cast<TRI_voc_tid_t>(1), false);
+  tm.registerTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TRI_voc_tid_t>(1), false);
+  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 
   EXPECT_TRUE(tm.holdTransactions(500) );
@@ -60,6 +65,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
   application_features::ApplicationServer server{nullptr, nullptr};
+  server.addFeature<MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -78,7 +84,7 @@ TEST(RocksDBTransactionManager, test_overlapping) {
       cv.notify_all();
     }
 
-    tm.registerTransaction(static_cast<TRI_voc_tid_t>(1), false);
+    tm.registerTransaction(static_cast<TransactionId>(1), false, false);
     EXPECT_EQ(tm.getActiveTransactionCount(), 1);
   };
 
@@ -92,6 +98,6 @@ TEST(RocksDBTransactionManager, test_overlapping) {
 
   reader.join();
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TRI_voc_tid_t>(1), false);
+  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }

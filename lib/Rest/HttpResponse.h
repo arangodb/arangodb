@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -104,7 +104,8 @@ class HttpResponse : public GeneralResponse {
     return _body->deflate(size);
   }
 
-  void addPayloadInternal(velocypack::Slice, size_t, velocypack::Options const*, bool);
+  void addPayloadInternal(uint8_t const* data, size_t length, 
+                          velocypack::Options const* options, bool resolveExternals);
   
  private:
   std::vector<std::string> _cookies;

@@ -7,7 +7,7 @@
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,7 +39,7 @@
 
 #include <unordered_set>
 
-NS_LOCAL
+namespace {
 
 using iresearch::data_input;
 using iresearch::data_output;
@@ -72,9 +72,9 @@ struct read_write_helper<T, sizeof(uint64_t)> {
   }
 };
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 
 template<
@@ -455,7 +455,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   const byte_type* pos_{ data_.begin() };
 }; // bytes_ref_input
 
-NS_BEGIN(encode)
+namespace encode {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                bit packing encode/decode helpers
@@ -475,7 +475,7 @@ NS_BEGIN(encode)
 //
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(bitpack)
+namespace bitpack {
 
 const uint32_t ALL_EQUAL = 0U;
 
@@ -564,13 +564,13 @@ IRESEARCH_API uint32_t write_block(
   const uint64_t* RESTRICT decoded,
   uint64_t* RESTRICT encoded);
 
-NS_END
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                      delta encode/decode helpers
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(delta)
+namespace delta {
 
 template<typename Iterator>
 inline void decode(Iterator begin, Iterator end) {
@@ -597,13 +597,13 @@ inline void encode(Iterator begin, Iterator end) {
   });
 }
 
-NS_END // delta
+} // delta
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        avg encode/decode helpers
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(avg)
+namespace avg {
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
@@ -925,10 +925,10 @@ inline void visit_block_packed(
   visit_packed(base, avg, packed, size, bits, visitor);
 }
 
-NS_END // avg
+} // avg
 
-NS_END // encode
+} // encode
 
-NS_END // ROOT
+} // ROOT
 
 #endif

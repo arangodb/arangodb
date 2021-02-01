@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -144,7 +143,7 @@ static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
 
 auth::User auth::User::newUser(std::string const& user,
                                std::string const& password, auth::Source source) {
-  auth::User entry("", 0);
+  auth::User entry("", RevisionId::none());
   entry._active = true;
   entry._source = source;
 
@@ -231,8 +230,8 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
                                    "cannot extract _key");
   }
 
-  TRI_voc_rid_t rev = transaction::helpers::extractRevFromDocument(slice);
-  if (rev == 0) {
+  RevisionId rev = transaction::helpers::extractRevFromDocument(slice);
+  if (rev.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "cannot extract _rev");
   }
@@ -256,7 +255,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!simpleSlice.isObject()) {
     LOG_TOPIC("e159f", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract simple";
-    return auth::User("", 0);
+    return auth::User("", RevisionId::none());
   }
 
   VPackSlice const methodSlice = simpleSlice.get("method");
@@ -266,7 +265,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!methodSlice.isString() || !saltSlice.isString() || !hashSlice.isString()) {
     LOG_TOPIC("09122", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract password internals";
-    return auth::User("", 0);
+    return auth::User("", RevisionId::none());
   }
 
   // extract "active" attribute
@@ -275,7 +274,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!activeSlice.isBoolean()) {
     LOG_TOPIC("857e0", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract active flag";
-    return auth::User("", 0);
+    return auth::User("", RevisionId::none());
   }
 
   auth::User entry(keySlice.copyString(), rev);
@@ -317,7 +316,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
 // ===================== Constructor =======================
 
-auth::User::User(std::string&& key, TRI_voc_rid_t rid)
+auth::User::User(std::string&& key, RevisionId rid)
     : _key(std::move(key)), _rev(rid), _loaded(TRI_microtime()) {}
 
 // ======================= Methods ==========================
@@ -354,8 +353,8 @@ VPackBuilder auth::User::toVPackBuilder() const {
     if (!_key.empty()) {
       builder.add(StaticStrings::KeyString, VPackValue(_key));
     }
-    if (_rev > 0) {
-      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(_rev)));
+    if (_rev.isSet()) {
+      builder.add(StaticStrings::RevString, VPackValue(_rev.toString()));
     }
 
     builder.add("user", VPackValue(_username));

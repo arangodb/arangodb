@@ -28,7 +28,7 @@
 #include <limits>
 #include <limits.h>
 
-NS_BEGIN( detail )
+namespace detail {
 
 template<class T, T min_val, T max_val>
 struct integer_traits_base {
@@ -36,9 +36,9 @@ struct integer_traits_base {
   static const T const_max = max_val;
 };
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 template< typename T >
 struct integer_traits : std::numeric_limits < T > {
@@ -92,6 +92,6 @@ template<> struct integer_traits< uint64_t > :
   };
 #endif
 
-NS_END
+}
 
 #endif

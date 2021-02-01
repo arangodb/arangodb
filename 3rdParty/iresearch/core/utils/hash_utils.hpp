@@ -31,7 +31,7 @@
 // --SECTION--                                                        hash utils
 // -----------------------------------------------------------------------------
 
-NS_ROOT
+namespace iresearch {
 
 FORCE_INLINE size_t hash_combine(size_t seed, size_t v) noexcept {
   return seed ^ (v + 0x9e3779b9 + (seed<<6) + (seed>>2));
@@ -112,13 +112,13 @@ inline size_t hash(const T* begin, size_t size) noexcept {
 typedef hashed_basic_string_ref<byte_type> hashed_bytes_ref;
 typedef hashed_basic_string_ref<char> hashed_string_ref;
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    std extensions
 // -----------------------------------------------------------------------------
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::hashed_bytes_ref> {
@@ -155,6 +155,6 @@ struct hash<std::vector<::iresearch::basic_string_ref<Char>>> {
   }
 };
 
-NS_END // std
+} // std
 
 #endif

@@ -22,9 +22,28 @@
 
 #include "wildcard_utils.hpp"
 
+#include "fst/concat.h"
+
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wsign-compare"
+  #pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
+#include "fstext/determinize-star.h"
+
+#if defined(_MSC_VER)
+  // NOOP
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+
 #include "automaton_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   if (expr.empty()) {
@@ -94,58 +113,20 @@ WildcardType wildcard_type(const bytes_ref& expr) noexcept {
 }
 
 automaton from_wildcard(const bytes_ref& expr) {
-  struct {
-   automaton::StateId from;
-   automaton::StateId to;
-   automaton::StateId match_all_from{ fst::kNoStateId };
-   automaton::StateId match_all_to{ fst::kNoStateId };
-   bytes_ref match_all_label{};
-   bool escaped{ false };
-   bool match_all{ false };
-  } state;
+  // need this variable to preserve valid address
+  // for cases with match all and  terminal escape
+  // character (%\\)
+  const byte_type c = WildcardMatch::ESCAPE;
 
-  utf8_transitions_builder builder;
-  std::pair<bytes_ref, automaton::StateId> arcs[2];
+  bool escaped = false;
+  std::vector<automaton> parts;
+  parts.reserve(expr.size() / 2); // reserve some space
 
-  automaton a;
-  state.from = a.AddState();
-  state.to = state.from;
-  a.SetStart(state.from);
+  auto append_char = [&](const bytes_ref& label) {
+    auto* begin = label.begin();
 
-  auto appendChar = [&a, &builder, &arcs, &state](const bytes_ref& c) {
-    state.to = a.AddState();
-    if (!state.match_all) {
-      if (state.match_all_label.null()) {
-        utf8_emplace_arc(a, state.from, c, state.to);
-      } else {
-        const auto r = compare(c, state.match_all_label);
-
-        if (!r) {
-          utf8_emplace_arc(a, state.from, state.match_all_from, c, state.to);
-          state.match_all_to = state.to;
-        } else {
-          arcs[0] = { c, state.to };
-          arcs[1] = { state.match_all_label, state.match_all_to };
-
-          if (r > 0) {
-            std::swap(arcs[0], arcs[1]);
-          }
-
-          builder.insert(a, state.from, state.match_all_from,
-                         std::begin(arcs), std::end(arcs));
-        }
-      }
-    } else {
-      utf8_emplace_arc(a, state.from, state.from, c, state.to);
-
-      state.match_all_from = state.from;
-      state.match_all_to = state.to;
-      state.match_all_label = c;
-      state.match_all = false;
-    }
-
-    state.from = state.to;
-    state.escaped = false;
+    parts.emplace_back(make_char(utf8_utils::next(begin)));
+    escaped = false;
   };
 
   const auto* label_begin = expr.begin();
@@ -157,39 +138,40 @@ automaton from_wildcard(const bytes_ref& expr) {
 
     if (!label_length || label_end > end) {
       // invalid UTF-8 sequence
-      a.DeleteStates();
-      return a;
+      return {};
     }
 
     switch (*label_begin) {
       case WildcardMatch::ANY_STRING: {
-        if (state.escaped) {
-          appendChar({label_begin, label_length});
+        if (escaped) {
+          append_char({label_begin, label_length});
         } else {
-          state.match_all = true;
+          parts.emplace_back(make_all());
         }
         break;
       }
       case WildcardMatch::ANY_CHAR: {
-        if (state.escaped) {
-          appendChar({label_begin, label_length});
+        if (escaped) {
+          append_char({label_begin, label_length});
         } else {
-          state.to = a.AddState();
-          utf8_emplace_rho_arc(a, state.from, state.to);
-          state.from = state.to;
+          parts.emplace_back(make_any());
         }
         break;
       }
       case WildcardMatch::ESCAPE: {
-        if (state.escaped) {
-          appendChar({label_begin, label_length});
+        if (escaped) {
+          append_char({label_begin, label_length});
         } else {
-          state.escaped = !state.escaped;
+          escaped = !escaped;
         }
         break;
       }
       default: {
-        appendChar({label_begin, label_length});
+        if (escaped) {
+          // a backslash followed by no special character
+          parts.emplace_back(make_char({&c, 1}));
+        }
+        append_char({label_begin, label_length});
         break;
       }
     }
@@ -197,39 +179,55 @@ automaton from_wildcard(const bytes_ref& expr) {
     label_begin = label_end;
   }
 
-  // need this variable to preserve valid address
-  // for cases with match all and  terminal escape
-  // character (%\\)
-  const byte_type c = WildcardMatch::ESCAPE;
-
-  if (state.escaped) {
-    // non-terminated escape sequence
-    appendChar({&c, 1});
-  } if (state.match_all) {
-    // terminal MATCH_ALL
-    utf8_emplace_rho_arc(a, state.to, state.to);
-    state.match_all_from = fst::kNoStateId;
+  if (escaped) {
+    // a non-terminated escape sequence
+    parts.emplace_back(make_char({&c, 1}));
   }
 
-  if (state.match_all_from != fst::kNoStateId) {
-    // non-terminal MATCH_ALL
-    utf8_emplace_arc(a, state.to, state.match_all_from,
-                     state.match_all_label, state.match_all_to);
+  automaton nfa;
+  nfa.SetStart(nfa.AddState());
+  nfa.SetFinal(0, true);
+
+  for (auto begin = parts.rbegin(), end = parts.rend(); begin != end; ++begin) {
+    // prefer prepending version of fst::Concat(...) as the cost of concatenation
+    // is linear in the sum of the size of the input FSAs
+    fst::Concat(*begin, &nfa);
   }
 
-  a.SetFinal(state.to);
+#ifdef IRESEARCH_DEBUG
+  // ensure nfa is sorted
+  static constexpr auto EXPECTED_NFA_PROPERTIES =
+    fst::kILabelSorted | fst::kOLabelSorted |
+    fst::kAcceptor | fst::kUnweighted;
+
+  assert(EXPECTED_NFA_PROPERTIES == nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
+  UNUSED(EXPECTED_NFA_PROPERTIES);
+#endif
+
+  // nfa has only 1 arc per state
+  nfa.SetProperties(fst::kILabelSorted, fst::kILabelSorted);
+
+  automaton dfa;
+  if (fst::DeterminizeStar(nfa, &dfa)) {
+    // nfa isn't fully determinized
+    return {};
+  }
+
+//FIXME???
+//  fst::Minimize(&dfa);
+
+  utf8_expand_labels(dfa);
 
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
-  static constexpr auto EXPECTED_PROPERTIES =
-    fst::kIDeterministic | fst::kODeterministic |
-    fst::kILabelSorted | fst::kOLabelSorted |
-    fst::kAcceptor;
-  assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
-  UNUSED(EXPECTED_PROPERTIES);
+  static constexpr auto EXPECTED_DFA_PROPERTIES =
+    fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
+
+  assert(EXPECTED_DFA_PROPERTIES == dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
+  UNUSED(EXPECTED_DFA_PROPERTIES);
 #endif
 
-  return a;
+  return dfa;
 }
 
-NS_END
+}

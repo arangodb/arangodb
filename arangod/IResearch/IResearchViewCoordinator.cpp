@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
@@ -46,9 +48,6 @@
 #include "VocBase/Methods/Indexes.h"
 
 namespace {
-
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 void ensureImmutableProperties(
     arangodb::iresearch::IResearchViewMeta& dst,
@@ -67,6 +66,8 @@ void ensureImmutableProperties(
 
 namespace arangodb {
 namespace iresearch {
+
+using irs::async_utils::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
@@ -106,7 +107,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     // create links on a best-effor basis
     // link creation failure does not cause view creation failure
     try {
-      std::unordered_set<TRI_voc_cid_t> collections;
+      std::unordered_set<DataSourceId> collections;
 
       res = IResearchLinkHelper::updateLinks(collections, *impl, links);
 
@@ -116,19 +117,16 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
             << impl->name() << "': " << res.errorNumber() << " " << res.errorMessage();
       }
     } catch (basics::Exception const& e) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("09bb9", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.code() << " " << e.what();
     } catch (std::exception const& e) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("6b99b", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
           << impl->name() << "': " << e.what();
     } catch (...) {
-      IR_LOG_EXCEPTION();
       LOG_TOPIC("61ae6", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
@@ -136,7 +134,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     }
 
     view = ci.getView(vocbase.name(),
-                      std::to_string(impl->id()));  // refresh view from Agency
+                      std::to_string(impl->id().id()));  // refresh view from Agency
 
     if (view) {
       view->open();  // open view to match the behavior in
@@ -149,11 +147,10 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
 
   virtual Result instantiate(LogicalView::ptr& view,
                              TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition,
-                             uint64_t planVersion) const override {
+                             velocypack::Slice const& definition) const override {
     std::string error;
     auto impl = std::shared_ptr<IResearchViewCoordinator>(
-        new IResearchViewCoordinator(vocbase, definition, planVersion));
+        new IResearchViewCoordinator(vocbase, definition));
 
     if (!impl->_meta.init(definition, error)) {
       return Result(
@@ -190,7 +187,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     [](irs::string_ref const& key) -> bool {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField
           && key != iresearch::StaticStrings::PrimarySortField
-          && key != iresearch::StaticStrings::StoredValuesField;
+          && key != iresearch::StaticStrings::StoredValuesField
+          && key != iresearch::StaticStrings::CollectionNameField;
   };
 
   auto* acceptor = &propertiesAcceptor;
@@ -220,8 +218,9 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
     VPackBuilder tmp;
 
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+    read_write_mutex::read_mutex mutex(_mutex);
+    // '_collections' can be asynchronously modified
+    auto lock = irs::make_lock_guard(mutex);
 
     builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     for (auto& entry : _collections) {
@@ -273,6 +272,9 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 }
 
 Result IResearchViewCoordinator::link(IResearchLink const& link) {
+  if (!arangodb::ClusterMethods::includeHiddenCollectionInLink(link.collection().name())) {
+    return TRI_ERROR_NO_ERROR;
+  }
   static const std::function<bool(irs::string_ref const& key)> acceptor = []( // acceptor
     irs::string_ref const& key // key
   ) -> bool {
@@ -299,26 +301,29 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   // strip internal keys (added in IResearchLink::properties(...)) from externally visible link definition
   if (!mergeSliceSkipKeys(sanitizedBuilder, builder.slice(), acceptor)) {
-    return Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failed to generate externally visible link definition while emplacing collection '") + std::to_string(cid) + "' into arangosearch View '" + name() + "'"
-    );
+    return Result(           // result
+        TRI_ERROR_INTERNAL,  // code
+        std::string("failed to generate externally visible link definition "
+                    "while emplacing collection '") +
+            std::to_string(cid.id()) + "' into arangosearch View '" + name() +
+            "'");
   }
 
   sanitizedBuilder.close();
 
-  WriteMutex mutex(_mutex); // '_collections' can be asynchronously read
-  SCOPED_LOCK(mutex);
+  read_write_mutex::write_mutex mutex(_mutex); // '_collections' can be asynchronously read
+  auto lock = irs::make_lock_guard(mutex);
   auto [it, emplaced] = _collections.try_emplace(
     cid,
     link.collection().name(), std::move(sanitizedBuilder));
   UNUSED(it);
 
   if (!emplaced) {
-    return Result( // result
-      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, // code
-      std::string("duplicate entry while emplacing collection '") + std::to_string(cid) + "' into arangosearch View '" + name() + "'"
-    );
+    return Result(                              // result
+        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,  // code
+        std::string("duplicate entry while emplacing collection '") +
+            std::to_string(cid.id()) + "' into arangosearch View '" + name() +
+            "'");
   }
 
   return Result();
@@ -328,19 +333,20 @@ Result IResearchViewCoordinator::renameImpl(std::string const& oldName) {
   return LogicalViewHelperClusterInfo::rename(*this, oldName);
 }
 
-Result IResearchViewCoordinator::unlink(TRI_voc_cid_t) noexcept {
+Result IResearchViewCoordinator::unlink(DataSourceId) noexcept {
   return Result();  // NOOP since no internal store
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
-                                                   velocypack::Slice info, uint64_t planVersion)
-    : LogicalView(vocbase, info, planVersion) {
+                                                   velocypack::Slice info)
+    : LogicalView(vocbase, info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
 bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor) const {
-  ReadMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+  read_write_mutex::read_mutex mutex(_mutex);
+  // '_collections' can be asynchronously modified
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry : _collections) {
     if (!visitor(entry.first)) {
@@ -377,7 +383,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
       // check existing links
       for (auto& entry : _collections) {
         auto collection =
-            engine.getCollection(vocbase().name(), std::to_string(entry.first));
+            engine.getCollection(vocbase().name(), std::to_string(entry.first.id()));
 
         if (collection &&
             !exe.canUseCollection(vocbase().name(), collection->name(), auth::Level::RO)) {
@@ -436,11 +442,12 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     // ...........................................................................
 
     velocypack::Builder currentLinks;
-    std::unordered_set<TRI_voc_cid_t> currentCids;
+    std::unordered_set<DataSourceId> currentCids;
 
     {
-      ReadMutex mutex(_mutex);
-      SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+      read_write_mutex::read_mutex mutex(_mutex);
+      // '_collections' can be asynchronously modified
+      auto lock = irs::make_lock_guard(mutex);
 
       currentLinks.openObject();
 
@@ -452,7 +459,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
       currentLinks.close();
     }
 
-    std::unordered_set<TRI_voc_cid_t> collections;
+    std::unordered_set<DataSourceId> collections;
 
     if (partialUpdate) {
       return IResearchLinkHelper::updateLinks(collections, *this, links);
@@ -465,7 +472,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
 
     return Result(
         e.code(),
@@ -475,7 +481,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("86a5c", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
 
     return Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -485,7 +490,6 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     LOG_TOPIC("17b66", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "'";
-    IR_LOG_EXCEPTION();
 
     return Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -505,9 +509,9 @@ Result IResearchViewCoordinator::dropImpl() {
 
   // drop links first
   {
-    std::unordered_set<TRI_voc_cid_t> currentCids;
+    std::unordered_set<DataSourceId> currentCids;
 
-    visitCollections([&currentCids](TRI_voc_cid_t cid) -> bool {
+    visitCollections([&currentCids](DataSourceId cid) -> bool {
       currentCids.emplace(cid);
       return true;
     });
@@ -516,7 +520,8 @@ Result IResearchViewCoordinator::dropImpl() {
     ExecContext const& exe = ExecContext::current();
     if (!exe.isSuperuser()) {
       for (auto& entry : currentCids) {
-        auto collection = engine.getCollection(vocbase().name(), std::to_string(entry));
+        auto collection =
+            engine.getCollection(vocbase().name(), std::to_string(entry.id()));
 
         if (collection &&
             !exe.canUseCollection(vocbase().name(), collection->name(), auth::Level::RO)) {
@@ -525,7 +530,7 @@ Result IResearchViewCoordinator::dropImpl() {
       }
     }
 
-    std::unordered_set<TRI_voc_cid_t> collections;
+    std::unordered_set<DataSourceId> collections;
     auto res = IResearchLinkHelper::updateLinks( // update links
       collections, // modified collections
       *this, // view
@@ -533,11 +538,9 @@ Result IResearchViewCoordinator::dropImpl() {
       currentCids);
 
     if (!res.ok()) {
-      return Result(
-          res.errorNumber(),
-          std::string(
-              "failed to remove links while removing arangosearch view '") +
-              name() + "': " + res.errorMessage());
+      return Result(res.errorNumber(), arangodb::basics::StringUtils::concatT("failed to remove links while removing arangosearch view '",
+                                                                              name(),
+                                                                              "': ", res.errorMessage()));
     }
   }
 

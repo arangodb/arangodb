@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,6 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Markus Pfeiffer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlExecutorTestCase.h"
@@ -26,7 +29,7 @@ using namespace arangodb::tests::aql;
 template <bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
     : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
-  auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, manager(),
+  auto engine = std::make_unique<ExecutionEngine>(0, *fakedQuery, manager(),
                                                   SerializationFormat::SHADOWROWS);
   /// TODO fakedQuery->setEngine(engine.release());
   if constexpr (enableQueryTrace) {

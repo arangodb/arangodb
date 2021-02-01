@@ -29,7 +29,7 @@
 
 MSVC_ONLY(class IRESEARCH_API std::exception);
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @enum ErrorCode
@@ -51,7 +51,7 @@ enum class ErrorCode : uint32_t {
 
 #define DECLARE_ERROR_CODE(class_name) \
   static const ErrorCode CODE = ErrorCode::class_name; \
-  virtual iresearch::ErrorCode code() const noexcept override { return CODE; }
+  virtual ::iresearch::ErrorCode code() const noexcept override { return CODE; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base
@@ -198,6 +198,6 @@ struct IRESEARCH_API illegal_state: error_base {
   virtual const char* what() const noexcept override;
 }; // illegal_state
 
-NS_END
+}
 
 #endif

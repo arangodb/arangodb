@@ -28,12 +28,15 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Deconstructor
 Connection::~Connection() {
-  FUERTE_LOG_DEBUG << "Destroying Connection" << "\n";
+  FUERTE_LOG_DEBUG << "Destroying Connection"
+                   << "\n";
 }
 
 // sendRequest and wait for it to finished.
-std::unique_ptr<Response> Connection::sendRequest(std::unique_ptr<Request> request) {
-  FUERTE_LOG_TRACE << "sendRequest (sync): before send" << "\n";
+std::unique_ptr<Response> Connection::sendRequest(
+    std::unique_ptr<Request> request) {
+  FUERTE_LOG_TRACE << "sendRequest (sync): before send"
+                   << "\n";
 
   WaitGroup wg;
   std::unique_ptr<Response> rv;
@@ -53,11 +56,13 @@ std::unique_ptr<Response> Connection::sendRequest(std::unique_ptr<Request> reque
     sendRequest(std::move(request), cb);
 
     // Wait for request to finish.
-    FUERTE_LOG_TRACE << "sendRequest (sync): before wait" << "\n";
+    FUERTE_LOG_TRACE << "sendRequest (sync): before wait"
+                     << "\n";
     wg.wait();
   }
 
-  FUERTE_LOG_TRACE << "sendRequest (sync): done" << "\n";
+  FUERTE_LOG_TRACE << "sendRequest (sync): done"
+                   << "\n";
 
   if (error != Error::NoError) {
     throw error;

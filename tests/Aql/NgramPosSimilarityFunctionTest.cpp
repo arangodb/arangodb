@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -61,13 +64,11 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
       if (warnings) {
         warnings->insert(c);
       }});
-    fakeit::Mock<transaction::Context> trxCtxMock;
-    fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([]() {
-      static VPackOptions options;
-      return &options;
-      });
     TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
+      return *trx;
+    });
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (attribute) {
@@ -79,7 +80,12 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
     if (ngram_size) {
       params.emplace_back(*ngram_size);
     }
-    return Functions::NgramPositionalSimilarity(&expressionContext, trx.get(), params);
+    
+    arangodb::aql::Function f("NGRAM_POSITIONAL_SIMILARITY", &Functions::NgramPositionalSimilarity);
+    arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+    node.setData(static_cast<void const*>(&f));
+    
+    return Functions::NgramPositionalSimilarity(&expressionContext, node, params);
   }
 
   void assertNgramSimilarityFail(size_t line,

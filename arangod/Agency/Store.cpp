@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,12 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -367,12 +369,12 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                       << url << "(no response, " << fuerte::to_string(r.error)
                       << "): " << r.slice().toJson();
                 } else {
-                  if (r.response->statusCode() >= 400) {
+                  if (r.statusCode() >= 400) {
                     LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-                        << url << "(" << r.response->statusCode() << ", "
+                        << url << "(" << r.statusCode() << ", "
                         << fuerte::to_string(r.error) << "): " << r.slice().toJson();
 
-                    if (r.response->statusCode() == 404 && _agent != nullptr) {
+                    if (r.statusCode() == 404 && _agent != nullptr) {
                       LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
                           << "dropping dead callback at " << url;
                       agent->trashStoreCallback(url, VPackSlice(buffer->data()));
@@ -656,15 +658,14 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool showHidden = false;
 
   // Collect all paths
-  std::vector<std::string> query_strs;
-  if (query.isArray()) {
-    for (auto const& sub_query : VPackArrayIterator(query)) {
-      std::string subqstr = sub_query.copyString();
-      query_strs.push_back(subqstr);
-      showHidden |= (subqstr.find("/.") != std::string::npos);
-    }
-  } else {
+  if (!query.isArray()) {
     return false;
+  }
+  
+  std::vector<std::string> query_strs;
+  for (auto const& sub_query : VPackArrayIterator(query)) {
+    query_strs.emplace_back(sub_query.copyString());
+    showHidden |= (query_strs.back().find("/.") != std::string::npos);
   }
 
   // Remove double ranges (inclusion / identity)
@@ -866,7 +867,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           continue;
         }
       }
-      auto uri = Node::normalize(abskeys.at(i.first));
+      auto uri = Store::normalize(abskeys.at(i.first));
       if (op.isEqualString("observe")) {
         bool found = false;
         if (value.get("url").isString()) {
@@ -1010,6 +1011,12 @@ std::unordered_multimap<std::string, std::string> const& Store::observedTable() 
   return _observedTable;
 }
 
+/// Get node at path under mutex and store it in velocypack
+void Store::get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  _node.hasAsNode(path).first.toBuilder(b, showHidden);
+}
+
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -1036,7 +1043,40 @@ void Store::removeTTL(std::string const& uri) {
   }
 }
 
-/// @brief Split strings by forward slashes, omitting empty strings
+std::string Store::normalize(char const* key, size_t length) {
+  VPackStringRef const path(key, length);
+
+  std::string normalized;
+  normalized.reserve(path.size() + 1);
+  size_t offset = 0;
+
+  while (true) {
+    if (normalized.empty() || normalized.back() != '/') {
+      normalized.push_back('/');
+    }
+    size_t pos = path.find('/', offset);
+    if (pos != std::string::npos) {
+      normalized.append(path.data() + offset, pos - offset);
+      offset = pos + 1;
+    } else {
+      normalized.append(path.data() + offset, path.size() - offset);
+      break;
+    }
+  }
+
+  TRI_ASSERT(!normalized.empty());
+  TRI_ASSERT(normalized.front() == '/');
+  if (normalized.size() > 1 && normalized.back() == '/') {
+    normalized.pop_back();
+  }
+  TRI_ASSERT(!normalized.empty());
+  TRI_ASSERT(normalized.front() == '/');
+  TRI_ASSERT(normalized.find("//") == std::string::npos);
+  return normalized;
+}
+
+/// @brief Split strings by forward slashes, omitting empty strings,
+/// and ignoring multiple subsequent forward slashes
 std::vector<std::string> Store::split(std::string const& str) {
   std::vector<std::string> result;
 

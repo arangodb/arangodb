@@ -32,9 +32,9 @@
 'use strict';
 
 const expect = require('chai').expect;
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const download = require('internal').download;
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;

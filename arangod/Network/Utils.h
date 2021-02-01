@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,6 +38,9 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+namespace consensus {
+class Agent;
+}
 class ClusterInfo;
 class NetworkFeature;
 
@@ -53,8 +57,10 @@ Result resultFromBody(arangodb::velocypack::Slice b, int defaultError);
 
 /// @brief extract the error from a cluster response
 template <typename T>
-OperationResult opResultFromBody(T const& body, int defaultErrorCode) {
-  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode));
+OperationResult opResultFromBody(T const& body, int defaultErrorCode,
+                                 OperationOptions&& options) {
+  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode),
+                         std::move(options));
 }
 
 /// @brief extract the error code form the body
@@ -76,6 +82,8 @@ std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res);
 /// @brief convert between arango and fuerte rest methods
 fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
 rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
+
+void addSourceHeader(consensus::Agent* agent, fuerte::Request& req);
 
 }  // namespace network
 }  // namespace arangodb

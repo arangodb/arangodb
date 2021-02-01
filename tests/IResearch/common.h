@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -95,6 +96,11 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
                  std::vector<int> expectedRulesIds,
                  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
                  std::string const& optionsString = "{}");
+
+arangodb::aql::QueryResult explainQuery(
+    TRI_vocbase_t& vocbase, std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& optionsString = "{}");
 
 arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,

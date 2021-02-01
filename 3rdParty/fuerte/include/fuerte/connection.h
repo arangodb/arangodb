@@ -24,12 +24,12 @@
 #ifndef ARANGO_CXX_DRIVER_CONNECTION
 #define ARANGO_CXX_DRIVER_CONNECTION
 
+#include <memory>
+#include <string>
+
 #include "loop.h"
 #include "message.h"
 #include "types.h"
-
-#include <memory>
-#include <string>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Connection is the base class for a connection between a client
@@ -42,17 +42,17 @@ class Connection : public std::enable_shared_from_this<Connection> {
   virtual ~Connection();
 
   ///  Connection state
-  ///  Disconnected <---------+
-  ///  +                      |
-  ///  |  +-------------------+--> Failed
+  ///  Created
+  ///  +
+  ///  |  +-------------------+--> Closed
   ///  |  |                   |
-  ///  v  +                   +
+  ///  v  +                +
   ///  Connecting +-----> Connected
-  enum class State {
-    Disconnected = 0,
+  enum class State : uint8_t {
+    Created = 0,
     Connecting = 1,
     Connected = 2,
-    Failed = 3  /// canceled or broken permanently (i.e. bad authentication)
+    Closed = 3  /// closed permanently
   };
 
   /// @brief Send a request to the server and wait into a response it received.
@@ -69,8 +69,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// When a response is received or an error occurs, the corresponding
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
-  virtual void sendRequest(std::unique_ptr<Request> r,
-                           RequestCallback cb) = 0;
+  virtual void sendRequest(std::unique_ptr<Request> r, RequestCallback cb) = 0;
 
   /// @brief Send a request to the server and return immediately.
   /// When a response is received or an error occurs, the corresponding
@@ -93,21 +92,16 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief endpoint we are connected to
   std::string endpoint() const;
 
-  /// @brief lease a connection (prevent idle timeout)
-  virtual bool lease() = 0;
-
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
-
-  /// @brief Activate the connection.
-  virtual void start() = 0;
 
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
     if (_config._onFailure) {
       try {
         _config._onFailure(errorCode, errorMessage);
-      } catch(...) {}
+      } catch (...) {
+      }
     }
   }
 
@@ -135,7 +129,7 @@ class ConnectionBuilder {
 
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
-  
+
   /// @brief connect timeout (15s default)
   inline std::chrono::milliseconds connectTimeout() const {
     return _conf._connectTimeout;
@@ -155,7 +149,13 @@ class ConnectionBuilder {
     _conf._idleTimeout = t;
     return *this;
   }
-  
+
+  /// @brief use an idle timeout
+  ConnectionBuilder& useIdleTimeout(bool t) {
+    _conf._useIdleTimeout = t;
+    return *this;
+  }
+
   /// @brief connect retry pause (1s default)
   inline std::chrono::milliseconds connectRetryPause() const {
     return _conf._connectRetryPause;
@@ -165,11 +165,9 @@ class ConnectionBuilder {
     _conf._connectRetryPause = p;
     return *this;
   }
-  
+
   /// @brief connect retries (3 default)
-  inline unsigned maxConnectRetries() const {
-    return _conf._maxConnectRetries;
-  }
+  inline unsigned maxConnectRetries() const { return _conf._maxConnectRetries; }
   /// @brief set the max connect retries (3 default)
   ConnectionBuilder& maxConnectRetries(unsigned r) {
     _conf._maxConnectRetries = r;
@@ -216,7 +214,7 @@ class ConnectionBuilder {
     _conf._vstVersion = c;
     return *this;
   }
-  
+
   /// upgrade http1.1 to http2 connection (not necessary)
   ConnectionBuilder& upgradeHttp1ToHttp2(bool c) {
     _conf._upgradeH1ToH2 = c;

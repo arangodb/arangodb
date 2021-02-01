@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RestServer/VocbaseContext.h"
 
 struct TRI_vocbase_t;
 
@@ -134,7 +133,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
   
   // handle query finalization for all engines
-  void handleFinishQuery(std::string const& idString);
+  RestStatus handleFinishQuery(std::string const& idString);
 
  private:
   // dig out vocbase from context and query from ID, handle errors

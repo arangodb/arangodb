@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,7 @@ class Exception final : public virtual std::exception {
   Exception(Result const&, char const* file, int line);
   Exception(Result&&, char const* file, int line);
 
-  Exception(int code, std::string const& errorMessage, char const* file, int line);
+  Exception(int code, std::string_view errorMessage, char const* file, int line);
 
   Exception(int code, std::string&& errorMessage, char const* file, int line);
 

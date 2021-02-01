@@ -95,9 +95,9 @@ private:
         U& operator=(const pair& x);
     } u;
 
-    std::chrono::hours           h_{0};
-    std::chrono::minutes         m_{0};
-    std::chrono::seconds         s_{0};
+    std::chrono::hours           h_{};
+    std::chrono::minutes         m_{};
+    std::chrono::seconds         s_{};
     tz                           zone_{tz::local};
 
 public:
@@ -289,11 +289,9 @@ struct transition
     std::ostream&
     operator<<(std::ostream& os, const transition& t)
     {
-        using namespace date;
-        using namespace std::chrono;
         using date::operator<<;
         os << t.timepoint << "Z ";
-        if (t.info->offset >= seconds{0})
+        if (t.info->offset >= std::chrono::seconds{0})
             os << '+';
         os << make_time(t.info->offset);
         if (t.info->is_dst > 0)

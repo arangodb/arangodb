@@ -396,7 +396,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn2)
       end
 
-      it "checks batch document creation" do
+      it "checks batch document creation error" do
         cmd = "/_api/batch"
 
         n = 10
@@ -454,7 +454,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "checks batch document creation" do
+      it "checks batch document creation nx collection" do
         cmd = "/_api/batch"
 
         multipart = ArangoMultipartBody.new()

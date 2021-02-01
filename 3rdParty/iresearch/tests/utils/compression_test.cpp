@@ -28,7 +28,7 @@
 #include <numeric>
 #include <random>
 
-NS_LOCAL
+namespace {
 
 struct dummy_compressor final : irs::compression::compressor {
   virtual irs::bytes_ref compress(irs::byte_type* in, size_t size, irs::bstring& /*buf*/) {
@@ -48,14 +48,10 @@ struct dummy_decompressor final : irs::compression::decompressor {
   virtual bool prepare(data_input&) { return true; }
 };
 
-NS_END
+}
 
 TEST(compression_test, registration) {
-  struct dummy_compression {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "dummy_compression";
-    }
-  };
+  struct dummy_compression { };
 
   constexpr auto type = irs::type<dummy_compression>::get();
 
@@ -114,8 +110,15 @@ TEST(compression_test, registration) {
   }
 }
 
+TEST(compression_test, none) {
+  static_assert("iresearch::compression::none" == irs::type<irs::compression::none>::name());
+  ASSERT_EQ(nullptr, irs::compression::none().compressor({}));
+  ASSERT_EQ(nullptr, irs::compression::none().decompressor());
+}
+
 TEST(compression_test, lz4) {
   using namespace iresearch;
+  static_assert("iresearch::compression::lz4" == irs::type<irs::compression::lz4>::name());
 
   std::vector<size_t> data(2047, 0);
   std::random_device rnd_device;
@@ -159,6 +162,7 @@ TEST(compression_test, lz4) {
 
 TEST(compression_test, delta) {
   using namespace iresearch;
+  static_assert("iresearch::compression::delta" == irs::type<irs::compression::delta>::name());
 
   std::vector<uint64_t> data(2047, 0);
   std::random_device rnd_device;

@@ -38,7 +38,7 @@
 #include <math.h>
 #include <set>
 
-NS_ROOT
+namespace iresearch {
 
 segment_writer::stored_column::stored_column(
     const string_ref& name, 
@@ -156,10 +156,12 @@ bool segment_writer::index(
   auto& slot = fields_.emplace(name);
   auto& slot_features = slot.meta().features;
 
+  const bool slot_empty = slot.empty();
+
   // invert only if new field features are a subset of slot features
-  if ((slot.empty() || features.is_subset_of(slot_features)) &&
-      slot.invert(tokens, slot.empty() ? features : slot_features, doc)) {
-    if (features.check<norm>()) {
+  if ((slot_empty || features.is_subset_of(slot_features)) &&
+      slot.invert(tokens, slot_empty ? features : slot_features, doc)) {
+    if (slot.size() && features.check<norm>()) {
       norm_fields_.insert(&slot);
     }
 
@@ -204,6 +206,7 @@ void segment_writer::finish() {
   // write document normalization factors (for each field marked for normalization))
   float_t value;
   for (auto* field : norm_fields_) {
+    assert(field->size() > 0);
     value = 1.f / float_t(std::sqrt(double_t(field->size())));
     if (value != norm::DEFAULT()) {
       auto& stream = field->norms(*col_writer_);
@@ -375,4 +378,4 @@ void segment_writer::reset(const segment_meta& meta) {
   initialized_ = true;
 }
 
-NS_END
+}

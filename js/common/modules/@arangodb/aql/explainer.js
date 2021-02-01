@@ -1,5 +1,5 @@
 /* jshint strict: false, maxlen: 300 */
-/* global arango, ArangoClusterComm */
+/* global arango */
 
 var db = require('@arangodb').db,
   internal = require('internal'),
@@ -17,7 +17,7 @@ let uniqueValue = 0;
 
 const isCoordinator = function () {
   let isCoordinator = false;
-  if (typeof ArangoClusterComm === 'object') {
+  if (internal.isArangod()) {
     isCoordinator = require('@arangodb/cluster').isCoordinator();
   } else {
     try {
@@ -218,19 +218,47 @@ function printModificationFlags(flags) {
 }
 
 /* print optimizer rules */
-function printRules(rules) {
+function printRules(rules, stats) {
   'use strict';
 
+  const maxIdLen = String('Id').length;
   stringBuilder.appendLine(section('Optimization rules applied:'));
   if (rules.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
   } else {
-    var maxIdLen = String('Id').length;
     stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' + header('RuleName'));
-    for (var i = 0; i < rules.length; ++i) {
+    for (let i = 0; i < rules.length; ++i) {
       stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + '   ' + keyword(rules[i]));
     }
   }
+  stringBuilder.appendLine();
+ 
+  if (!stats || !stats.rules) {
+    return;
+  }
+
+  let maxNameLength = 0;
+  let times = Object.keys(stats.rules).map(function(key) {
+    if (key.length > maxNameLength) {
+      maxNameLength = key.length;
+    }
+    return { name: key, time: stats.rules[key] };
+  });
+  times.sort(function(l, r) {
+    // highest cost first
+    return r.time - l.time;
+  });
+  // top few only
+  times = times.slice(0, 5);
+
+  stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
+  stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
+  times.forEach(function(rule) {
+    stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
+  });
+  
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
   stringBuilder.appendLine();
 }
 
@@ -1073,7 +1101,13 @@ function processQuery(query, explain, planIndex) {
 
   var projection = function (node) {
     if (node.projections && node.projections.length > 0) {
-      return ', projections: `' + node.projections.join('`, `') + '`';
+      let p = node.projections.map(function(p) {
+        if (Array.isArray(p)) {
+          return p.join('`.`', p);
+        }
+        return p;
+      });
+      return ', projections: `' + p.join('`, `') + '`';
     }
     return '';
   };
@@ -1156,6 +1190,10 @@ function processQuery(query, explain, planIndex) {
           viewAnnotation += ' with late materialization';
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
+        }
+        if (node.hasOwnProperty('options')) {
+          if (node.options.hasOwnProperty('countApproximate'))
+          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
         }
         viewAnnotation += ' */';
         let viewVariables = '';
@@ -1492,7 +1530,17 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
         let defaultDirection = node.defaultDirection;
-        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
+        let shortestPathType = node.shortestPathType || 'K_SHORTEST_PATHS';
+        let depth = '';
+        if (shortestPathType === 'K_PATHS') {
+          if (node.hasOwnProperty("options")) {
+            depth = value(node.options.minDepth + '..' + node.options.maxDepth);
+          } else {
+            depth = value('1..1');
+          }
+          depth += '  ' + annotation('/* min..maxPathDepth */') + ' ';
+        }
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${depth}${keyword(translate[defaultDirection])} ${keyword(shortestPathType)} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
         } else {
@@ -1619,7 +1667,7 @@ function processQuery(query, explain, planIndex) {
           }
           collect += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + (node.inVariable ? variableName(node.inVariable) : '') + ')';
             }).join(', ');
         }
         collect +=
@@ -1846,6 +1894,20 @@ function processQuery(query, explain, planIndex) {
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
         return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
+      case 'WindowNode': {
+        var window = keyword('WINDOW') + ' ';
+        if (node.rangeVariable) {
+          window += variableName(node.rangeVariable) + ' ' + keyword("WITH") + ' ';
+        }
+        window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)}} `;
+        if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
+          window += keyword('AGGREGATE') + ' ' +
+            node.aggregates.map(function (node) {
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+            }).join(', ');
+        }
+        return window;
+      }
     }
 
     return 'unhandled node type (' + node.type + ')';
@@ -2001,7 +2063,7 @@ function processQuery(query, explain, planIndex) {
   printKShortestPathsDetails(kShortestPathsDetails);
   stringBuilder.appendLine();
 
-  printRules(plan.rules);
+  printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
   printWarnings(explain.warnings);
   if (profileMode) {
@@ -2027,6 +2089,9 @@ function explain(data, options, shouldPrint) {
   options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
+  if (!options.profile) {
+    options.profile = 2;
+  }
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let result = stmt.explain(options);
@@ -2283,10 +2348,17 @@ function inspectDump(filename, outfile) {
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
-  if (db._engine().name !== data.engine.name) {
-    print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
+
+  try {
+    if (db._engine().name !== data.engine.name) {
+      print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
+    }
+    print();
+  } catch (err) {
+    // ignore errors here. db._engine() will fail if we are not connected
+    // to a server instance. swallowing the error here allows us to continue
+    // and analyze the dump offline
   }
-  print();
 
   print("/* graphs */");
   let graphs = data.graphs || {};

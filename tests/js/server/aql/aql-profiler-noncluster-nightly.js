@@ -53,13 +53,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
@@ -92,7 +92,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes
@@ -162,7 +162,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes as well as removal

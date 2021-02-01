@@ -8,14 +8,6 @@ Returns an object containing all collection properties.
 * *waitForSync*: If *true* creating a document will only return
   after the data was synced to disk.
 
-* *journalSize* : The size of the journal in bytes.
-  This option is meaningful for the MMFiles storage engine only.
-
-* *isVolatile*: If *true* then the collection data will be
-  kept in memory only and ArangoDB will not write or sync the data
-  to disk.
-  This option is meaningful for the MMFiles storage engine only.
-
 * *keyOptions* (optional) additional options for key generation. This is
   a JSON array containing the following attributes (note: some of the
   attributes are optional):
@@ -44,7 +36,8 @@ In a cluster setup, the result will also contain the following attributes:
 
 * *replicationFactor*: determines how many copies of each shard are kept
   on different DB-Servers. Has to be in the range of 1-10 or the string
-  `"satellite"` for a SatelliteCollection. _(cluster only)_
+  `"satellite"` for a SatelliteCollection (Enterprise Edition only).
+  _(cluster only)_
 
 * *writeConcern*: determines how many copies of each shard are required to be
   in sync on the different DB-Servers. If there are less then these many copies
@@ -64,12 +57,10 @@ one or more of the following attribute(s):
 * *waitForSync*: If *true* creating a document will only return
   after the data was synced to disk.
 
-* *journalSize*: The size of the journal in bytes.
-  This option is meaningful for the MMFiles storage engine only.
-
 * *replicationFactor*: Change the number of shard copies kept on
   different DB-Servers. Valid values are integer numbers in the range of 1-10
-  or the string `"satellite"` for a SatelliteCollection. _(cluster only)_
+  or the string `"satellite"` for a SatelliteCollection (Enterprise Edition only).
+  _(cluster only)_
 
 * *writeConcern*: change how many copies of each shard are required to be
   in sync on the different DB-Servers. If there are less then these many copies
@@ -77,8 +68,8 @@ one or more of the following attribute(s):
   up-to-date copies will succeed at the same time however. The value of
   *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
-**Note**: some other collection properties, such as *type*, *isVolatile*,
-*keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once 
+**Note**: some other collection properties, such as *type*,
+*keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once
 the collection is created.
 
 @EXAMPLES

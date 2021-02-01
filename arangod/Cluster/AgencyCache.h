@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,27 +25,41 @@
 #define ARANGOD_CLUSTER_AGENCY_CACHE 1
 
 #include "Agency/Store.h"
+#include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Promise.h"
-#include "GeneralServer/RestHandler.h"
+#include "RestServer/Metrics.h"
 
 #include <map>
-#include <mutex>
+#include <shared_mutex>
 
 namespace arangodb {
 
 class AgencyCache final : public arangodb::Thread {
+ public:
+  typedef std::unordered_map<std::string, consensus::query_t> databases_t;
 
-public:
+  struct change_set_t {
+    consensus::index_t ind;  // Raft index
+    uint64_t version;        // Plan / Current version
+    databases_t dbs; // touched databases
+    consensus::query_t rest; // Plan / Current rest
+    change_set_t (consensus::index_t const& i, uint64_t const& v, databases_t const& d,
+                  consensus::query_t const& r) :
+      ind(i), version(v), dbs(d), rest(r) {}
+    change_set_t (consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
+      ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
+  };
+
   /// @brief start off with our server
   explicit AgencyCache(
     application_features::ApplicationServer& server,
-    AgencyCallbackRegistry& callbackRegistry);
+    AgencyCallbackRegistry& callbackRegistry,
+    int shutdownCode);
 
-  /// @brief Clean up
-  virtual ~AgencyCache();
+  ~AgencyCache();
 
   // whether or not the thread is allowed to start during prepare
   bool isSystem() const override;
@@ -61,21 +76,22 @@ public:
   void beginShutdown() override;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  consensus::query_t const dump() const;
+  consensus::query_t dump() const;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  std::tuple <consensus::query_t, consensus::index_t> const get(
-    std::string const& path = std::string("/")) const;
+  consensus::index_t get(arangodb::velocypack::Builder& result, std::string const& path = "/") const;
+
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  std::tuple<consensus::query_t, consensus::index_t> get(std::string const& path = "/") const;
 
   /// @brief Get velocypack from node downward
-  std::tuple <consensus::query_t, consensus::index_t> const read(
-    std::vector<std::string> const& paths) const;
+  std::tuple<consensus::query_t, consensus::index_t> read(std::vector<std::string> const& paths) const;
 
   /// @brief Get current commit index
   consensus::index_t index() const;
 
   /// @brief Register local callback
-  bool registerCallback(std::string const& key, uint64_t const& id);
+  Result registerCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Unregister local callback
   void unregisterCallback(std::string const& key, uint64_t const& id);
@@ -89,15 +105,40 @@ public:
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
-  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction (
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
     consensus::query_t const& trx);
+#endif
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests
   consensus::Store& store();
+#endif
 
-private:
+  /**
+   * @brief         Get a list of planned/current  changes and other
+   *                databases and the corresponding RAFT index
+   *
+   * @param section Plan/Current
+   * @param last    Last index known to the caller
+   *
+   * @return        The currently last noted RAFT index and  a velocypack
+   *                representation of planned and other desired databases
+   */
+  change_set_t changedSince(
+    std::string const& section, consensus::index_t const& last) const;
+  
+  /**
+   * @brief         Clean up planned/current changes up to including index
+   *
+   * @param section   "Plan" or "Current"
+   * @param doneIndex   Done index
+   */
+  void clearChanged(std::string const& section, consensus::index_t const& doneIndex);
+
+ private:
 
   /// @brief invoke all callbacks
   void invokeAllCallbacks() const;
@@ -108,21 +149,35 @@ private:
   /// @brief invoke given callbacks
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
+  /// @brief reinitialize all databases, after a snapshot or after a hotbackup restore
+  /// Must hold storeLock to call!
+  std::unordered_set<std::string> reInitPlan();
+
   /// @brief handle callbacks for specific log document
-  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&);
+  void handleCallbacksNoLock(
+    VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&,
+    std::unordered_set<std::string>& plannedChanges, std::unordered_set<std::string>& currentChanges);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock
   void triggerWaiting(consensus::index_t commitIndex);
 
   /// @brief Guard for _readDB
-  mutable std::mutex _storeLock;
+  mutable std::shared_mutex _storeLock;
 
   /// @brief Commit index
   consensus::index_t _commitIndex;
 
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
+
+  /// @brief shut down code for futures that are unresolved.
+  /// this should be TRI_ERROR_SHUTTING_DOWN normally, but can be overridden
+  /// during testing
+  int const _shutdownCode;
+
+  /// @brief Make sure, that we have seen in the beginning a snapshot
+  std::atomic<bool> _initialized;
 
   /// @brief Agency callback registry
   AgencyCallbackRegistry& _callbackRegistry;
@@ -134,8 +189,24 @@ private:
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
+
+  /// @ brief changes of index to plan and current
+  std::multimap<consensus::index_t, std::string> _planChanges;
+  std::multimap<consensus::index_t, std::string> _currentChanges;
+
+  /// @brief snapshot note for client
+  consensus::index_t _lastSnapshot;
+  
+  /// @brief current number of entries in _callbacks
+  Gauge<uint64_t>& _callbacksCount;
 };
 
 } // namespace
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCache::change_set_t const& c);
+ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
+}
+
 
 #endif

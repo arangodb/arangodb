@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
@@ -55,7 +56,6 @@ struct Transaction;
 }
 
 class LogicalCollection;
-struct RocksDBDocumentOperation;
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -67,7 +67,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedWithIndexMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
   ~RocksDBTransactionState();
 
@@ -80,13 +80,16 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint64_t numCommits() const { return _numCommits; }
-#endif
-  uint64_t numInserts() const { return _numInserts; }
-  uint64_t numUpdates() const { return _numUpdates; }
-  uint64_t numRemoves() const { return _numRemoves; }
+  /// @brief number of commits, including intermediate commits
+  uint64_t numCommits() const override { return _numCommits; }
 
+  /// @brief number of insert operations
+  uint64_t numInserts() const { return _numInserts; }
+  /// @brief number of update/replace operations
+  uint64_t numUpdates() const { return _numUpdates; }
+  /// @brief number of remove operations
+  uint64_t numRemoves() const { return _numRemoves; }
+  
   inline bool hasOperations() const {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
@@ -95,7 +98,7 @@ class RocksDBTransactionState final : public TransactionState {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
+  void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
 
   /// @brief undo the effects of the previous prepareOperation call
@@ -104,7 +107,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  Result addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
                       TRI_voc_document_operation_e opType,
                       bool& hasPerformedIntermediateCommit);
 
@@ -141,23 +144,23 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
 
-  RocksDBTransactionCollection::TrackedOperations& trackedOperations(TRI_voc_cid_t cid);
+  RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
-  void trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  void trackInsert(DataSourceId cid, RevisionId rid);
 
   /// @brief Track documents removed from the collection
   ///        Used to update the revision tree for replication after commit
-  void trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  void trackRemove(DataSourceId cid, RevisionId rid);
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexInsert(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
+  void trackIndexInsert(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexRemove(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
+  void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
   bool isOnlyExclusiveTransaction() const;
 
@@ -207,8 +210,9 @@ class RocksDBTransactionState final : public TransactionState {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
-  uint64_t _numCommits = 0;
 #endif
+  /// @brief number of commits, including intermediate commits
+  uint64_t _numCommits;
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;
