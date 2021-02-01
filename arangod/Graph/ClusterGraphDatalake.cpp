@@ -24,8 +24,6 @@
 #include "ClusterGraphDatalake.h"
 
 #include "Basics/debugging.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
