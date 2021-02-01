@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #12543: Unused Foxx service config can not be discarded.
+
 * Fixed issue #12363: Foxx HTTP API upgrade/replace always enables
   development mode.
 
