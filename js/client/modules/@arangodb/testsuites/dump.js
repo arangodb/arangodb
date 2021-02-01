@@ -121,9 +121,9 @@ class DumpRestoreHelper {
       this.restoreOldConfig.setEndpoint(this.instanceInfo.endpoint);
     }
     this.setOptions();
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
-    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
+    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
     this.fn = this.afterServerStart(this.instanceInfo);
   }
   setOptions() {
@@ -134,10 +134,10 @@ class DumpRestoreHelper {
     if (this.dumpOptions.compressed) {
       this.dumpConfig.activateCompression();
     }
-    if (this.options.deactivateCompression) {
+    if (this.firstRunOptions.deactivateCompression) {
       this.dumpConfig.deactivateCompression();
     }
-    if (this.options.deactivateEnvelopes) {
+    if (this.firstRunOptions.deactivateEnvelopes) {
       this.dumpConfig.deactivateEnvelopes();
     }
     if (this.restoreOptions.allDatabases) {
@@ -545,7 +545,7 @@ function dump (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, options, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend(options, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpMixedClusterSingle (options) {
