@@ -578,7 +578,8 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  return applyCollectionDumpMarker(trx, coll, type, doc);
+  std::string conflictingDocumentKey;
+  return applyCollectionDumpMarker(trx, coll, type, doc, conflictingDocumentKey);
 }
 
 /// @brief apply the data from a collection dump

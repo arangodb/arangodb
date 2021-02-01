@@ -18,37 +18,44 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_RANDOM_UNIFORM_CHARACTER_H
-#define ARANGODB_RANDOM_UNIFORM_CHARACTER_H 1
+// Note that error.h uses ARANGODB_BASICS_ERROR_H!
+#ifndef ARANGODB_BASICS_RESULT_ERROR_H
+#define ARANGODB_BASICS_RESULT_ERROR_H
 
-#include <cstdlib>
 #include <string>
+#include <string_view>
 
-#include "Basics/Common.h"
+namespace arangodb::result {
 
-namespace arangodb {
-class UniformCharacter {
- private:
-  UniformCharacter(UniformCharacter const&);
-  UniformCharacter& operator=(UniformCharacter const&);
+// arangodb::Error is used in arangodb::Result
 
+class Error final {
  public:
-  explicit UniformCharacter(size_t length);
-  explicit UniformCharacter(std::string const& characters);
-  UniformCharacter(size_t length, std::string const& characters);
+  explicit Error(int errorNumber) noexcept(noexcept(std::string::allocator_type()));
 
- public:
-  std::string random() const;
-  std::string random(size_t length) const;
-  char randomChar() const;
+  Error(int errorNumber, std::string_view errorMessage);
+  [[nodiscard]] auto errorNumber() const noexcept -> int;
+  [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
+  [[nodiscard]] auto errorMessage() && noexcept -> std::string;
+
+  template <typename S>
+  void resetErrorMessage(S&& msg) {
+    _errorMessage = std::forward<S>(msg);
+  }
+
+  template <typename S>
+  void appendErrorMessage(S&& msg) {
+    _errorMessage += std::forward<S>(msg);
+  }
 
  private:
-  size_t const _length;
-  std::string const _characters;
+  int _errorNumber;
+  std::string _errorMessage;
 };
-}  // namespace arangodb
 
-#endif
+}  // namespace arangodb::result
+
+#endif  // ARANGODB_BASICS_RESULT_ERROR_H
