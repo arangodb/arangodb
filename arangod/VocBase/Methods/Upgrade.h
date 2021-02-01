@@ -69,8 +69,8 @@ struct Upgrade {
     DATABASE_INIT = (1u << 3),
     DATABASE_UPGRADE = (1u << 4),
     DATABASE_EXISTING = (1u << 5),
-    DATABASE_ONLY_ONCE = (1u << 6), // hint that task should be run on
-                                     // database only once. New database
+    DATABASE_ONLY_ONCE = (1u << 6),  // hint that task should be run on
+                                     // database only once. New databases
                                      // should assume this task as executed
     // =============
     CLUSTER_NONE = (1u << 7),
