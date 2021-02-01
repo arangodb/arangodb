@@ -233,6 +233,12 @@ void Version::initialize() {
   Values["jemalloc"] = "false";
 #endif
 
+#ifdef USE_MEMORY_PROFILE
+  Values["memory-profiler"] = "true";
+#else
+  Values["memory-profiler"] = "false";
+#endif
+
 #ifdef TRI_HAVE_POLL_H
   Values["fd-client-event-handler"] = "poll";
 #else
