@@ -455,7 +455,7 @@ void BaseOptions::ensureCache() {
   TRI_ASSERT(_cache != nullptr);
 }
 
-arangodb::graph::RefactoredClusterTraverserCache* BaseOptions::ensureRefactoredCache() {
+void BaseOptions::ensureRefactoredCache() {
   // Will replace the old (above) one after refactor is done.
 
   if (_cache == nullptr) {

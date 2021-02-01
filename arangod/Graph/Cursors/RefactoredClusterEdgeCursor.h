@@ -71,8 +71,6 @@ class RefactoredClusterEdgeCursor {
  private:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext const& _expressionContext;
-  arangodb::graph::RefactoredClusterTraverserCache* _cache;
-  bool _backward;
 
  public:
   void readAll(aql::TraversalStats& stats, Callback const& callback);

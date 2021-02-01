@@ -288,7 +288,7 @@ Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& ver
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   auto const* engines = _opts.getCache()->engines();
-  auto& cache = _opts.getCache()->cache();  // TODO: remove me or use me below
+  //auto& cache = _opts.getCache()->cache();  // TODO: remove me or use me below
 
   // TODO map id => ServerID if possible
   // And go fast-path
