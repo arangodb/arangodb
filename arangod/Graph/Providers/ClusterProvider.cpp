@@ -140,6 +140,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
                                   leased->bufferRef(), reqOpts));
   }
 
+
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
@@ -148,6 +149,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     }
 
     auto payload = r.response().stealPayload();
+    bool isPayloadCached = false;
+
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -170,8 +173,12 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }*/
 
-      if (!_opts.getCache()->isVertexCached(vertexKey, _opts.isBackward())) {  // TODO include check direction?
-        _opts.getCache()->datalake().add(std::move(payload));
+      if (!isPayloadCached) {  // TODO include check direction?
+        _opts.getCache()->datalake().add(payload);
+        isPayloadCached = true;
+      }
+
+      if (!_opts.getCache()->isVertexCached(vertexKey, _opts.isBackward())) {
         // Protected by datalake (Cache)
         _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value, _opts.isBackward());
       }
@@ -189,12 +196,12 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     */
   }
 
-  // TODO: think about better way
-  for (auto const& lE : looseEnds) {
+  // TODO: think about better way -> we need to do that after edges are fetched as well!
+  for (auto& lE : looseEnds) {
     if (_opts.getCache()->isVertexCached(lE->getVertexIdentifier(), _opts.isBackward())) {
+
       lE->setFetched();
       result.emplace_back(std::move(lE));
-    } else {
     }
   }
 }
