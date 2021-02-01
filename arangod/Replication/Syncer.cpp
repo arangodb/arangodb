@@ -182,7 +182,6 @@ arangodb::Result applyCollectionDumpMarkerInternal(
           // different key
           if (trx.isSingleOperationTransaction()) {
             // return the conflicting document's key to retry
-            conflictingDocumentKey = keySlice.stringView();
             return Result(TRI_ERROR_ARANGO_TRY_AGAIN);
           }
 
