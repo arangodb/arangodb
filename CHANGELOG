@@ -1,6 +1,9 @@
 devel
 -----
 
+* Turn off option `--server.export-read-write-metrics` for now, until there
+  is certainty about the runtime overhead it introduces.
+
 * Remove unsafe query option `inspectSimplePlans`. This option previously
   defaulted to `true`, and turning it off could make particular queries fail.
   The option was ignored in the cluster previously, and turning it off only
