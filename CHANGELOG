@@ -1,6 +1,9 @@
 devel
 -----
-          
+
+* added enterprise-build-repository and oskar-build-repository to `--version`
+  as `enterprise-build-repository` and `oskar-build-repository`.
+
 * Added metric `arangodb_transactions_expired` to track the total number 
   of expired and then garbage-collected transactions.
 
@@ -1598,8 +1601,6 @@ devel
 
 * Improve performance of agency cache by not copying the hierarchical Node
   tree result for serialization, but serializing it directly.
-
-* added enterprise-build-repository and oskar-build-repository to `--version`
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
