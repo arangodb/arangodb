@@ -1,6 +1,15 @@
 devel
 -----
 
+* Remove unsafe query option `inspectSimplePlans`. This option previously
+  defaulted to `true`, and turning it off could make particular queries fail.
+  The option was ignored in the cluster previously, and turning it off only
+  had an effect in single server, there making very simple queries (queries
+  not containing any FOR loops) not going through the optimizer's complete
+  pipeline as a performance optimization. However, the optimization was only
+  possible for a very small number of queries and even had adverse effects,
+  so it is now removed entirely.
+
 * On Linux and MacOS, require at least 8192 usable file descriptors at startup. 
   If less file descriptors are available to the arangod process, then the
   startup is automatically aborted.

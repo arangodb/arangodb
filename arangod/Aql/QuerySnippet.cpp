@@ -145,7 +145,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->walkSubqueriesFirst(*this);
+  _root->walk(*this); 
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter
@@ -243,20 +243,7 @@ void CloneWorker::processAfter(ExecutionNode* node) {
     _internalGather->addDependency(clone);
   }
 
-  // for a SubqueryNode, we need to hook up both
-  // the root of the Subquery as well as the SubqueryNode
-  // itself
-  if (node->getType() == ExecutionNode::SUBQUERY) {
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(node);
-    auto cloneSq = ExecutionNode::castTo<SubqueryNode*>(clone);
-
-    auto sqRoot = sq->getSubquery();
-
-    TRI_ASSERT(_originalToClone.count(sqRoot) == 1);
-    auto cloneSqRoot = _originalToClone.at(sqRoot);
-
-    cloneSq->setSubquery(cloneSqRoot, true);
-  }
+  TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY);
 }
 
 bool CloneWorker::enterSubquery(ExecutionNode* subq, ExecutionNode* root) {
