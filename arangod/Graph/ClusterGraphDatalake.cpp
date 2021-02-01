@@ -24,6 +24,8 @@
 #include "ClusterGraphDatalake.h"
 
 #include "Basics/debugging.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -46,7 +48,9 @@ arangodb::velocypack::Slice ClusterGraphDatalake::operator[](size_t index) const
   return arangodb::velocypack::Slice(_data[index]->data());
 }
 
-arangodb::velocypack::Slice ClusterGraphDatalake::add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>&& data) {
+arangodb::velocypack::Slice ClusterGraphDatalake::add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data) {
+  TRI_ASSERT(data != nullptr);
+
   if (_data.empty()) {
     // save initial reallocations
     _data.reserve(8);
