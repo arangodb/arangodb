@@ -156,9 +156,6 @@ struct ClusterProvider {
   auto fetchEdgesFromEnginesWithVariables(VertexType const& vertexId, size_t& depth) -> Result; // unused right now
   auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
 
-  auto fetchSingleEdge(Step* const& vertex) -> void;
-  auto fetchEdges(std::vector<Step*> const& vertices) -> void;
-
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();

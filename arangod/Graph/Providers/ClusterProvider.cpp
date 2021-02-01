@@ -186,11 +186,9 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     */
   }
 
-  // TODO: think about better way -> we need to do that after edges are fetched as well!
+  // put back all looseEnds we we're able to cache
   for (auto& lE : looseEnds) {
     if (_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
-
-      lE->setFetched();
       result.emplace_back(std::move(lE));
     }
   }
@@ -361,23 +359,6 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   return {};
 }
 
-void ClusterProvider::fetchSingleEdge(Step* const& vertex) {
-  Result res = fetchEdgesFromEngines(vertex->getVertex().getID());
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  // add http stats
-  _stats.addHttpRequests(_opts.getCache()->engines()->size());  // TODO: Do this somewhere else at the right place.
-}
-
-void ClusterProvider::fetchEdges(std::vector<Step*> const& vertices) {
-  for (auto const& vertexStep : vertices) {
-    // fetch edges and re-arm cursor
-    // TODO: think about just passing that vertices vector to the function directly.
-    fetchSingleEdge(vertexStep);
-  }
-}
-
 auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("c9160", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
@@ -387,17 +368,22 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
 
-    // TODO: Check get rid of result object at all
     for (auto const& step : result) {
       auto res = fetchEdgesFromEngines(step->getVertex().getID());  // TODO: Check depth
+      // TODO: check stats (also take a look of vertex stats)
+      // add http stats
+      _stats.addHttpRequests(_opts.getCache()->engines()->size());
+
       if (res.fail()) {
         // TODO: "need to take care of this";
         THROW_ARANGO_EXCEPTION(res);
       }
+      // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
+      step->setFetched();
     }
   }
 
-  // TODO: This needs to be changed!
+  // TODO: This needs to be changed! (future?)
   return futures::makeFuture(std::move(result));
 }
 
