@@ -174,6 +174,8 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         opRes = trx.insert(coll->name(), slice, options);
         if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           useReplace = true;
+          // In this case (and this case only), the errorMessage contains the
+          // conflicting document's key.
           potentiallyConflictingKey = opRes.errorMessage();
         } else {
           potentiallyConflictingKey = std::string{};
