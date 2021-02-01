@@ -24,8 +24,6 @@
 #ifndef ARANGODB_BASICS_RESULT_ERROR_H
 #define ARANGODB_BASICS_RESULT_ERROR_H
 
-#include <iosfwd>
-#include <memory>
 #include <string>
 #include <string_view>
 
@@ -39,8 +37,8 @@ class Error final {
 
   Error(int errorNumber, std::string_view errorMessage);
   [[nodiscard]] auto errorNumber() const noexcept -> int;
-  [[nodiscard]] auto errorMessage() const& -> std::string_view;
-  [[nodiscard]] auto errorMessage() && -> std::string;
+  [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
+  [[nodiscard]] auto errorMessage() && noexcept -> std::string;
 
   template <typename S>
   void resetErrorMessage(S&& msg) {

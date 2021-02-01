@@ -147,8 +147,8 @@ class Result final {
    * @brief  Get error message
    * @return Our error message
    */
-  [[nodiscard]] auto errorMessage() const& -> std::string_view;
-  [[nodiscard]] auto errorMessage() && -> std::string;
+  [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
+  [[nodiscard]] auto errorMessage() && noexcept -> std::string;
 
   template <typename F, std::enable_if_t<std::is_invocable_r_v<void, F, arangodb::result::Error&>, int> = 0>
   auto withError(F&& f) -> Result& {

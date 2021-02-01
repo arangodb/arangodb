@@ -133,7 +133,7 @@ auto Result::reset(Result&& other) noexcept -> Result& {
   return *this = std::move(other);
 }
 
-auto Result::errorMessage() const& -> std::string_view {
+auto Result::errorMessage() const& noexcept -> std::string_view {
   if (_error == nullptr) {
     // Return a view of the empty string, not a nullptr!
     return {""};
@@ -142,7 +142,7 @@ auto Result::errorMessage() const& -> std::string_view {
   }
 }
 
-auto Result::errorMessage() && -> std::string {
+auto Result::errorMessage() && noexcept -> std::string {
   if (_error == nullptr) {
     return {};
   } else {

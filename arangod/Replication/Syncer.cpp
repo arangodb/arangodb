@@ -166,7 +166,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
         // need to replace the one we have
         useReplace = true;
-        potentiallyConflictingKey = keySlice.stringView();
+        potentiallyConflictingKey = keySlice.copyString();
       }
 
       if (!useReplace) {
@@ -178,7 +178,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
           // conflicting document's key.
           potentiallyConflictingKey = opRes.errorMessage();
         } else {
-          potentiallyConflictingKey = std::string{};
+          potentiallyConflictingKey.clear();
         }
       }
 

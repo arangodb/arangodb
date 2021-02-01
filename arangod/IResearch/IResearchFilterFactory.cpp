@@ -1270,12 +1270,11 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
     }
 
     auto rv = fromExpression(filter, ctx, filterCtx, node);
-    if (rv.errorNumber() == TRI_ERROR_NO_ERROR) {
-      return rv.reset();
-    } else {
-      return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
-                                            "in from binary equation", rv.errorMessage()));
-    }
+    return rv.withError([&](result::Error& err) {
+      err.resetErrorMessage(
+          arangodb::basics::StringUtils::concatT("in from binary equation",
+                                                 rv.errorMessage()));
+    });
   }
 
   irs::by_term* termFilter = nullptr;
