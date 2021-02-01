@@ -51,6 +51,17 @@ Only used on Linux/Mac, still uses autofoo.
 Only used on Linux, still uses autofoo. The "aux" directory has been removed from the
 libtool source because there must not be directories named "aux" on Windows.
 
+In order to update to new versions, run `autogen.sh` and then remove the unnecessary
+generated files, e.g.:
+```
+rm -rf v1.5/aux v1.5/autom4te.cache/ v1.5/config.log v1.5/config.status v1.5/Makefile v1.5/libtool
+```
+
+Note: some files normally excluded by .gitignore need to be added to the build:
+```
+git add -f v1.5/config v1.5/configure v1.5/Makefile.in
+```
+
 ## linenoise-ng
 
 Our maintained fork of linenoise

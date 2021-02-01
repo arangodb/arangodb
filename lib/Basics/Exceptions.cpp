@@ -68,7 +68,7 @@ Exception::Exception(arangodb::Result&& result, char const* file, int line)
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, std::string const& errorMessage, char const* file, int line)
+Exception::Exception(int code, std::string_view errorMessage, char const* file, int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
   appendLocation();
 }

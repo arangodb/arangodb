@@ -2409,28 +2409,6 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   return ret;
 }
 
-/// @brief returns true if a plan is so simple that optimizations would
-/// probably cost more than simply executing the plan
-bool ExecutionPlan::isDeadSimple() const {
-  auto current = _root;
-
-  while (current != nullptr) {
-    auto const nodeType = current->getType();
-
-    if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
-        nodeType == ExecutionNode::ENUMERATE_LIST ||
-        nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
-        nodeType == ExecutionNode::K_SHORTEST_PATHS || nodeType == ExecutionNode::INDEX) {
-      // these node types are not simple
-      return false;
-    }
-
-    current = current->getFirstDependency();
-  }
-
-  return true;
-}
-
 bool ExecutionPlan::fullCount() const noexcept {
   LimitNode* lastLimitNode = _lastLimitNode == nullptr
                                  ? nullptr
@@ -2579,7 +2557,7 @@ struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUn
       --indent;
     }
 
-    LoggerStream logLn{};
+    LoggerStream logLn;
     logLn << Logger::LOGID("24fa8") << LogLevel::INFO << Logger::AQL;
 
     for (int i = 0; i < 2 * indent; i++) {

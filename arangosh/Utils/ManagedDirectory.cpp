@@ -32,6 +32,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/voc-errors.h"
@@ -513,6 +514,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
 }
 
 ManagedDirectory::File::~File() {
+  MUTEX_LOCKER(lock, _mutex);
   try {
     if (_gzfd >= 0) {
       gzclose(_gzFile);
@@ -532,6 +534,11 @@ Result const& ManagedDirectory::File::status() const { return _status; }
 std::string const& ManagedDirectory::File::path() const { return _path; }
 
 void ManagedDirectory::File::write(char const* data, size_t length) {
+  MUTEX_LOCKER(lock, _mutex);
+  writeNoLock(data, length);
+}
+
+void ManagedDirectory::File::writeNoLock(char const* data, size_t length) {
   if (!::isWritable(_fd, _flags, _path, _status)) {
     return;
   }
@@ -553,6 +560,11 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
 }
 
 TRI_read_return_t ManagedDirectory::File::read(char* buffer, size_t length) {
+  MUTEX_LOCKER(lock, _mutex);
+  return readNoLock(buffer, length);
+}
+
+TRI_read_return_t ManagedDirectory::File::readNoLock(char* buffer, size_t length) {
   TRI_read_return_t bytesRead = -1;
   if (!::isReadable(_fd, _flags, _path, _status)) {
     return bytesRead;
@@ -576,11 +588,13 @@ TRI_read_return_t ManagedDirectory::File::read(char* buffer, size_t length) {
 }
 
 std::string ManagedDirectory::File::slurp() {
+  MUTEX_LOCKER(lock, _mutex);
+
   std::string content;
   if (::isReadable(_fd, _flags, _path, _status)) {
     char buffer[::DefaultIOChunkSize];
     while (true) {
-      TRI_read_return_t bytesRead = read(buffer, ::DefaultIOChunkSize);
+      TRI_read_return_t bytesRead = readNoLock(buffer, ::DefaultIOChunkSize);
       if (_status.ok()) {
         content.append(buffer, bytesRead);
       }
@@ -593,6 +607,8 @@ std::string ManagedDirectory::File::slurp() {
 }
 
 void ManagedDirectory::File::spit(std::string const& content) {
+  MUTEX_LOCKER(lock, _mutex);
+
   if (!::isWritable(_fd, _flags, _path, _status)) {
     return;
   }
@@ -601,7 +617,7 @@ void ManagedDirectory::File::spit(std::string const& content) {
   auto data = content.data();
   while (true) {
     size_t n = std::min(leftToWrite, ::DefaultIOChunkSize);
-    write(data, n);
+    writeNoLock(data, n);
     if (_status.fail()) {
       break;
     }
@@ -614,6 +630,8 @@ void ManagedDirectory::File::spit(std::string const& content) {
 }
 
 Result const& ManagedDirectory::File::close() {
+  MUTEX_LOCKER(lock, _mutex);
+
   if (_gzfd >= 0) {
     gzclose(_gzFile);
     _gzfd = -1;
@@ -628,6 +646,8 @@ Result const& ManagedDirectory::File::close() {
 
 
 TRI_read_return_t ManagedDirectory::File::offset() const {
+  MUTEX_LOCKER(lock, _mutex);
+
   TRI_read_return_t fileBytesRead = -1;
 
   if (isGzip()) {
@@ -640,13 +660,15 @@ TRI_read_return_t ManagedDirectory::File::offset() const {
 }
 
 void ManagedDirectory::File::skip(size_t count) {
+  MUTEX_LOCKER(lock, _mutex);
+
   // TODO is there a better implementation than just read count bytes?
   // how does this work with gzip?
   size_t const bufferSize = 4 * 1024;
   char buffer[bufferSize];
 
   while (count > 0) {
-    TRI_read_return_t bytesRead = read(buffer, std::min(bufferSize, count));
+    TRI_read_return_t bytesRead = readNoLock(buffer, std::min(bufferSize, count));
     if (bytesRead <= 0) {
       break; // eof or error (_status will be set)
     }

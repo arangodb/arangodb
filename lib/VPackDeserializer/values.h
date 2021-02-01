@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_VALUES_H
-#define VELOCYPACK_VALUES_H
+#ifndef VELOCYPACK_DESERIALIZER_VALUES_H
+#define VELOCYPACK_DESERIALIZER_VALUES_H
 #include "gadgets.h"
 #include "plan-executor.h"
 #include "utilities.h"
@@ -124,6 +124,18 @@ struct value_deserializer {
   using factory = utilities::identity_factory<T>;
 };
 
+struct slice_deserializer {
+  using plan = slice_deserializer;
+  using constructed_type = slice_type;
+  using factory = utilities::identity_factory<constructed_type>;
+};
+
+struct vpack_builder_deserializer {
+  using plan = vpack_builder_deserializer;
+  using constructed_type = builder_type;
+  using factory = utilities::identity_factory<constructed_type>;
+};
+
 }  // namespace deserializer::values
 
 template <typename T, int V>
@@ -150,6 +162,35 @@ struct deserialize_plan_executor<values::value_deserializer<T>, H> {
         [](T t) { return std::make_tuple(std::move(t)); });
   }
 };
+
+template <typename H>
+struct deserialize_plan_executor<values::slice_deserializer, H> {
+  using value_type = slice_type ;
+  using tuple_type = std::tuple<value_type>;
+  using result_type = result<tuple_type, deserialize_error>;
+
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, typename H::state_type, C &&)
+  -> result_type {
+    return result_type{s};
+  }
+};
+
+template <typename H>
+struct deserialize_plan_executor<values::vpack_builder_deserializer, H> {
+  using value_type = builder_type;
+  using tuple_type = std::tuple<value_type>;
+  using result_type = result<tuple_type, deserialize_error>;
+
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, typename H::state_type, C &&)
+  -> result_type {
+    builder_type builder;
+    builder.add(s);
+    return result_type{std::move(builder)};
+  }
+};
+
 }  // namespace deserializer::executor
 }  // namespace velocypack
 }  // namespace arangodb

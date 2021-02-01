@@ -119,7 +119,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
       auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
       Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
       if (rv.fail()) {
-        return Result(rv.errorNumber(), "could not retrieve estimates: '" + rv.errorMessage() + "'");
+        return Result(rv.errorNumber(), basics::StringUtils::concatT(
+                                            "could not retrieve estimates: '",
+                                            rv.errorMessage(), "'"));
       }
 
       // we will merge in the index estimates later

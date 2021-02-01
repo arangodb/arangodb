@@ -65,12 +65,10 @@ class Ast;
 /// @brief an AQL query basic interface
 class QueryContext {
  private:
-
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  
   explicit QueryContext(TRI_vocbase_t& vocbase);
 
   virtual ~QueryContext();
@@ -108,8 +106,6 @@ class QueryContext {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
       
- public:
-  
   virtual QueryOptions const& queryOptions() const = 0;
   
   /// @brief pass-thru a resolver object from the transaction context
@@ -131,8 +127,6 @@ class QueryContext {
   virtual double getLockTimeout() const noexcept = 0;
   virtual void setLockTimeout(double timeout) = 0;
   
-public:
-  
   virtual void enterV8Context();
   
   virtual void exitV8Context() {}
@@ -140,11 +134,10 @@ public:
   virtual bool hasEnteredV8Context() const { return false; }
 
  protected:
-  
-  TRI_voc_tick_t const _queryId;
-
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;
+  
+  TRI_voc_tick_t const _queryId;
   
   /// @brief thread-safe query warnings collector
   QueryWarnings _warnings;

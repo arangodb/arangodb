@@ -279,6 +279,43 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 
   return Result();
 }
+
+// returns a stripped down version of the inventory, used for shard synchronization only
+Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
+                                               std::string const& collectionName,
+                                               VPackBuilder& result) {
+  {
+    MUTEX_LOCKER(locker, _contextLock);
+    lazyCreateSnapshot();
+  }
+
+  TRI_ASSERT(_snapshot != nullptr);
+
+  // add a "collections" array with just our collection
+  result.add("collections", VPackValue(VPackValueType::Array));
+      
+  ExecContext const& exec = ExecContext::current();
+  if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
+    auto collection = vocbase.lookupCollection(collectionName);
+    if (collection != nullptr) {
+      if (collection->status() != TRI_VOC_COL_STATUS_DELETED &&
+          collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
+        // dump inventory data for collection/shard into result
+        collection->toVelocyPackForInventory(result);
+      }
+    }
+  }
+
+  result.close(); // collections
+  
+  // fake an empty "views" array here
+  result.add("views", VPackValue(VPackValueType::Array));
+  result.close(); // views
+
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
+
+  return Result();
+}
   
 void RocksDBReplicationContext::setPatchCount(std::string const& patchCount) {
   // _patchCount can only be set once in a context, and if it is set, it should be non-empty.

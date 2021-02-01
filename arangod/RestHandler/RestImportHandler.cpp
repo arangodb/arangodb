@@ -455,9 +455,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       return false;
     }
 
-    // VPackSlice const documents = _request->payload();  //yields different
-    // error from what is expected in the server test
-
     if (!documents.isArray()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
@@ -872,8 +869,9 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
       for (VPackSlice it : VPackArrayIterator(resultSlice)) {
         VPackSlice s = it.get(StaticStrings::Error);
         if (!s.isBool() || !s.getBool()) {
+          // no error
           if ((_onDuplicateAction == DUPLICATE_UPDATE || _onDuplicateAction == DUPLICATE_REPLACE) &&
-              it.hasKey(StaticStrings::Old)) {
+              it.hasKey("_oldRev")) {
             // updated/replaced a previous version
             ++result._numUpdated;
           } else {
@@ -1035,14 +1033,10 @@ OperationOptions RestImportHandler::buildOperationOptions() const {
   opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   if (_onDuplicateAction == DUPLICATE_UPDATE) {
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Update;
-    // we need to return the old document so that we can distinguish an original
-    // INSERT from an UPDATE
-    opOptions.returnOld = true;
+    opOptions.returnOld = false; 
   } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
-    // we need to return the old document so that we can distinguish an original
-    // INSERT from a REPLACE
-    opOptions.returnOld = true;
+    opOptions.returnOld = false; 
   }
 
   return opOptions;

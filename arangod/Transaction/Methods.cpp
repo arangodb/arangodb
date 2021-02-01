@@ -76,6 +76,8 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
 
+#include <sstream>
+
 using namespace arangodb;
 using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
@@ -86,6 +88,17 @@ using Future = futures::Future<T>;
 namespace {
 
 enum class ReplicationType { NONE, LEADER, FOLLOWER };
+
+Result buildRefusalResult(LogicalCollection const& collection, char const* operation, 
+                          OperationOptions const& options, std::string const& leader) {
+  std::stringstream msg;
+  msg << TRI_errno_string(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION)
+      << ": shard: " << collection.vocbase().name() << "/" << collection.name()
+      << ", operation: " << operation 
+      << ", from: " << options.isSynchronousReplicationFrom 
+      << ", current leader: " << leader;
+  return Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, msg.str());
+}
 
 // wrap vector inside a static function to ensure proper initialization order
 std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback>& getDataSourceRegistrationCallbacks() {
@@ -1037,7 +1050,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+        return OperationResult(
+            ::buildRefusalResult(*collection, "insert", options, theLeader), 
+            options);
       }
     }
   }  // isDBServer - early block
@@ -1335,18 +1350,20 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+        return OperationResult(
+            ::buildRefusalResult(*collection, (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace" : "update"), options, theLeader), 
+            options);
       }
     }
   }  // isDBServer - early block
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
-//  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
-//
-//  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-//    return OperationResult(lockResult);
-//  }
+  //  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
+  //
+  //  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+  //    return OperationResult(lockResult);
+  //  }
 
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
@@ -1555,7 +1572,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+        return OperationResult(
+            ::buildRefusalResult(*collection, "remove", options, theLeader), 
+            options);
       }
     }
   }  // isDBServer - early block
@@ -1775,7 +1794,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return futures::makeFuture(
-            OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+            OperationResult(
+                ::buildRefusalResult(*collection, "truncate", options, theLeader), 
+                options));
       }
     }
   }  // isDBServer - early block
@@ -2182,20 +2203,20 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
       static_cast<char const*>(memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
 
   if (p == nullptr || *p == '\0') {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
   }
 
   std::string const name(handle, p - handle);
   collection = resolver()->getCollectionStructCluster(name);
 
   if (collection == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   key = p + 1;
   outLength = length - (key - handle);
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 // Unified replication of operations. May be inserts (with or without
@@ -2226,10 +2247,11 @@ Future<Result> Methods::replicateOperations(
     TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
     url.push_back('/');
     VPackValueLength len;
-    const char* ptr = value.get(StaticStrings::KeyString).getString(len);
+    char const* ptr = value.get(StaticStrings::KeyString).getString(len);
     basics::StringUtils::encodeURIComponent(url, ptr, len);
   }
 
+  char const* opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -2244,15 +2266,19 @@ Future<Result> Methods::replicateOperations(
           reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
         }
       }
+      opName = "insert";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
+      opName = "update";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
       requestType = arangodb::fuerte::RestVerb::Put;
+      opName = "replace";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
       requestType = arangodb::fuerte::RestVerb::Delete;
+      opName = "remove";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
     default:
@@ -2360,9 +2386,9 @@ Future<Result> Methods::replicateOperations(
             vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
 
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
-                << "synchronous replication: follower "
-                << follower << " for shard " << collection->name()
-                << " in database " << collection->vocbase().name() 
+                << "synchronous replication of " << opName << " operation: "
+                << "follower " << follower << " for shard " 
+                << collection->vocbase().name() << "/" << collection->name()
                 << " refused the operation: " << r.errorMessage();
           }
         }
@@ -2374,9 +2400,9 @@ Future<Result> Methods::replicateOperations(
 
       if (!replicationWorked) {
         LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-            << "synchronous replication: dropping follower "
-            << follower << " for shard " << collection->name()
-            << " in database " << collection->vocbase().name() 
+            << "synchronous replication of " << opName << " operation: "
+            << ": dropping follower " << follower << " for shard " 
+            << collection->vocbase().name() << "/" << collection->name()
             << ": " << resp.combinedResult().errorMessage();
         
         Result res = collection->followers()->remove(follower);
@@ -2385,9 +2411,9 @@ Future<Result> Methods::replicateOperations(
           _state->removeKnownServer(follower);
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-              << "synchronous replication: could not drop follower "
-              << follower << " for shard " << collection->name() 
-              << " in database " << collection->vocbase().name() 
+              << "synchronous replication of " << opName << " operation: "
+              << "could not drop follower " << follower << " for shard " 
+              << collection->vocbase().name() << "/" << collection->name() 
               << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }

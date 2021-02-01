@@ -34,6 +34,8 @@ set(LIB_ARANGO_LINENOISE
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ShellBase.cpp
 )
 
 set(LIB_ARANGO_DATE
@@ -114,6 +116,7 @@ add_library(arango STATIC
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
+  ApplicationFeatures/SharedPRNGFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
@@ -128,6 +131,7 @@ add_library(arango STATIC
   Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
+  Basics/ResultError.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
@@ -148,7 +152,6 @@ add_library(arango STATIC
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
-  Basics/SharedPRNG.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
@@ -229,9 +232,7 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
   Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
@@ -271,6 +272,28 @@ if (USE_ENTERPRISE)
   target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
+
+
+################################################################################
+## LIB_ARANGO_AIR_SOURCES
+################################################################################
+
+set(LIB_ARANGO_AIR_SOURCES
+  Greenspun/Interpreter.cpp
+  Greenspun/Primitives.cpp
+  Greenspun/lib/DateTime.cpp
+  Greenspun/lib/Math.cpp
+  Greenspun/lib/Strings.cpp
+  Greenspun/lib/Lists.cpp
+  Greenspun/lib/Lists.h
+  Greenspun/lib/Dicts.cpp
+  Greenspun/lib/Dicts.h)
+
+add_library(arango_greenspun STATIC
+        ${LIB_ARANGO_AIR_SOURCES})
+
+target_link_libraries(arango_greenspun immer)
+target_link_libraries(arango_greenspun arango)
 
 ################################################################################
 ## LIB_ARANGO_GEO

@@ -28,11 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-const { assertEqual, assertTrue } = jsunity.jsUnity.assertions;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var findExecutionNodes = helper.findExecutionNodes;
+const jsunity = require("jsunity");
+const { assertEqual, assertNotEqual, assertTrue } = jsunity.jsUnity.assertions;
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
 const isCoordinator = require('@arangodb/cluster').isCoordinator();
 const isEnterprise = require("internal").isEnterprise();
@@ -182,12 +182,10 @@ function ahuacatlSubqueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryOutVariableName : function () {
-      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable",
-        {}, {optimizer: {rules: ['-splice-subqueries']}});
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+      const subqueryNode = findExecutionNodes(explainResult, "SubqueryStartNode")[0];
 
-      const subqueryNode = findExecutionNodes(explainResult, "SubqueryNode")[0];
-
-      assertEqual(subqueryNode.outVariable.name, "theLetVariable");
+      assertEqual(subqueryNode.subqueryOutVariable.name, "theLetVariable");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,10 +485,10 @@ function ahuacatlSubqueryTestSuite () {
         const rules = statement.explain().plan.rules;
         if (isEnterprise && isCoordinator) {
           // Has one shard rule
-          assertTrue(rules.indexOf("cluster-one-shard") !== -1);
+          assertNotEqual(-1, rules.indexOf("cluster-one-shard"));
         }
         // Has one splice subquery rule
-        assertTrue(rules.indexOf("splice-subqueries") !== -1);
+        assertNotEqual(-1, rules.indexOf("splice-subqueries"));
         // Result is as expected
         const result = statement.execute().toArray();
         for (let i = 0; i < 100; ++i) {

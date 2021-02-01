@@ -236,21 +236,18 @@ class State {
 
   /// @brief Load collection from persistent store
   bool loadPersisted();
-  bool loadCompacted();
-  bool loadRemaining();
+  index_t loadCompacted();
+  bool loadRemaining(index_t);
   bool loadOrPersistConfiguration();
 
-  /// @brief Check collections
-  bool checkCollections();
-
-  /// @brief Check collection existence
+  /// @brief Check collection sanity
   bool checkCollection(std::string const& name);
 
   /// @brief Create collections
-  bool createCollections();
+  void dropCollection(std::string const& name);
 
   /// @brief Create collection if it does not yet exist
-  bool ensureCollection(std::string const& name);
+  bool ensureCollection(std::string const& name, bool drop);
 
   /// @brief Compact persisted logs
   bool compactPersisted(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
@@ -278,7 +275,6 @@ class State {
   mutable arangodb::Mutex _logLock;
   std::deque<log_t> _log; /**< @brief  State entries */
   // Invariant: This has at least one entry at all times!
-  bool _collectionsChecked; /**< @brief Collections checked */
   bool _collectionsLoaded;
   std::multimap<std::string, arangodb::consensus::index_t> _clientIdLookupTable;
 

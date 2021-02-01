@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,11 @@ namespace arangodb {
 namespace velocypack {
 
 namespace deserializer {
-template <auto EnumValue, typename Value>
+template <auto EnumValue, typename Value, bool hidden = false>
 struct enum_member {
   using enum_type = decltype(EnumValue);
   using value_type = Value;
+  static constexpr auto is_hidden = hidden;
 };
 
 template <typename Enum, typename... Pairs>
@@ -39,9 +40,9 @@ struct enum_deserializer {
                 "members of the enum?");
 };
 
-template <typename Enum, typename... Values, Enum... EnumValues>
-struct enum_deserializer<Enum, enum_member<EnumValues, Values>...> {
-  using plan = enum_deserializer<Enum, enum_member<EnumValues, Values>...>;
+template <typename Enum, typename... Values, Enum... EnumValues, bool... IsHidden>
+struct enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...> {
+  using plan = enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...>;
   using constructed_type = Enum;
   using factory = utilities::identity_factory<Enum>;
 };
@@ -49,15 +50,21 @@ struct enum_deserializer<Enum, enum_member<EnumValues, Values>...> {
 }  // namespace deserializer
 
 namespace deserializer::executor {
-template <typename Enum, typename... Values, Enum... EnumValues, typename H>
-struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues, Values>...>, H> {
+template <typename Enum, typename... Values, Enum... EnumValues, bool... IsHidden, typename H>
+struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...>, H> {
   using value_type = Enum;
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template <typename V, typename... Vs>
-  static std::string joinValues() {
-    return to_string(V{}) + ((", " + to_string(Vs{})) + ...);
+  template<typename...>
+  struct type_list{};
+  template<typename, bool>
+  struct value_hidden_pair {};
+
+  template <typename V, bool hidden, bool... hiddens, typename... Vs>
+  static std::string joinValues(type_list<value_hidden_pair<V, hidden>, value_hidden_pair<Vs, hiddens>...>) {
+    static_assert(!hidden, "please make the first entry not hidden");
+    return to_string(V{}) + ((hiddens ? std::string{} : (", " + to_string(Vs{}))) + ...);
   }
 
   static constexpr bool all_strings = (values::is_string_v<Values> && ...);
@@ -83,7 +90,7 @@ struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues,
     }
     return result_type{
         deserialize_error{"Unrecognized enum value: " + s.toJson() +
-                          ", possible values are: " + joinValues<Values...>()}};
+                          ", possible values are: " + joinValues(type_list<value_hidden_pair<Values, IsHidden>...>{})}};
   }
 };
 

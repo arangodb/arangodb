@@ -157,8 +157,10 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
         (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                   "Error executing user query: " + queryResult.result.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.result.errorNumber(),
+        StringUtils::concatT("Error executing user query: ",
+                             queryResult.result.errorMessage()));
   }
 
   VPackSlice usersSlice = queryResult.data->slice();

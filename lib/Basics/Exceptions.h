@@ -82,7 +82,7 @@ class Exception final : public virtual std::exception {
   Exception(Result const&, char const* file, int line);
   Exception(Result&&, char const* file, int line);
 
-  Exception(int code, std::string const& errorMessage, char const* file, int line);
+  Exception(int code, std::string_view errorMessage, char const* file, int line);
 
   Exception(int code, std::string&& errorMessage, char const* file, int line);
 

@@ -7981,10 +7981,11 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
                                        containers::SmallVector<SubqueryNode*>& result) {
   TRI_ASSERT(result.empty());
   using ResultVector = decltype(result);
-  using BoolVec = std::vector<bool, short_alloc<bool, 64, alignof(size_t)>>;
+  using BoolVec =
+      std::vector<bool, containers::detail::short_alloc<bool, 64, alignof(size_t)>>;
 
   using SuitableNodeSet =
-      std::set<SubqueryNode*, std::less<>, short_alloc<SubqueryNode*, 128, alignof(SubqueryNode*)>>;
+      std::set<SubqueryNode*, std::less<>, containers::detail::short_alloc<SubqueryNode*, 128, alignof(SubqueryNode*)>>;
 
   // This finder adds all subquery nodes in pre-order to its `result` parameter,
   // and all nodes that are suitable for splicing to `suitableNodes`. Suitable
@@ -8115,6 +8116,11 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
       cb(node);
     }
   };
+    
+  TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
+    // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
+    subqueryNodes.clear();
+  }
 
   for (auto const& sq : subqueryNodes) {
     modified = true;
