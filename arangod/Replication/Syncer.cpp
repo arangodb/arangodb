@@ -147,6 +147,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
     try {
       OperationResult opRes(Result(), options);
+      auto potentiallyConflictingKey = std::string{};
       bool useReplace = false;
 
       // if we are about to process a single document marker we first check if the target 
@@ -165,7 +166,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
         // need to replace the one we have
         useReplace = true;
-        conflictingDocumentKey = keySlice.stringView();
+        potentiallyConflictingKey = keySlice.stringView();
       }
 
       if (!useReplace) {
@@ -173,15 +174,18 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         opRes = trx.insert(coll->name(), slice, options);
         if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           useReplace = true;
-          conflictingDocumentKey = opRes.errorMessage();
+          potentiallyConflictingKey = opRes.errorMessage();
+        } else {
+          potentiallyConflictingKey = std::string{};
         }
       }
 
       if (useReplace) {
-        if (keySlice.stringView() != conflictingDocumentKey) {
+        if (keySlice.stringView() != potentiallyConflictingKey) {
           // different key
           if (trx.isSingleOperationTransaction()) {
             // return the conflicting document's key to retry
+            conflictingDocumentKey = potentiallyConflictingKey;
             return Result(TRI_ERROR_ARANGO_TRY_AGAIN);
           }
 
