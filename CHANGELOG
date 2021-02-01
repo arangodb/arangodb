@@ -1,6 +1,8 @@
 devel
 -----
-* Fixed issue #12363: Foxx HTTP API upgrade/replace always enables devmode
+
+* Fixed issue #12363: Foxx HTTP API upgrade/replace always enables
+  development mode.
           
 * Added metric `arangodb_transactions_expired` to track the total number 
   of expired and then garbage-collected transactions.
