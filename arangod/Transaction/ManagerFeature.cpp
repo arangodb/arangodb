@@ -74,6 +74,13 @@ namespace transaction {
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
+static char const* arangodb_transactions_expired = R"RRR(
+**Metric**
+- `arangodb_transactions_expired`:
+
+TO_BE_WRITTEN
+)RRR";
+
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"),
       _workItem(nullptr),
@@ -81,7 +88,8 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       _streamingLockTimeout(8.0),
       _numExpiredTransactions(
         server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_transactions_expired", 0, "Total number of expired transactions")) {
+          "arangodb_transactions_expired", 0, "Total number of expired transactions",
+          arangodb_transactions_expired)) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();
