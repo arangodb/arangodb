@@ -237,7 +237,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", flags, &Functions::Radians});
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
-  
+
   add({"BIT_AND", ".|.", flags, &Functions::BitAnd});
   add({"BIT_OR", ".|.", flags, &Functions::BitOr});
   add({"BIT_XOR", ".|.", flags, &Functions::BitXOr});
@@ -476,6 +476,17 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+
+  add({"MAKE_DISTRIBUTE_INPUT", ".,.,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeInput});
+  add({"MAKE_DISTRIBUTE_INPUT_WITH_CREATE_KEYS", ".,.,.,.",
+       Function::makeFlags(), &Functions::MakeDistributeInputWithCreateKeys});
+  add({"MAKE_DISTRIBUTE_GRAPH_INPUT", ".",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeGraphInput});
 }
 
 }  // namespace aql

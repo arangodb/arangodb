@@ -3911,7 +3911,7 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
 
   auto& list = get_tzdb_list();
   auto& db = list.front();
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   transaction::BuilderLeaser result(trx);
   result->openArray();
@@ -6904,7 +6904,7 @@ AqlValue Functions::Pi(ExpressionContext*, AstNode const&,
   return ::numberValue(std::acos(-1.0), true);
 }
 
-template<typename T> 
+template<typename T>
 std::optional<T> bitOperationValue(VPackSlice input) {
   if (input.isNumber() && input.getNumber<double>() >= 0) {
     uint64_t result = input.getNumber<uint64_t>();
@@ -6956,7 +6956,7 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
 
   bool first = true;
   uint32_t result = 0;
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValueMaterializer materializer(vopts);
@@ -6983,7 +6983,7 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
   if (first) {
     return AqlValue(AqlValueHintNull());
   }
-  
+
   return AqlValue(AqlValueHintUInt(result));
 }
 
@@ -7040,7 +7040,7 @@ AqlValue Functions::BitNegate(ExpressionContext* expressionContext, AstNode cons
     uint64_t value = (~testee) & ((uint64_t(1) << width) - 1);
     return AqlValue(AqlValueHintUInt(value));
   }
-      
+
   static char const* AFN = "BIT_NEGATE";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7057,7 +7057,7 @@ AqlValue Functions::BitTest(ExpressionContext* expressionContext, AstNode const&
       return AqlValue(AqlValueHintBool((testee & (uint64_t(1) << index)) != 0));
     }
   }
-      
+
   static char const* AFN = "BIT_TEST";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7078,7 +7078,7 @@ AqlValue Functions::BitShiftLeft(ExpressionContext* expressionContext, AstNode c
       }
     }
   }
-  
+
   static char const* AFN = "BIT_SHIFT_LEFT";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7099,12 +7099,12 @@ AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext, AstNode 
       }
     }
   }
-  
+
   static char const* AFN = "BIT_SHIFT_RIGHT";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }
-  
+
 /// @brief function BIT_POPCOUNT
 AqlValue Functions::BitPopcount(ExpressionContext* expressionContext, AstNode const& node,
                                 VPackFunctionParameters const& parameters) {
@@ -7135,7 +7135,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
     auto* vopts = &trx->vpackOptions();
     AqlValueMaterializer materializer(vopts);
     VPackSlice s = materializer.slice(value, false);
-  
+
     uint64_t result = 0;
     for (VPackSlice v : VPackArrayIterator(s)) {
       auto currentValue = bitOperationValue<uint64_t>(v);
@@ -7152,7 +7152,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
 
       result |= uint64_t(1) << currentValue.value();
     }
-  
+
     return AqlValue(AqlValueHintUInt(result));
   }
 
@@ -7211,7 +7211,7 @@ AqlValue Functions::BitToString(ExpressionContext* expressionContext, AstNode co
 
     return AqlValue(&buffer[0], static_cast<size_t>(p - &buffer[0]));
   }
-  
+
   static char const* AFN = "BIT_TO_STRING";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7245,7 +7245,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode 
       return AqlValue(AqlValueHintUInt(result));
     }
   }
-  
+
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }
@@ -8609,6 +8609,152 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
     expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg.data());
     return AqlValue(AqlValueHintNull());
   }
+}
+
+static VPackBuilder buildKeyObject(VPackStringRef key, bool closeObject = true) {
+  VPackBuilder builder;
+  builder.openObject(true);
+  builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
+  if (closeObject) {
+    builder.close();
+  }
+  return builder;
+}
+
+static AqlValue ConvertToObject(VPackSlice input, bool allowKeyConversionToObject, bool canUseCustomKey) {
+  // input is not an object.
+  // if this happens, it must be a string key
+  if (!input.isString() || !allowKeyConversionToObject) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  // check if custom keys are allowed in this context
+  if (!canUseCustomKey) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+  }
+
+  // convert string key into object with { _key: "string" }
+  TRI_ASSERT(allowKeyConversionToObject);
+  return AqlValue{buildKeyObject(input.stringRef()).slice()};
+}
+
+AqlValue Functions::MakeDistributeInput(arangodb::aql::ExpressionContext* expressionContext,
+                                        AstNode const&,
+                                        VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  VPackSlice const input = value.slice();  // will throw when wrong type
+
+  if (!input.isObject()) {
+    bool allowKeyConversionToObject = extractFunctionParameterValue(parameters, 1).toBoolean();
+    bool canUseCustomKey = extractFunctionParameterValue(parameters, 2).toBoolean();
+    return ConvertToObject(input, allowKeyConversionToObject, canUseCustomKey);
+  }
+  TRI_ASSERT(input.isObject());
+
+  return value;
+}
+
+AqlValue Functions::MakeDistributeInputWithCreateKeys(arangodb::aql::ExpressionContext* expressionContext,
+                                                      AstNode const&,
+                                                      VPackFunctionParameters const& parameters) {
+  transaction::Methods& trx = expressionContext->trx();
+  AqlValue value = extractFunctionParameterValue(parameters, 0);
+
+  // if empty, check alternative input register
+  if (value.isNull(true)) {
+    // value is set, but null
+    // check if there is a second input register available (UPSERT makes use of
+    // two input registers,
+    // one for the search document, the other for the insert document)
+    value = extractFunctionParameterValue(parameters, 1);
+  }
+
+  bool allowSpecifiedKeys = extractFunctionParameterValue(parameters, 2).toBoolean();
+  std::string const collectionName = ::extractCollectionName(&trx, parameters, 3);
+
+  if (collectionName.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "could not extract collection name from parameters");
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+  methods::Collections::lookup(trx.vocbase(), collectionName, logicalCollection);
+  if (logicalCollection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "could not find collection " + collectionName);
+  }
+
+  bool canUseCustomKey = logicalCollection->usesDefaultShardKeys() || allowSpecifiedKeys;
+
+  VPackSlice const input = value.slice();  // will throw when wrong type
+  if (!input.isObject()) {
+    return ConvertToObject(input, true, canUseCustomKey);
+  }
+
+  TRI_ASSERT(input.isObject());
+
+  bool buildNewObject = !input.hasKey(StaticStrings::KeyString);
+  // we are responsible for creating keys if none present
+
+  if (!buildNewObject && !canUseCustomKey) {
+    // the collection is not sharded by _key, but there is a _key present in
+    // the data. a _key was given, but user is not allowed to specify _key
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+  }
+
+  if (buildNewObject) {
+    VPackBuilder builder = buildKeyObject(VPackStringRef(logicalCollection->createKey(input)), false);
+    for (auto cur : VPackObjectIterator(input)) {
+      builder.add(cur.key.stringRef(), cur.value);
+    }
+    builder.close();
+    return AqlValue{builder.slice()};
+  }
+
+  return value;
+}
+
+AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* expressionContext,
+                                             AstNode const&,
+                                             VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  VPackSlice input = value.slice();  // will throw when wrong type
+
+  if (input.isString()) {
+    // Need to fix this document.
+    // We need id and key as input.
+    auto keyPart = transaction::helpers::extractKeyPart(input);
+    auto result = AqlValue{buildKeyObject(VPackStringRef(keyPart)).slice()};
+    return result;
+  }
+
+  // check input value
+  VPackSlice idSlice;
+  bool valid = input.isObject();
+  if (valid) {
+    idSlice = input.get(StaticStrings::IdString);
+    // no _id, no cookies
+    valid = !idSlice.isNone();
+  }
+
+  if (!valid) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                    "invalid start vertex. Must either be "
+                                    "an _id string value or an object with _id. "
+                                    "Instead got: " + input.toJson());
+  }
+
+  if (!input.hasKey(StaticStrings::KeyString)) {
+    // The input is an object, but only contains an _id, not a _key value that could be extracted.
+    // We can work with _id value only however so let us do this.
+    auto keyPart = transaction::helpers::extractKeyPart(input);
+    auto result = AqlValue{buildKeyObject(VPackStringRef(keyPart)).slice()};
+    return result;
+  }
+
+  return AqlValue{input};
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
