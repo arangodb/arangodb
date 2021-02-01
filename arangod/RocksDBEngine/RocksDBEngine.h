@@ -188,7 +188,7 @@ class RocksDBEngine final : public StorageEngine {
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
   int removeReplicationApplierConfiguration() override;
-  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                           velocypack::Slice slice, bool doSync) override;
   ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override;
   // TODO worker-safety

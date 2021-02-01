@@ -120,7 +120,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
 
-  int dropDatabase(std::string const& name, bool removeAppsDirectory);
+  ErrorCode dropDatabase(std::string const& name, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,

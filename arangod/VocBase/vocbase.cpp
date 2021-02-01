@@ -566,8 +566,8 @@ arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& coll
 }
 
 /// @brief drops a collection, worker function
-int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
-                                        DropState& state, double timeout) {
+ErrorCode TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
+                                              DropState& state, double timeout) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
 
@@ -1145,7 +1145,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropS
 
   while (true) {
     DropState state = DROP_EXIT;
-    int res;
+    ErrorCode res = TRI_ERROR_NO_ERROR;
     {
       READ_LOCKER(readLocker, _inventoryLock);
       res = dropCollectionWorker(collection.get(), state, timeout);

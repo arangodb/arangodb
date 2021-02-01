@@ -366,7 +366,7 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> createCollectionWorker(arangodb::velocypack::Slice parameters);
 
   /// @brief drops a collection, worker function
-  int dropCollectionWorker(arangodb::LogicalCollection* collection,
+  ErrorCode dropCollectionWorker(arangodb::LogicalCollection* collection,
                            DropState& state, double timeout);
 
   /// @brief adds a new view

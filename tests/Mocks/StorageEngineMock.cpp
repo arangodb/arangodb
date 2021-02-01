@@ -1709,7 +1709,7 @@ arangodb::Result StorageEngineMock::renameCollection(TRI_vocbase_t& vocbase,
   return arangodb::Result(TRI_ERROR_INTERNAL);
 }
 
-int StorageEngineMock::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                            arangodb::velocypack::Slice slice,
                                                            bool doSync) {
   TRI_ASSERT(false);

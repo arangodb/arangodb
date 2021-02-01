@@ -1207,7 +1207,7 @@ int RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) 
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                        velocypack::Slice slice, bool doSync) {
   RocksDBKey key;
 

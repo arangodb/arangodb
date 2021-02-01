@@ -742,8 +742,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
 }
 
 /// @brief drop database
-int DatabaseFeature::dropDatabase(std::string const& name,
-                                  bool removeAppsDirectory) {
+ErrorCode DatabaseFeature::dropDatabase(std::string const& name, bool removeAppsDirectory) {
   if (name == StaticStrings::SystemDatabase) {
     // prevent deletion of system database
     return TRI_ERROR_FORBIDDEN;
@@ -751,7 +750,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   TRI_voc_tick_t id = 0;
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
 

@@ -116,7 +116,7 @@ class ClusterEngine final : public StorageEngine {
   int removeReplicationApplierConfiguration() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                           velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }

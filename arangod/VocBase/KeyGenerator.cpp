@@ -238,7 +238,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
 
   /// @brief validate a key
   ErrorCode validate(char const* p, size_t length, bool isRestore) override {
-    int res = KeyGenerator::validate(p, length, isRestore);
+    auto res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
       track(p, length);
@@ -398,7 +398,7 @@ class PaddedKeyGenerator : public KeyGenerator {
 
   /// @brief validate a key
   ErrorCode validate(char const* p, size_t length, bool isRestore) override {
-    int res = KeyGenerator::validate(p, length, isRestore);
+    auto res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
       track(p, length);
@@ -514,7 +514,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
 
   /// @brief validate a key
   ErrorCode validate(char const* p, size_t length, bool isRestore) override {
-    int res = KeyGenerator::validate(p, length, isRestore);
+    auto res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
       char const* s = p;

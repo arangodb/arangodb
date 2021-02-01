@@ -327,10 +327,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) = 0;
   virtual int removeReplicationApplierConfiguration() = 0;
 
-  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                  velocypack::Slice slice,
-                                                  bool doSync) = 0;
-  virtual ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice, bool doSync) = 0;
+  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                        velocypack::Slice slice,
+                                                        bool doSync) = 0;
+  virtual ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
+                                                        bool doSync) = 0;
 
   virtual Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                                 std::string const& keysId) = 0;

@@ -348,7 +348,9 @@ int TRI_UNLINK(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Result translateWindowsError(DWORD error) {
-  return {TRI_MapSystemError(error), windowsErrorToUTF8(error)};
+  errno = TRI_MapSystemError(error);
+  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  return {res, windowsErrorToUTF8(error)};
 }
 
 std::string windowsErrorToUTF8(DWORD errorNum) {
