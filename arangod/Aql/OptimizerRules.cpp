@@ -1600,6 +1600,23 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+  {
+    SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+    SmallVector<ExecutionNode*> subs{s};
+    plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
+
+    // we build a map of the top-most nodes of each subquery to the outer subquery node
+    for (auto& it : subs) {
+      auto sub = ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery();
+      while (sub->hasDependency()) {
+        sub = sub->getFirstDependency();
+      }
+      subqueries.emplace(sub, it);
+    }
+  }
+
   bool modified = false;
   VarSet neededVars;
   VarSet vars;
@@ -1622,6 +1639,20 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
       auto dep = current->getFirstDependency();
 
       if (dep == nullptr) {
+        auto it = subqueries.find(current);
+        if (it != subqueries.end()) {
+          // we reached the top of some subquery
+
+          // first, unlink the calculation from the plan
+          plan->unlinkNode(n);
+          // and re-insert into before the subquery node
+          plan->insertDependency(it->second, n);
+
+          modified = true;
+          current = n->getFirstDependency();
+          continue;
+        }
+
         // node either has no or more than one dependency. we don't know what to
         // do and must abort
         // note: this will also handle Singleton nodes
