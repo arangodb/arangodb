@@ -2,7 +2,7 @@ v3.7.7 (XXXX-XX-XX)
 -------------------
 
 * Fixed issue #12363: Foxx HTTP API upgrade/replace always enables
-  development mode
+  development mode.
 
 * Normalize user-provided input/output directory names in arangoimport,
   arangoexport, arangodump and arangorestore before splitting them into path
