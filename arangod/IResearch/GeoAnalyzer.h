@@ -52,7 +52,7 @@ class GeoAnalyzer
   : public irs::frozen_attributes<2, irs::analysis::analyzer>,
     private irs::util::noncopyable {
  public:
-  virtual bool next() noexcept final;
+  virtual bool next() noexcept override final;
   using irs::analysis::analyzer::reset;
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const = 0;

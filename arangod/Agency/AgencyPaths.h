@@ -123,7 +123,7 @@ auto root() -> std::shared_ptr<Root const>;
 // base case for recursions.
 class Root : public std::enable_shared_from_this<Root>, public Path {
  public:
-  void forEach(std::function<void(char const* component)> const&) const final {}
+  void forEach(std::function<void(char const* component)> const&) const override final {}
 
  public:
   class Arango : public StaticComponent<Arango, Root> {
