@@ -70,7 +70,7 @@ class CollectNode : public ExecutionNode {
   ~CollectNode() override;
 
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final;
 
   /// @brief whether or not the node requires an additional post SORT
   bool isDistinctCommand() const;
@@ -92,7 +92,7 @@ class CollectNode : public ExecutionNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const final;
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
@@ -123,10 +123,10 @@ class CollectNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief whether or not the node has an outVariable (i.e. INTO ...)
   bool hasOutVariable() const;
@@ -180,10 +180,10 @@ class CollectNode : public ExecutionNode {
   std::vector<AggregateVarInfo>& aggregateVariables();
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const final;
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   static void calculateAccessibleUserVariables(ExecutionNode const& node,
                                                std::vector<Variable const*>& userVariables);
