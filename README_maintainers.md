@@ -288,7 +288,7 @@ then use this endpoint to get a heap dump:
 curl "http://localhost:8529/_admin/status?memory=true" > heap.dump
 ```
 
-You can analyse such a heap dump with the `jeprof` tool, either by
+You can analyze such a heap dump with the `jeprof` tool, either by
 inspecting a single dump like this:
 
 ```
