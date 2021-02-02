@@ -1069,7 +1069,9 @@ Result IResearchLink::init(
       // this could be received from  agency while shard of the collection was moved (or added)
       // to the server.
       // New links already has collection name set, but here we must get this name on our own
-      if (meta._collectionName.empty()) {
+      if (meta._collectionName.empty() &&
+          vocbase.server().getFeature<ClusterFeature>().state() ==
+            arangodb::application_features::ApplicationFeature::State::STARTED ) {
         if (clusterWideLink) {// could set directly
           LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC) << "Setting collection name '" << _collection.name() << "' for new link '"
             << this->id().id() << "'";
