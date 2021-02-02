@@ -88,7 +88,11 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
     LOG_FATAL_WINDOWS("Unhandled exception without ExceptionCode!");
   }
 
-#if ARANGODB_ENABLE_BACKTRACE
+#if 0
+  // currently this code cannot be reached.
+  // TODO: make this code work properly so that it produces minidumps in case
+  // an unhandled exception pops up.
+
   HANDLE hFile = CreateFile(miniDumpFilename.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
                             0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 

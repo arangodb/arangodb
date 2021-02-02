@@ -63,12 +63,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-#include "dbghelp.h"
-#endif
-#endif
-
 using namespace arangodb::basics;
 
 // .............................................................................
@@ -124,8 +118,9 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
       // ...........................................................................
 
     case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
+#if 0
+      // currently disabled. TODO: make this code work properly
+
       DWORD error;
       HANDLE hProcess;
 
@@ -139,7 +134,6 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
         LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
             << "SymInitialize returned error :" << error;
       }
-#endif
 #endif
       newInvalidHandleHandler = InvalidParameterHandler;
       oldInvalidHandleHandler = _set_invalid_parameter_handler(newInvalidHandleHandler);
