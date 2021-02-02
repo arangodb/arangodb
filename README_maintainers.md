@@ -271,7 +271,7 @@ Use this `cmake` option in addition to the normal options:
 ```
 
 when building. Make sure you are using the builtin `jemalloc`. You need
-debugging symbols to analyse the heap dumps later on, so compile with
+debugging symbols to analyze the heap dumps later on, so compile with
 `-DCMAKE_BUILD_TYPE=Debug` or `RelWithDebInfo`. `Debug` is probably
 less confusing in the end. 
 
