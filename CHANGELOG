@@ -1,6 +1,10 @@
 devel
 -----
 
+* Remove logging startup options `--log.api-enabled` and `--log.keep-logrotate` 
+  for all client tools (arangosh, arangodump, arangorestore etc.), as these 
+  options are only meaningful for arangod.
+
 * Don't allocate ahead-of-time memory for striped PRNG array in arangod,
   but instead use thread-local PRNG instances. Not only does this save a 
   few megabytes or memory, but it also avoids potential (but unlikely)
