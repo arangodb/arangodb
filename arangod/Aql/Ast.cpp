@@ -1597,6 +1597,14 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
     auto& server = query().vocbase().server();
     auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
     TRI_ASSERT(func != nullptr);
+    
+    if (!allowInternalFunctions && func->hasFlag(Function::Flags::Internal)) {
+      // a function flagged as internal, but internal functions cannot be used in this context.
+      // throw an error pretending that the function does not exist
+      std::string msg = basics::Exception::FillExceptionString(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, normalized.first.c_str());
+      msg.append(" - this is an internal function and not supposed to be used directly");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, std::move(msg));
+    }
    
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
@@ -1619,12 +1627,6 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                     static_cast<int>(numExpectedArguments.second));
     }
     
-    if (!allowInternalFunctions && func->hasFlag(Function::Flags::Internal)) {
-      // a function flagged as internal, but internal functions cannot be used in this context.
-      // throw an error pretending that the function does not exist
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, normalized.first.c_str());
-    }
-
     if (func->hasFlag(Function::Flags::CanReadDocuments)) {
       // this also qualifies a query for potentially reading documents via function calls!
       _functionsMayAccessDocuments = true;
