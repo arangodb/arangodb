@@ -310,6 +310,8 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
   // persist collection names in links
   for (auto& collection : vocbase.collections(false)) {
     auto indexes = collection->getIndexes();
+    LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
+          << " Checking collection '" << collection->name() << "' in database '" << vocbase.name() << "'";
     auto clusterCollection =
         clusterInfo.getCollectionNT(vocbase.name(),
                                     collection->name());
