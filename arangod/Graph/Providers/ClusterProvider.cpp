@@ -89,22 +89,12 @@ ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
       _query(&queryContext),
       _resourceMonitor(&resourceMonitor),
       _opts(std::move(opts)),
-      _stats{} {
-  _cursor = buildCursor();
-}
-
-std::unique_ptr<RefactoredClusterEdgeCursor> ClusterProvider::buildCursor() {
-  return std::make_unique<RefactoredClusterEdgeCursor>(trx(), _opts.getExpressionContext(),
-                                                       _opts.getCache(),
-                                                       _opts.isBackward());
-}
+      _stats{} {}
 
 auto ClusterProvider::startVertex(VertexType vertex) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
-
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be removed.
-  LOG_DEVEL << "Cluster Provider set startVertex to:" << vertex.toString();
   return Step(_opts.getCache()->persistString(vertex));  // TODO check / get rid of persit string
 }
 
@@ -140,6 +130,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
                                   leased->bufferRef(), reqOpts));
   }
 
+
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
@@ -148,6 +139,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     }
 
     auto payload = r.response().stealPayload();
+    bool isPayloadCached = false;
+
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -170,10 +163,14 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }*/
 
-      if (!_opts.getCache()->isVertexCached(vertexKey, _opts.isBackward())) {  // TODO include check direction?
-        _opts.getCache()->datalake().add(std::move(payload));
+      if (!isPayloadCached) {  // TODO include check direction?
+        _opts.getCache()->datalake().add(payload);
+        isPayloadCached = true;
+      }
+
+      if (!_opts.getCache()->isVertexCached(vertexKey)) {
         // Protected by datalake (Cache)
-        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value, _opts.isBackward());
+        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value);
       }
     }
 
@@ -189,20 +186,18 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     */
   }
 
-  // TODO: think about better way
-  for (auto const& lE : looseEnds) {
-    if (_opts.getCache()->isVertexCached(lE->getVertexIdentifier(), _opts.isBackward())) {
-      lE->setFetched();
+  // put back all looseEnds we we're able to cache
+  for (auto& lE : looseEnds) {
+    if (_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
       result.emplace_back(std::move(lE));
-    } else {
     }
   }
 }
 
 Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& vertexId,
                                                            size_t& depth) {
+  // TODO: Currently unused, merge with below fetchEdgesFromEnginesWithVariables method later
   auto const* engines = _opts.getCache()->engines();
-  auto& cache = _opts.getCache()->cache();
   size_t& filtered = _opts.getCache()->filteredDocuments();
   size_t& read = _opts.getCache()->insertedDocuments();
 
@@ -259,8 +254,8 @@ Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& ver
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
-    VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
+    VPackSlice edges = resSlice.get("edges");
     VPackArrayIterator allEdges(edges);
 
     for (VPackSlice e : allEdges) {
@@ -272,11 +267,11 @@ Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& ver
         continue;
       }
 
-      arangodb::velocypack::HashedStringRef idRef(id);
-      auto resE = cache.try_emplace(idRef, e);
-      if (resE.second) {
-        // This edge is not yet cached.
+      arangodb::velocypack::HashedStringRef edgeIdRef(id);
+
+      if (!_opts.getCache()->isEdgeCached(edgeIdRef, _opts.isBackward())) {
         allCached = false;
+        _opts.getCache()->cacheEdge(vertexId, edgeIdRef, e, _opts.isBackward());
       }
     }
     if (!allCached) {
@@ -288,10 +283,6 @@ Result ClusterProvider::fetchEdgesFromEnginesWithVariables(VertexType const& ver
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   auto const* engines = _opts.getCache()->engines();
-  //auto& cache = _opts.getCache()->cache();  // TODO: remove me or use me below
-
-  // TODO map id => ServerID if possible
-  // And go fast-path
 
   // TODO: adjust comment or implement
   // This function works for one specific vertex
@@ -353,7 +344,6 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
       }
 
       arangodb::velocypack::HashedStringRef edgeIdRef(id);
-      // auto resE = cache.try_emplace(edgeIdRef, e);  // TODO: add new cache entry method REMOVE ME
 
       if (!_opts.getCache()->isEdgeCached(edgeIdRef, _opts.isBackward())) {
         allCached = false;
@@ -369,26 +359,6 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   return {};
 }
 
-void ClusterProvider::fetchEdgesAndRearm(Step* const& vertex) {
-  Result res = fetchEdgesFromEngines(vertex->getVertex().getID());
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  // add http stats
-  _stats.addHttpRequests(_opts.getCache()->engines()->size());  // TODO: Do this somewhere else at the right place.
-  _cursor->rearm();  // TODO: Check if we can get rid of this completely
-}
-
-void ClusterProvider::fetchEdges(std::vector<Step*> const& vertices) {
-  TRI_ASSERT(_cursor != nullptr);
-
-  for (auto const& vertexStep : vertices) {
-    // fetch edges and re-arm cursor
-    // TODO: think about just passing that vertices vector to the function directly.
-    fetchEdgesAndRearm(vertexStep);
-  }
-}
-
 auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("c9160", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
@@ -398,52 +368,31 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
 
-    // TODO: Check get rid of result object at all
     for (auto const& step : result) {
       auto res = fetchEdgesFromEngines(step->getVertex().getID());  // TODO: Check depth
+      // TODO: check stats (also take a look of vertex stats)
+      // add http stats
+      _stats.addHttpRequests(_opts.getCache()->engines()->size());
+
       if (res.fail()) {
         // TODO: "need to take care of this";
         THROW_ARANGO_EXCEPTION(res);
       }
+      // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
+      step->setFetched();
     }
   }
 
-  // TODO: This needs to be changed!
+  // TODO: This needs to be changed! (future?)
   return futures::makeFuture(std::move(result));
 }
-
-/*
- * Start: 1x looseEnd
- *  - 1. Request Vertex holen - Save: VertexRef -> VertexData
- *
- *  Logik:
- *  V1:
- *    Fetch -> Vertices + Edges => persist in datalake (cache)
- *      map: Step -> Vector<EdgeDocumentTokens> evtl. besser Vector<EdgeDocumentToken, VertexRef>
- *    Expand -> Read Steps out of cache (map entry) -> Remove used entry out of list/vector (Target -> No network communication)
- *
- *  V2: New Cache class
- *  - We do have a datalake
- *  - Map<VertexRef, Slice> (ref to vertex data)
- *  - Map<VertexRef, vector<EdgeId, VertexRef>> (vertex ref to all connected edges incl. target vertex)
- *  - Map<EdgeId, Slice> (ref to edge data)
- *
- *    -> Fetch as in V1 => populate maps
- *    -> Expand read data out of cache (connected edges)
- *    -> appendData(edge,vertex) => Read out of cache (what's needed)
- *    isCached(VertexRef)
- *
- *  Rearm:
- *   -
- *
- */
 
 auto ClusterProvider::expand(Step const& step, size_t previous,
                              std::function<void(Step)> const& callback) -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
-  TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID(), _opts.isBackward()));
+  TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   for (auto const& relation :
        _opts.getCache()->getVertexRelations(vertex.getID(), _opts.isBackward())) {
     callback(Step{relation.second, relation.first, previous});
@@ -452,8 +401,8 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
 
 void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
                                          arangodb::velocypack::Builder& builder) {
-  builder.add(_opts.getCache()->getCachedVertex(vertex.getID(), _opts.isBackward()));
-  // TRI_ASSERT(!vertex.getData().isNull()); TODO check
+  TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
+  builder.add(_opts.getCache()->getCachedVertex(vertex.getID()));
 };
 
 auto ClusterProvider::addEdgeToBuilder(Step::Edge const& edge,

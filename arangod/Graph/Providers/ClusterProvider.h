@@ -25,7 +25,6 @@
 #ifndef ARANGOD_GRAPH_PROVIDERS_CLUSTER_PROVIDER_H
 #define ARANGOD_GRAPH_PROVIDERS_CLUSTER_PROVIDER_H 1
 
-#include "Graph/Cursors/RefactoredClusterEdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
@@ -157,9 +156,6 @@ struct ClusterProvider {
   auto fetchEdgesFromEnginesWithVariables(VertexType const& vertexId, size_t& depth) -> Result; // unused right now
   auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
 
-  auto fetchEdgesAndRearm(Step* const& vertex) -> void;
-  auto fetchEdges(std::vector<Step*> const& vertices) -> void;
-
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
@@ -170,16 +166,12 @@ struct ClusterProvider {
  private:
   void activateCache(bool enableDocumentCache);
 
-  std::unique_ptr<RefactoredClusterEdgeCursor> buildCursor();
-
   [[nodiscard]] arangodb::aql::QueryContext* query() const;
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor
   std::unique_ptr<arangodb::transaction::Methods> _trx;
-
-  std::unique_ptr<RefactoredClusterEdgeCursor> _cursor;
 
   arangodb::aql::QueryContext* _query;
 

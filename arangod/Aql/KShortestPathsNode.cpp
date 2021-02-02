@@ -399,7 +399,6 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
-          LOG_DEVEL << "Using KPaths cluster configuration.";
           using KPathRefactoredCluster = KPathEnumerator<ClusterProvider>;
 
           auto kPathUnique = std::make_unique<KPathRefactoredCluster>(
@@ -416,8 +415,6 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredCluster>>>(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
         } else {
-          LOG_DEVEL << "Using KPaths cluster tracer configuration.";
-
           using KPathRefactoredClusterTracer = TracedKPathEnumerator<ClusterProvider>;
 
           auto kPathUnique = std::make_unique<KPathRefactoredClusterTracer>(
@@ -436,7 +433,6 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         }
       }
     } else {
-      LOG_DEVEL << "KPaths default fallback found.";
       auto finder = std::make_unique<graph::KPathFinder>(*opts);
       auto executorInfos =
           KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),

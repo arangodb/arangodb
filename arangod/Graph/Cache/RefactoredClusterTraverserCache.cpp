@@ -19,22 +19,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RefactoredClusterTraverserCache.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
-#include "Basics/ResourceUsage.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
-#include "Transaction/Methods.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/HashedStringRef.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,74 +40,58 @@ RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
       _datalake(options->resourceMonitor()),
       _engines(engines) {}
 
-VPackSlice RefactoredClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
-  return VPackSlice(token.vpack());
-}
-
-aql::AqlValue RefactoredClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& token) {
-  // FIXME: the RefactoredClusterTraverserCache lifetime is shorter than the
-  // query lifetime therefore we cannot get away here without copying the result
-  return aql::AqlValue(VPackSlice(token.vpack()));  // will copy slice
-}
-
 void RefactoredClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
                                                            VPackBuilder& result) {
-  // TODO: to be removed / changed
-  // result.add(getCachedEdge(token.localDocumentId().));
+  TRI_ASSERT(false);
 }
 
 bool RefactoredClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
                                                    VPackBuilder& result) {
+  TRI_ASSERT(false);
   // There will be no idString of length above uint32_t
-  auto it = _cache.find(
-      arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
+  auto vertexSlice = getCachedVertex(VertexType{id.data(), static_cast<uint32_t>(id.length())});
 
-  if (it != _cache.end()) {
-    // FIXME: fix TraverserCache lifetime and use addExternal
-    result.add(it->second);
-    return true;
+  if (vertexSlice.isNone()) {
+    // Register a warning. It is okay though but helps the user
+    std::string msg = "vertex '" + id.toString() + "' not found";
+    _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+
+    // Document not found append NULL
+    result.add(arangodb::velocypack::Slice::nullSlice());
+    return false;
   }
-  // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
-  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
 
-  // Document not found append NULL
-  result.add(arangodb::velocypack::Slice::nullSlice());
-  return false;
+  result.add(vertexSlice);
+  return true;
 }
 
 bool RefactoredClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
                                                    arangodb::aql::AqlValue& result) {
+  TRI_ASSERT(false);
   // There will be no idString of length above uint32_t
-  auto it = _cache.find(
-      arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
+  auto vertexSlice = getCachedVertex(VertexType{id.data(), static_cast<uint32_t>(id.length())});
 
-  if (it != _cache.end()) {
-    // FIXME: fix TraverserCache lifetime and use addExternal
-    result = arangodb::aql::AqlValue(it->second);
-    return true;
+  if (vertexSlice.isNone()) {
+    // Register a warning. It is okay though but helps the user
+    std::string msg = "vertex '" + id.toString() + "' not found";
+    _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+
+    // Document not found append NULL
+    result = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
+    return false;
   }
-  // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
-  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
 
-  // Document not found append NULL
-  result = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
-  return false;
+  result = arangodb::aql::AqlValue(vertexSlice);
+  return true;
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
-                                                  velocypack::Slice vertexSlice,
-                                                  bool backward) -> void {
-  if (backward) {
-    _vertexData.try_emplace(vertexId, vertexSlice);
-  } else {
-    _vertexData.try_emplace(vertexId, vertexSlice);
-  }
+                                                  velocypack::Slice vertexSlice) -> void {
+  _vertexData.try_emplace(vertexId, vertexSlice);
 }
 
 namespace {
-VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType origin) {
+VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType const& origin) {
   if (edge.isString()) {
     return VertexType{edge};
   }
@@ -134,7 +111,7 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType origi
 auto RefactoredClusterTraverserCache::cacheEdge(VertexType origin, EdgeType edgeId,
                                                 velocypack::Slice edgeSlice,
                                                 bool backward) -> void {
-  TRI_ASSERT(isVertexCached(origin, backward));
+  TRI_ASSERT(isVertexCached(origin));
 
   auto edgeToEmplace =
       std::pair{edgeId, VertexType{getEdgeDestination(edgeSlice, origin)}};
@@ -143,7 +120,7 @@ auto RefactoredClusterTraverserCache::cacheEdge(VertexType origin, EdgeType edge
   // TODO: in the future handle ANY as well
   if (backward) {
     _edgeDataBackward.try_emplace(edgeId, edgeSlice);
-    _vertexConnectedEdgesBackward.try_emplace(origin, initVector); // TODO inert only if needed (better init)
+    _vertexConnectedEdgesBackward.try_emplace(origin, initVector);  // TODO inert only if needed (better init)
     auto& edgeVectorBackward = _vertexConnectedEdgesBackward.at(origin);
     edgeVectorBackward.emplace_back(std::move(edgeToEmplace));
   } else {
@@ -156,7 +133,7 @@ auto RefactoredClusterTraverserCache::cacheEdge(VertexType origin, EdgeType edge
 
 auto RefactoredClusterTraverserCache::getVertexRelations(const VertexType& vertex, bool backward)
     -> std::vector<std::pair<EdgeType, VertexType>> {
-  TRI_ASSERT(isVertexCached(vertex, backward));
+  TRI_ASSERT(isVertexCached(vertex));
 
   if (!isVertexRelationCached(vertex, backward)) {
     return {};
@@ -169,15 +146,11 @@ auto RefactoredClusterTraverserCache::getVertexRelations(const VertexType& verte
   return _vertexConnectedEdgesForward.at(vertex);
 }
 
-auto RefactoredClusterTraverserCache::isVertexCached(VertexType vertexKey, bool backward)
-    -> bool {
-  if (backward) {
-    return (_vertexData.find(vertexKey) == _vertexData.end()) ? false : true;
-  }
+auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) -> bool {
   return (_vertexData.find(vertexKey) == _vertexData.end()) ? false : true;
 }
 
-auto RefactoredClusterTraverserCache::isVertexRelationCached(VertexType vertexKey,
+auto RefactoredClusterTraverserCache::isVertexRelationCached(VertexType const& vertexKey,
                                                              bool backward) -> bool {
   if (backward) {
     return (_vertexConnectedEdgesBackward.find(vertexKey) ==
@@ -191,25 +164,23 @@ auto RefactoredClusterTraverserCache::isVertexRelationCached(VertexType vertexKe
              : true;
 }
 
-auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType edgeKey, bool backward) -> bool {
+auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey,
+                                                   bool backward) -> bool {
   if (backward) {
     return (_edgeDataBackward.find(edgeKey) == _edgeDataBackward.end()) ? false : true;
   }
   return (_edgeDataForward.find(edgeKey) == _edgeDataForward.end()) ? false : true;
 }
 
-auto RefactoredClusterTraverserCache::getCachedVertex(VertexType vertex, bool backward)
-    -> VPackSlice {
-  if (!isVertexCached(vertex, backward)) {
+auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) -> VPackSlice {
+  if (!isVertexCached(vertex)) {
     return VPackSlice::noneSlice();
-  }
-  if (backward) {
-    return _vertexData.at(vertex);
   }
   return _vertexData.at(vertex);
 }
 
-auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType edge, bool backward) -> VPackSlice {
+auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge, bool backward)
+    -> VPackSlice {
   if (!isEdgeCached(edge, backward)) {
     return VPackSlice::noneSlice();
   }
