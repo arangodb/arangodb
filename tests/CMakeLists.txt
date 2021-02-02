@@ -221,12 +221,13 @@ set(ARANGODB_TESTS_SOURCES
   Graph/KPathFinderTest.cpp
   Graph/KPathFinderTest_Refactored.cpp
   Graph/KShortestPathsFinder.cpp
-  Greenspun/PrimitivesTest.cpp
+  Graph/MockGraph.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp
   Graph/QueueTest.cpp
   Graph/SingleServerProviderTest.cpp
+  Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp

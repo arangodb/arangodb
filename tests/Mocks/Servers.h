@@ -184,6 +184,13 @@ class MockClusterServer : public MockServer,
   virtual void dropDatabase(std::string const& name) = 0;
   void startFeatures() override;
 
+  // Create a clusterWide Collection.
+  // This does NOT create Shards.
+  std::shared_ptr<LogicalCollection> createCollection(
+      std::string const& dbName, std::string collectionName,
+      std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+      TRI_col_type_e type);
+
   // You can only create specialized types
  protected:
   MockClusterServer(bool useAgencyMockConnection);
@@ -216,6 +223,9 @@ class MockDBServer : public MockClusterServer {
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  void createShard(std::string const& dbName, std::string shardName,
+                   LogicalCollection& clusterCollection);
 };
 
 class MockCoordinator : public MockClusterServer {
@@ -226,10 +236,9 @@ class MockCoordinator : public MockClusterServer {
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
 
-  std::pair<std::string,std::string> registerFakedDBServer(std::string const& serverName);
+  std::pair<std::string, std::string> registerFakedDBServer(std::string const& serverName);
 
   arangodb::network::ConnectionPool* getPool();
-
 };
 
 }  // namespace mocks

@@ -35,9 +35,11 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/files.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
@@ -57,6 +59,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Network/NetworkFeature.h"
+#include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -76,6 +79,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
+
 
 #include "Servers.h"
 #include "TemplateSpecializer.h"
@@ -577,6 +581,56 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
       .wait();
 }
 
+// Create a clusterWide Collection.
+// This does NOT create Shards.
+std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
+    std::string const& dbName, std::string collectionName,
+    std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+    TRI_col_type_e type) {
+  /*
+  std::string cID, uint64_t shards,
+                                  uint64_t replicationFactor, uint64_t writeConcern,
+                                  bool waitForRep, velocypack::Slice const& slice,
+                                  std::string coordinatorId, RebootId rebootId */
+  // This is unsafe
+  std::string cid = "98765" + basics::StringUtils::itoa(type);
+  auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = databaseFeature.lookupDatabase(dbName);
+  
+  VPackBuilder props;
+  {
+    // This is hand-crafted unfortunately the code does not exist...
+    VPackObjectBuilder guard(&props);
+    props.add(StaticStrings::DataSourceType, VPackValue(type));
+    props.add(StaticStrings::DataSourceName, VPackValue(collectionName));
+  }
+  LogicalCollection dummy(*vocbase, props.slice(), true);
+  
+  auto shards = std::make_shared<ShardMap>();
+  for (auto const& [shard, server] : shardNameToServerNamePairs) {
+    shards->emplace(shard, std::vector<ServerID>{server});
+  }
+  dummy.setShardMap(shards);
+
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid",     "globallyUniqueId", "count",
+      "planId",        "version", "objectId"};
+  dummy.setStatus(TRI_VOC_COL_STATUS_LOADED);
+  VPackBuilder velocy =
+      dummy.toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
+
+  agencyTrx("/arango/Plan/Collections/" + dbName + "/" + basics::StringUtils::itoa(dummy.planId().id()), velocy.toJson());
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+      .wait();
+
+
+  // TODO inject items in Plan/Current this is not yet correct!
+  ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
+  return clusterInfo.getCollection(dbName, collectionName);
+}
+
 MockDBServer::MockDBServer(bool useAgencyMock, bool start)
     : MockClusterServer(useAgencyMock) {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
@@ -625,6 +679,38 @@ void MockDBServer::dropDatabase(std::string const& name) {
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
   dd.first();  // Does the job
+}
+
+void MockDBServer::createShard(std::string const& dbName, std::string shardName,
+                               LogicalCollection& clusterCollection) {
+  auto props = std::make_shared<VPackBuilder>();
+  {
+    // This is hand-crafted unfortunately the code does not exist...
+    VPackObjectBuilder guard(props.get());
+    props->add(StaticStrings::DataSourceType, VPackValue(clusterCollection.type()));
+    props->add(StaticStrings::DataSourceName, VPackValue(shardName));
+    props->add(StaticStrings::DataSourcePlanId, VPackValue(clusterCollection.planId().id()));
+  }
+  maintenance::ActionDescription ad(
+      std::map<std::string, std::string>{{maintenance::NAME, maintenance::CREATE_COLLECTION},
+                                         {maintenance::COLLECTION,
+                                          clusterCollection.name()},
+                                         {maintenance::SHARD, shardName},
+                                         {maintenance::DATABASE, dbName},
+                                         {maintenance::SERVER_ID, "PRMR_0001"},
+                                         {maintenance::THE_LEADER, ""}},
+      maintenance::HIGHER_PRIORITY, false, props);
+
+  auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
+  maintenance::CreateCollection dd(mf, ad);
+  bool work = dd.first();
+  // Managed to create the collection, if this is true we did not manage to create the collections.
+  // We can investigate Result here.
+  // We may need to call next()
+  TRI_ASSERT(work == false);
+
+  // If this is false something above went wrong.
+  TRI_ASSERT(dd.ok());
 }
 
 MockCoordinator::MockCoordinator(bool useAgencyMock, bool start)
