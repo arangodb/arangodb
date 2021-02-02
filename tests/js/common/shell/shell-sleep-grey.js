@@ -1,8 +1,14 @@
+/*jshint globalstrict:false, strict:false, maxlen: 5000 */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual, fail, Buffer */
+
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test filesystem functions
+///
+/// @file
+///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2010-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,39 +24,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Esteban Lombeyda
+/// @author Wilfried Goesgens
+/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_COMPLETER_H
-#define ARANGODB_UTILITIES_COMPLETER_H 1
-
-#include "Basics/Common.h"
-
-namespace arangodb {
+var jsunity = require("jsunity");
+var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Completer
+/// @brief test attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-class Completer {
- public:
-  Completer() {}
+function SleepSuite () {
+  'use strict';
+  return {
 
-  virtual ~Completer() = default;
+    testExists : function () {
+      var tempName;
+      let sleepFor = 1;
+      if (process.env.hasOwnProperty('SLEEP_FOR')) {
+        sleepFor = parseInt(process.env['SLEEP_FOR']);
+      }
+      internal.sleep(sleepFor);
+    }
+  };
+}
 
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check if line is complete
-  //////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
 
-  virtual bool isComplete(std::string const&, size_t lineno) = 0;
+jsunity.run(SleepSuite);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief  computes all strings which begins with the given text
-  //////////////////////////////////////////////////////////////////////////////
+return jsunity.done();
 
-  virtual std::vector<std::string> alternatives(char const*) = 0;
-};
-}  // namespace arangodb
-
-#endif
