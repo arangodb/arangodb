@@ -1,6 +1,16 @@
 devel
 -----
 
+* Remove undocumented CMake variable `USE_BACKTRACE`, and remove define
+  `ARANGODB_ENABLE_BACKTRACE`. Both were turned off by default before, and
+  when turned on allow to produce backtraces from within the executable in
+  case debug symbols were available, working and the build was also compiled
+  with `USE_MAINTAINER_MODE=On`. Some code in this context was obviously
+  unreachable, so now it has all been removed.
+  To log a backtrace from within arangod, it is now possible to call
+  `CrashHandler::logBacktrace()`, which will log a backtrace of the calling
+  thread to the arangod log. This is restricted to Linux builds only.
+
 * Fix warnings about suggest-override which can break builds when warnings
   are treated as errors.
 
