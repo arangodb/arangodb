@@ -389,7 +389,7 @@ struct DistributedQueryInstanciator final
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
   ///        into coordinator and dbserver parts
-  bool before(ExecutionNode* en) final {
+  bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
     if (_isCoordinator) {
       _coordinatorParts.addNode(en);
@@ -432,7 +432,7 @@ struct DistributedQueryInstanciator final
     return false;
   }
 
-  void after(ExecutionNode* en) final {
+  void after(ExecutionNode* en) override final {
     if (en->getType() == ExecutionNode::REMOTE) {
       if (_isCoordinator) {
         _lastClosed = _coordinatorParts.closeSnippet();
