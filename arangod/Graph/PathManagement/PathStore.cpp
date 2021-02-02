@@ -84,7 +84,7 @@ auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Ste
 
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
-    TRI_ASSERT(myStep->getEdge().isValid()); // TODO CHECK IS VALID
+    TRI_ASSERT(myStep->getEdge().isValid());
     path.prependEdge(myStep->getEdge());
 
     TRI_ASSERT(size() > myStep->getPrevious());
@@ -120,7 +120,7 @@ auto PathStore<Step>::reverseBuildPath(Step const& vertex,
 
   while (!myStep->isFirst()) {
     path.appendVertex(myStep->getVertex());
-    TRI_ASSERT(myStep->getEdge().isValid()); // TODO CHECK IS VALID
+    TRI_ASSERT(myStep->getEdge().isValid());
     path.appendEdge(myStep->getEdge());
 
     TRI_ASSERT(size() > myStep->getPrevious());
