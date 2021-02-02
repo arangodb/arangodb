@@ -1583,7 +1583,7 @@ AstNode* Ast::createNodeAggregateFunctionCall(char const* functionName, AstNode 
 
 /// @brief create an AST function call node
 AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
-                                     AstNode const* arguments) {
+                                     AstNode const* arguments, bool allowInternalFunctions) {
   if (functionName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1618,6 +1618,12 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                     static_cast<int>(numExpectedArguments.first),
                                     static_cast<int>(numExpectedArguments.second));
     }
+    
+    if (!allowInternalFunctions && func->hasFlag(Function::Flags::Internal)) {
+      // a function flagged as internal, but internal functions cannot be used in this context.
+      // throw an error pretending that the function does not exist
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, normalized.first.c_str());
+    }
 
     if (func->hasFlag(Function::Flags::CanReadDocuments)) {
       // this also qualifies a query for potentially reading documents via function calls!
@@ -1636,6 +1642,11 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
   node->addMember(arguments);
 
   return node;
+}
+
+AstNode* Ast::createNodeFunctionCall(char const* functionName, AstNode const* arguments,
+                                     bool allowInternalFunctions) {
+  return createNodeFunctionCall(functionName, strlen(functionName), arguments, allowInternalFunctions);
 }
 
 /// @brief create an AST range node
@@ -3438,7 +3449,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
         auto countArgs = createNodeArray();
         countArgs->addMember(createNodeValueString(arg->getStringValue(),
                                                    arg->getStringLength()));
-        return createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("COLLECTION_COUNT"), countArgs);
+        return createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("COLLECTION_COUNT"), countArgs, true);
       }
     }
   } else if (func->name == "IS_NULL") {
@@ -4168,8 +4179,4 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* node,
   std::transform(attrs.begin(), attrs.end(), std::back_inserter(vec),
                  [](basics::AttributeName const& a) { return a.name; });
   return createNodeAttributeAccess(node, vec);
-}
-
-AstNode* Ast::createNodeFunctionCall(char const* functionName, AstNode const* arguments) {
-  return createNodeFunctionCall(functionName, strlen(functionName), arguments);
 }
