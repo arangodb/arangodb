@@ -36,7 +36,10 @@
 #include <unordered_set>
 #include <vector>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+
 namespace tests {
 namespace graph {
 
@@ -97,6 +100,9 @@ class MockGraph {
 
   template <class ServerType>
   void prepareServer(ServerType& server) const;
+
+  void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
+                 std::string const& edgeCollectionName) const;
 
  private:
   std::vector<std::pair<std::string, std::string>> const& getVertexShardNameServerPairs() const {

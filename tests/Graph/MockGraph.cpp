@@ -22,7 +22,13 @@
 
 #include "MockGraph.h"
 
+#include "gtest/gtest.h"
+
 #include "Mocks/Servers.h"
+
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -61,6 +67,55 @@ void MockGraph::addEdge(size_t from, size_t to, double weight) {
           getVertexCollectionName() + "/" + basics::StringUtils::itoa(to), weight);
 }
 
+void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
+                          std::string const& edgeCollectionName) const {
+  {
+    // Insert vertices
+    arangodb::OperationOptions options;
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              vertexCollectionName,
+                                              arangodb::AccessMode::Type::WRITE);
+    EXPECT_TRUE((trx.begin().ok()));
+
+    size_t added = 0;
+    velocypack::Builder b;
+    for (auto& v : vertices()) {
+      b.clear();
+      v.addToBuilder(b);
+      auto res = trx.insert(vertexCollectionName, b.slice(), options);
+      EXPECT_TRUE((res.ok()));
+      added++;
+    }
+
+    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(added == vertices().size());
+  }
+
+  {
+    // Insert edges
+    arangodb::OperationOptions options;
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              edgeCollectionName,
+                                              arangodb::AccessMode::Type::WRITE);
+    EXPECT_TRUE((trx.begin().ok()));
+    size_t added = 0;
+    velocypack::Builder b;
+    for (auto& edge : edges()) {
+      b.clear();
+      edge.addToBuilder(b);
+      auto res = trx.insert(edgeCollectionName, b.slice(), options);
+      if (res.fail()) {
+        LOG_DEVEL << res.errorMessage() << " " << b.toJson();
+      }
+      EXPECT_TRUE((res.ok()));
+      added++;
+    }
+
+    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(added == edges().size());
+  }
+}
+
 template <>
 void MockGraph::prepareServer(MockDBServer& server) const {
   std::string db = "_system";
@@ -75,4 +130,7 @@ void MockGraph::prepareServer(MockDBServer& server) const {
   for (auto const& [shard, servName] : _edgeShards) {
     server.createShard(db, shard, *eCol);
   }
+
+  // NOTE: This only works on a single shard yet.
+  storeData(server.getSystemDatabase(), _vertexShards[0].first, _edgeShards[0].first);
 }
