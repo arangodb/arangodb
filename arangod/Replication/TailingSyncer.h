@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -135,7 +135,8 @@ class TailingSyncer : public Syncer {
 
   /// @brief apply the data from the continuous log
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick,
-                  ApplyStats& applyStats, uint64_t& ignoreCount);
+                  ApplyStats& applyStats, arangodb::velocypack::Builder& builder,
+                  uint64_t& ignoreCount);
 
   /// @brief perform a continuous sync with the leader
   Result runContinuousSync();
@@ -167,6 +168,7 @@ class TailingSyncer : public Syncer {
 
   /// @brief apply continuous synchronization data from a batch
   arangodb::Result processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                                    arangodb::velocypack::Builder& builder,
                                     TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
                                     TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
                                     bool& worked, bool& mustFetchBatch);

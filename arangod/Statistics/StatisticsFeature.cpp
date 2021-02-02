@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CpuUsageFeature.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -199,6 +200,9 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
     "Physical memory in bytes"}},
+  {"cores",
+   {"arangodb_server_statistics_cpu_cores", "gauge",
+    "Number of CPU cores visible to the arangod process"}},
   {"userPercent",
    {"arangodb_server_statistics_user_percent", "gauge",
     "Percentage of time that the system CPUs have spent in user mode"}},
@@ -512,6 +516,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
+  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores");
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {

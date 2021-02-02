@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -223,7 +223,8 @@ class ResultT {
   bool fail() const { return _result.fail(); }
   bool is(int code) { return _result.is(code); }
   int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  [[nodiscard]] std::string_view errorMessage() const& { return _result.errorMessage(); }
+  [[nodiscard]] std::string errorMessage() && { return std::move(_result).errorMessage(); }
 
   // access methods
   Result const& result() const& { return _result; }

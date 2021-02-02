@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -646,6 +646,15 @@ void GraphNode::addEngine(aql::EngineId engineId, ServerID const& server) {
 std::unordered_map<ServerID, aql::EngineId> const* GraphNode::engines() const {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   return &_engines;
+}
+
+/// @brief Clears the graph Engines. (CLUSTER ONLY)
+/// NOTE: Use with care, if you do not refill
+/// the engines this graph node cannot communicate.
+/// and will yield no results.
+void GraphNode::clearEngines() {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  _engines.clear();
 }
 
 BaseOptions* GraphNode::options() const { return _options.get(); }

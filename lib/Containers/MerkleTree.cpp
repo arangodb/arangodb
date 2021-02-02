@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -652,6 +652,58 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::serializeBinary(std::string
     output.push_back(::UncompressedCurrent);
   }
   output.push_back(static_cast<char>(::CurrentVersion));
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
+std::vector<std::pair<std::uint64_t, std::uint64_t>>
+MerkleTree<Hasher, BranchingBits, LockStripes>::partitionKeys(std::uint64_t count) {
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> result;
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+  std::uint64_t remaining = 0;
+  {
+    std::unique_lock<std::mutex> lock(this->lock(0));
+    remaining = node(0).count;
+  }
+
+  if (count <= 1 || remaining == 0) {
+    // special cases, just return full range
+    result.emplace_back(meta().rangeMin, meta().rangeMax);
+    return result;
+  }
+
+  std::uint64_t depth = meta().maxDepth;
+  std::uint64_t offset = (depth == 0) ? 0 : nodeCountUpToDepth(depth - 1);
+  std::uint64_t targetCount = std::max(static_cast<std::uint64_t>(1), remaining / count);
+  std::uint64_t rangeStart = meta().rangeMin;
+  std::uint64_t rangeCount = 0;
+  for (std::uint64_t chunk = 0; chunk < nodeCountAtDepth(depth); ++chunk) {
+    if (result.size() == count - 1) {
+      // if we are generating the last partion, just fast forward to the last
+      // chunk, put everything in
+      chunk = nodeCountAtDepth(depth) - 1;
+    }
+    std::uint64_t index = offset + chunk;
+    std::unique_lock<std::mutex> guard(this->lock(index));
+    Node& node = this->node(index);
+    rangeCount += node.count;
+    if (rangeCount >= targetCount || chunk == nodeCountAtDepth(depth) - 1) {
+      auto [_, rangeEnd] = chunkRange(chunk, depth);
+      result.emplace_back(rangeStart, rangeEnd);
+      remaining -= rangeCount;
+      if (remaining == 0 || result.size() == count) {
+        // if we just finished the last partiion, shortcut out
+        break;
+      }
+      rangeCount = 0;
+      rangeStart = rangeEnd + 1;
+      targetCount = std::max(static_cast<std::uint64_t>(1),
+                             remaining / (count - result.size()));
+    }
+  }
+
+  TRI_ASSERT(result.size() <= count);
+
+  return result;
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>

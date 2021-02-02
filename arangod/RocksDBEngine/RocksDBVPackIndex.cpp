@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -713,11 +713,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
       if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // find conflicting document
         LocalDocumentId docId = RocksDBValue::documentId(existing);
-        auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
+        auto success = _collection.getPhysical()->read(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
              if (mode == IndexOperationMode::internal) {
-               res.resetErrorMessage(key.copyString());
+               res = Result{res.errorNumber(), key.copyString()};
              } else {
                addErrorMsg(res, key.copyString());
              }

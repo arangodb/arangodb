@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIterators.h"
+#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -61,7 +62,10 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
   // options.readahead_size = 4 * 1024 * 1024;
 
   _iterator = mthds->NewIterator(ro, _bounds.columnFamily());
-  TRI_ASSERT(_iterator);
+  TRI_ASSERT(_iterator != nullptr);
+  if (_iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAllIndexIterator");
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
@@ -185,7 +189,10 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
   options.fill_cache = AnyIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   _iterator = mthds->NewIterator(options, _bounds.columnFamily());
-  TRI_ASSERT(_iterator);
+  TRI_ASSERT(_iterator != nullptr);
+  if (_iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");
+  }
 
   _total = col->numberDocuments(trx, transaction::CountType::Normal);
   _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;

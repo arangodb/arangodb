@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,8 +120,9 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   size_t estimatedVertexSize() const override { return sizeof(LPValue); }
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
-                      LPValue& value, uint64_t& vertexIdRange) override {
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/, LPValue& value,
+                      uint64_t& vertexIdRange) override {
     value.currentCommunity = vertexIdRange++;
   }
 

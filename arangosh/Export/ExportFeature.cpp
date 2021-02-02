@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/files.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -150,6 +151,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     TRI_ASSERT(_outputDirectory.size() > 0);
     _outputDirectory.pop_back();
   }
+  TRI_NormalizePath(_outputDirectory);
 
   if (_graphName.empty() && _collections.empty() && _query.empty()) {
     LOG_TOPIC("488d8", FATAL, Logger::CONFIG)

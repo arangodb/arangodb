@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
+#include "RestServer/Metrics.h"
 #include "Scheduler/Scheduler.h"
 
 #include <mutex>
@@ -52,6 +53,9 @@ class ManagerFeature final : public application_features::ApplicationFeature {
     return MANAGER.get();
   }
 
+  /// @brief track number of aborted managed transaction
+  void trackExpired(uint64_t numExpired);
+
  private:
   static std::unique_ptr<transaction::Manager> MANAGER;
   
@@ -63,6 +67,10 @@ class ManagerFeature final : public application_features::ApplicationFeature {
 
   // lock time in seconds
   double _streamingLockTimeout;
+  
+  /// @brief number of expired transactions that were aborted by 
+  /// transaction garbage collection
+  Counter& _numExpiredTransactions;
 };
 
 }  // namespace transaction

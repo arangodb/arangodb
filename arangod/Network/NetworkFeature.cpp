@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,7 +74,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
-    : NetworkFeature(server, network::ConnectionPool::Config{}) {
+    : NetworkFeature(server, network::ConnectionPool::Config{server.getFeature<MetricsFeature>()}) {
   this->_numIOThreads = 2; // override default
 }
 
@@ -148,7 +148,8 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
     _maxOpenConnections = 8;
   }
   if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
-    _idleTtlMilli = uint64_t(GeneralServerFeature::keepAliveTimeout() * 1000 / 2);
+    auto& gs = server().getFeature<GeneralServerFeature>();
+    _idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
   }
   if (_idleTtlMilli < 10000) {
     _idleTtlMilli = 10000;
@@ -169,7 +170,7 @@ void NetworkFeature::prepare() {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
-  network::ConnectionPool::Config config;
+  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
   config.idleConnectionMilli = _idleTtlMilli;

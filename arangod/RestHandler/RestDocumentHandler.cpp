@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -476,11 +476,15 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         if (headerRev.isSet()) {
           builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
         } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
-          builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
+          builder.add(StaticStrings::RevString, VPackValue(revInBody.toString()));
+          headerRev = revInBody;   // make sure that we report 412 and not 409
         }
       }
 
       body = builder.slice();
+    } else if (!headerRev.isSet() && revInBody.isSet() &&
+               opOptions.ignoreRevs == false) {
+      headerRev = revInBody;   // make sure that we report 412 and not 409
     }
   }
 

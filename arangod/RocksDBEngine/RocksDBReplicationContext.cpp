@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -270,11 +270,48 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
     // global inventory
-    DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
+    vocbase.server().getFeature<DatabaseFeature>().inventory(result, tick, nameFilter);
   } else {
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
+
+  return Result();
+}
+
+// returns a stripped down version of the inventory, used for shard synchronization only
+Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
+                                               std::string const& collectionName,
+                                               VPackBuilder& result) {
+  {
+    MUTEX_LOCKER(locker, _contextLock);
+    lazyCreateSnapshot();
+  }
+
+  TRI_ASSERT(_snapshot != nullptr);
+
+  // add a "collections" array with just our collection
+  result.add("collections", VPackValue(VPackValueType::Array));
+      
+  ExecContext const& exec = ExecContext::current();
+  if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
+    auto collection = vocbase.lookupCollection(collectionName);
+    if (collection != nullptr) {
+      if (collection->status() != TRI_VOC_COL_STATUS_DELETED &&
+          collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
+        // dump inventory data for collection/shard into result
+        collection->toVelocyPackForInventory(result);
+      }
+    }
+  }
+
+  result.close(); // collections
+  
+  // fake an empty "views" array here
+  result.add("views", VPackValue(VPackValueType::Array));
+  result.close(); // views
+
   vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();

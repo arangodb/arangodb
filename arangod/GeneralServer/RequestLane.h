@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -113,6 +113,9 @@ enum class RequestLane {
 
   // Used by futures that have been delayed using Scheduler::delay.
   DELAYED_FUTURE,
+
+  // undefined request lane, used only in the beginning
+  UNDEFINED,
 };
 
 enum class RequestPriority {
@@ -162,6 +165,9 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::HIGH;
     case RequestLane::CONTINUATION:
       return RequestPriority::MED;
+    case RequestLane::UNDEFINED: {
+      TRI_ASSERT(false);
+    }
   }
   return RequestPriority::LOW;
 }

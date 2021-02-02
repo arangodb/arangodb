@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +75,7 @@ bool DropCollection::first() {
   auto* vocbase = _feature.server().getFeature<DatabaseFeature>().lookupDatabase(database);
   if (vocbase != nullptr) {
     try {
-      DatabaseGuard guard(database);
+      DatabaseGuard guard(*vocbase);
       auto& vocbase = guard.database();
 
       std::shared_ptr<LogicalCollection> coll;

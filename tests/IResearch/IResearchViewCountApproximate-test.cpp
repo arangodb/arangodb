@@ -271,8 +271,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     ASSERT_EQ(expectedApproximation, actualApproximate);
 
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                               arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"));
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), queryString, nullptr, expectedFullCount >= 0 ? "{\"fullCount\":true}" : "{}");
     ASSERT_TRUE(queryResult.result.ok());
@@ -474,11 +473,10 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       "\"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                             arangodb::aql::QueryString(queryString), nullptr,
-                             arangodb::velocypack::Parser::fromJson("{}"));
+                             arangodb::aql::QueryString(queryString), nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -514,8 +512,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
-  arangodb::aql::ResourceMonitor monitor;
-  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::ResourceMonitor monitor;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
@@ -537,11 +535,10 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
       " SEARCH d.value >= 1000000 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                               arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"));
+                             arangodb::aql::QueryString(queryString), nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -584,8 +581,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
-  arangodb::aql::ResourceMonitor monitor;
-  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::ResourceMonitor monitor;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
@@ -608,11 +605,10 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                               arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"));
+                             arangodb::aql::QueryString(queryString), nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -655,8 +651,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
-  arangodb::aql::ResourceMonitor monitor;
-  arangodb::aql::AqlItemBlockManager itemBlockManager{&monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::ResourceMonitor monitor;
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,6 +151,14 @@ class RequestStatistics {
     double ELAPSED_SINCE_READ_START() const {
       if (_stat != nullptr) {
         return StatisticsFeature::time() - _stat->_readStart;
+      } else {
+        return 0.0;
+      }
+    }
+
+    double ELAPSED_WHILE_QUEUED() const {
+      if (_stat != nullptr) {
+        return  _stat->_queueEnd - _stat->_queueStart;
       } else {
         return 0.0;
       }

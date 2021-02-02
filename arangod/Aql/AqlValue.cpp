@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,17 +91,6 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       // different representations in case it's an array/object/number
       return slice(t).normalizedHash(seed);
     }
-    case DOCVEC: {
-      uint64_t const tmp = docvecLength() ^ 0xba5bedf00d;
-      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
-      for (auto const& it : *_data.docvec) {
-        size_t const n = it->numRows();
-        for (size_t i = 0; i < n; ++i) {
-          value = it->getValueReference(i, 0).hash(value);
-        }
-      }
-      return value;
-    }
     case RANGE: {
       uint64_t const n = _data.range->size();
       
@@ -137,7 +126,6 @@ bool AqlValue::isNone() const noexcept {
     case VPACK_MANAGED_SLICE: {
       return VPackSlice(_data.slice).resolveExternal().isNone();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -164,7 +152,6 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
       s = s.resolveExternal();
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -186,7 +173,6 @@ bool AqlValue::isBoolean() const noexcept {
     case VPACK_MANAGED_SLICE: {
       return VPackSlice(_data.slice).resolveExternal().isBoolean();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -208,7 +194,6 @@ bool AqlValue::isNumber() const noexcept {
     case VPACK_MANAGED_SLICE: {
       return VPackSlice(_data.slice).resolveExternal().isNumber();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -230,7 +215,6 @@ bool AqlValue::isString() const noexcept {
     case VPACK_MANAGED_SLICE: {
       return VPackSlice(_data.slice).resolveExternal().isString();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -252,7 +236,6 @@ bool AqlValue::isObject() const noexcept {
     case VPACK_MANAGED_SLICE: {
       return VPackSlice(_data.slice).resolveExternal().isObject();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -275,7 +258,6 @@ bool AqlValue::isArray() const noexcept {
     case VPACK_MANAGED_SLICE: {
       return VPackSlice(_data.slice).resolveExternal().isArray();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -312,9 +294,6 @@ size_t AqlValue::length() const {
     case VPACK_MANAGED_SLICE: {
       return static_cast<size_t>(slice(t).length());
     }
-    case DOCVEC: {
-      return docvecLength();
-    }
     case RANGE: {
       return range()->size();
     }
@@ -348,32 +327,6 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
           }
           // return a reference to an existing slice
           return AqlValue(s.at(position).begin());
-        }
-      }
-      // intentionally falls through
-      break;
-    }
-    case DOCVEC: {
-      size_t const n = docvecLength();
-      if (position < 0) {
-        // a negative position is allowed
-        position = static_cast<int64_t>(n) + position;
-      }
-      if (position >= 0 && position < static_cast<int64_t>(n)) {
-        // only look up the value if it is within array bounds
-        size_t total = 0;
-        for (auto const& it : *_data.docvec) {
-          if (position < static_cast<int64_t>(total + it->numRows())) {
-            // found the correct vector
-            if (doCopy) {
-              mustDestroy = true;
-              return it
-                  ->getValueReference(static_cast<size_t>(position - total), 0)
-                  .clone();
-            }
-            return it->getValue(static_cast<size_t>(position - total), 0);
-          }
-          total += it->numRows();
         }
       }
       // intentionally falls through
@@ -428,31 +381,6 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
       // intentionally falls through
       break;
     }
-    case DOCVEC: {
-      if (position < 0) {
-        // a negative position is allowed
-        position = static_cast<int64_t>(n) + position;
-      }
-      if (position >= 0 && position < static_cast<int64_t>(n)) {
-        // only look up the value if it is within array bounds
-        size_t total = 0;
-        for (auto const& it : *_data.docvec) {
-          if (position < static_cast<int64_t>(total + it->numRows())) {
-            // found the correct vector
-            if (doCopy) {
-              mustDestroy = true;
-              return it
-                  ->getValueReference(static_cast<size_t>(position - total), 0)
-                  .clone();
-            }
-            return it->getValue(static_cast<size_t>(position - total), 0);
-          }
-          total += it->numRows();
-        }
-      }
-      // intentionally falls through
-      break;
-    }
     case RANGE: {
       if (position < 0) {
         // a negative position is allowed
@@ -498,7 +426,6 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
@@ -541,7 +468,6 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
@@ -578,7 +504,6 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
@@ -615,7 +540,6 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
@@ -658,7 +582,6 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
@@ -702,7 +625,6 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
@@ -770,7 +692,6 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
@@ -791,7 +712,6 @@ bool AqlValue::hasKey(std::string const& name) const {
       VPackSlice s(slice(t));
       return (s.isObject() && s.hasKey(name));
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -840,7 +760,6 @@ double AqlValue::toDouble(bool& failed) const {
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       if (length() == 1) {
         bool mustDestroy;  // we can ignore destruction here
@@ -893,7 +812,6 @@ int64_t AqlValue::toInt64() const {
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       if (length() == 1) {
         bool mustDestroy;
@@ -931,24 +849,11 @@ bool AqlValue::toBoolean() const {
       // all other cases, including Null and None
       return false;
     }
-    case DOCVEC:
     case RANGE: {
       return true;
     }
   }
   return false;
-}
-
-/// @brief return the total size of the docvecs
-size_t AqlValue::docvecLength() const {
-  TRI_ASSERT(type() == DOCVEC);
-  TRI_ASSERT(_data.docvec != nullptr);
-  size_t s = 0;
-  for (auto const& it : *_data.docvec) {
-    TRI_ASSERT(it != nullptr);
-    s += it->numRows();
-  }
-  return s;
 }
 
 /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
@@ -989,24 +894,6 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return TRI_VPackToV8(isolate, slice(t), options);
-    }
-    case DOCVEC: {
-      // calculate the result array length
-      size_t const s = docvecLength();
-      // allocate the result array
-      v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(s));
-      uint32_t j = 0;  // output row count
-      for (auto const& it : *_data.docvec) {
-        size_t const n = it->numRows();
-        for (size_t i = 0; i < n; ++i) {
-          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, options)).FromMaybe(false);
-
-          if (V8PlatformFeature::isOutOfMemory(isolate)) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-        }
-      }
-      return result;
     }
     case RANGE: {
       size_t const n = _data.range->size();
@@ -1061,18 +948,6 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       }
       break;
     }
-    case DOCVEC: {
-      builder.openArray(/*unindexed*/allowUnindexed);
-      for (auto const& it : *_data.docvec) {
-        size_t const n = it->numRows();
-        for (size_t i = 0; i < n; ++i) {
-          it->getValueReference(i, 0).toVelocyPack(options, builder,
-                                                   resolveExternals, allowUnindexed);
-        }
-      }
-      builder.close();
-      break;
-    }
     case RANGE: {
       builder.openArray(/*unindexed*/allowUnindexed);
       size_t const n = _data.range->size();
@@ -1096,7 +971,6 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
       hasCopied = false;
       return *this;
     }
-    case DOCVEC:
     case RANGE: {
       VPackBuffer<uint8_t> buffer;
       VPackBuilder builder(buffer);
@@ -1136,15 +1010,6 @@ AqlValue AqlValue::clone() const {
       VPackValueLength length = static_cast<VPackValueLength>((basics::bigToHost<uint64_t>(_data.words[1]) & 0xffffffffffff0000ULL) >> 16);
       return AqlValue(VPackSlice(_data.slice), length);
     }
-    case DOCVEC: {
-      auto c = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
-      c->reserve(docvecLength());
-      for (auto const& it : *_data.docvec) {
-        c->emplace_back(it->slice(0, it->numRows()));
-        TRI_ASSERT(c->back() != nullptr);
-      }
-      return AqlValue(c.release());
-    }
     case RANGE: {
       // create a new value with a new range
       return AqlValue(range()->_low, range()->_high);
@@ -1173,11 +1038,6 @@ void AqlValue::destroy() noexcept {
       }
       break;
     }
-    case DOCVEC: {
-      // Will delete all ItemBlocks
-      delete _data.docvec;
-      break;
-    }
     case RANGE: {
       delete _data.range;
       break;
@@ -1204,7 +1064,6 @@ VPackSlice AqlValue::slice(AqlValueType type) const {
     case VPACK_MANAGED_SLICE: {
       return VPackSlice(_data.slice).resolveExternal();
     }
-    case DOCVEC:
     case RANGE: {
     }
   }
@@ -1220,8 +1079,8 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
   if (leftType != rightType) {
     // TODO implement this case more efficiently
-    if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC || rightType == DOCVEC) {
-      // range|docvec against x
+    if (leftType == RANGE || rightType == RANGE) {
+      // range against x
       VPackBuilder leftBuilder;
       left.toVelocyPack(options, leftBuilder, /*resolveExternal*/false, /*allowUnindexed*/true);
 
@@ -1244,61 +1103,6 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
       return arangodb::basics::VelocyPackHelper::compare(left.slice(leftType), right.slice(rightType),
                                                          compareUtf8, options);
     }
-    case DOCVEC: {
-      // use lexicographic ordering of AqlValues regardless of block,
-      // DOCVECs have a single register coming from ReturnNode.
-      size_t lblock = 0;
-      size_t litem = 0;
-      size_t rblock = 0;
-      size_t ritem = 0;
-      size_t const lsize = left._data.docvec->size();
-      size_t const rsize = right._data.docvec->size();
-
-      if (lsize == 0 || rsize == 0) {
-        if (lsize == rsize) {
-          // both empty
-          return 0;
-        }
-        return (lsize < rsize ? -1 : 1);
-      }
-
-      size_t lrows = left._data.docvec->at(0)->numRows();
-      size_t rrows = right._data.docvec->at(0)->numRows();
-
-      while (lblock < lsize && rblock < rsize) {
-        AqlValue const& lval =
-            left._data.docvec->at(lblock)->getValueReference(litem, 0);
-        AqlValue const& rval =
-            right._data.docvec->at(rblock)->getValueReference(ritem, 0);
-
-        int cmp = Compare(options, lval, rval, compareUtf8);
-
-        if (cmp != 0) {
-          return cmp;
-        }
-        if (++litem == lrows) {
-          litem = 0;
-          lblock++;
-          if (lblock < lsize) {
-            lrows = left._data.docvec->at(lblock)->numRows();
-          }
-        }
-        if (++ritem == rrows) {
-          ritem = 0;
-          rblock++;
-          if (rblock < rsize) {
-            rrows = right._data.docvec->at(rblock)->numRows();
-          }
-        }
-      }
-
-      if (lblock == lsize && rblock == rsize) {
-        // both blocks exhausted
-        return 0;
-      }
-
-      return (lblock < lsize ? -1 : 1);
-    }
     case RANGE: {
       if (left.range()->_low < right.range()->_low) {
         return -1;
@@ -1319,17 +1123,6 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
   return 0;
 }
 
-
-AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {
-  TRI_ASSERT(docvec != nullptr);
-  _data.docvec = docvec;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  for (auto const& it : *_data.docvec) {
-    TRI_ASSERT(it != nullptr);
-  }
-#endif
-  setType(AqlValueType::DOCVEC);
-}
 
 AqlValue::AqlValue() noexcept {
   // construct a slice of type None
@@ -1568,8 +1361,6 @@ bool AqlValue::isManagedDocument() const noexcept {
 
 bool AqlValue::isRange() const noexcept { return type() == RANGE; }
 
-bool AqlValue::isDocvec() const noexcept { return type() == DOCVEC; }
-
 Range const* AqlValue::range() const {
   TRI_ASSERT(isRange());
   return _data.range;
@@ -1590,11 +1381,6 @@ size_t AqlValue::memoryUsage() const noexcept {
     case VPACK_MANAGED_SLICE:
       // byte size is stored in the first 6 bytes of the second uint64_t value
       return static_cast<size_t>((basics::bigToHost<uint64_t>(_data.words[1]) & 0xffffffffffff0000ULL) >> 16);
-    case DOCVEC:
-      // no need to count the memory usage for the item blocks in docvec.
-      // these have already been counted elsewhere (in ctors of AqlItemBlock
-      // and AqlItemBlock::setValue)
-      return sizeof(_data.docvec) + sizeof(SharedAqlItemBlockPtr) * _data.docvec->size();
     case RANGE:
       return sizeof(Range);
   }

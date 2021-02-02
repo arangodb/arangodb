@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,7 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Utilities.h"
+#include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
@@ -140,7 +141,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
   std::shared_ptr<ShardMap> shardMap = coll.shardIds();
-  std::vector<std::string> leaders;
+  ClusterTrxMethods::SortedServersSet leaders{};
 
   for (auto const& pair : shards) {
     auto const& it = shardMap->find(pair.first);
@@ -150,7 +151,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
     // now we got the shard leader
     std::string const& leader = it->second[0];
     if (!state.knowsServer(leader)) {
-      leaders.emplace_back(leader);
+      leaders.emplace(leader);
     }
   }
   return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
@@ -160,11 +161,11 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
 Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
-  std::vector<ServerID> leaders;
+  ClusterTrxMethods::SortedServersSet leaders{};
   for (auto const& shardServers : shards) {
     ServerID const& srv = shardServers.second.at(0);
     if (!trx.state()->knowsServer(srv)) {
-      leaders.emplace_back(srv);
+      leaders.emplace(srv);
     }
   }
   return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
@@ -539,7 +540,10 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        collinfo.keyGenerator()->track(p, l);
+        int res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
       }
     }
 
@@ -599,6 +603,14 @@ bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
 bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
   return true;
 }
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relevant code to demangle hidden collections names
+////////////////////////////////////////////////////////////////////////////////
+#ifndef USE_ENTERPRISE
+void ClusterMethods::realNameFromSmartName(std::string&) { }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1957,7 +1969,6 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                              std::vector<VPackSlice>& result) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
-  auto& datalake = travCache.datalake();
   size_t& filtered = travCache.filteredDocuments();
   size_t& read = travCache.insertedDocuments();
 
@@ -2031,7 +2042,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
 
       arangodb::velocypack::HashedStringRef idRef(id);
-      auto resE = cache.emplace(idRef, e);
+      auto resE = cache.try_emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
@@ -2041,11 +2052,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
     }
     if (!allCached) {
-      if (datalake.empty()) {
-        //avoid frequent reallocations for some results
-        datalake.reserve(8);
-      }
-      datalake.emplace_back(std::move(payload));
+      travCache.datalake().add(std::move(payload));
     }
   }
   return {};
@@ -2070,7 +2077,6 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                              size_t& read) {
   auto const* engines = travCache.engines();
   auto& cache = travCache.cache();
-  auto& datalake = travCache.datalake();
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -2144,11 +2150,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
     }
     if (!allCached) {
-      if (datalake.empty()) {
-        //avoid frequent reallocations for some results
-        datalake.reserve(8);
-      }
-      datalake.emplace_back(std::move(payload));
+      travCache.datalake().add(std::move(payload));
     }
   }
   return {};
@@ -2171,7 +2173,6 @@ void fetchVerticesFromEngines(
     bool forShortestPath) {
   
   auto const* engines = travCache.engines();
-  auto& datalake = travCache.datalake();
 
   // TODO map id => ServerID if possible
   // And go fast-path
@@ -2232,7 +2233,7 @@ void fetchVerticesFromEngines(
 
       TRI_ASSERT(result.find(key) == result.end());
       if (!cached) {
-        datalake.emplace_back(std::move(payload));
+        travCache.datalake().add(std::move(payload));
         cached = true;
       }
       // Protected by datalake
@@ -3402,7 +3403,7 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
       if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
         c = TRI_ERROR_LOCAL_LOCK_FAILED;
       }
-      finalRes = arangodb::Result(c, finalRes.errorMessage() + ", " + m);
+      finalRes = arangodb::Result(c, StringUtils::concatT(finalRes.errorMessage(), ", ", m));
     }
   };
   for (Future<network::Response>& f : futures) {
@@ -3800,7 +3801,6 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   }
 
   // Perform the requests
-//  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
   for (Future<network::Response>& f : futures) {
      network::Response const& r = f.get();
 
@@ -3965,7 +3965,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     if (!result.ok()) {
       // Failed to go to backup mode
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("agency lock operation resulted in ") + result.errorMessage());
+                   StringUtils::concatT("agency lock operation resulted in ",
+                                        result.errorMessage()));
       LOG_TOPIC("6c73d", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
       return result;
@@ -3996,7 +3997,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       // release the lock
       releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("failed to acquire agency dump: ") + result.errorMessage());
+                   StringUtils::concatT("failed to acquire agency dump: ",
+                                        result.errorMessage()));
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
       return result;
@@ -4101,9 +4103,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
-          std::string(
-              "failed to acquire global transaction lock on all db servers: ") +
-              result.errorMessage());
+          StringUtils::concatT(
+              "failed to acquire global transaction lock on all db servers: ",
+              result.errorMessage()));
       LOG_TOPIC("b7d09", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
@@ -4119,8 +4121,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       // release the lock
       releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("failed to hot backup on all db servers: ") +
-                       result.errorMessage());
+                   StringUtils::concatT(
+                       "failed to hot backup on all db servers: ", result.errorMessage()));
       LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
       removeLocalBackups(pool, backupId, dbServers, dummy);
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
@@ -4138,8 +4140,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         removeLocalBackups(pool, backupId, dbServers, dummy);
       }
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                   std::string("failed to acquire agency dump post backup: ") +
-                       result.errorMessage() + " backup's integrity is not guaranteed");
+          StringUtils::concatT(
+                       "failed to acquire agency dump post backup: ", result.errorMessage(),
+                       " backup's integrity is not guaranteed"));
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;

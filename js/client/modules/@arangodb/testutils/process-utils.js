@@ -135,6 +135,16 @@ class ConfigBuilder {
       this.config['--compress-output'] = false;
     }
   }
+  activateEnvelopes() {
+    if (this.type === 'dump') {
+      this.config['--envelope'] = true;
+    }
+  }
+  deactivateEnvelopes() {
+    if (this.type === 'dump') {
+      this.config['--envelope'] = false;
+    }
+  }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {
@@ -194,6 +204,7 @@ if (platform.substr(0, 3) === 'win') {
 let serverCrashedLocal = false;
 let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
+let isEnterpriseClient = false;
 
 let BIN_DIR;
 let ARANGOBACKUP_BIN;
@@ -318,8 +329,18 @@ function setupBinaries (builddir, buildType, configDir) {
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
+      isEnterpriseClient = true;
       checkFiles.push(ARANGOBACKUP_BIN);
     }
+    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
+      let envName = san.toUpperCase() + "_OPTIONS";
+      let fileName = san + "_arangodb_suppressions.txt";
+      if (!process.env.hasOwnProperty(envName) &&
+          fs.exists(fileName)) {
+        // print('preparing ' + san + ' environment');
+        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+      }
+    });
   }
 
   for (let b = 0; b < checkFiles.length; ++b) {
@@ -632,6 +653,41 @@ function summarizeStats(deltaStats) {
     }
   }
   return sumStats;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief aggregates information from /proc about the SUT
+// //////////////////////////////////////////////////////////////////////////////
+
+function getMemProfSnapshot(instanceInfo, options, counter) {
+  if (options.memprof) {
+    let opts = Object.assign(makeAuthorizationHeaders(options),
+                             { method: 'GET' });
+
+    instanceInfo.arangods.forEach((arangod) => {
+      let fn = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
+      let heapdumpReply = download(arangod.url + '/_admin/status?memory=true', opts);
+      if (heapdumpReply.code === 200) {
+        fs.write(fn, heapdumpReply.body);
+        print(CYAN + Date() + ` Saved ${fn}` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
+        print(heapdumpReply);
+      }
+
+      let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
+      let metricsReply = download(arangod.url + '/_admin/metrics', opts);
+      if (metricsReply.code === 200) {
+        fs.write(fnMetrics, metricsReply.body);
+        print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
+      } else if (metricsReply.code === 503) {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
+        print(metricsReply);
+      }
+    });
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1758,6 +1814,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-address'] = endpoint;
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      coordinatorArgs['cluster.default-replication-factor'] = '2';
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
     }
@@ -1950,6 +2007,10 @@ function startArango (protocol, options, addArgs, rootDir, role) {
     port = endpoint.split(':').pop();
   }
 
+  if (options.memprof) {
+    process.env['MALLOC_CONF'] = 'prof:true';
+  }
+
   let instanceInfo = {
     role,
     port,
@@ -2038,7 +2099,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.supervision-grace-period'] = '10.0';
     instanceArgs['agency.supervision-frequency'] = '1.0';
-
+    if (options.encryptionAtRest) {
+      instanceArgs['rocksdb.encryption-keyfile'] = instanceInfo.restKeyFile;
+    }
     if (i === N - 1) {
       let l = [];
       instanceInfo.arangods.forEach(arangod => {
@@ -2073,6 +2136,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
 
 function startInstanceSingleServer (instanceInfo, protocol, options,
   addArgs, rootDir, role) {
+  if (options.encryptionAtRest) {
+    addArgs['rocksdb.encryption-keyfile'] = instanceInfo.restKeyFile;
+  }
   instanceInfo.arangods.push(startArango(protocol, options, addArgs, rootDir, role));
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
@@ -2097,6 +2163,15 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     arangods: [],
     protocol: protocol
   };
+
+  if (options.encryptionAtRest && !isEnterpriseClient) {
+    options.encryptionAtRest = false;
+  }
+  if (options.encryptionAtRest) {
+    instanceInfo.restKeyFile = fs.join(rootDir, 'openSesame.txt');
+    fs.makeDirectoryRecursive(rootDir);
+    fs.write(instanceInfo.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
+  }
 
   const startTime = time();
   try {
@@ -2265,6 +2340,7 @@ exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
 exports.summarizeStats = summarizeStats;
+exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;

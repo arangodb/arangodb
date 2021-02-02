@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -173,7 +173,7 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() { TRI_Free(_str); }
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                              std::string const& message) noexcept {
+                              std::string_view message) noexcept {
   try {
     TRI_GET_GLOBALS();
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
@@ -1623,7 +1623,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!cwd.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(cwd.sysErrorNumber(),
                                    "cannot get current working directory: " +
-                                       cwd.errorMessage());
+                                       std::string{cwd.errorMessage()});
   }
 
   std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
@@ -5333,14 +5333,15 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message, bool autoPrepend) {
+                           std::string_view message, bool autoPrepend) {
   v8::HandleScope scope(isolate);
 
   try {
     // does string concatenation, so we must wrap this in a try...catch block
     if (autoPrepend && message.empty()) {
       CreateErrorObject(isolate, errorNumber,
-                        message + ": " + std::string(TRI_errno_string(errorNumber)));
+                        basics::StringUtils::concatT(message, ": ",
+                                                     TRI_errno_string(errorNumber)));
     } else {
       CreateErrorObject(isolate, errorNumber, message);
     }
@@ -5681,7 +5682,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_IP"), JS_IsIP);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

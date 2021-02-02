@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -126,8 +127,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   TRI_ASSERT(_cacheTx == nullptr);
 
   // start cache transaction
-  if (CacheManagerFeature::MANAGER != nullptr) {
-    _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
+  auto* manager = vocbase().server().getFeature<CacheManagerFeature>().manager();
+  if (manager != nullptr) {
+    _cacheTx = manager->beginTransaction(isReadOnlyTransaction());
   }
 
   auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
@@ -145,8 +147,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     }
     _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
   } else {
-
     createTransaction();
+    TRI_ASSERT(_rocksTransaction != nullptr);
+
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
     if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
       TRI_ASSERT(_options.intermediateCommitCount != UINT64_MAX ||
@@ -225,7 +228,7 @@ void RocksDBTransactionState::createTransaction() {
 
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-    auto header = RocksDBLogValue::BeginTransaction(_vocbase.id(), _id);
+    auto header = RocksDBLogValue::BeginTransaction(_vocbase.id(), id());
 
     _rocksTransaction->PutLogData(header.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -269,8 +272,9 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
   _rocksTransaction = nullptr;
   if (_cacheTx != nullptr) {
     // note: endTransaction() will delete _cacheTrx!
-    TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-    CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
+    auto* manager = vocbase().server().getFeature<CacheManagerFeature>().manager();
+    TRI_ASSERT(manager != nullptr);
+    manager->endTransaction(_cacheTx);
     _cacheTx = nullptr;
   }
   if (_readSnapshot != nullptr) {
@@ -535,7 +539,7 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
     std::string message =
     "aborting transaction because maximal transaction size limit of " +
     std::to_string(_options.maxTransactionSize) + " bytes is reached";
-    return Result(Result(TRI_ERROR_RESOURCE_LIMIT, message));
+    return Result(TRI_ERROR_RESOURCE_LIMIT, message);
   }
 
   auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));

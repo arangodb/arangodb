@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1016,6 +1016,10 @@ void Index::warmup(arangodb::transaction::Methods*, std::shared_ptr<basics::Loca
 /// @brief generate error message
 /// @param key the conflicting key
 Result& Index::addErrorMsg(Result& r, std::string const& key) {
+  return r.withError([this, &key](result::Error& err) { addErrorMsg(err, key); });
+}
+
+void Index::addErrorMsg(result::Error& r, std::string const& key) {
   // now provide more context based on index
   r.appendErrorMessage(" - in index ");
   r.appendErrorMessage(name());
@@ -1040,7 +1044,6 @@ Result& Index::addErrorMsg(Result& r, std::string const& key) {
     r.appendErrorMessage("; conflicting key: ");
     r.appendErrorMessage(key);
   }
-  return r;
 }
 
 double Index::getTimestamp(arangodb::velocypack::Slice const& doc,

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,17 +24,18 @@
 
 #include "IResearchViewExecutor.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "AqlCall.h"
+#include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -58,6 +59,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 using namespace arangodb::iresearch;
 
 namespace {
@@ -609,8 +611,9 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       infos().filterCondition().toVelocyPack(builder, true);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           rv.errorNumber(),
-          "failed to build filter while querying arangosearch view, query '" +
-              builder.toJson() + "': " + rv.errorMessage());
+          StringUtils::concatT("failed to build filter while querying "
+                               "arangosearch view, query '",
+                               builder.toJson(), "': ", rv.errorMessage()));
     }
 
     if (infos().volatileSort() || !_isInitialized) {
@@ -703,7 +706,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(&_trx, documentId, ctx.callback))) {
+    if (ADB_UNLIKELY(!collection.getPhysical()->read(&_trx, documentId, ctx.callback))) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -171,16 +171,17 @@ class PhysicalCollection {
                            std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result) = 0;
+                      IndexIterator::DocumentCallback const& cb) const = 0;
+  
+  /// @brief read a documument referenced by token (internal method)
+  virtual bool read(transaction::Methods* trx,
+                    LocalDocumentId const& token,
+                    IndexIterator::DocumentCallback const& cb) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocumentWithCallback(transaction::Methods* trx,
-                                        LocalDocumentId const& token,
-                                        IndexIterator::DocumentCallback const& cb) const = 0;
   /**
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might

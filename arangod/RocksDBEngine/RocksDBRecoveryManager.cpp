@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -193,8 +193,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       // collection with this objectID not known.Skip.
       return nullptr;
     }
-    DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vocbase = df->useDatabase(dbColPair.first);
+    DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
+    TRI_vocbase_t* vocbase = df.useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
@@ -211,8 +211,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
 
-    DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
+    DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
+    TRI_vocbase_t* vb = df.useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
@@ -552,7 +552,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
         if (!s.ok()) {
           rv = rocksutils::convertStatus(s);
-          std::string msg = "error during WAL scan: " + rv.errorMessage();
+          std::string msg = basics::StringUtils::concatT("error during WAL scan: ", rv.errorMessage());
           LOG_TOPIC("ee333", ERR, Logger::ENGINES) << msg;
           rv.reset(rv.errorNumber(), std::move(msg));  // update message
           break;
@@ -571,7 +571,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     res = std::move(shutdownRv);
   } else {
     if (shutdownRv.fail()) {
-      res.reset(res.errorNumber(), res.errorMessage() + " - " + shutdownRv.errorMessage());
+      res.reset(res.errorNumber(),
+                basics::StringUtils::concatT(res.errorMessage(), " - ",
+                                             shutdownRv.errorMessage()));
     }
   }
 

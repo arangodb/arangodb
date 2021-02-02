@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,10 @@ namespace deserializer {
 template <typename... T>
 struct parameter_list {
   constexpr static auto length = sizeof...(T);
+
+  static bool contains_name(slice_type slice) {
+    return (slice.isEqualString(T::name) || ...);
+  }
 };
 
 /*
@@ -68,24 +72,33 @@ struct factory_slice_parameter {
       ::arangodb::velocypack::deserializer::slice_type::nullSlice();
 };
 
+
 template <char const N[], typename T>
-struct factory_optional_parameter {
+struct factory_optional_value_parameter {
   using value_type = std::optional<T>;
   constexpr static auto name = N;
-  constexpr static auto default_value = value_type{};
 };
 
 template <const char N[], typename D, bool required>
 struct factory_deserialized_parameter {
   using value_type = typename D::constructed_type;
   constexpr static auto name = N;
+  static_assert(
+      required || std::is_default_constructible_v<value_type>,
+      "result type must be default constructible if it is not required");
 };
 
 template <const char N[], typename D>
-struct factory_deserialized_parameter<N, D, false> {
+struct factory_optional_deserialized_parameter {
   using value_type = std::optional<typename D::constructed_type>;
   constexpr static auto name = N;
 };
+
+template <const char N[], bool required>
+using factory_builder_parameter = factory_deserialized_parameter<N, values::vpack_builder_deserializer, required>;
+template <const char N[]>
+using factory_optional_builder_parameter = factory_optional_deserialized_parameter<N, values::vpack_builder_deserializer>;
+
 
 template <const char N[], typename D, typename default_v = values::default_constructed_value<typename D::constructed_type>>
 struct factory_deserialized_default {
@@ -154,7 +167,7 @@ struct parameter_executor<factory_simple_parameter<N, T, required, default_v>, H
 };
 
 template <char const N[], typename T, typename H>
-struct parameter_executor<factory_optional_parameter<N, T>, H> {
+struct parameter_executor<factory_optional_value_parameter<N, T>, H> {
   using value_type = std::optional<T>;
   using result_type = result<std::pair<value_type, bool>, deserialize_error>;
   constexpr static bool has_value = true;
@@ -192,7 +205,7 @@ struct parameter_executor<factory_deserialized_parameter<N, D, required>, H> {
     auto value_slice = s.get(N);
     if (!value_slice.isNone()) {
       return ::arangodb::velocypack::deserializer::deserialize<D, hints::hint_list_empty, C>(
-                 value_slice, {}, std::forward<C>(c))
+          value_slice, {}, std::forward<C>(c))
           .map([](typename D::constructed_type&& t) {
             return std::make_pair(std::move(t), true);
           })
@@ -206,6 +219,34 @@ struct parameter_executor<factory_deserialized_parameter<N, D, required>, H> {
     } else {
       return result_type{std::make_pair(value_type{}, false)};
     }
+  }
+};
+
+template <char const N[], typename D, typename H>
+struct parameter_executor<factory_optional_deserialized_parameter<N, D>, H> {
+  using parameter_type = factory_optional_deserialized_parameter<N, D>;
+  using value_type = typename parameter_type::value_type;
+  using result_type = result<std::pair<value_type, bool>, deserialize_error>;
+  constexpr static bool has_value = true;
+
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, C&& c) -> result_type {
+    using namespace std::string_literals;
+
+    auto value_slice = s.get(N);
+    if (!value_slice.isNone()) {
+      return ::arangodb::velocypack::deserializer::deserialize<D, hints::hint_list_empty, C>(
+          value_slice, {}, std::forward<C>(c))
+          .map([](typename D::constructed_type&& t) {
+            return std::make_pair(value_type{std::move(t)}, true);
+          })
+          .wrap([](deserialize_error&& e) {
+            return std::move(e.wrap("when reading value of field "s + N).trace(N));
+          });
+    }
+
+    return result_type{std::make_pair(value_type{}, false)};
   }
 };
 
@@ -296,8 +337,8 @@ struct parameter_executor<expected_value<N, V>, H> {
 template <int I, int K, typename...>
 struct parameter_list_executor;
 
-template <int I, int K, typename P, typename... Ps, typename H>
-struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H> {
+template <int I, int K, typename P, typename... Ps, typename H, typename FullList>
+struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H, FullList> {
   using unpack_result = result<unit_type, deserialize_error>;
 
   template <typename T, typename C>
@@ -316,19 +357,19 @@ struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H> {
         auto& [value, read_value] = result.get();
         std::get<I>(t) = value;
         if (read_value) {
-          return parameter_list_executor<I + 1, K + 1, parameter_list<Ps...>, H>::unpack(
+          return parameter_list_executor<I + 1, K + 1, parameter_list<Ps...>, H, FullList>::unpack(
               t, s, hints, std::forward<C>(ctx));
         } else {
-          return parameter_list_executor<I + 1, K, parameter_list<Ps...>, H>::unpack(
+          return parameter_list_executor<I + 1, K, parameter_list<Ps...>, H, FullList>::unpack(
               t, s, hints, std::forward<C>(ctx));
         }
       }
       return unpack_result{std::move(result).error().wrap(
-          "during read of "s + std::to_string(I) + "th parameters value")};
+          "during read of "s + std::to_string(I) + "th parameters value (" + P::name + ")")};
     } else {
       auto result = executor::unpack(s, hints, std::forward<C>(ctx));
       if (result) {
-        return parameter_list_executor<I, K + 1, parameter_list<Ps...>, H>::unpack(
+        return parameter_list_executor<I, K + 1, parameter_list<Ps...>, H, FullList>::unpack(
             t, s, hints, std::forward<C>(ctx));
       }
       return unpack_result{std::move(result).error()};
@@ -336,15 +377,23 @@ struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H> {
   }
 };
 
-template <int I, int K, typename H>
-struct parameter_list_executor<I, K, parameter_list<>, H> {
+template <int I, int K, typename H, typename FullList>
+struct parameter_list_executor<I, K, parameter_list<>, H, FullList> {
   using unpack_result = result<unit_type, deserialize_error>;
 
   template <typename T, typename C>
   static auto unpack(T& t, ::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, C &&) -> unpack_result {
+
     if constexpr (!hints::hint_has_ignore_unknown<H>) {
       if (s.length() != K) {
+        for (auto&& pair : ObjectIterator(s)) {
+          if (!FullList::contains_name(pair.key)) {
+            return unpack_result{deserialize_error{
+                "superfluous field in object: `" + pair.key.copyString() + "`"}};
+          }
+        }
+
         return unpack_result{deserialize_error{
             "superfluous field in object, found " + std::to_string(s.length()) +
             " fields, expected " + std::to_string(K) + " fields"}};
@@ -376,7 +425,7 @@ struct deserialize_plan_executor<parameter_list<Ps...>, H> {
 
     // forward to the parameter execution
     auto parameter_result =
-        detail::parameter_list_executor<0, 0, parameter_list<Ps...>, H>::unpack(
+        detail::parameter_list_executor<0, 0, parameter_list<Ps...>, H, parameter_list<Ps...>>::unpack(
             parameter, s, hints, std::forward<C>(ctx));
     if (parameter_result) {
       return unpack_result{gadgets::unpack_opt_tuple(std::move(parameter))};

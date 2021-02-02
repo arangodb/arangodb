@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "LogThread.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
@@ -40,6 +41,11 @@ LogThread::~LogThread() {
 
 bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   TRI_ASSERT(message != nullptr);
+
+  TRI_IF_FAILURE("LogThread::log") {
+    // simulate a successful logging, but actually don't log anything
+    return true;
+  }
 
   bool const isDirectLogLevel =
              (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR || message->_level == LogLevel::WARN);

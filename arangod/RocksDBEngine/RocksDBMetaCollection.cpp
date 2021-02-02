@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -264,13 +264,20 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     LOG_TOPIC("ad613", WARN, Logger::REPLICATION)
       << "inconsistent collection count detected for "
       << vocbase.name() << "/" << _logicalCollection.name()
-      << ", an offet of " << adjustment << " will be applied";
+      << ": counted value: " << count << ", snapshot value: " << snapNumberOfDocuments 
+      << ", current value: " << _meta.numberDocuments()
+      << ",  an offet of " << adjustment << " will be applied";
     auto adjustSeq = engine.db()->GetLatestSequenceNumber();
     if (adjustSeq <= snapSeq) {
       adjustSeq = ::forceWrite(engine);
       TRI_ASSERT(adjustSeq > snapSeq);
     }
     _meta.adjustNumberDocuments(adjustSeq, RevisionId::none(), adjustment);
+  } else {
+    LOG_TOPIC("55df5", INFO, Logger::REPLICATION)
+      << "no collection count adjustment needs to be applied for "
+      << vocbase.name() << "/" << _logicalCollection.name()
+      << ": counted value: " << count;
   }
   
   return _meta.numberDocuments();

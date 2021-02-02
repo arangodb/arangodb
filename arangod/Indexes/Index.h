@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -454,6 +454,7 @@ class Index {
   /// @brief generate error result
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
+  void addErrorMsg(result::Error& err, std::string const& key);
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified

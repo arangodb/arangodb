@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -971,7 +971,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     binds->add("@coll", VPackValue(cname));
     binds->close();
     arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(q), binds, std::make_shared<VPackBuilder>());
+                               aql::QueryString(q), binds);
     aql::QueryResult queryResult = query.executeSync();
 
     Result res = queryResult.result;

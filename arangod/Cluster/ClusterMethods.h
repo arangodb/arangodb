@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -350,6 +350,11 @@ class ClusterMethods {
   ///        that should not be included in links
   ////////////////////////////////////////////////////////////////////////////////
   static bool includeHiddenCollectionInLink(std::string const& name);
+
+  /// @brief removes smart name suffixes from collection names.
+  /// @param possiblySmartName  collection name with possible smart suffixes.
+  /// Will be modified inplace 
+  static void realNameFromSmartName(std::string& possiblySmartName);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

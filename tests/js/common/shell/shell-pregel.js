@@ -43,13 +43,23 @@ const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 function testAlgo(a, p) {
   let pid = pregel.start(a, graphName, p);
   assertTrue(typeof pid === "string");
-  var i = 10000;
+  let i = 10000;
   do {
     internal.sleep(0.2);
-    var stats = pregel.status(pid);
+    let stats = pregel.status(pid);
     if (stats.state !== "running") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
+      let attrs = ["totalRuntime", "startupTime", "computationTime"];
+      if (p.store && stats.hasOwnProperty('storageTime')) {
+        assertEqual("number", typeof stats.storageTime);
+        assertTrue(stats.storageTime >= 0.0, stats);
+      }
+      attrs.forEach((k) => {
+        assertTrue(stats.hasOwnProperty(k), { p, stats });
+        assertEqual("number", typeof stats[k]);
+        assertTrue(stats[k] >= 0.0, stats);
+      });
 
       db[vColl].all().toArray()
         .forEach(function (d) {

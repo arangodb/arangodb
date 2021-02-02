@@ -306,7 +306,6 @@ function optimizerCollectInClusterSingleShardSuite () {
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
-
     testSingleDistinct : function () {
       let query = "FOR doc IN " + c.name() + " SORT doc.value RETURN DISTINCT doc.value";
 

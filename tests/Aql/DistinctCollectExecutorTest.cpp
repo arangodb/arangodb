@@ -60,7 +60,7 @@ class DistinctCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<std::tuple<DistinctCollectSplitType>> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   // arangodb::transaction::Methods* trx;
 
   RegIdSet readableInputRegisters = RegIdSet{0};
@@ -76,7 +76,7 @@ class DistinctCollectExecutorTest
   DistinctCollectExecutorTest()
       : registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
                       1, 2, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults) {}
+        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults, monitor) {}
 };
 
 TEST_P(DistinctCollectExecutorTest, split_1) {

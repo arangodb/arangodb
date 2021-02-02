@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1479,7 +1479,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                             AsyncAgencyComm::RequestType::READ, VPackBuffer<uint8_t>())
           .thenValue([self](AsyncAgencyCommResult&& result) {
             // this lambda has to capture self since collect returns early on an
-            // exception and the RestHandle might be freed to early otherwise
+            // exception and the RestHandle might be freed too early otherwise
 
             if (result.fail() || result.statusCode() != fuerte::StatusOK) {
               THROW_ARANGO_EXCEPTION(result.asResult());

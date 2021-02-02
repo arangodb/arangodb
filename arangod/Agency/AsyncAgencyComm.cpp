@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -408,14 +408,14 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     RequestType type, uint64_t index) const {
   std::vector<ClientId> clientIds;
   return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout,
-                          type, clientIds, VPackBuffer<uint8_t>{});
+                          type, std::move(clientIds), VPackBuffer<uint8_t>{});
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
     RequestType type, velocypack::Buffer<uint8_t>&& body) const {
   std::vector<ClientId> clientIds;
-  return sendWithFailover(method, url, timeout, type, clientIds, std::move(body));
+  return sendWithFailover(method, url, timeout, type, std::move(clientIds), std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -280,6 +280,7 @@ class Logger {
                   LogLevel level, size_t topicId, std::string const& message);
 
   static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
+                     bool forceDirect,
                      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
                          [](std::unique_ptr<LogMessage>&) -> void {});
 

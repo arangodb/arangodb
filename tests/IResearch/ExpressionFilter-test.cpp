@@ -437,14 +437,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with false expression without order
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -490,7 +487,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -511,14 +508,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with false expression without order (deferred execution)
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
     
     ExpressionContextMock ctx;
     {
@@ -564,7 +558,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -585,14 +579,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with true expression without order
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -638,7 +629,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -676,14 +667,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with true expression without order (deferred execution)
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -729,7 +717,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -767,14 +755,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with true expression without order (deferred execution)
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -820,7 +805,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -859,14 +844,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with true expression without order (deferred execution with invalid context)
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -912,7 +894,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -933,14 +915,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with true expression without order (deferred execution with invalid context)
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -986,7 +965,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1007,15 +986,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with nondeterministic expression without order
   {
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -1056,7 +1032,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1146,15 +1122,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     };
     auto preparedOrder = order.prepare();
 
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               arangodb::aql::QueryString(queryString), nullptr);
 
     ExpressionContextMock ctx;
     {
@@ -1195,7 +1168,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1269,14 +1242,13 @@ TEST_F(IResearchExpressionFilterTest, test) {
   // query with nondeterministic expression without order, seek + next
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-    auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
     
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString),
-                               bindVars, options);
+                               bindVars);
 
     ExpressionContextMock ctx;
     {
@@ -1317,7 +1289,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                        EMPTY, EMPTY, EMPTY,
                                        arangodb::transaction::Options());
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
+        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);

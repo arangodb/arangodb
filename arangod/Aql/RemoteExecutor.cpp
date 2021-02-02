@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -503,7 +503,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   if (!_distributeId.empty()) {
     req->header.addMeta(StaticStrings::AqlShardIdHeader, _distributeId);
   }
-  network::addSourceHeader(*req);
+
+  network::addSourceHeader(nullptr, *req);
 
   LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
       << "request to '" << _server << "' '" << fuerte::to_string(type) << " "
