@@ -6,6 +6,9 @@ devel
   few megabytes or memory, but it also avoids potential (but unlikely)
   sharing of the same PRNG instance by multiple threads.
 
+* Turn off option `--server.export-read-write-metrics` for now, until there
+  is certainty about the runtime overhead it introduces.
+
 * Fixed issue #12543: Unused Foxx service config can not be discarded.
 
 * Fixed issue #12363: Foxx HTTP API upgrade/replace always enables
