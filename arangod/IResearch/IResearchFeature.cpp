@@ -310,17 +310,27 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
   // persist collection names in links
   for (auto& collection : vocbase.collections(false)) {
     auto indexes = collection->getIndexes();
-    LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
-          << " Checking collection '" << collection->name() << "' in database '" << vocbase.name() << "'";
-    auto clusterCollection =
-        clusterInfo.getCollectionNT(vocbase.name(),
-                                    collection->name());
-    if (clusterCollection) {
-      auto name = clusterCollection->name();
+    std::string clusterCollectionName;
+    if (!collection->shardIds()->empty()) {
+      unsigned tryCount{60};
+      do {
+        LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
+            << " Checking collection '" << collection->name() << "' in database '" << vocbase.name() << "'";
+        clusterCollectionName = clusterInfo.getCollectionNameForShard(collection->name());
+        if (!clusterCollectionName.empty()) {
+         break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      } while(--tryCount);
+    } else {
+      clusterCollectionName = collection->name();
+    }
+
+    if (!clusterCollectionName.empty()) {
       LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)
-          << " Processing collection " << name;
+          << " Processing collection " << clusterCollectionName;
 #ifdef USE_ENTERPRISE
-      arangodb::ClusterMethods::realNameFromSmartName(name);
+      arangodb::ClusterMethods::realNameFromSmartName(clusterCollectionName);
 #endif
       for (auto& index : indexes) {
         if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
@@ -328,11 +338,11 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
               dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
           if (indexPtr) {
             LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
-                << "Checking collection name '" << name << "' for link "
+                << "Checking collection name '" << clusterCollectionName << "' for link "
                 << indexPtr->id().id();
-            if (indexPtr->setCollectionName(name)) {
+            if (indexPtr->setCollectionName(clusterCollectionName)) {
               LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
-                  << "Setting collection name '" << name << "' for link "
+                  << "Setting collection name '" << clusterCollectionName << "' for link "
                   << indexPtr->id().id();
               if (selector.engineName() == arangodb::RocksDBEngine::EngineName) {
                 auto& engine = selector.engine<arangodb::RocksDBEngine>();
@@ -356,6 +366,9 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
           }
         }
       }
+    } else {
+      LOG_TOPIC("d61d3", WARN, arangodb::iresearch::TOPIC)
+        << "Failed to find collection name for shard '" << collection->name() << "'!";
     }
   }
   return true;
