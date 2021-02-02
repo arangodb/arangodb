@@ -66,6 +66,10 @@ TEST(CacheFrequencyBufferTest, test_buffer_with_uint8_entries) {
   // a FrequencyBuffer with 1024 slots, we may see only 1 slot used (worst
   // case), or 256 different slots (perfect distribution). In reality, we
   // will get something in between.
+  // Apparently not only does this depend on the quality of the PRNG values,
+  // but also on the _state_ that the PRNG has when we get here. The state
+  // may have been influenced by any tests that ran before, so it is not
+  // really possible to predict the exact outcomes here.
   ASSERT_TRUE(static_cast<std::uint64_t>(150) <= frequencies[0].second);
   ASSERT_TRUE(static_cast<std::uint64_t>(256) >= frequencies[0].second);
   ASSERT_EQ(two, frequencies[1].first);
