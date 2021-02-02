@@ -1,5 +1,9 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
+* Fixed BTS-284. Fixed upgrading from 3.6 to 3.7 in cluster enviroment.
+  Moved upgrade ArangoSearch links task to later step as it needs cluster
+  connection. Removed misleading error log records for failed
+  ArangoSearch index creation during upgrade phase.
 
 * Normalize user-provided input/output directory names in arangoimport,
   arangoexport, arangodump and arangorestore before splitting them into path
