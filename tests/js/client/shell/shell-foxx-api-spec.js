@@ -445,6 +445,7 @@ describe('Foxx service', () => {
   });
 
   const confPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-configuration');
+  const confPath2 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-configuration2');
 
   it('empty configuration should be available', () => {
     installFoxx(mount, minimalWorkingZip);
@@ -669,6 +670,53 @@ describe('Foxx service', () => {
     expect(resp).not.to.have.property('test2');
   });
 
+  it('should retain obsolete config after update in development', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
+      test1: 'test1',
+      test2: 'test2'
+    });
+    installFoxx(mount, {type: 'dir', buffer: confPath2, devmode: true}, "upgrade");
+    const resp1 = db._query(aql`
+      FOR service IN _apps
+        FILTER service.mount == ${mount}
+        RETURN service.options.configuration
+    `).next();
+    expect(resp1).to.have.property('test1', 'test1');
+    expect(resp1).to.have.property('test2', 'test2');
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {});
+    const resp2 = db._query(aql`
+      FOR service IN _apps
+      FILTER service.mount == ${mount}
+      RETURN service.options.configuration
+    `).next();
+    expect(resp2).to.have.property('test1', 'test1');
+    expect(resp2).to.have.property('test2', 'test2');
+  });
+
+  it('should discard obsolete config after update in production', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
+      test1: 'test1',
+      test2: 'test2'
+    });
+    installFoxx(mount, {type: 'dir', buffer: confPath2}, "upgrade");
+    const resp1 = db._query(aql`
+      FOR service IN _apps
+        FILTER service.mount == ${mount}
+        RETURN service.options.configuration
+    `).next();
+    expect(resp1).to.have.property('test1', 'test1');
+    expect(resp1).to.have.property('test2', 'test2');
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {});
+    const resp2 = db._query(aql`
+      FOR service IN _apps
+      FILTER service.mount == ${mount}
+      RETURN service.options.configuration
+    `).next();
+    expect(resp2).to.have.property('test1', 'test1');
+    expect(resp2).not.to.have.property('test2');
+  });
 
   const depPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-dependencies');
 
