@@ -36,9 +36,6 @@
 
 #ifdef _WIN32
 #include <DbgHelp.h>
-#if ARANGODB_ENABLE_BACKTRACE
-#include <iostream>
-#endif
 #endif
 
 #ifdef TRI_HAVE_SIGNAL_H
@@ -85,19 +82,13 @@ static void ReopenLog(int) { LogAppender::reopen(); }
 static std::string miniDumpFilename = "c:\\arangodpanic.dmp";
 
 LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
-#if ARANGODB_ENABLE_BACKTRACE
-
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
     LOG_FATAL_WINDOWS("Unhandled exception: %d", (int)e->ExceptionRecord->ExceptionCode);
   } else {
     LOG_FATAL_WINDOWS("Unhandled exception without ExceptionCode!");
   }
 
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  std::cerr << bt << std::endl;
-  LOG_FATAL_WINDOWS(bt.c_str());
-
+#if ARANGODB_ENABLE_BACKTRACE
   HANDLE hFile = CreateFile(miniDumpFilename.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
                             0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 
@@ -123,15 +114,6 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 
   LOG_FATAL_WINDOWS("wrote minidump: %s", miniDumpFilename.c_str());
 #endif
-
-  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
-    LOG_FATAL_WINDOWS("Unhandled exception: %d - will crash now.",
-                      (int)e->ExceptionRecord->ExceptionCode);
-  } else {
-    LOG_FATAL_WINDOWS(
-        "Unhandled exception without ExceptionCode - will crash now.!");
-  }
-
   return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif

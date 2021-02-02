@@ -100,16 +100,11 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
 #endif
 
   LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
-      << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      << buf;
-
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  LOG_TOPIC("967e6", ERR, arangodb::Logger::FIXME)
-      << "Invalid handle parameter Invoked from: " << bt
+      << "Invalid handle parameter passed: " << buf;
+#else
+      << "Invalid handle parameter passed";
 #endif
-      ;
 }
 
 int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* data) {
