@@ -896,7 +896,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       auto args = ast->createNodeArray();
       args->addMember(rhs);
       auto sorted =
-          ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
+          ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
       inNode->changeMember(1, sorted);
       modified = true;
       continue;
@@ -949,13 +949,13 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
         // number of values is below threshold
         continue;
       }
-      
-      if (testNode->type == NODE_TYPE_FCALL && 
+
+      if (testNode->type == NODE_TYPE_FCALL &&
           (static_cast<Function const*>(testNode->getData())->name == "SORTED_UNIQUE" ||
            static_cast<Function const*>(testNode->getData())->name == "SORTED")) {
         // we don't need to sort results of a function that already returns sorted
         // results
-    
+
         AstNode* clone = ast->shallowCopyForModify(inNode);
         TRI_DEFER(FINALIZE_SUBTREE(clone));
         // set sortedness bit for the IN operator
@@ -990,7 +990,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
     auto sorted =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
+        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
@@ -1600,6 +1600,23 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+  {
+    SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+    SmallVector<ExecutionNode*> subs{s};
+    plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
+
+    // we build a map of the top-most nodes of each subquery to the outer subquery node
+    for (auto& it : subs) {
+      auto sub = ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery();
+      while (sub->hasDependency()) {
+        sub = sub->getFirstDependency();
+      }
+      subqueries.emplace(sub, it);
+    }
+  }
+
   bool modified = false;
   VarSet neededVars;
   VarSet vars;
@@ -1619,18 +1636,31 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
     auto current = n->getFirstDependency();
 
     while (current != nullptr) {
-      auto dep = current->getFirstDependency();
-
-      if (dep == nullptr) {
-        // node either has no or more than one dependency. we don't know what to
-        // do and must abort
-        // note: this will also handle Singleton nodes
-        break;
-      }
-
       if (current->setsVariable(neededVars)) {
         // shared variable, cannot move up any more
         // done with optimizing this calculation node
+        break;
+      }
+
+      auto dep = current->getFirstDependency();
+      if (dep == nullptr) {
+        auto it = subqueries.find(current);
+        if (it != subqueries.end()) {
+          // we reached the top of some subquery
+
+          // first, unlink the calculation from the plan
+          plan->unlinkNode(n);
+          // and re-insert into before the subquery node
+          plan->insertDependency(it->second, n);
+
+          modified = true;
+          current = n->getFirstDependency();
+          continue;
+        }
+
+        // node either has no or more than one dependency. we don't know what to
+        // do and must abort
+        // note: this will also handle Singleton nodes
         break;
       }
 
@@ -1743,7 +1773,7 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
       }
 
       auto const currentType = current->getType();
-      
+
       if (currentType == EN::FILTER || currentType == EN::SORT ||
           currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
         // we found something interesting that justifies moving our node down
@@ -2244,7 +2274,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
         }
         break;
       }
-     
+
       case EN::WINDOW: {
         auto node = ExecutionNode::castTo<WindowNode*>(en);
         node->_rangeVariable = Variable::replace(node->_rangeVariable, _replacements);
@@ -2868,7 +2898,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
           // expression types (V8 vs. non-V8) do not match. give up
           continue;
         }
-       
+
         auto otherLoop = other->getLoop();
 
         if (otherLoop != nullptr && rootNode->callsFunction()) {
@@ -2894,7 +2924,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
             continue;
           }
         }
-        
+
         TRI_ASSERT(other != nullptr);
         otherExpression->replaceVariableReference(outVariable, rootNode);
 
@@ -3095,11 +3125,11 @@ struct SortToIndexNode final
       Variable const* outVariable = enumerateCollectionNode->outVariable();
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
       size_t coveredAttributes = 0;
-      
+
       Collection const* coll = enumerateCollectionNode->collection();
       TRI_ASSERT(coll != nullptr);
       size_t numDocs = coll->count(&_plan->getAst()->query().trxForOptimization(), transaction::CountType::TryCache);
-      
+
       bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(*coll,
           &sortCondition, outVariable, numDocs,
           enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
@@ -4465,7 +4495,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             collectNode->aggregateVariables()[0].type = "SUM";
             collectNode->aggregateVariables()[0].inVar = outVariable;
             collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
-            
+
             removeGatherNodeSort = true;
           } else if (collectNode->aggregationMethod() ==
                      CollectOptions::CollectMethod::DISTINCT) {
@@ -6966,7 +6996,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 
     addLocationArg(args);
     AstNode* func =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args);
+        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args, true);
 
     TRI_ASSERT(info.maxDistanceExpr || info.minDistanceExpr || info.sorted);
     if (info.minDistanceExpr != nullptr) {
@@ -6996,9 +7026,9 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     args->addMember(info.filterExpr);
     addLocationArg(args);
     if (info.filterMode == geo::FilterType::CONTAINS) {
-      cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args));
+      cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args, true));
     } else if (info.filterMode == geo::FilterType::INTERSECTS) {
-      cond->andCombine(ast->createNodeFunctionCall("GEO_INTERSECTS", args));
+      cond->andCombine(ast->createNodeFunctionCall("GEO_INTERSECTS", args, true));
     } else {
       TRI_ASSERT(false);
     }
@@ -7638,17 +7668,17 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
                                       std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const& rule) {
   bool modified = false;
-  
+
   if (plan->getAst()->query().queryOptions().fullCount) {
     // fullCount is unsupported yet
     opt->addPlan(std::move(plan), rule, modified);
     return;
   }
-  
+
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
-    
+
   VarSet vars;
   std::unordered_map<ExecutionNode*, std::pair<bool, std::unordered_set<AstNode const*>>> candidates;
 
@@ -7659,7 +7689,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
     if (root == nullptr) {
       continue;
     }
-  
+
     std::unordered_map<ExecutionNode*, std::pair<bool, std::unordered_set<AstNode const*>>> localCandidates;
 
     // look for all expressions that contain COUNT(subquery) or LENGTH(subquery)
@@ -7684,7 +7714,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
                 // subquery is non-deterministic. cannot apply the optimization
                 return true;
               }
-    
+
               auto current = sn->getSubquery();
               if (current == nullptr || current->getType() != EN::RETURN) {
                 // subquery does not end with a RETURN instruction - we cannot handle this
@@ -7723,13 +7753,13 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         // subquery result is used for other calculations than COUNT(subquery)
         continue;
       }
-      
+
       SubqueryNode const* sn = ExecutionNode::castTo<SubqueryNode const*>(it.first);
       if (n->isVarUsedLater(sn->outVariable())) {
         // subquery result is used elsewhere later - we cannot optimize
         continue;
       }
-     
+
       bool valid = true;
       // check if subquery result is used somewhere else before the current calculation
       // we are looking at
@@ -7765,7 +7795,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
     if (returnSetter == nullptr) {
       continue;
     }
-    if (returnSetter->getType() == EN::CALCULATION) { 
+    if (returnSetter->getType() == EN::CALCULATION) {
       // check if we can understand this type of calculation
       auto cn = ExecutionNode::castTo<CalculationNode*>(returnSetter);
       auto expr = cn->expression();
@@ -7773,11 +7803,11 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         continue;
       }
     }
-    
+
     // find the head of the plan/subquery
     while (current->hasDependency()) {
       current = current->getFirstDependency();
-    } 
+    }
 
     TRI_ASSERT(current != nullptr);
 
@@ -7805,11 +7835,11 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           } else {
             TRI_ASSERT(valid);
             if (dynamic_cast<DocumentProducingNode*>(current)->hasFilter()) {
-              // node uses early pruning. this is not supported 
+              // node uses early pruning. this is not supported
               valid = false;
             } else {
               outVariable = dynamic_cast<DocumentProducingNode*>(current)->outVariable();
-        
+
               if (type == EN::INDEX && ExecutionNode::castTo<IndexNode const*>(current)->getIndexes().size() != 1) {
                 // more than one index, so we would need to run uniqueness checks on the
                 // results. this is currently unsupported, so don't apply the optimization
@@ -7832,7 +7862,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         case EN::REMOVE:
         case EN::UPSERT:
           // we don't handle data-modification queries
-        
+
         case EN::LIMIT:
           // limit is not yet supported
 
@@ -7846,7 +7876,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           valid = false;
           break;
         }
-        
+
         case EN::RETURN:{
           // we reached the end
           break;
@@ -7866,7 +7896,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           break;
         }
       }
-      
+
       if (!valid) {
         break;
       }
@@ -7877,18 +7907,18 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
     if (valid && found != nullptr) {
       dynamic_cast<DocumentProducingNode*>(found)->setCountFlag();
       returnNode->inVariable(outVariable);
-   
+
       // replace COUNT/LENGTH with SUM, as we are getting an array from the subquery
       auto& server = plan->getAst()->query().vocbase().server();
       auto func = server.getFeature<AqlFunctionFeature>().byName("SUM");
       for (AstNode const* funcNode : it.second.second) {
         const_cast<AstNode*>(funcNode)->setData(static_cast<void const*>(func));
       }
-    
-      if (returnSetter->getType() == EN::CALCULATION) { 
+
+      if (returnSetter->getType() == EN::CALCULATION) {
         plan->clearVarUsageComputed();
         plan->findVarUsage();
-      
+
         auto cn = ExecutionNode::castTo<CalculationNode*>(returnSetter);
         if (cn->expression()->isConstant() && !cn->isVarUsedLater(cn->outVariable())) {
           plan->unlinkNode(cn);
@@ -7897,7 +7927,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
       modified = true;
     }
   }
-  
+
   opt->addPlan(std::move(plan), rule, modified);
 }
 
@@ -8015,7 +8045,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
       _isSuitableLevel.emplace(true);
     }
 
-    bool before(ExecutionNode* node) final {
+    bool before(ExecutionNode* node) override final {
       TRI_ASSERT(node->getType() != EN::MUTEX); // should never appear here
 
       if (node->getType() == ExecutionNode::SUBQUERY) {
@@ -8031,14 +8061,14 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
       return abort;
     }
 
-    bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) final {
+    bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) override final {
       _isSuitableLevel.emplace(true);
 
       constexpr bool enterSubqueries = true;
       return enterSubqueries;
     }
 
-    void leaveSubquery(ExecutionNode* subqueryNode, ExecutionNode*) final {
+    void leaveSubquery(ExecutionNode* subqueryNode, ExecutionNode*) override final {
       TRI_ASSERT(!_isSuitableLevel.empty());
 
       const bool subqueryDoesNotSkipInside = _isSuitableLevel.top();
@@ -8116,7 +8146,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
       cb(node);
     }
   };
-    
+
   TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
     // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
     subqueryNodes.clear();

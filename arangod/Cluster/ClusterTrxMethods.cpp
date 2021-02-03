@@ -193,8 +193,8 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
   }
   msg.append(resp.destination);
   msg.append(")");
-  r.appendErrorMessage(msg);
-  return r;
+
+  return r.withError([&](result::Error& err) { err.appendErrorMessage(msg); });
 }
 
 Future<Result> commitAbortTransaction(arangodb::TransactionState* state,

@@ -193,7 +193,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
   }
 
   /// @brief earliest tick that can be released
-  TRI_voc_tick_t tick() const noexcept final {
+  TRI_voc_tick_t tick() const noexcept override final {
     return _tick.load(std::memory_order_acquire);
   }
 
@@ -1059,105 +1059,110 @@ Result IResearchLink::init(
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-    // cluster-wide link
-    auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
+      // cluster-wide link
+      auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
 
-    // upgrade step for old link definition without collection name
-    // this could be received from  agency while shard of the collection was moved (or added)
-    // to the server.
-    // New links already has collection name set, but here we must get this name on our own
-    if (meta._collectionName.empty()) {
-      if (clusterWideLink) {// could set directly
-        LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC) << "Setting collection name '" << _collection.name() << "' for new link '"
-          << this->id().id() << "'";
-        meta._collectionName = _collection.name();
-      } else {
-        meta._collectionName = ci.getCollectionNameForShard(_collection.name());
-        LOG_TOPIC("86ece", TRACE, iresearch::TOPIC) << "Setting collection name '" << meta._collectionName << "' for new link '"
-          << this->id().id() << "'";
-      }
-      if (ADB_UNLIKELY(meta._collectionName.empty())) {
-        LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
-          << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
-      }
-
-#ifdef USE_ENTERPRISE
-      // enterprise name is not used in _id so should not be here!
-      if (ADB_LIKELY(!meta._collectionName.empty())) {
-        arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
-      }
-#endif
-    }
-
-    if (!clusterWideLink) {
-      // prepare data-store which can then update options
-      // via the IResearchView::link(...) call
-      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
-
-      if (!res.ok()) {
-        return res;
-      }
-    }
-
-    // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
-    auto logicalView = ci.getView(vocbase.name(), viewId);
-
-    // if there is no logicalView present yet then skip this step
-    if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-        unload(); // unlock the data store directory
-        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                "error finding view: '" + viewId + "' for link '" +
-                    std::to_string(_id.id()) + "' : no such view"};
-      }
-
-      auto* view = LogicalView::cast<IResearchView>(logicalView.get());
-
-      if (!view) {
-        unload(); // unlock the data store directory
-        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                "error finding view: '" + viewId + "' for link '" +
-                    std::to_string(_id.id()) + "'"};
-      }
-
-      viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
-
-      if (clusterWideLink) { // cluster cluster-wide link
-        auto shardIds = _collection.shardIds();
-
-        // go through all shard IDs of the collection and try to link any links
-        // missing links will be populated when they are created in the
-        // per-shard collection
-        if (shardIds) {
-          for (auto& entry : *shardIds) {
-            auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
-
-            if (!collection) {
-              continue; // missing collection should be created after Plan becomes Current
-            }
-
-            auto link = IResearchLinkHelper::find(*collection, *view);
-
-            if (link) {
-              auto res = view->link(link->self());
-
-              if (!res.ok()) {
-                return res;
-              }
-            }
-          }
+      // upgrade step for old link definition without collection name
+      // this could be received from  agency while shard of the collection was moved (or added)
+      // to the server.
+      // New links already has collection name set, but here we must get this name on our own
+      if (meta._collectionName.empty()) {
+        if (clusterWideLink) {// could set directly
+          LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC) << "Setting collection name '" << _collection.name() << "' for new link '"
+            << this->id().id() << "'";
+          meta._collectionName = _collection.name();
+        } else {
+          meta._collectionName = ci.getCollectionNameForShard(_collection.name());
+          LOG_TOPIC("86ece", TRACE, iresearch::TOPIC) << "Setting collection name '" << meta._collectionName << "' for new link '"
+            << this->id().id() << "'";
         }
-      } else { // cluster per-shard link
-        auto res = view->link(_asyncSelf);
+        if (ADB_UNLIKELY(meta._collectionName.empty())) {
+          LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
+            << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
+        }
+
+  #ifdef USE_ENTERPRISE
+        // enterprise name is not used in _id so should not be here!
+        if (ADB_LIKELY(!meta._collectionName.empty())) {
+          arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
+        }
+  #endif
+      }
+
+      if (!clusterWideLink) {
+        // prepare data-store which can then update options
+        // via the IResearchView::link(...) call
+        auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
 
         if (!res.ok()) {
-          unload(); // unlock the data store directory
-
           return res;
         }
       }
+
+      // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
+      auto logicalView = ci.getView(vocbase.name(), viewId);
+
+      // if there is no logicalView present yet then skip this step
+      if (logicalView) {
+        if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+          unload(); // unlock the data store directory
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "error finding view: '" + viewId + "' for link '" +
+                      std::to_string(_id.id()) + "' : no such view"};
+        }
+
+        auto* view = LogicalView::cast<IResearchView>(logicalView.get());
+
+        if (!view) {
+          unload(); // unlock the data store directory
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "error finding view: '" + viewId + "' for link '" +
+                      std::to_string(_id.id()) + "'"};
+        }
+
+        viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
+
+        if (clusterWideLink) { // cluster cluster-wide link
+          auto shardIds = _collection.shardIds();
+
+          // go through all shard IDs of the collection and try to link any links
+          // missing links will be populated when they are created in the
+          // per-shard collection
+          if (shardIds) {
+            for (auto& entry : *shardIds) {
+              auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
+
+              if (!collection) {
+                continue; // missing collection should be created after Plan becomes Current
+              }
+
+              auto link = IResearchLinkHelper::find(*collection, *view);
+
+              if (link) {
+                auto res = view->link(link->self());
+
+                if (!res.ok()) {
+                  return res;
+                }
+              }
+            }
+          }
+        } else { // cluster per-shard link
+          auto res = view->link(_asyncSelf);
+
+          if (!res.ok()) {
+            unload(); // unlock the data store directory
+
+            return res;
+          }
+        }
+      }
+    } else {
+      LOG_TOPIC("67dd6", DEBUG, iresearch::TOPIC) << "Skipped link '"
+        << this->id().id() << "' due to disabled cluster features.";
     }
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options

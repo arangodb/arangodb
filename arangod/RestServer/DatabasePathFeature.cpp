@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/operating-system.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -51,7 +52,9 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
+#ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
+#endif
   startsAfter<LanguageFeature>();
   startsAfter<TempFeature>();
 }

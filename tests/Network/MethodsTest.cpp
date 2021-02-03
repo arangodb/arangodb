@@ -36,7 +36,6 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
