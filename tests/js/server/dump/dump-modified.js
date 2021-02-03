@@ -112,3 +112,5 @@ jsunity.run(function dump_single_testsuite() {
   return suite;
 
 });
+
+return jsunity.done();
