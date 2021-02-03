@@ -948,20 +948,20 @@ function install (serviceInfo, mount, options = {}) {
       `
     });
   }
-  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempPaths = _prepareService(serviceInfo, Boolean(options.legacy));
   const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
     noisy: true,
     options: {
-      development: options.development,
+      development: Boolean(options.development),
       configuration: options.configuration,
       dependencies: options.dependencies
     }
   });
   _install(tempService, tempPaths.tempBundlePath, {
-    setup: options.setup !== false,
-    force: options.force === true
+    setup: options.setup === undefined || Boolean(options.setup),
+    force: Boolean(options.force)
   });
   selfHeal();
   propagateSelfHeal();
@@ -995,23 +995,23 @@ function replace (serviceInfo, mount, options = {}) {
   } else {
     utils.validateMount(mount);
   }
-  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempPaths = _prepareService(serviceInfo, Boolean(options.legacy));
   const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
     noisy: true,
     options: {
-      development: options.development,
+      development: Boolean(options.development),
       configuration: options.configuration,
       dependencies: options.dependencies
     }
   });
   _uninstall(mount, {
-    teardown: options.teardown !== false,
+    teardown: options.teardown === undefined || Boolean(options.teardown),
     force: true
   });
   _install(tempService, tempPaths.tempBundlePath, {
-    setup: options.setup !== false,
+    setup: options.setup === undefined || Boolean(options.setup),
     force: true
   });
   selfHeal();
@@ -1040,23 +1040,27 @@ function upgrade (serviceInfo, mount, options = {}) {
     utils.validateMount(mount);
   }
 
-  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempPaths = _prepareService(serviceInfo, Boolean(options.legacy));
   const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
     noisy: true,
     options: {
-      development: options.development,
+      development: Boolean(
+        options.development === undefined
+        ? old.development
+        : options.development
+      ),
       configuration: Object.assign({}, old.configuration, options.configuration),
       dependencies: Object.assign({}, old.dependencies, options.dependencies)
     }
   });
   _uninstall(mount, {
-    teardown: options.teardown === true,
+    teardown: Boolean(options.teardown),
     force: true
   });
   _install(tempService, tempPaths.tempBundlePath, {
-    setup: options.setup !== false,
+    setup: options.setup === undefined || Boolean(options.setup),
     force: true
   });
   selfHeal();

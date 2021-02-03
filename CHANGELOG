@@ -1,6 +1,9 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #12363: Foxx HTTP API upgrade/replace always enables development
+  mode.
+
 * Fixed BTS-284: upgrading from 3.6 to 3.7 in cluster enviroment.
   Moved upgrade ArangoSearch links task to later step as it needs cluster
   connection. Removed misleading error log records for failed ArangoSearch index
