@@ -80,18 +80,6 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
   std::size_t const previous = _currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
   std::size_t const current = previous + value;
   
-  if (_memoryLimit > 0 && ADB_UNLIKELY(current > _memoryLimit)) {
-    // we would use more memory than dictated by the instance's own limit.
-    // because we will throw an exception directly afterwards, revert the change
-    // so that we can leave in a clean state
-    _currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
-
-    // now we can safely signal an exception
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
-  }
-
-  // instance's own memory usage counter has been updated successfully once we got here.
-  
   // now calculate if the number of buckets used by instance's allocations stays the 
   // same after the extra allocation. if yes, it was likely a very small allocation, and 
   // we don't bother with updating the global counter for it. not updating the global
@@ -109,7 +97,23 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
   std::size_t diff = currentBuckets - numBuckets(previous);
   
   if (diff != 0) {
-    // number of buckets has changed. now we will update the global counter!
+    // number of buckets has changed, so this is either a substantial allocation or
+    // we have piled up changes by lots of small allocations so far.
+    // time for some memory expensive checks now...
+
+    if (_memoryLimit > 0 && ADB_UNLIKELY(current > _memoryLimit)) {
+      // we would use more memory than dictated by the instance's own limit.
+      // because we will throw an exception directly afterwards, we now need to
+      // revert the change that we already made to the instance's own counter.
+      _currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+
+      // now we can safely signal an exception
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
+    }
+
+    // instance's own memory usage counter has been updated successfully once we got here.
+
+    // now modify the global counter value, too.
     diff *= bucketSize;
 
     TRI_ASSERT((diff % bucketSize) == 0);
