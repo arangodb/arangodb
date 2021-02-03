@@ -50,7 +50,7 @@
 #define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                     \
   throw arangodb::basics::Exception(code,                                                    \
                                     arangodb::basics::Exception::FillFormatExceptionString(  \
-                                        "%s: " format, TRI_errno_string(code), __VA_ARGS__), \
+                                        "%s: " format, TRI_errno_string(code).data(), __VA_ARGS__), \
                                     __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and an already-built
