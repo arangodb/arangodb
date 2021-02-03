@@ -496,13 +496,7 @@ template<typename Scale> class Histogram : public Metric {
   }
 
   void count(value_type const& t, uint64_t n) {
-    if (t < _scale.delims().front()) {
-      _c[0] += n;
-    } else if (t >= _scale.delims().back()) {
-      _c[_n] += n;
-    } else {
-      _c[pos(t)] += n;
-    }
+    _c[pos(t)] += n;
     records(t);
   }
 
