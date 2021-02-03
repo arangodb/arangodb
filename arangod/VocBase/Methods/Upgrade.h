@@ -69,11 +69,14 @@ struct Upgrade {
     DATABASE_INIT = (1u << 3),
     DATABASE_UPGRADE = (1u << 4),
     DATABASE_EXISTING = (1u << 5),
+    DATABASE_ONLY_ONCE = (1u << 6),  // hint that task should be run on
+                                     // database only once. New databases
+                                     // should assume this task as executed
     // =============
-    CLUSTER_NONE = (1u << 6),
-    CLUSTER_LOCAL = (1u << 7),  // agency
-    CLUSTER_COORDINATOR_GLOBAL = (1u << 8),
-    CLUSTER_DB_SERVER_LOCAL = (1u << 9)
+    CLUSTER_NONE = (1u << 7),
+    CLUSTER_LOCAL = (1u << 8),  // agency
+    CLUSTER_COORDINATOR_GLOBAL = (1u << 9),
+    CLUSTER_DB_SERVER_LOCAL = (1u << 10)
   };
 
   typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)> TaskFunction;
