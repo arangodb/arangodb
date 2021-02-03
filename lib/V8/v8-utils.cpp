@@ -953,7 +953,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     auto [endpoint, relative, error] = getEndpoint(isolate, endpoints, url, lastEndpoint);
     if (!error.empty()) {
-      TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
+      TRI_V8_THROW_SYNTAX_ERROR(error);
     }
 
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
