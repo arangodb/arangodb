@@ -267,10 +267,10 @@ void V8ShellFeature::copyInstallationFiles() {
     }
   }
 
-  if (int res; !FileUtils::createDirectory(_copyDirectory, &res)) {
+  if (auto res = TRI_ERROR_NO_ERROR; !FileUtils::createDirectory(_copyDirectory, &res)) {
     auto err = TRI_last_error();
-    LOG_TOPIC("6d915", FATAL, Logger::V8) << "Error creating JS installation path '"
-                                 << _copyDirectory << "': " << err;
+    LOG_TOPIC("6d915", FATAL, Logger::V8)
+        << "Error creating JS installation path '" << _copyDirectory << "': " << err;
     FATAL_ERROR_EXIT();
   }
 
