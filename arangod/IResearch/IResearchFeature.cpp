@@ -310,15 +310,29 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
   // persist collection names in links
   for (auto& collection : vocbase.collections(false)) {
     auto indexes = collection->getIndexes();
-    auto clusterCollection =
-        clusterInfo.getCollectionNT(vocbase.name(),
-                                    collection->name());
-    if (clusterCollection) {
-      auto name = clusterCollection->name();
+    std::string clusterCollectionName;
+    if (!collection->shardIds()->empty()) {
+      unsigned tryCount{60};
+      do {
+        LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
+            << " Checking collection '" << collection->name() << "' in database '" << vocbase.name() << "'";
+        // we use getCollectionNameForShard as getCollectionNT here is still not available
+        // but shard-collection mapping is loaded eventually
+        clusterCollectionName = clusterInfo.getCollectionNameForShard(collection->name());
+        if (!clusterCollectionName.empty()) {
+         break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      } while(--tryCount);
+    } else {
+      clusterCollectionName = collection->name();
+    }
+
+    if (!clusterCollectionName.empty()) {
       LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)
-          << " Processing collection " << name;
+          << " Processing collection " << clusterCollectionName;
 #ifdef USE_ENTERPRISE
-      arangodb::ClusterMethods::realNameFromSmartName(name);
+      arangodb::ClusterMethods::realNameFromSmartName(clusterCollectionName);
 #endif
       for (auto& index : indexes) {
         if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
@@ -326,11 +340,11 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
               dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
           if (indexPtr) {
             LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
-                << "Checking collection name '" << name << "' for link "
+                << "Checking collection name '" << clusterCollectionName << "' for link "
                 << indexPtr->id().id();
-            if (indexPtr->setCollectionName(name)) {
+            if (indexPtr->setCollectionName(clusterCollectionName)) {
               LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
-                  << "Setting collection name '" << name << "' for link "
+                  << "Setting collection name '" << clusterCollectionName << "' for link "
                   << indexPtr->id().id();
               if (selector.engineName() == arangodb::RocksDBEngine::EngineName) {
                 auto& engine = selector.engine<arangodb::RocksDBEngine>();
@@ -354,6 +368,9 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
           }
         }
       }
+    } else {
+      LOG_TOPIC("d61d3", WARN, arangodb::iresearch::TOPIC)
+        << "Failed to find collection name for shard '" << collection->name() << "'!";
     }
   }
   return true;
@@ -618,7 +635,8 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
     task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
                         | arangodb::methods::Upgrade::Flags::CLUSTER_NONE           // local server
                         | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
+                         arangodb::methods::Upgrade::Flags::DATABASE_ONLY_ONCE;
     task.action = &upgradeSingleServerArangoSearchView0_1;
     upgrade.addTask(std::move(task));
   }
@@ -632,7 +650,7 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
     task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL |
                         arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;  // db-server
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_ONLY_ONCE |
                          arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
     task.action = &upgradeArangoSearchLinkCollectionName;
     upgrade.addTask(std::move(task));
