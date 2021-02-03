@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed BTS-284: upgrading from 3.6 to 3.7 in cluster enviroment.
+  Moved upgrade ArangoSearch links task to later step as it needs cluster
+  connection. Removed misleading error log records for failed ArangoSearch index
+  creation during upgrade phase.
+
 * Extend the "move-calculations-up" optimizer rule so that it can move
   calculations out of subqueries into the outer query.
 
