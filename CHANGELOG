@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix the places where inadvertent dependency on x86 architecture CPUs
+  has been introduced unconditionally which prevented building for aarch64
+
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
 
