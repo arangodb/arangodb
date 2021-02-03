@@ -65,13 +65,6 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
 
   ~RefactoredClusterTraverserCache() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts the real document stored within the token
-  ///        into the given builder. No need for actual lookup
-  //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoResult(graph::EdgeDocumentToken const& idToken,
-                            arangodb::velocypack::Builder& builder) override;
-
   /// Lookup document in cache and add it into the builder
   bool appendVertex(arangodb::velocypack::StringRef idString,
                     velocypack::Builder& result) override;
@@ -97,8 +90,6 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
 
   size_t& filteredDocuments() { return _filteredDocuments; }
 
-  auto insertEdgeIntoResult(EdgeType const& token, VPackBuilder& result) -> void;
-
   auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
   auto cacheEdge(VertexType origin, EdgeType edgeId, velocypack::Slice edgeSlice, bool backward) -> void;
 
@@ -113,9 +104,6 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
   auto getCachedEdge(EdgeType const& edge, bool backward) -> VPackSlice;
 
  private:
-  /// @brief only used
-
-
   /// @brief dump for our edge and vertex documents
   arangodb::graph::ClusterGraphDatalake _datalake;
 

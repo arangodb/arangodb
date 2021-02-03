@@ -40,10 +40,6 @@ RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
       _datalake(options->resourceMonitor()),
       _engines(engines) {}
 
-void RefactoredClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
-                                                           VPackBuilder& result) {
-  TRI_ASSERT(false);
-}
 
 bool RefactoredClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
                                                    VPackBuilder& result) {
