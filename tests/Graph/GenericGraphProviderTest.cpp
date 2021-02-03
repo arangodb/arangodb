@@ -26,6 +26,9 @@
 #include "./MockGraph.h"
 #include "./MockGraphProvider.h"
 
+#include "Mocks/PreparedResponseConnectionPool.h"
+
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -43,7 +46,8 @@ namespace generic_graph_provider_test {
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
 // Add more providers here
-using TypesToTest = ::testing::Types<MockGraphProvider, SingleServerProvider>;
+using TypesToTest =
+    ::testing::Types<MockGraphProvider, SingleServerProvider, ClusterProvider>;
 
 template <class ProviderType>
 class GraphProviderTest : public ::testing::Test {
@@ -51,11 +55,15 @@ class GraphProviderTest : public ::testing::Test {
   using Step = typename ProviderType::Step;
 
  protected:
+  arangodb::ResourceMonitor resourceMonitor{};
+
   // Only used to mock a singleServer
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
+  std::unique_ptr<mocks::MockServer> server{nullptr};
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
-  arangodb::ResourceMonitor resourceMonitor{};
+
+  std::unique_ptr<std::unordered_map<ServerID, aql::EngineId>> clusterEngines{nullptr};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}
@@ -93,6 +101,47 @@ class GraphProviderTest : public ::testing::Test {
       BaseProviderOptions opts(tmpVar, std::move(usedIndexes));
       return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
     }
+    if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
+      // Prepare the DBServerResponses
+      std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses;
+      {
+        arangodb::tests::mocks::MockDBServer server{};
+        graph.prepareServer(server);
+        graph.simulateApi(server, preparedResponses);
+      }
+
+      server = std::make_unique<mocks::MockCoordinator>(false);
+      mocks::MockCoordinator* srv = static_cast<mocks::MockCoordinator*>(server.get());
+      graph.prepareServer(*srv);
+      auto dbServerEndpoint = srv->registerFakedDBServer("PRMR_0001");
+      auto pool = srv->getPool();
+      static_cast<arangodb::tests::PreparedResponseConnectionPool*>(pool)
+          ->addPreparedResponses(dbServerEndpoint, std::move(preparedResponses));
+
+      {
+        auto queryString = arangodb::aql::QueryString("RETURN 1");
+
+        auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+            server->getSystemDatabase());
+        query = std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr);
+
+        query->collections().add("v", AccessMode::Type::READ,
+                                 arangodb::aql::Collection::Hint::Collection);
+        query->collections().add("e", AccessMode::Type::READ,
+                                 arangodb::aql::Collection::Hint::Collection);
+
+        query->prepareQuery(SerializationFormat::SHADOWROWS);
+      }
+
+      clusterEngines = std::make_unique<std::unordered_map<ServerID, aql::EngineId>>();
+      clusterEngines->emplace("PRMR_0001", 1);
+
+      auto clusterCache =
+          std::make_shared<RefactoredClusterTraverserCache>(clusterEngines.get(), resourceMonitor);
+
+      ClusterBaseProviderOptions opts(clusterCache, false);
+      return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 };
@@ -107,6 +156,13 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
+
+  if (start.isLooseEnd()) {
+    std::vector<decltype(start)*> looseEnds{};
+    looseEnds.emplace_back(&start);
+    auto futures = testee.fetch(looseEnds);
+    auto steps = futures.get();
+  }
 
   std::vector<typename decltype(testee)::Step> result{};
   testee.expand(start, 0, [&](typename decltype(testee)::Step n) -> void {
