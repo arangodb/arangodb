@@ -50,6 +50,7 @@ const setup = require(base);
   setup.createView();
   setup.createJobs();
   setup.createFoxx();
+  setup.createAnalyzers();
 })();
 
 return {
