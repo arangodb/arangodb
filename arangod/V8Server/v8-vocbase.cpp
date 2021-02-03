@@ -585,11 +585,12 @@ static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // only register the error if we have a query...
     // note: we may not have a query if the AQL functions are called without
     // a query, e.g. during tests
-    int code = static_cast<int>(TRI_ObjectToInt64(isolate, args[0]));
+    auto code = ErrorCode{static_cast<int>(TRI_ObjectToInt64(isolate, args[0]))};
     std::string const message = TRI_ObjectToString(isolate, args[1]);
 
-    auto expressionContext = static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
-    expressionContext->registerWarning( code, message.c_str());
+    auto expressionContext =
+        static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
+    expressionContext->registerWarning(code, message.c_str());
   } else {
     TRI_V8_THROW_TYPE_ERROR("must only be invoked from AQL user defined functions");
   }

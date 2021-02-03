@@ -317,30 +317,31 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool createDirectory(std::string const& name, int* errorNumber) {
+bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
   if (errorNumber != nullptr) {
-    *errorNumber = 0;
+    *errorNumber = TRI_ERROR_NO_ERROR;
   }
 
   return createDirectory(name, 0777, errorNumber);
 }
 
-bool createDirectory(std::string const& name, int mask, int* errorNumber) {
+bool createDirectory(std::string const& name, int mask, ErrorCode* errorNumber) {
   if (errorNumber != nullptr) {
-    *errorNumber = 0;
+    *errorNumber = TRI_ERROR_NO_ERROR;
   }
 
   auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
 
-  int res = errno;
-  if (result != 0 && res == EEXIST && isDirectory(name)) {
-    result = 0;
-  } else if (res != 0) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  if (errorNumber != nullptr) {
-    *errorNumber = res;
+  if (result != 0) {
+    int res = errno;
+    if (res == EEXIST && isDirectory(name)) {
+      result = 0;
+    } else {
+      auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      if (errorNumber != nullptr) {
+        *errorNumber = errorCode;
+      }
+    }
   }
 
   return (result != 0) ? false : true;
