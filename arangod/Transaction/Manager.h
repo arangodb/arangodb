@@ -72,9 +72,9 @@ class Manager final {
     ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st);
     ~ManagedTrx();
 
-    bool hasPerformedIntermediateCommits() const;
-    bool expired() const;
-    void updateExpiry();
+    bool hasPerformedIntermediateCommits() const noexcept;
+    bool expired() const noexcept;
+    void updateExpiry() noexcept;
 
    public:
     /// @brief managed, AQL or tombstone
@@ -82,11 +82,13 @@ class Manager final {
     /// @brief whether or not the transaction has performed any intermediate
     /// commits
     bool intermediateCommits;
+    /// @brief whether or not the transaction did expire at least once
+    bool wasExpired;
     /// @brief  final TRX state that is valid if this is a tombstone
     /// necessary to avoid getting error on a 'diamond' commit or accidentally
     /// repeated commit / abort messages
     transaction::Status finalStatus;
-    const double timeToLive;
+    double const timeToLive;
     double expiryTime;                        // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     std::string user;                         /// user owning the transaction
@@ -208,7 +210,7 @@ class Manager final {
   }
 
  private:
-  void prepareOptions(transaction::Options& options);
+  Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(transaction::Options const& options) const;
   Result lockCollections(TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
                          std::vector<std::string> const& exclusiveCollections,
@@ -221,7 +223,7 @@ class Manager final {
                                  transaction::Status status);
 
   /// @brief hashes the transaction id into a bucket
-  inline size_t getBucket(TransactionId tid) const {
+  inline size_t getBucket(TransactionId tid) const noexcept {
     return std::hash<TransactionId>()(tid) % numBuckets;
   }
 

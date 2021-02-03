@@ -58,7 +58,9 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ApplicationServer& server)
   startsAfter<DaemonFeature>();
   startsAfter<DatabasePathFeature>();
   startsAfter<EnvironmentFeature>();
+#ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
+#endif
   startsAfter<LanguageFeature>();
   startsAfter<MaxMapCountFeature>();
   startsAfter<NonceFeature>();

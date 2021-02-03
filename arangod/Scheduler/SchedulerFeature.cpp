@@ -78,8 +78,9 @@ SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& serv
       _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
-
+#ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
+#endif
 }
 
 SchedulerFeature::~SchedulerFeature() = default;

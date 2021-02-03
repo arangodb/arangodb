@@ -47,12 +47,6 @@ AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& 
   startsAfter<AqlFeature>();
 }
 
-// This feature does not have any options
-void AqlFunctionFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
-
-// This feature does not have any options
-void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
-
 void AqlFunctionFeature::prepare() {
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
@@ -88,6 +82,10 @@ void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& o
 void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) const {
   builder.openArray();
   for (auto const& it : _functionNames) {
+    if (it.second.hasFlag(FF::Internal)) {
+      // don't serialize internal functions
+      continue;
+    }
     it.second.toVelocyPack(builder);
   }
   builder.close();
@@ -412,8 +410,8 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
-  add({"DATE_UTCTOLOCAL", ".,.", flags, &Functions::DateUtcToLocal});
-  add({"DATE_LOCALTOUTC", ".,.", flags, &Functions::DateLocalToUtc});
+  add({"DATE_UTCTOLOCAL", ".,.|.", flags, &Functions::DateUtcToLocal});
+  add({"DATE_LOCALTOUTC", ".,.|.", flags, &Functions::DateLocalToUtc});
   add({"DATE_TIMEZONE", "", flags, &Functions::DateTimeZone});
   add({"DATE_TIMEZONES", "", flags, &Functions::DateTimeZones});
   add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
@@ -476,6 +474,11 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  
+  // this is an internal function that is only here for testing. it cannot
+  // be invoked by end users, because refering to internal functions from user
+  // queries will pretend these functions do not exist.
+  add({"INTERNAL", "", Function::makeFlags(FF::Internal), &Functions::NotImplemented});
 }
 
 }  // namespace aql

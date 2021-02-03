@@ -75,14 +75,13 @@ class Exception final : public virtual std::exception {
  public:
   static std::string FillExceptionString(int, ...);
   static std::string FillFormatExceptionString(char const* format, ...);
-  static void SetVerbose(bool);
 
  public:
   Exception(int code, char const* file, int line);
   Exception(Result const&, char const* file, int line);
   Exception(Result&&, char const* file, int line);
 
-  Exception(int code, std::string const& errorMessage, char const* file, int line);
+  Exception(int code, std::string_view errorMessage, char const* file, int line);
 
   Exception(int code, std::string&& errorMessage, char const* file, int line);
 

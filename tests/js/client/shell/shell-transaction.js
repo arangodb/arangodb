@@ -1607,6 +1607,28 @@ function transactionOperationsSuite () {
       c2 = null;
       internal.wait(0);
     },
+        
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with negative lock timeout
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testNegativeLockTimeout: function () {
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+
+      let obj = {
+        collections: {
+          read: [ cn1 ],
+        },
+        lockTimeout: -1
+      };
+
+      try {
+        db._createTransaction(obj);
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with read operation

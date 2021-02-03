@@ -60,8 +60,6 @@ class GeneralCommTask : public CommTask {
   /// set / reset connection timeout
   virtual void setIOTimeout() = 0;
   
- protected:
-  
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
   static constexpr double WriteTimeout = 300.0;
@@ -72,6 +70,7 @@ class GeneralCommTask : public CommTask {
   
   bool _reading;
   bool _writing;
+  std::string _url;
   
  private:
   

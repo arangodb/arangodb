@@ -448,7 +448,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
           _agent->commitHist().count(
-            duration<float,std::milli>(high_resolution_clock::now()-start).count());
+            duration<float, std::milli>(high_resolution_clock::now()-start).count());
         }
       }
     }

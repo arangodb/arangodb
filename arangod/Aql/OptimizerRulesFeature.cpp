@@ -466,8 +466,13 @@ void OptimizerRulesFeature::addRules() {
   // subquery's nodes in between, resulting in a linear query plan. If an
   // optimizer rule runs after this rule, it has to be aware of SubqueryStartNode and
   // SubqueryEndNode and would likely be more complicated to write.
+  // note: since 3.8 this rule cannot be turned off anymore. this also means
+  // that any query execution plan created by 3.8 will not contain nodes of type
+  // SUBQUERY after optimization. it is still possible that 3.8 encounters plan
+  // with SUBQUERY node types inside, e.g. if they come from 3.7 coordinators
+  // during rolling upgrades.
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+               OptimizerRule::makeFlags());
 
   // finally sort all rules by their level
   std::sort(

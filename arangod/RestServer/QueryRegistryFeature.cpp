@@ -306,7 +306,7 @@ void QueryRegistryFeature::prepare() {
                                                  _queryCacheIncludeSystem,
                                                  _trackBindVars};
   arangodb::aql::QueryCache::instance()->properties(properties);
-  // create the query registery
+  // create the query registry
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
 }
@@ -325,7 +325,7 @@ void QueryRegistryFeature::stop() {
 }
 
 void QueryRegistryFeature::unprepare() {
-  // clear the query registery
+  // clear the query registry
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
 }
 

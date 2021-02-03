@@ -118,6 +118,7 @@
 #endif
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace std::chrono;
 using namespace date;
@@ -276,7 +277,7 @@ AqlValue numberValue(double value, bool nullify) {
 /// @brief optimized version of datetime stringification
 /// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
 AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
-                      tp_sys_clock_ms const& tp, bool utc = true) {
+                      tp_sys_clock_ms const& tp, bool utc = true, bool registerWarning = true) {
   char formatted[24];
 
   year_month_day ymd{floor<days>(tp)};
@@ -285,7 +286,9 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   auto y = static_cast<int>(ymd.year());
   // quick basic check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
-    arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    if (registerWarning) {
+      arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    }
     return AqlValue(AqlValueHintNull());
   }
 
@@ -928,10 +931,11 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
     }
     if (res.is(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                     res.errorMessage() + ": " + collectionName +
-                                         " [" + AccessMode::typeString(AccessMode::Type::READ) +
-                                         "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res.errorNumber(),
+          StringUtils::concatT(res.errorMessage(), ": ", collectionName, " [",
+                               AccessMode::typeString(AccessMode::Type::READ),
+                               "]"));
     }
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -3827,8 +3831,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_UTCTOLOCAL
-AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
-                                   AstNode const&,
+AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_UTCTOLOCAL";
   using namespace std::chrono;
@@ -3847,14 +3850,57 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  const std::string tz = timeZoneParam.slice().copyString();
-  const auto utc = floor<milliseconds>(tp_utc);
-  const auto zoned = make_zoned(tz, utc);
-  const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  auto showDetail = false;
 
-  auto info = zoned.get_info();
+  if (parameters.size() == 3) {
+    AqlValue const& detailParam = extractFunctionParameterValue(parameters, 2);
+    if (!detailParam.isBoolean()) {  // detail type must be bool
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
 
-  return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
+    showDetail = detailParam.slice().getBoolean();
+  }
+
+  std::string const tz = timeZoneParam.slice().copyString();
+  auto const utc = floor<milliseconds>(tp_utc);
+  auto const zoned = make_zoned(tz, utc);
+  auto const info = zoned.get_info();
+  auto const tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  AqlValue aqlLocal =
+      ::timeAqlValue(expressionContext, AFN, tp_local,
+                     info.offset.count() == 0 && info.save.count() == 0);
+  
+  AqlValueGuard aqlLocalGuard(aqlLocal, true);
+
+  if (showDetail) {
+    auto const tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
+    AqlValue aqlBegin = ::timeAqlValue(expressionContext, AFN, tp_begin, true, false);
+    AqlValueGuard aqlBeginGuard(aqlBegin, true);
+
+    auto const tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
+    AqlValue aqlEnd = ::timeAqlValue(expressionContext, AFN, tp_end, true, false);
+    AqlValueGuard aqlEndGuard(aqlEnd, true);
+
+    transaction::Methods* trx = &expressionContext->trx();
+    transaction::BuilderLeaser builder(trx);
+    builder->openObject();
+    builder->add("local", aqlLocal.slice());
+    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("zoneInfo", VPackValue(VPackValueType::Object));
+    builder->add("name", VPackValue(info.abbrev));
+    builder->add("begin", aqlBegin.slice());
+    builder->add("end", aqlEnd.slice());  
+    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("offset", VPackValue(info.offset.count()));
+    builder->close();
+    builder->close();
+
+    return AqlValue(builder->slice(), builder->size());
+  }
+
+  aqlLocalGuard.steal();
+  return aqlLocal;
 }
 
 /// @brief function DATE_LOCALTOUTC
@@ -3877,14 +3923,56 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     return AqlValue(AqlValueHintNull());
   }
 
-  const std::string tz = timeZoneParam.slice().copyString();
+  auto showDetail = false;
 
-  const auto local =
+  if (parameters.size() == 3) {
+    AqlValue const& detailParam = extractFunctionParameterValue(parameters, 2);
+    if (!detailParam.isBoolean()) {  // detail type must be bool
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    showDetail = detailParam.slice().getBoolean();
+  }
+
+  std::string const tz = timeZoneParam.slice().copyString();
+  auto const local =
       local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
-  const auto zoned = make_zoned(tz, local);
-  const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+  auto const zoned = make_zoned(tz, local);
+  auto const info = zoned.get_info();
+  auto const tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+  AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_utc);
+  
+  AqlValueGuard aqlUtcGuard(aqlUtc, true);
 
-  return ::timeAqlValue(expressionContext, AFN, tp_utc);
+  if (showDetail) {
+    auto const tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
+    AqlValue aqlBegin = ::timeAqlValue(expressionContext, AFN, tp_begin, true, false);
+    AqlValueGuard aqlBeginGuard(aqlBegin, true);
+
+    auto const tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
+    AqlValue aqlEnd = ::timeAqlValue(expressionContext, AFN, tp_end, true, false);
+    AqlValueGuard aqlEndGuard(aqlEnd, true);
+
+    transaction::Methods* trx = &expressionContext->trx();
+    transaction::BuilderLeaser builder(trx);
+    builder->openObject();
+    builder->add("utc", aqlUtc.slice());
+    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("zoneInfo", VPackValue(VPackValueType::Object));
+    builder->add("name", VPackValue(info.abbrev));
+    builder->add("begin", aqlBegin.slice());
+    builder->add("end", aqlEnd.slice());
+    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("offset", VPackValue(info.offset.count()));
+    builder->close();
+    builder->close();
+
+    return AqlValue(builder->slice(), builder->size());
+  }
+
+  aqlUtcGuard.steal();
+  return aqlUtc;
 }
 
 /// @brief function DATE_TIMEZONE
@@ -3893,7 +3981,7 @@ AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
                                  VPackFunctionParameters const& parameters) {
   using namespace date;
 
-  const auto* zone = current_zone();
+  auto const* zone = current_zone();
 
   if (zone != nullptr) {
     return AqlValue(zone->name());
@@ -3909,7 +3997,7 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
 
   auto& list = get_tzdb_list();
   auto& db = list.front();
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   transaction::BuilderLeaser result(trx);
   result->openArray();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,13 +99,13 @@ using factory_builder_parameter = factory_deserialized_parameter<N, values::vpac
 template <const char N[]>
 using factory_optional_builder_parameter = factory_optional_deserialized_parameter<N, values::vpack_builder_deserializer>;
 
+
 template <const char N[], typename D, typename default_v = values::default_constructed_value<typename D::constructed_type>>
 struct factory_deserialized_default {
   using value_type = typename D::constructed_type;
   constexpr static auto default_value = default_v::value;
   constexpr static auto name = N;
 };
-
 
 /*
  * expected_value does not generate a additional parameter to the factory but instead
@@ -384,6 +384,7 @@ struct parameter_list_executor<I, K, parameter_list<>, H, FullList> {
   template <typename T, typename C>
   static auto unpack(T& t, ::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, C &&) -> unpack_result {
+
     if constexpr (!hints::hint_has_ignore_unknown<H>) {
       if (s.length() != K) {
         for (auto&& pair : ObjectIterator(s)) {

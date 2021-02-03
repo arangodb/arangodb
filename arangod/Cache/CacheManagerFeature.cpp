@@ -24,6 +24,7 @@
 #include "CacheManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -106,8 +107,11 @@ void CacheManagerFeature::start() {
       return false;
     }
   };
-  _manager.reset(new Manager(postFn, _cacheSize));
-  _rebalancer.reset(new CacheRebalancerThread(server(), _manager.get(), _rebalancingInterval));
+
+  SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
+  _manager = std::make_unique<Manager>(sharedPRNG, postFn, _cacheSize);
+
+  _rebalancer = std::make_unique<CacheRebalancerThread>(server(), _manager.get(), _rebalancingInterval);
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }

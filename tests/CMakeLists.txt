@@ -262,10 +262,17 @@ set(ARANGODB_TESTS_SOURCES
   V8Server/v8-users-test.cpp
   V8Server/v8-views-test.cpp
   VocBase/vocbase-test.cpp
+  VocBase/KeyGenerator-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp)
+
+if (USE_FAILURE_TESTS)
+  # add test that depends on USE_FAILURE_TESTS
+  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES} Aql/OldSubqueriesTest.cpp)
+endif ()
+
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

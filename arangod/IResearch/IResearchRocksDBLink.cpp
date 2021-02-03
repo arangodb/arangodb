@@ -42,8 +42,8 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection)
-    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
+IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId)
+    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
                    RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
                    false),
       IResearchLink(iid, collection) {
@@ -165,7 +165,8 @@ bool IResearchRocksDBLink::IndexFactory::equal(
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
     LogicalCollection& collection, VPackSlice const& definition,
     IndexId id, bool /*isClusterConstructor*/) const {
-  auto link = std::make_shared<IResearchRocksDBLink>(id, collection);
+  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, StaticStrings::ObjectId);
+  auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
   auto const res = link->init(definition, [this](irs::directory& dir) {
     auto& selector = _server.getFeature<EngineSelectorFeature>();
