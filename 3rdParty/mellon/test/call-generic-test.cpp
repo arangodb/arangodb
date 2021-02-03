@@ -71,19 +71,42 @@ template <typename T, invocable_ref_qualification irq, bool is_noexcept_invocabl
 struct invocable_test_object : copy_constructor_trait<copy_constructor>,
                                move_constructor_trait<move_constructor> {
   invocable_test_object() = default;
+  explicit invocable_test_object(bool* was_called) : was_called(was_called) {}
+
+  invocable_test_object(invocable_test_object&&) noexcept = default;
+  invocable_test_object(invocable_test_object const&) = default;
 
   template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::NO_QUALIFIER, int> = 0>
-  void operator()(T) noexcept(is_noexcept_invocable) {}
+  void operator()(T) noexcept(is_noexcept_invocable) {
+    signal();
+  }
   template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::LVALUE_REF_QUALIFIER, int> = 0>
-  void operator()(T) & noexcept(is_noexcept_invocable) {}
+  void operator()(T) & noexcept(is_noexcept_invocable) {
+    signal();
+  }
   template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::RVALUE_QUALIFIER, int> = 0>
-  void operator()(T) && noexcept(is_noexcept_invocable) {}
+  void operator()(T) && noexcept(is_noexcept_invocable) {
+    signal();
+  }
   template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::NO_QUALIFIER_CONST, int> = 0>
-  void operator()(T) const noexcept(is_noexcept_invocable) {}
+  void operator()(T) const noexcept(is_noexcept_invocable) {
+    signal();
+  }
   template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::LVALUE_REF_QUALIFIER_CONST, int> = 0>
-  void operator()(T) const& noexcept(is_noexcept_invocable) {}
+  void operator()(T) const& noexcept(is_noexcept_invocable) {
+    signal();
+  }
   template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::RVALUE_QUALIFIER_CONST, int> = 0>
-  void operator()(T) const&& noexcept(is_noexcept_invocable) {}
+  void operator()(T) const&& noexcept(is_noexcept_invocable) {
+    signal();
+  }
+
+  void signal() const {
+    if (was_called) {
+      *was_called = true;
+    }
+  }
+  bool* const was_called = nullptr;
 };
 
 template <typename T>
@@ -118,106 +141,133 @@ struct CallGenericFinallyTests : testing::Test {};
 TYPED_TEST_SUITE(CallGenericFinallyTests, invocable_ref_qualification_list);
 
 TYPED_TEST(CallGenericFinallyTests, invoke_finally) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::NOEXCEPT, constructor_type::NOEXCEPT>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
 
   static_assert(std::is_nothrow_invocable_v<as_type, int>);
   auto f = future<int>{std::in_place, 1};
   std::move(f).finally(std::forward<as_type>(invocable));
+  ASSERT_TRUE(was_called);
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_then) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::NOEXCEPT, constructor_type::NOEXCEPT>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
 
   static_assert(std::is_nothrow_invocable_v<as_type, int>);
   auto f = future<expect::expected<int>>{std::in_place, 1};
   std::move(f).then(std::forward<as_type>(invocable)).finally([](auto) noexcept {});
+  ASSERT_TRUE(was_called);
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_then_bind) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::NOEXCEPT, constructor_type::NOEXCEPT>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
 
   static_assert(std::is_nothrow_invocable_v<as_type, int>);
   auto f = future<expect::expected<int>>{std::in_place, 1};
   std::move(f).then(std::forward<as_type>(invocable)).finally([](auto) noexcept {});
+  ASSERT_TRUE(was_called);
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_finally_no_move) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::NOEXCEPT, constructor_type::DELETED>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
 
   static_assert(std::is_nothrow_invocable_v<as_type, int>);
   auto f = future<int>{std::in_place, 1};
   std::move(f).finally(std::forward<as_type>(invocable));
+  ASSERT_TRUE(was_called);
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_then_no_move) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::NOEXCEPT, constructor_type::DELETED>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
 
   static_assert(std::is_nothrow_invocable_v<as_type, int>);
   auto f = future<expect::expected<int>>{std::in_place, 1};
   std::move(f).then(std::forward<as_type>(invocable)).finally([](auto) noexcept {});
+  ASSERT_TRUE(was_called);
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_then_bind_no_move) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::NOEXCEPT, constructor_type::DELETED>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
 
   static_assert(std::is_nothrow_invocable_v<as_type, int>);
   auto f = future<expect::expected<int>>{std::in_place, 1};
   std::move(f).then(std::forward<as_type>(invocable)).finally([](auto) noexcept {});
+  ASSERT_TRUE(was_called);
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_finally_no_copy) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::DELETED, constructor_type::NOEXCEPT>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
   // exclude tests that can not work
   if constexpr (std::is_constructible_v<invocable_t, as_type>) {
     static_assert(std::is_nothrow_invocable_v<as_type, int>);
     auto f = future<int>{std::in_place, 1};
     std::move(f).finally(std::forward<as_type>(invocable));
+    ASSERT_TRUE(was_called);
   }
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_then_no_copy) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::DELETED, constructor_type::NOEXCEPT>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
   // exclude tests that can not work
   if constexpr (std::is_constructible_v<invocable_t, as_type>) {
+    bool reached_end = false;
     static_assert(std::is_nothrow_invocable_v<as_type, int>);
     auto f = future<expect::expected<int>>{std::in_place, 1};
-    std::move(f).then(std::forward<as_type>(invocable)).finally([](auto) noexcept {});
+    std::move(f).then(std::forward<as_type>(invocable)).finally([&](auto) noexcept {
+      reached_end = true;
+    });
+    ASSERT_TRUE(reached_end);
+    ASSERT_TRUE(was_called);
   }
 }
 
 TYPED_TEST(CallGenericFinallyTests, invoke_then_bind_no_copy) {
+  bool was_called = false;
   using invocable_t =
   invocable_test_object<int, TypeParam::value, true, constructor_type::DELETED, constructor_type::NOEXCEPT>;
-  invocable_t invocable;
+  invocable_t invocable(&was_called);
   using as_type = add_ref_qualifier_t<invocable_t, TypeParam::value>;
   // exclude tests that can not work
   if constexpr (std::is_constructible_v<invocable_t, as_type>) {
+    bool reached_end = false;
     static_assert(std::is_nothrow_invocable_v<as_type, int>);
     auto f = future<expect::expected<int>>{std::in_place, 1};
-    std::move(f).then(std::forward<as_type>(invocable)).finally([](auto) noexcept {});
+    std::move(f).then(std::forward<as_type>(invocable)).finally([&](auto) noexcept {
+      reached_end = true;
+    });
+    ASSERT_TRUE(reached_end);
+    ASSERT_TRUE(was_called);
   }
+
 }

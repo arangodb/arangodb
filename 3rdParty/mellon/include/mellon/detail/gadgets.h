@@ -56,9 +56,7 @@ struct memory_buffer {
     return reinterpret_cast<T*>(base);
   }
 
-  memory_buffer() : store() {}
-
-  std::byte store[Size]{};
+  std::byte store[Size] = {};
 };
 
 template <>
