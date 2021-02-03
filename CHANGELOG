@@ -1,5 +1,10 @@
 devel
 -----
+
+* Fixed BTS-284: upgrading from 3.6 to 3.7 in cluster enviroment.
+  Moved upgrade ArangoSearch links task to later step as it needs cluster
+  connection. Removed misleading error log records for failed ArangoSearch index
+  creation during upgrade phase.
           
 * Added metric `arangodb_transactions_expired` to track the total number 
   of expired and then garbage-collected transactions.
