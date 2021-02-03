@@ -92,68 +92,100 @@ template<typename T> class Gauge : public Metric {
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
-    : Metric(name, help, labels) {
-    _g.store(val);
-  }
+    : Metric(name, help, labels), _g(val) { }
+
   Gauge(Gauge const&) = delete;
   ~Gauge() = default;
-  std::ostream& print (std::ostream&) const;
-  Gauge<T>& operator+=(T const& t) {
+
+  std::ostream& print(std::ostream&) const;
+
+  T fetch_add(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
-      _g.fetch_add(t, std::memory_order_relaxed);
+      return _g.fetch_add(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
-      } while (!_g.compare_exchange_weak(
-                 tmp, tmp + t, std::memory_order_relaxed, std::memory_order_relaxed));
+      } while (!_g.compare_exchange_weak(tmp, tmp + t, mo, std::memory_order_relaxed));
+      return tmp;
     }
+  }
+
+  Gauge<T>& operator+=(T const& t) noexcept {
+    fetch_add(t, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T>& operator-=(T const& t) {
+
+  // prefix increment
+  Gauge<T>& operator++() noexcept {
+    fetch_add(1, std::memory_order_relaxed);
+    return *this;
+  }
+
+  // postfix increment. as this would be inefficient, we simply forbid it
+  Gauge<T>& operator++(int) = delete;
+
+  T fetch_sub(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
-      _g.fetch_sub(t, std::memory_order_relaxed);
+      return _g.fetch_sub(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
-      } while (!_g.compare_exchange_weak(
-                 tmp, tmp - t, std::memory_order_relaxed, std::memory_order_relaxed));
+      } while (!_g.compare_exchange_weak(tmp, tmp - t, mo, std::memory_order_relaxed));
+      return tmp;
     }
+  }
+
+  Gauge<T>& operator-=(T const& t) noexcept {
+    fetch_sub(t, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T>& operator*=(T const& t) {
-      T tmp(_g.load(std::memory_order_relaxed));
-      do {
-      } while (!_g.compare_exchange_weak(
-                 tmp, tmp * t, std::memory_order_relaxed, std::memory_order_relaxed));
+
+  // prefix decrement
+  Gauge<T>& operator--() noexcept {
+    fetch_sub(1, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T>& operator/=(T const& t) {
+
+  // postfix decrement. as this would be inefficient, we simply forbid it
+  Gauge<T>& operator--(int) = delete;
+
+  Gauge<T>& operator*=(T const& t) noexcept {
+    T tmp(_g.load(std::memory_order_relaxed));
+    do {
+    } while (!_g.compare_exchange_weak(tmp, tmp * t));
+    return *this;
+  }
+
+  Gauge<T>& operator/=(T const& t) noexcept {
     TRI_ASSERT(t != T(0));
-      T tmp(_g.load(std::memory_order_relaxed));
-      do {
-      } while (!_g.compare_exchange_weak(
-                 tmp, tmp / t, std::memory_order_relaxed, std::memory_order_relaxed));
+    T tmp(_g.load(std::memory_order_relaxed));
+    do {
+    } while (!_g.compare_exchange_weak(tmp, tmp / t));
     return *this;
   }
-  Gauge<T>& operator=(T const& t) {
-    _g.store(t);
+
+  Gauge<T>& operator=(T const& t) noexcept {
+    _g.store(t, std::memory_order_relaxed);
     return *this;
   }
-  T load() const {
-    return _g.load();
-  }
-  virtual void toPrometheus(std::string& result) const override {
+
+  T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
+
+  void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + help() + "\n";
-    result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
-  };
+    result += "#HELP " + name() + " " + help() + "\n" + name();
+    if (!labels().empty()) {
+      result += "{" + labels() + "}";
+    }
+    result += " " + std::to_string(load()) + "\n";
+  }
  private:
   std::atomic<T> _g;
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
-enum ScaleType {LINEAR, LOGARITHMIC};
+enum ScaleType {Linear, Logarithmic};
 
 template<typename T>
 struct scale_t {
@@ -240,7 +272,7 @@ struct log_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LOGARITHMIC;
+  static constexpr ScaleType scale_type = Logarithmic;
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
@@ -280,7 +312,7 @@ struct log_scale_t : public scale_t<T> {
   T base() const {
     return _base;
   }
- 
+
  private:
   T _base, _div;
   double _lbase;
@@ -291,7 +323,7 @@ struct lin_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LINEAR;
+  static constexpr ScaleType scale_type = Linear;
 
   lin_scale_t(T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n) {
@@ -320,7 +352,7 @@ struct lin_scale_t : public scale_t<T> {
     b.add("scale-type", VPackValue("linear"));
     scale_t<T>::toVelocyPack(b);
   }
- 
+
  private:
   T _base, _div;
 };
