@@ -47,9 +47,9 @@
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                     \
-  throw arangodb::basics::Exception(code,                                                    \
-                                    arangodb::basics::Exception::FillFormatExceptionString(  \
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                            \
+  throw arangodb::basics::Exception(code,                                                           \
+                                    arangodb::basics::Exception::FillFormatExceptionString(         \
                                         "%s: " format, TRI_errno_string(code).data(), __VA_ARGS__), \
                                     __FILE__, __LINE__)
 
