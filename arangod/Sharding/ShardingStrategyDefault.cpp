@@ -127,7 +127,8 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
 
 template <bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
-                              bool docComplete, int& error, VPackStringRef const& key) {
+                              bool docComplete, ErrorCode& error,
+                              VPackStringRef const& key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
@@ -278,7 +279,7 @@ ErrorCode ShardingStrategyHashBase::getResponsibleShard(
 
   TRI_ASSERT(!_sharding->shardKeys().empty());
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
 
@@ -319,7 +320,7 @@ void ShardingStrategyHashBase::determineShards() {
 
 uint64_t ShardingStrategyHashBase::hashByAttributes(VPackSlice slice,
                                                     std::vector<std::string> const& attributes,
-                                                    bool docComplete, int& error,
+                                                    bool docComplete, ErrorCode& error,
                                                     VPackStringRef const& key) {
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error, key);
 }
@@ -365,7 +366,7 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error, VPackStringRef const& key) {
+    bool docComplete, ErrorCode& error, VPackStringRef const& key) {
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error, key);
 }
 

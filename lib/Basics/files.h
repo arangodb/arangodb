@@ -248,7 +248,7 @@ char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char 
 /// all open locks upon exit.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateLockFile(char const* filename);
+ErrorCode TRI_CreateLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
@@ -266,7 +266,7 @@ int TRI_CreateLockFile(char const* filename);
 /// TRI_ERROR_NO_ERROR than the file is locked and the lock is valid.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_VerifyLockFile(char const* filename);
+ErrorCode TRI_VerifyLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID

@@ -121,7 +121,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
 
   ErrorCode dropDatabase(std::string const& name, bool removeAppsDirectory);
-  int dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
+  ErrorCode dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
@@ -162,13 +162,15 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void stopAppliers();
 
   /// @brief create base app directory
-  int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
+  ErrorCode createBaseApplicationDirectory(std::string const& appPath,
+                                           std::string const& type);
 
   /// @brief create app subdirectory for a database
-  int createApplicationDirectory(std::string const& name, std::string const& basePath, bool removeExisting);
+  ErrorCode createApplicationDirectory(std::string const& name,
+                                       std::string const& basePath, bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
-  int iterateDatabases(arangodb::velocypack::Slice const& databases);
+  ErrorCode iterateDatabases(arangodb::velocypack::Slice const& databases);
 
   /// @brief close all opened databases
   void closeOpenDatabases();

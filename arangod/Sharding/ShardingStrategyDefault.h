@@ -89,7 +89,7 @@ class ShardingStrategyHashBase : public ShardingStrategy {
 
   virtual uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
                                     std::vector<std::string> const& attributes,
-                                    bool docComplete, int& error,
+                                    bool docComplete, ErrorCode& error,
                                     arangodb::velocypack::StringRef const& key);
 
  private:
@@ -126,8 +126,7 @@ class ShardingStrategyEnterpriseBase : public ShardingStrategyHashBase {
   /// we leave the differences in place, because making any changes here
   /// will affect the data distribution, which we want to avoid
   uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
-                            std::vector<std::string> const& attributes, bool docComplete,
-                            int& error, arangodb::velocypack::StringRef const& key) override final;
+                            std::vector<std::string> const& attributes, bool docComplete, ErrorCode& error, arangodb::velocypack::StringRef const& key) override final;
 };
 
 /// @brief old version of the sharding used in the Enterprise Edition

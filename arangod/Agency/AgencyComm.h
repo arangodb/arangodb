@@ -311,7 +311,7 @@ class AgencyCommResult {
 
   [[nodiscard]] int httpCode() const;
 
-  [[nodiscard]] int errorCode() const;
+  [[nodiscard]] ErrorCode errorCode() const;
 
   [[nodiscard]] std::string errorMessage() const;
 

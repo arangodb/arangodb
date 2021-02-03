@@ -425,7 +425,7 @@ int AgencyCommResult::httpCode() const { return _statusCode; }
 
 bool AgencyCommResult::sent() const { return _sent; }
 
-int AgencyCommResult::errorCode() const {
+ErrorCode AgencyCommResult::errorCode() const {
   return asResult().errorNumber();
 }
 

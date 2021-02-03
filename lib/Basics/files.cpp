@@ -1243,7 +1243,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
 
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
-int TRI_CreateLockFile(char const* filename) {
+ErrorCode TRI_CreateLockFile(char const* filename) {
   TRI_ERRORBUF;
   OVERLAPPED ol;
 
@@ -1309,7 +1309,7 @@ int TRI_CreateLockFile(char const* filename) {
 
 #else
 
-int TRI_CreateLockFile(char const* filename) {
+ErrorCode TRI_CreateLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
 
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
@@ -1370,7 +1370,7 @@ int TRI_CreateLockFile(char const* filename) {
 
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
-int TRI_VerifyLockFile(char const* filename) {
+ErrorCode TRI_VerifyLockFile(char const* filename) {
   HANDLE fd;
 
   if (!TRI_ExistsFile(filename)) {
@@ -1396,7 +1396,7 @@ int TRI_VerifyLockFile(char const* filename) {
 
 #else
 
-int TRI_VerifyLockFile(char const* filename) {
+ErrorCode TRI_VerifyLockFile(char const* filename) {
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_NO_ERROR;
   }

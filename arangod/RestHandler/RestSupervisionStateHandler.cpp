@@ -81,7 +81,7 @@ RestStatus RestSupervisionStateHandler::execute() {
       }
     })
     .thenError<VPackException>([this, self](VPackException const& e) {
-      generateError(Result{e.errorCode(), e.what()});
+      generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
     })
     .thenError<std::exception>([this, self](std::exception const&) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);

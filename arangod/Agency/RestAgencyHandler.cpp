@@ -53,21 +53,21 @@ RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& se
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
-  generateError(rest::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
-  generateError(rest::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
-  generateError(rest::ResponseCode::NOT_FOUND, 405);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
@@ -346,7 +346,7 @@ RestStatus RestAgencyHandler::handleStore() {
       query_t builder = _agent->buildDB(index);
       generateResult(rest::ResponseCode::OK, builder->slice());
     } catch (...) {
-      generateError(rest::ResponseCode::BAD, 400);
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     }
 
     return RestStatus::DONE;
@@ -458,7 +458,7 @@ RestStatus RestAgencyHandler::handleWrite() {
     if (result == Agent::raft_commit_t::UNKNOWN) {
       generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_REQUEST_TIMEOUT);
     } else {
       if (forbidden > 0) {
         generateResult(rest::ResponseCode::FORBIDDEN, body.slice());
@@ -554,7 +554,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& ex) {
     LOG_TOPIC("78755", DEBUG, Logger::AGENCY) << ex.what();
-    generateError(rest::ResponseCode::BAD, 400);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return RestStatus::DONE;
   }
 
@@ -628,7 +628,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     if (result == Agent::raft_commit_t::UNKNOWN) {
       generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_REQUEST_TIMEOUT);
     } else {
       if (failed) {  // Some/all requests failed
         generateResult(rest::ResponseCode::NOT_FOUND, body.slice());
@@ -761,7 +761,7 @@ RestStatus RestAgencyHandler::handleState() {
 }
 
 RestStatus RestAgencyHandler::reportMethodNotAllowed() {
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 

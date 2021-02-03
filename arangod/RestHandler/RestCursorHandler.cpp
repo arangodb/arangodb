@@ -301,7 +301,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     options.buildUnindexedObjects = true;
 
     // conservatively allocate a few bytes per value to be returned
-    int res;
+    auto res = TRI_ERROR_NO_ERROR;
     if (n >= 10000) {
       res = _response->reservePayload(128 * 1024);
     } else if (n >= 1000) {

@@ -49,6 +49,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
   REG_ERROR(ERROR_HTTP_NOT_ACCEPTABLE, "request not acceptable");
+  REG_ERROR(ERROR_HTTP_REQUEST_TIMEOUT, "request timeout");
+  REG_ERROR(ERROR_HTTP_GONE, "content permanently deleted");
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_SERVICE_UNAVAILABLE, "service unavailable");

@@ -218,6 +218,16 @@ constexpr auto TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                
 /// operation, or if a request is not acceptable for a leader or follower.
 constexpr auto TRI_ERROR_HTTP_NOT_ACCEPTABLE                                     = ErrorCode{406};
 
+/// 408: ERROR_HTTP_REQUEST_TIMEOUT
+/// "request timeout"
+/// Will be raised when a timeout occured.
+constexpr auto TRI_ERROR_HTTP_REQUEST_TIMEOUT                                    = ErrorCode{408};
+
+/// 410: ERROR_HTTP_GONE
+/// "content permanently deleted"
+/// Will be raised when the requested content has been permanently deleted.
+constexpr auto TRI_ERROR_HTTP_GONE                                               = ErrorCode{410};
+
 /// 412: ERROR_HTTP_PRECONDITION_FAILED
 /// "precondition failed"
 /// Will be raised when a precondition for an HTTP request is not met.
