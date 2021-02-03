@@ -598,15 +598,6 @@
         assertNull(analyzers.analyzer("custom_dst"));
       },
 
-      //////////////////////////////////////////////////////////////////////////////////
-      ///// @brief test link on analyzers collection
-      //////////////////////////////////////////////////////////////////////////////////
-      //testIndexAnalyzerCollection : function() {
-      //  var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
-      //  assertEqual(1, db._analyzers.count());
-      //  assertEqual(1, res.length);
-      //  assertEqual(db._analyzers.toArray()[0], res[0]);
-      //},
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test link on analyzers collection
       ////////////////////////////////////////////////////////////////////////////////
