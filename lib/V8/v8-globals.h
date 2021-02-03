@@ -83,6 +83,14 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
       .ToLocalChecked();
 }
 
+static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
+                                                        void const* ptr, std::size_t length) {
+  if (ADB_UNLIKELY(length > std::numeric_limits<int>::max())) {
+    throw std::overflow_error("string length out of range");
+  }
+  return v8Utf8StringFactory(isolate, ptr, static_cast<int>(length));
+}
+
 template <typename T, typename U = std::decay_t<T>,
           std::enable_if_t<std::is_same_v<U, std::string> || std::is_same_v<U, std::string_view> ||
                                std::is_same_v<U, char const*> || std::is_same_v<U, arangodb::basics::StringBuffer>,
