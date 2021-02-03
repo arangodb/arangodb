@@ -23,6 +23,7 @@
 
 #ifndef ARANGOD_FUTURES_UTILITIES_H
 #define ARANGOD_FUTURES_UTILITIES_H 1
+#include <mellon/collector.h>
 #include <mellon/utilities.h>
 #include "Future.h"
 
@@ -52,6 +53,21 @@ auto collectAll(std::vector<Future<T>>&& v) {
     return Try<std::vector<Try<T>>>(std::forward<decltype(r)>(r));
   });
 }
+
+template <typename T>
+struct collector : private mellon::collector<T, arangodb_tag> {
+  using mellon::collector<T, arangodb_tag>::collector;
+  using mellon::collector<T, arangodb_tag>::for_all;
+  using mellon::collector<T, arangodb_tag>::push_result;
+
+  auto into_future() && {
+    return std::move(*this)
+        .mellon::template collector<T, arangodb_tag>::into_future()
+        .and_then([](T&& v) -> Try<T> {
+          return {std::in_place, std::move(v)};
+        });
+  }
+};
 
 }  // namespace arangodb::futures
 

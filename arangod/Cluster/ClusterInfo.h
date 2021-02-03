@@ -498,7 +498,7 @@ public:
    * @param    Current Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForCurrent(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForCurrent(uint64_t raftIndex);
 
   /**
    * @brief Wait for Current cache to be at the given Raft index

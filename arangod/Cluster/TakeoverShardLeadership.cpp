@@ -186,7 +186,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
       // Current version in background thread which is at least as new as the
       // Plan which brought us here. This is important for the assertion
       // below where we check that we are in the list of failoverCandidates!
-      ci.waitForCurrent(planIndex);
+      ci.waitForCurrent(planIndex).await_unwrap();
       auto currentInfo =
           ci.getCollectionCurrent(databaseName,
                                   std::to_string(collection.planId().id()));
