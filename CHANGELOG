@@ -5,6 +5,59 @@ devel
   Moved upgrade ArangoSearch links task to later step as it needs cluster
   connection. Removed misleading error log records for failed ArangoSearch index
   creation during upgrade phase.
+
+* Don't allocate ahead-of-time memory for striped PRNG array in arangod,
+  but instead use thread-local PRNG instances. Not only does this save a 
+  few megabytes or memory, but it also avoids potential (but unlikely)
+  sharing of the same PRNG instance by multiple threads.
+
+* Remove undocumented CMake variable `USE_BACKTRACE`, and remove define
+  `ARANGODB_ENABLE_BACKTRACE`. Both were turned off by default before, and
+  when turned on allow to produce backtraces from within the executable in
+  case debug symbols were available, working and the build was also compiled
+  with `USE_MAINTAINER_MODE=On`. Some code in this context was obviously
+  unreachable, so now it has all been removed.
+  To log a backtrace from within arangod, it is now possible to call
+  `CrashHandler::logBacktrace()`, which will log a backtrace of the calling
+  thread to the arangod log. This is restricted to Linux builds only.
+
+* Fix warnings about suggest-override which can break builds when warnings
+  are treated as errors.
+
+* Turn off option `--server.export-read-write-metrics` for now, until there
+  is certainty about the runtime overhead it introduces.
+
+* Fixed issue #12543: Unused Foxx service config can not be discarded.
+
+* Fixed issue #12363: Foxx HTTP API upgrade/replace always enables
+  development mode.
+
+* Remove unsafe query option `inspectSimplePlans`. This option previously
+  defaulted to `true`, and turning it off could make particular queries fail.
+  The option was ignored in the cluster previously, and turning it off only
+  had an effect in single server, there making very simple queries (queries
+  not containing any FOR loops) not going through the optimizer's complete
+  pipeline as a performance optimization. However, the optimization was only
+  possible for a very small number of queries and even had adverse effects,
+  so it is now removed entirely.
+
+* On Linux and MacOS, require at least 8192 usable file descriptors at startup. 
+  If less file descriptors are available to the arangod process, then the
+  startup is automatically aborted.
+
+  Even the chosen minimum value of 8192 will often not be high enough to 
+  store considerable amounts of data. However, no higher value was chosen 
+  in order to not make too many existing small installations fail at startup
+  after upgrading.
+
+  The required number of file descriptors can be configured using the startup
+  option `--server.descriptors-minimum`. It defaults to 8192, but it can be
+  increased to ensure that arangod can make use of a sufficiently high number
+  of files. Setting `--server.descriptors-minimum` to a value of `0` will 
+  make the startup require only an absolute minimum limit of 1024 file 
+  descriptors, effectively disabling the change.
+  Such low values should only be used to bypass the file descriptors check
+  in case of an emergency, but this is not recommended for production.
           
 * Added metric `arangodb_transactions_expired` to track the total number 
   of expired and then garbage-collected transactions.

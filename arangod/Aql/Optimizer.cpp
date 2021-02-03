@@ -244,21 +244,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   _plans.clear();
   _plans.push_back(std::move(plan), _rules.begin());
 
-  if (!queryOptions.inspectSimplePlans &&
-      !arangodb::ServerState::instance()->isCoordinator() && initialPlan->isDeadSimple()) {
-    // the plan is so simple that any further optimizations would probably cost
-    // more than simply executing the plan
-    initialPlan->findVarUsage();
-    if (estimateAllPlans || queryOptions.profile >= ProfileLevel::Blocks) {
-      // if profiling is turned on, we must do the cost estimation here
-      // because the cost estimation must be done while the transaction
-      // is still running
-      initialPlan->invalidateCost();
-      initialPlan->getCost();
-    }
-    return;
-  }
-
   // enable/disable rules as per user request
   for (auto const& name : queryOptions.optimizerRules) {
     if (name.empty()) {

@@ -193,7 +193,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
   }
 
   /// @brief earliest tick that can be released
-  TRI_voc_tick_t tick() const noexcept final {
+  TRI_voc_tick_t tick() const noexcept override final {
     return _tick.load(std::memory_order_acquire);
   }
 

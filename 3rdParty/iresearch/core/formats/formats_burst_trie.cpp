@@ -1765,7 +1765,7 @@ class term_iterator_base
     it.load_data(*field_, *this, state_, *postings_);
   }
 
-  virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
+  virtual seek_term_iterator::seek_cookie::ptr cookie() const override final {
     return ::cookie::make(state_, freq_.value);
   }
 
