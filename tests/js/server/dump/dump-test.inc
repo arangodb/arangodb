@@ -42,8 +42,33 @@
   /// @brief test suite
   ////////////////////////////////////////////////////////////////////////////////
 
-  return function (args) {
-    'use strict';
+  return function (args = {
+    // testEmpty
+    emptyIndexes: 1,
+    // testMany
+    manyIndexes: 1,
+    manyCountStart: 0,
+    manyCount: 100000,
+    manyCountInc: 1,
+    // testEdges
+    edgesIndexCount: 2,
+    edgeIndexLoopCount: 10,
+    edgeIndexLoopInc: 1,
+    // testRemoved
+    removedCount: 9000,
+    removedSingleIndices: 1,
+    removedModulo: 10,
+    // testIndexes
+    indexesCount: 9,
+    // testKeygenAutoInc
+    keygenAutoInc: 42049,
+    autoIncDocCount: 1001,
+    // testKeygenPadded
+    paddedDocCount: 1001,
+    // testKeygenUuid
+    uuidDocCount: 1001,
+  }) {
+    // 'use strict';
     var db = internal.db;
     const smartGraphName = "UnitTestDumpSmartGraph";
     const edges = "UnitTestDumpSmartEdges";
@@ -96,7 +121,7 @@
         assertEqual(2, c.type()); // document
         assertTrue(p.waitForSync);
 
-        assertEqual(1, c.getIndexes().length); // just primary index
+        assertEqual(args.emptyIndexes, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(0, c.count());
       },
@@ -112,21 +137,25 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(1, c.getIndexes().length); // just primary index
+        assertEqual(args.manyIndexes, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(100000, c.count());
 
         // test all documents
         let docs = [], results = [];
-        for (let i = 0; i < 100000; ++i) {
+        for (let i = args.manyCountStart; i < args.manyCount; i += args.manyCountInc) {
           docs.push("test" + i);
           if (docs.length === 10000) {
             results = results.concat(c.document(docs));
             docs = [];
           }
         }
-        for (let i = 0; i < 100000; ++i) {
+        let j = 0;
+        for (let i = args.manyCountStart; i < args.manyCount; i += args.manyCountInc) {
           let doc = results[i];
+          if (args.manyCountStart === 1) {
+            doc = results[j++];
+          }              
           assertEqual(i, doc.value1);
           assertEqual("this is a test", doc.value2);
           assertEqual("test" + i, doc.value3);
@@ -144,13 +173,19 @@
         assertEqual(3, c.type()); // edges
         assertFalse(p.waitForSync);
 
-        assertEqual(2, c.getIndexes().length); // primary index + edges index
+        assertEqual(args.edgesIndexCount, c.getIndexes().length); // primary index + edges index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual("edge", c.getIndexes()[1].type);
+        if (args.edgesIndexCount > 2) {
+          // Backup and restore:
+          assertEqual("hash", c.getIndexes()[2].type);
+        }
         assertEqual(10, c.count());
 
         // test all documents
-        for (var i = 0; i < 10; ++i) {
+        for (var i = args.edgeIndexLoopStart;
+             i < args.edgeIndexLoopCount;
+             i += args.edgeIndexLoopInc) {
           var doc = c.document("test" + i);
           assertEqual("test" + i, doc._key);
           assertEqual("UnitTestsDumpMany/test" + i, doc._from);
@@ -186,12 +221,12 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(1, c.getIndexes().length); // just primary index
+        assertEqual(args.removedSingleIndices, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
-        assertEqual(9000, c.count());
+        assertEqual(args.removedCount, c.count());
 
         for (let i = 0; i < 10000; ++i) {
-          if (i % 10 === 0) {
+          if (i % args.removedModulo === 0) {
             assertFalse(c.exists("test" + i));
           } else {
             let doc = c.document("test" + i);
@@ -215,7 +250,7 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(9, c.getIndexes().length);
+        assertEqual(args.indexesCount, c.getIndexes().length);
         assertEqual("primary", c.getIndexes()[0].type);
 
         assertEqual("hash", c.getIndexes()[1].type);
@@ -256,6 +291,11 @@
         assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
         assertFalse(c.getIndexes()[8].unique);
 
+        if (args.indexesCount > 9) {
+          assertEqual("hash", c.getIndexes()[9].type);
+          assertEqual([ "abc" ], c.getIndexes()[9].fields);
+          assertFalse(c.getIndexes()[9].unique);
+        }
         assertEqual(0, c.count());
       },
 
@@ -311,14 +351,14 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
         assertEqual("autoincrement", p.keyOptions.type);
-        assertEqual(42049, p.keyOptions.lastValue);
+        assertEqual(args.keygenAutoInc, p.keyOptions.lastValue);
         assertFalse(p.keyOptions.allowUserKeys);
         assertEqual(7, p.keyOptions.offset);
         assertEqual(42, p.keyOptions.increment);
 
         assertEqual(1, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
-        assertEqual(1001, c.count());
+        assertEqual(args.autoIncDocCount, c.count());
 
         for (var i = 0; i < 1000; ++i) {
           var doc = c.document(String(7 + (i * 42)));
@@ -327,8 +367,19 @@
           assertEqual(i, doc.value);
           assertEqual({ value: [ i, i ] }, doc.more);
         }
-        doc = c.save({});
-        assertEqual(doc._key, "42091");
+        if (args.autoIncDocCount === 1001) {
+          doc = c.save({});
+          assertEqual(doc._key, "42091");
+        } else {
+          // hot backup case:
+          for (var j = 0; i < 1000; ++i) {
+            let doc = c.document(String(7 + ((1000 + j) * 42)));
+
+            assertEqual(String(7 + ((1000 + j) * 42)), doc._key);
+            assertEqual(j, doc.value);
+            assertEqual({ value: [ j, j ] }, doc.more);
+          }
+        }
       },
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +397,7 @@
         assertFalse(p.keyOptions.allowUserKeys);
         assertEqual(1, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
-        assertEqual(1001, c.count());
+        assertEqual(args.paddedDocCount, c.count());
 
         let allDocs = {};
         let nonDeletedDoc;
@@ -367,10 +418,19 @@
           assertEqual({ value: [ i, i ] }, doc.more);
           lastKey = doc._key;
         }
-        assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
-        lastKey = nonDeletedDoc._key;
-        nonDeletedDoc = c.save({});
-        assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
+        if (args.paddedDocCount === 1001) {
+          assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
+          lastKey = nonDeletedDoc._key;
+          nonDeletedDoc = c.save({});
+          assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
+        } else {
+          // Backup and restore case:
+          doc = c.save({});
+          assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
+
+          // reset the value to before the one expected to be restored:
+          process.env['paddedLastValue'] = process.env['lastPaddedLastValue'];
+        }
       },
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +448,7 @@
 
         assertEqual(1, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
-        assertEqual(1001, c.count());
+        assertEqual(args.uuidDocCount, c.count());
 
         let allDocs = {};
         c.toArray().forEach(doc => {
