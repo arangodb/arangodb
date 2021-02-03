@@ -88,7 +88,7 @@ bool IsAgencyEndpoint(fuerte::ConnectionBuilder const& builder) {
 }  // namespace
 
 PreparedRequestResponse::PreparedRequestResponse(TRI_vocbase_t& vocbase)
-    : _vocbase{vocbase}, _type(arangodb::rest::RequestType::GET), _suffixes{}, _response{nullptr} {}
+    : _vocbase{vocbase}, _type(arangodb::rest::RequestType::GET), _suffixes{}, _payload{VPackSlice::nullSlice()}, _response{nullptr} {}
 
 void PreparedRequestResponse::setRequestType(arangodb::rest::RequestType type) {
   _type = type;
@@ -98,12 +98,19 @@ void PreparedRequestResponse::addSuffix(std::string suffix) {
   _suffixes.emplace_back(std::move(suffix));
 }
 
+void PreparedRequestResponse::addBody(VPackSlice slice) {
+  _payload = slice;
+}
+
 std::unique_ptr<GeneralRequestMock> PreparedRequestResponse::generateRequest() const {
-  auto fakeRequest = std::make_unique<GeneralRequestMock>(_vocbase);
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(_vocbase);  // <-- set body here in fakeRequest
 
   fakeRequest->setRequestType(_type);
   for (auto const& s : _suffixes) {
     fakeRequest->addSuffix(s);
+  }
+  if (!_payload.isNull()) {
+    fakeRequest->setData(_payload);
   }
   return fakeRequest;
 }

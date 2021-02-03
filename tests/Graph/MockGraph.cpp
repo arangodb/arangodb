@@ -21,12 +21,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MockGraph.h"
+#include <Aql/QueryRegistry.h>
+#include "IResearch/RestHandlerMock.h"
+#include "InternalRestHandler/InternalRestTraverserHandler.h"
 
 #include "gtest/gtest.h"
 
 #include "Mocks/PreparedResponseConnectionPool.h"
 #include "Mocks/Servers.h"
 
+#include "Aql/RestAqlHandler.h"
+#include "Network/NetworkFeature.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
@@ -148,10 +154,77 @@ void MockGraph::prepareServer(MockCoordinator& server) const {
 }
 
 template <>
-void MockGraph::simulateApi(MockDBServer const&,
-                            std::vector<arangodb::tests::PreparedRequestResponse>& preparedResponses) const {
+// Future: Also engineID's need to be returned here.
+std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(MockDBServer& server) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
+  std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses{};
 
-  // TODO Implement me!
+  aql::QueryRegistry queryRegistry{120};
+
+  {
+    // init restaqlhandler
+    arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
+    // generate and add body here
+    VPackBuilder builder;
+
+    // TODO: populate builder
+    prep.addBody(builder.slice());
+    prep.addSuffix("setup");
+    // TODO: JSON {
+    //  lock/locking: read [ <array ids> ] <-- locally available in MockGraph
+    // }
+
+    prep.setRequestType(arangodb::rest::RequestType::POST);
+    auto fakeRequest = prep.generateRequest();
+    auto fakeResponse = std::make_unique<GeneralResponseMock>();
+    arangodb::aql::RestAqlHandler aqlHandler{server.server(), fakeRequest.release(),
+                                             fakeResponse.release(), &queryRegistry};
+
+    auto response = aqlHandler.stealResponse(); // Read: (EngineId eid)
+    aqlHandler.execute();
+  }
+
+  for (auto const& vertex : vertices()) {
+    // 1.) fetch the vertex itself
+    arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
+    auto fakeResponse = std::make_unique<GeneralResponseMock>();
+
+    /*
+     *  Export to external method later (Create network request including options)
+     */
+    VPackBuilder leased;
+    leased.openObject();
+    leased.add("keys", VPackValue(VPackValueType::Array));
+    leased.add(VPackValue(vertex._id));
+    leased.close();  // 'keys' Array
+    leased.close();  // base object
+
+    /*
+     * 1.) Put Slice into RestAqlHandler
+     *   ->
+     */
+
+    // Request muss ins array: preparedResponses
+    prep.setRequestType(arangodb::rest::RequestType::PUT);
+    prep.addSuffix("vertex");
+    prep.addSuffix(basics::StringUtils::itoa(1));  // check test - Write: (EngineId eid) <- vermutlich
+    prep.addBody(leased.slice());
+
+    auto fakeRequest = prep.generateRequest();
+    InternalRestTraverserHandler testee{server.server(), fakeRequest.release(),
+                                        fakeResponse.release(), &queryRegistry};
+
+    std::ignore = testee.execute(); // todo check if needed
+    auto res = testee.stealResponse();
+    prep.rememberResponse(std::move(res));
+    preparedResponses.emplace_back(std::move(prep));
+
+    // 2.) fetch all connected edges requests
+  }
+
+  // Try without first, if not working:
+  // 3.) Send a Delete to RestAqlHandler (? => End query execution)
+
+  return preparedResponses;
 }

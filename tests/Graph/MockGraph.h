@@ -105,8 +105,7 @@ class MockGraph {
   void prepareServer(ServerType& server) const;
 
   template <class ServerType>
-  void simulateApi(ServerType const&,
-                   std::vector<arangodb::tests::PreparedRequestResponse>& preparedResponses) const;
+  std::vector<arangodb::tests::PreparedRequestResponse> simulateApi(ServerType& server) const;
 
   void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
                  std::string const& edgeCollectionName) const;

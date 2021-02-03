@@ -107,7 +107,7 @@ class GraphProviderTest : public ::testing::Test {
       {
         arangodb::tests::mocks::MockDBServer server{};
         graph.prepareServer(server);
-        graph.simulateApi(server, preparedResponses);
+        preparedResponses = graph.simulateApi(server);
       }
 
       server = std::make_unique<mocks::MockCoordinator>(false);
