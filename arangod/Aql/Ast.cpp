@@ -1669,8 +1669,6 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 /// @brief injects bind parameters into the AST
 void Ast::injectBindParameters(BindParameters& parameters,
                                arangodb::CollectionNameResolver const& resolver) {
-  auto& p = parameters.get();
-
   if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
@@ -1683,17 +1681,11 @@ void Ast::injectBindParameters(BindParameters& parameters,
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
-        auto const& it = p.find(param);
-
-        if (it == p.end()) {
+        VPackSlice value = parameters.markUsed(param);
+        if (value.isNone()) {
           // query uses a bind parameter that was not defined by the user
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
-
-        // mark the bind parameter as being used
-        (*it).second.second = true;
-
-        auto const& value = (*it).second.first;
 
         if (node->type == NODE_TYPE_PARAMETER) {
           auto const constantParameter = node->isConstant();
@@ -1868,12 +1860,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
     }
   }
 
-  for (auto it = p.begin(); it != p.end(); ++it) {
-    if (!(*it).second.second) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
-                                    (*it).first.c_str());
+  // visit all bind parameters to ensure that they are all marked as used
+  parameters.visit([](std::string const& key, VPackSlice /*value*/, bool used) {
+    if (!used) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
     }
-  }
+  });
 }
 
 /// @brief replace an attribute access with just the variable
