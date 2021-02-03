@@ -27,6 +27,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
 const analyzers = require("@arangodb/analyzers");
 const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
