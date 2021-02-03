@@ -1270,12 +1270,11 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
     }
 
     auto rv = fromExpression(filter, ctx, filterCtx, node);
-    if (rv.errorNumber() == TRI_ERROR_NO_ERROR) {
-      return rv.reset();
-    } else {
-      return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
-                                            "in from binary equation", rv.errorMessage()));
-    }
+    return rv.withError([&](result::Error& err) {
+      err.resetErrorMessage(
+          arangodb::basics::StringUtils::concatT("in from binary equation",
+                                                 rv.errorMessage()));
+    });
   }
 
   irs::by_term* termFilter = nullptr;
@@ -2606,10 +2605,8 @@ std::string getSubFuncErrorSuffix(char const* funcName, size_t const funcArgumen
       .append(std::to_string(funcArgumentPosition + 1)).append("')");
 }
 
-Result oneArgumentfromFuncPhrase(char const* funcName,
-                                 size_t const funcArgumentPosition,
-                                 char const* subFuncName,
-                                 VPackSlice elem,
+Result oneArgumentfromFuncPhrase(char const* funcName, size_t const funcArgumentPosition,
+                                 char const* subFuncName, VPackSlice elem,
                                  irs::string_ref& term) {
   if (elem.isArray() && elem.length() != 1) {
     return error::invalidArgsCount<error::ExactValue<1>>(subFuncName).withError([&](result::Error& err) {
@@ -2697,11 +2694,9 @@ Result fromFuncPhraseLike(char const* funcName,
   return {};
 }
 
-template<size_t First, typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
-Result getLevenshteinArguments(char const* funcName, bool isFilter,
-                               QueryContext const& ctx,
-                               ElementType const& args,
-                               aql::AstNode const** field,
+template <size_t First, typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
+Result getLevenshteinArguments(char const* funcName, bool isFilter, QueryContext const& ctx,
+                               ElementType const& args, aql::AstNode const** field,
                                typename ElementTraits::ValueType& targetValue,
                                irs::by_edit_distance_options& opts,
                                std::string const& errorSuffix = std::string()) {
@@ -2717,7 +2712,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
         [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
-  if constexpr (0 == First) { // this is done only for AstNode so don`t bother with traits
+  if constexpr (0 == First) {  // this is done only for AstNode so don`t bother with traits
     static_assert(std::is_same_v<aql::AstNode, ElementType>, "Only AstNode supported for parsing attribute");
     TRI_ASSERT(field);
     // (0 - First) argument defines a field
@@ -2730,18 +2725,20 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
 
   // (1 - First) argument defines a target
   irs::string_ref target;
-  auto res = ElementTraits::evaluateArg(target, targetValue, funcName, args, 1 - First, isFilter, ctx);
+  auto res = ElementTraits::evaluateArg(target, targetValue, funcName, args,
+                                        1 - First, isFilter, ctx);
 
   if (res.fail()) {
     return res.withError(
         [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
-  typename ElementTraits::ValueType tmpValue; // can reuse value for int64_t and bool
+  typename ElementTraits::ValueType tmpValue;  // can reuse value for int64_t and bool
 
   // (2 - First) argument defines a max distance
   int64_t maxDistance = 0;
-  res = ElementTraits::evaluateArg(maxDistance, tmpValue, funcName, args, 2 - First, isFilter, ctx);
+  res = ElementTraits::evaluateArg(maxDistance, tmpValue, funcName, args,
+                                   2 - First, isFilter, ctx);
 
   if (res.fail()) {
     return res.withError(
@@ -2759,12 +2756,12 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   // optional (3 - First) argument defines transpositions
   bool withTranspositions = true;
   if (3 - First < argc) {
-    res = ElementTraits::evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
+    res = ElementTraits::evaluateArg(withTranspositions, tmpValue, funcName,
+                                     args, 3 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return res.withError([&](result::Error& err) {
-        err.appendErrorMessage(errorSuffix);
-      });
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
 
@@ -2789,12 +2786,12 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   // optional (4 - First) argument defines terms limit
   int64_t maxTerms = FilterConstants::DefaultLevenshteinTermsLimit;
   if (4 - First < argc) {
-    res = ElementTraits::evaluateArg(maxTerms, tmpValue, funcName, args, 4 - First, isFilter, ctx);
+    res = ElementTraits::evaluateArg(maxTerms, tmpValue, funcName, args,
+                                     4 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return res.withError([&](result::Error& err) {
-        err.appendErrorMessage(errorSuffix);
-      });
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
 
@@ -2915,7 +2912,8 @@ Result fromFuncPhraseTerms(char const* funcName,
   typename ElementTraits::ValueType termValue;
   irs::string_ref term;
   for (size_t i = 0; i < argc; ++i) {
-    auto res = ElementTraits::evaluateArg(term, termValue, subFuncName, array, i, filter != nullptr, ctx);
+    auto res = ElementTraits::evaluateArg(term, termValue, subFuncName, array,
+                                          i, filter != nullptr, ctx);
 
     if (res.fail()) {
       return res.withError([&](result::Error& err) {
@@ -2943,16 +2941,12 @@ Result fromFuncPhraseTerms(char const* funcName,
   return {};
 }
 
-template<size_t First, typename ElementType,
-         typename ElementTraits = ArgsTraits<ElementType>>
-Result getInRangeArguments(char const* funcName, bool isFilter,
-                           QueryContext const& ctx,
-                           ElementType const& args,
-                           aql::AstNode const** field,
+template <size_t First, typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
+Result getInRangeArguments(char const* funcName, bool isFilter, QueryContext const& ctx,
+                           ElementType const& args, aql::AstNode const** field,
                            typename ElementTraits::ValueType& min, bool& minInclude,
                            typename ElementTraits::ValueType& max, bool& maxInclude,
-                           bool& ret,
-                           std::string const& errorSuffix = std::string()) {
+                           bool& ret, std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
     return error::nondeterministicArgs(funcName).withError(
         [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
@@ -2977,14 +2971,16 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
 
   // (3 - First) argument defines inclusion of lower boundary
   typename ElementTraits::ValueType includeValue;
-  auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName, args, 3 - First, isFilter, ctx);
+  auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName,
+                                        args, 3 - First, isFilter, ctx);
   if (res.fail()) {
     return res.withError(
         [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   // (4 - First) argument defines inclusion of upper boundary
-  res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args, 4 - First, isFilter, ctx);
+  res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args,
+                                   4 - First, isFilter, ctx);
   if (res.fail()) {
     return res.withError(
         [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
@@ -2992,7 +2988,8 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
 
   // (1 - First) argument defines a lower boundary
   {
-    auto res = ElementTraits::getMemberValue(args, 1 - First, funcName, min, isFilter, ctx, ret);
+    auto res = ElementTraits::getMemberValue(args, 1 - First, funcName, min,
+                                             isFilter, ctx, ret);
     if (res.fail()) {
       return res.withError(
           [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
@@ -3000,7 +2997,8 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
   }
   // (2 - First) argument defines an upper boundary
   {
-    auto res = ElementTraits::getMemberValue(args, 2 - First, funcName, max, isFilter, ctx, ret);
+    auto res = ElementTraits::getMemberValue(args, 2 - First, funcName, max,
+                                             isFilter, ctx, ret);
     if (res.fail()) {
       return res.withError(
           [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
