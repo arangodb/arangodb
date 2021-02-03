@@ -1,7 +1,7 @@
 devel
 -----
 
-* Extend the "move-calculations-up optimizer" rule so that it can move
+* Extend the "move-calculations-up" optimizer rule so that it can move
   calculations out of subqueries into the outer query.
 
 * Fix warnings about suggest-override which can break builds when warnings
