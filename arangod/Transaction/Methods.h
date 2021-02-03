@@ -391,7 +391,7 @@ class Methods {
 #endif
 
   static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
-                                        arangodb::velocypack::Slice value);
+                                              arangodb::velocypack::Slice value);
 
  private:
   /// @brief build a VPack object with _id, _key and _rev and possibly
