@@ -30,7 +30,6 @@
 const analyzers = require("@arangodb/analyzers");
 const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
-const db = require("@arangodb").db;
 const isEnterprise = require("internal").isEnterprise();
 
 function cleanup() {
@@ -143,6 +142,16 @@ function createModifyCollection() {
   c.truncate({ compact: false });
 }
 
+function createMultiShard() {
+  // more than one shard:
+  c = db._create("UnitTestsDumpShards", { numberOfShards : 9 });
+  l = [];
+  for (i = 0; i < 1000; ++i) {
+    l.push({ _key : String(7 + (i*42)), value: i, more: { value: [ i, i ] } });
+  }
+  c.save(l);
+}
+
 function createAutoIncKeyGen() {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpKeygen", {
@@ -169,7 +178,8 @@ function createPaddedKeyGen() {
     keyOptions: {
       type: "padded",
       allowUserKeys: false
-    }
+    },
+    numberOfShards : 2 // single will ignore this...
   });
 
   let docs = [];
@@ -189,7 +199,8 @@ function createUUIDKeyGen() {
     keyOptions: {
       type: "uuid",
       allowUserKeys: false
-    }
+    },
+    numberOfShards : 2 // single will ignore this...
   });
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -335,6 +346,11 @@ function createView() {
   } catch (err) {}
 }
 
+function createReplicationFactors() {
+  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 2, numberOfShards: 7 });
+  db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
+}
+
 function createJobs() {
   db._useDatabase("UnitTestsDumpSrc");
   // insert an entry into _jobs collection
@@ -360,15 +376,15 @@ function createFoxx() {
   const FoxxManager = require('@arangodb/foxx/manager');
   FoxxManager.install(SERVICE_PATH, '/test');
   db._useDatabase('UnitTestsDumpDst');
+}
+
+function createAnalyzers() {
   // trigger analyzers cache population in dst database
   // this one should be removed
   analyzers.save("custom_dst", "delimiter", { delimiter : "," }, [ "frequency" ]);
   // this one should be replaced
   analyzers.save("custom", "delimiter", { delimiter : "," }, [ "frequency" ]);
 }
-
-
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 /**
  * @brief Only if enterprise mode:
@@ -380,7 +396,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
  *          Connect i - 1 <- i
  *          Connect i -> i + 1
  */
-function setupSmartGraph() {
+function createSmartGraph() {
   if (!isEnterprise) {
     return;
   }
@@ -418,7 +434,7 @@ function setupSmartGraph() {
  * @brief Only if enterprise mode:
  *        Creates an arangosearch over smart edge collection
  */
-function setupSmartArangoSearch() {
+function createSmartArangoSearch() {
   if (!isEnterprise) {
     return;
   }
@@ -454,7 +470,7 @@ function setupSmartArangoSearch() {
  * @brief Only if enterprise mode:
  *        Creates a SatelliteCollection with 100 documents
  */
-function setupSatelliteCollections() {
+function createSatelliteCollections() {
   if (!isEnterprise) {
     return;
   }
@@ -474,7 +490,7 @@ function setupSatelliteCollections() {
  * @brief Only if enterprise mode:
  *        Creates a SatelliteGraph
  */
-function setupSatelliteGraphs() {
+function createSatelliteGraphs() {
   if (!isEnterprise) {
     return;
   }
@@ -562,7 +578,7 @@ function setupSatelliteGraphs() {
  *        database containing a SmartGraph with edited smart attribute
  *        value could not be restored.
  */
-function setupSmartGraphRegressionTest() {
+function createSmartGraphRegressionTest() {
   if (!isEnterprise) {
     return;
   }
@@ -590,17 +606,18 @@ function setupSmartGraphRegressionTest() {
   db._update(saved[0], { cheesyness: "bread" });  
 }
 
-exports.setupSmartGraph = setupSmartGraph;
-exports.setupSmartArangoSearch = setupSmartArangoSearch;
-exports.setupSatelliteCollections = setupSatelliteCollections;
-exports.setupSatelliteGraphs = setupSatelliteGraphs;
-exports.setupSmartGraphRegressionTest = setupSmartGraphRegressionTest;
+exports.createSmartGraph = createSmartGraph;
+exports.createSmartArangoSearch = createSmartArangoSearch;
+exports.createSatelliteCollections = createSatelliteCollections;
+exports.createSatelliteGraphs = createSatelliteGraphs;
+exports.createSmartGraphRegressionTest = createSmartGraphRegressionTest;
 
 exports.cleanup = cleanup;
 exports.createEmpty = createEmpty;
 exports.createMany = createMany;
 exports.createOrder = createOrder;
 exports.createModifyCollection = createModifyCollection;
+exports.createMultiShard = createMultiShard;
 exports.createAutoIncKeyGen = createAutoIncKeyGen;
 exports.createPaddedKeyGen = createPaddedKeyGen;
 exports.createUUIDKeyGen = createUUIDKeyGen;
@@ -608,5 +625,7 @@ exports.createStrings = createStrings;
 exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
+exports.createReplicationFactors = createReplicationFactors;
 exports.createJobs = createJobs;
 exports.createFoxx = createFoxx;
+exports.createAnalyzers = createAnalyzers;
