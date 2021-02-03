@@ -235,6 +235,15 @@ static void __attribute__((noinline)) DTraceVstCommTaskProcessMessage(size_t th)
 static void DTraceVstCommTaskProcessMessage(size_t) {}
 #endif
 
+template <SocketType T>
+std::string const& VstCommTask<T>::url(VstRequest* req) {
+  if (this->_url.empty() && req != nullptr) {
+    this->_url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+  }
+  return this->_url;
+}
+
 /// process a VST message
 template <SocketType T>
 void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t messageId) {
@@ -302,10 +311,7 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
     LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
         << "\"vst-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << VstRequest::translateMethod(req->requestType()) << "\",\""
-        << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
-        << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
-        << "\"";
+        << VstRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     // TODO use different token if authentication header is present
     CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
@@ -373,14 +379,12 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
         << this->_connectionInfo.clientAddress << "\"," << stat.timingsCsv();
   }
 
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
-
   // and give some request information
   LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId()
       << "\",\"" << this->_connectionInfo.clientAddress << "\",\""
-      << static_cast<int>(response.responseCode()) << ","
-      << "\"," << Logger::FIXED(totalTime, 6);
+      << url(nullptr) << "\",\"" << static_cast<int>(response.responseCode()) << "\","
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
 
   resItem->stat = std::move(stat);
 

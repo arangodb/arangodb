@@ -52,15 +52,11 @@ class GeneralCommTask : public CommTask {
   
   bool stopped() const { return _stopped.load(std::memory_order_acquire); }
     
-  protected:
-
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
   
   /// set / reset connection timeout
   virtual void setIOTimeout() = 0;
-  
- protected:
   
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
@@ -70,6 +66,7 @@ class GeneralCommTask : public CommTask {
   
   bool _reading;
   bool _writing;
+  std::string _url;
   
  private:
   

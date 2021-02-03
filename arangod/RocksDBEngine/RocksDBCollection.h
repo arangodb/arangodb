@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
 
+#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -69,7 +70,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// return bounds for all documents
   RocksDBKeyBounds bounds() const override;
-  
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -95,7 +96,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
 
-  /// @brief returns the LocalDocumentId and the revision id for the document with the 
+  /// @brief returns the LocalDocumentId and the revision id for the document with the
   /// specified key.
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
@@ -140,12 +141,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool didPartialUpgrade() override;
   Result cleanupAfterUpgrade() override;
 
- protected:
+
+ private:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 LocalDocumentId expectedId, ManagedDocumentResult& previous,
                 OperationOptions& options);
 
- private:
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
@@ -182,7 +183,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                        rocksdb::PinnableSlice& ps,
                                        bool readCache,
                                        bool fillCache) const;
-  
+
   bool lookupDocumentVPack(transaction::Methods*,
                            LocalDocumentId const& documentId,
                            IndexIterator::DocumentCallback const& cb,
@@ -197,10 +198,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   inline bool useCache() const noexcept {
     return (_cacheEnabled && _cache);
   }
-  
+
   /// @brief track key in file
   void blackListKey(RocksDBKey const& key) const;
-  
+
   /// @brief can use non transactional range delete in write ahead log
   bool canUseRangeDeleteInWal() const;
 
@@ -214,6 +215,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;
+  arangodb::TransactionStatistics& _statistics;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

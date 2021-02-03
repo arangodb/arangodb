@@ -1,6 +1,34 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
+* Added metrics for document read and write operations:
+
+  - `arangodb_document_writes: Total number of document write operations
+    (successful and failed) not performed by synchronous replication.
+  - `arangodb_document_writes_replication`: Total number of document write
+    operations (successful and failed) by synchronous replication.
+  - `arangodb_collection_truncates`: Total number of collection truncate
+    operations (successful and failed) not performed by synchronous replication.
+  - `arangodb_collection_truncates_replication`: Total number of collection
+    truncate
+    operations (successful and failed) by synchronous replication.
+  - `arangodb_document_read_time`: Execution time histogram of all document read
+    operations (successful and failed) [s].
+  - `arangodb_document_insert_time`: Execution time histogram of all document
+    insert
+    operations (successful and failed) [s].
+  - `arangodb_document_replace_time`: Execution time histogram of all document
+    replace
+    operations (successful and failed) [s].
+  - `arangodb_document_remove_time`: Execution time histogram of all document
+    remove
+    operations (successful and failed) [s].
+  - `arangodb_document_update_time`: Execution time histogram of all document
+    update
+    operations (successful and failed) [s].
+  - `arangodb_collection_truncate_time`: Execution time histogram of all
+    collection truncate operations (successful and failed) [s].
+
 * Fixed issue #12543: Unused Foxx service config can not be discarded.
 
 * Fixed issue #12363: Foxx HTTP API upgrade/replace always enables development
