@@ -33,52 +33,23 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
 
+namespace {
+constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
+};
+
 RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
-    aql::QueryContext& query,
-    std::unordered_map<ServerID, aql::EngineId> const* engines, BaseOptions* options)
-    : TraverserCache(query, options),
-      _datalake(options->resourceMonitor()),
+    std::unordered_map<ServerID, aql::EngineId> const* engines, ResourceMonitor& resourceMonitor)
+    : _insertedDocuments{0},
+      _filteredDocuments{0},
+      _resourceMonitor{resourceMonitor},
+      _stringHeap(resourceMonitor, 4096),  /* arbitrary block-size may be adjusted for performance */
+      _datalake(resourceMonitor),
       _engines(engines) {}
 
-
-bool RefactoredClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
-                                                   VPackBuilder& result) {
-  TRI_ASSERT(false);
-  // There will be no idString of length above uint32_t
-  auto vertexSlice = getCachedVertex(VertexType{id.data(), static_cast<uint32_t>(id.length())});
-
-  if (vertexSlice.isNone()) {
-    // Register a warning. It is okay though but helps the user
-    std::string msg = "vertex '" + id.toString() + "' not found";
-    _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
-
-    // Document not found append NULL
-    result.add(arangodb::velocypack::Slice::nullSlice());
-    return false;
-  }
-
-  result.add(vertexSlice);
-  return true;
-}
-
-bool RefactoredClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
-                                                   arangodb::aql::AqlValue& result) {
-  TRI_ASSERT(false);
-  // There will be no idString of length above uint32_t
-  auto vertexSlice = getCachedVertex(VertexType{id.data(), static_cast<uint32_t>(id.length())});
-
-  if (vertexSlice.isNone()) {
-    // Register a warning. It is okay though but helps the user
-    std::string msg = "vertex '" + id.toString() + "' not found";
-    _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
-
-    // Document not found append NULL
-    result = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
-    return false;
-  }
-
-  result = arangodb::aql::AqlValue(vertexSlice);
-  return true;
+void RefactoredClusterTraverserCache::clear() {
+  _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
+  _stringHeap.clear();
+  _persistedStrings.clear();
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
@@ -184,4 +155,21 @@ auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge, bool b
     return _edgeDataBackward.at(edge);
   }
   return _edgeDataForward.at(edge);
+}
+
+auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) -> arangodb::velocypack::HashedStringRef {
+  auto it = _persistedStrings.find(idString);
+  if (it != _persistedStrings.end()) {
+    return *it;
+  }
+  auto res = _stringHeap.registerString(idString);
+  {
+    ResourceUsageScope guard(_resourceMonitor, ::costPerPersistedString);
+   
+    _persistedStrings.emplace(res);
+    
+    // now make the TraverserCache responsible for memory tracking
+    guard.steal();
+  }
+  return res;
 }

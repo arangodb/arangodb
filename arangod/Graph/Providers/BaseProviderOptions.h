@@ -71,16 +71,13 @@ struct BaseProviderOptions {
 
 struct ClusterBaseProviderOptions {
  public:
-  ClusterBaseProviderOptions(arangodb::aql::FixedVarExpressionContext const& expressionContext,
-                             RefactoredClusterTraverserCache* cache, bool backward);
+  ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache, bool backward);
 
-  arangodb::aql::FixedVarExpressionContext const& getExpressionContext();
   RefactoredClusterTraverserCache* getCache();
   bool isBackward();
 
  private:
-  arangodb::aql::FixedVarExpressionContext const& _expressionCtx;  // not allowed to be a copy!
-  RefactoredClusterTraverserCache* _cache;
+  std::shared_ptr<RefactoredClusterTraverserCache> _cache;
   bool _backward;
 };
 

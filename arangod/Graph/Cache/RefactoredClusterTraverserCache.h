@@ -57,26 +57,14 @@ class StringRef;
 namespace graph {
 struct BaseOptions;
 
-class RefactoredClusterTraverserCache final : public TraverserCache {
+class RefactoredClusterTraverserCache {
  public:
-  RefactoredClusterTraverserCache(aql::QueryContext& query,
-                                  std::unordered_map<ServerID, aql::EngineId> const* engines,
-                                  BaseOptions*);
+  RefactoredClusterTraverserCache(std::unordered_map<ServerID, aql::EngineId> const* engines,
+                                  ResourceMonitor& resourceMonitor);
 
   ~RefactoredClusterTraverserCache() = default;
 
-  /// Lookup document in cache and add it into the builder
-  bool appendVertex(arangodb::velocypack::StringRef idString,
-                    velocypack::Builder& result) override;
-  bool appendVertex(arangodb::velocypack::StringRef idString,
-                    arangodb::aql::AqlValue& result) override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Return AQL value containing the result
-  ///        The document will either be fetched from storage or looked up in
-  ///        the datalake (on the coordinator)
-  //////////////////////////////////////////////////////////////////////////////
-
+  void clear();
 
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines() const {
     return _engines;
@@ -102,8 +90,22 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
 
   auto getCachedVertex(VertexType const& vertex) -> VPackSlice;
   auto getCachedEdge(EdgeType const& edge, bool backward) -> VPackSlice;
+  auto persistString(arangodb::velocypack::HashedStringRef idString) -> arangodb::velocypack::HashedStringRef;
+  
 
  private:
+  size_t _insertedDocuments;
+  size_t _filteredDocuments;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Stringheap to take care of _id strings, s.t. they stay valid
+  ///        during the entire traversal.
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::StringHeap _stringHeap;
+  std::unordered_set<VertexType> _persistedStrings;
+
   /// @brief dump for our edge and vertex documents
   arangodb::graph::ClusterGraphDatalake _datalake;
 
@@ -116,8 +118,8 @@ class RefactoredClusterTraverserCache final : public TraverserCache {
   std::unordered_map<VertexType, std::vector<std::pair<EdgeType, VertexType>>> _vertexConnectedEdgesBackward;
 
   /// @brief edge reference to edge data slice (TODO: one map will be enough here)
-  std::unordered_map<VertexType, velocypack::Slice> _edgeDataForward;
-  std::unordered_map<VertexType, velocypack::Slice> _edgeDataBackward;
+  std::unordered_map<EdgeType, velocypack::Slice> _edgeDataForward;
+  std::unordered_map<EdgeType, velocypack::Slice> _edgeDataBackward;
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 };

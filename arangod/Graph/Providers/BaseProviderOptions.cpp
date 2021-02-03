@@ -38,18 +38,13 @@ std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const
   return _indexInformation;
 }
 
-ClusterBaseProviderOptions::ClusterBaseProviderOptions(
-    arangodb::aql::FixedVarExpressionContext const& expressionContext,
-    RefactoredClusterTraverserCache* cache, bool backward)
-    : _expressionCtx(expressionContext), _cache(cache), _backward(backward) {}
+ClusterBaseProviderOptions::ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache,
+                                                       bool backward)
+    : _cache(std::move(cache)), _backward(backward) {}
 
 RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
   TRI_ASSERT(_cache != nullptr);
-  return _cache;
-}
-
-arangodb::aql::FixedVarExpressionContext const& ClusterBaseProviderOptions::getExpressionContext() {
-  return _expressionCtx;
+  return _cache.get();
 }
 
 bool ClusterBaseProviderOptions::isBackward() { return _backward; }

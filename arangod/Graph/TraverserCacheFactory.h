@@ -29,6 +29,8 @@
 #include "Cluster/ClusterInfo.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 class QueryContext;
 }
@@ -40,10 +42,6 @@ namespace CacheFactory {
 TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDocumentCache,
                             std::unordered_map<ServerID, aql::EngineId> const* engines,
                             BaseOptions* opts);
-
-TraverserCache* CreateRefactoredCache(arangodb::aql::QueryContext& query,
-                                      std::unordered_map<ServerID, aql::EngineId> const* engines,
-                                      BaseOptions* opts);
 
 }  // namespace CacheFactory
 }  // namespace graph

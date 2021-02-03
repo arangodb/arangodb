@@ -145,6 +145,8 @@ class MockGraphProvider {
 
     bool isProcessable() const { return _isProcessable; }
 
+    bool isLooseEnd() const { return !isProcessable(); }
+
     void resolve() {
       TRI_ASSERT(!isProcessable());
       _isProcessable = true;

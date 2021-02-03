@@ -31,7 +31,6 @@
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 
-#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <memory>
 
 namespace arangodb {
@@ -152,15 +151,12 @@ struct BaseOptions {
   arangodb::ResourceMonitor& resourceMonitor() const;
 
   TraverserCache* cache();
-  TraverserCache* refactoredCache();
+
   TraverserCache* cache() const;
   void ensureCache();
-  void ensureRefactoredCache();
 
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, aql::EngineId> const* engines);
-
-  void activateRefactoredCache(std::unordered_map<ServerID, aql::EngineId> const* engines);
 
   std::map<std::string, std::string> const& collectionToShard() const {
     return _collectionToShard;

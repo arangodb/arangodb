@@ -153,7 +153,6 @@ struct ClusterProvider {
                                 std::vector<Step*>& result) -> void;
 
   // fetch edges and store in cache
-  auto fetchEdgesFromEnginesWithVariables(VertexType const& vertexId, size_t& depth) -> Result; // unused right now
   auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
 
   void destroyEngines(){};

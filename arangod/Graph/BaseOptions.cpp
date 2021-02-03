@@ -432,11 +432,6 @@ arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
 }
 
-TraverserCache* BaseOptions::refactoredCache() {
-  ensureRefactoredCache();
-  return _cache.get();
-}
-
 TraverserCache* BaseOptions::cache() {
   ensureCache();
   return _cache.get();
@@ -455,32 +450,11 @@ void BaseOptions::ensureCache() {
   TRI_ASSERT(_cache != nullptr);
 }
 
-void BaseOptions::ensureRefactoredCache() {
-  // Will replace the old (above) one after refactor is done.
-
-  if (_cache == nullptr) {
-    // If the Coordinator does NOT activate the Cache
-    // the datalake is not created and cluster data cannot
-    // be persisted anywhere.
-    TRI_ASSERT(!arangodb::ServerState::instance()->isCoordinator());
-    // In production just gracefully initialize
-    // the cache without document cache, s.t. system does not crash
-    activateRefactoredCache(nullptr);
-  }
-  TRI_ASSERT(_cache != nullptr);
-}
-
 void BaseOptions::activateCache(bool enableDocumentCache,
                                 std::unordered_map<ServerID, aql::EngineId> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
-}
-
-void BaseOptions::activateRefactoredCache(std::unordered_map<ServerID, aql::EngineId> const* engines) {
-  // Do not call this twice.
-  TRI_ASSERT(_cache == nullptr);
-  _cache.reset(CacheFactory::CreateRefactoredCache(_query, engines, this));
 }
 
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {

@@ -24,6 +24,7 @@
 #include "TraverserCacheFactory.h"
 
 #include "Aql/QueryContext.h"
+#include "Basics/ResourceUsage.h"
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
@@ -57,11 +58,4 @@ TraverserCache* CacheFactory::CreateCache(arangodb::aql::QueryContext& query,
     // fallthrough intentional
   }
   return new TraverserCache(query, opts);
-}
-
-TraverserCache* CacheFactory::CreateRefactoredCache(
-    arangodb::aql::QueryContext& query,
-    std::unordered_map<ServerID, aql::EngineId> const* engines, BaseOptions* opts) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  return new RefactoredClusterTraverserCache(query, engines, opts);
 }

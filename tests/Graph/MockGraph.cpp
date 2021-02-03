@@ -137,6 +137,17 @@ void MockGraph::prepareServer(MockDBServer& server) const {
 }
 
 template <>
+void MockGraph::prepareServer(MockCoordinator& server) const {
+  std::string db = "_system";
+  std::ignore = server.createCollection(db, getVertexCollectionName(),
+                                        getVertexShardNameServerPairs(),
+                                        TRI_COL_TYPE_DOCUMENT);
+
+  std::ignore = server.createCollection(db, getEdgeCollectionName(),
+                                        getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
+}
+
+template <>
 void MockGraph::simulateApi(MockDBServer const&,
                             std::vector<arangodb::tests::PreparedRequestResponse>& preparedResponses) const {
   // NOTE: We need the server input only for template magic.
