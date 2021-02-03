@@ -41,6 +41,9 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace tests {
+
+class PreparedRequestResponse;
+
 namespace graph {
 
 class MockGraph {
@@ -100,6 +103,10 @@ class MockGraph {
 
   template <class ServerType>
   void prepareServer(ServerType& server) const;
+
+  template <class ServerType>
+  void simulateApi(ServerType const&,
+                   std::vector<arangodb::tests::PreparedRequestResponse>& preparedResponses) const;
 
   void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
                  std::string const& edgeCollectionName) const;

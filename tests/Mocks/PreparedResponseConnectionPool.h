@@ -25,14 +25,13 @@
 
 #include "Network/ConnectionPool.h"
 #include "Rest/CommonDefines.h"
+#include "Rest/GeneralResponse.h"
 
 #include <vector>
 
 struct GeneralRequestMock;
 
 namespace arangodb {
-
-class GeneralResponse;
 
 class AgencyCache;
 

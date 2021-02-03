@@ -24,6 +24,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Mocks/PreparedResponseConnectionPool.h"
 #include "Mocks/Servers.h"
 
 #include "Transaction/StandaloneContext.h"
@@ -133,4 +134,13 @@ void MockGraph::prepareServer(MockDBServer& server) const {
 
   // NOTE: This only works on a single shard yet.
   storeData(server.getSystemDatabase(), _vertexShards[0].first, _edgeShards[0].first);
+}
+
+template <>
+void MockGraph::simulateApi(MockDBServer const&,
+                            std::vector<arangodb::tests::PreparedRequestResponse>& preparedResponses) const {
+  // NOTE: We need the server input only for template magic.
+  // Can be solved differently, but for a test i think this is sufficient.
+
+  // TODO Implement me!
 }
