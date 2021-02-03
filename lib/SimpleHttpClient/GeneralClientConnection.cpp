@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -181,18 +181,6 @@ bool GeneralClientConnection::connect() {
 
 void GeneralClientConnection::disconnect() {
   if (isConnected()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if ((_written + _read) == 0) {
-      std::string bt;
-      TRI_GetBacktrace(bt);
-      LOG_TOPIC("b10b9", WARN, Logger::COMMUNICATION)
-          << "Closing HTTP-connection right after opening it without sending "
-             "data!"
-          << bt;
-    }
-    _written = 0;
-    _read = 0;
-#endif
     disconnectSocket();
     _numConnectRetries = 0;
     _isConnected = false;

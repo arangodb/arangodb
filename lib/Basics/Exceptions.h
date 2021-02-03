@@ -75,7 +75,6 @@ class Exception final : public virtual std::exception {
  public:
   static std::string FillExceptionString(ErrorCode, ...);
   static std::string FillFormatExceptionString(char const* format, ...);
-  static void SetVerbose(bool);
 
  public:
   Exception(ErrorCode code, char const* file, int line);
