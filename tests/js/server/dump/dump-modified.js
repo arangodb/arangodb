@@ -53,7 +53,7 @@ jsunity.run(function dump_single_testsuite() {
   }
 
   deriveTestSuite(
-    baseTests(args = {
+    baseTests({
       // testEmpty
       emptyIndexes: 2,
       // testMany

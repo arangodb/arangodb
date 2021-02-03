@@ -32,7 +32,7 @@ const base = require("fs").join(
   require('internal').pathForTesting('server'),
   'dump',
   'dump-setup-common.inc');
-print(base)
+
 const setup = require(base);
 
 (function () {
