@@ -316,6 +316,8 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
       do {
         LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
             << " Checking collection '" << collection->name() << "' in database '" << vocbase.name() << "'";
+        // we use getCollectionNameForShard as getCollectionNT here is still not available
+        // but shard-collection mapping is loaded eventually
         clusterCollectionName = clusterInfo.getCollectionNameForShard(collection->name());
         if (!clusterCollectionName.empty()) {
          break;
