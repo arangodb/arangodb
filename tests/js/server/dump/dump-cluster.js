@@ -80,15 +80,3 @@ jsunity.run(function dump_cluster_testsuite() {
 });
 
 return jsunity.done();
-
-
-
-
-//const internal = require("internal");
-//const jsunity = require("jsunity");
-const arangosh = require('@arangodb/arangosh');
-let analyzers = require("@arangodb/analyzers");
-const isEnterprise = internal.isEnterprise();
-const db = internal.db;
-const {assertEqual, assertNotEqual, assertTrue, assertFalse,
-       assertUndefined, assertTypeOf, assertNull, assertNotNull} = jsunity.jsUnity.assertions;
