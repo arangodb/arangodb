@@ -8015,7 +8015,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
       _isSuitableLevel.emplace(true);
     }
 
-    bool before(ExecutionNode* node) final {
+    bool before(ExecutionNode* node) override final {
       TRI_ASSERT(node->getType() != EN::MUTEX); // should never appear here
 
       if (node->getType() == ExecutionNode::SUBQUERY) {
@@ -8031,14 +8031,14 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
       return abort;
     }
 
-    bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) final {
+    bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) override final {
       _isSuitableLevel.emplace(true);
 
       constexpr bool enterSubqueries = true;
       return enterSubqueries;
     }
 
-    void leaveSubquery(ExecutionNode* subqueryNode, ExecutionNode*) final {
+    void leaveSubquery(ExecutionNode* subqueryNode, ExecutionNode*) override final {
       TRI_ASSERT(!_isSuitableLevel.empty());
 
       const bool subqueryDoesNotSkipInside = _isSuitableLevel.top();
