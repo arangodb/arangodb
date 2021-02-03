@@ -167,13 +167,18 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
     arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
     // generate and add body here
     VPackBuilder builder;
+    builder.openObject();
+    builder.add("lockInfo", VPackValue(VPackValueType::Object));
+    builder.add("READ", VPackValue(VPackValueType::Array));
+    // append here the collection names (?) <-- TODO: Check RestAqlHandler.cpp:230
+    builder.add(VPackValue(_vertexCollectionName));
+    builder.add(VPackValue(_edgeCollectionName));
+    builder.close(); // object lockInfo
+    builder.close(); // object (outer)
 
-    // TODO: populate builder
     prep.addBody(builder.slice());
     prep.addSuffix("setup");
-    // TODO: JSON {
-    //  lock/locking: read [ <array ids> ] <-- locally available in MockGraph
-    // }
+
 
     prep.setRequestType(arangodb::rest::RequestType::POST);
     auto fakeRequest = prep.generateRequest();
