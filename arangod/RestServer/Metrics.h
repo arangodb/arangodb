@@ -40,6 +40,10 @@
 
 #include "counter.h"
 
+#define DOCUMENT_METRIC(name) static char const* name = R"RRR(\
+#include "MetricsDocu/name.yaml"\
+)RRR"
+
 class Metric {
  public:
   Metric(std::string const& name, std::string const& help, std::string_view const& docs,  std::string const& labels);
@@ -309,6 +313,25 @@ struct fixed_scale_t : public scale_t<T> {
 };
 
 template<typename T>
+inline int32_t log2rough(T x) {
+  return log2rough((double) x);
+}
+
+template<>
+inline int32_t log2rough<double>(double x) {
+  uint64_t y;
+  memcpy(&y, &x, 8);
+  return ((int32_t)(y >> 52) & 0x7ff) - 1023;
+}
+
+template<>
+inline int32_t log2rough<float>(float x) {
+  uint32_t y;
+  memcpy(&y, &x, 4);
+  return (int32_t) ((y >> 23) & 0xff) - 127;
+}
+
+template<typename T>
 struct log_scale_t : public scale_t<T> {
  public:
 
@@ -317,16 +340,28 @@ struct log_scale_t : public scale_t<T> {
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
-    TRI_ASSERT(base > T(0));
-    double nn = -1.0 * (n - 1);
-    for (auto& i : this->_delim) {
-      i = static_cast<T>(
-        static_cast<double>(high - low) *
-        std::pow(static_cast<double>(base), static_cast<double>(nn++)) + static_cast<double>(low));
+    TRI_ASSERT((double) base == 2.0 || (double) base == 8.0);
+    // We want to have n buckets so we are looking for n-1 delimiters
+    // between low and high. The first bucket will include everything below
+    // low and everything up to the first delimiter. The last bucket will
+    // include everything higher than the last delimiter and everything
+    // above high.
+    // First we compute _mul with this equation:
+    //   low + _base ^ n / _mul = high
+    // Thus: _mul = _base ^ n / (high - low)
+    // Then the boundaries are:
+    //   low + _base ^ i / _mul   for  i = 1, 2, ..., n-1
+    // In the end, we compute the bucket with this formula:
+    //   log2rough((val - low) * _mul) / _div
+    // where _div is 1 for base 2 and 3 for base 8.
+    // We only have to be careful for the boundaries.
+    _mul = static_cast<T>(
+              std::pow((double) base, (double) n) / (double) (high - low));
+    for (size_t i = 0; i < n-1; ++i) {
+      this->_delim[i] = low + std::pow((double) base, (double) i+1) / _mul;
     }
-    _div = this->_delim.front() - low;
-    TRI_ASSERT(_div > T(0));
-    _lbase = log(_base);
+    _div = (base == 2) ? 1 : 3;
+    _inFirst = (this->_low + this->_delim[0]) / 2;
   }
   virtual ~log_scale_t() = default;
   /**
@@ -334,8 +369,16 @@ struct log_scale_t : public scale_t<T> {
    * @param val value
    * @return    index
    */
+#if 0
   size_t pos(T const& val) const {
     return static_cast<size_t>(1+std::floor(log((val - this->_low)/_div)/_lbase));
+  }
+#endif
+  size_t pos(T const& val) const {
+    T tmp = (val < this->_inFirst) ? this->_inFirst : val;
+    int32_t l = log2rough((tmp - this->_low) * _mul) / _div;
+    size_t p = static_cast<size_t>(l);
+    return (p < this->_n) ? p : this->_n - 1;
   }
   /**
    * @brief Dump to builder
@@ -355,8 +398,10 @@ struct log_scale_t : public scale_t<T> {
   }
 
  private:
-  T _base, _div;
-  double _lbase;
+  T _base;
+  T _mul;
+  T _inFirst;
+  int32_t _div;
 };
 
 template<typename T>
@@ -386,7 +431,9 @@ struct lin_scale_t : public scale_t<T> {
    * @return    index
    */
   size_t pos(T const& val) const {
-    return static_cast<size_t>(std::floor((val - this->_low)/ _div));
+    T tmp = (val < this->_low) ? this->_low : val;
+    size_t pos = static_cast<size_t>(std::floor((tmp - this->_low) / _div));
+    return (pos > this->_n - 1) ? (this->_n - 1) : pos;
   }
 
   virtual void toVelocyPack(VPackBuilder& b) const override {
