@@ -474,7 +474,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
-  _resourceMonitor.setMemoryLimit(_options.memoryLimit);
+  _resourceMonitor.memoryLimit(_options.memoryLimit);
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());

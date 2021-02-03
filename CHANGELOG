@@ -7,12 +7,26 @@ devel
   This is also the default value and the same behavior as in previous versions
   of ArangoDB. 
   Setting the option to a value greater zero will mean that the total memory
-  usage of all AQL queries will be limited to the configured value. The limit
-  is enforced by each server, i.e. it can be set independently for coordinators,
-  DB servers etc. The limit is approximate, in the same fashion as the per-query
-  limit provided by the option `--query.memory-limit` is.
+  usage of all AQL queries will be limited approximately to the configured value. 
+  The limit is enforced by each server in a cluster independently, i.e. it can 
+  be set separately for coordinators, DB servers etc. The memory usage of a 
+  query that runs on multiple servers in parallel is not summed up, but tracked
+  seperately on each server.
+  If a memory allocation in a query would lead to the violation of the configured
+  global memory limit, then the query is aborted with error code 32 ("resource 
+  limit exceeded").
+  The global memory limit is approximate, in the same fashion as the per-query
+  limit provided by the option `--query.memory-limit` is. Some operations, 
+  namely calls to AQL functions and their intermediate results, are currently
+  not properly tracked.
   If both `--query.global-memory-limit` and `--query.memory-limit` are set,
-  the former must be at least as high as the latter.
+  the former must be set at least as high as the latter.
+
+  To reduce the cost of globally tracking the memory usage of AQL queries, the
+  global memory usage counter is only updated in steps of 64 kb, making
+  this also the minimum granularity of the global memory usage figure.
+  In the same fashion, the granularity of the peak memory usage counter inside
+  each query was also adjusted to steps of 64 kb.
 
 * Added startup option `--query.memory-limit-override` to control whether
   individual AQL queries can increase their memory limit via the `memoryLimit`

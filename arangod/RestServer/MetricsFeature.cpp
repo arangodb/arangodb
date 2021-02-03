@@ -39,7 +39,6 @@
 #include "StorageEngine/StorageEngineFeature.h"
 
 #include <chrono>
-#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;

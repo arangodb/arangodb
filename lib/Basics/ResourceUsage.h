@@ -47,44 +47,67 @@ struct ResourceUsage final {
   std::atomic<std::size_t> peakMemoryUsage;
 };
 
-struct ResourceMonitor final {
+struct alignas(64) ResourceMonitor final {
+  /// @brief: granularity of allocations that we track. this should be a 
+  /// power of 2, so dividing by it is efficient!
+  /// note: whatever this value is, it will also dictate the minimum granularity
+  /// of the global memory usage counter, plus the granularity for each query's
+  /// peak memory usage value
+  static constexpr std::size_t bucketSize = 65536;
+
   ResourceMonitor(ResourceMonitor const&) = delete;
   ResourceMonitor& operator=(ResourceMonitor const&) = delete;
 
-  ResourceMonitor() : 
-      currentResources(), 
-      maxMemoryUsage(0) {}
-
+  ResourceMonitor() noexcept;
   ~ResourceMonitor();
 
-  void setMemoryLimit(std::size_t value) { maxMemoryUsage = value; }
+  /// @brief sets a memory limit
+  void memoryLimit(std::size_t value) noexcept;
   
-  std::size_t memoryLimit() const { return maxMemoryUsage; }
+  /// @brief returns the current memory limit
+  std::size_t memoryLimit() const noexcept;
   
-  static void setGlobalMemoryLimit(std::size_t value) { maxGlobalMemoryUsage = value; }
-  static std::size_t globalMemoryLimit() { return maxGlobalMemoryUsage; }
+  /// @brief sets the global memory limit
+  static void globalMemoryLimit(std::size_t value) noexcept;
+
+  /// @brief returns the global memory limit
+  static std::size_t globalMemoryLimit() noexcept;
+
+  /// @brief returns the current global memory usage
+  static std::size_t globalMemoryUsage() noexcept;
 
   /// @brief increase memory usage by <value> bytes. may throw!
   void increaseMemoryUsage(std::size_t value);
 
+  /// @brief decrease memory usage by <value> bytes. will not throw
   void decreaseMemoryUsage(std::size_t value) noexcept;
 
-  void clear() { currentResources.clear(); }
+  /// @brief return the current memory usage of the instance
+  size_t currentMemoryUsage() const noexcept;
   
-  std::size_t peakMemoryUsage() const {
-    return currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
-  }
+  /// @brief return the peak memory usage of the instance
+  std::size_t peakMemoryUsage() const noexcept;
 
-  size_t currentMemoryUsage() const {
-    return currentResources.memoryUsage.load(std::memory_order_relaxed);
+  /// @brief reset counters for the local instance  
+  void clear() noexcept;
+
+  /// @brief calculate the "number of buckets" used by an allocation size.
+  /// for this, we simply divide the size by a constant value, which is large
+  /// enough so that many subsequent small allocations mostly fall into the
+  /// same bucket.
+  static constexpr std::size_t numBuckets(std::size_t value) noexcept {
+    // this is intentionally an integer division, which truncates any remainders.
+    // we want this to be fast, so bucketSize should be a power of 2 and the div
+    // operation can be substituted by a bit shift operation.
+    return value / bucketSize;
   }
 
  private:
-  ResourceUsage currentResources;
-  std::size_t maxMemoryUsage;
+  ResourceUsage _currentResources;
+  std::size_t _memoryLimit;
 
-  static std::size_t maxGlobalMemoryUsage;
-  static std::atomic<std::size_t> globalMemoryUsage;
+  static std::size_t _globalMemoryLimit;
+  static std::atomic<std::size_t> _globalMemoryUsage;
 };
 
 /// @brief RAII object for temporary resource tracking

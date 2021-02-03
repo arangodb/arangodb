@@ -315,8 +315,8 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void QueryRegistryFeature::prepare() {
-  // adjust global memory limit
-  ResourceMonitor::setGlobalMemoryLimit(_queryGlobalMemoryLimit);
+  // set the global memory limit
+  ResourceMonitor::globalMemoryLimit(_queryGlobalMemoryLimit);
 
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
