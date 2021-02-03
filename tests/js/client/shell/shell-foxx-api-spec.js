@@ -1138,6 +1138,54 @@ describe('Foxx service', () => {
     expect(respAfter.development).to.equal(false);
   });
 
+  it('upgrade should retain production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('upgrade should retain development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('upgrade should affect production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "upgrade");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('upgrade should affect development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "upgrade");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should retain production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should revert development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should affect production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "replace");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('replace should affect development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
   const routes = [
     ['GET', '/_api/foxx/service'],
     ['PATCH', '/_api/foxx/service', { source: minimalWorkingZipPath }],
