@@ -259,6 +259,74 @@ symbols are installed, there will be name information about the called procedure
 mangled format) plus the offsets into the procedures. If no debug symbols are
 installed, symbol names and offsets cannot be shown for the stack frames.
 
+### Memory profiling
+
+Starting in 3.6 we have support for heap profiling when using jemalloc on Linux.
+Here is how it is used:
+
+Use this `cmake` option in addition to the normal options:
+
+```
+-DUSE_JEMALLOC_PROF
+```
+
+when building. Make sure you are using the builtin `jemalloc`. You need
+debugging symbols to analyze the heap dumps later on, so compile with
+`-DCMAKE_BUILD_TYPE=Debug` or `RelWithDebInfo`. `Debug` is probably
+less confusing in the end. 
+
+Then set the environment variable for each instance you want to profile:
+
+```
+export MALLOC_CONF="prof:true"
+```
+
+When this is done, `jemalloc` internally does some profiling. You can
+then use this endpoint to get a heap dump:
+
+```
+curl "http://localhost:8529/_admin/status?memory=true" > heap.dump
+```
+
+You can analyze such a heap dump with the `jeprof` tool, either by
+inspecting a single dump like this:
+
+```
+jeprof build/bin/arangod heap.dump
+```
+
+or compare two dumps which were done on the same process to analyze
+the difference:
+
+```
+jeprof build/bin/arangod --base=heap.dump heap.dump2
+```
+
+So far, we have mostly used the `web` command to open a picture in a
+browser. It produces an `svg` file.
+
+The tool isn't perfect, but can often point towards the place which
+produces for example a memory leak or a lot of memory usage.
+
+This is known to work under Linux and the `jeprof` tool comes with the
+`libjemalloc-dev` package on Ubuntu.
+
+Using it with the integration tests is possible; snapshots will be taken before
+the first and after each subsequent testcase executed.
+
+The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
+specified amount of time:
+
+    export SLEEP_FOR=$((5*60))
+    ./scripts/unittest shell_client \
+       --memprof true \
+       --test shell-sleep-grey.js \
+       --oneTestTimeout ((6*60)) \
+       --cleanup false
+    ...
+    ... Saved /tmp/arangosh_qFu12G/shell_client/single_2207100_0_.heap
+    ...
+
 ### Core Dumps
 
 A core dump consists of the recorded state of the working memory of a process at

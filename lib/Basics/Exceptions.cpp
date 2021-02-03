@@ -37,12 +37,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-/// @brief controls if backtraces are printed with exceptions
-static bool WithBackTrace = false;
-
-/// @brief controls whether a backtrace is created for each exception
-void Exception::SetVerbose(bool verbose) { WithBackTrace = verbose; }
-
 /// @brief constructor, without format string
 Exception::Exception(int code, char const* file, int line)
     : _errorMessage(TRI_errno_string(code)), _file(file), _line(line), _code(code) {
@@ -109,16 +103,6 @@ void Exception::appendLocation() noexcept try {
     _errorMessage += std::string(" (exception location: ") + _file + ":" +
                      std::to_string(_line) + ")";
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-  if (WithBackTrace) {
-    _errorMessage += std::string("\n\n");
-    TRI_GetBacktrace(_errorMessage);
-    _errorMessage += std::string("\n\n");
-  }
-#endif
-#endif
 } catch (...) {
   // this function is called from the exception constructor, so it should
   // not itself throw another exception

@@ -1480,7 +1480,9 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         if (res.is(TRI_ERROR_HTTP_CORRUPTED_JSON)) {
           using namespace std::literals::string_literals;
           auto data = std::string(ptr, pos);
-          res.appendErrorMessage(" in message '"s + data + "'");
+          res.withError([&](result::Error& err) {
+            err.appendErrorMessage(" in message '"s + data + "'");
+          });
         }
         return res;
       }
