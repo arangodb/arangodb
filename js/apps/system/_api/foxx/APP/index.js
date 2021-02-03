@@ -194,6 +194,7 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('development', schemas.flag.optional())
 .queryParam('teardown', schemas.flag.default(false))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
@@ -213,6 +214,7 @@ serviceRouter.put(prepareServiceRequestBody, (req, res) => {
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('development', schemas.flag.default(false))
 .queryParam('teardown', schemas.flag.default(true))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
