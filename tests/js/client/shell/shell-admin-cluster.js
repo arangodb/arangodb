@@ -151,21 +151,34 @@ function adminClusterSuite() {
       });
     },
     
-    testCleanoutServer: function () {
+    testCleanoutServerStringNonExisting: function () {
       let coords = getServersByType('coordinator');
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
 
-      let dbservers = getServersByType('dbserver');
-      assertTrue(dbservers.length > 0);
-      let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/cleanOutServer", body: { server: dbservers[0].id }, json: true });
+      // this is assumed to be an invalid server id, so the operation must fail
+      let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/cleanOutServer", body: "testmann123456", json: true });
+      // the server expects an object with a "server" attribute, but no string
+      assertEqual(400, res.status);
+    },
+    
+    testCleanoutServerObjectNonExisting: function () {
+      let coords = getServersByType('coordinator');
+      assertTrue(coords.length > 0);
+      
+      let coordinatorId = coords[0].id;
+      let ep = coords[0].endpoint;
+
+      // this is assumed to be an invalid server id, so the operation must fail
+      let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/cleanOutServer", body: { server: "testmann123456" }, json: true });
       assertEqual(202, res.status);
       assertTrue(res.json.hasOwnProperty("id"));
       assertEqual("string", typeof res.json.id);
       assertMatch(/^\d+/, res.json.id);
     },
+   
   };
 }
 
