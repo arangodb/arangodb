@@ -42,17 +42,7 @@ const setup = require(base);
   setup.createMany();
   setup.createOrder();
   
-  //setup.createModifyCollection();
-  //setup.createAutoIncKeyGen();
-  //setup.createPaddedKeyGen();
-  //setup.createUUIDKeyGen();
-  //setup.createStrings();
-  //setup.createTransactional();
-  //setup.createPersistent();
-  //setup.createView();
-  //setup.createJobs();
   setup.createFoxx();
-  //setup.createAnalyzers();
 })();
 
 return {
