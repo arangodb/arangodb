@@ -99,6 +99,7 @@ v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, T const&);
 
 template <std::size_t n>
 v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, char const (&arg)[n]) {
+  // Note that "n" includes the terminating null byte
   static_assert(n > 0);
   TRI_ASSERT(arg[n-1] == '\0');
   return v8Utf8StringFactory(isolate, arg, n-1);
