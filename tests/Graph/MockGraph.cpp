@@ -172,8 +172,15 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
 
     builder.add("read", VPackValue(VPackValueType::Array));
     // append here the collection names (?) <-- TODO: Check RestAqlHandler.cpp:230
-    builder.add(VPackValue(_vertexCollectionName));
-    builder.add(VPackValue(_edgeCollectionName));
+    // builder.add(VPackValue(_vertexCollectionName));
+    // builder.add(VPackValue(_edgeCollectionName));
+    // appending collection shard ids
+    for (auto const& vShard : _vertexShards) {
+      builder.add(VPackValue(vShard.first));
+    }
+    for (auto const& eShard : _edgeShards) {
+      builder.add(VPackValue(eShard.first));
+    }
     builder.close(); // array READ
     builder.close(); // object lockInfo
 
