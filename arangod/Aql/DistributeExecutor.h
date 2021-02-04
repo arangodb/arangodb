@@ -45,34 +45,16 @@ class DistributeNode;
 class DistributeExecutorInfos : public ClientsExecutorInfos {
  public:
   DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
-                          RegisterId regId, RegisterId alternativeRegId,
-                          bool allowSpecifiedKeys, bool allowKeyConversionToObject,
-                          bool createKeys, bool fixupGraphInput, ScatterNode::ScatterType type);
+                          RegisterId regId, ScatterNode::ScatterType type);
 
   auto registerId() const noexcept -> RegisterId;
-  auto hasAlternativeRegister() const noexcept -> bool;
-  auto alternativeRegisterId() const noexcept -> RegisterId;
-  auto allowKeyConversionToObject() const noexcept -> bool;
-  auto createKeys() const noexcept -> bool;
-  auto usesDefaultSharding() const noexcept -> bool;
-  auto allowSpecifiedKeys() const noexcept -> bool;
   auto scatterType() const noexcept -> ScatterNode::ScatterType;
 
   auto getResponsibleClient(arangodb::velocypack::Slice value) const
       -> ResultT<std::string>;
 
-  auto createKey(VPackSlice input) const -> std::string;
-
-  auto needsToFixGraphInput() const -> bool;
-
  private:
   RegisterId _regId;
-  RegisterId _alternativeRegId;
-  bool _allowKeyConversionToObject;
-  bool _createKeys;
-  bool _usesDefaultSharding;
-  bool _allowSpecifiedKeys;
-  bool _fixupGraphInput;
 
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
@@ -123,10 +105,6 @@ class DistributeExecutor {
    * @return std::string Identifier used by the client
    */
   auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
-
-  auto getClientByIdSlice(arangodb::velocypack::Slice input) -> std::string;
-
-  auto buildKeyObject(arangodb::velocypack::StringRef key) -> arangodb::velocypack::Slice;
 
  private:
   DistributeExecutorInfos const& _infos;

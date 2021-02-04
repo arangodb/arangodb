@@ -475,14 +475,14 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
 
-  add({"MAKE_DISTRIBUTE_INPUT", ".,.,.",
-       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+  add({"MAKE_DISTRIBUTE_INPUT", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
                            FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
        &Functions::MakeDistributeInput});
-  add({"MAKE_DISTRIBUTE_INPUT_WITH_CREATE_KEYS", ".,.,.,.",
-       Function::makeFlags(), &Functions::MakeDistributeInputWithCreateKeys});
+  add({"MAKE_DISTRIBUTE_INPUT_WITH_CREATE_KEYS", ".,.,.",
+       Function::makeFlags(FF::Internal, FF::MovableNondeterministic), &Functions::MakeDistributeInputWithCreateKeys});
   add({"MAKE_DISTRIBUTE_GRAPH_INPUT", ".",
-       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
                            FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
        &Functions::MakeDistributeGraphInput});
   

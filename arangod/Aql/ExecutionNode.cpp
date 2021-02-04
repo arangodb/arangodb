@@ -749,12 +749,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 
     node = node->getFirstDependency();
     TRI_ASSERT(node != nullptr);
-
-    auto type = node->getType();
-
-    if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH ||
-        type == K_SHORTEST_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
+    if (node->isLoop()) {
       return node;
     }
   }
@@ -1394,6 +1389,19 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
   }
 }
 
+bool ExecutionNode::isLoop(NodeType type) const {
+  if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
+      type == ENUMERATE_LIST || type == SHORTEST_PATH ||
+      type == K_SHORTEST_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
+    return true;
+  }
+  return false;
+}
+
+bool ExecutionNode::isLoop() const {
+  return isLoop(getType());
+}
+  
 bool ExecutionNode::alwaysCopiesRows(NodeType type) {
   // TODO This can be improved. And probably should be renamed.
   //      It is used in the register planning to discern whether we may reuse
@@ -1993,6 +2001,11 @@ Variable const* CalculationNode::outVariable() const { return _outVariable; }
 Expression* CalculationNode::expression() const { 
   TRI_ASSERT(_expression != nullptr);
   return _expression.get(); 
+}
+
+void CalculationNode::setExpression(std::unique_ptr<Expression> expr){
+  TRI_ASSERT(expr != nullptr);
+  _expression = std::move(expr);
 }
 
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {

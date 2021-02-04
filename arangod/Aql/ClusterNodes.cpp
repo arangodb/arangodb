@@ -263,47 +263,22 @@ CostEstimate ScatterNode::estimateCost() const {
   
 DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                                ScatterNode::ScatterType type, Collection const* collection,
-                               Variable const* variable, Variable const* alternativeVariable,
-                               bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput,
-                               bool allowSpecifiedKeys)
+                               Variable const* variable)
     : ScatterNode(plan, id, type),
       CollectionAccessingNode(collection),
-      _variable(variable),
-      _alternativeVariable(alternativeVariable),
-      _createKeys(createKeys),
-      _allowKeyConversionToObject(allowKeyConversionToObject),
-      _allowSpecifiedKeys(allowSpecifiedKeys),
-      _fixupGraphInput(fixupGraphInput) {
-  // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
-  TRI_ASSERT(!_fixupGraphInput || !_createKeys);
-}
+      _variable(variable) {}
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _variable(Variable::varFromVPack(plan->getAst(), base, "variable")),
-      _alternativeVariable(Variable::varFromVPack(plan->getAst(), base, "alternativeVariable", true)),
-      _createKeys(base.get("createKeys").getBoolean()),
-      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false),
-      _fixupGraphInput(VelocyPackHelper::getBooleanValue(base, "fixupGraphInput", false)) {
-  // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
-  TRI_ASSERT(!_fixupGraphInput || !_createKeys);
-  // no key creation on DB servers
-  TRI_ASSERT(!ServerState::instance()->isDBServer() || !_createKeys);
-}
+      _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {}
   
 /// @brief clone ExecutionNode recursively
 ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
                                      bool withProperties) const {
   auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
-                                            collection(), _variable,
-                                            _alternativeVariable, 
-                                            _createKeys,
-                                            _allowKeyConversionToObject,
-                                            _fixupGraphInput,
-                                            _allowSpecifiedKeys);
+                                            collection(), _variable);
   c->copyClients(clients());
   CollectionAccessingNode::cloneInto(*c);
 
@@ -316,42 +291,20 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId regId;
-  RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
+  // get the variable to inspect . . .
+  VariableId varId = _variable->id;
 
-  {  // set regId and alternativeRegId:
+  // get the register id of the variable to inspect . . .
+  auto it = getRegisterPlan()->varInfo.find(varId);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId regId = (*it).second.registerId;
 
-    // get the variable to inspect . . .
-    VariableId varId = _variable->id;
+  TRI_ASSERT(regId < RegisterPlan::MaxRegisterId);
 
-    // get the register id of the variable to inspect . . .
-    auto it = getRegisterPlan()->varInfo.find(varId);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    regId = (*it).second.registerId;
-
-    TRI_ASSERT(regId < RegisterPlan::MaxRegisterId);
-
-    if (_alternativeVariable != _variable) {
-      // use second variable
-      auto it = getRegisterPlan()->varInfo.find(_alternativeVariable->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      alternativeRegId = (*it).second.registerId;
-
-      TRI_ASSERT(alternativeRegId < RegisterPlan::MaxRegisterId);
-    } else {
-      TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
-    }
-  }
-
-  auto inAndOutRegs = RegIdSet{regId};
-  if (alternativeRegId != RegisterPlan::MaxRegisterId) {
-    inAndOutRegs.emplace(alternativeRegId);
-  }
-  auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
+  auto inRegs = RegIdSet{regId};
+  auto registerInfos = createRegisterInfos(inRegs, {});
   auto infos = DistributeExecutorInfos(clients(), collection(), 
-                                       regId, alternativeRegId, 
-                                       _allowSpecifiedKeys, _allowKeyConversionToObject,
-                                       _createKeys, _fixupGraphInput, getScatterType());
+                                       regId, getScatterType());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
                                                                   std::move(registerInfos),
@@ -370,13 +323,8 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   // serialize clients
   writeClientsToVelocyPack(builder);
 
-  builder.add("createKeys", VPackValue(_createKeys));
-  builder.add("allowKeyConversionToObject", VPackValue(_allowKeyConversionToObject));
-  builder.add("fixupGraphInput", VPackValue(_fixupGraphInput));
   builder.add(VPackValue("variable"));
-  _variable->toVelocyPack(builder);
-  builder.add(VPackValue("alternativeVariable"));
-  _alternativeVariable->toVelocyPack(builder);
+  _variable->toVelocyPack(builder);;
 
   // And close it:
   builder.close();
@@ -386,7 +334,6 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
   // note: these may be the same variables
   vars.emplace(_variable);
-  vars.emplace(_alternativeVariable);
 }
   
 /// @brief estimateCost

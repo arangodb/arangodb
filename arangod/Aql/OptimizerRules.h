@@ -318,7 +318,7 @@ void findSubqueriesInPlan(ExecutionPlan& plan,
                           containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 //// @brief create a DistributeNode for the given ExecutionNode
-auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode*;
+auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> std::pair<CalculationNode*, DistributeNode*>;
 
 //// @brief create a gather node matching the given DistributeNode
 auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;

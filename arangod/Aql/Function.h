@@ -85,6 +85,12 @@ struct Function {
     /// optimizations and transformations. not supposed to be used by end users
     /// and thus not documented in the official list of available AQL functions.
     Internal = 64,
+    
+    /// @brief whether or not the function may be moved, even though it is not
+    // deterministic. At the moment this is only used for the
+    // MAKE_DISTRIBUTE_INPUT_WITH_CREATE_KEYS function, so that it can be moved
+    // out of subqueries.
+    MovableNondeterministic = 128,
   };
 
   /// @brief helper for building flags

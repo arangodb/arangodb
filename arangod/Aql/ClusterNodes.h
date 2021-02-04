@@ -200,9 +200,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
  public:
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
-                 Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput,
-                 bool allowSpecifiedKeys);
+                 Variable const* variable);
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -228,29 +226,11 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief set createKeys to false
-  void disableCreateKeys() { _createKeys = false; }
+  Variable const* getVariable() const noexcept { return _variable; }
 
  private:
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
-
-  /// @brief an optional second variable we must inspect to know where to
-  /// distribute
-  Variable const* _alternativeVariable;
-  
-  /// @brief the node is responsible for creating document keys. note:
-  /// this can be changed from true to false, but never from false to true
-  bool _createKeys;
-
-  /// @brief allow conversion of key to object
-  bool const _allowKeyConversionToObject;
-
-  /// @brief allow specified keys in input even in the non-default sharding case
-  bool const _allowSpecifiedKeys;
-
-  /// @brief required to fixup graph input
-  bool const _fixupGraphInput;
 };
 
 /// @brief class GatherNode

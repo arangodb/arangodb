@@ -375,11 +375,24 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
+  // move calculations up the dependency chain (to pull them out of
+  // inner loops and subqueries)
+  // In particular we want to move calculations potentially added by distribute-in-cluster
+  registerRule("move-calculations-up-3", moveCalculationsUpRule,
+               OptimizerRule::moveCalculationsUpRule3,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
+  // remove redundant calculations
+  registerRule("remove-redundant-calculations-2", removeRedundantCalculationsRule,
+               OptimizerRule::removeRedundantCalculationsRule2,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-3", removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule3,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::Hidden));
 
   registerRule("remove-unnecessary-remote-scatter", removeUnnecessaryRemoteScatterRule,
