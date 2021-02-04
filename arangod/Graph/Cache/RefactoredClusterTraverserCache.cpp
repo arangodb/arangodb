@@ -46,6 +46,10 @@ RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
       _datalake(resourceMonitor),
       _engines(engines) {}
 
+RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() {
+  clear();
+}
+
 void RefactoredClusterTraverserCache::clear() {
   _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
   _stringHeap.clear();
