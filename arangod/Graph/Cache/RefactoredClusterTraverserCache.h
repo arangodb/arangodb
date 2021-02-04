@@ -62,7 +62,7 @@ class RefactoredClusterTraverserCache {
   RefactoredClusterTraverserCache(std::unordered_map<ServerID, aql::EngineId> const* engines,
                                   ResourceMonitor& resourceMonitor);
 
-  ~RefactoredClusterTraverserCache() = default;
+  ~RefactoredClusterTraverserCache();
 
   void clear();
 
