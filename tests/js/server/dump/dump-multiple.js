@@ -84,8 +84,6 @@ jsunity.run(function dump_single_testsuite() {
       "testAnalyzers", // TODO: should we?
       "testIndexAnalyzerCollection", // TODO: should we?
       "testJobsAndQueues", // TODO: should we?
-      , // TODO: should we?
-      , // TODO: should we?
       "testReplicationFactor",
       
       // enterprise graph tests:

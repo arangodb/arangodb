@@ -40,10 +40,9 @@ const setup = require(base);
   setup.createEmpty();
   setup.createUsers();
   setup.createMany();
-  
   setup.createOrder();
   
-  // setup.createModifyCollection();
+  //setup.createModifyCollection();
   //setup.createAutoIncKeyGen();
   //setup.createPaddedKeyGen();
   //setup.createUUIDKeyGen();
