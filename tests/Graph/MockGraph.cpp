@@ -173,12 +173,12 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
     // append here the collection names (?) <-- TODO: Check RestAqlHandler.cpp:230
     builder.add(VPackValue(_vertexCollectionName));
     builder.add(VPackValue(_edgeCollectionName));
+    builder.close(); // array READ
     builder.close(); // object lockInfo
     builder.close(); // object (outer)
 
     prep.addBody(builder.slice());
     prep.addSuffix("setup");
-
 
     prep.setRequestType(arangodb::rest::RequestType::POST);
     auto fakeRequest = prep.generateRequest();
