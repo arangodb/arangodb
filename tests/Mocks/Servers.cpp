@@ -620,13 +620,46 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
       dummy.toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
 
   agencyTrx("/arango/Plan/Collections/" + dbName + "/" + basics::StringUtils::itoa(dummy.planId().id()), velocy.toJson());
+  {
+  /* Hard-Coded section to inject the CURRENT counter part.
+   * We do not have a shard available here that could generate the values accordingly.
+   */
+    VPackBuilder current;
+    {
+      VPackObjectBuilder report(&current);
+      for (auto const& [shard, server] : shardNameToServerNamePairs) {
+        current.add(VPackValue(shard));
+        VPackObjectBuilder shardReport(&current);
+        current.add(VPackValue(maintenance::SERVERS));
+        {
+          VPackArrayBuilder serverList(&current);
+          current.add(VPackValue(server));
+        }
+        current.add(VPackValue(StaticStrings::FailoverCandidates));
+        {
+          VPackArrayBuilder serverList(&current);
+          current.add(VPackValue(server));
+        }
+        // Always no error
+        current.add(StaticStrings::Error, VPackValue(false));
+        current.add(StaticStrings::ErrorMessage, VPackValue(std::string()));
+        current.add(StaticStrings::ErrorNum, VPackValue(0));
+        // NOTE: we omited Indexes
+      }
+    }
+    agencyTrx("/arango/Current/Collections/" + dbName + "/" + basics::StringUtils::itoa(dummy.planId().id()), current.toJson());
+  }
+
   _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
       .wait();
 
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+      .wait();
 
-  // TODO inject items in Plan/Current this is not yet correct!
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
   return clusterInfo.getCollection(dbName, collectionName);
 }
