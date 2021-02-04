@@ -1897,6 +1897,9 @@ function launchFinalize(options, instanceInfo, startTime) {
             throw new Error('startup failed! bailing out!');
           }
         }
+        if (count === 300) {
+          throw new Error('startup timed out! bailing out!');
+        }
       }
     });
     instanceInfo.endpoints = [instanceInfo.endpoint];
