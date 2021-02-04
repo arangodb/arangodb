@@ -1896,7 +1896,8 @@ function launchFinalize(options, instanceInfo, startTime) {
           if (!checkArangoAlive(arangod, options)) {
             throw new Error('startup failed! bailing out!');
           }
-        } else if (count === 300) {
+        }
+        if (count === 300) {
           throw new Error('startup timed out! bailing out!');
         }
       }
