@@ -102,8 +102,8 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const slice,
-                                   OperationOptions& options) {
+                                   arangodb::velocypack::Slice slice,
+                                   OperationOptions const& /*options*/) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -127,7 +127,7 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 /// remove index elements and put it in the specified write batch.
 Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const slice) {
+                                   arangodb::velocypack::Slice slice) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else

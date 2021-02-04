@@ -112,18 +112,18 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice const doc,
-                OperationOptions& options) override;
+                OperationOptions const& options) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const doc) override;
+                velocypack::Slice doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice const newDoc,
-                OperationOptions& options) override;
+                velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice newDoc,
+                OperationOptions const& /*options*/) override;
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
