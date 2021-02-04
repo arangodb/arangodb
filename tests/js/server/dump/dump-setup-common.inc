@@ -71,6 +71,19 @@ function cleanup() {
   db._drop("UnitTestsDumpReplicationFactor2");
 }
 
+function createUsers() {
+  // create user in _system database
+  var users = require("@arangodb/users");
+  users.save("foobaruser", "foobarpasswd", true);
+  users.grantDatabase("foobaruser", "_system");
+  users.grantCollection("foobaruser", "_system", "*");
+  users.grantDatabase("foobaruser", "UnitTestsDumpSrc");
+  users.grantCollection("foobaruser", "UnitTestsDumpSrc", "*");
+  var endpoint = arango.getEndpoint();
+
+  arango.reconnect(endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
+}
+
 function createEmpty() {
   db._useDatabase("UnitTestsDumpSrc");
 
@@ -614,6 +627,7 @@ exports.createSatelliteGraphs = createSatelliteGraphs;
 exports.createSmartGraphRegressionTest = createSmartGraphRegressionTest;
 
 exports.cleanup = cleanup;
+exports.createUsers = createUsers;
 exports.createEmpty = createEmpty;
 exports.createMany = createMany;
 exports.createOrder = createOrder;
